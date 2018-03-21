@@ -3,6 +3,7 @@ Created on March 21, 2018
 
 @author: Alejandro Molina
 '''
+
 from src.spn.structure.Base import Product, Sum
 
 
@@ -23,5 +24,9 @@ def to_str_equation(node, feature_names=None):
     if tnode in to_str_equation_lambdas:
         return to_str_equation_lambdas[tnode](node, feature_names)
 
-    raise Exception('Node type not implemented: ' + str(type(node)))
+    raise Exception('Node type not registered: ' + str(type(node)))
+
+
+
+
 
