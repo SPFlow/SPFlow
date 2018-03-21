@@ -10,6 +10,7 @@ from sklearn.cluster import KMeans
 
 from src.spn.algorithms.splitting.Base import split_data_by_clusters, clusters_by_adjacency_matrix
 import os
+import numpy as np
 
 path = os.path.dirname(__file__)
 
@@ -55,15 +56,15 @@ def split_cols_RDC(local_data, ds_context, scope, threshold=0.8, ohe=False, line
 
     clusters = clusters_by_adjacency_matrix(adjm, threshold, local_data.shape[1])
 
-    return split_data_by_clusters(local_data, clusters, rows=False)
+    return split_data_by_clusters(local_data, clusters, scope, rows=False)
 
 
-def split_rows_RDC(local_data, ds_context, scope, n_clusters=2, k=10, s=1 / 6, ohe=True, seed=17):
+def split_rows_RDC(local_data, ds_context, scope, n_clusters=2, k=10, s=1 / 6, ohe=False, seed=17):
     data = get_RDC_transform(local_data, ds_context.statistical_type[scope], ohe, k=k, s=s)
 
     clusters = KMeans(n_clusters=n_clusters, random_state=seed, n_jobs=1).fit_predict(data)
 
-    return split_data_by_clusters(local_data, clusters, rows=True)
+    return split_data_by_clusters(local_data, clusters, scope, rows=True)
 
 
 

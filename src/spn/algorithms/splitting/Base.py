@@ -24,14 +24,16 @@ def clusters_by_adjacency_matrix(adm, threshold, n_features):
 
 
 
-def split_data_by_clusters(data, clusters, rows=True):
+def split_data_by_clusters(data, clusters, scope, rows=True):
     unique_clusters = np.unique(clusters)
     result = []
 
+    nscope = np.asarray(scope)
+
     for uc in unique_clusters:
         if rows:
-            result.append(data[clusters == uc, :])
+            result.append((data[clusters == uc, :], scope))
         else:
-            result.append(data[:, clusters == uc])
+            result.append((data[:, clusters == uc].reshape((data.shape[0],-1)), nscope[clusters == uc]))
 
     return result
