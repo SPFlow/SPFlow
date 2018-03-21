@@ -19,7 +19,7 @@ def is_consistent(node):
 
         allchildscope = set()
         sum_features = 0
-        for child in self.children:
+        for child in node.children:
             sum_features += len(child.scope)
             allchildscope = allchildscope | set(child.scope)
 
@@ -49,4 +49,4 @@ def is_complete(node):
 
 
 def is_valid(node):
-    return is_consistent(node) and is_valid(node)
+    return is_consistent(node) and is_complete(node)
