@@ -5,9 +5,6 @@ Created on March 20, 2018
 '''
 
 
-
-
-
 class Sum:
     def __init__(self):
         self.weights = []
@@ -20,13 +17,16 @@ class Product:
         self.scope = []
         self.children = []
 
+
 class Leaf:
     def __init__(self):
         self.scope = []
-
 
 
 class SPN:
     def __init__(self):
         self.root = None
         self.config = {}
+
+class Context:
+    pass

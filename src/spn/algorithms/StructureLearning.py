@@ -156,6 +156,7 @@ def LearnStructure(dataset, ds_context, next_operation, split_rows, split_cols, 
             raise Exception('Invalid operation: ' + operation)
 
     node = root.children[0]
+    node = Prune(node)
     assert is_valid(node)
     return node
 
