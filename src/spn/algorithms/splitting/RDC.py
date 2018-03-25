@@ -3,30 +3,39 @@ Created on March 20, 2018
 
 @author: Alejandro Molina
 '''
-from rpy2 import robjects
-from rpy2.robjects import numpy2ri
-from rpy2.robjects.packages import SignatureTranslatedAnonymousPackage
+
 from sklearn.cluster import KMeans
 
-from src.spn.algorithms.splitting.Base import split_data_by_clusters, clusters_by_adjacency_matrix
-import os
+from spn.algorithms.splitting.Base import split_data_by_clusters, clusters_by_adjacency_matrix
+
 import numpy as np
 
-path = os.path.dirname(__file__)
+rpy_initialized = False
 
-with open(path + "/rdc.R", "r") as pdnfile:
-    code = ''.join(pdnfile.readlines())
-    rdc = SignatureTranslatedAnonymousPackage(code, "testRDC")
+def init_rpy():
+    if rpy_initialized:
+        return
 
-numpy2ri.activate()
+    from rpy2 import robjects
+    from rpy2.robjects import numpy2ri
+    import os
+    path = os.path.dirname(__file__)
+    with open(path + "/rdc.R", "r") as rfile:
+        code = ''.join(rfile.readlines())
+        robjects.r(code)
+
+    numpy2ri.activate()
 
 
 def get_RDC_transform(data, statistical_type, ohe=False, k=10, s=1 / 6):
+    from rpy2 import robjects
+    init_rpy()
+
     assert data.shape[1] == len(statistical_type), "invalid parameters"
 
     try:
         df = robjects.r["as.data.frame"](data)
-        out = rdc.transformRDC(df, ohe, statistical_type, k, s)
+        out = robjects.r["transformRDC"](df, ohe, statistical_type, k, s)
         out = np.asarray(out)
     except Exception as e:
         np.savetxt("/tmp/errordata.txt", data)
@@ -37,11 +46,14 @@ def get_RDC_transform(data, statistical_type, ohe=False, k=10, s=1 / 6):
 
 
 def get_RDC_adjacency_matrix(data, statistical_type, ohe=False, linear=True):
+    from rpy2 import robjects
+    init_rpy()
+
     assert data.shape[1] == len(statistical_type), "invalid parameters"
 
     try:
         df = robjects.r["as.data.frame"](data)
-        out = rdc.testRDC(df, ohe, statistical_type, linear)
+        out = robjects.r["testRDC"](df, ohe, statistical_type, linear)
         out = np.asarray(out)
     except Exception as e:
         np.savetxt("/tmp/errordata.txt", data)
@@ -51,7 +63,7 @@ def get_RDC_adjacency_matrix(data, statistical_type, ohe=False, linear=True):
     return out
 
 
-def split_cols_RDC(local_data, ds_context, scope, threshold=0.8, ohe=False, linear=True):
+def split_cols_RDC(local_data, ds_context, scope, threshold=0.3, ohe=False, linear=True):
     adjm = get_RDC_adjacency_matrix(local_data, ds_context.statistical_type[scope], ohe, linear)
 
     clusters = clusters_by_adjacency_matrix(adjm, threshold, local_data.shape[1])
@@ -69,9 +81,11 @@ def split_rows_RDC(local_data, ds_context, scope, n_clusters=2, k=10, s=1 / 6, o
 
 
 if __name__ == '__main__':
-    import numpy as np
+    import os
 
-    p = path + "/../../../data/nips100.csv"
+    print(os.getcwd())
+
+    p = "../../../../data/nips100.csv"
 
     print(p)
 
@@ -83,8 +97,8 @@ if __name__ == '__main__':
     ds_context.statistical_type = np.asarray(["discrete"] * nips.shape[1])
 
     scope = [1, 2, 3, 5, 6, 7, 8, 9, 10]
-    #a = split_rows_RDC(nips[:, scope], ds_context, scope)
-    #print(len(a))
+    a = split_rows_RDC(nips[:, scope], ds_context, scope)
+    print(len(a))
 
     a = split_rows_RDC(nips[20:80, :][:, scope], ds_context, scope)
     print(len(a), a)
