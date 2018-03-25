@@ -9,8 +9,8 @@ from collections import deque
 from enum import Enum
 import numpy as np
 
-from src.spn.algorithms.Validity import is_valid
-from src.spn.structure.Base import *
+from spn.algorithms.Validity import is_valid
+from spn.structure.Base import *
 
 
 class Operation(Enum):
@@ -58,7 +58,7 @@ def next_operation(data, no_clusters=False, no_independencies=False, is_first=Fa
 
 
 
-def LearnStructure(dataset, ds_context, next_operation, split_rows, split_cols, create_leaf):
+def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, next_operation = next_operation):
 
     root = Product()
     root.children.append(None)
@@ -97,7 +97,7 @@ def LearnStructure(dataset, ds_context, next_operation, split_rows, split_cols, 
 
                 tasks.append((local_data[:, col].reshape((-1, 1)), node, c_pos, [scope[col]], True, True))
             else:
-                tasks.append((local_data[:, cols], node, c_pos, np.array(scope)[cols], False, False))
+                tasks.append((local_data[:, cols], node, c_pos, np.array(scope)[cols].tolist(), False, False))
 
             continue
 
@@ -114,6 +114,8 @@ def LearnStructure(dataset, ds_context, next_operation, split_rows, split_cols, 
             parent.children[children_pos] = node
 
             for data_slice, scope_slice in data_slices:
+                assert isinstance(scope_slice, list), "slice must be a list"
+
                 node.children.append(None)
                 node.weights.append(data_slice.shape[0]/local_data.shape[0])
                 tasks.append((data_slice, node, len(node.children) - 1, scope, False, False))
@@ -132,6 +134,8 @@ def LearnStructure(dataset, ds_context, next_operation, split_rows, split_cols, 
             parent.children[children_pos] = node
 
             for data_slice, scope_slice in data_slices:
+                assert isinstance(scope_slice, list), "slice must be a list"
+
                 node.children.append(None)
                 tasks.append((data_slice, node, len(node.children) - 1, scope_slice, False, False))
             continue

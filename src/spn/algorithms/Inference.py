@@ -6,29 +6,35 @@ Created on March 21, 2018
 import sys
 from scipy.misc import logsumexp
 
-from src.spn.structure.Base import Product, Sum
+from spn.structure.Base import Product, Sum
 import numpy as np
 
 EPSILON = 0.000000000000001
 
-likelihood_lambdas = {}
 
-def likelihood(node, data):
+def log_likelihood(node, data, likelihood_lambdas={}):
 
     if isinstance(node, Product):
-        llchildren = np.array([likelihood(c, data) for c in node.children])
+        llchildren = np.zeros((data.shape[0], len(node.children)))
 
-        return np.sum(llchildren, axis=0)
+        #TODO: parallelize here
+        for i, c in enumerate(node.children):
+            llchildren[:,i] = log_likelihood(c, data, likelihood_lambdas)
+
+        return np.sum(llchildren, axis=1)
 
     if isinstance(node, Sum):
-        llchildren = np.array([likelihood(c, data) for c in node.children])
+        llchildren = np.zeros((data.shape[0], len(node.children)))
 
-        weights = np.array(node.weights).reshape(-1, 1)
+        # TODO: parallelize here
+        for i, c in enumerate(node.children):
+            llchildren[:,i] = log_likelihood(c, data, likelihood_lambdas)
 
-        return logsumexp(llchildren, b=weights, axis=0)
+        b = np.array(node.weights).reshape(1, -1)
+
+        return logsumexp(llchildren, b=b, axis=1)
 
     tnode = type(node)
     if tnode in likelihood_lambdas:
-        return likelihood_lambdas[tnode](node, data)
-
+        return likelihood_lambdas[tnode](node, data[:, node.scope])
     raise Exception('Node type not registered: ' + str(type(node)))

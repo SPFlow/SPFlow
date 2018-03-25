@@ -2,8 +2,8 @@
 Created on March 20, 2018
 @author: Alejandro Molina
 '''
-from src.spn.io import Dumper
-from src.spn.structure.Base import Leaf
+from spn.io import Text
+from spn.structure.Base import Leaf
 
 
 class Bernoulli(Leaf):
@@ -64,6 +64,6 @@ def to_str_equation(node, feature_names=None):
 
 
 
-Dumper.to_str_equation_lambdas[Bernoulli] = to_str_equation
-Dumper.to_str_equation_lambdas[Poisson] = to_str_equation
-Dumper.to_str_equation_lambdas[Normal] = to_str_equation
+Text.to_str_equation_lambdas[Bernoulli] = to_str_equation
+Text.to_str_equation_lambdas[Poisson] = to_str_equation
+Text.to_str_equation_lambdas[Normal] = to_str_equation

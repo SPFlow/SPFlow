@@ -3,13 +3,18 @@ Created on March 20, 2018
 
 @author: Alejandro Molina
 '''
-from src.spn.structure.Base import Sum, Leaf, Product
+from spn.structure.Base import Sum, Leaf, Product
 
 
 def is_consistent(node):
     '''
     all children of a product node have different scope
     '''
+
+    assert node is not None
+
+    if len(node.scope) == 0:
+        return False
 
     if isinstance(node, Leaf):
         return True
@@ -34,6 +39,11 @@ def is_complete(node):
     '''
     all children of a sum node have same scope as the parent
     '''
+
+    assert node is not None
+
+    if len(node.scope) == 0:
+        return False
 
     if isinstance(node, Leaf):
         return True

@@ -34,6 +34,6 @@ def split_data_by_clusters(data, clusters, scope, rows=True):
         if rows:
             result.append((data[clusters == uc, :], scope))
         else:
-            result.append((data[:, clusters == uc].reshape((data.shape[0],-1)), nscope[clusters == uc]))
+            result.append((data[:, clusters == uc].reshape((data.shape[0],-1)), nscope[clusters == uc].tolist()))
 
     return result
