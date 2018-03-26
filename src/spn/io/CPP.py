@@ -9,7 +9,7 @@ from spn.algorithms import Inference
 from spn.io.Text import str_to_spn, to_str_equation
 from spn.leaves import Histograms
 from spn.leaves.Histograms import Histogram, Histogram_Likelihoods
-from spn.structure.Base import get_node_by_type, Product, Sum
+from spn.structure.Base import get_nodes_by_type, Product, Sum
 import numpy as np
 
 
@@ -24,12 +24,12 @@ def to_cpp(node, feature_names):
         #   map(lambda i: str(node.weights[i]) + "*exp(" + to_str_equation(node.children[i], y, z) + ")",
         #      range(len(node.children)))) + "))",
 
-        Histograms.Histogram: lambda node, y, z: "leaf_hist_%s(data[i][%s])" % (id(node), node.scope[0])
+        Histograms.Histogram: lambda node, _: "leaf_hist_%s(data[i][%s])" % (id(node), node.scope[0])
     })
 
     histassignments = ""
     leavefuncs = ""
-    for h in get_node_by_type(node, Histogram):
+    for h in get_nodes_by_type(node, Histogram):
         inps = np.arange(int(max(h.breaks))).reshape((-1, 1))
         ll = Histograms.Likelihood(h, inps)
         hfun = "%s hist_%s[%s];\n" % (vartype, id(h), len(inps))
@@ -40,7 +40,7 @@ def to_cpp(node, feature_names):
             histassignments += "\thist_%s[%s] = %s;\n" % (id(h), x, v)
         histassignments += "\n"
 
-        x = feature_names[h.scope[0]]
+        x = feature_names[h.scope[0]]+"_" + str(h.scope[0])
         hfun += "inline %s leaf_hist_%s(uint8_t %s){\n" % (vartype, id(h), x)
         hfun += "   return hist_%s[%s]; \n}\n" % (id(h), x)
         leavefuncs += "\n" + hfun
@@ -80,7 +80,7 @@ int main()
         boost::split(strs, lines[i+1], boost::is_any_of(";"));
         
         for(int j=0; j < f; j++){
-            data[i][j] = boost::lexical_cast<long double>(strs[j]);
+            data[i][j] = boost::lexical_cast<%s>(strs[j]);
         }
     }
     
@@ -97,13 +97,15 @@ int main()
     long double avglikelihood = 0;
     for(int i=0; i < n; i++){
         avglikelihood += log(result[i]);
-        //cout << setprecision(15) << log(result[i]) << endl;
+        cout << setprecision(60) << log(result[i]) << endl;
     }
 
     cout << setprecision(15) << "avg ll " << avglikelihood/n << endl;
     
-    cout << (chrono::duration_cast<chrono::nanoseconds>(end-begin).count()/1000)  / 10000 << "us" << endl;
     cout << "size of variables " << sizeof(%s) * 8 << endl;
+
+    cout << setprecision(15)<< "time per instance " << (chrono::duration_cast<chrono::nanoseconds>(end-begin).count()  / 10000.0) /n << " ns" << endl;
+    cout << setprecision(15) << "time per task " << (chrono::duration_cast<chrono::nanoseconds>(end-begin).count()  / 10000.0)  << " ns" << endl;
 
 
     return 0;
@@ -113,35 +115,16 @@ int main()
 
 
     """ % (
-    leavefuncs, vartype, parms, funcbody, histassignments, len(node.scope), vartype, len(node.scope), vartype, vartype)
+        leavefuncs, vartype, parms, funcbody, histassignments, len(node.scope), vartype, len(node.scope), vartype,
+        vartype, vartype)
 
 
-if __name__ == '__main__':
-    with open('../tests/40_eqq.txt', 'r') as myfile:
-        eq = myfile.read()
-    with open('../tests/40_testdata.txt', 'r') as myfile:
-        words = myfile.readline().strip()
-        words = words[2:]
-        words = words.split(';')
-
-    # feature_names = ["a", "b"]
-    # spn = str_to_spn("""
-    #     (0.2*(Histogram(a|[ 0., 1., 2.];[0.1, 0.9]) * Histogram(b|[ 0., 2.];[0.2])) +
-    #     0.3*(Histogram(a|[ 0., 1., 2.];[0.1, 0.9]) * Histogram(b|[ 0., 2.];[0.2]))
-    #     )
-    #     """, feature_names, Histograms.str_to_spn_lambdas)
-
-    feature_names = words
-    spn = str_to_spn(eq, feature_names, Histograms.str_to_spn_lambdas)
-
+def generate_native_executable(spn, feature_names, cppfile="/tmp/spn.cpp", nativefile="/tmp/spnexe"):
     code = to_cpp(spn, feature_names)
 
-    text_file = open("/tmp/spn.cpp", "w")
+    text_file = open(cppfile, "w")
     text_file.write(code)
     text_file.close()
 
-    print(code)
-
-    print(subprocess.check_output(['g++', '-O3', '-o', '/tmp/spnexec', '/tmp/spn.cpp']))
-    print(subprocess.check_output(['g++', '-O3', '-ffast-math', '-o', '/tmp/spnexecfast', '/tmp/spn.cpp']))
-
+    return subprocess.check_output(['g++', '-O3', '-o', nativefile, cppfile], stderr=subprocess.STDOUT).decode(
+        "utf-8"), code

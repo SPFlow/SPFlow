@@ -160,21 +160,22 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             raise Exception('Invalid operation: ' + operation)
 
     node = root.children[0]
+    assert is_valid(node), "invalid before pruning"
     node = Prune(node)
-    assert is_valid(node)
+    assert is_valid(node), "invalid after pruning"
     return node
 
 def Prune(node):
 
-    if not isinstance(node, Sum) and not isinstance(node, Product):
+    if isinstance(node, Leaf):
         return node
 
-
     while True:
+
         pruneNeeded = any(map(lambda c: isinstance(c, type(node)), node.children))
 
         if not pruneNeeded:
-            return node
+            break
 
         newNode = node.__class__()
         newNode.scope.extend(node.scope)
@@ -184,18 +185,30 @@ def Prune(node):
         for i, c in enumerate(node.children):
             if type(c) != type(newNode):
                 newChildren.append(c)
+                if isinstance(newNode, Sum):
+                    newWeights.append(node.weights[i])
                 continue
-
-            for j, gc in enumerate(c.children):
-                newChildren.append(gc)
-                if type(c) == Sum:
-                    newWeights.append(node.weights[i] * c.weights[j])
+            else:
+                for j, gc in enumerate(c.children):
+                    newChildren.append(gc)
+                    if isinstance(newNode, Sum):
+                        newWeights.append(node.weights[i] * c.weights[j])
 
         newNode.children.extend(newChildren)
 
-        if type(newNode) == Sum:
+        if isinstance(newNode, Sum):
             newNode.weights.extend(newWeights)
 
         node = newNode
 
-    return node
+    while len(node.children) == 1:
+        node = node.children[0]
+
+    newNode = node.__class__()
+    newNode.scope.extend(node.scope)
+    newNode.children.extend(map(Prune, node.children))
+    if isinstance(newNode, Sum):
+        newNode.weights.extend(node.weights)
+
+    return newNode
+

@@ -3,13 +3,18 @@ Created on March 22, 2018
 
 @author: Alejandro Molina
 '''
+from sklearn.cross_validation import train_test_split
+
 from spn.algorithms import Inference
 from spn.algorithms.Statistics import get_structure_stats
+from spn.algorithms.StructureLearning import Prune
+from spn.experiments.FPGA.GenerateSPNs import get_nips_data
 from spn.io import Text
 from spn.io.Text import str_to_spn
 import numpy as np
 
 from spn.leaves.Histograms import str_to_spn_lambdas, Histogram_Likelihoods
+from spn.structure.Base import get_nodes_by_type, Sum, Product
 
 if __name__ == '__main__':
     with open('40_eqq.txt', 'r') as myfile:
@@ -34,3 +39,12 @@ if __name__ == '__main__':
 
     print(ll)
     print("average LL", np.mean(ll))
+
+    ds_name, data, words = get_nips_data()
+
+    top_n_features = 40
+
+    train, test = train_test_split(data[:, 0:top_n_features], test_size=0.2, random_state=42)
+
+    ll = Inference.log_likelihood(spn, test, Histogram_Likelihoods)
+    print("average LL2", np.mean(ll))
