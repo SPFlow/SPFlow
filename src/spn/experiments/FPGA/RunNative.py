@@ -40,6 +40,8 @@ if __name__ == '__main__':
 
         outprefix = path + "/spns/%s_%s/" % (ds_name, top_n_features)
 
+        if not os.path.isfile(outprefix + "time_test_data.txt"):
+            continue
 
         OS_name = platform.system()
 
