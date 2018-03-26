@@ -126,5 +126,8 @@ def generate_native_executable(spn, feature_names, cppfile="/tmp/spn.cpp", nativ
     text_file.write(code)
     text_file.close()
 
+    nativefile_fast = nativefile + '_fastmath'
+
     return subprocess.check_output(['g++', '-O3', '--std=c++11', '-o', nativefile, cppfile], stderr=subprocess.STDOUT).decode(
+        "utf-8"), subprocess.check_output(['g++', '-O3', '-ffast-math', '--std=c++11', '-o', nativefile_fast, cppfile], stderr=subprocess.STDOUT).decode(
         "utf-8"), code

@@ -18,6 +18,17 @@ from natsort import natsorted
 np.set_printoptions(precision=50)
 
 
+def execute_native(outprefix, nfile, time_test):
+    print("computing ll natively for: ", outprefix, time_test.shape)
+    cmd = "%s < %s" % (nfile, outprefix + "time_test_data.txt")
+    proc_output = subprocess.check_output(cmd, shell=True).decode("utf-8")
+    print("done")
+    lines = proc_output.split("\n")
+    cpp_ll = np.array(lines[0:time_test.shape[0]], dtype=np.float128)
+    cpp_time = float(lines[-2].split(" ")[-2])
+
+    return lines, cpp_ll, cpp_time, lines[0:time_test.shape[0]]
+
 
 if __name__ == '__main__':
     path = os.path.dirname(__file__)
@@ -45,20 +56,19 @@ if __name__ == '__main__':
         np.savetxt(outprefix + "time_test_data.txt", time_test, delimiter=";", header=";".join(words))
 
         py_ll = log_likelihood(spn, time_test, Histogram_Likelihoods)
-        np.savetxt(outprefix + "time_test_ll.txt", py_ll)
-        np.save(outprefix + "time_test_ll.npy", py_ll)
+        np.savetxt(outprefix + "time_test_ll_" +OS_name + ".txt", py_ll)
+        np.save(outprefix + "time_test_ll_" + OS_name + ".npy", py_ll)
 
-        print("computing ll natively for: ", outprefix, time_test.shape)
-        cmd = "%s < %s" % (nfile, outprefix + "time_test_data.txt")
-        proc_output = subprocess.check_output(cmd, shell=True).decode("utf-8")
-        print("done")
+        _, cpp_ll, cpp_time, cpp_ll_lines = execute_native(outprefix, nfile, time_test)
 
-        lines = proc_output.split("\n")
-        cpp_ll = np.array(lines[0:time_test.shape[0]], dtype=np.float128)
-        cpp_time = float(lines[-2].split(" ")[-2])
+        native_ll_file = open(outprefix + "time_test_native_ll_" +OS_name + ".txt", "w")
+        native_ll_file.write("\n".join(cpp_ll_lines))
+        native_ll_file.close()
 
-        native_ll_file = open(outprefix + "time_test_native_ll.txt", "w")
-        native_ll_file.write("\n".join(lines[0:time_test.shape[0]]))
+        _, cpp_fast_ll, cpp_fast_time, cpp_fast_ll_lines = execute_native(outprefix, nfile + "_fastmath", time_test)
+
+        native_ll_file = open(outprefix + "time_test_native_fastmath_ll_" + OS_name + ".txt", "w")
+        native_ll_file.write("\n".join(cpp_fast_ll_lines))
         native_ll_file.close()
 
         test_n = time_test.shape[0]
@@ -66,7 +76,10 @@ if __name__ == '__main__':
         if not os.path.isfile("results.csv"):
             results_file = open("results.csv", "w")
             results_file.write(";".join(
-                ["Experiment", "OS", "machine", "input_rows", "input_cols", "spn_nodes", "spn_sum_nodes", "spn_prod_nodes", "spn_leaves", "spn_edges", "spn_layers", "time per instance", "time per task", "avg ll native", "avg ll pyspn"]))
+                ["Experiment", "OS", "machine", "input_rows", "input_cols", "spn_nodes", "spn_sum_nodes",
+                 "spn_prod_nodes", "spn_leaves", "spn_edges", "spn_layers", "native time per instance",
+                 "native time per task", "native fast_math time per instance", "native fast_math time per task",
+                 "avg ll native", "avg ll fast_math native", "avg ll pyspn"]))
             results_file.write("\n")
             results_file.close()
 
@@ -87,8 +100,10 @@ if __name__ == '__main__':
                      get_number_of_layers(spn)]
         results_file.write(";".join(map(str, spn_stats)))
         results_file.write(";")
-        results_file.write(";".join(map(str, [cpp_time / test_n, cpp_time])))
+        results_file.write(";".join(map(str, [cpp_time / test_n, cpp_time, cpp_fast_time / test_n, cpp_fast_time])))
         results_file.write(";")
-        results_file.write(";".join(map(str, [np.mean(cpp_ll, dtype=np.float128), np.mean(py_ll, dtype=np.float128)])))
+        results_file.write(";".join(map(str,
+                                        [np.mean(cpp_ll, dtype=np.float128), np.mean(cpp_fast_ll, dtype=np.float128),
+                                         np.mean(py_ll, dtype=np.float128)])))
         results_file.write("\n")
         results_file.close()
