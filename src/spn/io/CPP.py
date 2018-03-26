@@ -126,5 +126,5 @@ def generate_native_executable(spn, feature_names, cppfile="/tmp/spn.cpp", nativ
     text_file.write(code)
     text_file.close()
 
-    return subprocess.check_output(['g++', '-O3', '-o', nativefile, cppfile], stderr=subprocess.STDOUT).decode(
+    return subprocess.check_output(['g++', '-O3', '--std=c++11', '-o', nativefile, cppfile], stderr=subprocess.STDOUT).decode(
         "utf-8"), code
