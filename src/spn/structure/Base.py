@@ -34,6 +34,7 @@ class Context:
 
 def get_nodes_by_type(node, ntype=Node):
     result = []
+
     if isinstance(node, ntype):
         result.append(node)
 
