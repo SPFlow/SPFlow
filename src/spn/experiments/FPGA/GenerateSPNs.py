@@ -27,8 +27,8 @@ memory = Memory(cachedir="cache", verbose=0, compress=9)
 
 
 @memory.cache
-def learn(data, ds_context):
-    split_cols = lambda data, ds_context, scope: split_cols_RDC(data, ds_context, scope, threshold=0.3, linear=False)
+def learn(data, ds_context, linear=False):
+    split_cols = lambda data, ds_context, scope: split_cols_RDC(data, ds_context, scope, threshold=0.3, linear=linear)
     nextop = lambda data, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True, \
                     cluster_univariate=False, min_instances_slice=200: next_operation(data, no_clusters,
                                                                                       no_independencies,
@@ -65,7 +65,7 @@ def get_binary_data(name):
     return (name.upper(), D, train, test, np.asarray(words), np.asarray(["discrete"] * F), np.asarray(["bernoulli"] * F))
 
 
-def run_experiment(dataset, top_n_features):
+def run_experiment(dataset, top_n_features, linear=False):
     ds_name, data, train, test, words, statistical_type, distribution_family = dataset
 
     data = data[:, 0:top_n_features]
@@ -120,8 +120,53 @@ def load_spn_from_file(outprefix):
 
 if __name__ == '__main__':
 
-    get_binary_data("msweb")
 
+    # for bname in ["nltcs", "dna", "jester", "plants", "accidents", "baudio", "bnetflix"]:
+    #     dataset = get_binary_data(bname)
+    #     ds_name, data, train, test, words, statistical_type, distribution_family = dataset
+    #     print(ds_name, data.shape)
+    #
+    #     ds_context = Context()
+    #     ds_context.statistical_type = statistical_type
+    #     ds_context.distribution_family = distribution_family
+    #     add_domains(data, ds_context)
+    #
+    #     #spn = learn(train, ds_context, True)
+    #
+    #     #print(get_structure_stats(spn))
+    #     #print(np.mean(log_likelihood(spn, test, Histogram_Likelihoods)))
+    #
+    # 0/0
+    run_experiment(get_binary_data("nltcs"), 16, True)
+    run_experiment(get_binary_data("dna"), 45, True)
+    run_experiment(get_binary_data("dna"), 90, True)
+    run_experiment(get_binary_data("dna"), 135, True)
+    run_experiment(get_binary_data("dna"), 180, True)
+    run_experiment(get_binary_data("jester"), 40, True)
+    run_experiment(get_binary_data("jester"), 80, True)
+    run_experiment(get_binary_data("jester"), 100, True)
+    run_experiment(get_binary_data("plants"), 20, True)
+    run_experiment(get_binary_data("plants"), 40, True)
+    run_experiment(get_binary_data("plants"), 50, True)
+    run_experiment(get_binary_data("plants"), 69, True)
+    run_experiment(get_binary_data("accidents"), 20, True)
+    run_experiment(get_binary_data("accidents"), 40, True)
+    run_experiment(get_binary_data("accidents"), 60, True)
+    run_experiment(get_binary_data("accidents"), 80, True)
+    run_experiment(get_binary_data("accidents"), 100, True)
+    run_experiment(get_binary_data("accidents"), 111, True)
+    run_experiment(get_binary_data("baudio"), 20, True)
+    run_experiment(get_binary_data("baudio"), 40, True)
+    run_experiment(get_binary_data("baudio"), 60, True)
+    run_experiment(get_binary_data("baudio"), 80, True)
+    run_experiment(get_binary_data("baudio"), 100, True)
+    run_experiment(get_binary_data("bnetflix"), 20, True)
+    run_experiment(get_binary_data("bnetflix"), 40, True)
+    run_experiment(get_binary_data("bnetflix"), 60, True)
+    run_experiment(get_binary_data("bnetflix"), 80, True)
+    run_experiment(get_binary_data("bnetflix"), 100, True)
+
+    0/0
 
     for topn in [5,10,20,30,40,50,60,70,80]:
         run_experiment(get_nips_data(), topn)
