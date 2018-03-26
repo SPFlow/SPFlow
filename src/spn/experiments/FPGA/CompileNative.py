@@ -28,5 +28,7 @@ if __name__ == '__main__':
 
         nfile = outprefix + "spnexe_" + platform.system()
 
-        print(generate_native_executable(spn, words, cppfile=outprefix + "spn.cpp", nativefile=nfile)[0])
+        compilation_results = generate_native_executable(spn, words, cppfile=outprefix + "spn.cpp", nativefile=nfile)
+
+        print(compilation_results[0], compilation_results[1])
 
