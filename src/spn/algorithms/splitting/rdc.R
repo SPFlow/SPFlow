@@ -21,13 +21,10 @@ transformRDC <- function(data, ohe, featureTypes, min_k=10, s=1/6, f=sin) {
   rdctrans <- foreach(i = 1:ncol(data), .combine=cbind) %dorng% {
     x <- data[,i]
 
-    if(ohe){
-
-      if(featureTypes[[i]] == "discrete" || featureTypes[[i]] == "binary"){
-        x <- dummy(columnnames[i], data, sep="_")
-      }
-
+    if(ohe && (featureTypes[[i]] == "discrete" || featureTypes[[i]] == "binary")){
+      x <- dummy(columnnames[i], data, sep="_")
     }
+
     x <- cbind(apply(as.matrix(x),2,function(u)ecdf(u)(u)),1)
     k = max(min_k, ncol(x))
 

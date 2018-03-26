@@ -34,7 +34,7 @@ def split_rows_KMeans(local_data, ds_context, scope, n_clusters=2, pre_proc=None
     if f:
         data[:, ds_context.distribution_family == "poisson"] = f(data[:, ds_context.distribution_family == "poisson"])
 
-    clusters = KMeans(n_clusters=n_clusters, random_state=seed, n_jobs=1).fit_predict(data)
+    clusters = KMeans(n_clusters=n_clusters, random_state=seed).fit_predict(data)
 
     return split_data_by_clusters(local_data, clusters, scope, rows=True)
 

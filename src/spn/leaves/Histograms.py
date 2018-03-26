@@ -7,8 +7,7 @@ Created on March 20, 2018
 
 
 from spn.algorithms import Inference
-from spn.io import Text
-from spn.structure.Base import Leaf, Sum, Product
+from spn.structure.Base import Leaf
 import numpy as np
 
 
@@ -35,7 +34,7 @@ class Histogram(Leaf):
         self.densities = densities
 
 
-def create_histogram_leaf(data, ds_context, scope, alpha=0.0):
+def create_histogram_leaf(data, ds_context, scope, alpha=1.0):
     assert len(scope) == 1, "scope of univariate histogram for more than one variable?"
     assert data.shape[1] == 1, "data has more than one feature?"
 
@@ -147,7 +146,7 @@ def tree_to_spn(tree, features):
 
     return node
 
-str_to_spn_lambdas = {"histogram" : (tree_to_spn, """
+Histogram_str_to_spn = {"histogram" : (tree_to_spn, """
 %import common.WORD -> WORDHIST
 listhist : "[" [DECIMAL ("," DECIMAL)*] "]"
 histogram: "Histogram(" WORDHIST "|" listhist ";" listhist ")" 

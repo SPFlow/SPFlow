@@ -57,6 +57,14 @@ def is_complete(node):
 
     return all(map(is_complete, node.children))
 
+def is_aligned(node):
+    if isinstance(node, Leaf):
+        return True
+
+    if isinstance(node, Sum) and len(node.children) != len(node.weights):
+        return False
+
+    return all(map(is_aligned, node.children))
 
 def is_valid(node):
-    return is_consistent(node) and is_complete(node)
+    return is_consistent(node) and is_complete(node) and is_aligned(node)

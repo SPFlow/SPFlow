@@ -3,14 +3,14 @@ Created on March 25, 2018
 
 @author: Alejandro Molina
 '''
-from spn.structure.Base import get_node_by_type, Sum, Product, Leaf, get_number_of_edges, get_number_of_layers, Node
+from spn.structure.Base import get_nodes_by_type, Sum, Product, Leaf, get_number_of_edges, get_number_of_layers, Node
 
 
 def get_structure_stats(node):
-    num_nodes = len(get_node_by_type(node, Node))
-    sum_nodes = len(get_node_by_type(node, Sum))
-    prod_nodes = len(get_node_by_type(node, Product))
-    leaf_nodes = len(get_node_by_type(node, Leaf))
+    num_nodes = len(get_nodes_by_type(node, Node))
+    sum_nodes = len(get_nodes_by_type(node, Sum))
+    prod_nodes = len(get_nodes_by_type(node, Product))
+    leaf_nodes = len(get_nodes_by_type(node, Leaf))
     edges = get_number_of_edges(node)
     layers = get_number_of_layers(node)
 
