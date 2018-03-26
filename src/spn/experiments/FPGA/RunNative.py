@@ -40,7 +40,6 @@ if __name__ == '__main__':
 
         outprefix = path + "/spns/%s_%s/" % (ds_name, top_n_features)
 
-        py_ll = np.load(outprefix + "time_test_ll.npy")
 
         OS_name = platform.system()
 
