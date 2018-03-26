@@ -23,11 +23,14 @@ if __name__ == '__main__':
 
         outprefix = path + "/spns/%s_%s/" % (ds_name, top_n_features)
 
-        spn, words, _ = load_spn_from_file(outprefix)
-
         import platform
 
         nfile = outprefix + "spnexe_" + platform.system()
+
+        if not os.path.isfile(nfile):
+            continue
+
+        spn, words, _ = load_spn_from_file(outprefix)
 
         compilation_results = generate_native_executable(spn, Histogram_to_cpp,
                                                          cppfile=outprefix + "spn.cpp", nativefile=nfile)
