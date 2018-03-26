@@ -10,7 +10,7 @@ from enum import Enum
 import numpy as np
 
 from spn.algorithms.Validity import is_valid
-from spn.structure.Base import *
+from spn.structure.Base import Product, Sum, Node, Leaf
 
 
 class Operation(Enum):

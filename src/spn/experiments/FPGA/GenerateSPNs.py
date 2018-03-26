@@ -11,14 +11,15 @@ from sklearn.model_selection import train_test_split
 
 from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Statistics import get_structure_stats
-from spn.algorithms.StructureLearning import learn_structure, next_operation, Context
+from spn.algorithms.StructureLearning import learn_structure, next_operation
 from spn.algorithms.splitting.KMeans import split_rows_KMeans
 from spn.algorithms.splitting.RDC import split_cols_RDC
-from spn.io.Text import to_JSON, to_str_equation, str_to_spn
+from spn.io.Text import to_JSON, to_str_equation, str_to_spn, to_str_ref_graph
 from spn.leaves.Histograms import add_domains, create_histogram_leaf, Histogram_to_str_equation, Histogram_Likelihoods, \
     Histogram_str_to_spn
 import os
 
+from spn.structure.Base import Context
 
 np.set_printoptions(precision=30)
 
@@ -47,21 +48,36 @@ def get_nips_data():
     words = open(fname, "rb").readline().decode(encoding='UTF-8').strip().split(',')
     D = np.loadtxt(fname, dtype=float, delimiter=",", skiprows=1)
     F = len(words)
-    return ("NIPS", D, np.asarray(words), np.asarray(["discrete"] * F), np.asarray(["poisson"] * F))
+    train, test = train_test_split(D, test_size=0.2, random_state=42)
+
+    return ("NIPS", D, train, test, np.asarray(words), np.asarray(["discrete"] * F), np.asarray(["poisson"] * F))
+
+
+def get_binary_data(name):
+    path = os.path.dirname(__file__)
+    train = np.loadtxt(path + "/data/binary/" + name + ".ts.data", dtype=float, delimiter=",", skiprows=0)
+    test = np.loadtxt(path + "/data/binary/" + name + ".test.data", dtype=float, delimiter=",", skiprows=0)
+    valid = np.loadtxt(path + "/data/binary/" + name + ".valid.data", dtype=float, delimiter=",", skiprows=0)
+    D = np.vstack((train,test, valid))
+    F = D.shape[1]
+    words = ["V"+str(i) for i in range(F)]
+
+    return (name.upper(), D, train, test, np.asarray(words), np.asarray(["discrete"] * F), np.asarray(["bernoulli"] * F))
 
 
 def run_experiment(dataset, top_n_features):
-    ds_name, data, words, statistical_type, distribution_family = dataset
+    ds_name, data, train, test, words, statistical_type, distribution_family = dataset
 
     data = data[:, 0:top_n_features]
     words = words[0:top_n_features]
+    train = train[:, 0:top_n_features]
+    test = test[:, 0:top_n_features]
 
     ds_context = Context()
     ds_context.statistical_type = statistical_type
     ds_context.distribution_family = distribution_family
     add_domains(data, ds_context)
 
-    train, test = train_test_split(data, test_size=0.2, random_state=42)
 
     spn = learn(train, ds_context)
 
@@ -75,6 +91,9 @@ def run_experiment(dataset, top_n_features):
 
     with open(outprefix + "eqq.txt", "w") as text_file:
         print(to_str_equation(spn, Histogram_to_str_equation, words), file=text_file)
+
+    with open(outprefix + "spn.txt", "w") as text_file:
+        print(to_str_ref_graph(spn, Histogram_to_str_equation, words), file=text_file)
 
     with codecs.open(outprefix + "spn.json", "w", "utf-8-sig") as text_file:
         text_file.write(to_JSON(spn))
@@ -101,7 +120,8 @@ def load_spn_from_file(outprefix):
 
 if __name__ == '__main__':
 
-    ds_name, data, words, statistical_type, distribution_family = get_nips_data()
+    get_binary_data("msweb")
+
 
     for topn in [5,10,20,30,40,50,60,70,80]:
         run_experiment(get_nips_data(), topn)

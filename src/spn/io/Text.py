@@ -3,8 +3,9 @@ Created on March 21, 2018
 
 @author: Alejandro Molina
 '''
+from spn.algorithms.StructureLearning import Prune
 from spn.algorithms.Validity import is_valid
-from spn.structure.Base import Product, Sum, Leaf
+from spn.structure.Base import Product, Sum, Leaf, get_nodes_by_type
 
 
 def to_JSON(node):
@@ -19,10 +20,43 @@ def to_JSON(node):
     return json.dumps(node, default=dumper)
 
 
+def to_str_ref_graph(node, to_str_equation_lambdas, feature_names=None, node_names=None):
+    if not node_names:
+        node_names = {}
+        for n in get_nodes_by_type(node):
+            if n not in node_names:
+                node_names[n] = type(n).__name__ + "Node_" + str(len(node_names))
+
+    tnode = type(node)
+    if tnode in to_str_equation_lambdas:
+        return node_names[node] + " " + to_str_equation_lambdas[tnode](node, feature_names) + "\n"
+
+    if isinstance(node, Product):
+        pd = ", ".join(map(lambda c: node_names[c], node.children))
+        result = "%s ProductNode(%s){\n\t" % (node_names[node], pd)
+        result = result + "".join(map(lambda c: to_str_ref_graph(c, to_str_equation_lambdas, feature_names, node_names),
+                                      node.children)).replace("\n", "\n\t")
+        return result + "}\n"
+
+    if isinstance(node, Sum):
+        w = node.weights
+        sumw = ", ".join(map(
+            lambda i: "%s*%s" % (w[i], node_names[node.children[i]] if node.children[i] else "None"),
+            range(len(node.children))))
+        result = "%s SumNode(%s){\n\t" % (node_names[node], sumw)
+        result = result + "".join(map(lambda c: to_str_ref_graph(c, to_str_equation_lambdas, feature_names, node_names),
+                                      node.children)).replace("\n", "\n\t")
+        return result + "}\n"
+
+    raise Exception('Node type not registered: ' + str(type(node)))
+
+
 def to_str_equation(node, to_str_equation_lambdas, feature_names=None):
     tnode = type(node)
     if tnode in to_str_equation_lambdas:
         return to_str_equation_lambdas[tnode](node, feature_names)
+    if isinstance(node, Leaf) and Leaf in to_str_equation_lambdas:
+        return to_str_equation_lambdas[Leaf](node, feature_names)
 
     if isinstance(node, Product):
         return "(" + " * ".join(
@@ -100,5 +134,7 @@ sumnode: "(" [DECIMAL "*" node ("+" DECIMAL "*" node)*] ")"
         return node.scope
 
     rebuild_scopes(spn)
+    assert is_valid(spn)
+    spn = Prune(spn)
     assert is_valid(spn)
     return spn

@@ -110,6 +110,30 @@ def to_str_equation(node, feature_names=None):
 
 Histogram_to_str_equation = {Histogram : to_str_equation}
 
+def to_cpp_str(node, leaf_name, vartype):
+    inps = np.arange(int(max(node.breaks))).reshape((-1, 1))
+
+
+    leave_function = """
+    {vartype} {leaf_name}_data[{max_buckets}];
+    inline {vartype} {leaf_name}(uint8_t v_{scope}){{
+        return {leaf_name}_data[v_{scope}];
+    }}
+    """.format(vartype=vartype, leaf_name=leaf_name, max_buckets=len(inps), scope=node.scope[0])
+
+    leave_init = ""
+
+    ll = np.exp(Likelihood(node, inps))
+
+    for bucket, value in enumerate(ll):
+        leave_init += "\t{leaf_name}_data[{bucket}] = {value};\n".format(leaf_name=leaf_name, bucket=bucket, value=value)
+    leave_init += "\n"
+
+    return leave_function, leave_init
+
+Histogram_to_cpp = {Histogram : to_cpp_str}
+
+
 
 def getHistogramVals(data):
     from rpy2 import robjects
