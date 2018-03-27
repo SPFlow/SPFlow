@@ -94,10 +94,8 @@ def Likelihood(node, data):
     return np.log(probs)
 
 
-Histogram_Likelihoods = {Histogram : Likelihood}
 
-
-def to_str_equation(node, feature_names=None):
+def histogram_to_str(node, feature_names=None):
     if feature_names is None:
         fname = "V"+str(node.scope[0])
     else:
@@ -108,9 +106,8 @@ def to_str_equation(node, feature_names=None):
 
     return "Histogram(%s|%s;%s)" % (fname, breaks, densities)
 
-Histogram_to_str_equation = {Histogram : to_str_equation}
 
-def to_cpp_str(node, leaf_name, vartype):
+def histogram_to_cpp(node, leaf_name, vartype):
     inps = np.arange(int(max(node.breaks))).reshape((-1, 1))
 
 
@@ -130,8 +127,6 @@ def to_cpp_str(node, leaf_name, vartype):
     leave_init += "\n"
 
     return leave_function, leave_init
-
-Histogram_to_cpp = {Histogram : to_cpp_str}
 
 
 
@@ -179,32 +174,4 @@ listhist : "[" [DECIMAL ("," DECIMAL)*] "]"
 histogram: "Histogram(" HISTVARNAME "|" listhist ";" listhist ")" 
 """)}
 
-
-if __name__ == '__main__':
-
-    import os
-
-
-    path = os.path.dirname(__file__)
-
-    p = path + "/../../../data/nips100.csv"
-
-    print(p)
-
-    nips = np.loadtxt(p, skiprows=1, delimiter=',')
-
-    print(nips)
-
-    ds_context = type('', (object,), {})()
-    ds_context.statistical_type = ["discrete"] * nips.shape[1]
-    ds_context.statistical_type[0] = "continuous"
-    ds_context.statistical_type =  np.asarray(ds_context.statistical_type)
-
-    add_domains(nips, ds_context)
-
-    a = create_histogram_leaf(nips[:,0].reshape((-1,1)), ds_context, [0])
-
-    b = create_histogram_leaf(nips[:,1].reshape((-1,1)), ds_context, [1])
-
-    print(ds_context)
 
