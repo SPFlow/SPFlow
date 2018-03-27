@@ -11,7 +11,7 @@ import numpy as np
 
 from spn.algorithms.Inference import log_likelihood
 from spn.experiments.FPGA.GenerateSPNs import load_spn_from_file
-from spn.leaves.Histograms import Histogram_Likelihoods
+from spn.leaves import Histograms
 from spn.structure.Base import get_nodes_by_type, Node, get_number_of_edges, get_number_of_layers, Product, Leaf, Sum
 from natsort import natsorted
 
@@ -41,7 +41,8 @@ if __name__ == '__main__':
         outprefix = path + "/spns/%s_%s/" % (ds_name, top_n_features)
 
         if os.path.isfile(outprefix + "time_test_data.txt"):
-            continue
+            pass
+            #continue
 
         OS_name = platform.system()
 
@@ -59,7 +60,7 @@ if __name__ == '__main__':
 
         np.savetxt(outprefix + "time_test_data.txt", time_test, delimiter=";", header=";".join(words))
 
-        py_ll = log_likelihood(spn, time_test, Histogram_Likelihoods)
+        py_ll = log_likelihood(spn, time_test, Histograms.Likelihood)
         np.savetxt(outprefix + "time_test_ll_" +OS_name + ".txt", py_ll)
         np.save(outprefix + "time_test_ll_" + OS_name + ".npy", py_ll)
 
