@@ -2,8 +2,8 @@
 Created on March 20, 2018
 @author: Alejandro Molina
 '''
-from spn.io import Text
 from spn.structure.Base import Leaf
+import numpy as np
 
 
 class Bernoulli(Leaf):
@@ -47,7 +47,7 @@ def create_leaf_univariate(data, ds_context, scope):
 
     raise Exception('Unknown family: ' + family)
 
-def to_str_equation(node, feature_names=None):
+def univariate_to_str(node, feature_names=None):
     if feature_names is None:
         fname = "V"+str(node.scope[0])
     else:
@@ -63,7 +63,3 @@ def to_str_equation(node, feature_names=None):
         return "Normal(%s|μ=%s,σ=%s)" % (fname, node.mean, node.stdev)
 
 
-
-Text.to_str_equation_lambdas[Bernoulli] = to_str_equation
-Text.to_str_equation_lambdas[Poisson] = to_str_equation
-Text.to_str_equation_lambdas[Normal] = to_str_equation
