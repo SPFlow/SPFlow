@@ -13,7 +13,7 @@ from spn.structure.Base import get_nodes_by_type, Product, Sum, Leaf
 import numpy as np
 
 
-def to_cpp(node, leaves_cpp_lambdas):
+def to_cpp(node, leaf_to_cpp):
     vartype = "double"
 
     spn_eqq = to_str_equation(node, {Leaf: lambda node, _: "leaf_node_%s(data[i][%s])" % (id(node), node.scope[0])})
@@ -28,7 +28,7 @@ def to_cpp(node, leaves_cpp_lambdas):
     leaves_functions = ""
     for l in get_nodes_by_type(node, Leaf):
         leaf_name = "leaf_node_%s" % (id(l))
-        leave_function, leave_init = leaves_cpp_lambdas[type(l)](l, leaf_name, vartype)
+        leave_function, leave_init = leaf_to_cpp(l, leaf_name, vartype)
 
         leaves_functions += leave_function
         init_code += leave_init
@@ -102,8 +102,8 @@ int main()
                scope_size=len(node.scope), init_code=init_code)
 
 
-def generate_native_executable(spn, leaves_cpp_lambdas, cppfile="/tmp/spn.cpp", nativefile="/tmp/spnexe"):
-    code = to_cpp(spn, leaves_cpp_lambdas)
+def generate_native_executable(spn, leaf_to_cpp, cppfile="/tmp/spn.cpp", nativefile="/tmp/spnexe"):
+    code = to_cpp(spn, leaf_to_cpp)
 
     text_file = open(cppfile, "w")
     text_file.write(code)

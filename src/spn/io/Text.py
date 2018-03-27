@@ -20,55 +20,51 @@ def to_JSON(node):
     return json.dumps(node, default=dumper)
 
 
-def to_str_ref_graph(node, to_str_equation_lambdas, feature_names=None, node_names=None):
+def to_str_ref_graph(node, leaf_to_str, feature_names=None, node_names=None):
     if not node_names:
         node_names = {}
         for n in get_nodes_by_type(node):
             if n not in node_names:
                 node_names[n] = type(n).__name__ + "Node_" + str(len(node_names))
 
-    tnode = type(node)
-    if tnode in to_str_equation_lambdas:
-        return node_names[node] + " " + to_str_equation_lambdas[tnode](node, feature_names) + "\n"
+    if isinstance(node, Leaf):
+        return node_names[node] + " " + leaf_to_str(node, feature_names) + "\n"
 
     if isinstance(node, Product):
         pd = ", ".join(map(lambda c: node_names[c], node.children))
-        result = "%s ProductNode(%s){\n\t" % (node_names[node], pd)
-        result = result + "".join(map(lambda c: to_str_ref_graph(c, to_str_equation_lambdas, feature_names, node_names),
-                                      node.children)).replace("\n", "\n\t")
-        return result + "}\n"
+
+        chld_str = "".join(map(lambda c: to_str_ref_graph(c, leaf_to_str, feature_names, node_names), node.children))
+        chld_str = chld_str.replace("\n", "\n\t")
+
+        return "%s ProductNode(%s){\n\t%s}\n" % (node_names[node], pd, chld_str)
 
     if isinstance(node, Sum):
         w = node.weights
-        sumw = ", ".join(map(
-            lambda i: "%s*%s" % (w[i], node_names[node.children[i]] if node.children[i] else "None"),
-            range(len(node.children))))
-        result = "%s SumNode(%s){\n\t" % (node_names[node], sumw)
-        result = result + "".join(map(lambda c: to_str_ref_graph(c, to_str_equation_lambdas, feature_names, node_names),
-                                      node.children)).replace("\n", "\n\t")
-        return result + "}\n"
+        ch = node.children
+        sumw = ", ".join(map(lambda i: "%s*%s" % (w[i], node_names[ch[i]]), range(len(ch))))
+
+        child_str = "".join(map(lambda c: to_str_ref_graph(c, leaf_to_str, feature_names, node_names), node.children))
+        child_str = child_str.replace("\n", "\n\t")
+
+        return "%s SumNode(%s){\n\t%s}\n" % (node_names[node], sumw, child_str)
 
     raise Exception('Node type not registered: ' + str(type(node)))
 
 
-def to_str_equation(node, to_str_equation_lambdas, feature_names=None):
-    tnode = type(node)
-    if tnode in to_str_equation_lambdas:
-        return to_str_equation_lambdas[tnode](node, feature_names)
-
-    if isinstance(node, Leaf) and Leaf in to_str_equation_lambdas:
-        return to_str_equation_lambdas[Leaf](node, feature_names)
+def to_str_equation(node, leaf_to_str, feature_names=None):
+    if isinstance(node, Leaf):
+        return leaf_to_str(node, feature_names)
 
     if isinstance(node, Product):
-        return "(" + " * ".join(
-            map(lambda child: to_str_equation(child, to_str_equation_lambdas, feature_names), node.children)) + ")"
+        children_strs = map(lambda child: to_str_equation(child, leaf_to_str, feature_names), node.children)
+        return "(" + " * ".join(children_strs) + ")"
 
     if isinstance(node, Sum):
-        sumeq = " + ".join(
-            map(lambda i: str(node.weights[i]) + "*(" + to_str_equation(node.children[i], to_str_equation_lambdas,
-                                                                        feature_names) + ")",
-                range(len(node.children))))
-        return "(" + sumeq + ")"
+        fmt_chld = lambda w, c: str(w) + "*(" + to_str_equation(c, leaf_to_str, feature_names) + ")"
+
+        children_strs = map(lambda i: fmt_chld(node.weights[i], node.children[i]), range(len(node.children)))
+
+        return "(" + " + ".join(children_strs) + ")"
 
     raise Exception('Node type not registered: ' + str(type(node)))
 
