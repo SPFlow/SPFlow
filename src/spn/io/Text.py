@@ -55,6 +55,7 @@ def to_str_equation(node, to_str_equation_lambdas, feature_names=None):
     tnode = type(node)
     if tnode in to_str_equation_lambdas:
         return to_str_equation_lambdas[tnode](node, feature_names)
+
     if isinstance(node, Leaf) and Leaf in to_str_equation_lambdas:
         return to_str_equation_lambdas[Leaf](node, feature_names)
 
