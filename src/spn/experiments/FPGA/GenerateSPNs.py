@@ -16,8 +16,7 @@ from spn.algorithms.StructureLearning import learn_structure, next_operation
 from spn.algorithms.splitting.KMeans import split_rows_KMeans
 from spn.algorithms.splitting.RDC import split_cols_RDC
 from spn.io.Text import to_JSON, to_str_equation, str_to_spn, to_str_ref_graph
-from spn.leaves.Histograms import add_domains, create_histogram_leaf, Histogram_to_str_equation, Histogram_Likelihoods, \
-    Histogram_str_to_spn
+from spn.leaves.Histograms import add_domains, create_histogram_leaf, histogram_to_str, histogram_likelihood
 import os
 
 from spn.structure.Base import Context
@@ -116,7 +115,7 @@ def load_spn_from_file(outprefix):
         words = words[2:]
         words = words.split(';')
 
-    spn = str_to_spn(eq, words, Histogram_str_to_spn)
+    spn = str_to_spn(eq, words, histogram_to_str)
     return spn, words, eq
 
 if __name__ == '__main__':
