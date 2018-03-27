@@ -6,10 +6,10 @@ Created on March 20, 2018
 
 
 
-from spn.algorithms import Inference
-from spn.structure.Base import Leaf
 import numpy as np
 
+from spn.algorithms import Inference
+from spn.structure.Base import Leaf
 
 rpy_initialized = False
 
@@ -72,7 +72,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0):
     return Histogram(breaks.tolist(), densities.tolist())
 
 
-def Likelihood(node, data):
+def histogram_likelihood(node, data):
 
     probs = np.zeros((data.shape[0]), dtype=np.float64)
 
@@ -120,7 +120,7 @@ def histogram_to_cpp(node, leaf_name, vartype):
 
     leave_init = ""
 
-    ll = np.exp(Likelihood(node, inps))
+    ll = np.exp(histogram_likelihood(node, inps))
 
     for bucket, value in enumerate(ll):
         leave_init += "\t{leaf_name}_data[{bucket}] = {value};\n".format(leaf_name=leaf_name, bucket=bucket, value=value)

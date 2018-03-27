@@ -5,15 +5,9 @@ Created on March 20, 2018
 '''
 import csv
 
-from joblib import Memory
-
 from spn.algorithms import Inference
-from spn.leaves.Histograms import add_domains, create_histogram_leaf, Histogram_Likelihoods
-from spn.algorithms.StructureLearning import LearnStructure, next_operation, Context
-from spn.algorithms.splitting.RDC import split_cols_RDC, split_rows_RDC
-
-
-
+from spn.algorithms.StructureLearning import Context
+from spn.leaves.Histograms import add_domains, Histogram_Likelihoods
 
 if __name__ == '__main__':
     import numpy as np

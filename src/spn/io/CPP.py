@@ -7,6 +7,8 @@ import subprocess
 
 from spn.algorithms import Inference
 from spn.io.Text import str_to_spn, to_str_equation
+from spn.leaves import Histograms
+from spn.leaves.Histograms import Histogram, Histogram_Likelihoods
 from spn.structure.Base import get_nodes_by_type, Product, Sum, Leaf
 import numpy as np
 
