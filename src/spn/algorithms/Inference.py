@@ -3,11 +3,10 @@ Created on March 21, 2018
 
 @author: Alejandro Molina
 '''
-import sys
+import numpy as np
 from scipy.misc import logsumexp
 
 from spn.structure.Base import Product, Sum, Leaf
-import numpy as np
 
 EPSILON = 0.000000000000001
 
@@ -37,4 +36,7 @@ def log_likelihood(node, data, leaf_likelihood=None):
     if isinstance(node, Leaf):
         return leaf_likelihood(node, data[:, node.scope])
 
-    raise Exception('Node type not registered: ' + str(type(node)))
+    raise Exception('Node type unknown: ' + str(type(node)))
+
+def conditional_log_likelihood(node_joint, node_marginal, data, leaf_likelihood=None):
+    return log_likelihood(node_joint, data, leaf_likelihood) - log_likelihood(node_marginal, data, leaf_likelihood)

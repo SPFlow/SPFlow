@@ -4,11 +4,10 @@ Created on March 20, 2018
 @author: Alejandro Molina
 '''
 
+import numpy as np
 from sklearn.cluster import KMeans
 
 from spn.algorithms.splitting.Base import split_data_by_clusters, clusters_by_adjacency_matrix
-
-import numpy as np
 
 rpy_initialized = False
 

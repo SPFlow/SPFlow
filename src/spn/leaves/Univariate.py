@@ -2,8 +2,9 @@
 Created on March 20, 2018
 @author: Alejandro Molina
 '''
-from spn.structure.Base import Leaf
 import numpy as np
+
+from spn.structure.Base import Leaf
 
 
 class Bernoulli(Leaf):

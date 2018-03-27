@@ -54,3 +54,14 @@ def get_number_of_layers(node):
         return 1
 
     return max(map(get_number_of_layers, node.children)) + 1
+
+def rebuild_scopes_bottom_up(node):
+    # this function is not safe (updates in place)
+    if isinstance(node, Leaf):
+        return node.scope
+
+    new_scope = set()
+    for c in node.children:
+        new_scope.update(rebuild_scopes_bottom_up(c))
+    node.scope = list(new_scope)
+    return node.scope

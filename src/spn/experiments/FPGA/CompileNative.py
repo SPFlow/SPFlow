@@ -3,8 +3,8 @@ Created on March 26, 2018
 
 @author: Alejandro Molina
 '''
-import os
 import glob
+import os
 
 from natsort import natsorted
 

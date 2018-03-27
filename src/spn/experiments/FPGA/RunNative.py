@@ -5,15 +5,16 @@ Created on March 26, 2018
 '''
 import glob
 import os
-import subprocess
 import platform
+import subprocess
+
 import numpy as np
+from natsort import natsorted
 
 from spn.algorithms.Inference import log_likelihood
 from spn.experiments.FPGA.GenerateSPNs import load_spn_from_file
 from spn.leaves.Histograms import Histogram_Likelihoods
 from spn.structure.Base import get_nodes_by_type, Node, get_number_of_edges, get_number_of_layers, Product, Leaf, Sum
-from natsort import natsorted
 
 np.set_printoptions(precision=50)
 

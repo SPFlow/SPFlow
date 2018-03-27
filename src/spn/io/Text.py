@@ -3,9 +3,9 @@ Created on March 21, 2018
 
 @author: Alejandro Molina
 '''
-from spn.algorithms.StructureLearning import Prune
+from spn.algorithms.Pruning import prune
 from spn.algorithms.Validity import is_valid
-from spn.structure.Base import Product, Sum, Leaf, get_nodes_by_type
+from spn.structure.Base import Product, Sum, Leaf, get_nodes_by_type, rebuild_scopes_bottom_up
 
 
 def to_JSON(node):
@@ -119,19 +119,8 @@ sumnode: "(" [DECIMAL "*" node ("+" DECIMAL "*" node)*] ")"
 
     spn = tree_to_spn(tree, features)
 
-    def rebuild_scopes(node):
-        # this function is not safe (updates in place)
-        if isinstance(node, Leaf):
-            return node.scope
-
-        new_scope = set()
-        for c in node.children:
-            new_scope.update(rebuild_scopes(c))
-        node.scope.extend(new_scope)
-        return node.scope
-
-    rebuild_scopes(spn)
+    rebuild_scopes_bottom_up(spn)
     assert is_valid(spn)
-    spn = Prune(spn)
+    spn = prune(spn)
     assert is_valid(spn)
     return spn

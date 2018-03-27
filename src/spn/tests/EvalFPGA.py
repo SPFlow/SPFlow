@@ -3,18 +3,14 @@ Created on March 22, 2018
 
 @author: Alejandro Molina
 '''
+import numpy as np
 from sklearn.cross_validation import train_test_split
 
 from spn.algorithms import Inference
 from spn.algorithms.Statistics import get_structure_stats
-from spn.algorithms.StructureLearning import Prune
 from spn.experiments.FPGA.GenerateSPNs import get_nips_data
-from spn.io import Text
 from spn.io.Text import str_to_spn
-import numpy as np
-
 from spn.leaves.Histograms import str_to_spn_lambdas, Histogram_Likelihoods
-from spn.structure.Base import get_nodes_by_type, Sum, Product
 
 if __name__ == '__main__':
     with open('40_eqq.txt', 'r') as myfile:
