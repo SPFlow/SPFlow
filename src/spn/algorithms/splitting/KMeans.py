@@ -3,11 +3,12 @@ Created on March 25, 2018
 
 @author: Alejandro Molina
 '''
+import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import TfidfTransformer
 
 from spn.algorithms.splitting.Base import split_data_by_clusters
-import numpy as np
+
 
 def preptfidf(data):
     tfidf_transformer = TfidfTransformer()
