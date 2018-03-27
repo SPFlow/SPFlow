@@ -7,8 +7,6 @@ import subprocess
 
 from spn.algorithms import Inference
 from spn.io.Text import str_to_spn, to_str_equation
-from spn.leaves import Histograms
-from spn.leaves.Histograms import Histogram, Histogram_Likelihoods
 from spn.structure.Base import get_nodes_by_type, Product, Sum, Leaf
 import numpy as np
 
@@ -16,7 +14,7 @@ import numpy as np
 def to_cpp(node, leaf_to_cpp):
     vartype = "double"
 
-    spn_eqq = to_str_equation(node, {Leaf: lambda node, _: "leaf_node_%s(data[i][%s])" % (id(node), node.scope[0])})
+    spn_eqq = to_str_equation(node, lambda node, _: "leaf_node_%s(data[i][%s])" % (id(node), node.scope[0]))
 
     spn_function = """
     {vartype} likelihood(int i, {vartype} data[][{scope_size}]){{
@@ -61,7 +59,7 @@ int main()
     
     int n = lines.size()-1;
     int f = {scope_size};
-    {vartype} data[n][{scope_size}];
+    auto data = new {vartype}[n][{scope_size}]();
     
     for(int i=0; i < n; i++){{
         std::vector<std::string> strs;
@@ -72,7 +70,7 @@ int main()
         }}
     }}
     
-    {vartype} result[n];
+    auto result = new {vartype}[n];
     
     chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
     for(int j=0; j < 10000; j++){{
@@ -82,11 +80,15 @@ int main()
     }}
     chrono::high_resolution_clock::time_point end = chrono::high_resolution_clock::now();
 
+    delete[] data;
+    
     long double avglikelihood = 0;
     for(int i=0; i < n; i++){{
         avglikelihood += log(result[i]);
         cout << setprecision(60) << log(result[i]) << endl;
     }}
+    
+    delete[] result;
 
     cout << setprecision(15) << "avg ll " << avglikelihood/n << endl;
     
