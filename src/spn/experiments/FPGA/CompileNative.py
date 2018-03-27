@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
         nfile = outprefix + "spnexe_" + platform.system()
 
-        if not os.path.isfile(nfile):
+        if os.path.isfile(nfile):
             continue
 
         spn, words, _ = load_spn_from_file(outprefix)

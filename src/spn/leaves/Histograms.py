@@ -104,7 +104,7 @@ def to_str_equation(node, feature_names=None):
         fname = feature_names[node.scope[0]]
 
     breaks = np.array2string(np.array(node.breaks), precision=10, separator=',')
-    densities = np.array2string(np.array(node.densities), precision=10, separator=',')
+    densities = np.array2string(np.array(node.densities), precision=10, separator=',', formatter={'float_kind':lambda x: "%.10f" % x})
 
     return "Histogram(%s|%s;%s)" % (fname, breaks, densities)
 
@@ -172,8 +172,11 @@ def tree_to_spn(tree, features):
 
 Histogram_str_to_spn = {"histogram" : (tree_to_spn, """
 %import common.WORD -> WORDHIST
+%import common.DIGIT -> DIGITHIST
+HISTVARNAMECHAR: "a".."z"|"A".."Z"|DIGITHIST
+HISTVARNAME: HISTVARNAMECHAR+
 listhist : "[" [DECIMAL ("," DECIMAL)*] "]"
-histogram: "Histogram(" WORDHIST "|" listhist ";" listhist ")" 
+histogram: "Histogram(" HISTVARNAME "|" listhist ";" listhist ")" 
 """)}
 
 

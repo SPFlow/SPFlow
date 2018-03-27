@@ -79,7 +79,7 @@ def run_experiment(dataset, top_n_features, linear=False):
     add_domains(data, ds_context)
 
 
-    spn = learn(train, ds_context)
+    spn = learn(train, ds_context, linear)
 
     print(get_structure_stats(spn))
 

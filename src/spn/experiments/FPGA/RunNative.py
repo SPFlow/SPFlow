@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
         outprefix = path + "/spns/%s_%s/" % (ds_name, top_n_features)
 
-        if not os.path.isfile(outprefix + "time_test_data.txt"):
+        if os.path.isfile(outprefix + "time_test_data.txt"):
             continue
 
         OS_name = platform.system()
@@ -51,8 +51,11 @@ if __name__ == '__main__':
 
         data = np.loadtxt(outprefix + "all_data.txt", delimiter=";")
 
-        r = np.random.RandomState(17)
-        time_test = data[r.choice(data.shape[0], 10000), :]
+        if data.shape[0] < 10000:
+            r = np.random.RandomState(17)
+            time_test = data[r.choice(data.shape[0], 10000), :]
+        else:
+            time_test = data
 
         np.savetxt(outprefix + "time_test_data.txt", time_test, delimiter=";", header=";".join(words))
 
