@@ -4,6 +4,7 @@ Created on March 24, 2018
 @author: Alejandro Molina
 '''
 import codecs
+import os
 
 import numpy as np
 from joblib import Memory
@@ -15,7 +16,8 @@ from spn.algorithms.StructureLearning import learn_structure, next_operation
 from spn.algorithms.splitting.KMeans import split_rows_KMeans
 from spn.algorithms.splitting.RDC import split_cols_RDC
 from spn.io.Text import to_JSON, to_str_equation, str_to_spn, to_str_ref_graph
-from spn.leaves.Histograms import add_domains, create_histogram_leaf, Histogram_str_to_spn
+from spn.leaves.Histograms import add_domains, create_histogram_leaf, Histogram_to_str_equation, Histogram_Likelihoods, \
+    Histogram_str_to_spn
 import os
 
 from spn.structure.Base import Context
@@ -89,10 +91,10 @@ def run_experiment(dataset, top_n_features, linear=False):
         os.makedirs(outprefix)
 
     with open(outprefix + "eqq.txt", "w") as text_file:
-        print(to_str_equation(spn, Histogram_to_str_equation, words), file=text_file)
+        print(to_str_equation(spn, histogram_to_str, words), file=text_file)
 
     with open(outprefix + "spn.txt", "w") as text_file:
-        print(to_str_ref_graph(spn, Histogram_to_str_equation, words), file=text_file)
+        print(to_str_ref_graph(spn, histogram_to_str, words), file=text_file)
 
     with codecs.open(outprefix + "spn.json", "w", "utf-8-sig") as text_file:
         text_file.write(to_JSON(spn))
@@ -101,9 +103,9 @@ def run_experiment(dataset, top_n_features, linear=False):
     np.savetxt(outprefix + "train_data.txt", train, delimiter=";", header=";".join(words))
     np.savetxt(outprefix + "test_data.txt", test, delimiter=";", header=";".join(words))
 
-    np.savetxt(outprefix + "all_data_ll.txt", log_likelihood(spn, data, Histogram_Likelihoods))
-    np.savetxt(outprefix + "test_ll.txt", log_likelihood(spn, test, Histogram_Likelihoods))
-    np.savetxt(outprefix + "train_ll.txt", log_likelihood(spn, train, Histogram_Likelihoods))
+    np.savetxt(outprefix + "all_data_ll.txt", log_likelihood(spn, data, histogram_likelihood))
+    np.savetxt(outprefix + "test_ll.txt", log_likelihood(spn, test, histogram_likelihood))
+    np.savetxt(outprefix + "train_ll.txt", log_likelihood(spn, train, histogram_likelihood))
 
 
 def load_spn_from_file(outprefix):
