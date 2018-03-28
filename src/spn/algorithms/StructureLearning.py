@@ -11,7 +11,7 @@ import numpy as np
 
 from spn.algorithms.Pruning import prune
 from spn.algorithms.Validity import is_valid
-from spn.structure.Base import Product, Sum
+from spn.structure.Base import Product, Sum, assign_ids
 
 
 class Operation(Enum):
@@ -164,6 +164,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
     assert is_valid(node), "invalid before pruning"
     node = prune(node)
     assert is_valid(node), "invalid after pruning"
+    assign_ids(node)
     return node
 
 
