@@ -5,7 +5,7 @@ Created on March 21, 2018
 '''
 from spn.algorithms.Pruning import prune
 from spn.algorithms.Validity import is_valid
-from spn.structure.Base import Sum, Leaf, rebuild_scopes_bottom_up
+from spn.structure.Base import Sum, Leaf, rebuild_scopes_bottom_up, assign_ids
 
 
 def marginalize(node, scope):
@@ -42,6 +42,7 @@ def marginalize(node, scope):
     rebuild_scopes_bottom_up(newNode)
     newNode = prune(newNode)
     assert is_valid(newNode)
+    assign_ids(node)
     return newNode
 
 

@@ -5,7 +5,7 @@ Created on March 21, 2018
 '''
 from spn.algorithms.Pruning import prune
 from spn.algorithms.Validity import is_valid
-from spn.structure.Base import Product, Sum, Leaf, get_nodes_by_type, rebuild_scopes_bottom_up
+from spn.structure.Base import Product, Sum, Leaf, get_nodes_by_type, rebuild_scopes_bottom_up, assign_ids
 
 
 def to_JSON(node):
@@ -20,33 +20,29 @@ def to_JSON(node):
     return json.dumps(node, default=dumper)
 
 
-def to_str_ref_graph(node, leaf_to_str, feature_names=None, node_names=None):
-    if not node_names:
-        node_names = {}
-        for n in get_nodes_by_type(node):
-            if n not in node_names:
-                node_names[n] = type(n).__name__ + "Node_" + str(len(node_names))
+def to_str_ref_graph(node, leaf_to_str, feature_names=None):
+    node_name = lambda node: node.__class__.__name__ + "Node_" + str(node.id)
 
     if isinstance(node, Leaf):
-        return node_names[node] + " " + leaf_to_str(node, feature_names) + "\n"
+        return node_name(node) + " " + leaf_to_str(node, feature_names) + "\n"
 
     if isinstance(node, Product):
-        pd = ", ".join(map(lambda c: node_names[c], node.children))
+        pd = ", ".join(map(lambda c: node_name(c), node.children))
 
-        chld_str = "".join(map(lambda c: to_str_ref_graph(c, leaf_to_str, feature_names, node_names), node.children))
+        chld_str = "".join(map(lambda c: to_str_ref_graph(c, leaf_to_str, feature_names), node.children))
         chld_str = chld_str.replace("\n", "\n\t")
 
-        return "%s ProductNode(%s){\n\t%s}\n" % (node_names[node], pd, chld_str)
+        return "%s ProductNode(%s){\n\t%s}\n" % (node_name(node), pd, chld_str)
 
     if isinstance(node, Sum):
         w = node.weights
         ch = node.children
-        sumw = ", ".join(map(lambda i: "%s*%s" % (w[i], node_names[ch[i]]), range(len(ch))))
+        sumw = ", ".join(map(lambda i: "%s*%s" % (w[i], node_name(ch[i])), range(len(ch))))
 
-        child_str = "".join(map(lambda c: to_str_ref_graph(c, leaf_to_str, feature_names, node_names), node.children))
+        child_str = "".join(map(lambda c: to_str_ref_graph(c, leaf_to_str, feature_names), node.children))
         child_str = child_str.replace("\n", "\n\t")
 
-        return "%s SumNode(%s){\n\t%s}\n" % (node_names[node], sumw, child_str)
+        return "%s SumNode(%s){\n\t%s}\n" % (node_name(node), sumw, child_str)
 
     raise Exception('Node type not registered: ' + str(type(node)))
 
@@ -123,4 +119,5 @@ sumnode: "(" [DECIMAL "*" node ("+" DECIMAL "*" node)*] ")"
     assert is_valid(spn)
     spn = prune(spn)
     assert is_valid(spn)
+    assign_ids(spn)
     return spn
