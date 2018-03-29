@@ -7,109 +7,184 @@ import glob
 import os
 import platform
 import subprocess
+from collections import OrderedDict
 
 import numpy as np
 from natsort import natsorted
 
 from spn.algorithms.Inference import log_likelihood
-from spn.experiments.FPGA.GenerateSPNs import load_spn_from_file
-from spn.leaves import Histograms
+from spn.experiments.FPGA.GenerateSPNs import load_spn_from_file, fpga_count_ops
+from spn.gpu.TensorFlow import spn_to_tf_graph
+from spn.leaves.Histograms import histogram_likelihood
 from spn.structure.Base import get_nodes_by_type, Node, get_number_of_edges, get_number_of_layers, Product, Leaf, Sum
 
 np.set_printoptions(precision=50)
 
+import time
 
-def execute_native(outprefix, nfile, time_test):
-    print("computing ll natively for: ", outprefix, time_test.shape)
-    cmd = "%s < %s" % (nfile, outprefix + "time_test_data.txt")
-    proc_output = subprocess.check_output(cmd, shell=True).decode("utf-8")
-    print("done")
-    lines = proc_output.split("\n")
-    cpp_ll = np.array(lines[0:time_test.shape[0]], dtype=np.float128)
-    cpp_time = float(lines[-2].split(" ")[-2])
 
-    return lines, cpp_ll, cpp_time, lines[0:time_test.shape[0]]
+path = os.path.dirname(__file__)
+OS_name = platform.system()
+
+def run_experiment(exp, spn, test_data, test_type, exp_lambda):
+
+
+    outprefix = path + "/spns/%s/" % (exp)
+
+    results_file = "%stime_test_%s_ll_%s.txt" % (outprefix, test_type, OS_name)
+    if os.path.isfile(results_file):
+        return
+
+    print(exp, test_data.shape, test_type)
+
+    ll, test_time = exp_lambda()
+    np.savetxt(results_file, ll, delimiter=";")
+
+    import cpuinfo
+
+    machine = cpuinfo.get_cpu_info()["brand"]
+
+    adds, muls = fpga_count_ops(spn)
+
+    test_n = test_data.shape[0]
+
+    results = OrderedDict()
+    results["Experiment"] = exp
+    results["OS"] = OS_name
+    results["machine"] = machine
+    results["test type"] = test_type
+    results["expected adds"] = adds
+    results["expected muls"] = muls
+    results["input rows"] = test_n
+    results["input cols"] = test_data.shape[1]
+    results["spn nodes"] = len(get_nodes_by_type(spn, Node))
+    results["spn sum nodes"] = len(get_nodes_by_type(spn, Sum))
+    results["spn prod nodes"] = len(get_nodes_by_type(spn, Product))
+    results["spn leaves"] = len(get_nodes_by_type(spn, Leaf))
+    results["spn edges"] = get_number_of_edges(spn)
+    results["spn layers"] = get_number_of_layers(spn)
+    results["time per task"] = test_time
+    results["time per instance"] = test_time / test_n
+    results["avg ll"] = np.mean(ll, dtype=np.float128)
+
+    results_file_name = "results.csv"
+
+    if not os.path.isfile(results_file_name):
+        results_file = open(results_file_name, "w")
+        results_file.write(";".join(results.keys()))
+        results_file.write("\n")
+    else:
+        results_file = open(results_file_name, "a")
+
+    results_file.write(";".join(map(str, results.values())))
+    results_file.write("\n")
+    results_file.close()
 
 
 if __name__ == '__main__':
-    path = os.path.dirname(__file__)
+
 
     for exp in natsorted(map(os.path.basename, glob.glob(path + '/spns/*'))):
-        print(exp)
-        ds_name, top_n_features = exp.split("_")
-        top_n_features = int(top_n_features)
 
-        outprefix = path + "/spns/%s_%s/" % (ds_name, top_n_features)
-
-        if os.path.isfile(outprefix + "time_test_data.txt"):
-            pass
-            #continue
-
-        OS_name = platform.system()
-
-        nfile = outprefix + "spnexe_" + OS_name
+        outprefix = path + "/spns/%s/" % (exp)
 
         spn, words, _ = load_spn_from_file(outprefix)
+
+        print(exp, fpga_count_ops(spn))
 
         data = np.loadtxt(outprefix + "all_data.txt", delimiter=";")
 
         if data.shape[0] < 10000:
             r = np.random.RandomState(17)
-            time_test = data[r.choice(data.shape[0], 10000), :]
+            test_data = data[r.choice(data.shape[0], 10000), :]
         else:
-            time_test = data
+            test_data = data
 
-        np.savetxt(outprefix + "time_test_data.txt", time_test, delimiter=";", header=";".join(words))
 
-        py_ll = log_likelihood(spn, time_test, Histograms.Likelihood)
-        np.savetxt(outprefix + "time_test_ll_" +OS_name + ".txt", py_ll)
-        np.save(outprefix + "time_test_ll_" + OS_name + ".npy", py_ll)
+        test_data_fname = outprefix + "time_test_data.txt"
 
-        _, cpp_ll, cpp_time, cpp_ll_lines = execute_native(outprefix, nfile, time_test)
+        if os.path.isfile(test_data_fname):
+            np.savetxt(test_data_fname, test_data, delimiter=";", header=";".join(words))
 
-        native_ll_file = open(outprefix + "time_test_native_ll_" +OS_name + ".txt", "w")
-        native_ll_file.write("\n".join(cpp_ll_lines))
-        native_ll_file.close()
 
-        _, cpp_fast_ll, cpp_fast_time, cpp_fast_ll_lines = execute_native(outprefix, nfile + "_fastmath", time_test)
+        def execute_tf():
+            import tensorflow as tf
+            from tensorflow.python.client import timeline
+            import json
 
-        native_ll_file = open(outprefix + "time_test_native_fastmath_ll_" + OS_name + ".txt", "w")
-        native_ll_file.write("\n".join(cpp_fast_ll_lines))
-        native_ll_file.close()
 
-        test_n = time_test.shape[0]
+            tf.reset_default_graph()
 
-        if not os.path.isfile("results.csv"):
-            results_file = open("results.csv", "w")
-            results_file.write(";".join(
-                ["Experiment", "OS", "machine", "input_rows", "input_cols", "spn_nodes", "spn_sum_nodes",
-                 "spn_prod_nodes", "spn_leaves", "spn_edges", "spn_layers", "native time per instance",
-                 "native time per task", "native fast_math time per instance", "native fast_math time per task",
-                 "avg ll native", "avg ll fast_math native", "avg ll pyspn"]))
-            results_file.write("\n")
-            results_file.close()
+            elapsed = 0
+            data_placeholder = tf.placeholder(tf.int32, test_data.shape)
+            tf_graph = spn_to_tf_graph(spn, data_placeholder, log_space=False)
 
-        import cpuinfo
+            n_repeats = 100
 
-        machine = cpuinfo.get_cpu_info()["brand"]
+            for i in range(n_repeats):
+                with tf.Session() as sess:
+                    run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+                    run_metadata = tf.RunMetadata()
 
-        results_file = open("results.csv", "a")
-        results_file.write(";".join([exp, OS_name, machine]))
-        results_file.write(";")
-        results_file.write(";".join(map(str, [time_test.shape[0], time_test.shape[1]])))
-        results_file.write(";")
-        spn_stats = [len(get_nodes_by_type(spn, Node)),
-                     len(get_nodes_by_type(spn, Sum)),
-                     len(get_nodes_by_type(spn, Product)),
-                     len(get_nodes_by_type(spn, Leaf)),
-                     get_number_of_edges(spn),
-                     get_number_of_layers(spn)]
-        results_file.write(";".join(map(str, spn_stats)))
-        results_file.write(";")
-        results_file.write(";".join(map(str, [cpp_time / test_n, cpp_time, cpp_fast_time / test_n, cpp_fast_time])))
-        results_file.write(";")
-        results_file.write(";".join(map(str,
-                                        [np.mean(cpp_ll, dtype=np.float128), np.mean(cpp_fast_ll, dtype=np.float128),
-                                         np.mean(py_ll, dtype=np.float128)])))
-        results_file.write("\n")
-        results_file.close()
+                    sess.run(tf.global_variables_initializer())
+                    start = time.perf_counter()
+                    tf_ll = sess.run(tf_graph, feed_dict={data_placeholder: test_data}, options=run_options,
+                                      run_metadata=run_metadata)
+
+                    end = time.perf_counter()
+
+                    e2 = end - start
+
+                    ctf = timeline.Timeline(run_metadata.step_stats).generate_chrome_trace_format()
+
+                    traceEvents = json.loads(ctf)["traceEvents"]
+                    run_time = max([o["ts"] + o["dur"] for o in traceEvents if "ts" in o and "dur" in o]) - min(
+                        [o["ts"] for o in traceEvents if "ts" in o])
+                    run_time *= 1000
+
+                    if i > 0:
+                        #the first run is 10 times slower for whatever reason
+                        elapsed += run_time
+
+                    if i % 20 == 0:
+                        print(exp, i, e2, run_time)
+
+            return np.log(tf_ll), elapsed / (n_repeats-1)
+
+
+
+
+        run_experiment(exp, spn, test_data, "tensorflow", execute_tf)
+
+        nfile = outprefix + "spnexe_" + OS_name
+
+
+        def execute_native():
+
+            print("computing ll for: ", exp, test_data.shape, nfile)
+            cmd = "%s < %s" % (nfile, test_data_fname)
+            proc_output = subprocess.check_output(cmd, shell=True).decode("utf-8")
+            print("done")
+            lines = proc_output.split("\n")
+            cpp_ll = np.array(lines[0:test_data.shape[0]], dtype=np.float128)
+            cpp_time = float(lines[-2].split(" ")[-2])
+
+            return cpp_ll, cpp_time
+
+
+        run_experiment(exp, spn, test_data, "native", execute_native)
+
+        nfile = outprefix + "spnexe_" + OS_name + "_fastmath"
+        run_experiment(exp, spn, test_data, "native_fast", execute_native)
+
+
+        def execute_python():
+            start = time.perf_counter()
+            py_ll = log_likelihood(spn, test_data, histogram_likelihood)
+            end = time.perf_counter()
+            elapsed = (end - start)
+
+            return py_ll, elapsed * 1000000000
+
+
+        run_experiment(exp, spn, test_data, "python", execute_tf)

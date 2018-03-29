@@ -71,7 +71,6 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0):
 
     return Histogram(breaks.tolist(), densities.tolist())
 
-
 def histogram_likelihood(node, data):
 
     probs = np.zeros((data.shape[0]), dtype=np.float64)

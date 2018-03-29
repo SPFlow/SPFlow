@@ -18,10 +18,8 @@ if __name__ == '__main__':
 
     for exp in natsorted(map(os.path.basename, glob.glob(path+'/spns/*'))):
         print(exp)
-        ds_name, top_n_features = exp.split("_")
-        top_n_features = int(top_n_features)
 
-        outprefix = path + "/spns/%s_%s/" % (ds_name, top_n_features)
+        outprefix = path + "/spns/%s/" % (exp)
 
         import platform
 
