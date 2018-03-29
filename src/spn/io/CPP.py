@@ -5,18 +5,14 @@ Created on March 22, 2018
 '''
 import subprocess
 
-from spn.algorithms import Inference
-from spn.io.Text import str_to_spn, to_str_equation
-from spn.leaves import Histograms
-from spn.leaves.Histograms import Histogram, Histogram_Likelihoods
-from spn.structure.Base import get_nodes_by_type, Product, Sum, Leaf
-import numpy as np
+from spn.io.Text import to_str_equation
+from spn.structure.Base import get_nodes_by_type, Leaf
 
 
 def to_cpp(node, leaf_to_cpp):
     vartype = "double"
 
-    spn_eqq = to_str_equation(node, lambda node, _: "leaf_node_%s(data[i][%s])" % (id(node), node.scope[0]))
+    spn_eqq = to_str_equation(node, lambda node, _: "leaf_node_%s(data[i][%s])" % (node.id, node.scope[0]))
 
     spn_function = """
     {vartype} likelihood(int i, {vartype} data[][{scope_size}]){{
@@ -27,7 +23,7 @@ def to_cpp(node, leaf_to_cpp):
     init_code = ""
     leaves_functions = ""
     for l in get_nodes_by_type(node, Leaf):
-        leaf_name = "leaf_node_%s" % (id(l))
+        leaf_name = "leaf_node_%s" % (l.id)
         leave_function, leave_init = leaf_to_cpp(l, leaf_name, vartype)
 
         leaves_functions += leave_function

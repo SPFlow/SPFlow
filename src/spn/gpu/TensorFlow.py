@@ -3,25 +3,19 @@ Created on March 27, 2018
 
 @author: Alejandro Molina
 '''
-from joblib import Memory
 
-from spn.algorithms.Inference import log_likelihood
-from spn.algorithms.StructureLearning import learn_structure
-from spn.algorithms.splitting.KMeans import split_rows_KMeans
-from spn.algorithms.splitting.RDC import split_cols_RDC
-from spn.io.Text import str_to_spn, to_str_ref_graph
-from spn.leaves.Histograms import Histogram, histogram_likelihood, Histogram_str_to_spn, add_domains, \
-    create_histogram_leaf, histogram_to_str
-from spn.structure.Base import Product, Sum, Leaf, Context, assign_ids, get_number_of_edges
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
+from spn.leaves.Histograms import Histogram, histogram_likelihood
+from spn.structure.Base import Product, Sum, Leaf
+from tensorflow.python.client import timeline
 
-def get_tf_graph(node, data, log_space=True):
+def spn_to_tf_graph(node, data_placeholder, log_space=True):
     # data is a placeholder, with shape same as numpy data
 
     if not isinstance(node, Leaf):
-        childrenprob = [get_tf_graph(c, data, log_space) for c in node.children]
+        childrenprob = [spn_to_tf_graph(c, data_placeholder, log_space) for c in node.children]
 
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         if isinstance(node, Product):
@@ -40,8 +34,6 @@ def get_tf_graph(node, data, log_space=True):
                 return tf.reduce_sum(w_childrenprob, axis=1)
 
         if isinstance(node, Histogram):
-            densities = tf.constant(node.densities)
-
             inps = np.arange(int(max(node.breaks))).reshape((-1, 1))
 
             hll = histogram_likelihood(node, inps)
@@ -50,56 +42,45 @@ def get_tf_graph(node, data, log_space=True):
 
             lls = tf.constant(hll)
 
-            col = data[:, node.scope[0]]
+            col = data_placeholder[:, node.scope[0]]
 
             return tf.gather(lls, col)
 
-memory = Memory(cachedir="cache", verbose=0, compress=9)
 
-
-@memory.cache
-def learn(data, ds_context):
-    spn = learn_structure(data, ds_context, split_rows_KMeans, split_cols_RDC, create_histogram_leaf)
-
-    return spn
-
-
-if __name__ == '__main__':
-    with open('test_data.txt', 'r') as myfile:
-        words = myfile.readline().strip()
-        words = words[2:]
-        words = np.array(words.split(';'))
-
-    data = np.loadtxt("test_data.txt", delimiter=";")
-
-    top_features = 2
-    # data = data[:,0:top_features]
-    # words = words[0:top_features]
-
-    F = len(words)
-
-    ds_context = Context()
-    ds_context.statistical_type = np.asarray(["discrete"] * F)
-    ds_context.distribution_family = np.asarray(["poisson"] * F)
-    add_domains(data, ds_context)
-
-    spn = learn(data, ds_context)
-
-    print(to_str_ref_graph(spn, histogram_to_str))
-    print(get_number_of_edges(spn))
-
-    data_placeholder = tf.placeholder(tf.int32, data.shape)
-
-    tf_graph = get_tf_graph(spn, data_placeholder, False)
+def eval_tf(spn, data, log_space=True, save_graph_path=None, trace=False):
+    data_placeholder = tf.placeholder(data.dtype, data.shape)
+    import time
+    tf_graph = spn_to_tf_graph(spn, data_placeholder, log_space)
 
     with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        outll = sess.run(tf_graph, feed_dict={data_placeholder: data})
+        if trace:
+            run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+            run_metadata = tf.RunMetadata()
+            sess.run(tf.global_variables_initializer())
 
-        #print(outll)
+            start = time.perf_counter()
+            result = sess.run(tf_graph, feed_dict={data_placeholder: data}, options=run_options, run_metadata=run_metadata)
+            end = time.perf_counter()
 
-        py_ll = log_likelihood(spn, data, histogram_likelihood)
+            e2 = end - start
 
-        print(np.all(np.isclose(py_ll - np.log(outll), 0)))
+            print(e2)
 
-        tf.summary.FileWriter('tfgraph', sess.graph)
+            tl = timeline.Timeline(run_metadata.step_stats)
+            ctf = tl.generate_chrome_trace_format()
+
+            import json
+            traceEvents = json.loads(ctf)["traceEvents"]
+            elapsed = max([o["ts"]+o["dur"] for o in traceEvents if "ts" in o and "dur" in o]) - min([o["ts"] for o in traceEvents if "ts" in o])
+            return result, elapsed
+        else:
+            sess.run(tf.global_variables_initializer())
+            result = sess.run(tf_graph, feed_dict={data_placeholder: data})
+
+
+        if save_graph_path is not None:
+            summary_fw = tf.summary.FileWriter(save_graph_path, sess.graph)
+            if trace:
+                summary_fw.add_run_metadata(run_metadata, "run")
+
+        return result, -1
