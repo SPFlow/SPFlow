@@ -6,10 +6,12 @@ Created on March 27, 2018
 
 import numpy as np
 import tensorflow as tf
-
-from spn.leaves.Histograms import Histogram, histogram_likelihood
-from spn.structure.Base import Product, Sum, Leaf
 from tensorflow.python.client import timeline
+
+from spn.algorithms.Inference import histogram_likelihood
+from spn.structure.Base import Product, Sum, Leaf
+from spn.structure.leaves.Histograms import Histogram
+
 
 def spn_to_tf_graph(node, data_placeholder, log_space=True):
     # data is a placeholder, with shape same as numpy data
@@ -36,9 +38,7 @@ def spn_to_tf_graph(node, data_placeholder, log_space=True):
         if isinstance(node, Histogram):
             inps = np.arange(int(max(node.breaks))).reshape((-1, 1))
 
-            hll = histogram_likelihood(node, inps)
-            if not log_space:
-                hll = np.exp(hll)
+            hll = histogram_likelihood(node, inps, log_space=log_space)
 
             lls = tf.constant(hll)
 
@@ -51,7 +51,7 @@ def eval_tf(spn, data, log_space=True, save_graph_path=None, trace=False):
     data_placeholder = tf.placeholder(data.dtype, data.shape)
     import time
     tf_graph = spn_to_tf_graph(spn, data_placeholder, log_space)
-
+    run_metadata = None
     with tf.Session() as sess:
         if trace:
             run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)

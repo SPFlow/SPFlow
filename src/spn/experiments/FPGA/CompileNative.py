@@ -10,7 +10,6 @@ from natsort import natsorted
 
 from spn.experiments.FPGA.GenerateSPNs import load_spn_from_file
 from spn.io.CPP import generate_native_executable
-from spn.leaves.Histograms import histogram_to_cpp
 
 if __name__ == '__main__':
 
@@ -31,7 +30,7 @@ if __name__ == '__main__':
         spn, words, _ = load_spn_from_file(outprefix)
 
         cpp_file = outprefix + "spn.cpp"
-        compilation_results = generate_native_executable(spn, histogram_to_cpp, cppfile=cpp_file, nativefile=nfile)
+        compilation_results = generate_native_executable(spn, cppfile=cpp_file, nativefile=nfile)
 
         print(compilation_results[0], compilation_results[1])
 

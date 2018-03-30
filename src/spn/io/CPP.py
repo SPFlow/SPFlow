@@ -5,14 +5,48 @@ Created on March 22, 2018
 '''
 import subprocess
 
-from spn.io.Text import to_str_equation
+from spn.algorithms.Inference import histogram_likelihood
+from spn.io.Text import spn_to_str_equation
 from spn.structure.Base import get_nodes_by_type, Leaf
+from spn.structure.leaves.Histograms import Histogram
+
+_leaf_to_cpp = {}
 
 
-def to_cpp(node, leaf_to_cpp):
+def register_spn_to_cpp(leaf_type, func):
+    _leaf_to_cpp[leaf_type] = func
+
+
+def histogram_to_cpp(node, leaf_name, vartype):
+    import numpy as np
+    inps = np.arange(int(max(node.breaks))).reshape((-1, 1))
+
+    leave_function = """
+    {vartype} {leaf_name}_data[{max_buckets}];
+    inline {vartype} {leaf_name}(uint8_t v_{scope}){{
+        return {leaf_name}_data[v_{scope}];
+    }}
+    """.format(vartype=vartype, leaf_name=leaf_name, max_buckets=len(inps), scope=node.scope[0])
+
+    leave_init = ""
+
+    for bucket, value in enumerate(histogram_likelihood(node, inps, log_space=False)):
+        leave_init += "\t{leaf_name}_data[{bucket}] = {value};\n".format(leaf_name=leaf_name, bucket=bucket,
+                                                                         value=value)
+    leave_init += "\n"
+
+    return leave_function, leave_init
+
+
+register_spn_to_cpp(Histogram, histogram_to_cpp)
+
+
+def to_cpp(node):
     vartype = "double"
 
-    spn_eqq = to_str_equation(node, lambda node, _: "leaf_node_%s(data[i][%s])" % (node.id, node.scope[0]))
+    spn_eqq = spn_to_str_equation(node,
+                                  node_to_str={Histogram: lambda node, x, y: "leaf_node_%s(data[i][%s])" % (
+                                  node.name, node.scope[0])})
 
     spn_function = """
     {vartype} likelihood(int i, {vartype} data[][{scope_size}]){{
@@ -23,8 +57,8 @@ def to_cpp(node, leaf_to_cpp):
     init_code = ""
     leaves_functions = ""
     for l in get_nodes_by_type(node, Leaf):
-        leaf_name = "leaf_node_%s" % (l.id)
-        leave_function, leave_init = leaf_to_cpp(l, leaf_name, vartype)
+        leaf_name = "leaf_node_%s" % (l.name)
+        leave_function, leave_init = _leaf_to_cpp[type(l)](l, leaf_name, vartype)
 
         leaves_functions += leave_function
         init_code += leave_init
@@ -102,8 +136,8 @@ int main()
                scope_size=len(node.scope), init_code=init_code)
 
 
-def generate_native_executable(spn, leaf_to_cpp, cppfile="/tmp/spn.cpp", nativefile="/tmp/spnexe"):
-    code = to_cpp(spn, leaf_to_cpp)
+def generate_native_executable(spn, cppfile="/tmp/spn.cpp", nativefile="/tmp/spnexe"):
+    code = to_cpp(spn)
 
     text_file = open(cppfile, "w")
     text_file.write(code)
@@ -114,5 +148,5 @@ def generate_native_executable(spn, leaf_to_cpp, cppfile="/tmp/spn.cpp", nativef
     return subprocess.check_output(['g++', '-O3', '--std=c++11', '-o', nativefile, cppfile],
                                    stderr=subprocess.STDOUT).decode("utf-8"), \
            subprocess.check_output(['g++', '-O3', '-ffast-math', '--std=c++11', '-o', nativefile_fast, cppfile],
-                                    stderr=subprocess.STDOUT).decode("utf-8"), \
+                                   stderr=subprocess.STDOUT).decode("utf-8"), \
            code

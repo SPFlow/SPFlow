@@ -6,20 +6,20 @@ Created on March 28, 2018
 import numpy as np
 from joblib import Memory
 
-from spn.algorithms.Inference import log_likelihood
+from spn.algorithms.Inference import log_likelihood, histogram_likelihood
 from spn.algorithms.StructureLearning import learn_structure
-from spn.algorithms.splitting.KMeans import split_rows_KMeans
-from spn.algorithms.splitting.RDC import split_cols_RDC
+from spn.algorithms.splitting.KMeans import get_split_rows_KMeans
+from spn.algorithms.splitting.RDC import get_split_cols_RDC
 from spn.gpu.TensorFlow import eval_tf
-from spn.leaves.Histograms import histogram_likelihood, add_domains, create_histogram_leaf
 from spn.structure.Base import Context
+from spn.structure.leaves.Histograms import create_histogram_leaf, add_domains
 
 memory = Memory(cachedir="cache", verbose=0, compress=9)
 
 
 @memory.cache
 def learn(data, ds_context):
-    spn = learn_structure(data, ds_context, split_rows_KMeans, split_cols_RDC, create_histogram_leaf)
+    spn = learn_structure(data, ds_context, get_split_rows_KMeans(), get_split_cols_RDC(), create_histogram_leaf)
 
     return spn
 

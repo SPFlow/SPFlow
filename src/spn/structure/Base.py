@@ -10,6 +10,10 @@ class Node:
         self.id = 0
         self.scope = []
 
+    @property
+    def name(self):
+        return "%sNode_%s" % (self.__class__.__name__, self.id)
+
 
 class Sum(Node):
     def __init__(self):
