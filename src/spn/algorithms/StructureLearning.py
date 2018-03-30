@@ -21,45 +21,52 @@ class Operation(Enum):
     NAIVE_FACTORIZATION = 4
     REMOVE_UNINFORMATIVE_FEATURES = 5
 
-def next_operation(data, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True, cluster_univariate=False, min_instances_slice=100):
+def get_next_operation(min_instances_slice=100):
+    def next_operation(data, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True, cluster_univariate=False):
 
-    minimalFeatures = data.shape[1] == 1
-    minimalInstances = data.shape[0] <= min_instances_slice
+        minimalFeatures = data.shape[1] == 1
+        minimalInstances = data.shape[0] <= min_instances_slice
 
-    if minimalFeatures:
-        if minimalInstances or no_clusters:
-            return Operation.CREATE_LEAF
-        else:
-            if cluster_univariate:
-                return Operation.SPLIT_ROWS
-            else:
+        if minimalFeatures:
+            if minimalInstances or no_clusters:
                 return Operation.CREATE_LEAF
+            else:
+                if cluster_univariate:
+                    return Operation.SPLIT_ROWS
+                else:
+                    return Operation.CREATE_LEAF
 
-    ncols_zero_variance = np.sum(np.var(data, 0) == 0)
-    if ncols_zero_variance > 0:
-        if ncols_zero_variance == data.shape[1]:
+        ncols_zero_variance = np.sum(np.var(data, 0) == 0)
+        if ncols_zero_variance > 0:
+            if ncols_zero_variance == data.shape[1]:
+                return Operation.NAIVE_FACTORIZATION
+            else:
+                return Operation.REMOVE_UNINFORMATIVE_FEATURES
+
+        if minimalInstances or (no_clusters and no_independencies):
             return Operation.NAIVE_FACTORIZATION
-        else:
-            return Operation.REMOVE_UNINFORMATIVE_FEATURES
 
-    if minimalInstances or (no_clusters and no_independencies):
-        return Operation.NAIVE_FACTORIZATION
+        if no_independencies:
+            return Operation.SPLIT_ROWS
 
-    if no_independencies:
-        return Operation.SPLIT_ROWS
+        if no_clusters:
+            return Operation.SPLIT_COLUMNS
 
-    if no_clusters:
+        if is_first:
+            return Operation.SPLIT_ROWS if cluster_first else Operation.SPLIT_COLUMNS
+
         return Operation.SPLIT_COLUMNS
 
-    if is_first:
-        return Operation.SPLIT_ROWS if cluster_first else Operation.SPLIT_COLUMNS
-
-    return Operation.SPLIT_COLUMNS
+    return next_operation
 
 
-
-
-def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, next_operation = next_operation):
+def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, next_operation = get_next_operation()):
+    assert dataset is not None
+    assert ds_context is not None
+    assert split_rows is not None
+    assert split_cols is not None
+    assert create_leaf is not None
+    assert next_operation is not None
 
     root = Product()
     root.children.append(None)
