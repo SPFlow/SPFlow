@@ -62,20 +62,24 @@ def get_RDC_adjacency_matrix(data, statistical_type, ohe=False, linear=True):
     return out
 
 
-def split_cols_RDC(local_data, ds_context, scope, threshold=0.3, ohe=False, linear=True):
-    adjm = get_RDC_adjacency_matrix(local_data, ds_context.statistical_type[scope], ohe, linear)
+def get_split_cols_RDC(threshold=0.3, ohe=False, linear=True):
+    def split_cols_RDC(local_data, ds_context, scope):
+        adjm = get_RDC_adjacency_matrix(local_data, ds_context.statistical_type[scope], ohe, linear)
 
-    clusters = clusters_by_adjacency_matrix(adjm, threshold, local_data.shape[1])
+        clusters = clusters_by_adjacency_matrix(adjm, threshold, local_data.shape[1])
 
-    return split_data_by_clusters(local_data, clusters, scope, rows=False)
+        return split_data_by_clusters(local_data, clusters, scope, rows=False)
+    return split_cols_RDC
 
 
-def split_rows_RDC(local_data, ds_context, scope, n_clusters=2, k=10, s=1 / 6, ohe=False, seed=17):
-    data = get_RDC_transform(local_data, ds_context.statistical_type[scope], ohe, k=k, s=s)
+def get_split_rows_RDC(n_clusters=2, k=10, s=1 / 6, ohe=False, seed=17):
+    def split_rows_RDC(local_data, ds_context, scope):
+        data = get_RDC_transform(local_data, ds_context.statistical_type[scope], ohe, k=k, s=s)
 
-    clusters = KMeans(n_clusters=n_clusters, random_state=seed, n_jobs=1).fit_predict(data)
+        clusters = KMeans(n_clusters=n_clusters, random_state=seed, n_jobs=1).fit_predict(data)
 
-    return split_data_by_clusters(local_data, clusters, scope, rows=True)
+        return split_data_by_clusters(local_data, clusters, scope, rows=True)
+    return split_rows_RDC
 
 
 
