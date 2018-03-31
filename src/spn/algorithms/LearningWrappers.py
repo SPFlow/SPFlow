@@ -4,7 +4,7 @@ Created on March 30, 2018
 @author: Alejandro Molina
 '''
 from spn.algorithms.StructureLearning import get_next_operation, learn_structure
-from spn.algorithms.splitting.KMeans import get_split_rows_KMeans
+from spn.algorithms.splitting.Clustering import get_split_rows_KMeans
 from spn.algorithms.splitting.RDC import get_split_cols_RDC
 from spn.structure.leaves.Histograms import create_histogram_leaf
 

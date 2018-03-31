@@ -12,6 +12,8 @@ from spn.algorithms.Inference import histogram_likelihood
 from spn.structure.Base import Product, Sum, Leaf
 from spn.structure.leaves.Histograms import Histogram
 
+from functools import reduce
+
 
 def spn_to_tf_graph(node, data_placeholder, log_space=True):
     # data is a placeholder, with shape same as numpy data
@@ -24,7 +26,13 @@ def spn_to_tf_graph(node, data_placeholder, log_space=True):
             if log_space:
                 return tf.add_n(childrenprob)
             else:
-                return tf.reduce_prod(childrenprob, axis=0)
+                prod_res = None
+                for c in childrenprob:
+                    if prod_res is None:
+                        prod_res = c
+                    else:
+                        prod_res = tf.multiply(prod_res, c)
+                return prod_res
 
         if isinstance(node, Sum):
             # TODO: make weights as variables
@@ -32,8 +40,7 @@ def spn_to_tf_graph(node, data_placeholder, log_space=True):
                 w_childrenprob = tf.stack([np.log(node.weights[i]) + ctf for i, ctf in enumerate(childrenprob)], axis=1)
                 return tf.reduce_logsumexp(w_childrenprob, axis=1)
             else:
-                w_childrenprob = tf.stack([node.weights[i] * ctf for i, ctf in enumerate(childrenprob)], axis=1)
-                return tf.reduce_sum(w_childrenprob, axis=1)
+                return tf.add_n([node.weights[i] * ctf for i, ctf in enumerate(childrenprob)])
 
         if isinstance(node, Histogram):
             inps = np.arange(int(max(node.breaks))).reshape((-1, 1))
@@ -48,7 +55,7 @@ def spn_to_tf_graph(node, data_placeholder, log_space=True):
 
 
 def eval_tf(spn, data, log_space=True, save_graph_path=None, trace=False):
-    data_placeholder = tf.placeholder(data.dtype, data.shape)
+    data_placeholder = tf.placeholder(data.dtype, data.shape[0])
     import time
     tf_graph = spn_to_tf_graph(spn, data_placeholder, log_space)
     run_metadata = None
@@ -59,7 +66,8 @@ def eval_tf(spn, data, log_space=True, save_graph_path=None, trace=False):
             sess.run(tf.global_variables_initializer())
 
             start = time.perf_counter()
-            result = sess.run(tf_graph, feed_dict={data_placeholder: data}, options=run_options, run_metadata=run_metadata)
+            result = sess.run(tf_graph, feed_dict={data_placeholder: data}, options=run_options,
+                              run_metadata=run_metadata)
             end = time.perf_counter()
 
             e2 = end - start
@@ -71,12 +79,12 @@ def eval_tf(spn, data, log_space=True, save_graph_path=None, trace=False):
 
             import json
             traceEvents = json.loads(ctf)["traceEvents"]
-            elapsed = max([o["ts"]+o["dur"] for o in traceEvents if "ts" in o and "dur" in o]) - min([o["ts"] for o in traceEvents if "ts" in o])
+            elapsed = max([o["ts"] + o["dur"] for o in traceEvents if "ts" in o and "dur" in o]) - min(
+                [o["ts"] for o in traceEvents if "ts" in o])
             return result, elapsed
         else:
             sess.run(tf.global_variables_initializer())
             result = sess.run(tf_graph, feed_dict={data_placeholder: data})
-
 
         if save_graph_path is not None:
             summary_fw = tf.summary.FileWriter(save_graph_path, sess.graph)
