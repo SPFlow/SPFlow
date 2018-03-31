@@ -8,7 +8,7 @@ from joblib import Memory
 
 from spn.algorithms.Inference import log_likelihood, histogram_likelihood
 from spn.algorithms.StructureLearning import learn_structure
-from spn.algorithms.splitting.KMeans import get_split_rows_KMeans
+from spn.algorithms.splitting.Clustering import get_split_rows_KMeans
 from spn.algorithms.splitting.RDC import get_split_cols_RDC
 from spn.gpu.TensorFlow import eval_tf
 from spn.structure.Base import Context

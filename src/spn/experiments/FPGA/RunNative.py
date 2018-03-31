@@ -118,7 +118,7 @@ if __name__ == '__main__':
             data_placeholder = tf.placeholder(tf.int32, test_data.shape)
             tf_graph = spn_to_tf_graph(spn, data_placeholder, log_space=False)
 
-            n_repeats = 100
+            n_repeats = 2
 
             for i in range(n_repeats):
                 with tf.Session() as sess:
@@ -136,6 +136,13 @@ if __name__ == '__main__':
 
                     ctf = timeline.Timeline(run_metadata.step_stats).generate_chrome_trace_format()
 
+                    rfile_path = outprefix + "tf_timelines/time_line_%s.json" % i
+                    if not os.path.exists(os.path.dirname(rfile_path)):
+                        os.mkdir(os.path.dirname(rfile_path))
+                    results_file = open(rfile_path, "w")
+                    results_file.write(ctf)
+                    results_file.close()
+
                     traceEvents = json.loads(ctf)["traceEvents"]
                     run_time = max([o["ts"] + o["dur"] for o in traceEvents if "ts" in o and "dur" in o]) - min(
                         [o["ts"] for o in traceEvents if "ts" in o])
@@ -148,12 +155,16 @@ if __name__ == '__main__':
                     if i % 20 == 0:
                         print(exp, i, e2, run_time)
 
+
             return np.log(tf_ll), elapsed / (n_repeats-1)
 
 
+        results_file = "%stime_test_%s_ll_%s.txt" % (outprefix, "tensorflow", OS_name)
+        if not os.path.isfile(results_file):
+            ll, test_time = execute_tf()
+            print("mean ll", np.mean(ll))
+            np.savetxt(results_file, ll, delimiter=";")
 
-
-        run_experiment(exp, spn, test_data, "tensorflow", execute_tf)
 
         nfile = outprefix + "spnexe_" + OS_name
 

@@ -9,11 +9,14 @@ from sklearn.cluster import KMeans
 
 from spn.algorithms.splitting.Base import split_data_by_clusters, clusters_by_adjacency_matrix
 
-rpy_initialized = False
+_rpy_initialized = False
+
 
 def init_rpy():
-    if rpy_initialized:
+    global _rpy_initialized
+    if _rpy_initialized:
         return
+    _rpy_initialized = True
 
     from rpy2 import robjects
     from rpy2.robjects import numpy2ri
@@ -69,6 +72,7 @@ def get_split_cols_RDC(threshold=0.3, ohe=False, linear=True):
         clusters = clusters_by_adjacency_matrix(adjm, threshold, local_data.shape[1])
 
         return split_data_by_clusters(local_data, clusters, scope, rows=False)
+
     return split_cols_RDC
 
 
@@ -79,8 +83,8 @@ def get_split_rows_RDC(n_clusters=2, k=10, s=1 / 6, ohe=False, seed=17):
         clusters = KMeans(n_clusters=n_clusters, random_state=seed, n_jobs=1).fit_predict(data)
 
         return split_data_by_clusters(local_data, clusters, scope, rows=True)
-    return split_rows_RDC
 
+    return split_rows_RDC
 
 
 if __name__ == '__main__':
