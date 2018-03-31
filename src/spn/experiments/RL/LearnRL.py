@@ -14,7 +14,7 @@ from spn.algorithms.Inference import conditional_log_likelihood
 from spn.algorithms.Marginalization import marginalize
 from spn.algorithms.Statistics import get_structure_stats
 from spn.algorithms.StructureLearning import learn_structure, next_operation
-from spn.algorithms.splitting.KMeans import split_rows_KMeans
+from spn.algorithms.splitting.Clustering import split_rows_KMeans
 from spn.algorithms.splitting.RDC import split_cols_RDC
 from spn.io.Text import spn_to_str_ref_graph, spn_to_str_equation
 from spn.leaves.Histograms import add_domains, create_histogram_leaf, histogram_to_str, histogram_likelihood
