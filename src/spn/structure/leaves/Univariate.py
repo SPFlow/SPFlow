@@ -7,10 +7,10 @@ import numpy as np
 from spn.structure.Base import Leaf
 
 
-class Bernoulli(Leaf):
-    def __init__(self, p):
+class Parametric(Leaf):
+    def __init__(self, name, params):
         Leaf.__init__(self)
-        self.p = p
+        self.params = params
 
 class Poisson(Leaf):
     def __init__(self, mean):

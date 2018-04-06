@@ -84,7 +84,9 @@ def get_nodes_by_type(node, ntype=Node):
 
     return result
 
-def assign_ids(node, ids={}):
+def assign_ids(node, ids=None):
+    if ids is None:
+        ids = {}
 
     def assign_id(node):
         if node not in ids:
