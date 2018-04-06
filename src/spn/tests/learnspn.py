@@ -29,4 +29,4 @@ if __name__ == '__main__':
     spn = learn_structure(data, ds_context, get_split_rows_KMeans(), get_split_cols_RDC(), create_histogram_leaf)
 
     # print(to_str_equation(spn, words))
-    print(Inference.log_likelihood(spn, data[0:100, :]))
+    print(Inference.likelihood(spn, data[0:100, :]))

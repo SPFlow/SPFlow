@@ -12,8 +12,6 @@ from spn.algorithms.Inference import histogram_likelihood
 from spn.structure.Base import Product, Sum, Leaf
 from spn.structure.leaves.Histograms import Histogram
 
-from functools import reduce
-
 
 def spn_to_tf_graph(node, data_placeholder, log_space=True):
     # data is a placeholder, with shape same as numpy data
