@@ -3,75 +3,116 @@ Created on April 5, 2018
 
 @author: Alejandro Molina
 '''
+import logging
+
 import numpy as np
 
-from spn.algorithms.Inference import likelihood
+from spn.algorithms.Inference import likelihood, log_likelihood
 from spn.io.Text import str_to_spn, to_JSON
 from spn.structure.Base import Product, Sum, Leaf, get_nodes_by_type
+from spn.structure.StatisticalTypes import MetaType
+from spn.structure.leaves.parametric.Parametric import Parametric
+from spn.structure.leaves.parametric.Sampling import sample_parametric_node
 
 
-def sample_induced_trees(node, data, rand_gen, node_likelihood=None):
+
+def validate_ids(node):
     all_nodes = get_nodes_by_type(node)
-    nr_nodes = len(all_nodes)
+
+    ids = set()
+    for n in all_nodes:
+        ids.add(n.id)
+
+    assert len(ids) == len(all_nodes), "not all nodes have ID's"
+
+    assert min(ids) == 0 and max(ids) == len(ids) - 1, "ID's are not in order"
+
+
+def reset_node_counters(node):
+    all_nodes = get_nodes_by_type(node)
+    max_id = 0
+    for n in all_nodes:
+        # reset sum node counts
+        if isinstance(n, Sum):
+            n.edge_counts = np.zeros(len(n.children), dtype=np.int64)
+        # sets nr_nodes to the max id
+        max_id = max(max_id, n.id)
+        n.row_ids = []
+    return max_id
+
+
+def sample_instances(node, D, n_samples, rand_gen, return_Zs=True, return_partition=True, dtype=np.float64):
+    """
+    Implementing hierarchical sampling
+
+    D could be extracted by traversing node
+    """
 
     sum_nodes = get_nodes_by_type(node, Sum)
-    maxc = max([len(s.children) for s in sum_nodes])
-    induced_trees_sum_nodes = np.zeros((data.shape[0], len(sum_nodes), maxc))
-    induced_trees_leaf_nodes = np.zeros((data.shape[0], len(get_nodes_by_type(node, Leaf))))
+    n_sum_nodes = len(sum_nodes)
 
-    lls = np.zeros((data.shape[0], nr_nodes))
-    likelihood(node, data, node_likelihood=node_likelihood, lls_matrix=lls)
+    if return_Zs:
+        Z = np.zeros((n_samples, n_sum_nodes), dtype=np.int64)
+        Z_id_map = {}
+        for j, s in enumerate(sum_nodes):
+            Z_id_map[s.id] = j
 
-    def sample_induced_trees(node, row_ids):
-        if isinstance(node, Leaf):
-            induced_trees_leaf_nodes[row_ids, node.id] = 1
+    if return_partition:
+        P = np.zeros((n_samples, D), dtype=np.int64)
+
+    instance_ids = np.arange(n_samples)
+    X = np.zeros((n_samples, D), dtype=dtype)
+
+    _max_id = reset_node_counters(node)
+
+    def _sample_instances(node, row_ids):
+        if len(row_ids) == 0:
             return
+        node.row_ids = row_ids
+
         if isinstance(node, Product):
-            #induced_trees[row_ids, node.id, 0] = 1
             for c in node.children:
-                sample_induced_trees(c, row_ids)
+                _sample_instances(c, row_ids)
             return
+
         if isinstance(node, Sum):
-            w_children_log_probs = np.zeros((len(row_ids), len(n.weights)))
+            w_children_log_probs = np.zeros((len(row_ids), len(node.weights)))
             for i, c in enumerate(node.children):
-                w_children_log_probs[:, i] = lls[row_ids, c.id] + np.log(node.weights[i])
+                w_children_log_probs[:, i] = np.log(node.weights[i])
 
             z_gumbels = rand_gen.gumbel(loc=0, scale=1,
-                                        size=(w_children_log_probs.shape[1], w_children_log_probs.shape[0]))
+                                        size=(w_children_log_probs.shape[0], w_children_log_probs.shape[1]))
             g_children_log_probs = w_children_log_probs + z_gumbels
-            rand_child_branches = np.argmax(g_children_log_probs, axis=0)
+            rand_child_branches = np.argmax(g_children_log_probs, axis=1)
 
             for i, c in enumerate(node.children):
                 new_row_ids = row_ids[rand_child_branches == i]
-                induced_trees_sum_nodes[new_row_ids, node.id, i] = 1
-                sample_induced_trees(c, new_row_ids)
-            pass
+                node.edge_counts[i] = len(new_row_ids)
+                _sample_instances(c, new_row_ids)
 
-    sample_induced_trees(node, np.arange(data.shape[0]))
+                if return_Zs:
+                    Z[new_row_ids, Z_id_map[node.id]] = i
 
-    return induced_trees_sum_nodes, induced_trees_leaf_nodes, lls
+        if isinstance(node, Leaf):
+            #
+            # sample from leaf
+            X[row_ids, node.scope] = sample_parametric_node(
+                node, n_samples=len(row_ids), rand_gen=rand_gen)
+            if return_partition:
+                P[row_ids, node.scope] = node.id
 
+            return
 
-if __name__ == '__main__':
-    n = str_to_spn("""
-            (
-            Histogram(W1|[ 0., 1., 2.];[0.3, 0.7])
-            *
-            Histogram(W2|[ 0., 1., 2.];[0.3, 0.7])
-            )    
-            """, ["W1", "W2"])
+    _sample_instances(node, instance_ids)
 
-    n = str_to_spn("""
-            (0.3 * Histogram(W1|[ 0., 1., 2.];[0.2, 0.8])
-            +
-            0.7 * Histogram(W1|[ 0., 1., 2.];[0.1, 0.9])
-            )    
-            """, ["W1", "W2"])
+    if return_Zs:
+        if return_partition:
+            return X, Z, P
 
-    print(to_JSON(n))
+        return X, Z
 
-    data = np.vstack((np.asarray([1.5, 0.5]), np.asarray([0.5, 0.5])))
+    if return_partition:
+        return X, P
 
-    print(data)
-    rand_gen = np.random.RandomState(17)
-    print(sample_induced_trees(n, data, rand_gen))
+    return X
+

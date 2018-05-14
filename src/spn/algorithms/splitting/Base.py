@@ -9,6 +9,8 @@ from networkx import from_numpy_matrix, connected_components
 
 from sklearn.feature_extraction.text import TfidfTransformer
 
+from spn.structure.StatisticalTypes import MetaType
+
 
 def preproc(data, ds_context, pre_proc, ohe):
     if pre_proc:
@@ -36,7 +38,7 @@ def getOHE(data, ds_context):
     for f in range(data.shape[1]):
         data_col = data[:, f]
 
-        if ds_context.statistical_type[f] not in {'discrete'}:
+        if ds_context.meta_types[f] != MetaType.DISCRETE:
             cols.append(data_col)
             continue
 

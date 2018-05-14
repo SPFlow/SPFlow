@@ -3,6 +3,7 @@ Created on March 20, 2018
 
 @author: Alejandro Molina
 '''
+import numpy as np
 
 
 class Node:
@@ -13,6 +14,50 @@ class Node:
     @property
     def name(self):
         return "%sNode_%s" % (self.__class__.__name__, self.id)
+
+    def __repr__(self):
+        return self.name
+
+    def __rmul__(self, weight):
+        assert type(weight) == int or type(weight) == float
+        self._tmp_weight = weight
+        return self
+
+    def __mul__(self, node):
+        assert isinstance(node, Node)
+        assert len(node.scope) > 0, "right node has no scope"
+        assert len(self.scope) > 0, "left node has no scope"
+        assert len(set(node.scope).intersection(set(self.scope))
+                   ) == 0, "children's scope is not disjoint"
+        result = Product()
+        result.children.append(self)
+        result.children.append(node)
+        result.scope.extend(self.scope)
+        result.scope.extend(node.scope)
+        assign_ids(result)
+        return result
+
+    def __add__(self, node):
+        assert isinstance(node, Node)
+        assert hasattr(node, "_tmp_weight"), "right node has no weight"
+        assert hasattr(self, "_tmp_weight"), "left node has no weight"
+        assert len(node.scope) > 0, "right node has no scope"
+        assert len(self.scope) > 0, "left node has no scope"
+        assert set(node.scope) == (set(self.scope)), "children's scope are not the same"
+
+        from numpy import isclose
+        assert isclose(1.0, self._tmp_weight + node._tmp_weight), \
+            "unnormalized weights, maybe trying to add many nodes at the same time?"
+
+        result = Sum()
+        result.children.append(self)
+        result.weights.append(self._tmp_weight)
+        result.children.append(node)
+        result.weights.append(node._tmp_weight)
+        result.scope.extend(self.scope)
+        result._tmp_weight = self._tmp_weight + node._tmp_weight
+        assign_ids(result)
+        return result
 
 
 class Sum(Node):
@@ -29,13 +74,27 @@ class Product(Node):
 
 
 class Leaf(Node):
-    def __init__(self):
+    def __init__(self, scope=None):
         Node.__init__(self)
+        if scope is not None:
+            if type(scope) == int:
+                self.scope.append(scope)
+            elif type(scope) == list:
+                self.scope.extend(scope)
+            else:
+                raise Exception("invalid scope type %s " % (type(scope)))
 
 
 class Context:
-    pass
+    def __init__(self, meta_types=None, domains=None):
+        self.meta_types = meta_types
+        self.domains = domains
 
+    def get_meta_types_by_scope(self, scopes):
+        return [self.meta_types[s] for s in scopes]
+
+    def get_domains_by_scope(self, scopes):
+        return [self.domains[s] for s in scopes]
 
 
 def get_number_of_edges(node):
@@ -48,6 +107,7 @@ def get_number_of_layers(node):
 
     return max(map(get_number_of_layers, node.children)) + 1
 
+
 def rebuild_scopes_bottom_up(node):
     # this function is not safe (updates in place)
     if isinstance(node, Leaf):
@@ -58,6 +118,7 @@ def rebuild_scopes_bottom_up(node):
         new_scope.update(rebuild_scopes_bottom_up(c))
     node.scope = list(new_scope)
     return node.scope
+
 
 def bfs(root, func):
     import collections
@@ -72,8 +133,8 @@ def bfs(root, func):
                     seen.add(node)
                     queue.append(node)
 
-def get_nodes_by_type(node, ntype=Node):
 
+def get_nodes_by_type(node, ntype=Node):
     result = []
 
     def add_node(node):
@@ -83,6 +144,7 @@ def get_nodes_by_type(node, ntype=Node):
     bfs(node, add_node)
 
     return result
+
 
 def assign_ids(node, ids=None):
     if ids is None:
