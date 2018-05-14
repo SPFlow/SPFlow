@@ -7,7 +7,6 @@ from spn.structure.Base import Leaf, Sum
 
 
 def prune(node):
-
     if isinstance(node, Leaf):
         return node
 
