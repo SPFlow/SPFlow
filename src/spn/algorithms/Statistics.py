@@ -3,7 +3,19 @@ Created on March 25, 2018
 
 @author: Alejandro Molina
 '''
+from collections import Counter
+
 from spn.structure.Base import get_nodes_by_type, Sum, Product, Leaf, get_number_of_edges, get_number_of_layers, Node
+from spn.structure.leaves.parametric.Parametric import Parametric
+
+
+def get_structure_stats_dict(node):
+    node_types = dict(Counter([type(n) for n in get_nodes_by_type(node)]))
+    num_nodes = len(get_nodes_by_type(node, Node))
+    edges = get_number_of_edges(node)
+    layers = get_number_of_layers(node)
+
+    return {'nodes': num_nodes, 'edges': edges, 'layers': layers}.update(node_types)
 
 
 def get_structure_stats(node):

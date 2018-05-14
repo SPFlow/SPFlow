@@ -14,6 +14,7 @@ def is_consistent(node):
     assert node is not None
 
     if len(node.scope) == 0:
+        # print(node.scope, '0 scope const')
         return False
 
     if isinstance(node, Leaf):
@@ -26,11 +27,12 @@ def is_consistent(node):
         sum_features = 0
         for child in node.children:
             sum_features += len(child.scope)
+            # print('cs ', sum_features, child.scope, child.__class__.__name__, node.scope)
             allchildscope = allchildscope | set(child.scope)
 
         if allchildscope != set(nscope) or sum_features != len(allchildscope):
+            # print(allchildscope, set(nscope), sum_features, len(allchildscope), 'cons')
             return False
-
 
     return all(map(is_consistent, node.children))
 
@@ -43,6 +45,7 @@ def is_complete(node):
     assert node is not None
 
     if len(node.scope) == 0:
+        # print(node.scope, '0 scope')
         return False
 
     if isinstance(node, Leaf):
@@ -53,18 +56,14 @@ def is_complete(node):
 
         for child in node.children:
             if nscope != set(child.scope):
+                # print(node.scope, child.scope, 'mismatch scope')
                 return False
 
     return all(map(is_complete, node.children))
 
-def is_aligned(node):
-    if isinstance(node, Leaf):
-        return True
-
-    if isinstance(node, Sum) and len(node.children) != len(node.weights):
-        return False
-
-    return all(map(is_aligned, node.children))
 
 def is_valid(node):
-    return is_consistent(node) and is_complete(node) and is_aligned(node)
+    a = is_consistent(node)
+    b = is_complete(node)
+
+    return a and b
