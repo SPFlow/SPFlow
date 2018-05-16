@@ -51,6 +51,8 @@ def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=
             split_cols = get_split_cols_RDC(threshold, ohe, linear)
         if rows == "kmeans":
             split_rows = get_split_rows_KMeans()
+        elif rows == "rdc":
+            split_rows = get_split_rows_RDC(ohe=ohe)
 
         leaves = create_histogram_leaf
 
