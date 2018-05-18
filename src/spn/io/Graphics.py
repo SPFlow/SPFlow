@@ -54,7 +54,7 @@ def plot_spn2(spn, fname="plot.pdf"):
 
 
 
-def to_svg(root_node, fname="plot.pdf"):
+def plot_spn_to_svg(root_node, fname="plot.svg"):
     
     import numpy as np
     import networkx as nx
@@ -71,7 +71,7 @@ def to_svg(root_node, fname="plot.pdf"):
         elif isinstance(n, Product):
             label = "*"
         else:
-            label = "V" + str(n.scope[0]) + n.__class__.__name__
+            label = "Attribute: " + str(n.scope[0]) + "\n" + str(n)
         g.add_node(n.id, label=label)
     
         if isinstance(n, Leaf):
