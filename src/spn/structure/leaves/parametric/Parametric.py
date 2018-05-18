@@ -270,6 +270,10 @@ class Categorical(Parametric):
     @property
     def mode(self):
         return np.argmax(self.p)
+    
+    @property
+    def __str__(self):
+        return "CategoricalNode\n" + str(self.p)
 
     def sample(self, n_samples, rand_gen):
         return rand_gen.choice(np.arange(self.k), p=self._p, size=n_samples)
