@@ -9,10 +9,8 @@ from rpy2 import robjects
 from rpy2.robjects import numpy2ri
 
 from spn.structure.Base import Leaf
-from spn.structure.StatisticalTypes import MetaType, Type
+from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
-from spn.structure.leaves.parametric.Parametric import Uniform
-from tfspn.histogram import getHistogramVals
 import itertools
 from rpy2.robjects.packages import importr
 
@@ -34,6 +32,21 @@ class PiecewiseLinear(Leaf):
         max_area = np.argmax(areas)
         max_x = np.argmax([self.y_range[max_area], self.y_range[max_area + 1]]) + max_area
         return self.x_range[max_x]
+    
+    @property
+    def mean(self):
+        # Use the histogram values to compute the mean
+        y_range_norm = self.y_range/np.sum(self.y_range)
+        
+        mean = 0.
+        for k, x in enumerate(self.x_range):
+            mean += x * y_range_norm[k]
+        
+        return mean
+    
+    
+    def __str__(self):
+        return "PiecewiseLinear\nMode = " + str(self.mode) + "\nMean = " + str(self.mean)
 
 
 def isotonic_unimodal_regression_R(x, y):
