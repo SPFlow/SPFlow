@@ -11,6 +11,7 @@ from scipy.special import logsumexp
 from spn.structure.Base import Product, Sum, Leaf
 
 EPSILON = 0.000000000000001
+LOG_ZERO = -300
 
 _node_log_likelihood = {}
 
@@ -173,3 +174,82 @@ def conditional_log_likelihood(node_joint, node_marginal, data, log_space=True, 
         return result
 
     return np.exp(result)
+
+
+
+
+def likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=None, node_log_likelihood=_node_log_likelihood):
+    '''
+    Returns all distributions of a specific feature with their corresponding probability according to the evidence,
+    which is given by the instance.
+    '''
+    ll, nodes = log_likelihood_dists(node, instance, featureIdx, dtype=dtype, context=context, node_log_likelihood=node_log_likelihood)
+    return np.exp(ll), nodes
+
+
+def log_likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=None, node_log_likelihood=_node_log_likelihood):
+    
+    if len(node.scope) == 1 and node.scope[0] == featureIdx:
+        return [0], [node]
+    
+    if node_log_likelihood is not None:
+        t_node = type(node)
+        if t_node in node_log_likelihood:
+            instances = np.array([instance])
+            ll = node_log_likelihood[t_node](node, instances, dtype=dtype, context=context, node_log_likelihood=node_log_likelihood)[0][0]
+            return ll, []
+    
+    
+    if isinstance(node, Sum):
+    
+        p = 0.
+        dists_p = []
+        dists = []
+        
+        for i, child in enumerate(node.children):
+            p_child, dist_child = log_likelihood_dists(child, instance, featureIdx, dtype=dtype, context=context, node_log_likelihood=node_log_likelihood)
+            
+            if len(dist_child) == 0:
+                p += np.exp(p_child) * node.weights[i]
+            else:
+                dists_p += [np.exp(tmp) * node.weights[i] for tmp in p_child]
+                dists += dist_child
+        
+        if len(dists) == 0:
+            if p == 0:
+                return LOG_ZERO, []
+            else:
+                return np.log(p), []
+        else:
+            for j, p in enumerate(dists_p):
+                if p == 0:
+                    dists_p[j]= LOG_ZERO
+                else:
+                    dists_p[j] = np.log(p)
+
+            return dists_p, dists
+    
+    elif isinstance(node, Product):
+        # Assumption: Max one child can contain the distributions in a product node
+        
+        non_dist_p = 0
+        dist_p = []
+        dists = []
+        
+        for child in node.children:
+            p_child, dist_child = log_likelihood_dists(child, instance, featureIdx, dtype=dtype, context=context, node_log_likelihood=node_log_likelihood)
+            
+            if len(dist_child) == 0:
+                non_dist_p += p_child
+            else:
+                dist_p = p_child
+                dists = dist_child
+        
+        if len(dist_p) == 0:
+            return non_dist_p, []
+        else:
+            return [p+non_dist_p for p in dist_p], dists
+    
+    else:
+        raise Exception('Node type unknown: ' + str(type(node)))
+        
