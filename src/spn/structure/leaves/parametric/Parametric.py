@@ -271,7 +271,6 @@ class Categorical(Parametric):
     def mode(self):
         return np.argmax(self.p)
     
-    @property
     def __str__(self):
         return "CategoricalNode\n" + str(self.p)
 
