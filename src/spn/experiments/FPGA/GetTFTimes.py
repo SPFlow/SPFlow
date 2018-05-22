@@ -18,12 +18,6 @@ OS_name = platform.system()
 
 if __name__ == '__main__':
 
-    instances = {"ACCIDENTS_4000": 17009,
-                 "BAUDIO_4000": 20000,
-                 "BNETFLIX_4000": 20000,
-                 "MSNBC_200": 388434,
-                 "MSNBC_300": 388434,
-                 }
 
     times = {}
 
@@ -34,9 +28,6 @@ if __name__ == '__main__':
 
         exp = os.path.basename(dspath)
 
-        if exp not in instances:
-            pass
-            #continue
 
         if exp not in times:
             times[exp] = []
@@ -49,6 +40,7 @@ if __name__ == '__main__':
 
             trace_events_time = [o for o in traceEvents if "ts" in o]
             maximum = max([o["ts"] for o in trace_events_time])
+            maximum = max([o["ts"] + o["dur"] for o in trace_events_time if "dur" in o]+[maximum])
             minimum = min([o["ts"] for o in trace_events_time])
             #print(exp, maximum, minimum, maximum - minimum)
             run_time = maximum - minimum
