@@ -111,32 +111,33 @@ if __name__ == '__main__':
             from tensorflow.python.client import timeline
             import json
 
-
             tf.reset_default_graph()
 
             elapsed = 0
             data_placeholder = tf.placeholder(tf.int32, test_data.shape)
             tf_graph = spn_to_tf_graph(spn, data_placeholder, log_space=False)
+            tfstart = time.perf_counter()
+            n_repeats = 1000
+            with tf.Session() as sess:
 
-            n_repeats = 2
+                for i in range(n_repeats):
 
-            for i in range(n_repeats):
-                with tf.Session() as sess:
                     run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                     run_metadata = tf.RunMetadata()
 
                     sess.run(tf.global_variables_initializer())
-                    start = time.perf_counter()
+                    #start = time.perf_counter()
                     tf_ll = sess.run(tf_graph, feed_dict={data_placeholder: test_data}, options=run_options,
                                       run_metadata=run_metadata)
 
-                    end = time.perf_counter()
+                    continue
+                    #end = time.perf_counter()
 
-                    e2 = end - start
+                    #e2 = end - start
 
                     ctf = timeline.Timeline(run_metadata.step_stats).generate_chrome_trace_format()
 
-                    rfile_path = outprefix + "tf_timelines/time_line_%s.json" % i
+                    rfile_path = outprefix + "tf_timelines2/time_line_%s.json" % i
                     if not os.path.exists(os.path.dirname(rfile_path)):
                         os.mkdir(os.path.dirname(rfile_path))
                     results_file = open(rfile_path, "w")
@@ -152,14 +153,18 @@ if __name__ == '__main__':
                         #the first run is 10 times slower for whatever reason
                         elapsed += run_time
 
-                    if i % 20 == 0:
-                        print(exp, i, e2, run_time)
+                    #if i % 20 == 0:
+                        #print(exp, i, e2, run_time)
+            tfend = time.perf_counter()
+            tfelapsed = (tfend - tfstart) * 1000000000
+
+            return np.log(tf_ll), tfelapsed / (n_repeats-1)
 
 
-            return np.log(tf_ll), elapsed / (n_repeats-1)
+        run_experiment(exp, spn, test_data, "tensorflow7-time", execute_tf)
 
 
-        results_file = "%stime_test_%s_ll_%s.txt" % (outprefix, "tensorflow", OS_name)
+        results_file = "%stime_test_%s_ll_%s.txt" % (outprefix, "tensorflow3", OS_name)
         if not os.path.isfile(results_file):
             ll, test_time = execute_tf()
             print("mean ll", np.mean(ll))
@@ -197,4 +202,4 @@ if __name__ == '__main__':
             return py_ll, elapsed * 1000000000
 
 
-        run_experiment(exp, spn, test_data, "python", execute_tf)
+        run_experiment(exp, spn, test_data, "python", execute_python)
