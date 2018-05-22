@@ -6,7 +6,7 @@ Created on March 28, 2018
 import numpy as np
 from joblib import Memory
 
-from spn.algorithms.Inference import log_likelihood, histogram_likelihood
+from spn.algorithms.Inference import likelihood, histogram_likelihood
 from spn.algorithms.StructureLearning import learn_structure
 from spn.algorithms.splitting.Clustering import get_split_rows_KMeans
 from spn.algorithms.splitting.RDC import get_split_cols_RDC
@@ -27,12 +27,11 @@ def learn(data, ds_context):
 if __name__ == '__main__':
     data = np.loadtxt("test_data.txt", delimiter=";", dtype=np.int32)
 
-    ds_context = Context()
-    ds_context.statistical_type = np.asarray(["discrete"] * data.shape[1])
+    ds_context = Context(meta_types=["discrete"] * data.shape[1])
     add_domains(data, ds_context)
 
     spn = learn(data, ds_context)
-    py_ll = log_likelihood(spn, data, histogram_likelihood)
+    py_ll = likelihood(spn, data, histogram_likelihood)
 
     tf_out, time = eval_tf(spn, data, log_space=False, save_graph_path='tfgraph', trace=True)
     tf_out, time = eval_tf(spn, data, log_space=False, save_graph_path='tfgraph', trace=True)

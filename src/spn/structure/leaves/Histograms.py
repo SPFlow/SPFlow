@@ -3,7 +3,6 @@ Created on March 20, 2018
 
 @author: Alejandro Molina
 '''
-
 import numpy as np
 
 from spn.structure.Base import Leaf
@@ -24,7 +23,6 @@ def init_rpy():
         robjects.r(code)
 
     numpy2ri.activate()
-
 
 class Histogram(Leaf):
     def __init__(self, breaks, densities):
