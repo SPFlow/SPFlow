@@ -12,7 +12,7 @@ from collections import OrderedDict
 import numpy as np
 from natsort import natsorted
 
-from spn.algorithms.Inference import log_likelihood
+from spn.algorithms.Inference import likelihood
 from spn.experiments.FPGA.GenerateSPNs import load_spn_from_file, fpga_count_ops
 from spn.gpu.TensorFlow import spn_to_tf_graph
 from spn.structure.Base import get_nodes_by_type, Node, get_number_of_edges, get_number_of_layers, Product, Leaf, Sum
@@ -195,7 +195,7 @@ if __name__ == '__main__':
 
         def execute_python():
             start = time.perf_counter()
-            py_ll = log_likelihood(spn, test_data)
+            py_ll = likelihood(spn, test_data)
             end = time.perf_counter()
             elapsed = (end - start)
 

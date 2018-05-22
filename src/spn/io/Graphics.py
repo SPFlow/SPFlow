@@ -50,3 +50,41 @@ def plot_spn2(spn, fname="plot.pdf"):
     edge_labels = nx.draw_networkx_edge_labels(g, pos=pos, edge_labels=nx.get_edge_attributes(g,'weight'), font_size=5, clip_on=False, alpha=0.6)
     plt.tight_layout()
     plt.savefig(fname)
+
+
+
+
+def plot_spn_to_svg(root_node, fname="plot.svg"):
+    
+    import numpy as np
+    import networkx as nx
+    import networkx.drawing.nx_pydot as nxpd
+    from spn.structure.Base import Sum, Product, Leaf, get_nodes_by_type
+    
+    g = nx.DiGraph()
+    
+    all_nodes = get_nodes_by_type(root_node)
+    for n in all_nodes:
+
+        if isinstance(n, Sum):
+            label = "+"
+        elif isinstance(n, Product):
+            label = "*"
+        else:
+            label = "Attribute: " + str(n.scope[0]) + "\n" + str(n)
+        g.add_node(n.id, label=label)
+    
+        if isinstance(n, Leaf):
+            continue
+        for i, c in enumerate(n.children):
+            edge_label = ""
+            if isinstance(n, Sum):
+                edge_label = np.round(n.weights[i],2)
+            g.add_edge(c.id, n.id, label=edge_label)
+    
+    pdG = nxpd.to_pydot(g)
+    svg_string = pdG.create_svg()
+    
+    f = open(fname,'wb')
+    f.write(svg_string)
+
