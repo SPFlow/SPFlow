@@ -4,12 +4,12 @@ Created on March 26, 2018
 @author: Alejandro Molina
 '''
 import glob
+import json
 import os
 import platform
 
 import numpy as np
 from natsort import natsorted
-import json
 
 np.set_printoptions(precision=50)
 

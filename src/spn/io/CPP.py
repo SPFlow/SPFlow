@@ -5,7 +5,7 @@ Created on March 22, 2018
 '''
 import subprocess
 
-from spn.algorithms.Inference import histogram_likelihood
+from spn.algorithms.Inference import log_likelihood
 from spn.io.Text import spn_to_str_equation
 from spn.structure.Base import get_nodes_by_type, Leaf
 from spn.structure.leaves.Histograms import Histogram
@@ -30,7 +30,7 @@ def histogram_to_cpp(node, leaf_name, vartype):
 
     leave_init = ""
 
-    for bucket, value in enumerate(histogram_likelihood(node, inps, log_space=False)):
+    for bucket, value in enumerate(np.exp(log_likelihood(node, inps, log_space=False))):
         leave_init += "\t{leaf_name}_data[{bucket}] = {value};\n".format(leaf_name=leaf_name, bucket=bucket,
                                                                          value=value)
     leave_init += "\n"

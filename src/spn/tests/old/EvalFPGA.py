@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     data = np.loadtxt("40_testdata.txt", delimiter=';')
 
-    ll = Inference.log_likelihood(spn, data)
+    ll = Inference.likelihood(spn, data)
 
     print(ll)
     print("average LL", np.mean(ll))
@@ -41,5 +41,5 @@ if __name__ == '__main__':
 
     train, test = train_test_split(data[:, 0:top_n_features], test_size=0.2, random_state=42)
 
-    ll = Inference.log_likelihood(spn, test)
+    ll = Inference.likelihood(spn, test)
     print("average LL2", np.mean(ll))
