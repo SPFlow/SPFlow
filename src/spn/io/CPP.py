@@ -105,7 +105,7 @@ int main()
     auto result = new {vartype}[n];
     
     chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
-    for(int j=0; j < 10000; j++){{
+    for(int j=0; j < 1000; j++){{
         for(int i=0; i < n; i++){{
             result[i] = likelihood(i, data);
         }}
@@ -126,8 +126,8 @@ int main()
     
     cout << "size of variables " << sizeof({vartype}) * 8 << endl;
 
-    cout << setprecision(15)<< "time per instance " << (chrono::duration_cast<chrono::nanoseconds>(end-begin).count()  / 10000.0) /n << " ns" << endl;
-    cout << setprecision(15) << "time per task " << (chrono::duration_cast<chrono::nanoseconds>(end-begin).count()  / 10000.0)  << " ns" << endl;
+    cout << setprecision(15)<< "time per instance " << (chrono::duration_cast<chrono::nanoseconds>(end-begin).count()  / 1000.0) /n << " ns" << endl;
+    cout << setprecision(15) << "time per task " << (chrono::duration_cast<chrono::nanoseconds>(end-begin).count()  / 1000.0)  << " ns" << endl;
 
 
     return 0;

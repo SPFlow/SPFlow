@@ -6,8 +6,7 @@ Created on March 21, 2018
 import numpy as np
 from scipy.misc import logsumexp
 
-from spn.structure.Base import Product, Sum, Leaf
-from spn.structure.leaves.Histograms import Histogram
+from spn.structure.Base import Product, Sum
 
 EPSILON = 0.000000000000001
 
