@@ -20,34 +20,19 @@ def sample_piecewise_node(node, n_samples, rand_gen, ranges=None):
     y_range = np.array(node.y_range)
     
     if ranges is None or ranges[node.scope[0]] is None:
-        #Generate random samples because no range is specified
-        bins_x = []
-        bins_y = []
-        masses = []
-        
-        tmp_val_x = x_range[0]
-        tmp_val_y = y_range[0]
-        for i in range(1, len(x_range)):
-            mass = (y_range[i] + tmp_val_y)/2. * (x_range[i] - tmp_val_x)
-            bins_x.append([tmp_val_x, x_range[i]])
-            bins_y.append([tmp_val_y, y_range[i]])
-            masses.append(mass)
-            
-        masses = np.array(masses) / sum(masses)
-        
-        return _rejection_sampling(masses, bins_x, bins_y, n_samples, rand_gen)
+        #Generate bins for random sampling because no range is specified
+        bins_x = list(zip(x_range[:-1], x_range[1:]))
+        bins_y = list(zip(y_range[:-1], y_range[1:]))
     else:
-        #Generate samples for the specified range
+        #Generate bins for the specified range
         rang = ranges[node.scope[0]]
         assert isinstance(rang, NumericRange)
         
-        intervals = rang.get_ranges()
-        
-        #Generate bins for sampling
         bins_x = []
         bins_y = []
-        masses = []
         
+        #Iterate over the specified ranges
+        intervals = rang.get_ranges()
         for lower, higher in intervals:
             
             lower_prob = np.interp(lower, xp=x_range, fp=y_range)
@@ -57,18 +42,25 @@ def sample_piecewise_node(node, n_samples, rand_gen, ranges=None):
             x_interval = [lower] + list(x_range[indicies]) + [higher]
             y_interval = [lower_prob] + list(y_range[indicies]) + [higher_prob]
             
-            tmp_val_x = x_interval[0]
-            tmp_val_y = y_interval[0]
-            for i in range(1, len(x_interval)):
-                mass = (y_interval[i] + tmp_val_y)/2. * (x_interval[i] - tmp_val_x)
-                bins_x.append([tmp_val_x, x_interval[i]])
-                bins_y.append([tmp_val_y, y_interval[i]])
-                masses.append(mass)
-                
-        masses = np.array(masses) / sum(masses)
+            bins_x += list(zip(x_interval[:-1], x_interval[1:]))
+            bins_y += list(zip(y_interval[:-1], y_interval[1:]))
         
-        return _rejection_sampling(masses, bins_x, bins_y, n_samples, rand_gen)
-        
+    #Compute masses
+    masses = []
+    for i in range(len(bins_x)):
+        if bins_x[i][0] == bins_x[i][1]:
+            #Case that the range only contains one value .. Is that correct?
+            assert bins_y[i][0] == bins_y[i][1]
+            masses.append(bins_y[i][0])
+        else:
+            masses.append(np.trapz(bins_y[i], bins_x[i]))
+    
+    #Normalize masses
+    masses = np.array(masses) / sum(masses)
+    
+    return _rejection_sampling(masses, bins_x, bins_y, n_samples, rand_gen)   
+
+
 
 def _rejection_sampling(masses, bins_x, bins_y, n_samples, rand_gen):
     
@@ -87,3 +79,4 @@ def _rejection_sampling(masses, bins_x, bins_y, n_samples, rand_gen):
             samples.append(r_x)
     
     return np.array(samples)
+
