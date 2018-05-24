@@ -43,10 +43,6 @@ class PiecewiseLinear(Leaf):
             mean += x * y_range_norm[k]
         
         return mean
-    
-    
-    def __str__(self):
-        return "PiecewiseLinear\nMode = " + str(self.mode) + "\nMean = " + str(self.mean)
 
 
 def isotonic_unimodal_regression_R(x, y):
