@@ -25,13 +25,15 @@ class SimpleSPN(object):
     
     def eval_single(self, instance):
         instances = np.array([instance])
-        return Inference.likelihood(self.root_node, instances, np.float64, self.ds_context, self.inference_support)[0][0]
-    
+        return Inference.likelihood(self.root_node, instances, np.float64, self.inference_support)[0][0]
+
+
+
     def eval_multi(self, instances):
-        return Inference.likelihood(self.root_node, instances, np.float64, self.ds_context, self.inference_support)[:,0]
+        return Inference.likelihood(self.root_node, instances, np.float64,  self.inference_support)[:,0]
         
     def eval_dist(self, instance, featureIdx):
-        return Inference.likelihood_dists(self.root_node,  instance, featureIdx, np.float64, self.ds_context, self.inference_support)
+        return Inference.likelihood_dists(self.root_node,  instance, featureIdx, np.float64, self.inference_support)
    
     
     

@@ -13,27 +13,30 @@ from numba import jit
 
 # @jit("float64[:](float64[:], float64[:], float64[:,:])", nopython=True)
 def histogram_ll(breaks, densities, data):
+    import bisect
+
     probs = np.zeros((data.shape[0], 1))
 
     for i, x in enumerate(data):
         if x < breaks[0] or x >= breaks[-1]:
             continue
 
-        # TODO: binary search
-        j = 0
-        for b in breaks:
-            if b > x:
-                break
-            j += 1
+        probs[i] = densities[bisect.bisect(breaks, x) - 1]
 
-        probs[i] = densities[j - 1]
+        #j = 0
+        #for b in breaks:
+        #    if b > x:
+        #        break
+        #    j += 1
+
+        #probs[i] = densities[j - 1]
 
     probs[probs < EPSILON] = EPSILON
 
     return probs
 
 
-def histogram_log_likelihood(node, data, dtype=np.float64, context=None, node_log_likelihood=None):
+def histogram_log_likelihood(node, data, dtype=np.float64, node_log_likelihood=None):
     probs = np.zeros((data.shape[0], 1), dtype=dtype)
 
     nd = data[:, node.scope[0]]

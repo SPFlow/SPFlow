@@ -10,6 +10,7 @@ from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, rebuild_scopes_bottom_up, assign_ids, Leaf
 import numpy as np
 
+
 def to_JSON(node):
     import json
 
@@ -26,8 +27,7 @@ def to_JSON(node):
             return obj.toJSON()
         except:
             obj_dict = obj.__dict__
-            values = OrderedDict([(key, obj_dict[key])
-                                  for key in sorted(obj_dict.keys()) if key[0] != "_"])
+            values = OrderedDict([(key, obj_dict[key]) for key in sorted(obj_dict.keys()) if key[0] != "_"])
             return {obj.__class__.__name__: values}
 
     return json.dumps(node, default=dumper)
@@ -44,8 +44,7 @@ def spn_to_str_ref_graph(node, feature_names=None, node_to_str=None):
 
     if isinstance(node, Product):
         pd = ", ".join(map(lambda c: c.name, node.children))
-        chld_str = "".join(map(lambda c: spn_to_str_ref_graph(
-            c, feature_names, node_to_str), node.children))
+        chld_str = "".join(map(lambda c: spn_to_str_ref_graph(c, feature_names, node_to_str), node.children))
         chld_str = chld_str.replace("\n", "\n\t")
         return "%s ProductNode(%s){\n\t%s}\n" % (node.name, pd, chld_str)
 
@@ -53,8 +52,7 @@ def spn_to_str_ref_graph(node, feature_names=None, node_to_str=None):
         w = node.weights
         ch = node.children
         sumw = ", ".join(map(lambda i: "%s*%s" % (w[i], ch[i].name), range(len(ch))))
-        child_str = "".join(map(lambda c: spn_to_str_ref_graph(
-            c, feature_names, node_to_str), node.children))
+        child_str = "".join(map(lambda c: spn_to_str_ref_graph(c, feature_names, node_to_str), node.children))
         child_str = child_str.replace("\n", "\n\t")
         return "%s SumNode(%s){\n\t%s}\n" % (node.name, sumw, child_str)
 
@@ -74,17 +72,13 @@ def spn_to_str_equation(node, feature_names=None, node_to_str=_node_to_str):
         return node_to_str[t_node](node, feature_names, node_to_str)
 
     if isinstance(node, Product):
-        children_strs = map(lambda child: spn_to_str_equation(
-            child, feature_names, node_to_str), node.children)
+        children_strs = map(lambda child: spn_to_str_equation(child, feature_names, node_to_str), node.children)
         return "(" + " * ".join(children_strs) + ")"
 
     if isinstance(node, Sum):
+        def fmt_chld(w, c): return str(w) + "*(" + spn_to_str_equation(c, feature_names, node_to_str) + ")"
 
-        def fmt_chld(w, c): return str(w) + \
-            "*(" + spn_to_str_equation(c, feature_names, node_to_str) + ")"
-
-        children_strs = map(lambda i: fmt_chld(
-            node.weights[i], node.children[i]), range(len(node.children)))
+        children_strs = map(lambda i: fmt_chld(node.weights[i], node.children[i]), range(len(node.children)))
 
         return "(" + " + ".join(children_strs) + ")"
 
