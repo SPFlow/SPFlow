@@ -3,8 +3,6 @@ Created on March 21, 2018
 
 @author: Alejandro Molina
 '''
-from collections import Counter
-
 import numpy as np
 from scipy.special import logsumexp
 
@@ -27,29 +25,23 @@ def add_node_mpe_likelihood(node_type, lambda_func):
     _node_mpe_likelihood[node_type] = lambda_func
 
 
-def likelihood(node, data, dtype=np.float64, context=None, node_log_likelihood=_node_log_likelihood, lls_matrix=None):
-    l = log_likelihood(node, data, dtype=dtype, context=context,
-                       node_log_likelihood=node_log_likelihood, llls_matrix=lls_matrix)
+def likelihood(node, data, dtype=np.float64, node_log_likelihood=_node_log_likelihood, lls_matrix=None):
+    l = log_likelihood(node, data, dtype=dtype, node_log_likelihood=node_log_likelihood, llls_matrix=lls_matrix)
     if lls_matrix is not None:
         lls_matrix[:, :] = np.exp(lls_matrix)
     return np.exp(l)
 
 
-def log_likelihood(node, data, dtype=np.float64, context=None, node_log_likelihood=_node_log_likelihood,
-                   llls_matrix=None):
+def log_likelihood(node, data, dtype=np.float64, node_log_likelihood=_node_log_likelihood, llls_matrix=None):
     assert len(data.shape) == 2, "data must be 2D, found: {}".format(data.shape)
 
     if node_log_likelihood is not None:
         t_node = type(node)
         if t_node in node_log_likelihood:
-            ll = node_log_likelihood[t_node](node, data, dtype=dtype, context=context,
-                                             node_log_likelihood=node_log_likelihood)
+            ll = node_log_likelihood[t_node](node, data, dtype=dtype, node_log_likelihood=node_log_likelihood)
             if llls_matrix is not None:
                 assert ll.shape[1] == 1, ll.shape[1]
                 llls_matrix[:, node.id] = ll[:, 0]
-                # if np.any(np.isposinf(ll)):
-                #     print(ll, node, node.params, data[np.isposinf(ll)])
-                #     0 / 0
             return ll
 
     is_product = isinstance(node, Product)
@@ -63,8 +55,7 @@ def log_likelihood(node, data, dtype=np.float64, context=None, node_log_likeliho
 
     # TODO: parallelize here
     for i, c in enumerate(node.children):
-        llchild = log_likelihood(c, data, dtype=dtype, context=context,
-                                 node_log_likelihood=node_log_likelihood, llls_matrix=llls_matrix)
+        llchild = log_likelihood(c, data, dtype=dtype, node_log_likelihood=node_log_likelihood, llls_matrix=llls_matrix)
         assert llchild.shape[0] == data.shape[0]
         assert llchild.shape[1] == 1
         llchildren[:, i] = llchild[:, 0]
@@ -72,23 +63,11 @@ def log_likelihood(node, data, dtype=np.float64, context=None, node_log_likeliho
     if is_product:
         ll = np.sum(llchildren, axis=1).reshape(-1, 1)
 
-        # if np.any(np.isposinf(ll)):
-        #     print(ll, node, data[np.isposinf(ll)])
-        #     0 / 0
-
     elif is_sum:
-        assert np.isclose(np.sum(node.weights), 1.0), "unnormalized weights {} for node {}".format(
-            node.weights, node)
+        assert np.isclose(np.sum(node.weights), 1.0), "unnormalized weights {} for node {}".format(node.weights, node)
         b = np.array(node.weights, dtype=dtype)
 
         ll = logsumexp(llchildren, b=b, axis=1).reshape(-1, 1)
-
-        # if np.any(np.isinf(ll)):
-        #     inf_ids = np.isinf(ll.flatten())
-        #     print(ll, ll.mean(), node, node.weights,
-        #           data[inf_ids, node.scope[0]], llchildren[inf_ids, :],
-        #           [(c, c.params) for c in node.children])
-        #     0 / 0
 
     else:
         raise Exception('Node type unknown: ' + str(type(node)))
@@ -168,53 +147,53 @@ def mpe_likelihood(node, data, log_space=True, dtype=np.float64, context=None, n
 
 
 def conditional_log_likelihood(node_joint, node_marginal, data, log_space=True, dtype=np.float64):
-    result = log_likelihood(node_joint, data, dtype) - \
-             log_likelihood(node_marginal, data, dtype)
+    result = log_likelihood(node_joint, data, dtype) - log_likelihood(node_marginal, data, dtype)
     if log_space:
         return result
 
     return np.exp(result)
 
 
-
-
-def likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=None, node_log_likelihood=_node_log_likelihood):
+def likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=None,
+                     node_log_likelihood=_node_log_likelihood):
     '''
     Returns all distributions of a specific feature with their corresponding probability according to the evidence,
     which is given by the instance.
     '''
-    ll, nodes = log_likelihood_dists(node, instance, featureIdx, dtype=dtype, context=context, node_log_likelihood=node_log_likelihood)
+    ll, nodes = log_likelihood_dists(node, instance, featureIdx, dtype=dtype, context=context,
+                                     node_log_likelihood=node_log_likelihood)
     return np.exp(ll), nodes
 
 
-def log_likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=None, node_log_likelihood=_node_log_likelihood):
-    
+def log_likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=None,
+                         node_log_likelihood=_node_log_likelihood):
     if len(node.scope) == 1 and node.scope[0] == featureIdx:
         return [0], [node]
-    
+
     if node_log_likelihood is not None:
         t_node = type(node)
         if t_node in node_log_likelihood:
             instances = np.array([instance])
-            ll = node_log_likelihood[t_node](node, instances, dtype=dtype, context=context, node_log_likelihood=node_log_likelihood)[0][0]
+            ll = node_log_likelihood[t_node](node, instances, dtype=dtype, context=context,
+                                             node_log_likelihood=node_log_likelihood)[0][0]
             return ll, []
-    
-    
+
     if isinstance(node, Sum):
-    
+
         p = 0.
         dists_p = []
         dists = []
-        
+
         for i, child in enumerate(node.children):
-            p_child, dist_child = log_likelihood_dists(child, instance, featureIdx, dtype=dtype, context=context, node_log_likelihood=node_log_likelihood)
-            
+            p_child, dist_child = log_likelihood_dists(child, instance, featureIdx, dtype=dtype, context=context,
+                                                       node_log_likelihood=node_log_likelihood)
+
             if len(dist_child) == 0:
                 p += np.exp(p_child) * node.weights[i]
             else:
                 dists_p += [np.exp(tmp) * node.weights[i] for tmp in p_child]
                 dists += dist_child
-        
+
         if len(dists) == 0:
             if p == 0:
                 return LOG_ZERO, []
@@ -223,33 +202,33 @@ def log_likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=N
         else:
             for j, p in enumerate(dists_p):
                 if p == 0:
-                    dists_p[j]= LOG_ZERO
+                    dists_p[j] = LOG_ZERO
                 else:
                     dists_p[j] = np.log(p)
 
             return dists_p, dists
-    
+
     elif isinstance(node, Product):
         # Assumption: Max one child can contain the distributions in a product node
-        
+
         non_dist_p = 0
         dist_p = []
         dists = []
-        
+
         for child in node.children:
-            p_child, dist_child = log_likelihood_dists(child, instance, featureIdx, dtype=dtype, context=context, node_log_likelihood=node_log_likelihood)
-            
+            p_child, dist_child = log_likelihood_dists(child, instance, featureIdx, dtype=dtype, context=context,
+                                                       node_log_likelihood=node_log_likelihood)
+
             if len(dist_child) == 0:
                 non_dist_p += p_child
             else:
                 dist_p = p_child
                 dists = dist_child
-        
+
         if len(dist_p) == 0:
             return non_dist_p, []
         else:
-            return [p+non_dist_p for p in dist_p], dists
-    
+            return [p + non_dist_p for p in dist_p], dists
+
     else:
         raise Exception('Node type unknown: ' + str(type(node)))
-        

@@ -10,14 +10,12 @@ from spn.algorithms.Inference import add_node_likelihood, add_node_mpe_likelihoo
 from spn.structure.leaves.parametric.Parametric import *
 from spn.structure.leaves.parametric.utils import get_scipy_obj_params
 
-
 POS_EPS = 1e-7
 
 LOG_ZERO = -300
 
 
-
-def parametric_log_likelihood(node, data, dtype=np.float64, context=None, node_log_likelihood=None):
+def parametric_log_likelihood(node, data, dtype=np.float64, node_log_likelihood=None):
     assert len(node.scope) == 1, node.scope
 
     log_probs = np.zeros((data.shape[0], 1), dtype=dtype)
@@ -31,34 +29,20 @@ def parametric_log_likelihood(node, data, dtype=np.float64, context=None, node_l
     # marginalize over something?
     marg_ids = np.isnan(data)
 
-    if isinstance(node, Gaussian) or isinstance(node, LogNormal) or \
-            isinstance(node, Exponential):
+    if isinstance(node, Gaussian) or isinstance(node, LogNormal) or isinstance(node, Exponential):
         scipy_obj, params = get_scipy_obj_params(node)
         log_probs[~marg_ids] = scipy_obj.logpdf(data[~marg_ids], **params)
-        # if np.any(np.isposinf(log_probs[~marg_ids])):
-        #     inf_ids = np.isposinf(log_probs)
-        #     print(node, node.scope, log_probs[inf_ids],
-        #           node.params, data[~marg_ids], data[inf_ids], params)
-        #     0 / 0
+
     elif isinstance(node, Gamma):
         scipy_obj, params = get_scipy_obj_params(node)
         data_m = data[~marg_ids]
         data_m[data_m == 0] += POS_EPS
         log_probs[~marg_ids] = scipy_obj.logpdf(data_m, **params)
-        # if np.any(np.isposinf(log_probs[~marg_ids])):
-        #     inf_ids = np.isposinf(log_probs)
-        #     print(node, node.scope, log_probs[inf_ids],
-        #           node.params, data[~marg_ids], data[inf_ids], params)
-        #     0 / 0
 
     elif isinstance(node, Poisson) or isinstance(node, Bernoulli) or isinstance(node, Geometric):
         scipy_obj, params = get_scipy_obj_params(node)
         log_probs[~marg_ids] = scipy_obj.logpmf(data[~marg_ids], **params)
-        # if np.any(np.isposinf(log_probs[~marg_ids])):
-        #     inf_log = np.isposinf(log_probs)
-        #     print(log_probs[inf_log], data[inf_log])
-        #     print(data[~marg_ids], (~marg_ids).sum(),  log_probs[~marg_ids])
-        #     0 / 0
+
     elif isinstance(node, NegativeBinomial):
         raise ValueError('Mismatch with scipy')
     elif isinstance(node, Hypergeometric):
@@ -68,11 +52,9 @@ def parametric_log_likelihood(node, data, dtype=np.float64, context=None, node_l
         # forcing casting
         cat_data = data.astype(np.int64)
         assert np.all(np.equal(np.mod(cat_data[~marg_ids], 1), 0))
-        # assert np.all(np.logical_and(cat_data[~marg_ids] >= 0, cat_data[~marg_ids] < node.k))
         out_domain_ids = cat_data >= node.k
         log_probs[~marg_ids & out_domain_ids] = LOG_ZERO
-        log_probs[~marg_ids & ~out_domain_ids] = np.array(
-            np.log(node.p))[cat_data[~marg_ids & ~out_domain_ids]]
+        log_probs[~marg_ids & ~out_domain_ids] = np.array(np.log(node.p))[cat_data[~marg_ids & ~out_domain_ids]]
     elif isinstance(node, Uniform):
         log_probs[~marg_ids] = np.log(node.density)
     else:
@@ -81,8 +63,7 @@ def parametric_log_likelihood(node, data, dtype=np.float64, context=None, node_l
     return log_probs
 
 
-
-def parametric_log_likelihood_range(node, ranges, dtype=np.float64, context=None, node_log_likelihood=None):    
+def parametric_log_likelihood_range(node, ranges, dtype=np.float64, context=None, node_log_likelihood=None):
     '''
     Returns the probability for the given ranges.
     
@@ -93,41 +74,40 @@ def parametric_log_likelihood_range(node, ranges, dtype=np.float64, context=None
     Each entry of range contains a Range-object or None (e.g. for categorical-node NominalRange exists).
     If the entry is None, then the log-likelihood probability of 0 will be returned.
     '''
-    
-    #Assert that the given node is only build on one instance
+
+    # Assert that the given node is only build on one instance
     assert len(node.scope) == 1, node.scope
-    
-    #Initialize the return variable log_probs with zeros
+
+    # Initialize the return variable log_probs with zeros
     log_probs = np.zeros((ranges.shape[0], 1), dtype=dtype)
-    
-    #Only select the ranges for the specific feature
+
+    # Only select the ranges for the specific feature
     ranges = ranges[:, node.scope[0]]
-    
-    #In case that the parametric node is categorical
+
+    # In case that the parametric node is categorical
     if isinstance(node, Categorical):
-        
+
         for i, rang in enumerate(ranges):
-            
-            #Skip if no range is specified aka use a log-probability of 0 for that instance
+
+            # Skip if no range is specified aka use a log-probability of 0 for that instance
             if rang is None:
                 continue
-            
-            #Skip if no values for the range are provided
+
+            # Skip if no values for the range are provided
             if rang.is_impossible():
                 log_probs[i] = LOG_ZERO
-            
-            #Compute the sum of the probability of all possible values
+
+            # Compute the sum of the probability of all possible values
             p_sum = sum([node.p[possible_val] for possible_val in rang.get_ranges()])
-                
+
             if p_sum == 0:
                 log_probs[i] = LOG_ZERO
             else:
                 log_probs[i] = np.log(p_sum)
-                
+
         return log_probs
     else:
         raise Exception("Unknown parametric for log likelihood ranges: " + str(type(node)))
-    
 
 
 def parametric_mpe_log_likelihood(node, data, log_space=True, dtype=np.float64, context=None, node_mpe_likelihood=None):
@@ -152,7 +132,6 @@ def parametric_mpe_log_likelihood(node, data, log_space=True, dtype=np.float64, 
         return np.exp(log_probs)
 
     return log_probs
-
 
 
 def add_parametric_inference_support():

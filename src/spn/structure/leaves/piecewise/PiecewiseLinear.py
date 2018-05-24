@@ -115,4 +115,8 @@ def create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=
 
     node = PiecewiseLinear(x.tolist(), y.tolist(), repr_points, scope=scope)
 
+
+    if prior_weight is None:
+        return node
+
     return prior_weight * uniform_hist + (1 - prior_weight) * node
