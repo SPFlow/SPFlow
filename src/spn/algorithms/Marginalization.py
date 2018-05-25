@@ -3,48 +3,49 @@ Created on March 21, 2018
 
 @author: Alejandro Molina
 '''
+from copy import deepcopy
+
+from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Pruning import prune
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Sum, Leaf, rebuild_scopes_bottom_up, assign_ids
+import numpy as np
 
 
-def marginalize(node, scope):
-    assert isinstance(scope, set), "scope must be a set"
-
+def marginalize(node, keep):
+    #keep must be a set of features that you want to keep
+    
+    assert isinstance(keep, set), "scope must be a set"
 
     def marg_recursive(node):
-        node_scope = set(node.scope)
-
-        if node_scope.issubset(scope):
-            return None
+        new_node_scope = keep.intersection(set(node.scope))
 
         if isinstance(node, Leaf):
             if len(node.scope) > 1:
                 raise Exception('Leaf Node with |scope| > 1')
 
-            return node
+            if len(new_node_scope) == 0:
+                # we are summing out this node
+                return None
+
+            return deepcopy(node)
 
         newNode = node.__class__()
 
-        #a sum node gets copied with all its children, or gets removed completely
         if isinstance(node, Sum):
             newNode.weights.extend(node.weights)
 
-        for i, c in enumerate(node.children):
-            newChildren = marg_recursive(c)
-            if newChildren is None:
+        for c in node.children:
+            new_c = marg_recursive(c)
+            if new_c is None:
                 continue
+            newNode.children.append(new_c)
 
-            newNode.children.append(newChildren)
+        newNode.scope.extend(new_node_scope)
         return newNode
 
     newNode = marg_recursive(node)
-    rebuild_scopes_bottom_up(newNode)
     newNode = prune(newNode)
     assert is_valid(newNode)
-    assign_ids(node)
+    assign_ids(newNode)
     return newNode
-
-
-
-
