@@ -3,14 +3,11 @@ Created on March 21, 2018
 
 @author: Alejandro Molina
 '''
-from spn.io.Text import spn_to_str_equation
 from spn.io.Text import add_str_to_spn, add_node_to_str
 from collections import OrderedDict
 import inspect
 
-from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.parametric.Parametric import Parametric, Categorical
-from spn.structure.leaves.typedleaves.TypedLeaves import TypeLeaf, get_type_partitioning_leaves, TypeMixture, INV_TYPE_PARAM_MAP, TypeMixtureUnconstrained, ParametricMixture
 
 
 def parametric_to_str(node, feature_names=None, node_to_str=None):
