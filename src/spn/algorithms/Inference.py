@@ -154,18 +154,18 @@ def conditional_log_likelihood(node_joint, node_marginal, data, log_space=True, 
     return np.exp(result)
 
 
-def likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=None,
+def likelihood_dists(node, instance, featureIdx, dtype=np.float64,
                      node_log_likelihood=_node_log_likelihood):
     '''
     Returns all distributions of a specific feature with their corresponding probability according to the evidence,
     which is given by the instance.
     '''
-    ll, nodes = log_likelihood_dists(node, instance, featureIdx, dtype=dtype, context=context,
+    ll, nodes = log_likelihood_dists(node, instance, featureIdx, dtype=dtype,
                                      node_log_likelihood=node_log_likelihood)
     return np.exp(ll), nodes
 
 
-def log_likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=None,
+def log_likelihood_dists(node, instance, featureIdx, dtype=np.float64,
                          node_log_likelihood=_node_log_likelihood):
     if len(node.scope) == 1 and node.scope[0] == featureIdx:
         return [0], [node]
@@ -174,7 +174,7 @@ def log_likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=N
         t_node = type(node)
         if t_node in node_log_likelihood:
             instances = np.array([instance])
-            ll = node_log_likelihood[t_node](node, instances, dtype=dtype, context=context,
+            ll = node_log_likelihood[t_node](node, instances, dtype=dtype,
                                              node_log_likelihood=node_log_likelihood)[0][0]
             return ll, []
 
@@ -185,7 +185,7 @@ def log_likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=N
         dists = []
 
         for i, child in enumerate(node.children):
-            p_child, dist_child = log_likelihood_dists(child, instance, featureIdx, dtype=dtype, context=context,
+            p_child, dist_child = log_likelihood_dists(child, instance, featureIdx, dtype=dtype,
                                                        node_log_likelihood=node_log_likelihood)
 
             if len(dist_child) == 0:
@@ -216,7 +216,7 @@ def log_likelihood_dists(node, instance, featureIdx, dtype=np.float64, context=N
         dists = []
 
         for child in node.children:
-            p_child, dist_child = log_likelihood_dists(child, instance, featureIdx, dtype=dtype, context=context,
+            p_child, dist_child = log_likelihood_dists(child, instance, featureIdx, dtype=dtype,
                                                        node_log_likelihood=node_log_likelihood)
 
             if len(dist_child) == 0:

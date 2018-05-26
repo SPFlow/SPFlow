@@ -68,12 +68,12 @@ def set_weights_for_evidence(node, ranges, dtype=np.float64, context=None, node_
         t_node = type(node)
         if t_node in node_log_likelihood:
             ranges = np.array([ranges])
-            return node_log_likelihood[t_node](node, ranges, dtype=dtype, context=context, node_log_likelihood=node_log_likelihood)
+            return node_log_likelihood[t_node](node, ranges, dtype=dtype, node_log_likelihood=node_log_likelihood)
         else:
             raise Exception('No log-likelihood method specified for node type: ' + str(type(node)))
 
 
-def sample_instances(node, D, n_samples, rand_gen, ranges=None, return_Zs=False, return_partition=False, dtype=np.float64, context=None, node_sample=None, node_log_likelihood=_node_log_likelihood):
+def sample_instances(node, D, n_samples, rand_gen, ranges=None, return_Zs=False, return_partition=False, dtype=np.float64, node_sample=None, node_log_likelihood=_node_log_likelihood):
     """
     Moritz: I just have copied the code from the Sampling module. I added one line and I modified one line
     """
@@ -99,7 +99,7 @@ def sample_instances(node, D, n_samples, rand_gen, ranges=None, return_Zs=False,
     '''
     I have added this method which adjusts the weights of the sum nodes according to the evidence
     '''
-    set_weights_for_evidence(node, ranges, context=context, node_log_likelihood=node_log_likelihood)
+    set_weights_for_evidence(node, ranges, node_log_likelihood=node_log_likelihood)
     
     def _sample_instances(node, row_ids):
         if len(row_ids) == 0:
