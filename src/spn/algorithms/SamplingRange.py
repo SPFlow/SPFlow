@@ -117,7 +117,7 @@ def sample_instances(node, D, n_samples, rand_gen, ranges=None, dtype=np.float64
 
         if isinstance(node, Sum):
 
-            rand_child_branches = np.random.choice(np.arange(len(node.evidence_weight)), p=node.evidence_weight, size=len(row_ids))
+            rand_child_branches = np.random.choice(np.arange(len(node.evidence_weights)), p=node.evidence_weights, size=len(row_ids))
             
             for i, c in enumerate(node.children):
                 new_row_ids = row_ids[rand_child_branches == i]
