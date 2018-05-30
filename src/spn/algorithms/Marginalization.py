@@ -5,11 +5,9 @@ Created on March 21, 2018
 '''
 from copy import deepcopy
 
-from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Pruning import prune
 from spn.algorithms.Validity import is_valid
-from spn.structure.Base import Sum, Leaf, rebuild_scopes_bottom_up, assign_ids
-import numpy as np
+from spn.structure.Base import Sum, Leaf, assign_ids
 
 
 def marginalize(node, keep):

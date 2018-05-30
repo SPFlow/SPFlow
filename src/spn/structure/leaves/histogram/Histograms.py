@@ -96,16 +96,3 @@ def getHistogramVals(data):
     return breaks, densities, mids
 
 
-def add_domains(data, ds_context):
-    domain = []
-
-    for col in range(data.shape[1]):
-        feature_meta_type = ds_context.meta_types[col]
-        domain_values = [np.min(data[:, col]), np.max(data[:, col])]
-
-        if feature_meta_type == MetaType.REAL:
-            domain.append(domain_values)
-        elif feature_meta_type == MetaType.DISCRETE:
-            domain.append(np.arange(domain_values[0], domain_values[1]+1, 1))
-
-    ds_context.domains = np.asanyarray(domain)
