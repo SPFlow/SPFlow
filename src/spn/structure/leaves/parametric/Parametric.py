@@ -5,7 +5,7 @@ Created on March 20, 2018
 
 import numpy as np
 
-from spn.structure.Base import Leaf, Sum, get_nodes_by_type
+from spn.structure.Base import Leaf
 from spn.structure.StatisticalTypes import Type
 
 
@@ -31,7 +31,7 @@ class Gaussian(Parametric):
     (alternatively \sigma is the standard deviation(stdev) and \sigma ^ {-2} the precision)
     """
 
-    def __init__(self, mean, stdev, scope=None):
+    def __init__(self, mean=None, stdev=None, scope=None):
         Parametric.__init__(self, Type.REAL, scope=scope)
 
         # parameters
@@ -56,16 +56,17 @@ class Gaussian(Parametric):
 
 
 class Uniform(Parametric):
-    def __init__(self, density, type, scope=None):
+    def __init__(self, density=None, start=None, end=None, type=None, scope=None):
         Parametric.__init__(self, type, scope=scope)
 
         # parameters
         self.density = density
+        self.start = start
+        self.end = end
 
     @property
     def params(self):
-        return {'density': self.density}
-
+        return {'density': self.density, 'start': self.start, 'end': self.end}
 
 class Gamma(Parametric):
     """
@@ -76,7 +77,7 @@ class Gamma(Parametric):
 
     """
 
-    def __init__(self, alpha, beta, scope=None):
+    def __init__(self, alpha=None, beta=None, scope=None):
         Parametric.__init__(self, Type.POSITIVE, scope=scope)
 
         # parameters
@@ -91,7 +92,6 @@ class Gamma(Parametric):
     def mode(self):
         return (self.alpha - 1) / self.beta
 
-
 class LogNormal(Parametric):
     """
     Implements a univariate Log - Normal distribution with parameter
@@ -100,7 +100,7 @@ class LogNormal(Parametric):
     where the precition \tau(shape) is known and fixed.
     """
 
-    def __init__(self, mean, stdev, scope=None):
+    def __init__(self, mean=None, stdev=None, scope=None):
         Parametric.__init__(self, Type.POSITIVE, scope=scope)
 
         # parameters
@@ -124,14 +124,13 @@ class LogNormal(Parametric):
         return np.exp(self.mean - self.variance)
         # return np.exp(self.mean)
 
-
 class Poisson(Parametric):
     """
     Implements a univariate Poisson distribution with parameter
     \lambda (mean)
     """
 
-    def __init__(self, mean, scope=None):
+    def __init__(self, mean=None, scope=None):
         Parametric.__init__(self, Type.COUNT, scope=scope)
 
         self.mean = mean
@@ -144,14 +143,13 @@ class Poisson(Parametric):
     def mode(self):
         return np.floor(self.mean)
 
-
 class Bernoulli(Parametric):
     """
     Implements a univariate Bernoulli distribution with parameter
     p (probability of a success)
     """
 
-    def __init__(self, p, scope=None):
+    def __init__(self, p=None, scope=None):
         Parametric.__init__(self, Type.BINARY, scope=scope)
 
         self.p = p
@@ -167,7 +165,6 @@ class Bernoulli(Parametric):
         else:
             return 0
 
-
 class NegativeBinomial(Parametric):
     """
     Implements a univariate NegativeBinomial distribution with  parameter
@@ -176,7 +173,7 @@ class NegativeBinomial(Parametric):
     FIXME: mismatch from wiki to scipy
     """
 
-    def __init__(self, n, p, scope=None):
+    def __init__(self, n=None, p=None, scope=None):
         Parametric.__init__(self, Type.COUNT, scope=scope)
 
         self.n = n
@@ -193,7 +190,6 @@ class NegativeBinomial(Parametric):
         else:
             return np.floor(self.p * (self.n - 1) / (1 - self.p))
 
-
 class Hypergeometric(Parametric):
     """
     Implements a univariate Hypergeometric distribution with  parameter
@@ -202,7 +198,7 @@ class Hypergeometric(Parametric):
     FIXME: mismatch in the wiki in the conjugate prior table
     """
 
-    def __init__(self, K, N, n, scope=None):
+    def __init__(self, K=None, N=None, n=None, scope=None):
         Parametric.__init__(self, Type.COUNT, scope=scope)
 
         self.n = n
@@ -217,7 +213,6 @@ class Hypergeometric(Parametric):
     def mode(self):
         return np.floor((self.n + 1) * (self.K + 1 / (self.N + 2)))
 
-
 class Geometric(Parametric):
     """
     Implements a univariate Geometric distribution with  parameter
@@ -225,7 +220,7 @@ class Geometric(Parametric):
 
     """
 
-    def __init__(self, p, scope=None):
+    def __init__(self, p=None, scope=None):
         Parametric.__init__(self, Type.COUNT, scope=scope)
 
         self.p = p
@@ -239,7 +234,6 @@ class Geometric(Parametric):
         # return 0  # or 1? check wiki
         return 1
 
-
 class Categorical(Parametric):
     """
     Implements a univariate categorical distribution with $k$ parameters
@@ -252,11 +246,12 @@ class Categorical(Parametric):
     p(\{\pi_{k}\}) = Dir(\boldsymbol\alpha)
     """
 
-    def __init__(self, p, scope=None):
+    def __init__(self, p=None, scope=None):
         Parametric.__init__(self, Type.CATEGORICAL, scope=scope)
 
         # parameters
-        assert np.isclose(np.sum(p), 1), 'Probabilities p shall sum to 1'
+        if p is not None:
+            assert np.isclose(np.sum(p), 1), 'Probabilities p shall sum to 1'
         self.p = p
 
     @property
@@ -274,7 +269,6 @@ class Categorical(Parametric):
     def sample(self, n_samples, rand_gen):
         return rand_gen.choice(np.arange(self.k), p=self._p, size=n_samples)
 
-
 class Exponential(Parametric):
     """
     Implements a univariate Exponential distribution with  parameter
@@ -282,7 +276,7 @@ class Exponential(Parametric):
 
     """
 
-    def __init__(self, l, scope=None):
+    def __init__(self, l=None, scope=None):
         Parametric.__init__(self, Type.POSITIVE, scope=scope)
 
         self.l = l
@@ -294,3 +288,23 @@ class Exponential(Parametric):
     @property
     def mode(self):
         return 0
+
+def create_parametric_leaf(data, ds_context, scope):
+    from spn.structure.leaves.parametric.MLE import update_parametric_parameters_mle
+
+    assert len(scope) == 1, "scope of univariate parametric for more than one variable?"
+    assert data.shape[1] == 1, "data has more than one feature?"
+
+    idx = scope[0]
+    parametric_type = ds_context.parametric_type[idx]
+
+    node = parametric_type()
+    if parametric_type == Categorical:
+        k = np.max(ds_context.domains[idx]) + 1
+        node = Categorical(p=(np.ones(k) / k).tolist())
+
+    node.scope.append(idx)
+
+    update_parametric_parameters_mle(node, data)
+
+    return node

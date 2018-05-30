@@ -86,9 +86,10 @@ class Leaf(Node):
 
 
 class Context:
-    def __init__(self, meta_types=None, domains=None):
+    def __init__(self, meta_types=None, domains=None, parametric_type=None):
         self.meta_types = meta_types
         self.domains = domains
+        self.parametric_type = parametric_type
 
     def get_meta_types_by_scope(self, scopes):
         return [self.meta_types[s] for s in scopes]
