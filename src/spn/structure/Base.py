@@ -97,6 +97,21 @@ class Context:
     def get_domains_by_scope(self, scopes):
         return [self.domains[s] for s in scopes]
 
+    def add_domains(self, data):
+        from spn.structure.StatisticalTypes import MetaType
+        domain = []
+
+        for col in range(data.shape[1]):
+            feature_meta_type = self.meta_types[col]
+            domain_values = [np.min(data[:, col]), np.max(data[:, col])]
+
+            if feature_meta_type == MetaType.REAL:
+                domain.append(domain_values)
+            elif feature_meta_type == MetaType.DISCRETE:
+                domain.append(np.arange(domain_values[0], domain_values[1] + 1, 1))
+
+        self.domains = np.asanyarray(domain)
+
 
 def get_number_of_edges(node):
     return sum([len(c.children) for c in get_nodes_by_type(node, (Sum, Product))])
