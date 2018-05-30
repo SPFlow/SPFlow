@@ -12,6 +12,11 @@ from spn.structure.Base import Product, Sum, Leaf, get_nodes_by_type
 from spn.algorithms.Inference import _node_log_likelihood
 
 
+
+LOG_ZERO = -300
+
+
+
 def validate_ids(node):
     all_nodes = get_nodes_by_type(node)
 
@@ -45,22 +50,32 @@ def set_weights_for_evidence(node, ranges, dtype=np.float64, context=None, node_
         '''
         prob = 0.
         for c in node.children:
-            prob += set_weights_for_evidence(c, ranges, context=context, node_log_likelihood=node_log_likelihood)
+            
+            tmp = set_weights_for_evidence(c, ranges, context=context, node_log_likelihood=node_log_likelihood)
+            
+            if tmp is None:
+                return None
+            
+            prob += tmp
+        
         return prob
 
     elif isinstance(node, Sum):
-        '''
-        Compute new weights for the SUM node according to the probability which is returned by the children.
-        
-        Do we need to normalize the new computed weights? 
-        '''
         evidence_log_weights = np.zeros(len(node.children))
+        evidence_weights = np.zeros(len(node.children))
+        valid_child = False
         for i, c in enumerate(node.children):
             prob = set_weights_for_evidence(c, ranges, context=context, node_log_likelihood=node_log_likelihood)
-            evidence_log_weights[i] = (prob + np.log(node.weights[i]))
+            if prob is None:
+                evidence_weights[i] = 0
+            else:
+                valid_child = True
+                evidence_weights[i] = np.exp(prob) * node.weights[i]
         
-        #### Do we need to normalize the weights???
-        node.evidence_log_weights = evidence_log_weights
+        if not valid_child:
+            return None
+        
+        node.evidence_weights = evidence_weights / np.sum(evidence_weights)
         
         return logsumexp(evidence_log_weights)
     
@@ -68,38 +83,27 @@ def set_weights_for_evidence(node, ranges, dtype=np.float64, context=None, node_
         t_node = type(node)
         if t_node in node_log_likelihood:
             ranges = np.array([ranges])
-            return node_log_likelihood[t_node](node, ranges, dtype=dtype, context=context, node_log_likelihood=node_log_likelihood)
+            log_prob = node_log_likelihood[t_node](node, ranges, dtype=dtype, node_log_likelihood=node_log_likelihood)
+            
+            if log_prob <= LOG_ZERO:
+                return None
+            else:
+                return log_prob
+            
         else:
             raise Exception('No log-likelihood method specified for node type: ' + str(type(node)))
 
 
-def sample_instances(node, D, n_samples, rand_gen, ranges=None, return_Zs=False, return_partition=False, dtype=np.float64, context=None, node_sample=None, node_log_likelihood=_node_log_likelihood):
-    """
-    Moritz: I just have copied the code from the Sampling module. I added one line and I modified one line
-    """
-    
-    
-    sum_nodes = get_nodes_by_type(node, Sum)
-    n_sum_nodes = len(sum_nodes)
-    
-    if return_Zs:
-        Z = np.zeros((n_samples, n_sum_nodes), dtype=np.int64)
-        Z_id_map = {}
-        for j, s in enumerate(sum_nodes):
-            Z_id_map[s.id] = j
+def sample_instances(node, D, n_samples, rand_gen, ranges=None, dtype=np.float64, node_sample=None, node_log_likelihood=_node_log_likelihood):
 
-    if return_partition:
-        P = np.zeros((n_samples, D), dtype=np.int64)
-    
     instance_ids = np.arange(n_samples)
     X = np.zeros((n_samples, D), dtype=dtype)
 
     _max_id = reset_node_counters(node)
+    result = set_weights_for_evidence(node, ranges, node_log_likelihood=node_log_likelihood)
     
-    '''
-    I have added this method which adjusts the weights of the sum nodes according to the evidence
-    '''
-    set_weights_for_evidence(node, ranges, context=context, node_log_likelihood=node_log_likelihood)
+    if result is None:
+        return np.zeros((0, D), dtype=dtype)
     
     def _sample_instances(node, row_ids):
         if len(row_ids) == 0:
@@ -112,26 +116,13 @@ def sample_instances(node, D, n_samples, rand_gen, ranges=None, return_Zs=False,
             return
 
         if isinstance(node, Sum):
-            w_children_log_probs = np.zeros((len(row_ids), len(node.weights)))
-            for i, c in enumerate(node.children):
-                '''
-                I have modified the following line
-                '''
-                w_children_log_probs[:, i] = node.evidence_log_weights[i]
-                
-            
-            z_gumbels = rand_gen.gumbel(loc=0, scale=1,
-                                        size=(w_children_log_probs.shape[0], w_children_log_probs.shape[1]))
-            g_children_log_probs = w_children_log_probs + z_gumbels
-            rand_child_branches = np.argmax(g_children_log_probs, axis=1)
 
+            rand_child_branches = np.random.choice(np.arange(len(node.evidence_weights)), p=node.evidence_weights, size=len(row_ids))
+            
             for i, c in enumerate(node.children):
                 new_row_ids = row_ids[rand_child_branches == i]
                 node.edge_counts[i] = len(new_row_ids)
                 _sample_instances(c, new_row_ids)
-
-                if return_Zs:
-                    Z[new_row_ids, Z_id_map[node.id]] = i
 
         if isinstance(node, Leaf):
             
@@ -140,22 +131,10 @@ def sample_instances(node, D, n_samples, rand_gen, ranges=None, return_Zs=False,
                 X[row_ids, node.scope] = node_sample[t_node](node, len(row_ids), rand_gen, ranges)
             else:
                 raise Exception('No sample method specified for node type: ' + str(type(node)))
-            
-            if return_partition:
-                P[row_ids, node.scope] = node.id
 
             return
 
     _sample_instances(node, instance_ids)
-    
-    if return_Zs:
-        if return_partition:
-            return X, Z, P
-
-        return X, Z
-
-    if return_partition:
-        return X, P
     
     return X
 
