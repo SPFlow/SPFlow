@@ -1,13 +1,7 @@
 from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Marginalization import marginalize
-from spn.io.Text import spn_to_str_equation
-from spn.structure.Base import Leaf, Context
-from spn.structure.StatisticalTypes import MetaType
-from spn.structure.leaves.parametric.Expectation import add_parametric_expectation_support
-from spn.structure.leaves.parametric.Parametric import Gaussian
-from spn.structure.leaves.parametric.Text import add_parametric_text_support
+from spn.structure.Base import Leaf, get_nodes_by_type
 import numpy as np
-
 
 _node_expectation = {}
 
@@ -20,51 +14,22 @@ def Expectation(spn, feature_scope, evidence_scope, evidence, ds_context, node_e
     if evidence_scope is None:
         evidence_scope = set()
 
-    mrag_spn = marginalize(spn, keep=feature_scope + evidence_scope)
+    marg_spn = marginalize(spn, keep=feature_scope | evidence_scope)
 
     def leaf_expectation(node, data, dtype=np.float64, node_log_likelihood=None):
         if node.scope[0] in feature_scope:
             t_node = type(node)
             if t_node in node_expectation:
-                return node_expectation[t_node](node, ds_context)
+                exps = np.zeros((data.shape[0], 1), dtype=dtype)
+                exps[:] = node_expectation[t_node](node, ds_context)
+                return np.log(exps)
             else:
                 raise Exception('Node type unknown: ' + str(t_node))
 
         return log_likelihood(node, evidence)
 
-    log_expectation = log_likelihood(mrag_spn, evidence, node_log_likelihood={Leaf: leaf_expectation})
+    node_log_expectations = {type(leaf): leaf_expectation for leaf in get_nodes_by_type(marg_spn, Leaf)}
+
+    log_expectation = log_likelihood(marg_spn, evidence, node_log_likelihood=node_log_expectations)
 
     return np.exp(log_expectation)
-
-
-if __name__ == '__main__':
-    add_parametric_text_support()
-
-    add_parametric_expectation_support()
-
-    spn = 0.3 * (Gaussian(1.0, 1.0, scope=[0]) * Gaussian(5.0, 1.0, scope=[1])) + \
-          0.7 * (Gaussian(10.0, 1.0, scope=[0]) * Gaussian(15.0, 1.0, scope=[1]))
-
-    print(spn_to_str_equation(spn))
-
-    evidence = np.random.rand(5000).reshape(-1, 2)
-    ds_context = Context(meta_types=[MetaType.REAL, MetaType.REAL])
-    ds_context.add_domains(evidence)
-
-    expectation = Expectation(spn, set([0]), None, evidence, ds_context)
-
-    print("DISCRETE", "mean should be ", np.mean(data), "is", expectation)
-
-    # data = np.array([0, 0, 1, 3]).reshape(-1, 1)
-    # data = np.random.rand(5000).reshape(-1, 1)
-    # data = np.random.randint(0, 20, size=10).reshape(-1, 1)
-    #
-    # ds_context = Context(meta_types=[MetaType.DISCRETE])
-    # # ds_context = Context(meta_types=[MetaType.REAL])
-    # add_domains(data, ds_context)
-    #
-    # node = create_piecewise_leaf(data, ds_context, scope=[0], prior_weight=None)
-    #
-    # exp = piecewise_expectation(node)
-
-

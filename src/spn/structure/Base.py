@@ -151,6 +151,8 @@ def bfs(root, func):
 
 
 def get_nodes_by_type(node, ntype=Node):
+    assert node is not None
+
     result = []
 
     def add_node(node):
