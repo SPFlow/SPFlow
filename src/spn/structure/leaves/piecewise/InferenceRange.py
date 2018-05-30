@@ -15,7 +15,7 @@ LOG_ZERO = -300
 
 
 
-def piecewise_log_likelihood_range(node, ranges, dtype=np.float64, context=None, node_log_likelihood=None):
+def piecewise_log_likelihood_range(node, ranges, dtype=np.float64, node_log_likelihood=None):
     '''
     Returns the probability for the given ranges.
     
@@ -28,7 +28,6 @@ def piecewise_log_likelihood_range(node, ranges, dtype=np.float64, context=None,
     '''
     
     #Assert context is not None and assert that the given node is only build on one instance
-    assert context is not None, "context is not none"
     assert len(node.scope) == 1, node.scope
     
     #Initialize the return variable log_probs with zeros
