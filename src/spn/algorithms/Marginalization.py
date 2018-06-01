@@ -42,8 +42,9 @@ def marginalize(node, keep):
         newNode.scope.extend(new_node_scope)
         return newNode
 
+
     newNode = marg_recursive(node)
-    newNode = prune(newNode)
+    #newNode = prune(newNode)
     assert is_valid(newNode)
     assign_ids(newNode)
     return newNode

@@ -8,10 +8,10 @@ import numpy as np
 
 from spn.algorithms.StructureLearning import get_next_operation, learn_structure
 from spn.algorithms.splitting.Clustering import get_split_rows_KMeans
-from spn.algorithms.splitting.RDC import get_split_cols_RDC, get_split_rows_RDC, get_split_cols_RDC_py, \
+from spn.algorithms.splitting.RDC import get_split_rows_RDC, get_split_cols_RDC_py, \
     get_split_rows_RDC_py
 from spn.algorithms.splitting.Random import get_split_cols_binary_random_partition, \
-    get_split_rows_binary_random_partition, create_random_unconstrained_type_mixture_leaf
+    get_split_rows_binary_random_partition
 
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
@@ -74,7 +74,7 @@ def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=
     if memory:
         learn = memory.cache(learn)
 
-    return learn(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe)
+    return learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
 
 
@@ -102,32 +102,3 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
     return learn(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe)
 
 
-
-def learn_rand_spn(data, ds_context,
-                   min_instances_slice=200,
-                   row_a=2, row_b=5,
-                   col_a=4, col_b=5,
-                   col_threshold=0.6,
-                   memory=None, rand_gen=None):
-    def learn(data, ds_context, min_instances_slice, rand_gen):
-
-        if rand_gen is None:
-            rand_gen = np.random.RandomState(17)
-
-        ds_context.rand_gen = rand_gen
-
-        split_cols = get_split_cols_binary_random_partition(threshold=col_threshold,
-                                                            beta_a=col_a, beta_b=col_b)
-        splot_rows = get_split_rows_binary_random_partition(beta_a=row_a, beta_b=row_b)
-
-        # leaves = create_random_parametric_leaf
-        leaves = create_random_unconstrained_type_mixture_leaf
-
-        nextop = get_next_operation(min_instances_slice)
-
-        return learn_structure(data, ds_context, splot_rows, split_cols, leaves, nextop)
-
-    if memory:
-        learn = memory.cache(learn)
-
-    return learn(data, ds_context, min_instances_slice, rand_gen)

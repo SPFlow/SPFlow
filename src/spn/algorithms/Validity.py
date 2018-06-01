@@ -46,7 +46,7 @@ def is_complete(node):
 
     if len(node.scope) == 0:
         # print(node.scope, '0 scope')
-        return False
+        return False, "node has no scope"
 
     if isinstance(node, Leaf):
         return True
@@ -57,7 +57,7 @@ def is_complete(node):
         for child in node.children:
             if nscope != set(child.scope):
                 # print(node.scope, child.scope, 'mismatch scope')
-                return False
+                return False, "children of sum don't have same scope as parent"
 
     return all(map(is_complete, node.children))
 
