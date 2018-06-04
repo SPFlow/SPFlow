@@ -18,13 +18,13 @@ def marginalize(node, keep):
     def marg_recursive(node):
         new_node_scope = keep.intersection(set(node.scope))
 
+        if len(new_node_scope) == 0:
+            # we are summing out this node
+            return None
+
         if isinstance(node, Leaf):
             if len(node.scope) > 1:
                 raise Exception('Leaf Node with |scope| > 1')
-
-            if len(new_node_scope) == 0:
-                # we are summing out this node
-                return None
 
             return deepcopy(node)
 
@@ -45,6 +45,7 @@ def marginalize(node, keep):
 
     newNode = marg_recursive(node)
     #newNode = prune(newNode)
-    assert is_valid(newNode)
+    valid, err = is_valid(newNode)
+    assert valid, err
     assign_ids(newNode)
     return newNode
