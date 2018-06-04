@@ -6,19 +6,19 @@ Created on April 15, 2018
 
 import numpy as np
 
+from spn.algorithms.stats.Expectations import add_node_expectation
 from spn.structure.StatisticalTypes import MetaType
+from spn.structure.leaves.histogram.Histograms import Histogram
 
 
-def histogram_expectation(node, ds_context):
-    meta_type = ds_context.meta_types[node.scope[0]]
-
+def histogram_expectation(node):
 
     exp = 0
     for i in range(len(node.breaks) - 1):
         a = node.breaks[i]
         b = node.breaks[i + 1]
         d = node.densities[i]
-        if meta_type == MetaType.DISCRETE:
+        if node.meta_type == MetaType.DISCRETE:
             sum_x = a
         else:
             sum_x = (b ** 2 - a ** 2) / 2 # integral of x dx, from a to b
@@ -28,7 +28,5 @@ def histogram_expectation(node, ds_context):
     return exp
 
 
-
 def add_histogram_expectation_support():
     add_node_expectation(Histogram, histogram_expectation)
-
