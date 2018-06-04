@@ -13,18 +13,17 @@ from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 LOG_ZERO = -300
 
 
-def piecewise_log_likelihood(node, data, dtype=np.float64, node_log_likelihood=None):
+def piecewise_likelihood(node, data, dtype=np.float64, node_log_likelihood=None):
     probs = np.zeros((data.shape[0], 1), dtype=dtype)
 
     nd = data[:, node.scope[0]]
     marg_ids = np.isnan(nd)
 
-    probs[~marg_ids] = np.log(piecewise_complete_cases_likelihood(node, nd[~marg_ids], dtype=dtype))
+    probs[~marg_ids] = piecewise_complete_cases_likelihood(node, nd[~marg_ids], dtype=dtype)
 
     return probs
 
 
-    
 def _compute_probability_for_range(node, interval):
     lower = interval[0]
     higher = interval[1]
@@ -55,7 +54,7 @@ def piecewise_mpe_likelihood(node, data, log_space=True, dtype=np.float64, conte
     assert len(node.scope) == 1, node.scope
 
     log_probs = np.zeros((data.shape[0], 1), dtype=dtype)
-    log_probs[:] = piecewise_log_likelihood(node, np.ones((1, data.shape[1])) * node.mode, dtype=dtype, context=context)
+    log_probs[:] = piecewise_likelihood(node, np.ones((1, data.shape[1])) * node.mode, dtype=dtype, context=context)
 
     #
     # collecting query rvs
@@ -63,12 +62,9 @@ def piecewise_mpe_likelihood(node, data, log_space=True, dtype=np.float64, conte
 
     log_probs[~mpe_ids] = piecewise_log_likelihood(node, data[~mpe_ids, :], dtype=dtype, context=context)
 
-    if not log_space:
-        return np.exp(log_probs)
-
-    return log_probs
+    return np.exp(log_probs)
 
 
 def add_piecewise_inference_support():
-    add_node_likelihood(PiecewiseLinear, piecewise_log_likelihood)
+    add_node_likelihood(PiecewiseLinear, piecewise_likelihood)
     add_node_mpe_likelihood(PiecewiseLinear, piecewise_mpe_likelihood)

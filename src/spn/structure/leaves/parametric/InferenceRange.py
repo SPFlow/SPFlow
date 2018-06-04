@@ -15,7 +15,7 @@ LOG_ZERO = -300
 
 
 
-def categorical_log_likelihood_range(node, ranges, dtype=np.float64, node_log_likelihood=None):    
+def categorical_likelihood_range(node, ranges, dtype=np.float64, node_log_likelihood=None):
     '''
     Returns the probability for the given ranges.
     
@@ -55,10 +55,10 @@ def categorical_log_likelihood_range(node, ranges, dtype=np.float64, node_log_li
         else:
             log_probs[i] = np.log(p_sum)
             
-    return log_probs
+    return np.exp(log_probs)
     
 
 
 def add_parametric_inference_range_support():
-    add_node_likelihood(Categorical, categorical_log_likelihood_range)
+    add_node_likelihood(Categorical, categorical_likelihood_range)
 

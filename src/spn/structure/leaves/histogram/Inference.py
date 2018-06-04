@@ -36,13 +36,13 @@ def histogram_ll(breaks, densities, data):
     return probs
 
 
-def histogram_log_likelihood(node, data, dtype=np.float64, node_log_likelihood=None):
+def histogram_likelihood(node, data, dtype=np.float64, node_log_likelihood=None):
     probs = np.zeros((data.shape[0], 1), dtype=dtype)
 
     nd = data[:, node.scope[0]]
     marg_ids = np.isnan(nd)
 
-    probs[~marg_ids] = np.log(histogram_ll(np.array(node.breaks), np.array(node.densities), nd[~marg_ids]))
+    probs[~marg_ids] = histogram_ll(np.array(node.breaks), np.array(node.densities), nd[~marg_ids])
 
     return probs
 
@@ -66,6 +66,6 @@ def histogram_mpe_log_likelihood(node, data, log_space=True, dtype=np.float64, c
 
 
 def add_histogram_inference_support():
-    add_node_likelihood(Histogram, histogram_log_likelihood)
+    add_node_likelihood(Histogram, histogram_likelihood)
 
     add_node_mpe_likelihood(Histogram, histogram_mpe_log_likelihood)
