@@ -15,10 +15,10 @@ def is_consistent(node):
 
     if len(node.scope) == 0:
         # print(node.scope, '0 scope const')
-        return False
+        return False, "node %s has no scope" % (node.id)
 
     if isinstance(node, Leaf):
-        return True
+        return True, None
 
     if isinstance(node, Product):
         nscope = set(node.scope)
@@ -32,9 +32,14 @@ def is_consistent(node):
 
         if allchildscope != set(nscope) or sum_features != len(allchildscope):
             # print(allchildscope, set(nscope), sum_features, len(allchildscope), 'cons')
-            return False
+            return False, "children of (prod) node %s don' have exclusive scope" % (node.id)
 
-    return all(map(is_consistent, node.children))
+    for c in node.children:
+        consistent, err = is_consistent(c)
+        if not consistent:
+            return consistent, err
+
+    return True, None
 
 
 def is_complete(node):
@@ -46,10 +51,10 @@ def is_complete(node):
 
     if len(node.scope) == 0:
         # print(node.scope, '0 scope')
-        return False, "node has no scope"
+        return False, "node %s has no scope" % (node.id)
 
     if isinstance(node, Leaf):
-        return True
+        return True, None
 
     if isinstance(node, Sum):
         nscope = set(node.scope)
@@ -57,13 +62,23 @@ def is_complete(node):
         for child in node.children:
             if nscope != set(child.scope):
                 # print(node.scope, child.scope, 'mismatch scope')
-                return False, "children of sum don't have same scope as parent"
+                return False, "children of (sum) node %s don't have the same scope as parent" % (node.id)
 
-    return all(map(is_complete, node.children))
+    for c in node.children:
+        complete, err = is_complete(c)
+        if not complete:
+            return complete, err
+
+    return True, None
 
 
 def is_valid(node):
-    a = is_consistent(node)
-    b = is_complete(node)
+    a, err = is_consistent(node)
+    if not a:
+        return a, err
 
-    return a and b
+    b, err = is_complete(node)
+    if not b:
+        return b, err
+
+    return True, None

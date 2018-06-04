@@ -155,8 +155,7 @@ sumnode: "(" [NUMBERS "*" node ("+" NUMBERS "*" node)*] ")"
     spn = tree_to_spn(tree, features)
 
     rebuild_scopes_bottom_up(spn)
-    assert is_valid(spn)
-    # spn = prune(spn)
-    assert is_valid(spn)
+    valid, err = is_valid(spn)
+    assert valid, err
     assign_ids(spn)
     return spn
