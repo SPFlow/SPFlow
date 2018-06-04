@@ -58,7 +58,8 @@ def update_parametric_parameters_mle(node, data):
 
     elif isinstance(node, Categorical):
         psum = 0
-        node.p[:] = 0
+        for i in range(len(node.p)):
+            node.p[i] = 0
         for i in range(node.k):
             node.p[i] = np.sum(data == i)
             psum += node.p[i]

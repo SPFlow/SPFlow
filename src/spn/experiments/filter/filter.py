@@ -9,36 +9,39 @@ from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.histogram.Inference import add_histogram_inference_support
 from spn.structure.leaves.piecewise.Inference import add_piecewise_inference_support
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
+import matplotlib.cm as cm
 
 
 def plot_density(spn, data):
     import matplotlib.pyplot as plt
     import numpy as np
 
-    x_max = data[:,0].max()
-    x_min = data[:,0].min()
-    y_max = data[:,1].max()
-    y_min = data[:,1].min()
+    x_max = data[:, 0].max()
+    x_min = data[:, 0].min()
+    y_max = data[:, 1].max()
+    y_min = data[:, 1].min()
 
     nbinsx = int(x_max - x_min)
     nbinsy = int(y_max - y_min)
     xi, yi = np.mgrid[x_min:x_max:nbinsx * 1j, y_min:y_max:nbinsy * 1j]
 
-
     spn_input = np.vstack([xi.flatten(), yi.flatten()]).T
 
-
-    marg_spn = marginalize(spn, set([0,1]))
+    marg_spn = marginalize(spn, set([0, 1]))
 
     zill = log_likelihood(marg_spn, spn_input)
 
+    z = zill.reshape(xi.shape)
+
     # Make the plot
-    plt.pcolormesh(xi, yi, zill.reshape(xi.shape))
+    # plt.pcolormesh(xi, yi, z)
+
+    plt.imshow(z + 10, extent=(x_min, x_max, y_min, y_max), cmap=cm.hot, norm=LogNorm())
     plt.show()
 
     # Change color palette
-    #plt.pcolormesh(xi, yi, zi.reshape(xi.shape), cmap=plt.cm.Greens_r)
-    #plt.show()
+    # plt.pcolormesh(xi, yi, zi.reshape(xi.shape), cmap=plt.cm.Greens_r)
+    # plt.show()
 
 
 if __name__ == '__main__':
@@ -54,11 +57,13 @@ if __name__ == '__main__':
 
     spn = Sum()
 
+
     def create_leaf(data, ds_context, scope):
         return create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=None)
 
+
     for label, count in zip(*np.unique(data[:, 2], return_counts=True)):
-        branch = learn_mspn(data[data[:, 2] == label,:], ds_context, min_instances_slice=10000, leaves=create_leaf)
+        branch = learn_mspn(data[data[:, 2] == label, :], ds_context, min_instances_slice=10000, leaves=create_leaf)
         spn.children.append(branch)
         spn.weights.append(count / data.shape[0])
 

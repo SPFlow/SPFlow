@@ -13,7 +13,7 @@ from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 LOG_ZERO = -300
 
 
-def piecewise_likelihood(node, data, dtype=np.float64, node_log_likelihood=None):
+def piecewise_likelihood(node, data, dtype=np.float64, **kwargs):
     probs = np.zeros((data.shape[0], 1), dtype=dtype)
 
     nd = data[:, node.scope[0]]

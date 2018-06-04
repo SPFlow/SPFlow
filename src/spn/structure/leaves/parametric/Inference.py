@@ -15,7 +15,7 @@ POS_EPS = 1e-7
 LOG_ZERO = -300
 
 
-def parametric_likelihood(node, data, dtype=np.float64, node_log_likelihood=None):
+def parametric_likelihood(node, data, dtype=np.float64, **kwargs):
     assert len(node.scope) == 1, node.scope
 
     log_probs = np.zeros((data.shape[0], 1), dtype=dtype)
