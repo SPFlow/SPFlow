@@ -6,10 +6,11 @@ Created on April 15, 2018
 
 import numpy as np
 
+from spn.algorithms.stats.Expectations import add_node_expectation
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 
 
-def piecewise_expectation(node, ds_context=None):
+def piecewise_expectation(node):
     exp = 0
     for i in range(len(node.x_range) - 1):
         y0 = node.y_range[i]
@@ -31,6 +32,4 @@ def piecewise_expectation(node, ds_context=None):
 
 
 def add_piecewise_expectation_support():
-    from spn.algorithms.stats.Expectations import add_node_expectation
-
     add_node_expectation(PiecewiseLinear, piecewise_expectation)

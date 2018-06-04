@@ -6,31 +6,31 @@ from spn.algorithms.Inference import add_node_likelihood, likelihood, log_likeli
 from spn.structure.Base import Leaf, get_nodes_by_type, assign_ids
 
 
-def identity_ll(node, data, dtype=np.float64, node_likelihood=None):
+def identity_ll(node, data, dtype=np.float64, **kwargs):
     probs = np.zeros((data.shape[0], 1), dtype=dtype)
     probs[:] = np.prod(data[:, node.scope], keepdims=True, axis=1)
-    return np.log(probs)
+    return probs
 
 
 # The multiplier is just for testing purposes, to check that individual nodes add different contributions
-def multiply_ll(node, data, dtype=np.float64, node_likelihood=None):
+def multiply_ll(node, data, dtype=np.float64, **kwargs):
     probs = np.zeros((data.shape[0], 1), dtype=dtype)
     probs[:] = np.prod(data[:, node.scope], keepdims=True, axis=1) * node.multiplier
-    return np.log(probs)
+    return probs
 
 
 # The multiplier is just for testing purposes, to check that individual nodes add different contributions
-def sum_and_multiplier_ll(node, data, dtype=np.float64, node_likelihood=None):
+def sum_and_multiplier_ll(node, data, dtype=np.float64, **kwargs):
     probs = np.zeros((data.shape[0], 1), dtype=dtype)
     probs[:] = np.sum(data[:, node.scope], keepdims=True, axis=1) * node.multiplier
-    return np.log(probs)
+    return probs
 
 
 # The sum is just for testing purposes, to check that individual nodes add different contributions
-def sums_ll(node, data, dtype=np.float64, node_likelihood=None):
+def sums_ll(node, data, dtype=np.float64, **kwargs):
     probs = np.zeros((data.shape[0], 1), dtype=dtype)
     probs[:] = np.sum(data[:, node.scope], keepdims=True, axis=1)
-    return np.log(probs)
+    return probs
 
 
 class TestInference(unittest.TestCase):
@@ -237,7 +237,7 @@ class TestInference(unittest.TestCase):
         lls = np.zeros((data.shape[0], max_id + 1))
         likelihood(spn, data, lls_matrix=lls)
         llls = np.zeros((data.shape[0], max_id + 1))
-        log_likelihood(spn, data, llls_matrix=llls)
+        log_likelihood(spn, data, lls_matrix=llls)
 
         self.assertTrue(np.alltrue(np.isclose(lls, np.exp(llls))))
 

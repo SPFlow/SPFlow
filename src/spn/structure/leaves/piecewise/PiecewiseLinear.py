@@ -73,7 +73,9 @@ def create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=
     bins = hist.breaks
     repr_points = hist.bin_repr_points
 
-    uniform_hist = create_histogram_leaf(np.zeros_like(data) / 0, ds_context, scope, alpha=False)
+    uniform_data = np.zeros_like(data)
+    uniform_data[:] = np.nan
+    uniform_hist = create_histogram_leaf(uniform_data, ds_context, scope, alpha=False)
 
     if meta_type == MetaType.REAL:
         EPS = 1e-8

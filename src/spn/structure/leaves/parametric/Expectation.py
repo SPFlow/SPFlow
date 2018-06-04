@@ -8,7 +8,7 @@ from spn.structure.leaves.parametric.Parametric import *
 import numpy as np
 
 
-def parametric_expectation(node, ds_context):
+def parametric_expectation(node):
     if isinstance(node, Gaussian) or isinstance(node, Poisson):
         return node.mean
 

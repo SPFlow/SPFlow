@@ -15,7 +15,7 @@ POS_EPS = 1e-7
 LOG_ZERO = -300
 
 
-def parametric_log_likelihood(node, data, dtype=np.float64, node_log_likelihood=None):
+def parametric_likelihood(node, data, dtype=np.float64, node_log_likelihood=None):
     assert len(node.scope) == 1, node.scope
 
     log_probs = np.zeros((data.shape[0], 1), dtype=dtype)
@@ -60,7 +60,7 @@ def parametric_log_likelihood(node, data, dtype=np.float64, node_log_likelihood=
     else:
         raise Exception("Unknown parametric " + str(type(node)))
 
-    return log_probs
+    return np.exp(log_probs)
 
 
 
@@ -89,17 +89,17 @@ def parametric_mpe_log_likelihood(node, data, log_space=True, dtype=np.float64, 
 
 
 def add_parametric_inference_support():
-    add_node_likelihood(Gaussian, parametric_log_likelihood)
-    add_node_likelihood(Gamma, parametric_log_likelihood)
-    add_node_likelihood(LogNormal, parametric_log_likelihood)
-    add_node_likelihood(Poisson, parametric_log_likelihood)
-    add_node_likelihood(Bernoulli, parametric_log_likelihood)
-    add_node_likelihood(Categorical, parametric_log_likelihood)
-    add_node_likelihood(NegativeBinomial, parametric_log_likelihood)
-    add_node_likelihood(Hypergeometric, parametric_log_likelihood)
-    add_node_likelihood(Geometric, parametric_log_likelihood)
-    add_node_likelihood(Exponential, parametric_log_likelihood)
-    add_node_likelihood(Uniform, parametric_log_likelihood)
+    add_node_likelihood(Gaussian, parametric_likelihood)
+    add_node_likelihood(Gamma, parametric_likelihood)
+    add_node_likelihood(LogNormal, parametric_likelihood)
+    add_node_likelihood(Poisson, parametric_likelihood)
+    add_node_likelihood(Bernoulli, parametric_likelihood)
+    add_node_likelihood(Categorical, parametric_likelihood)
+    add_node_likelihood(NegativeBinomial, parametric_likelihood)
+    add_node_likelihood(Hypergeometric, parametric_likelihood)
+    add_node_likelihood(Geometric, parametric_likelihood)
+    add_node_likelihood(Exponential, parametric_likelihood)
+    add_node_likelihood(Uniform, parametric_likelihood)
 
     add_node_mpe_likelihood(Gaussian, parametric_mpe_log_likelihood)
     add_node_mpe_likelihood(Gamma, parametric_mpe_log_likelihood)

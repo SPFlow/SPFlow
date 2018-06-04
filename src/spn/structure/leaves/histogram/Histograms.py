@@ -27,8 +27,9 @@ def init_rpy():
 
 
 class Histogram(Leaf):
-    def __init__(self, breaks, densities, bin_repr_points, scope=None):
+    def __init__(self, breaks, densities, bin_repr_points, scope=None, meta_type=MetaType.REAL):
         Leaf.__init__(self, scope=scope)
+        self.meta_type = meta_type
         self.breaks = breaks
         self.densities = densities
         self.bin_repr_points = bin_repr_points
@@ -81,7 +82,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0):
 
     assert (len(densities) == len(breaks) - 1)
 
-    return Histogram(breaks.tolist(), densities.tolist(), repr_points.tolist(), scope=idx)
+    return Histogram(breaks.tolist(), densities.tolist(), repr_points.tolist(), scope=idx, meta_type=meta_type)
 
 
 def getHistogramVals(data):

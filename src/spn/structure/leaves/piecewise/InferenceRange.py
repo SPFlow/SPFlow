@@ -15,7 +15,7 @@ LOG_ZERO = -300
 
 
 
-def piecewise_log_likelihood_range(node, ranges, dtype=np.float64, node_log_likelihood=None):
+def piecewise_likelihood_range(node, ranges, dtype=np.float64, node_log_likelihood=None):
     '''
     Returns the probability for the given ranges.
     
@@ -55,7 +55,7 @@ def piecewise_log_likelihood_range(node, ranges, dtype=np.float64, node_log_like
         else:
             log_probs[i] = np.log(p_sum)
         
-    return log_probs
+    return np.exp(log_probs)
 
     
     
@@ -80,4 +80,4 @@ def _compute_probability_for_range(node, interval):
 
 
 def add_piecewise_inference_range_support():
-    add_node_likelihood(PiecewiseLinear, piecewise_log_likelihood_range)
+    add_node_likelihood(PiecewiseLinear, piecewise_likelihood_range)
