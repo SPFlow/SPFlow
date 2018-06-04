@@ -204,8 +204,10 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
     node = root.children[0]
 
-    assert is_valid(node), "invalid before pruning"
+    valid, err = is_valid(node)
+    assert valid, "invalid before pruning: " + err
     node = prune(node)
-    assert is_valid(node), "invalid after pruning"
+    valid, err = is_valid(node)
+    assert valid, "invalid after pruning: " + err
     assign_ids(node)
     return node
