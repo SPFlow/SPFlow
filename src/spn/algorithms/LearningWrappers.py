@@ -99,6 +99,6 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
     if memory:
         learn = memory.cache(learn)
 
-    return learn(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe)
+    return learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
 
