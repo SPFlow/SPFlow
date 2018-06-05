@@ -18,7 +18,7 @@ LOG_ZERO = -300
 def parametric_likelihood(node, data, dtype=np.float64, **kwargs):
     assert len(node.scope) == 1, node.scope
 
-    log_probs = np.zeros((data.shape[0], 1), dtype=dtype)
+    probs = np.zeros((data.shape[0], 1), dtype=dtype)
 
     if data.shape[1] > 1:
         data = data[:, node.scope]
@@ -31,17 +31,17 @@ def parametric_likelihood(node, data, dtype=np.float64, **kwargs):
 
     if isinstance(node, Gaussian) or isinstance(node, LogNormal) or isinstance(node, Exponential):
         scipy_obj, params = get_scipy_obj_params(node)
-        log_probs[~marg_ids] = scipy_obj.logpdf(data[~marg_ids], **params)
+        probs[~marg_ids] = scipy_obj.pdf(data[~marg_ids], **params)
 
     elif isinstance(node, Gamma):
         scipy_obj, params = get_scipy_obj_params(node)
         data_m = data[~marg_ids]
         data_m[data_m == 0] += POS_EPS
-        log_probs[~marg_ids] = scipy_obj.logpdf(data_m, **params)
+        probs[~marg_ids] = scipy_obj.pdf(data_m, **params)
 
     elif isinstance(node, Poisson) or isinstance(node, Bernoulli) or isinstance(node, Geometric):
         scipy_obj, params = get_scipy_obj_params(node)
-        log_probs[~marg_ids] = scipy_obj.logpmf(data[~marg_ids], **params)
+        probs[~marg_ids] = scipy_obj.pmf(data[~marg_ids], **params)
 
     elif isinstance(node, NegativeBinomial):
         raise ValueError('Mismatch with scipy')
@@ -53,14 +53,14 @@ def parametric_likelihood(node, data, dtype=np.float64, **kwargs):
         cat_data = data.astype(np.int64)
         assert np.all(np.equal(np.mod(cat_data[~marg_ids], 1), 0))
         out_domain_ids = cat_data >= node.k
-        log_probs[~marg_ids & out_domain_ids] = LOG_ZERO
-        log_probs[~marg_ids & ~out_domain_ids] = np.array(np.log(node.p))[cat_data[~marg_ids & ~out_domain_ids]]
+        probs[~marg_ids & out_domain_ids] = 0
+        probs[~marg_ids & ~out_domain_ids] = np.array(node.p)[cat_data[~marg_ids & ~out_domain_ids]]
     elif isinstance(node, Uniform):
-        log_probs[~marg_ids] = np.log(node.density)
+        probs[~marg_ids] = node.density
     else:
         raise Exception("Unknown parametric " + str(type(node)))
 
-    return np.exp(log_probs)
+    return probs
 
 
 

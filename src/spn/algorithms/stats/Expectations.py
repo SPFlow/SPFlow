@@ -11,8 +11,18 @@ def add_node_expectation(node_type, lambda_func):
 
 
 def Expectation(spn, feature_scope, evidence_scope, evidence, node_expectation=_node_expectation):
-    if evidence is None:
-        evidence = np.zeros((1, 1)).reshape(1,1)
+
+    """Compute the Expectation:
+
+        E[X_feature_scope | X_evidence_scope] given the spn and the evidence data
+
+    Keyword arguments:
+    spn -- the spn to compute the probabilities from
+    feature_scope -- set() of integers, the scope of the features to get the expectation from
+    evidence_scope -- set() of integers, the scope of the evidence features
+    evidence -- numpy 2d array of the evidence data
+    """
+
 
     if evidence_scope is None:
         evidence_scope = set()
@@ -34,6 +44,13 @@ def Expectation(spn, feature_scope, evidence_scope, evidence, node_expectation=_
     node_expectations = {type(leaf): leaf_expectation for leaf in get_nodes_by_type(marg_spn, Leaf)}
     node_expectations.update({Sum: sum_likelihood, Product: prod_likelihood})
 
+    if evidence is None:
+        fake_evidence = np.zeros((1, 1)).reshape(1,1)
+        expectation = likelihood(marg_spn, fake_evidence, node_likelihood=node_expectations)
+        return expectation
+
+    #if we have evidence, we want to compute the conditional expectation
     expectation = likelihood(marg_spn, evidence, node_likelihood=node_expectations)
+    expectation = expectation / likelihood(marginalize(marg_spn, keep=evidence_scope), evidence)
 
     return expectation

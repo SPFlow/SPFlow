@@ -298,9 +298,11 @@ def create_parametric_leaf(data, ds_context, scope):
     idx = scope[0]
     parametric_type = ds_context.parametric_type[idx]
 
+    assert parametric_type is not None
+
     node = parametric_type()
     if parametric_type == Categorical:
-        k = np.max(ds_context.domains[idx]) + 1
+        k = int(np.max(ds_context.domains[idx]) + 1)
         node = Categorical(p=(np.ones(k) / k).tolist())
 
     node.scope.append(idx)
