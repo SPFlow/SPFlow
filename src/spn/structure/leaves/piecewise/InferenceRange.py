@@ -15,7 +15,7 @@ LOG_ZERO = -300
 
 
 
-def piecewise_likelihood_range(node, ranges, dtype=np.float64, node_log_likelihood=None):
+def piecewise_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
     '''
     Returns the probability for the given ranges.
     
