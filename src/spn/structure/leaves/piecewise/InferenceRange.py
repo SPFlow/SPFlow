@@ -51,6 +51,9 @@ def piecewise_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
     
 def _compute_probability_for_range(node, interval):
     
+    if len(interval) == 1:
+        return np.interp(x=interval[0], xp=node.x_range, fp=node.y_range)
+    
     lower = interval[0]
     higher = interval[1]
     
