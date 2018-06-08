@@ -10,12 +10,7 @@ from spn.algorithms.Inference import add_node_likelihood
 from spn.structure.leaves.parametric.Parametric import Categorical
 
 
-
-LOG_ZERO = -300
-
-
-
-def categorical_likelihood_range(node, ranges, dtype=np.float64, node_log_likelihood=None):
+def categorical_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
     '''
     Returns the probability for the given ranges.
     
@@ -31,7 +26,7 @@ def categorical_likelihood_range(node, ranges, dtype=np.float64, node_log_likeli
     assert len(node.scope) == 1, node.scope
     
     #Initialize the return variable log_probs with zeros
-    log_probs = np.zeros((ranges.shape[0], 1), dtype=dtype)
+    probs = np.ones((ranges.shape[0], 1), dtype=dtype)
     
     #Only select the ranges for the specific feature
     ranges = ranges[:, node.scope[0]]
@@ -45,17 +40,12 @@ def categorical_likelihood_range(node, ranges, dtype=np.float64, node_log_likeli
         
         #Skip if no values for the range are provided
         if rang.is_impossible():
-            log_probs[i] = LOG_ZERO
+            probs[i] = 0
         
         #Compute the sum of the probability of all possible values
-        p_sum = sum([node.p[possible_val] for possible_val in rang.get_ranges()])
+        probs[i] = sum([node.p[possible_val] for possible_val in rang.get_ranges()])
             
-        if p_sum == 0:
-            log_probs[i] = LOG_ZERO
-        else:
-            log_probs[i] = np.log(p_sum)
-            
-    return np.exp(log_probs)
+    return probs
     
 
 
