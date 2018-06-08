@@ -10,11 +10,6 @@ from spn.algorithms.Inference import add_node_likelihood
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 
 
-
-LOG_ZERO = -300
-
-
-
 def piecewise_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
     '''
     Returns the probability for the given ranges.
@@ -31,7 +26,7 @@ def piecewise_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
     assert len(node.scope) == 1, node.scope
     
     #Initialize the return variable log_probs with zeros
-    log_probs = np.zeros((ranges.shape[0], 1), dtype=dtype)
+    probs = np.ones((ranges.shape[0], 1), dtype=dtype)
     
     #Only select the ranges for the specific feature
     ranges = ranges[:, node.scope[0]]
@@ -45,17 +40,12 @@ def piecewise_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
         
         #Skip if no values for the range are provided
         if rang.is_impossible():
-            log_probs[i] = LOG_ZERO
+            probs[i] = 0
         
         #Compute the sum of the probability of all possible values
-        p_sum = sum([_compute_probability_for_range(node, interval) for interval in rang.get_ranges()])
-            
-        if p_sum == 0:
-            log_probs[i] = LOG_ZERO
-        else:
-            log_probs[i] = np.log(p_sum)
+        probs[i] = sum([_compute_probability_for_range(node, interval) for interval in rang.get_ranges()])
         
-    return np.exp(log_probs)
+    return probs
 
     
     
