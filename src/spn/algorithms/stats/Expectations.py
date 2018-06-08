@@ -27,6 +27,9 @@ def Expectation(spn, feature_scope, evidence_scope, evidence, node_expectation=_
     if evidence_scope is None:
         evidence_scope = set()
 
+    assert not (len(evidence_scope) > 0 and evidence is None)
+
+
     marg_spn = marginalize(spn, keep=feature_scope | evidence_scope)
 
     def leaf_expectation(node, data, dtype=np.float64, **kwargs):
@@ -45,7 +48,8 @@ def Expectation(spn, feature_scope, evidence_scope, evidence, node_expectation=_
     node_expectations.update({Sum: sum_likelihood, Product: prod_likelihood})
 
     if evidence is None:
-        fake_evidence = np.zeros((1, 1)).reshape(1,1)
+        #fake_evidence is not used
+        fake_evidence = np.zeros((1, len(spn.scope))).reshape(1,-1)
         expectation = likelihood(marg_spn, fake_evidence, node_likelihood=node_expectations)
         return expectation
 

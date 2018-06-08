@@ -14,7 +14,7 @@ LOG_ZERO = -300
 
 
 def piecewise_likelihood(node, data, dtype=np.float64, **kwargs):
-    probs = np.zeros((data.shape[0], 1), dtype=dtype)
+    probs = np.ones((data.shape[0], 1), dtype=dtype)
 
     nd = data[:, node.scope[0]]
     marg_ids = np.isnan(nd)
@@ -43,7 +43,7 @@ def _compute_probability_for_range(node, interval):
 
 
 def piecewise_complete_cases_likelihood(node, obs, dtype=np.float64):
-    probs = np.zeros((obs.shape[0], 1), dtype=dtype) + EPSILON
+    probs = np.ones((obs.shape[0], 1), dtype=dtype) + EPSILON
     ivalues = np.interp(x=obs, xp=node.x_range, fp=node.y_range)
     ividx = ivalues > 0
     probs[ividx, 0] = ivalues[ividx]
