@@ -5,15 +5,10 @@ Created on May 23, 2018
 '''
 
 import numpy as np
-from scipy.special import logsumexp
 
 
 from spn.structure.Base import Product, Sum, Leaf, get_nodes_by_type
-from spn.algorithms.Inference import _node_log_likelihood
-
-
-
-LOG_ZERO = -300
+from spn.algorithms.Inference import _node_likelihood
 
 
 
@@ -42,67 +37,47 @@ def reset_node_counters(node):
     return max_id
 
 
-def set_weights_for_evidence(node, ranges, dtype=np.float64, context=None, node_log_likelihood=_node_log_likelihood):
+def set_weights_for_evidence(node, ranges, dtype=np.float64, node_likelihood=_node_likelihood):
     
     if isinstance(node, Product):
-        '''
-        Just multiply the probabilities and return the result
-        '''
-        prob = 0.
+
+        prob = 1.
         for c in node.children:
-            
-            tmp = set_weights_for_evidence(c, ranges, context=context, node_log_likelihood=node_log_likelihood)
-            
-            if tmp is None:
-                return None
-            
-            prob += tmp
+            prob *= set_weights_for_evidence(c, ranges, node_likelihood=node_likelihood)
         
         return prob
 
     elif isinstance(node, Sum):
-        evidence_log_weights = np.zeros(len(node.children))
         evidence_weights = np.zeros(len(node.children))
-        valid_child = False
-        for i, c in enumerate(node.children):
-            prob = set_weights_for_evidence(c, ranges, context=context, node_log_likelihood=node_log_likelihood)
-            if prob is None:
-                evidence_weights[i] = 0
-            else:
-                valid_child = True
-                evidence_weights[i] = np.exp(prob) * node.weights[i]
         
-        if not valid_child:
-            return None
+        for i, c in enumerate(node.children):
+            prob = set_weights_for_evidence(c, ranges, node_likelihood=node_likelihood)
+            evidence_weights[i] = prob * node.weights[i]
+        
+        if np.sum(evidence_weights) == 0:
+            return 0;
         
         node.evidence_weights = evidence_weights / np.sum(evidence_weights)
-        
-        return logsumexp(evidence_log_weights)
+        return np.sum(evidence_weights)
     
     elif isinstance(node, Leaf):
         t_node = type(node)
-        if t_node in node_log_likelihood:
+        if t_node in node_likelihood:
             ranges = np.array([ranges])
-            log_prob = node_log_likelihood[t_node](node, ranges, dtype=dtype, node_log_likelihood=node_log_likelihood)
-            
-            if log_prob <= LOG_ZERO:
-                return None
-            else:
-                return log_prob
-            
+            return node_likelihood[t_node](node, ranges, dtype=dtype, node_likelihood=node_likelihood)
         else:
             raise Exception('No log-likelihood method specified for node type: ' + str(type(node)))
 
 
-def sample_instances(node, D, n_samples, rand_gen, ranges=None, dtype=np.float64, node_sample=None, node_log_likelihood=_node_log_likelihood):
+def sample_instances(node, D, n_samples, rand_gen, ranges=None, dtype=np.float64, node_sample=None, node_likelihood=_node_likelihood):
 
     instance_ids = np.arange(n_samples)
     X = np.zeros((n_samples, D), dtype=dtype)
 
     _max_id = reset_node_counters(node)
-    result = set_weights_for_evidence(node, ranges, node_log_likelihood=node_log_likelihood)
+    result = set_weights_for_evidence(node, ranges, node_likelihood=node_likelihood)
     
-    if result is None:
+    if result == 0:
         return np.zeros((0, D), dtype=dtype)
     
     def _sample_instances(node, row_ids):
@@ -151,11 +126,11 @@ if __name__ == '__main__':
     
     from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
     from spn.structure.leaves.piecewise.SamplingRange import sample_piecewise_node
-    from spn.structure.leaves.piecewise.InferenceRange import piecewise_log_likelihood_range
+    from spn.structure.leaves.piecewise.InferenceRange import piecewise_likelihood_range
     
     from spn.structure.leaves.parametric.Parametric import Categorical
     from spn.structure.leaves.parametric.SamplingRange import sample_categorical_node
-    from spn.structure.leaves.parametric.InferenceRange import categorical_log_likelihood_range
+    from spn.structure.leaves.parametric.InferenceRange import categorical_likelihood_range
     
     from spn.structure.Base import Context
     from spn.structure.StatisticalTypes import MetaType
@@ -190,21 +165,21 @@ if __name__ == '__main__':
     
        
     #Set context
-    meta_types = [MetaType.DISCRETE, MetaType.REAL]
-    domains = [[0,1],[0.,4.]]
-    ds_context = Context(meta_types=meta_types, domains=domains)
+    #meta_types = [MetaType.DISCRETE, MetaType.REAL]
+    #domains = [[0,1],[0.,4.]]
+    #ds_context = Context(meta_types=meta_types, domains=domains)
     
     
-    inference_support_ranges = {PiecewiseLinear : piecewise_log_likelihood_range, 
-                                Categorical     : categorical_log_likelihood_range}
+    inference_support_ranges = {PiecewiseLinear : piecewise_likelihood_range, 
+                                Categorical     : categorical_likelihood_range}
     
     node_sample = {Categorical : sample_categorical_node,
                    PiecewiseLinear : sample_piecewise_node}
     
     ranges = [NominalRange([0]),None]
-    samples = SamplingRange.sample_instances(root_node, 2, 30, rand_gen, ranges=ranges, context=ds_context, node_sample=node_sample, node_log_likelihood=inference_support_ranges)#, return_Zs, return_partition, dtype)
+    samples = SamplingRange.sample_instances(root_node, 2, 30, rand_gen, ranges=ranges, node_sample=node_sample, node_likelihood=inference_support_ranges)#, return_Zs, return_partition, dtype)
     print("Samples: " + str(samples))
     
     ranges = [NominalRange([0]),NumericRange([[3., 3.1], [3.5, 4.]])]
-    samples = SamplingRange.sample_instances(root_node, 2, 30, rand_gen, ranges=ranges, context=ds_context, node_sample=node_sample, node_log_likelihood=inference_support_ranges)#, return_Zs, return_partition, dtype)
+    samples = SamplingRange.sample_instances(root_node, 2, 30, rand_gen, ranges=ranges, node_sample=node_sample, node_likelihood=inference_support_ranges)#, return_Zs, return_partition, dtype)
     print("Samples: " + str(samples))
