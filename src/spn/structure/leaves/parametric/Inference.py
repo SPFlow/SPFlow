@@ -18,7 +18,7 @@ LOG_ZERO = -300
 def parametric_likelihood(node, data, dtype=np.float64, **kwargs):
     assert len(node.scope) == 1, node.scope
 
-    probs = np.zeros((data.shape[0], 1), dtype=dtype)
+    probs = np.ones((data.shape[0], 1), dtype=dtype)
 
     if data.shape[1] > 1:
         data = data[:, node.scope]

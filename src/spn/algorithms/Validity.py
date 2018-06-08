@@ -3,7 +3,7 @@ Created on March 20, 2018
 
 @author: Alejandro Molina
 '''
-from spn.structure.Base import Sum, Leaf, Product
+from spn.structure.Base import Sum, Product, get_nodes_by_type
 
 
 def is_consistent(node):
@@ -13,31 +13,21 @@ def is_consistent(node):
 
     assert node is not None
 
-    if len(node.scope) == 0:
-        # print(node.scope, '0 scope const')
-        return False, "node %s has no scope" % (node.id)
+    allchildscope = set()
+    for prod_node in get_nodes_by_type(node, Product):
+        nscope = set(prod_node.scope)
 
-    if isinstance(node, Leaf):
-        return True, None
+        if len(prod_node.children) == 0:
+            return False, "Product node %s has no children" % (prod_node.id)
 
-    if isinstance(node, Product):
-        nscope = set(node.scope)
-
-        allchildscope = set()
+        allchildscope.clear()
         sum_features = 0
-        for child in node.children:
+        for child in prod_node.children:
             sum_features += len(child.scope)
-            # print('cs ', sum_features, child.scope, child.__class__.__name__, node.scope)
-            allchildscope = allchildscope | set(child.scope)
+            allchildscope.update(child.scope)
 
-        if allchildscope != set(nscope) or sum_features != len(allchildscope):
-            # print(allchildscope, set(nscope), sum_features, len(allchildscope), 'cons')
-            return False, "children of (prod) node %s don' have exclusive scope" % (node.id)
-
-    for c in node.children:
-        consistent, err = is_consistent(c)
-        if not consistent:
-            return consistent, err
+        if allchildscope != nscope or sum_features != len(allchildscope):
+            return False, "children of (prod) node %s don' have exclusive scope" % (prod_node.id)
 
     return True, None
 
@@ -49,30 +39,24 @@ def is_complete(node):
 
     assert node is not None
 
-    if len(node.scope) == 0:
-        # print(node.scope, '0 scope')
-        return False, "node %s has no scope" % (node.id)
+    for sum_node in get_nodes_by_type(node, Sum):
+        nscope = set(sum_node.scope)
 
-    if isinstance(node, Leaf):
-        return True, None
+        if len(sum_node.children) == 0:
+            return False, "Sum node %s has no children" % (sum_node.id)
 
-    if isinstance(node, Sum):
-        nscope = set(node.scope)
-
-        for child in node.children:
+        for child in sum_node.children:
             if nscope != set(child.scope):
-                # print(node.scope, child.scope, 'mismatch scope')
-                return False, "children of (sum) node %s don't have the same scope as parent" % (node.id)
-
-    for c in node.children:
-        complete, err = is_complete(c)
-        if not complete:
-            return complete, err
+                return False, "children of (sum) node %s don't have the same scope as parent" % (sum_node.id)
 
     return True, None
 
 
 def is_valid(node):
+    for n in get_nodes_by_type(node):
+        if len(n.scope) == 0:
+            return False, "node %s has no scope" % (n.id)
+
     a, err = is_consistent(node)
     if not a:
         return a, err

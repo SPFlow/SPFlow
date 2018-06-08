@@ -118,10 +118,18 @@ def get_number_of_edges(node):
 
 
 def get_number_of_layers(node):
-    if isinstance(node, Leaf):
-        return 1
+    node_depth = {}
 
-    return max(map(get_number_of_layers, node.children)) + 1
+    def count_layers(node):
+        ndepth = node_depth.setdefault(node, 1)
+
+        if hasattr(node, "children"):
+            for c in node.children:
+                node_depth.setdefault(c, ndepth + 1)
+
+    bfs(node, count_layers)
+
+    return max(node_depth.values())
 
 
 def rebuild_scopes_bottom_up(node):

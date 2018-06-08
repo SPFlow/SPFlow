@@ -37,7 +37,7 @@ def histogram_ll(breaks, densities, data):
 
 
 def histogram_likelihood(node, data, dtype=np.float64, **kwargs):
-    probs = np.zeros((data.shape[0], 1), dtype=dtype)
+    probs = np.ones((data.shape[0], 1), dtype=dtype)
 
     nd = data[:, node.scope[0]]
     marg_ids = np.isnan(nd)
