@@ -29,6 +29,8 @@ def Expectation(spn, feature_scope, evidence_scope, evidence, node_expectation=_
 
     assert not (len(evidence_scope) > 0 and evidence is None)
 
+    assert len(feature_scope.intersection(evidence_scope)) == 0
+
 
     marg_spn = marginalize(spn, keep=feature_scope | evidence_scope)
 
