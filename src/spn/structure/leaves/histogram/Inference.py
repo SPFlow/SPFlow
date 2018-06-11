@@ -9,11 +9,11 @@ import numpy as np
 from spn.algorithms.Inference import EPSILON, add_node_likelihood, add_node_mpe_likelihood
 from spn.structure.leaves.histogram.Histograms import Histogram
 from numba import jit
+import bisect
 
-
-# @jit("float64[:](float64[:], float64[:], float64[:,:])", nopython=True)
+#@jit("float64[:](float64[:], float64[:], float64[:,:])", nopython=True)
 def histogram_ll(breaks, densities, data):
-    import bisect
+
 
     probs = np.zeros((data.shape[0], 1))
 
@@ -23,13 +23,13 @@ def histogram_ll(breaks, densities, data):
 
         probs[i] = densities[bisect.bisect(breaks, x) - 1]
 
-        #j = 0
-        #for b in breaks:
+        # j = 0
+        # for b in breaks:
         #    if b > x:
         #        break
         #    j += 1
-
-        #probs[i] = densities[j - 1]
+        #
+        # probs[i] = densities[j - 1]
 
     probs[probs < EPSILON] = EPSILON
 

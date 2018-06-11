@@ -22,8 +22,11 @@ def update_parametric_parameters_mle(node, data):
         node.mean = np.mean(data)
         node.stdev = np.std(data)
 
+        if np.isclose(node.stdev, 0):
+            node.stdev = 0.00000001
+
     elif isinstance(node, Gamma):
-        #default
+        # default
         node.alpha = 1.1
         node.beta = 1.0
         if np.any(data <= 0):
