@@ -5,7 +5,7 @@ Created on June 10, 2018
 '''
 from spn.algorithms.Statistics import get_structure_stats
 from spn.algorithms.TransformStructure import SPN_Reshape
-from spn.algorithms.Validity import is_valid
+from spn.algorithms.Validity import is_valid, has_valid_ids
 from spn.experiments.RandomSPNs.LearnRGSPN import Make_SPN_from_RegionGraph
 from spn.experiments.RandomSPNs.region_graph import RegionGraph
 import numpy as np
@@ -17,7 +17,7 @@ from spn.structure.leaves.parametric.Inference import add_parametric_inference_s
 
 def get_execution_layers(spn):
     all_nodes = set(get_nodes_by_type(spn, ntype=(Sum, Product)))
-    filter_type = Product
+    next_filter_type = Product
     layers = [get_nodes_by_type(spn, Leaf)]
     layer_types = [Leaf]
     seen_nodes = set(layers[0])
@@ -25,26 +25,49 @@ def get_execution_layers(spn):
         filtered_nodes = []
         new_all_nodes = set()
 
+        filter_type = next_filter_type
         for n in all_nodes:
             if isinstance(n, filter_type) and set(n.children).issubset(seen_nodes):
                 filtered_nodes.append(n)
             else:
                 new_all_nodes.add(n)
 
-        layer_types.append(filter_type)
-
         if filter_type == Product:
-            filter_type = Sum
+            next_filter_type = Sum
         else:
-            filter_type = Product
+            next_filter_type = Product
+
+        if len(filtered_nodes) == 0:
+            continue
 
         assert all_nodes == new_all_nodes | set(filtered_nodes)
 
+        layer_types.append(filter_type)
+        all_nodes = new_all_nodes
         layers.append(filtered_nodes)
         seen_nodes.update(filtered_nodes)
-        all_nodes = new_all_nodes
+
 
     return layers, layer_types
+
+
+
+def get_parameters(spn):
+    val, err = has_valid_ids(spn)
+    assert val, err
+
+    all_nodes = get_nodes_by_type(spn)
+
+    params = np.zeros((4, len(all_nodes)))
+
+    for n in all_nodes:
+        if isinstance(n, Sum):
+            assert len(n.weights) == 2, "sum node with more than 2 children"
+            params[0, n.id] = n.weights[0]
+            params[1, n.id] = n.weights[1]
+    return None
+
+
 
 if __name__ == '__main__':
     rg = RegionGraph(range(28 * 28))
@@ -62,7 +85,11 @@ if __name__ == '__main__':
     tmp_root = Sum()
     tmp_root.children.extend(spns)
 
-    tmp_root = SPN_Reshape(tmp_root, 10)
+    get_parameters(tmp_root)
+
+    0/0
+
+    tmp_root = SPN_Reshape(tmp_root, 2)
 
     layers, layer_types = get_execution_layers(tmp_root)
 
@@ -79,6 +106,9 @@ if __name__ == '__main__':
     params += 2 * len(get_nodes_by_type(tmp_root, Leaf))
 
     print("params", params)
+
+
+
     0/0
 
 

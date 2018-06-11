@@ -66,3 +66,21 @@ def is_valid(node):
         return b, err
 
     return True, None
+
+
+def has_valid_ids(node):
+    ids = set()
+    all_nodes = get_nodes_by_type(node)
+    for n in all_nodes:
+        ids.add(n.id)
+
+    if len(ids) != len(all_nodes):
+        return False, "Nodes are missing ids or there are repeated ids"
+
+    if min(ids) != 0:
+        return False, "Node ids not starting at 0"
+
+    if max(ids) != len(ids) - 1:
+        return False, "Node ids not consecutive"
+
+    return True, None
