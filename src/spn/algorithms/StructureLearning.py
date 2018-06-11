@@ -15,7 +15,7 @@ except:
 
 import numpy as np
 
-from spn.algorithms.Pruning import prune
+from spn.algorithms.Pruning import Prune
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, assign_ids
 
@@ -206,7 +206,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
     valid, err = is_valid(node)
     assert valid, "invalid before pruning: " + err
-    node = prune(node)
+    node = Prune(node)
     valid, err = is_valid(node)
     assert valid, "invalid after pruning: " + err
     assign_ids(node)
