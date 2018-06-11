@@ -3,7 +3,8 @@ Created on March 27, 2018
 
 @author: Alejandro Molina
 '''
-from spn.structure.Base import Leaf, Sum
+from spn.algorithms.Validity import is_valid
+from spn.structure.Base import Leaf, Sum, Product, assign_ids, get_nodes_by_type
 
 
 def Prune(node):
@@ -54,3 +55,30 @@ def Prune(node):
         newNode.weights.extend(node.weights)
 
     return newNode
+
+
+def SPN_Reshape(node, max_children=2):
+    nodes = get_nodes_by_type(node, Product)
+
+    while len(nodes) > 0:
+        n = nodes.pop()
+
+        if len(n.children) <= max_children:
+            continue
+
+        # node has more than 2 nodes, create binary hierarchy
+        new_children = []
+        for children in [n.children[i:i + max_children] for i in range(0, len(n.children), max_children)]:
+            if len(children) == max_children:
+                newChild = Product()
+                newChild.children.extend(children)
+                new_children.append(newChild)
+            else:
+                new_children.extend(children)
+
+        n.children = new_children
+        nodes.append(n)
+
+    assign_ids(node)
+    assert is_valid(node)
+    return node

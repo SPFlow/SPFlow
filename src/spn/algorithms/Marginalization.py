@@ -5,7 +5,7 @@ Created on March 21, 2018
 '''
 from copy import deepcopy
 
-from spn.algorithms.Pruning import Prune
+from spn.algorithms.TransformStructure import Prune
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Sum, Leaf, assign_ids
 

@@ -32,16 +32,16 @@ class PiecewiseLinear(Leaf):
         max_area = np.argmax(areas)
         max_x = np.argmax([self.y_range[max_area], self.y_range[max_area + 1]]) + max_area
         return self.x_range[max_x]
-    
+
     @property
     def mean(self):
         # Use the histogram values to compute the mean
-        y_range_norm = self.y_range/np.sum(self.y_range)
-        
+        y_range_norm = self.y_range / np.sum(self.y_range)
+
         mean = 0.
         for k, x in enumerate(self.x_range):
             mean += x * y_range_norm[k]
-        
+
         return mean
 
 
@@ -72,10 +72,6 @@ def create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=
     densities = hist.densities
     bins = hist.breaks
     repr_points = hist.bin_repr_points
-
-    uniform_data = np.zeros_like(data)
-    uniform_data[:] = np.nan
-    uniform_hist = create_histogram_leaf(uniform_data, ds_context, scope, alpha=False)
 
     if meta_type == MetaType.REAL:
         EPS = 1e-8
@@ -113,8 +109,10 @@ def create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=
 
     node = PiecewiseLinear(x.tolist(), y.tolist(), repr_points, scope=scope)
 
-
     if prior_weight is None:
         return node
 
+    uniform_data = np.zeros_like(data)
+    uniform_data[:] = np.nan
+    uniform_hist = create_histogram_leaf(uniform_data, ds_context, scope, alpha=False)
     return prior_weight * uniform_hist + (1 - prior_weight) * node
