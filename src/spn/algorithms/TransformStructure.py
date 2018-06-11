@@ -58,7 +58,7 @@ def Prune(node):
 
 
 def SPN_Reshape(node, max_children=2):
-    nodes = get_nodes_by_type(node, Product)
+    nodes = get_nodes_by_type(node, (Product, Sum))
 
     while len(nodes) > 0:
         n = nodes.pop()
@@ -70,7 +70,11 @@ def SPN_Reshape(node, max_children=2):
         new_children = []
         for children in [n.children[i:i + max_children] for i in range(0, len(n.children), max_children)]:
             if len(children) == max_children:
-                newChild = Product()
+                if isinstance(n, Product):
+                    newChild = Product()
+                else:
+                    newChild = Sum()
+                    newChild.weights
                 newChild.children.extend(children)
                 new_children.append(newChild)
             else:
