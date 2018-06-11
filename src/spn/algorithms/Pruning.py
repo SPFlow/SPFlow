@@ -6,7 +6,7 @@ Created on March 27, 2018
 from spn.structure.Base import Leaf, Sum
 
 
-def prune(node):
+def Prune(node):
     if isinstance(node, Leaf):
         return node
 
@@ -49,7 +49,7 @@ def prune(node):
 
     newNode = node.__class__()
     newNode.scope.extend(node.scope)
-    newNode.children.extend(map(prune, node.children))
+    newNode.children.extend(map(Prune, node.children))
     if isinstance(newNode, Sum):
         newNode.weights.extend(node.weights)
 

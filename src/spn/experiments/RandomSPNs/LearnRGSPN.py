@@ -19,6 +19,83 @@ from spn.structure.leaves.parametric.Inference import add_parametric_inference_s
 from spn.structure.leaves.parametric.Parametric import Gaussian
 import numpy as np
 
+
+def Make_SPN_from_RegionGraph(rg_layers, rgn, num_classes, num_gauss, num_sums, default_mean=0.0, default_stdev=1.0):
+    def add_to_map(given_map, key, item):
+        existing_items = given_map.get(key, [])
+        given_map[key] = existing_items + [item]
+
+    region_distributions = {}
+    region_products = {}
+    vector_list = [[]]
+    for leaf_region in rg_layers[0]:
+        gauss_vector = []
+        for _ in range(num_gauss):
+            prod = Product()
+            prod.scope.extend(leaf_region)
+            for r in leaf_region:
+                prod.children.append(Gaussian(mean=rgn.randn(1)[0], stdev=default_stdev, scope=[r]))
+
+            assert len(prod.children) > 0
+            gauss_vector.append(prod)
+
+        vector_list[-1].append(gauss_vector)
+        region_distributions[leaf_region] = gauss_vector
+
+    for layer_idx in range(1, len(rg_layers)):
+        vector_list.append([])
+        if layer_idx % 2 == 1:
+            partitions = rg_layers[layer_idx]
+            for i, partition in enumerate(partitions):
+                input_regions = list(partition)
+                input1 = region_distributions[input_regions[0]]
+                input2 = region_distributions[input_regions[1]]
+
+                prod_vector = []
+                for c1 in input1:
+                    for c2 in input2:
+                        prod = Product()
+                        prod.children.append(c1)
+                        prod.children.append(c2)
+                        prod.scope.extend(c1.scope)
+                        prod.scope.extend(c2.scope)
+                        prod_vector.append(prod)
+
+                        assert len(prod.children) > 0
+
+                vector_list[-1].append(prod_vector)
+
+                resulting_region = frozenset(input_regions[0] | input_regions[1])
+                add_to_map(region_products, resulting_region, prod_vector)
+        else:
+            cur_num_sums = num_classes if layer_idx == len(rg_layers) - 1 else num_sums
+
+            regions = rg_layers[layer_idx]
+            for i, region in enumerate(regions):
+                product_vectors = list(itertools.chain.from_iterable(region_products[region]))
+
+                sum_vector = []
+
+                for _ in range(cur_num_sums):
+                    sum_node = Sum()
+                    sum_node.scope.extend(region)
+                    sum_node.children.extend(product_vectors)
+                    sum_vector.append(sum_node)
+                    sum_node.weights.extend(rgn.dirichlet([1] * len(sum_node.children), 1)[0].tolist())
+
+                    assert len(sum_node.children) > 0
+
+                vector_list[-1].append(sum_vector)
+
+                region_distributions[region] = sum_vector
+
+    tmp_root = Sum()
+    tmp_root.children.extend(vector_list[-1][0])
+    assign_ids(tmp_root)
+
+    return vector_list
+
+
 if __name__ == '__main__':
     # rg = RegionGraph(range(3 * 3))
     rg = RegionGraph(range(28 * 28))
@@ -30,84 +107,8 @@ if __name__ == '__main__':
 
     num_classes = 10
 
-
-    def make_spn(rg_layers, rgn, num_gauss=2, num_sums=2, num_classes=10, default_mean=0.0, default_stdev=1.0):
-
-        def add_to_map(given_map, key, item):
-            existing_items = given_map.get(key, [])
-            given_map[key] = existing_items + [item]
-
-        region_distributions = {}
-        region_products = {}
-        vector_list = [[]]
-        for leaf_region in rg_layers[0]:
-            gauss_vector = []
-            for _ in range(num_gauss):
-                prod = Product()
-                prod.scope.extend(leaf_region)
-                for r in leaf_region:
-                    prod.children.append(Gaussian(mean=rgn.randn(1)[0], stdev=default_stdev, scope=[r]))
-
-                assert len(prod.children) > 0
-                gauss_vector.append(prod)
-
-            vector_list[-1].append(gauss_vector)
-            region_distributions[leaf_region] = gauss_vector
-
-        for layer_idx in range(1, len(rg_layers)):
-            vector_list.append([])
-            if layer_idx % 2 == 1:
-                partitions = rg_layers[layer_idx]
-                for i, partition in enumerate(partitions):
-                    input_regions = list(partition)
-                    input1 = region_distributions[input_regions[0]]
-                    input2 = region_distributions[input_regions[1]]
-
-                    prod_vector = []
-                    for c1 in input1:
-                        for c2 in input2:
-                            prod = Product()
-                            prod.children.append(c1)
-                            prod.children.append(c2)
-                            prod.scope.extend(c1.scope)
-                            prod.scope.extend(c2.scope)
-                            prod_vector.append(prod)
-
-                            assert len(prod.children) > 0
-
-                    vector_list[-1].append(prod_vector)
-
-                    resulting_region = frozenset(input_regions[0] | input_regions[1])
-                    add_to_map(region_products, resulting_region, prod_vector)
-            else:
-                cur_num_sums = num_classes if layer_idx == len(rg_layers) - 1 else num_sums
-
-                regions = rg_layers[layer_idx]
-                for i, region in enumerate(regions):
-                    product_vectors = list(itertools.chain.from_iterable(region_products[region]))
-
-                    sum_vector = []
-
-                    for _ in range(cur_num_sums):
-                        sum_node = Sum()
-                        sum_node.scope.extend(region)
-                        sum_node.children.extend(product_vectors)
-                        sum_vector.append(sum_node)
-                        sum_node.weights.extend(rgn.dirichlet([1]*len(sum_node.children), 1)[0].tolist())
-
-                        assert len(sum_node.children) > 0
-
-                    vector_list[-1].append(sum_vector)
-
-                    region_distributions[region] = sum_vector
-
-        for spn in vector_list[-1][0]:
-            assign_ids(spn)
-
-        return vector_list
-
-
-    vector_list = make_spn(rg_layers, np.random.RandomState(100))
+    vector_list = Make_SPN_from_RegionGraph(rg_layers, np.random.RandomState(100),
+                                            num_classes=num_classes, num_gauss=5, num_sums=5)
 
     spns = vector_list[-1][0]
 
@@ -116,11 +117,9 @@ if __name__ == '__main__':
     train_im = scalar.transform(train_im)
     test_im = scalar.transform(test_im)
 
-
     add_parametric_inference_support()
 
     for spn in spns:
-        assign_ids(spn)
         valid, err = is_valid(spn)
         print(valid, err)
         print(get_structure_stats(spn))
@@ -129,6 +128,6 @@ if __name__ == '__main__':
         tfstart = time.perf_counter()
         log_likelihood(spn, train_im[0:1000, :])
         end = time.perf_counter()
-        print("finished: ", (end-tfstart))
+        print("finished: ", (end - tfstart))
 
         0 / 0

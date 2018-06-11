@@ -12,6 +12,8 @@ from spn.algorithms.Inference import histogram_likelihood
 from spn.structure.Base import Product, Sum, Leaf
 from spn.structure.leaves.Histograms import Histogram
 
+from spn.structure.leaves.parametric.Parametric import Gaussian
+
 
 def spn_to_tf_graph(node, data_placeholder, log_space=True):
     # data is a placeholder, with shape same as numpy data
@@ -50,6 +52,10 @@ def spn_to_tf_graph(node, data_placeholder, log_space=True):
             col = data_placeholder[:, node.scope[0]]
 
             return tf.gather(lls, col)
+
+        if isinstance(node, Gaussian):
+
+
 
 
 def eval_tf(spn, data, log_space=True, save_graph_path=None, trace=False):
