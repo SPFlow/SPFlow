@@ -43,10 +43,11 @@ def _compute_probability_for_range(node, interval):
 
 
 def piecewise_complete_cases_likelihood(node, obs, dtype=np.float64):
-    probs = np.ones((obs.shape[0], 1), dtype=dtype) + EPSILON
+    probs = np.ones((obs.shape[0], 1), dtype=dtype)# + EPSILON
     ivalues = np.interp(x=obs, xp=node.x_range, fp=node.y_range)
-    ividx = ivalues > 0
-    probs[ividx, 0] = ivalues[ividx]
+    probs[:,0] = ivalues
+    #ividx = ivalues > 0
+    #probs[ividx, 0] = ivalues[ividx]
     return probs
 
 

@@ -4,6 +4,7 @@ Created on June 10, 2018
 @author: Alejandro Molina
 '''
 from spn.algorithms.Statistics import get_structure_stats
+from spn.algorithms.TransformStructure import SPN_Reshape
 from spn.algorithms.Validity import is_valid
 from spn.experiments.RandomSPNs.LearnRGSPN import Make_SPN_from_RegionGraph
 from spn.experiments.RandomSPNs.region_graph import RegionGraph
@@ -11,6 +12,7 @@ import numpy as np
 
 from spn.structure.Base import Sum, get_nodes_by_type, Leaf, Product
 from spn.structure.leaves.parametric.Inference import add_parametric_inference_support
+
 
 
 def get_execution_layers(spn):
@@ -59,6 +61,8 @@ if __name__ == '__main__':
 
     tmp_root = Sum()
     tmp_root.children.extend(spns)
+
+    tmp_root = SPN_Reshape(tmp_root, 10)
 
     layers, layer_types = get_execution_layers(tmp_root)
 

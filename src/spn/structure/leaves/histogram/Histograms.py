@@ -51,7 +51,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0):
     meta_type = ds_context.meta_types[idx]
     domain = ds_context.domains[idx]
 
-    if data.shape[0] == 0 or np.var(data) <= 1e-10:
+    if data.shape[0] == 0:
         # no data or all were nans
         maxx = np.max(domain)
         minx = np.min(domain)

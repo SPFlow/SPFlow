@@ -15,7 +15,7 @@ except:
 
 import numpy as np
 
-from spn.algorithms.Pruning import Prune
+from spn.algorithms.TransformStructure import Prune
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, assign_ids
 
