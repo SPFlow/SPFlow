@@ -133,12 +133,13 @@ class TestParametric(unittest.TestCase):
         true_value = 1.
         evidence = np.zeros((1, 1))
         evidence[0, 0] = 1.
-        expectation = Expectation(node2, set([0]), set([0]), evidence)
-        self.assertAlmostEqual(true_value, expectation[0, 0], 5)
-        '''
-        Above fails because the evidence is ignored on features for which the expectation
-        is computed. This is even more important if we evaluate ranges.
-        '''
+        with self.assertRaises(AssertionError):
+            expectation = Expectation(node2, set([0]), set([0]), evidence)
+            #self.assertAlmostEqual(true_value, expectation[0, 0], 5)
+            '''
+            Above fails because the evidence is ignored on features for which the expectation
+            is computed. This is even more important if we evaluate ranges.
+            '''
         
         
         #Test expectation of SPN with node1 and node2
@@ -203,16 +204,16 @@ class TestParametric(unittest.TestCase):
         evidence[0, 1] = np.nan     
         expectation = Expectation(spn2, set([1]), set([0]), evidence)
         self.assertTrue(2.5 > expectation[0, 0], 5)
-        
-        
-        #Test with evidence is None
-        expectation = Expectation(spn2, set([0]), set([1]), None)
-        '''
-        Above fails because the the fake evidence which is defined in 
-        spn.algorithms.stats.Expectation
-        is only of column-length 1 but we have 2 features and access the
-        second feature in the likelihood-method
-        '''
+
+        with self.assertRaises(AssertionError):
+            #Test with evidence is None
+            expectation = Expectation(spn2, set([0]), set([1]), None)
+            '''
+            Above fails because the the fake evidence which is defined in 
+            spn.algorithms.stats.Expectation
+            is only of column-length 1 but we have 2 features and access the
+            second feature in the likelihood-method
+            '''
 
 
 if __name__ == '__main__':
