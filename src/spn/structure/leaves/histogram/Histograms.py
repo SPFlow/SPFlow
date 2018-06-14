@@ -41,7 +41,7 @@ class Histogram(Leaf):
         return self.bin_repr_points[_x]
 
 
-def create_histogram_leaf(data, ds_context, scope, alpha=1.0):
+def create_histogram_leaf(data, ds_context, scope, alpha=1.0, source="R"):
     assert len(scope) == 1, "scope of univariate histogram for more than one variable?"
     assert data.shape[1] == 1, "data has more than one feature?"
 
@@ -62,16 +62,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0):
             repr_points = repr_points.astype(int)
 
     else:
-        if meta_type == MetaType.REAL:
-            breaks, densities, repr_points = getHistogramVals(data)
-
-        elif meta_type == MetaType.DISCRETE:
-            breaks = np.array([d for d in domain] + [domain[-1] + 1])
-            densities, breaks = np.histogram(data, bins=breaks, density=True)
-            repr_points = domain
-
-        else:
-            raise Exception('Invalid statistical type: ' + meta_type)
+        breaks, densities, repr_points = getHistogramVals(data, meta_type, domain, source=source)
 
     # laplace smoothing
     if alpha:
@@ -85,15 +76,37 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0):
     return Histogram(breaks.tolist(), densities.tolist(), repr_points.tolist(), scope=idx, meta_type=meta_type)
 
 
-def getHistogramVals(data):
-    from rpy2 import robjects
-    init_rpy()
+def getHistogramVals(data, meta_type, domain, source="R"):
+    if meta_type == MetaType.DISCRETE:
+        # for discrete, we just have to count
+        breaks = np.array([d for d in domain] + [domain[-1] + 1])
+        densities, breaks = np.histogram(data, bins=breaks, density=True)
+        repr_points = domain
+        return breaks, densities, repr_points
 
-    result = robjects.r["getHistogram"](data)
-    breaks = np.asarray(result[0])
-    densities = np.asarray(result[2])
-    mids = np.asarray(result[3])
+    if source == "R":
+        from rpy2 import robjects
+        init_rpy()
 
-    return breaks, densities, mids
+        result = robjects.r["getHistogram"](data)
+        breaks = np.asarray(result[0])
+        densities = np.asarray(result[2])
+        mids = np.asarray(result[3])
+
+        return breaks, densities, mids
+
+    if source == "kde":
+        import statsmodels.api as sm
+        kde = sm.nonparametric.KDEMultivariate(data, var_type="c", bw="cv_ls")
+        bins = int((domain[1]-domain[0])/kde.bw)
+        bins = min(30, bins)
+        cdf_x = np.linspace(domain[0], domain[1], 2*bins)
+        cdf_y = kde.cdf(cdf_x)
+        breaks = np.interp(np.linspace(0, 1, bins), cdf_y, cdf_x) #inverse cdf
+        mids = ((breaks + np.roll(breaks, -1)) / 2.0)[:-1]
+
+        densities = kde.pdf(mids)
+        densities / np.sum(densities)
 
 
+        return breaks, densities, mids

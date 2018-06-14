@@ -98,8 +98,8 @@ class Context:
         return [self.domains[s] for s in scopes]
 
     def add_domains(self, data):
-
-        assert data.shape[1] == len(self.meta_types), "Data columnds and metatype size doesn't match"
+        assert len(data.shape) == 2, "data is not 2D?"
+        assert data.shape[1] == len(self.meta_types), "Data columns and metatype size doesn't match"
 
         from spn.structure.StatisticalTypes import MetaType
         domain = []
