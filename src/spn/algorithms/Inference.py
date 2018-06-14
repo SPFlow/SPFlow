@@ -9,7 +9,6 @@ from scipy.special import logsumexp
 from spn.structure.Base import Product, Sum, Leaf
 
 EPSILON = 0.000000000000001
-LOG_ZERO = -300
 
 
 def compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix):
