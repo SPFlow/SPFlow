@@ -52,10 +52,26 @@ def is_complete(node):
     return True, None
 
 
-def is_valid(node):
+def is_valid(node, check_ids=True):
+
+    if check_ids:
+        val, err = has_valid_ids(node)
+        if not val:
+            return val, err
+
     for n in get_nodes_by_type(node):
         if len(n.scope) == 0:
             return False, "node %s has no scope" % (n.id)
+        is_sum = isinstance(n, Sum)
+        is_prod = isinstance(n, Product)
+
+        if is_sum:
+            if len(n.children) != len(n.weights):
+                return False, "node %s has different children/weights" % (n.id)
+
+        if is_sum or is_prod:
+            if len(n.children) == 0:
+                return False, "node %s has no children" % (n.id)
 
     a, err = is_consistent(node)
     if not a:

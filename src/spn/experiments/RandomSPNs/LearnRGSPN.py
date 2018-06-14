@@ -34,7 +34,8 @@ def Make_SPN_from_RegionGraph(rg_layers, rgn, num_classes, num_gauss, num_sums, 
             prod = Product()
             prod.scope.extend(leaf_region)
             for r in leaf_region:
-                prod.children.append(Gaussian(mean=rgn.randn(1)[0], stdev=default_stdev, scope=[r]))
+                #prod.children.append(Gaussian(mean=rgn.randn(1)[0], stdev=default_stdev, scope=[r]))
+                prod.children.append(Gaussian(mean=0, stdev=default_stdev, scope=[r]))
 
             assert len(prod.children) > 0
             gauss_vector.append(prod)
@@ -81,7 +82,10 @@ def Make_SPN_from_RegionGraph(rg_layers, rgn, num_classes, num_gauss, num_sums, 
                     sum_node.scope.extend(region)
                     sum_node.children.extend(product_vectors)
                     sum_vector.append(sum_node)
-                    sum_node.weights.extend(rgn.dirichlet([1] * len(sum_node.children), 1)[0].tolist())
+                    #sum_node.weights.extend(rgn.dirichlet([1] * len(sum_node.children), 1)[0].tolist())
+                    w = np.array([1] * len(sum_node.children))
+                    w = w / np.sum(w)
+                    sum_node.weights.extend(w.tolist())
 
                     assert len(sum_node.children) > 0
 
@@ -91,9 +95,13 @@ def Make_SPN_from_RegionGraph(rg_layers, rgn, num_classes, num_gauss, num_sums, 
 
     tmp_root = Sum()
     tmp_root.children.extend(vector_list[-1][0])
+    tmp_root.scope.extend(tmp_root.children[0].scope)
+    tmp_root.weights = [1 / len(tmp_root.children)] * len(tmp_root.children)
     assign_ids(tmp_root)
 
-    return vector_list
+    v, err = is_valid(tmp_root)
+    assert v, err
+    return vector_list, tmp_root
 
 
 if __name__ == '__main__':
