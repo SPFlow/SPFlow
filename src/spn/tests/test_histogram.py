@@ -3,9 +3,8 @@ import unittest
 from spn.algorithms.Inference import likelihood, log_likelihood
 from spn.structure.Base import Context
 from spn.structure.StatisticalTypes import MetaType
-from spn.structure.leaves.histogram.Histograms import create_histogram_leaf, add_domains
+from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 from spn.structure.leaves.histogram.Inference import add_histogram_inference_support
-from spn.structure.leaves.parametric.Inference import add_parametric_inference_support
 from spn.structure.leaves.parametric.Parametric import *
 
 
@@ -16,7 +15,7 @@ class TestParametric(unittest.TestCase):
     def test_Histogram_discrete_inference(self):
         data = np.array([1, 1, 2, 3, 3, 3]).reshape(-1, 1)
         ds_context = Context([MetaType.DISCRETE])
-        add_domains(data, ds_context)
+        ds_context.add_domains(data)
         hist = create_histogram_leaf(data, ds_context, [0], alpha=False)
         prob = np.exp(log_likelihood(hist, data))
 
@@ -29,7 +28,7 @@ class TestParametric(unittest.TestCase):
 
         data = np.array([1, 1, 2, 3, 3, 3]).reshape(-1, 1)
         ds_context = Context([MetaType.DISCRETE])
-        add_domains(data, ds_context)
+        ds_context.add_domains(data)
         hist = create_histogram_leaf(data, ds_context, [0], alpha=1)
         prob = np.exp(log_likelihood(hist, data))
 

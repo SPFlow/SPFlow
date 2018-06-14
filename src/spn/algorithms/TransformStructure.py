@@ -8,56 +8,52 @@ from spn.structure.Base import Leaf, Sum, Product, assign_ids, get_nodes_by_type
 
 
 def Prune(node):
-    if isinstance(node, Leaf):
-        return node
+    v, err = is_valid(node)
+    assert v, err
+    nodes = get_nodes_by_type(node, (Product, Sum))
 
-    while True:
+    while len(nodes) > 0:
+        n = nodes.pop()
 
-        pruneNeeded = any(map(lambda c: isinstance(c, type(node)), node.children))
+        n_type = type(n)
+        is_sum = n_type == Sum
 
-        if not pruneNeeded:
-            break
+        i = 0
+        while i < len(n.children):
+            c = n.children[i]
 
-        newNode = node.__class__()
-        newNode.scope.extend(node.scope)
-
-        newChildren = []
-        newWeights = []
-        for i, c in enumerate(node.children):
-            if type(c) != type(newNode):
-                newChildren.append(c)
-                if isinstance(newNode, Sum):
-                    newWeights.append(node.weights[i])
+            # if my children has only one node, we can get rid of it and link directly to that grandchildren
+            if not isinstance(c, Leaf) and len(c.children) == 1:
+                n.children[i] = c.children[0]
                 continue
-            else:
-                for j, gc in enumerate(c.children):
-                    newChildren.append(gc)
-                    if isinstance(newNode, Sum):
-                        newWeights.append(node.weights[i] * c.weights[j])
 
-        newNode.children.extend(newChildren)
+            if n_type == type(c):
+                del n.children[i]
+                n.children.extend(c.children)
 
-        if isinstance(newNode, Sum):
-            newNode.weights.extend(newWeights)
+                if is_sum:
+                    w = n.weights[i]
+                    del n.weights[i]
 
-        node = newNode
+                    n.weights.extend([cw * w for cw in c.weights])
+                continue
 
-    while not isinstance(node, Leaf) and len(node.children) == 1:
+            i += 1
+        if is_sum and i > 0:
+            n.weights[0] = 1.0 - sum(n.weights[1:])
+
+    if isinstance(node, (Product, Sum)) and len(node.children) == 1:
         node = node.children[0]
 
-    if isinstance(node, Leaf):
-        return node
-
-    newNode = node.__class__()
-    newNode.scope.extend(node.scope)
-    newNode.children.extend(map(Prune, node.children))
-    if isinstance(newNode, Sum):
-        newNode.weights.extend(node.weights)
-
-    return newNode
+    assign_ids(node)
+    v, err = is_valid(node)
+    assert v, err
+    return node
 
 
 def SPN_Reshape(node, max_children=2):
+    v, err = is_valid(node)
+    assert v, err
     nodes = get_nodes_by_type(node, (Product, Sum))
 
     while len(nodes) > 0:
@@ -68,21 +64,40 @@ def SPN_Reshape(node, max_children=2):
 
         # node has more than 2 nodes, create binary hierarchy
         new_children = []
-        for children in [n.children[i:i + max_children] for i in range(0, len(n.children), max_children)]:
-            if len(children) == max_children:
+        new_weights = []
+        for i in range(0, len(n.children), max_children):
+            children = n.children[i:i + max_children]
+
+            if len(children) > 1:
                 if isinstance(n, Product):
                     newChild = Product()
-                else:
+                    for c in children:
+                        newChild.scope.extend(c.scope)
+                    newChild.children.extend(children)
+                    new_children.append(newChild)
+                else:  # Sum
+                    weights = n.weights[i:i + max_children]
+                    branch_weight = sum(weights)
+                    new_weights.append(branch_weight)
+
                     newChild = Sum()
-                    newChild.weights
-                newChild.children.extend(children)
-                new_children.append(newChild)
+                    newChild.scope.extend(children[0].scope)
+                    newChild.children.extend(children)
+                    newChild.weights.extend([w / branch_weight for w in weights])
+                    newChild.weights[0] = 1.0 - sum(newChild.weights[1:])
+                    new_children.append(newChild)
             else:
                 new_children.extend(children)
 
+                if isinstance(n, Sum):
+                    new_weights.append(1.0 - sum(new_weights))
+
         n.children = new_children
+        if isinstance(n, Sum):
+            n.weights = new_weights
         nodes.append(n)
 
     assign_ids(node)
-    assert is_valid(node)
+    v, err = is_valid(node)
+    assert v, err
     return node
