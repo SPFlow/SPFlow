@@ -82,7 +82,6 @@ def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, l
         assert ll.shape[1] == 1
         assert ll.shape[0] == data.shape[0]
         if lls_matrix is not None:
-            assert ll.shape[1] == 1, ll.shape[1]
             lls_matrix[:, node.id] = ll[:, 0]
         return ll
     else:
