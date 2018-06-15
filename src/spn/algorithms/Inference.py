@@ -8,15 +8,18 @@ from scipy.special import logsumexp
 
 from spn.structure.Base import Product, Sum, Leaf
 
+# from joblib import Parallel, delayed, cpu_count
+
+# pool = Parallel(n_jobs=cpu_count() - 1, backend="threading")
+
 EPSILON = 0.000000000000001
 
 
-def compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix):
+def compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix, cache):
     llchildren = np.zeros((data.shape[0], len(node.children)), dtype=dtype)
 
-    # TODO: parallelize here
     for i, c in enumerate(node.children):
-        llchild = likelihood(c, data, dtype=dtype, node_likelihood=node_likelihood, lls_matrix=lls_matrix)
+        llchild = likelihood(c, data, dtype=dtype, node_likelihood=node_likelihood, lls_matrix=lls_matrix, cache=cache)
         assert llchild.shape[0] == data.shape[0]
         assert llchild.shape[1] == 1
         llchildren[:, i] = llchild[:, 0]
@@ -24,18 +27,18 @@ def compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix):
     return llchildren
 
 
-def prod_log_likelihood(node, data, dtype, node_likelihood, lls_matrix):
-    llchildren = compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix)
+def prod_log_likelihood(node, data, dtype, node_likelihood, lls_matrix, cache):
+    llchildren = compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix, cache)
     return np.sum(llchildren, axis=1).reshape(-1, 1)
 
 
-def prod_likelihood(node, data, dtype, node_likelihood, lls_matrix):
-    llchildren = compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix)
+def prod_likelihood(node, data, dtype, node_likelihood, lls_matrix, cache):
+    llchildren = compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix, cache)
     return np.prod(llchildren, axis=1).reshape(-1, 1)
 
 
-def sum_log_likelihood(node, data, dtype, node_likelihood, lls_matrix):
-    llchildren = compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix)
+def sum_log_likelihood(node, data, dtype, node_likelihood, lls_matrix, cache):
+    llchildren = compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix, cache)
 
     assert np.isclose(np.sum(node.weights), 1.0), "unnormalized weights {} for node {}".format(node.weights, node)
 
@@ -44,8 +47,8 @@ def sum_log_likelihood(node, data, dtype, node_likelihood, lls_matrix):
     return logsumexp(llchildren, b=b, axis=1).reshape(-1, 1)
 
 
-def sum_likelihood(node, data, dtype, node_likelihood, lls_matrix):
-    llchildren = compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix)
+def sum_likelihood(node, data, dtype, node_likelihood, lls_matrix, cache):
+    llchildren = compute_likelihood_children(node, data, dtype, node_likelihood, lls_matrix, cache)
 
     assert np.isclose(np.sum(node.weights), 1.0), "unnormalized weights {} for node {}".format(node.weights, node)
 
@@ -58,11 +61,13 @@ _node_log_likelihood = {Sum: sum_log_likelihood, Product: prod_log_likelihood}
 _node_likelihood = {Sum: sum_likelihood, Product: prod_likelihood}
 
 
-def add_node_likelihood(node_type, lambda_func):
-    log_lambda = lambda node, data, **args: np.log(lambda_func(node, data, **args))
+def log_node_likelihood(node, data, **args):
+    return np.log(_node_likelihood[type(node)](node, data, **args))
 
+
+def add_node_likelihood(node_type, lambda_func):
     _node_likelihood[node_type] = lambda_func
-    _node_log_likelihood[node_type] = log_lambda
+    _node_log_likelihood[node_type] = log_node_likelihood
 
 
 _node_mpe_likelihood = {}
@@ -72,23 +77,36 @@ def add_node_mpe_likelihood(node_type, lambda_func):
     _node_mpe_likelihood[node_type] = lambda_func
 
 
-def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, lls_matrix=None):
+def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, lls_matrix=None, cache=None):
     assert len(data.shape) == 2, "data must be 2D, found: {}".format(data.shape)
 
+    if cache is None:
+        cache = {}
+
+    #if len(cache) > 0 and len(cache) % 10000 == 0:
+    #    print("likelihood", len(cache))
+
     t_node = type(node)
-    if t_node in node_likelihood:
-        ll = node_likelihood[t_node](node, data, dtype=dtype, node_likelihood=node_likelihood, lls_matrix=lls_matrix)
-        assert ll.shape[1] == 1
-        assert ll.shape[0] == data.shape[0]
-        if lls_matrix is not None:
-            lls_matrix[:, node.id] = ll[:, 0]
-        return ll
-    else:
+
+    if t_node not in node_likelihood:
         raise Exception('Node type unknown: ' + str(type(node)))
 
+    if node.id in cache:
+        return cache[node.id]
 
-def log_likelihood(node, data, dtype=np.float64, node_log_likelihood=_node_log_likelihood, lls_matrix=None):
-    return likelihood(node, data, dtype=dtype, node_likelihood=node_log_likelihood, lls_matrix=lls_matrix)
+    ll = node_likelihood[t_node](node, data, dtype=dtype, node_likelihood=node_likelihood, lls_matrix=lls_matrix,
+                                 cache=cache)
+
+    assert ll.shape[1] == 1
+    assert ll.shape[0] == data.shape[0]
+    if lls_matrix is not None:
+        lls_matrix[:, node.id] = ll[:, 0]
+    cache[node.id] = ll
+    return ll
+
+
+def log_likelihood(node, data, dtype=np.float64, node_log_likelihood=_node_log_likelihood, lls_matrix=None, cache=None):
+    return likelihood(node, data, dtype=dtype, node_likelihood=node_log_likelihood, lls_matrix=lls_matrix, cache=cache)
 
 
 # TODO: test this function super thorougly

@@ -8,7 +8,7 @@ from numba import cuda
 
 from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Statistics import get_structure_stats
-from spn.algorithms.TransformStructure import SPN_Reshape, Prune
+from spn.algorithms.TransformStructure import SPN_Reshape, Prune, Copy
 from spn.algorithms.Validity import is_valid, has_valid_ids
 from spn.experiments.RandomSPNs.LearnRGSPN import Make_SPN_from_RegionGraph
 from spn.experiments.RandomSPNs.region_graph import RegionGraph
@@ -132,17 +132,22 @@ def Sum_cuda(LL, params, node_ids):
     left_w = params[2, node_id]
     right_w = params[3, node_id]
 
-    LL[instance_pos, node_id] = math.log(
-        left_w * math.exp(LL[instance_pos, left_id]) + right_w * math.exp(LL[instance_pos, right_id]))
+    # log sum exp trick
+    xleft = LL[instance_pos, left_id] + math.log(left_w)
+    xright = LL[instance_pos, right_id] + math.log(right_w)
+
+    xstar = max(xleft, xright)
+
+    LL[instance_pos, node_id] = xstar + math.log(math.exp(xleft - xstar) + math.exp(xright - xstar))
 
 
 if __name__ == '__main__':
     add_parametric_inference_support()
 
     start = time.perf_counter()
-    rg = RegionGraph(range(2 * 2))
-    for _ in range(0, 1):
-    #for _ in range(0, 20):
+    rg = RegionGraph(range(28 * 28))
+    for _ in range(0, 2):
+        # for _ in range(0, 20):
         rg.random_split(2, 2)
 
     rg_layers = rg.make_layers()
@@ -157,17 +162,19 @@ if __name__ == '__main__':
     print(get_structure_stats(root))
     print("get_structure_stats in  ", (time.perf_counter() - start))
 
+    old_root = Copy(root)
+
     start = time.perf_counter()
     root = Prune(root)
     print("Prune in  ", (time.perf_counter() - start))
 
     start = time.perf_counter()
-    print(get_structure_stats(root))
-    print("get_structure_stats in  ", (time.perf_counter() - start))
-
-    start = time.perf_counter()
     root = SPN_Reshape(root, 2)
     print("SPN_Reshape in  ", (time.perf_counter() - start))
+
+    start = time.perf_counter()
+    print(get_structure_stats(root))
+    print("get_structure_stats in  ", (time.perf_counter() - start))
 
     start = time.perf_counter()
     layers, layer_types = get_execution_layers(root)
@@ -189,19 +196,24 @@ if __name__ == '__main__':
     print("get_parameters in  ", (time.perf_counter() - start))
 
     print(params)
-    LL = np.zeros((200, params.shape[1]))
+    LL = np.zeros((100, params.shape[1]))
     X = np.random.randn(LL.shape[0] * LL.shape[1]).reshape((LL.shape[0], -1))
 
     lls_matrix = np.zeros_like(LL)
 
     print("LL size", lls_matrix.shape)
 
+    print(" number of nodes ", len(get_nodes_by_type(root)))
+
     start = time.perf_counter()
     log_likelihood(root, X, lls_matrix=lls_matrix)
     print("it took in python ", (time.perf_counter() - start))
 
-
     start = time.perf_counter()
+
+    d_LL = cuda.to_device(LL)
+    d_params = cuda.to_device(params)
+    d_X = cuda.to_device(X)
 
     for i, lt in enumerate(layer_types):
         # print(lt, len(layers[i]))
@@ -215,17 +227,20 @@ if __name__ == '__main__':
         blockspergrid = (blockspergrid_x, blockspergrid_y)
 
         if lt == Leaf:
-            GaussianLeaf_cuda[blockspergrid, threadsperblock](LL, params, node_ids, X)
+            GaussianLeaf_cuda[blockspergrid, threadsperblock](d_LL, d_params, node_ids, d_X)
         elif lt == Product:
-            Product_cuda[blockspergrid, threadsperblock](LL, params, node_ids)
+            Product_cuda[blockspergrid, threadsperblock](d_LL, d_params, node_ids)
         else:
-            Sum_cuda[blockspergrid, threadsperblock](LL, params, node_ids)
+            Sum_cuda[blockspergrid, threadsperblock](d_LL, d_params, node_ids)
 
-        print(np.isclose(LL[:, node_ids], lls_matrix[:, node_ids]).all())
+        # print(np.isclose(LL[:, node_ids], lls_matrix[:, node_ids]).all())
         # print("LL")
         # print(LL[:, node_ids])
         # print("pll")
         # print(lls_matrix[:, node_ids])
+    d_LL.copy_to_host(LL)
+    d_params.copy_to_host(params)
 
     end = time.perf_counter()
+    print(np.isclose(LL, lls_matrix).all())
     print("it took in cuda ", (end - start))

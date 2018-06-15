@@ -3,6 +3,8 @@ Created on March 27, 2018
 
 @author: Alejandro Molina
 '''
+from copy import deepcopy
+
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Leaf, Sum, Product, assign_ids, get_nodes_by_type
 
@@ -49,6 +51,15 @@ def Prune(node):
     v, err = is_valid(node)
     assert v, err
     return node
+
+
+def Copy(node):
+    v, err = is_valid(node)
+    assert v, err
+
+    return deepcopy(node)
+
+
 
 
 def SPN_Reshape(node, max_children=2):
