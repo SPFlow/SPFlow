@@ -22,6 +22,27 @@ np.set_printoptions(precision=50)
 import time
 
 
+
+
+
+def sum_to_tf_graph(node, children, data_placeholder, **args):
+    with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
+        return tf.add_n([node.weights[i] * ctf for i, ctf in enumerate(children)])
+
+
+def prod_to_tf_graph(node, children, data_placeholder, **args):
+    with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
+        prod_res = None
+        for c in children:
+            if prod_res is None:
+                prod_res = c
+            else:
+                prod_res = tf.multiply(prod_res, c)
+        return prod_res
+
+_node_tf_graph = {Sum: sum_to_tf_graph, Product: prod_to_tf_graph, Histogram: histogram_to_tf_graph}
+
+
 path = os.path.dirname(__file__)
 OS_name = platform.system()
 

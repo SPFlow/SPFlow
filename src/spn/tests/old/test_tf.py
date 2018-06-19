@@ -14,6 +14,8 @@ from spn.gpu.TensorFlow import eval_tf
 from spn.structure.Base import Context
 from spn.structure.leaves.Histograms import create_histogram_leaf, add_domains
 
+from spn.structure.StatisticalTypes import MetaType
+
 memory = Memory(cachedir="cache", verbose=0, compress=9)
 
 
@@ -25,11 +27,13 @@ def learn(data, ds_context):
 
 
 if __name__ == '__main__':
-    data = np.loadtxt("test_data.txt", delimiter=";", dtype=np.int32)
+    np.random.seed(17)
+    data = np.random.normal(10, 0.01, size=2000).tolist() + np.random.normal(30, 10, size=2000).tolist()
+    data = np.array(data).reshape((-1, 10))
 
-    ds_context = Context()
-    ds_context.statistical_type = np.asarray(["discrete"] * data.shape[1])
-    add_domains(data, ds_context)
+    ds_context = Context(meta_types=[MetaType.REAL] * data.shape[1])
+    ds_context.add_domains(data)
+
 
     spn = learn(data, ds_context)
     py_ll = likelihood(spn, data, histogram_likelihood)

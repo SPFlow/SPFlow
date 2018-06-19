@@ -74,8 +74,7 @@ def get_RDC_adjacency_matrix(data, meta_types, ohe=False, linear=True):
 
 def get_split_cols_RDC(threshold=0.3, ohe=True, linear=True):
     def split_cols_RDC(local_data, ds_context, scope):
-        adjm = get_RDC_adjacency_matrix(
-            local_data, ds_context.get_meta_types_by_scope(scope), ohe, linear)
+        adjm = get_RDC_adjacency_matrix(local_data, ds_context.get_meta_types_by_scope(scope), ohe, linear)
 
         clusters = clusters_by_adjacency_matrix(adjm, threshold, local_data.shape[1])
 
@@ -206,7 +205,6 @@ def make_matrix(data):
 
 
 def ohe_data(data, domain):
-
     dataenc = np.zeros((data.shape[0], len(domain)))
 
     dataenc[data[:, None] == domain[None, :]] = 1
@@ -230,7 +228,6 @@ def rdc_transformer(local_data,
                     return_matrix=False,
                     ohe=True,
                     rand_gen=None):
-
     # print('rdc transformer', k, s, non_linearity)
     """
     Given a data_slice,
@@ -306,7 +303,7 @@ def rdc_transformer(local_data,
 def rdc_cca(indexes):
     i, j, cca = indexes
     cca = CCA(n_components=1, max_iter=CCA_MAX_ITER)
-    #print(i, j, len(GLOBAL_RDC_FEATURES))
+    # print(i, j, len(GLOBAL_RDC_FEATURES))
     X_cca, Y_cca = cca.fit_transform(GLOBAL_RDC_FEATURES[i],
                                      GLOBAL_RDC_FEATURES[j])
     # rdc = 1
@@ -327,7 +324,6 @@ def rdc_test(local_data,
              non_linearity=np.sin,
              n_jobs=3,
              rand_gen=None):
-
     n_features = local_data.shape[1]
 
     if n_jobs is None:
@@ -387,7 +383,6 @@ def getIndependentRDCGroups_py(local_data,
                                non_linearity=np.sin,
                                n_jobs=1,
                                rand_gen=None):
-
     rdc_adjacency_matrix = rdc_test(local_data,
                                     meta_types,
                                     domains,
@@ -423,7 +418,6 @@ def get_split_cols_RDC_py(threshold=0.3, ohe=True, k=10, s=1 / 6,
                           non_linearity=np.sin, n_jobs=1,
                           rand_gen=None):
     def split_cols_RDC_py(local_data, ds_context, scope):
-
         meta_types = ds_context.get_meta_types_by_scope(scope)
         domains = ds_context.get_domains_by_scope(scope)
 
@@ -447,7 +441,6 @@ def get_split_rows_RDC_py(n_clusters=2, ohe=True, k=10, s=1 / 6,
                           non_linearity=np.sin, n_jobs=1,
                           rand_gen=None):
     def split_rows_RDC_py(local_data, ds_context, scope):
-
         meta_types = ds_context.get_meta_types_by_scope(scope)
         domains = ds_context.get_domains_by_scope(scope)
 
