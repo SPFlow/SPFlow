@@ -203,11 +203,11 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             raise Exception('Invalid operation: ' + operation)
 
     node = root.children[0]
-
+    assign_ids(node)
     valid, err = is_valid(node)
     assert valid, "invalid before pruning: " + err
     node = Prune(node)
     valid, err = is_valid(node)
     assert valid, "invalid after pruning: " + err
-    assign_ids(node)
+
     return node

@@ -27,8 +27,7 @@ class Node:
         assert isinstance(node, Node)
         assert len(node.scope) > 0, "right node has no scope"
         assert len(self.scope) > 0, "left node has no scope"
-        assert len(set(node.scope).intersection(set(self.scope))
-                   ) == 0, "children's scope is not disjoint"
+        assert len(set(node.scope).intersection(set(self.scope))) == 0, "children's scope is not disjoint"
         result = Product()
         result.children.append(self)
         result.children.append(node)
@@ -186,3 +185,27 @@ def assign_ids(node, ids=None):
         node.id = ids[node]
 
     bfs(node, assign_id)
+
+
+def eval_spn(node, eval_functions, all_results=None, input_vals=None, validation_function=None, **args):
+    # evaluating in reverse order, means that we compute all the children first then their parents
+    nodes = reversed(get_nodes_by_type(node))
+
+    if all_results is None:
+        all_results = {}
+    else:
+        all_results.clear()
+
+    for n in nodes:
+
+        if isinstance(n, Leaf):
+            result = eval_functions[type(n)](n, input_vals, **args)
+        else:
+            children = [all_results[c] for c in n.children]
+            result = eval_functions[type(n)](n, children, input_vals, **args)
+
+        if validation_function is not None:
+            validation_function(n, result)
+        all_results[n] = result
+
+    return all_results[node]

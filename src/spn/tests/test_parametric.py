@@ -13,7 +13,7 @@ class TestParametric(unittest.TestCase):
     def assert_correct(self, node, x, result):
         self.tested.add(type(node))
 
-        data = np.array([x]).reshape(-1, 1)
+        data = np.array([x], dtype=np.float).reshape(-1, 1)
         node.scope = [0]
         l = likelihood(node, data)
         self.assertAlmostEqual(result, l[0, 0], 5)
