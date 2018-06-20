@@ -8,9 +8,8 @@ import subprocess
 from spn.algorithms.Inference import log_likelihood
 from spn.io.Text import spn_to_str_equation
 from spn.structure.Base import get_nodes_by_type, Leaf, eval_spn, Sum, Product
-
 from spn.structure.leaves.parametric.Parametric import Gaussian
-import math
+
 
 def to_cpp(node, c_data_type="double"):
     eval_functions = {}
@@ -23,9 +22,11 @@ def to_cpp(node, c_data_type="double"):
             operations.append("log({log_weight})+result_node_{child_id}".format(log_weight=n.weights[i],
                                                                                 child_id=c.id))
 
-        return val + "\n{vartype} result_node_{node_id} = logsumexp({operation}); //sum node".format(vartype=c_data_type,
-                                                                                          node_id=n.id,
-                                                                                          operation=",".join(operations))
+        return val + "\n{vartype} result_node_{node_id} = logsumexp({num_children},{operation}); //sum node".format(
+            vartype=c_data_type,
+            node_id=n.id,
+            num_children=len(n.children),
+            operation=",".join(operations))
 
     def log_prod_to_cpp(n, children, input_vals, c_data_type="double"):
         val = "\n".join(children)
@@ -36,13 +37,82 @@ def to_cpp(node, c_data_type="double"):
                                                                                            operation=operation)
 
     def gaussian_to_cpp(n, input_vals, c_data_type="double"):
-        return "{vartype} result_node_{node_id} = 0; //leaf node gaussian".format(vartype=c_data_type, node_id=n.id)
+        operation = " - log({stdev}) - (pow(x_{scope} - {mean}, 2.0) / (2.0 * pow({stdev}, 2.0))) - 0.91893853320467274178032973640561763986139747363778341281".format(
+            mean=n.mean, stdev=n.stdev, scope=n.scope[0])
+        return "{vartype} result_node_{node_id} = {operation}; //leaf node gaussian".format(vartype=c_data_type,
+                                                                                            node_id=n.id,
+                                                                                            operation=operation)
 
     eval_functions[Sum] = logsumexp_sum_to_cpp
     eval_functions[Product] = log_prod_to_cpp
     eval_functions[Gaussian] = gaussian_to_cpp
 
-    return eval_spn(node, eval_functions, c_data_type=c_data_type)
+    params = ",".join(["double x_" + str(s) for s in range(len(node.scope))])
+    spn_code = eval_spn(node, eval_functions, c_data_type=c_data_type).replace("\n", "\n\t\t")
+
+    header = """
+    #include <stdarg.h>
+    #include <math.h>
+
+    {vartype} logsumexp(unsigned int count, ...){{
+        va_list args;
+        va_start(args, count);
+        {vartype} max_val = va_arg(args, {vartype});
+        for (int i = 1; i < count; ++i) {{
+            {vartype} num = va_arg(args, {vartype});
+            if(num > max_val){{
+                max_val = num;
+            }}
+        }}
+        va_end(args);
+
+        {vartype} result = 0.0;
+
+        va_start(args, count);
+        for (int i = 0; i < count; ++i) {{
+            {vartype} num = va_arg(args, {vartype});
+            result += exp(num - max_val);
+        }}
+        va_end(args);
+        return max_val + log(result);
+    }}
+    """.format(vartype=c_data_type)
+
+    spn_execution_params = ",".join(["data_in[r+%s]" % s for s in range(len(node.scope))])
+
+    function_code = """
+    {vartype} spn({parameters}){{
+        {spn_code}
+        return result_node_0;
+    }}
+    
+    void spn_many({vartype}* data_in, {vartype}* data_out, unsigned int rows){{
+        #pragma omp parallel for
+        for (int i=0; i < rows; ++i){{
+            int r = i * {scope_len};
+            data_out[i] = spn({spn_execution_params});
+        }}
+    }}
+        
+    """.format(vartype=c_data_type, parameters=params, spn_code=spn_code, spn_execution_params=spn_execution_params,
+               scope_len=len(node.scope))
+    return header + function_code
+
+
+def get_cpp_function(node):
+    c_code = to_cpp(node, c_data_type="double")
+    import cppyy
+    cppyy.cppdef(c_code)
+    from cppyy.gbl import spn_many
+
+    import numpy as np
+
+    def python_eval_func(data):
+        results = np.zeros((data.shape[0], 1))
+        spn_many(data, results, data.shape[0])
+        return results
+
+    return python_eval_func
 
 
 _leaf_to_cpp = {}
