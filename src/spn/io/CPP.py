@@ -7,8 +7,43 @@ import subprocess
 
 from spn.algorithms.Inference import log_likelihood
 from spn.io.Text import spn_to_str_equation
-from spn.structure.Base import get_nodes_by_type, Leaf
-from spn.structure.leaves.Histograms import Histogram
+from spn.structure.Base import get_nodes_by_type, Leaf, eval_spn, Sum, Product
+
+from spn.structure.leaves.parametric.Parametric import Gaussian
+import math
+
+def to_cpp(node, c_data_type="double"):
+    eval_functions = {}
+
+    def logsumexp_sum_to_cpp(n, children, input_vals, c_data_type="double"):
+        val = "\n".join(children)
+
+        operations = []
+        for i, c in enumerate(n.children):
+            operations.append("log({log_weight})+result_node_{child_id}".format(log_weight=n.weights[i],
+                                                                                child_id=c.id))
+
+        return val + "\n{vartype} result_node_{node_id} = logsumexp({operation}); //sum node".format(vartype=c_data_type,
+                                                                                          node_id=n.id,
+                                                                                          operation=",".join(operations))
+
+    def log_prod_to_cpp(n, children, input_vals, c_data_type="double"):
+        val = "\n".join(children)
+        operation = "+".join(["result_node_" + str(c.id) for c in n.children])
+
+        return val + "\n{vartype} result_node_{node_id} = {operation}; //prod node".format(vartype=c_data_type,
+                                                                                           node_id=n.id,
+                                                                                           operation=operation)
+
+    def gaussian_to_cpp(n, input_vals, c_data_type="double"):
+        return "{vartype} result_node_{node_id} = 0; //leaf node gaussian".format(vartype=c_data_type, node_id=n.id)
+
+    eval_functions[Sum] = logsumexp_sum_to_cpp
+    eval_functions[Product] = log_prod_to_cpp
+    eval_functions[Gaussian] = gaussian_to_cpp
+
+    return eval_spn(node, eval_functions, c_data_type=c_data_type)
+
 
 _leaf_to_cpp = {}
 
@@ -38,15 +73,15 @@ def histogram_to_cpp(node, leaf_name, vartype):
     return leave_function, leave_init
 
 
-register_spn_to_cpp(Histogram, histogram_to_cpp)
+# register_spn_to_cpp(Histogram, histogram_to_cpp)
 
 
-def to_cpp(node):
+def to_cpp2(node):
     vartype = "double"
 
     spn_eqq = spn_to_str_equation(node,
                                   node_to_str={Histogram: lambda node, x, y: "leaf_node_%s(data[i][%s])" % (
-                                  node.name, node.scope[0])})
+                                      node.name, node.scope[0])})
 
     spn_function = """
     {vartype} likelihood(int i, {vartype} data[][{scope_size}]){{
