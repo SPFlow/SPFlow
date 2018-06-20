@@ -14,10 +14,12 @@ from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Statistics import get_structure_stats
 from spn.algorithms.Validity import is_valid
 from spn.experiments.RandomSPNs.region_graph import RegionGraph
+from spn.experiments.RandomSPNs.RAT_SPN import RatSpn, SpnArgs
 from spn.structure.Base import Sum, Product, assign_ids
 from spn.structure.leaves.parametric.Inference import add_parametric_inference_support
 from spn.structure.leaves.parametric.Parametric import Gaussian
 import numpy as np
+import tensorflow as tf
 
 
 def Make_SPN_from_RegionGraph(rg_layers, rgn, num_classes, num_gauss, num_sums, default_mean=0.0, default_stdev=1.0):
@@ -103,7 +105,6 @@ def Make_SPN_from_RegionGraph(rg_layers, rgn, num_classes, num_gauss, num_sums, 
     assert v, err
     return vector_list, tmp_root
 
-
 if __name__ == '__main__':
     # rg = RegionGraph(range(3 * 3))
     rg = RegionGraph(range(28 * 28))
@@ -115,10 +116,16 @@ if __name__ == '__main__':
 
     num_classes = 10
 
-    vector_list = Make_SPN_from_RegionGraph(rg_layers, np.random.RandomState(100),
+    vector_list, tmp_root = Make_SPN_from_RegionGraph(rg_layers, np.random.RandomState(100),
                                             num_classes=num_classes, num_gauss=5, num_sums=5)
+    args = SpnArgs()
+    args.num_gauss = 5
+    args.num_sums = 5
 
     spns = vector_list[-1][0]
+    tensor_spn = RatSpn(10, vector_list=vector_list, args=args, name='tensor-spn-from-vectorlist')
+    input_ph = tf.placeholder(tf.float32, (1000, 28 * 28))
+    output = tensor_spn.forward(input_ph)
 
     (train_im, train_lab), (test_im, test_lab) = mnist('data/mnist')
     scalar = StandardScaler().fit(train_im)
@@ -135,6 +142,14 @@ if __name__ == '__main__':
         print("starting")
         tfstart = time.perf_counter()
         log_likelihood(spn, train_im[0:1000, :])
+        end = time.perf_counter()
+        print("finished: ", (end - tfstart))
+
+        sess = tf.Session()
+        sess.run(tf.global_variables_initializer())
+        print("starting")
+        tfstart = time.perf_counter()
+        sess.run(output, feed_dict={input_ph: train_im[0:1000]})
         end = time.perf_counter()
         print("finished: ", (end - tfstart))
 
