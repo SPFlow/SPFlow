@@ -1,11 +1,17 @@
 import unittest
 
-from spn.io.CPP import to_cpp
-from spn.structure.Base import Leaf, bfs
+import numpy as np
+
+from spn.algorithms.Inference import log_likelihood
+from spn.io.CPP import get_cpp_function
+from spn.structure.leaves.parametric.Inference import add_parametric_inference_support
 from spn.structure.leaves.parametric.Parametric import Gaussian
 
 
 class TestCPP(unittest.TestCase):
+
+    def setUp(self):
+        add_parametric_inference_support()
 
     def test_bcpp(self):
         D = Gaussian(mean=1.0, stdev=1.0, scope=[0])
@@ -18,9 +24,17 @@ class TestCPP(unittest.TestCase):
 
         A = 0.3 * B + 0.7 * C
 
-        cpp_code = to_cpp(A)
+        spn_cc_eval_func = get_cpp_function(A)
 
-        print(cpp_code)
+        np.random.seed(17)
+        data = np.random.normal(10, 0.01, size=200000).tolist() + np.random.normal(30, 10, size=200000).tolist()
+        data = np.array(data).reshape((-1, 2))
+
+        py_ll = log_likelihood(A, data)
+
+        c_ll = spn_cc_eval_func(data)
+
+        self.assertTrue(np.all(np.isclose(py_ll, c_ll)))
 
 
 if __name__ == '__main__':
