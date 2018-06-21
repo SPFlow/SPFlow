@@ -33,7 +33,10 @@ def sample_piecewise_node(node, n_samples, rand_gen, ranges=None):
         
         #Iterate over the specified ranges
         intervals = rang.get_ranges()
-        for lower, higher in intervals:
+        for interval in intervals:
+            
+            lower = interval[0]
+            higher = interval[0] if len(interval) == 1 else interval[1]
             
             lower_prob = np.interp(lower, xp=x_range, fp=y_range)
             higher_prob = np.interp(higher, xp=x_range, fp=y_range)
