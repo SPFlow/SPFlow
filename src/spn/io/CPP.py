@@ -14,30 +14,27 @@ from spn.structure.leaves.parametric.Parametric import Gaussian
 def to_cpp(node, c_data_type="double"):
     eval_functions = {}
 
-    def logsumexp_sum_to_cpp(n, children, input_vals, c_data_type="double"):
-        val = "\n".join(children)
-
+    def logsumexp_sum_to_cpp(n, c_data_type="double"):
         operations = []
         for i, c in enumerate(n.children):
             operations.append("log({log_weight})+result_node_{child_id}".format(log_weight=n.weights[i],
                                                                                 child_id=c.id))
 
-        return val + "\n{vartype} result_node_{node_id} = logsumexp({num_children},{operation}); //sum node".format(
+        return "\n{vartype} result_node_{node_id} = logsumexp({num_children},{operation}); //sum node".format(
             vartype=c_data_type,
             node_id=n.id,
             num_children=len(n.children),
             operation=",".join(operations))
 
-    def log_prod_to_cpp(n, children, input_vals, c_data_type="double"):
-        val = "\n".join(children)
+    def log_prod_to_cpp(n, c_data_type="double"):
         operation = "+".join(["result_node_" + str(c.id) for c in n.children])
 
-        return val + "\n{vartype} result_node_{node_id} = {operation}; //prod node".format(vartype=c_data_type,
-                                                                                           node_id=n.id,
-                                                                                           operation=operation)
+        return "\n{vartype} result_node_{node_id} = {operation}; //prod node".format(vartype=c_data_type,
+                                                                                     node_id=n.id,
+                                                                                     operation=operation)
 
-    def gaussian_to_cpp(n, input_vals, c_data_type="double"):
-        operation = " - log({stdev}) - (pow(x_{scope} - {mean}, 2.0) / (2.0 * pow({stdev}, 2.0))) - 0.91893853320467274178032973640561763986139747363778341281".format(
+    def gaussian_to_cpp(n, c_data_type="double"):
+        operation = " - log({stdev}) - (pow(x_{scope} - {mean}, 2.0) / (2.0 * pow({stdev}, 2.0))) - K".format(
             mean=n.mean, stdev=n.stdev, scope=n.scope[0])
         return "{vartype} result_node_{node_id} = {operation}; //leaf node gaussian".format(vartype=c_data_type,
                                                                                             node_id=n.id,
@@ -48,11 +45,16 @@ def to_cpp(node, c_data_type="double"):
     eval_functions[Gaussian] = gaussian_to_cpp
 
     params = ",".join(["double x_" + str(s) for s in range(len(node.scope))])
-    spn_code = eval_spn(node, eval_functions, c_data_type=c_data_type).replace("\n", "\n\t\t")
+
+    spn_code = ""
+    for n in reversed(get_nodes_by_type(node)):
+        spn_code += eval_functions[type(n)](n, c_data_type=c_data_type)
+        spn_code += "\n"
 
     header = """
     #include <stdarg.h>
     #include <math.h>
+    const {vartype} K = 0.91893853320467274178032973640561763986139747363778341281;
 
     {vartype} logsumexp(unsigned int count, ...){{
         va_list args;
