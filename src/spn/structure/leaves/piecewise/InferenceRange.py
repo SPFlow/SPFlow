@@ -60,6 +60,9 @@ def _compute_probability_for_range(node, interval):
     x_range = np.array(node.x_range)
     y_range = np.array(node.y_range)
     
+    if lower <= x_range[0] and higher >= x_range[-1]:
+        return 1.
+    
     lower_prob = np.interp(lower, xp=x_range, fp=y_range)
     higher_prob = np.interp(higher, xp=x_range, fp=y_range)
     
