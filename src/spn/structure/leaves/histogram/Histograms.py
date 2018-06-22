@@ -41,7 +41,7 @@ class Histogram(Leaf):
         return self.bin_repr_points[_x]
 
 
-def create_histogram_leaf(data, ds_context, scope, alpha=1.0, source="R"):
+def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="R"):
     assert len(scope) == 1, "scope of univariate histogram for more than one variable?"
     assert data.shape[1] == 1, "data has more than one feature?"
 
@@ -62,7 +62,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, source="R"):
             repr_points = repr_points.astype(int)
 
     else:
-        breaks, densities, repr_points = getHistogramVals(data, meta_type, domain, source=source)
+        breaks, densities, repr_points = getHistogramVals(data, meta_type, domain, source=hist_source)
 
     # laplace smoothing
     if alpha:

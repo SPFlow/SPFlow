@@ -38,11 +38,11 @@ if __name__ == '__main__':
     ds_context.add_domains(data)
 
     spn = learn(data, ds_context)
-    spn = create_histogram_leaf(data[:, 0].reshape((-1, 1)), ds_context, [0], alpha=False, source="kde") * \
-          create_histogram_leaf(data[:, 1].reshape((-1, 1)), ds_context, [1], alpha=False, source="kde")
+    spn = create_histogram_leaf(data[:, 0].reshape((-1, 1)), ds_context, [0], alpha=False, hist_source="kde") * \
+          create_histogram_leaf(data[:, 1].reshape((-1, 1)), ds_context, [1], alpha=False, hist_source="kde")
 
-    spn = 0.3*create_histogram_leaf(data[:, 0].reshape((-1, 1)), ds_context, [0], alpha=False, source="kde") + \
-          0.7*create_histogram_leaf(data[:, 0].reshape((-1, 1)), ds_context, [0], alpha=False, source="kde")
+    spn = 0.3 * create_histogram_leaf(data[:, 0].reshape((-1, 1)), ds_context, [0], alpha=False, hist_source="kde") + \
+          0.7 * create_histogram_leaf(data[:, 0].reshape((-1, 1)), ds_context, [0], alpha=False, hist_source="kde")
 
     py_ll = log_likelihood(spn, data)
 
