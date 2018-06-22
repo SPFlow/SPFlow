@@ -9,6 +9,7 @@ from spn.algorithms.Inference import log_likelihood
 from spn.io.Text import spn_to_str_equation
 from spn.structure.Base import get_nodes_by_type, Leaf, eval_spn, Sum, Product
 from spn.structure.leaves.parametric.Parametric import Gaussian
+import math
 
 
 def to_cpp(node, c_data_type="double"):
@@ -17,8 +18,8 @@ def to_cpp(node, c_data_type="double"):
     def logsumexp_sum_to_cpp(n, c_data_type="double"):
         operations = []
         for i, c in enumerate(n.children):
-            operations.append("log({log_weight})+result_node_{child_id}".format(log_weight=n.weights[i],
-                                                                                child_id=c.id))
+            operations.append("result_node_{child_id}+{log_weight:.20}".format(log_weight=math.log(n.weights[i]),
+                                                                           child_id=c.id))
 
         return "\n{vartype} result_node_{node_id} = logsumexp({num_children},{operation}); //sum node".format(
             vartype=c_data_type,
@@ -44,7 +45,7 @@ def to_cpp(node, c_data_type="double"):
     eval_functions[Product] = log_prod_to_cpp
     eval_functions[Gaussian] = gaussian_to_cpp
 
-    params = ",".join(["double x_" + str(s) for s in range(len(node.scope))])
+    params = ",".join([c_data_type + " x_" + str(s) for s in range(len(node.scope))])
 
     spn_code = ""
     for n in reversed(get_nodes_by_type(node)):
@@ -56,27 +57,27 @@ def to_cpp(node, c_data_type="double"):
     #include <math.h>
     const {vartype} K = 0.91893853320467274178032973640561763986139747363778341281;
 
-    {vartype} logsumexp(unsigned int count, ...){{
+    {vartype} logsumexp(size_t count, ...){{
         va_list args;
         va_start(args, count);
-        {vartype} max_val = va_arg(args, {vartype});
+        double max_val = va_arg(args, double);
         for (int i = 1; i < count; ++i) {{
-            {vartype} num = va_arg(args, {vartype});
+            double num = va_arg(args, double);
             if(num > max_val){{
                 max_val = num;
             }}
         }}
         va_end(args);
 
-        {vartype} result = 0.0;
+        double result = 0.0;
 
         va_start(args, count);
         for (int i = 0; i < count; ++i) {{
-            {vartype} num = va_arg(args, {vartype});
+            double num = va_arg(args, double);
             result += exp(num - max_val);
         }}
         va_end(args);
-        return max_val + log(result);
+        return ({vartype})(max_val + log(result));
     }}
     """.format(vartype=c_data_type)
 
@@ -88,10 +89,10 @@ def to_cpp(node, c_data_type="double"):
         return result_node_0;
     }}
     
-    void spn_many({vartype}* data_in, {vartype}* data_out, unsigned int rows){{
+    void spn_many({vartype}* data_in, {vartype}* data_out, size_t rows){{
         #pragma omp parallel for
         for (int i=0; i < rows; ++i){{
-            int r = i * {scope_len};
+            unsigned int r = i * {scope_len};
             data_out[i] = spn({spn_execution_params});
         }}
     }}
@@ -105,6 +106,7 @@ def get_cpp_function(node):
     c_code = to_cpp(node, c_data_type="double")
     import cppyy
     cppyy.cppdef(c_code)
+    print(c_code)
     from cppyy.gbl import spn_many
 
     import numpy as np

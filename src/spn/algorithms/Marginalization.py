@@ -44,8 +44,9 @@ def marginalize(node, keep):
 
 
     newNode = marg_recursive(node)
-    #newNode = prune(newNode)
+    assign_ids(newNode)
+    newNode = Prune(newNode)
     valid, err = is_valid(newNode)
     assert valid, err
-    assign_ids(newNode)
+
     return newNode

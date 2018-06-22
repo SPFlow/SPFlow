@@ -61,14 +61,14 @@ def isotonic_unimodal_regression_R(x, y):
     return iso_x, iso_y
 
 
-def create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=0.1):
+def create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=0.1, hist_source="R"):
     assert len(scope) == 1, "scope of univariate Piecewise for more than one variable?"
     assert data.shape[1] == 1, "data has more than one feature?"
 
     idx = scope[0]
     meta_type = ds_context.meta_types[idx]
 
-    hist = create_histogram_leaf(data, ds_context, scope, alpha=False)
+    hist = create_histogram_leaf(data, ds_context, scope, alpha=False, hist_source=hist_source)
     densities = hist.densities
     bins = hist.breaks
     repr_points = hist.bin_repr_points

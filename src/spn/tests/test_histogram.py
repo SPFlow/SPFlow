@@ -45,7 +45,7 @@ class TestParametric(unittest.TestCase):
         data = np.array(data).reshape((-1, 1))
         ds_context = Context([MetaType.REAL])
         ds_context.add_domains(data)
-        hist = create_histogram_leaf(data, ds_context, [0], alpha=False, source="kde")
+        hist = create_histogram_leaf(data, ds_context, [0], alpha=False, hist_source="kde")
         x = np.linspace(0, 60, 1000).tolist() + data[:, 0].tolist()
         x = np.sort(x)
         from scipy.stats import norm
@@ -68,7 +68,7 @@ class TestParametric(unittest.TestCase):
         data = np.array(data).reshape((-1, 1))
         ds_context = Context([MetaType.REAL])
         ds_context.add_domains(data)
-        hist = create_histogram_leaf(data, ds_context, [0], alpha=False, source="kde")
+        hist = create_histogram_leaf(data, ds_context, [0], alpha=False, hist_source="kde")
         x = np.linspace(0, 60, 1000).tolist() + data[:, 0].tolist()
         x = np.sort(x)
         from scipy.stats import norm

@@ -16,18 +16,6 @@ from spn.structure.leaves.parametric.Sampling import sample_parametric_node
 
 
 
-def validate_ids(node):
-    all_nodes = get_nodes_by_type(node)
-
-    ids = set()
-    for n in all_nodes:
-        ids.add(n.id)
-
-    assert len(ids) == len(all_nodes), "not all nodes have ID's"
-
-    assert min(ids) == 0 and max(ids) == len(ids) - 1, "ID's are not in order"
-
-
 def reset_node_counters(node):
     all_nodes = get_nodes_by_type(node)
     max_id = 0
