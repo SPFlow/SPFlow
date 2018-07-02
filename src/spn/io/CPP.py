@@ -7,7 +7,7 @@ import subprocess
 
 from spn.algorithms.Inference import log_likelihood
 from spn.io.Text import spn_to_str_equation
-from spn.structure.Base import get_nodes_by_type, Leaf, eval_spn, Sum, Product
+from spn.structure.Base import get_nodes_by_type, Leaf, eval_spn_bottom_up, Sum, Product
 from spn.structure.leaves.parametric.Parametric import Gaussian
 import math
 
