@@ -8,33 +8,39 @@ import logging
 import numpy as np
 
 from spn.algorithms.Inference import likelihood, log_likelihood
+from spn.algorithms.Validity import is_valid
 from spn.io.Text import str_to_spn, to_JSON
-from spn.structure.Base import Product, Sum, Leaf, get_nodes_by_type
+from spn.structure.Base import Product, Sum, Leaf, get_nodes_by_type, eval_spn_bottom_up
 from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.parametric.Parametric import Parametric
 from spn.structure.leaves.parametric.Sampling import sample_parametric_node
 
 
-
-def reset_node_counters(node):
-    all_nodes = get_nodes_by_type(node)
-    max_id = 0
-    for n in all_nodes:
-        # reset sum node counts
-        if isinstance(n, Sum):
-            n.edge_counts = np.zeros(len(n.children), dtype=np.int64)
-        # sets nr_nodes to the max id
-        max_id = max(max_id, n.id)
-        n.row_ids = []
-    return max_id
-
-
-def sample_instances(node, D, n_samples, rand_gen, return_Zs=True, return_partition=True, dtype=np.float64):
+def sample_instances(node, data, rand_gen):
     """
     Implementing hierarchical sampling
 
-    D could be extracted by traversing node
     """
+
+    # first, we do a bottom-up pass to compute the likelihood taking into account marginals.
+    # then we do a top-down pass, to sample taking into account the likelihoods.
+
+    valid, err = is_valid(node)
+    assert valid, err
+
+    assert np.all(
+        np.any(np.isnan(data), axis=1)), "each row must have at least a nan value where the samples will be substituted"
+
+    nodes = get_nodes_by_type(node)
+
+    lls_per_node = np.zeros((data.shape[0], len(nodes)))
+
+    log_likelihood(node, data, dtype=data.dtype, lls_matrix=lls_per_node)
+
+    instance_ids = np.arange(data.shape[0])
+
+    eval_spn_bottom_up(node, node_likelihood, input_vals=data, validation_function=val_funct,
+                       dtype=dtype)
 
     sum_nodes = get_nodes_by_type(node, Sum)
     n_sum_nodes = len(sum_nodes)
@@ -103,4 +109,3 @@ def sample_instances(node, D, n_samples, rand_gen, return_Zs=True, return_partit
         return X, P
 
     return X
-

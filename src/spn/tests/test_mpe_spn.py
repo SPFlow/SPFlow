@@ -10,23 +10,9 @@ from scipy.stats import chisquare
 
 import numpy as np
 
-
-def constant_equal_ll(node, data, dtype=np.float64, node_likelihood=None):
-    probs = np.zeros((data.shape[0], 1), dtype=dtype)
-    probs[:] = 0.5
-    return probs
-
-
-def node_fixed_ll(node, data, dtype=np.float64, node_likelihood=None):
-    probs = np.zeros((data.shape[0], 1), dtype=dtype)
-    probs[:] = node.prob
-    return np.log(probs)
-
-
-def leaf(prob, scope=0):
-    r = Leaf(scope)
-    r.prob = prob
-    return r
+from spn.structure.leaves.parametric.Inference import add_parametric_inference_support
+from spn.structure.leaves.parametric.Parametric import Gaussian, Categorical
+from spn.structure.leaves.parametric.Sampling import add_parametric_sampling_support
 
 
 class TestSampling(unittest.TestCase):
@@ -49,19 +35,24 @@ class TestSampling(unittest.TestCase):
             sample_instances(spn, rand_gen.rand(10, 3), rand_gen)
 
     def test_induced_trees(self):
-        add_node_likelihood(Leaf, constant_equal_ll)
+        add_parametric_inference_support()
+        add_parametric_sampling_support()
 
-        n = 100000
-
-        spn = 0.1 * (Leaf(0) * Leaf(1)) + 0.9 * (Leaf(0) * Leaf(1))
+        spn = 0.5 * (Gaussian(mean=10, stdev=0.000000001, scope=0) * Categorical(p=[1.0, 0], scope=1)) + \
+              0.5 * (Gaussian(mean=50, stdev=0.000000001, scope=0) * Categorical(p=[0, 1.0], scope=1))
 
         rand_gen = np.random.RandomState(17)
 
-        data = rand_gen.rand(10, 2)
+        data = np.zeros((2, 2))
+
+        data[1, 1] = 1
 
         data[:, 0] = np.nan
 
         sample_instances(spn, data, rand_gen)
+
+        self.assertAlmostEqual(data[0, 0], 10)
+        self.assertAlmostEqual(data[1, 0], 50)
 
 
 if __name__ == '__main__':
