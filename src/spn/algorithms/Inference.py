@@ -6,7 +6,7 @@ Created on March 21, 2018
 import numpy as np
 from scipy.special import logsumexp
 
-from spn.structure.Base import Product, Sum, Leaf, eval_spn
+from spn.structure.Base import Product, Sum, Leaf, eval_spn_bottom_up
 
 EPSILON = 0.000000000000001
 
@@ -77,9 +77,10 @@ def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, l
 
     def val_funct(node, ll):
         assert ll.shape == (data.shape[0], 1), "node %s result has to match dimensions (N,1)" % (node.id)
+        assert not np.all(np.isnan(ll)), "ll is nan %s " % (node.id)
 
-    result = eval_spn(node, node_likelihood, all_results=all_results, input_vals=data, validation_function=val_funct,
-                      dtype=dtype)
+    result = eval_spn_bottom_up(node, node_likelihood, all_results=all_results, input_vals=data, validation_function=val_funct,
+                                dtype=dtype)
 
     if lls_matrix is not None:
         for n, ll in all_results.items():
