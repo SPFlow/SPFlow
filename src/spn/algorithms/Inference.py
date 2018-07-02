@@ -78,7 +78,7 @@ def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, l
     def val_funct(node, ll):
         assert ll.shape == (data.shape[0], 1), "node %s result has to match dimensions (N,1)" % (node.id)
 
-    result = eval_spn(node, node_likelihood, all_results=all_results, input_vals=data, validation_function=val_funct,
+    result = eval_spn(node, node_likelihood, all_results=all_results, input_vals=data, after_eval_function=val_funct,
                       dtype=dtype)
 
     if lls_matrix is not None:
