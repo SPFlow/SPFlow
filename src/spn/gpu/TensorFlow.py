@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.client import timeline
 
-from spn.structure.Base import Product, Sum, eval_spn
+from spn.structure.Base import Product, Sum, eval_spn_bottom_up
 from spn.structure.leaves.histogram.Histograms import Histogram
 from spn.structure.leaves.histogram.Inference import histogram_likelihood
 from spn.structure.leaves.parametric.Parametric import Gaussian
@@ -88,8 +88,8 @@ def spn_to_tf_graph(node, data, node_tf_graph=_node_log_tf_graph, log_space=True
     # data is a placeholder, with shape same as numpy data
     data_placeholder = tf.placeholder(data.dtype, data.shape)
     variable_dict = {}
-    tf_graph = eval_spn(node, node_tf_graph, input_vals=data_placeholder, log_space=log_space,
-                        variable_dict=variable_dict)
+    tf_graph = eval_spn_bottom_up(node, node_tf_graph, input_vals=data_placeholder, log_space=log_space,
+                                  variable_dict=variable_dict)
     return tf_graph, data_placeholder, variable_dict
 
 
