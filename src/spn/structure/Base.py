@@ -187,7 +187,7 @@ def assign_ids(node, ids=None):
     bfs(node, assign_id)
 
 
-def eval_spn(node, eval_functions, all_results=None, input_vals=None, validation_function=None, **args):
+def eval_spn(node, eval_functions, all_results=None, input_vals=None, after_eval_function=None, **args):
     # evaluating in reverse order, means that we compute all the children first then their parents
     nodes = reversed(get_nodes_by_type(node))
 
@@ -204,8 +204,8 @@ def eval_spn(node, eval_functions, all_results=None, input_vals=None, validation
             children = [all_results[c] for c in n.children]
             result = eval_functions[type(n)](n, children, input_vals, **args)
 
-        if validation_function is not None:
-            validation_function(n, result)
+        if after_eval_function is not None:
+            after_eval_function(n, result)
         all_results[n] = result
 
     return all_results[node]
