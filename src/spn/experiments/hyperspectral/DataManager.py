@@ -87,7 +87,7 @@ def get_data(size=300, values=None):
 def read_img(src="cerc15dai175.mat"):
 
     try:
-        data = np.load("test.npz")
+        data = np.load("cerc15dai175.npz")
         return data["X"], data["Y"]
     except FileNotFoundError:
         data = sio.loadmat(src)
