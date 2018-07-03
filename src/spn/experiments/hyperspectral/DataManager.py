@@ -1,8 +1,6 @@
 import numpy as np
 import scipy.io as sio
 
-number_of_classes = 2
-
 
 # padding_mode = {'reflect', 'mean'}
 def get_data_in_window(window_size=3, features=None, padding_mode='reflect', three_classes=True):
@@ -40,9 +38,6 @@ def get_data_in_window(window_size=3, features=None, padding_mode='reflect', thr
                         img_data.append(X_padded[l][k][m])
             data[counter_index][:] = np.append(img_data, class_data)
             counter_index += 1
-
-    global number_of_classes
-    number_of_classes = len(np.unique(data[:, data.shape[1] - window_size ** 2:data.shape[1]]))
 
     return data
 
@@ -87,7 +82,7 @@ def get_data(size=300, values=None):
 def read_img(src="cerc15dai175.mat"):
 
     try:
-        data = np.load("cerc15dai175.npz")
+        data = np.load("{}.npz".format(src.split(".")[0]))
         return data["X"], data["Y"]
     except FileNotFoundError:
         data = sio.loadmat(src)
