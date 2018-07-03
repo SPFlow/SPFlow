@@ -4,7 +4,7 @@ Created on April 15, 2018
 @author: Alejandro Molina
 @author: Antonio Vergari
 '''
-
+from spn.algorithms.Sampling import add_node_sampling
 from spn.structure.leaves.parametric.Parametric import Parametric, Gaussian, Gamma, Poisson, Categorical, LogNormal, \
     Geometric, Exponential, Bernoulli
 
@@ -19,7 +19,7 @@ def sample_parametric_node(node, n_samples, rand_gen):
 
     X = None
     if isinstance(node, Gaussian) or isinstance(node, Gamma) or isinstance(node, LogNormal) or \
-            isinstance(node, Poisson) or isinstance(node, Geometric) or isinstance(node, Exponential) or\
+            isinstance(node, Poisson) or isinstance(node, Geometric) or isinstance(node, Exponential) or \
             isinstance(node, Bernoulli):
 
         scipy_obj, params = get_scipy_obj_params(node)
@@ -34,3 +34,14 @@ def sample_parametric_node(node, n_samples, rand_gen):
         raise Exception('Node type unknown: ' + str(type(node)))
 
     return X
+
+
+def add_parametric_sampling_support():
+    add_node_sampling(Gaussian, sample_parametric_node)
+    add_node_sampling(Gamma, sample_parametric_node)
+    add_node_sampling(LogNormal, sample_parametric_node)
+    add_node_sampling(Poisson, sample_parametric_node)
+    add_node_sampling(Geometric, sample_parametric_node)
+    add_node_sampling(Exponential, sample_parametric_node)
+    add_node_sampling(Bernoulli, sample_parametric_node)
+    add_node_sampling(Categorical, sample_parametric_node)

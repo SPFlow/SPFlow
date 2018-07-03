@@ -3,6 +3,7 @@ import unittest
 from numpy.random.mtrand import RandomState
 
 from spn.algorithms.Inference import add_node_likelihood, log_likelihood
+from spn.algorithms.MPE import mpe
 from spn.algorithms.Sampling import sample_instances
 from spn.structure.Base import assign_ids, Leaf, Sum, get_nodes_by_type
 
@@ -15,7 +16,7 @@ from spn.structure.leaves.parametric.Parametric import Gaussian, Categorical
 from spn.structure.leaves.parametric.Sampling import add_parametric_sampling_support
 
 
-class TestSampling(unittest.TestCase):
+class TestMPE(unittest.TestCase):
     def test_correct_parameters(self):
         node_1_2_2 = Leaf(0)
         node_1_2_1 = Leaf(1)
@@ -26,22 +27,17 @@ class TestSampling(unittest.TestCase):
 
         rand_gen = RandomState(1234)
         with self.assertRaises(AssertionError):
-            sample_instances(spn, rand_gen.rand(10, 3), rand_gen)
+            mpe(spn, rand_gen.rand(10, 3))
 
         assign_ids(spn)
         node_1_2_2.id += 1
 
         with self.assertRaises(AssertionError):
-            sample_instances(spn, rand_gen.rand(10, 3), rand_gen)
+            mpe(spn, rand_gen.rand(10, 3))
 
     def test_induced_trees(self):
-        add_parametric_inference_support()
-        add_parametric_sampling_support()
-
-        spn = 0.5 * (Gaussian(mean=10, stdev=0.000000001, scope=0) * Categorical(p=[1.0, 0], scope=1)) + \
-              0.5 * (Gaussian(mean=50, stdev=0.000000001, scope=0) * Categorical(p=[0, 1.0], scope=1))
-
-        rand_gen = np.random.RandomState(17)
+        spn = 0.5 * (Gaussian(mean=10, stdev=1, scope=0) * Categorical(p=[1.0, 0], scope=1)) + \
+              0.5 * (Gaussian(mean=50, stdev=1, scope=0) * Categorical(p=[0, 1.0], scope=1))
 
         data = np.zeros((2, 2))
 
@@ -49,7 +45,7 @@ class TestSampling(unittest.TestCase):
 
         data[:, 0] = np.nan
 
-        sample_instances(spn, data, rand_gen)
+        mpe(spn, data)
 
         self.assertAlmostEqual(data[0, 0], 10)
         self.assertAlmostEqual(data[1, 0], 50)
