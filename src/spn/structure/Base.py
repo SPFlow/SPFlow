@@ -4,6 +4,7 @@ Created on March 20, 2018
 @author: Alejandro Molina
 '''
 import numpy as np
+import collections
 
 
 class Node:
@@ -147,8 +148,6 @@ def rebuild_scopes_bottom_up(node):
 
 
 def bfs(root, func):
-    import collections
-
     seen, queue = set([root]), collections.deque([root])
     while queue:
         node = queue.popleft()
@@ -187,7 +186,7 @@ def assign_ids(node, ids=None):
     bfs(node, assign_id)
 
 
-def eval_spn(node, eval_functions, all_results=None, input_vals=None, after_eval_function=None, **args):
+def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, after_eval_function=None, **args):
     # evaluating in reverse order, means that we compute all the children first then their parents
     nodes = reversed(get_nodes_by_type(node))
 
@@ -209,3 +208,22 @@ def eval_spn(node, eval_functions, all_results=None, input_vals=None, after_eval
         all_results[n] = result
 
     return all_results[node]
+
+
+def eval_spn_top_down(root, eval_functions, all_results=None, input_vals=None, **args):
+    if all_results is None:
+        all_results = {}
+    else:
+        all_results.clear()
+
+    queue = collections.deque([(root, input_vals)])
+    while queue:
+        node, parent_result = queue.popleft()
+        result = eval_functions[type(node)](node, parent_result, **args)
+        all_results[node] = result
+        if result is not None and not isinstance(node, Leaf):
+            assert len(result) == len(node.children), "invalid function result for node %s" % (node.id)
+            for i, node in enumerate(node.children):
+                queue.append((node, result[i]))
+
+    return all_results[root]

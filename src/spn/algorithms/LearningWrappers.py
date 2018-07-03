@@ -7,15 +7,33 @@ Created on March 30, 2018
 import numpy as np
 
 from spn.algorithms.StructureLearning import get_next_operation, learn_structure
+from spn.algorithms.Validity import is_valid
 from spn.algorithms.splitting.Clustering import get_split_rows_KMeans
 from spn.algorithms.splitting.RDC import get_split_rows_RDC, get_split_cols_RDC_py, \
     get_split_rows_RDC_py
 from spn.algorithms.splitting.Random import get_split_cols_binary_random_partition, \
     get_split_rows_binary_random_partition
+from spn.structure.Base import Sum, assign_ids
 
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
+
+
+def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx):
+    spn = Sum()
+    for label, count in zip(*np.unique(data[:, label_idx], return_counts=True)):
+        branch = spn_learn_wrapper(data[data[:, label_idx] == label, :], ds_context)
+        spn.children.append(branch)
+        spn.weights.append(count / data.shape[0])
+
+    spn.scope.extend(branch.scope)
+    assign_ids(spn)
+
+    valid, err = is_valid(spn)
+    assert valid, "invalid spn: " + err
+
+    return spn
 
 
 def learn_mspn_with_missing(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3,
@@ -77,9 +95,8 @@ def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=
     return learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
 
-
 def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3, ohe=False,
-               leaves=None, memory=None):
+                     leaves=None, memory=None):
     if leaves is None:
         leaves = create_parametric_leaf
 
@@ -100,5 +117,3 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
         learn = memory.cache(learn)
 
     return learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
-
-

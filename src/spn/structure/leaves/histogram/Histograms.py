@@ -61,6 +61,16 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="R"):
         if meta_type == MetaType.DISCRETE:
             repr_points = repr_points.astype(int)
 
+    elif np.var(data.shape[0]) == 0 and meta_type == MetaType.REAL:
+        # one data point
+        maxx = np.max(domain)
+        minx = np.min(domain)
+        breaks = np.array([minx, maxx])
+        densities = np.array([1 / (maxx - minx)])
+        repr_points = np.array([minx + (maxx - minx) / 2])
+        if meta_type == MetaType.DISCRETE:
+            repr_points = repr_points.astype(int)
+
     else:
         breaks, densities, repr_points = getHistogramVals(data, meta_type, domain, source=hist_source)
 
@@ -98,15 +108,14 @@ def getHistogramVals(data, meta_type, domain, source="R"):
     if source == "kde":
         import statsmodels.api as sm
         kde = sm.nonparametric.KDEMultivariate(data, var_type="c", bw="cv_ls")
-        bins = int((domain[1]-domain[0])/kde.bw)
+        bins = int((domain[1] - domain[0]) / kde.bw)
         bins = min(30, bins)
-        cdf_x = np.linspace(domain[0], domain[1], 2*bins)
+        cdf_x = np.linspace(domain[0], domain[1], 2 * bins)
         cdf_y = kde.cdf(cdf_x)
-        breaks = np.interp(np.linspace(0, 1, bins), cdf_y, cdf_x) #inverse cdf
+        breaks = np.interp(np.linspace(0, 1, bins), cdf_y, cdf_x)  # inverse cdf
         mids = ((breaks + np.roll(breaks, -1)) / 2.0)[:-1]
 
         densities = kde.pdf(mids)
         densities / np.sum(densities)
-
 
         return breaks, densities, mids
