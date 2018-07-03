@@ -49,9 +49,9 @@ def train_spn(window_size=5, min_instances_slice=10000, features=None):
 
     try:
         if number_of_classes == 2:
-            spn = pickle.load(open("trainedSPNs/spn_{}_{}_{}.p".format(min_instances_slice, window_size, features), "rb"))
+            spn = pickle.load(open("trainedSPNs/spn_{}_{}_{}.p".format(min_instances_slice, window_size, len(features)), "rb"))
         else:
-            spn = pickle.load(open("trainedSPNs/spn_all.p".format(min_instances_slice, window_size, features), "rb"))
+            spn = pickle.load(open("trainedSPNs/spn_all.p".format(min_instances_slice, window_size, len(features)), "rb"))
         print("Pretrained SPN (min_instances_slice={}, window_size={}) used".format(min_instances_slice, window_size))
     except FileNotFoundError:
         spn = Sum()
@@ -67,9 +67,9 @@ def train_spn(window_size=5, min_instances_slice=10000, features=None):
 
         assign_ids(spn)
         if number_of_classes == 2:
-            pickle.dump(spn, open("trainedSPNs/spn_{}_{}_{}.p".format(min_instances_slice, window_size, features), "wb"))
+            pickle.dump(spn, open("trainedSPNs/spn_{}_{}_{}.p".format(min_instances_slice, window_size, len(features)), "wb"))
         else:
-            pickle.dump(spn, open("trainedSPNs/spn_all.p".format(min_instances_slice, window_size, features), "wb"))
+            pickle.dump(spn, open("trainedSPNs/spn_all.p".format(min_instances_slice, window_size, len(features)), "wb"))
 
         print("New SPN (min_instances_slice={}, window_size={}) trained".format(min_instances_slice, window_size))
 
@@ -181,7 +181,7 @@ def plot_experiments():
     # plt.savefig("exp_number_of_features.png")
     # plt.show()
 
-    feature_list = list(range(0, 160, 1))
+    feature_list = list(range(0, 160, 20))
     spn, acc = train_spn(3, 4000, feature_list)
     print(get_structure_stats(spn))
     print("Accuracy on spn: {}".format(acc))
