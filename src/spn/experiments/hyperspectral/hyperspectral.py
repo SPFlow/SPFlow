@@ -17,14 +17,14 @@ from spn.structure.leaves.parametric.Text import add_parametric_text_support
 from spn.algorithms.Statistics import *
 
 
-def train_spn(window_size=5, min_instances_slice=10000, features=None):
+def train_spn(window_size=3, min_instances_slice=10000, features=None, number_of_classes=3):
     if features is None:
         features = [20, 120]
 
     add_parametric_inference_support()
     add_parametric_text_support()
 
-    data = get_data_in_window(window_size=window_size, features=features)
+    data = get_data_in_window(window_size=window_size, features=features, three_classes=number_of_classes==3)
 
     sss = sk.model_selection.StratifiedShuffleSplit(test_size=0.2, train_size=0.8, random_state=42)
     for train_index, test_index in sss.split(data[:, 0:window_size * window_size * len(features)],
@@ -33,25 +33,25 @@ def train_spn(window_size=5, min_instances_slice=10000, features=None):
         X_train, X_test = data[train_index], data[test_index]
 
     context_list = list()
-    probability_list = list()
+    parametric_list = list()
     number_of_features = len(features)
     for _ in range(number_of_features * window_size * window_size):
         context_list.append(MetaType.REAL)
-        probability_list.append(Gaussian)
+        parametric_list.append(Gaussian)
 
     for _ in range(window_size * window_size):
         context_list.append(MetaType.DISCRETE)
-        probability_list.append(Categorical)
+        parametric_list.append(Categorical)
 
     ds_context = Context(meta_types=context_list)
     ds_context.add_domains(data)
-    ds_context.parametric_type = probability_list
+    ds_context.parametric_type = parametric_list
 
     try:
         if number_of_classes == 2:
-            spn = pickle.load(open("trainedSPNs/spn_{}_{}_{}.p".format(min_instances_slice, window_size, len(features)), "rb"))
+            spn = pickle.load(open("trainedSPNs/spn.p", "rb"))
         else:
-            spn = pickle.load(open("trainedSPNs/spn_all.p".format(min_instances_slice, window_size, len(features)), "rb"))
+            spn = pickle.load(open("trainedSPNs/spn.p", "rb"))
         print("Pretrained SPN (min_instances_slice={}, window_size={}) used".format(min_instances_slice, window_size))
     except FileNotFoundError:
         spn = Sum()
@@ -67,9 +67,9 @@ def train_spn(window_size=5, min_instances_slice=10000, features=None):
 
         assign_ids(spn)
         if number_of_classes == 2:
-            pickle.dump(spn, open("trainedSPNs/spn_{}_{}_{}.p".format(min_instances_slice, window_size, len(features)), "wb"))
+            pickle.dump(spn, open("trainedSPNs/spn.p".format(min_instances_slice, window_size, len(features)), "wb"))
         else:
-            pickle.dump(spn, open("trainedSPNs/spn_all.p".format(min_instances_slice, window_size, len(features)), "wb"))
+            pickle.dump(spn, open("trainedSPNs/spn.p".format(min_instances_slice, window_size, len(features)), "wb"))
 
         print("New SPN (min_instances_slice={}, window_size={}) trained".format(min_instances_slice, window_size))
 
@@ -94,7 +94,7 @@ def train_spn(window_size=5, min_instances_slice=10000, features=None):
     # print(log_likelihood(spn, data))
 
 
-def predict_img(spn, values=None, window_size=3):
+def predict_img(spn, values=None, window_size=3, number_of_classes=3):
     if values is None:
         values = [20, 140]
 
@@ -182,7 +182,7 @@ def plot_experiments():
     # plt.show()
 
     feature_list = list(range(0, 160, 20))
-    spn, acc = train_spn(3, 4000, feature_list)
+    spn, acc = train_spn(3, 10000)
     print(get_structure_stats(spn))
     print("Accuracy on spn: {}".format(acc))
     # predict_img(spn, feature_list)
