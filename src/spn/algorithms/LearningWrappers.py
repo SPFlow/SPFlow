@@ -49,11 +49,11 @@ def learn_mspn_with_missing(data, ds_context, cols="rdc", rows="kmeans", min_ins
         split_cols = None
         if cols == "rdc":
             split_cols = get_split_cols_RDC_py(threshold, ohe=True, k=10, s=1 / 6,
-                                               non_linearity=np.sin, n_jobs=1,
+                                               non_linearity=np.sin,
                                                rand_gen=rand_gen)
         if rows == "kmeans":
             split_rows = get_split_rows_RDC_py(n_clusters=2, ohe=True, k=10, s=1 / 6,
-                                               non_linearity=np.sin, n_jobs=1,
+                                               non_linearity=np.sin,
                                                rand_gen=rand_gen)
         elif rows == "rdc":
             split_rows = get_split_rows_RDC(ohe=ohe)

@@ -8,6 +8,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 
 from spn.algorithms.splitting.Base import split_data_by_clusters, clusters_by_adjacency_matrix
+import os
 
 _rpy_initialized = False
 
@@ -322,7 +323,7 @@ def rdc_test(local_data,
              k=None,
              s=1. / 6.,
              non_linearity=np.sin,
-             n_jobs=3,
+             n_jobs=os.cpu_count()-1,
              rand_gen=None):
     n_features = local_data.shape[1]
 
@@ -381,7 +382,7 @@ def getIndependentRDCGroups_py(local_data,
                                k=None,
                                s=1. / 6.,
                                non_linearity=np.sin,
-                               n_jobs=1,
+                               n_jobs=os.cpu_count()-1,
                                rand_gen=None):
     rdc_adjacency_matrix = rdc_test(local_data,
                                     meta_types,
@@ -415,7 +416,7 @@ def getIndependentRDCGroups_py(local_data,
 
 
 def get_split_cols_RDC_py(threshold=0.3, ohe=True, k=10, s=1 / 6,
-                          non_linearity=np.sin, n_jobs=1,
+                          non_linearity=np.sin, n_jobs=os.cpu_count()-1,
                           rand_gen=None):
     def split_cols_RDC_py(local_data, ds_context, scope):
         meta_types = ds_context.get_meta_types_by_scope(scope)
@@ -438,7 +439,7 @@ def get_split_cols_RDC_py(threshold=0.3, ohe=True, k=10, s=1 / 6,
 
 
 def get_split_rows_RDC_py(n_clusters=2, ohe=True, k=10, s=1 / 6,
-                          non_linearity=np.sin, n_jobs=1,
+                          non_linearity=np.sin, n_jobs=os.cpu_count()-1,
                           rand_gen=None):
     def split_rows_RDC_py(local_data, ds_context, scope):
         meta_types = ds_context.get_meta_types_by_scope(scope)
@@ -454,7 +455,7 @@ def get_split_rows_RDC_py(n_clusters=2, ohe=True, k=10, s=1 / 6,
                                    rand_gen=rand_gen)
 
         clusters = KMeans(n_clusters=n_clusters,
-                          random_state=rand_gen, n_jobs=1).fit_predict(rdc_data)
+                          random_state=rand_gen, n_jobs=n_jobs).fit_predict(rdc_data)
 
         return split_data_by_clusters(local_data, clusters, scope, rows=True)
 
