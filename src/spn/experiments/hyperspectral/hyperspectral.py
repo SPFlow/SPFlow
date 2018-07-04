@@ -47,13 +47,8 @@ def train_spn(window_size=3, min_instances_slice=10000, features=None, number_of
     ds_context.add_domains(data)
     ds_context.parametric_type = parametric_list
 
-    try:
-        if number_of_classes == 2:
-            spn = pickle.load(open("trainedSPNs/spn.p", "rb"))
-        else:
-            spn = pickle.load(open("trainedSPNs/spn.p", "rb"))
-        print("Pretrained SPN (min_instances_slice={}, window_size={}) used".format(min_instances_slice, window_size))
-    except FileNotFoundError:
+    spn = load_spn(window_size, features, min_instances_slice, number_of_classes)
+    if spn is None:
         spn = Sum()
         for class_pixel in tqdm(range(-window_size * window_size, 0)):
             for label, count in zip(*np.unique(data[:, class_pixel], return_counts=True)):
@@ -66,12 +61,7 @@ def train_spn(window_size=3, min_instances_slice=10000, features=None, number_of
         spn.weights = (np.array(spn.weights) / sum(spn.weights)).tolist()
 
         assign_ids(spn)
-        if number_of_classes == 2:
-            pickle.dump(spn, open("trainedSPNs/spn.p".format(min_instances_slice, window_size, len(features)), "wb"))
-        else:
-            pickle.dump(spn, open("trainedSPNs/spn.p".format(min_instances_slice, window_size, len(features)), "wb"))
-
-        print("New SPN (min_instances_slice={}, window_size={}) trained".format(min_instances_slice, window_size))
+        save_spn(spn, window_size, features, min_instances_slice, number_of_classes)
 
     res = np.ndarray((X_test.shape[0], number_of_classes))
 
