@@ -1,20 +1,12 @@
 import numpy as np
 import tensorflow as tf
-import spn.experiments.RandomSPNs.region_graph as rg
-import spn.experiments.RandomSPNs.utils
-from spn.experiments.RandomSPNs.utils import DEBD
 import spn.structure.Base as base
-import pickle
-import time
-from collections import namedtuple
+import spn.structure.leaves.parametric.Parametric as para
 
-from scipy.misc import logsumexp
-from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import random_ops
 import tensorflow.contrib.distributions as dists
 
-from sklearn import decomposition
 
 
 def add_to_map(given_map, key, item):
@@ -244,7 +236,7 @@ class RatSpn(object):
         self.name = name
         self._region_graph = region_graph
         self.args = args
-        self.default_mean=mean
+        self.default_mean = mean
 
         self.num_classes = num_classes
         # self.num_dims = len(self._region_graph.get_root_region())
@@ -382,6 +374,67 @@ class RatSpn(object):
                 result += vector.num_params()
 
         return result
+
+    def get_simple_spn(self, sess):
+        vec_to_nodes = {}
+
+        for leaf_vector in self.vector_list[0]:
+            vec_to_nodes[leaf_vector] = []
+            means, sigmas = sess.run([leaf_vector.means[0], leaf_vector.sigma[0]])
+            stdevs = np.sqrt(sigmas) + np.zeros_like(means) # Use broadcasting to expand stdev is necessary
+            for i in range(leaf_vector.size):
+                prod = base.Product()
+                prod.scope.extend(leaf_vector.scope)
+                for j, r in enumerate(leaf_vector.scope):
+                    prod.children.append(para.Gaussian(mean=means[j, i],
+                                                       stdev=stdevs[j, i],
+                                                       scope=[r]))
+
+                vec_to_nodes[leaf_vector].append(prod)
+
+        for layer_idx in range(1, len(self.vector_list)):
+            # vector_list.append([])
+            if layer_idx % 2 == 1:
+                prod_vectors = self.vector_list[layer_idx]
+                for i, prod_vector in enumerate(prod_vectors):
+                    input1 = prod_vector.vector1
+                    input2 = prod_vector.vector2
+
+                    vec_to_nodes[prod_vector] = []
+
+                    # The order of these loops is very important, otherwise weights will be mismatched
+                    # input1 is the inner loop because it is the inner dimension
+                    # of the outer product in ProductVector::forward
+                    for c2 in range(input2.size):
+                        for c1 in range(input1.size):
+                            prod = base.Product()
+                            prod.children.append(vec_to_nodes[input1][c1])
+                            prod.children.append(vec_to_nodes[input2][c2])
+                            prod.scope.extend(input1.scope)
+                            prod.scope.extend(input2.scope)
+                            vec_to_nodes[prod_vector].append(prod)
+
+            else:
+                sum_vectors = self.vector_list[layer_idx]
+                for i, sum_vector in enumerate(sum_vectors):
+                    vec_to_nodes[sum_vector] = []
+                    weights = sess.run(sum_vector.weights)[0]
+
+                    for j in range(sum_vector.size):
+                        sum_node = base.Sum()
+                        sum_node.scope.extend(sum_vector.scope)
+                        input_vecs = [vec_to_nodes[prod_vec] for prod_vec in sum_vector.inputs]
+                        input_nodes = [node for vec in input_vecs for node in vec]
+                        sum_node.children.extend(input_nodes)
+
+                        vec_to_nodes[sum_vector].append(sum_node)
+
+                        log_weights = weights[:, j]
+                        scaled_weights = np.exp(log_weights - np.max(log_weights))
+                        normalized_weights = scaled_weights / np.sum(scaled_weights)
+                        sum_node.weights.extend(normalized_weights)
+
+        return vec_to_nodes[self.output_vector]
 
 
 def compute_performance(sess, data_x, data_labels, batch_size, spn):
