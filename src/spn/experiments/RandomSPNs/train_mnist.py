@@ -1,8 +1,10 @@
 from observations import mnist
 import tensorflow as tf
 import numpy as np
-import RAT_SPN
-import region_graph
+import spn.experiments.RandomSPNs.RAT_SPN as RAT_SPN
+import spn.experiments.RandomSPNs.region_graph as region_graph
+
+import spn.algorithms.Inference as inference
 
 
 def one_hot(vector):
@@ -26,7 +28,7 @@ def load_mnist():
 
 def train_spn(spn, train_im, train_lab=None, num_epochs=50, batch_size=100, sess=tf.Session()):
 
-    input_ph = tf.placeholder(tf.float32, [batch_size, spn.num_dims])
+    input_ph = tf.placeholder(tf.float32, [batch_size, train_im.shape[1]])
     label_ph = tf.placeholder(tf.int32, [batch_size])
     marginalized = tf.zeros_like(input_ph)
     spn_output = spn.forward(input_ph, marginalized)
@@ -66,8 +68,26 @@ if __name__ == '__main__':
     for _ in range(0, 2):
         rg.random_split(2, 2)
 
-    spn = RAT_SPN.RatSpn(rg, 10, name='obj-spn')
+    args = RAT_SPN.SpnArgs()
+    args.normalized_sums = True
+    spn = RAT_SPN.RatSpn(10, region_graph=rg, name='obj-spn', args=args)
     print('num_params', spn.num_params())
 
-    (train_im, train_labels), _ = load_mnist()
-    train_spn(spn, train_im, train_labels)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    dummy_input = np.random.normal(0.0, 1.2, [10, 9])
+    input_ph = tf.placeholder(tf.float32, [10, 9])
+    output_tensor = spn.forward(input_ph)
+    tf_output = sess.run(output_tensor, feed_dict={input_ph: dummy_input})
+
+    output_nodes = spn.get_simple_spn(sess)
+    simple_output = []
+    for node in output_nodes:
+        simple_output.append(inference.likelihood(node, dummy_input))
+    simple_output = np.stack(simple_output)
+    relative_error = simple_output / np.exp(tf_output)
+    print(np.average(relative_error) - 1)
+
+
+    # (train_im, train_labels), _ = load_mnist()
+    # train_spn(spn, train_im, train_labels)
