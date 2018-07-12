@@ -1,5 +1,8 @@
 import numpy as np
 import scipy.io as sio
+import pickle
+import datetime
+import os
 
 
 # padding_mode = {'reflect', 'mean'}
@@ -99,3 +102,40 @@ def read_img(src="cerc15dai175.mat"):
         np.savez("{}.npz".format(src.split(".")[0]), X=input_image, Y=data["labels"].reshape(dim[0], dim[1]))
 
         return input_image, data["labels"].reshape(dim[0], dim[1])
+
+
+def save_spn(spn, window_size, feature_list, min_instances_slice, number_of_classes, directory="/trainedSPNs"):
+    if not os.path.exists(os.getcwd() + directory):
+        os.makedirs(directory)
+    path = os.getcwd()+directory
+    time = datetime.datetime.now()
+    spn_name = "spn_{}".format(time)
+    dic = {"spn_name": spn_name, "window_size":window_size, "feature_list": feature_list,
+           "min_instances_slice": min_instances_slice, "number_of_classes": number_of_classes}
+    pickle.dump(spn, open("{}/{}.p".format(path, spn_name), "wb"))
+    pickle.dump(dic, open("{}/dic_{}.p".format(path, time), "wb"))
+    print("New trained SPN was saved!")
+
+
+def load_spn(window_size, feature_list, min_instances_slice, number_of_classes, directory="/trainedSPNs"):
+    path = os.getcwd()+ directory
+    if not os.path.exists(path):
+        return
+    for file in os.listdir(path):
+        if file.startswith("dic"):
+            dic = pickle.load(open(path+"/"+file, "rb"))
+            if dic["window_size"] == window_size and dic["feature_list"] == feature_list and \
+                    dic["min_instances_slice"] == min_instances_slice and dic["number_of_classes"] == number_of_classes:
+                print("Pretrained SPN was loaded!")
+                try:
+                    return pickle.load(open(path+"/"+dic["spn_name"]+".p", "rb"))
+                except FileNotFoundError as e:
+                    print("SPN not found!")
+                    print(e)
+                    return None
+    print("No pretrained SPN was found!")
+
+
+if __name__ == '__main__':
+    #save_spn(4,3,[1,2,3,5,6], 1000, 3)
+    print(load_spn(3,[1,2,3,5,6], 1000, 3))
