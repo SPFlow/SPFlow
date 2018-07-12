@@ -171,8 +171,8 @@ def plot_experiments():
     # plt.savefig("exp_number_of_features.png")
     # plt.show()
 
-    feature_list = list(range(0, 160, 20))
-    spn, acc = train_spn(3, 10000)
+    feature_list = list(range(0, 160, 1))
+    spn, acc = train_spn(3, 2000, feature_list)
     print(get_structure_stats(spn))
     print("Accuracy on spn: {}".format(acc))
     # predict_img(spn, feature_list)
