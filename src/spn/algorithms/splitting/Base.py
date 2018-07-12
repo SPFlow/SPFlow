@@ -75,8 +75,12 @@ def split_data_by_clusters(data, clusters, scope, rows=True):
 
     for uc in unique_clusters:
         if rows:
-            result.append((data[clusters == uc, :], scope))
+            local_data = data[clusters == uc, :]
+            proportion = local_data.shape[0] / data.shape[0]
+            result.append((local_data, scope, proportion))
         else:
-            result.append((data[:, clusters == uc].reshape((data.shape[0], -1)), nscope[clusters == uc].tolist()))
+            local_data = data[:, clusters == uc].reshape((data.shape[0], -1))
+            proportion = local_data.shape[1] / data.shape[1]
+            result.append((local_data, nscope[clusters == uc].tolist(), proportion))
 
     return result

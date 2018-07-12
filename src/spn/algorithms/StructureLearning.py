@@ -6,12 +6,13 @@ Created on March 20, 2018
 import logging
 from collections import deque
 from enum import Enum
+
 try:
     from time import perf_counter
 except:
     from time import time
-    perf_counter = time
 
+    perf_counter = time
 
 import numpy as np
 
@@ -29,45 +30,59 @@ class Operation(Enum):
 
 
 def get_next_operation(min_instances_slice=100):
-    def next_operation(data, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True, cluster_univariate=False):
+    def next_operation(data, scope, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True,
+                       cluster_univariate=False):
 
-        minimalFeatures = data.shape[1] == 1
+        minimalFeatures = len(scope) == 1
         minimalInstances = data.shape[0] <= min_instances_slice
 
         if minimalFeatures:
             if minimalInstances or no_clusters:
-                return Operation.CREATE_LEAF
+                return Operation.CREATE_LEAF, None
             else:
                 if cluster_univariate:
-                    return Operation.SPLIT_ROWS
+                    return Operation.SPLIT_ROWS, None
                 else:
-                    return Operation.CREATE_LEAF
+                    return Operation.CREATE_LEAF, None
 
-        ncols_zero_variance = np.sum(np.var(data, 0) == 0)
+        uninformative_features_idx = np.var(data[:, 0:len(scope)], 0) == 0
+        ncols_zero_variance = np.sum(uninformative_features_idx)
         if ncols_zero_variance > 0:
             if ncols_zero_variance == data.shape[1]:
-                return Operation.NAIVE_FACTORIZATION
+                return Operation.NAIVE_FACTORIZATION, None
             else:
-                return Operation.REMOVE_UNINFORMATIVE_FEATURES
+                return Operation.REMOVE_UNINFORMATIVE_FEATURES, np.arange(len(scope))[
+                    uninformative_features_idx].tolist()
 
         if minimalInstances or (no_clusters and no_independencies):
-            return Operation.NAIVE_FACTORIZATION
+            return Operation.NAIVE_FACTORIZATION, None
 
         if no_independencies:
-            return Operation.SPLIT_ROWS
+            return Operation.SPLIT_ROWS, None
 
         if no_clusters:
-            return Operation.SPLIT_COLUMNS
+            return Operation.SPLIT_COLUMNS, None
 
         if is_first:
-            return Operation.SPLIT_ROWS if cluster_first else Operation.SPLIT_COLUMNS
+            if cluster_first:
+                return Operation.SPLIT_ROWS, None
+            else:
+                return Operation.SPLIT_COLUMNS, None
 
-        return Operation.SPLIT_COLUMNS
+        return Operation.SPLIT_COLUMNS, None
 
     return next_operation
 
 
-def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, next_operation=get_next_operation()):
+def default_slicer(data, cols):
+    if len(cols) == 1:
+        return data[:, cols[0]].reshape((-1, 1))
+
+    return data[:, cols]
+
+
+def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, next_operation=get_next_operation(),
+                    initial_scope=None, data_slicer=default_slicer):
     assert dataset is not None
     assert ds_context is not None
     assert split_rows is not None
@@ -78,47 +93,45 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
     root = Product()
     root.children.append(None)
 
+    if initial_scope is None:
+        initial_scope = list(range(dataset.shape[1]))
+
     tasks = deque()
-    tasks.append((dataset, root, 0, list(range(dataset.shape[1])), False, False))
+    tasks.append((dataset, root, 0, initial_scope, False, False))
 
     while tasks:
 
         local_data, parent, children_pos, scope, no_clusters, no_independencies = tasks.popleft()
 
-        operation = next_operation(local_data, no_clusters=no_clusters, no_independencies=no_independencies,
-                                   is_first=(parent is root))
+        operation, op_params = next_operation(local_data, scope, no_clusters=no_clusters,
+                                              no_independencies=no_independencies,
+                                              is_first=(parent is root))
 
-        logging.debug('OP: {} on slice {} (remaining tasks {})'.format(operation,
-                                                                      local_data.shape,
-                                                                      len(tasks)))
+        logging.debug('OP: {} on slice {} (remaining tasks {})'.format(operation, local_data.shape, len(tasks)))
 
         if operation == Operation.REMOVE_UNINFORMATIVE_FEATURES:
-            variances = np.var(local_data, axis=0)
 
             node = Product()
             node.scope.extend(scope)
             parent.children[children_pos] = node
 
-            cols = []
-            for col in range(local_data.shape[1]):
-                if variances[col] == 0:
-                    node.children.append(None)
-                    tasks.append((local_data[:, col].reshape((-1, 1)), node,
-                                  len(node.children) - 1, [scope[col]], True, True))
-                else:
-                    cols.append(col)
+            rest_scope = set(range(len(scope)))
+            for col in op_params:
+                rest_scope.remove(col)
+                node.children.append(None)
+                tasks.append((data_slicer(local_data, [col]), node, len(node.children) - 1, [scope[col]], True, True))
 
             node.children.append(None)
-
             c_pos = len(node.children) - 1
-            if len(cols) == 1:
-                col = cols[0]
 
-                tasks.append((local_data[:, col].reshape((-1, 1)),
-                              node, c_pos, [scope[col]], True, True))
-            else:
-                tasks.append((local_data[:, cols], node, c_pos,
-                              np.array(scope)[cols].tolist(), False, False))
+            next_final = False
+
+            if len(rest_scope) == 1:
+                next_final = True
+
+            rest_scope = list(rest_scope)
+
+            tasks.append((data_slicer(local_data, rest_scope), node, c_pos, rest_scope, next_final, next_final))
 
             continue
 
@@ -127,8 +140,8 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             split_start_t = perf_counter()
             data_slices = split_rows(local_data, ds_context, scope)
             split_end_t = perf_counter()
-            logging.debug('\t\tfound {} row clusters (in {:.5f} secs)'.format(len(data_slices),
-                                                                             split_end_t - split_start_t))
+            logging.debug(
+                '\t\tfound {} row clusters (in {:.5f} secs)'.format(len(data_slices), split_end_t - split_start_t))
 
             if len(data_slices) == 1:
                 tasks.append((local_data, parent, children_pos, scope, True, False))
@@ -138,11 +151,11 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             node.scope.extend(scope)
             parent.children[children_pos] = node
 
-            for data_slice, scope_slice in data_slices:
+            for data_slice, scope_slice, proportion in data_slices:
                 assert isinstance(scope_slice, list), "slice must be a list"
 
                 node.children.append(None)
-                node.weights.append(data_slice.shape[0] / local_data.shape[0])
+                node.weights.append(proportion)
                 tasks.append((data_slice, node, len(node.children) - 1, scope, False, False))
 
             continue
@@ -153,7 +166,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             data_slices = split_cols(local_data, ds_context, scope)
             split_end_t = perf_counter()
             logging.debug('\t\tfound {} col clusters (in {:.5f} secs)'.format(len(data_slices),
-                                                                             split_end_t - split_start_t))
+                                                                              split_end_t - split_start_t))
 
             if len(data_slices) == 1:
                 tasks.append((local_data, parent, children_pos, scope, False, True))
@@ -163,7 +176,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             node.scope.extend(scope)
             parent.children[children_pos] = node
 
-            for data_slice, scope_slice in data_slices:
+            for data_slice, scope_slice, _ in data_slices:
                 assert isinstance(scope_slice, list), "slice must be a list"
 
                 node.children.append(None)
@@ -176,14 +189,12 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             parent.children[children_pos] = node
 
             split_start_t = perf_counter()
-            for col in range(local_data.shape[1]):
+            for col in range(len(scope)):
                 node.children.append(None)
-                tasks.append((local_data[:, col].reshape((-1, 1)), node,
-                              len(node.children) - 1, [scope[col]], True, True))
+                tasks.append((data_slicer(local_data, [col]), node, len(node.children) - 1, [scope[col]], True, True))
             split_end_t = perf_counter()
 
-            logging.debug('\t\tsplit {} columns (in {:.5f} secs)'.format(local_data.shape[1],
-                                                                        split_end_t - split_start_t))
+            logging.debug('\t\tsplit {} columns (in {:.5f} secs)'.format(len(scope), split_end_t - split_start_t))
 
             continue
 
@@ -191,13 +202,12 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
             leaf_start_t = perf_counter()
             node = create_leaf(local_data, ds_context, scope)
-            # node.scope.extend(scope)
             parent.children[children_pos] = node
             leaf_end_t = perf_counter()
 
             logging.debug('\t\t created leaf {} for scope={} (in {:.5f} secs)'.format(node.__class__.__name__,
-                                                                                     scope,
-                                                                                     leaf_end_t - leaf_start_t))
+                                                                                      scope,
+                                                                                      leaf_end_t - leaf_start_t))
 
         else:
             raise Exception('Invalid operation: ' + operation)
