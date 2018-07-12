@@ -8,7 +8,6 @@ import numpy as np
 from sklearn.cluster import KMeans
 
 from spn.algorithms.splitting.Base import split_data_by_clusters, clusters_by_adjacency_matrix
-import os
 
 _rpy_initialized = False
 
@@ -323,7 +322,7 @@ def rdc_test(local_data,
              k=None,
              s=1. / 6.,
              non_linearity=np.sin,
-             n_jobs=os.cpu_count()-1,
+             n_jobs=-2,
              rand_gen=None):
     n_features = local_data.shape[1]
 
@@ -352,7 +351,7 @@ def rdc_test(local_data,
 
     cca = CCA(n_components=1, max_iter=CCA_MAX_ITER)
     from joblib import Parallel, delayed
-    rdc_vals = Parallel(n_jobs=n_jobs)(delayed(rdc_cca)((i, j, cca))
+    rdc_vals = Parallel(n_jobs=n_jobs, verbose=5)(delayed(rdc_cca)((i, j, cca))
                                        for i, j in pairwise_comparisons)
 
     # with concurrent.futures.ProcessPoolExecutor(n_jobs) as p:
@@ -382,7 +381,7 @@ def getIndependentRDCGroups_py(local_data,
                                k=None,
                                s=1. / 6.,
                                non_linearity=np.sin,
-                               n_jobs=os.cpu_count()-1,
+                               n_jobs=-2,
                                rand_gen=None):
     rdc_adjacency_matrix = rdc_test(local_data,
                                     meta_types,
@@ -416,7 +415,7 @@ def getIndependentRDCGroups_py(local_data,
 
 
 def get_split_cols_RDC_py(threshold=0.3, ohe=True, k=10, s=1 / 6,
-                          non_linearity=np.sin, n_jobs=os.cpu_count()-1,
+                          non_linearity=np.sin, n_jobs=-2,
                           rand_gen=None):
     def split_cols_RDC_py(local_data, ds_context, scope):
         meta_types = ds_context.get_meta_types_by_scope(scope)
@@ -439,7 +438,7 @@ def get_split_cols_RDC_py(threshold=0.3, ohe=True, k=10, s=1 / 6,
 
 
 def get_split_rows_RDC_py(n_clusters=2, ohe=True, k=10, s=1 / 6,
-                          non_linearity=np.sin, n_jobs=os.cpu_count()-1,
+                          non_linearity=np.sin, n_jobs=-2,
                           rand_gen=None):
     def split_rows_RDC_py(local_data, ds_context, scope):
         meta_types = ds_context.get_meta_types_by_scope(scope)

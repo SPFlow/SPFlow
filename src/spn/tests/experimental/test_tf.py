@@ -19,7 +19,7 @@ from spn.structure.leaves.histogram.Inference import add_histogram_inference_sup
 memory = Memory(cachedir="cache", verbose=0, compress=9)
 
 
-@memory.cache
+#@memory.cache
 def learn(data, ds_context):
     spn = learn_structure(data, ds_context, get_split_rows_KMeans(), get_split_cols_RDC(), create_histogram_leaf)
 
@@ -36,6 +36,9 @@ if __name__ == '__main__':
 
     ds_context = Context(meta_types=[MetaType.DISCRETE] * data.shape[1])
     ds_context.add_domains(data)
+
+    data[:,0] = 0
+    data[:,1] = 1
 
     spn = learn(data, ds_context)
     spn = create_histogram_leaf(data[:, 0].reshape((-1, 1)), ds_context, [0], alpha=False, hist_source="kde") * \
