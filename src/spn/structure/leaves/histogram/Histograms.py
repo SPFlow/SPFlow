@@ -61,7 +61,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="R"):
         if meta_type == MetaType.DISCRETE:
             repr_points = repr_points.astype(int)
 
-    elif np.var(data.shape[0]) == 0 and meta_type == MetaType.REAL:
+    elif np.var(data) == 0 and meta_type == MetaType.REAL:
         # one data point
         maxx = np.max(domain)
         minx = np.min(domain)
