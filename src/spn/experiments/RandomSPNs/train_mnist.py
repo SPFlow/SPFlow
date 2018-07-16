@@ -5,6 +5,7 @@ import spn.experiments.RandomSPNs.RAT_SPN as RAT_SPN
 import spn.experiments.RandomSPNs.region_graph as region_graph
 
 import spn.algorithms.Inference as inference
+import spn.io.Graphics as graphics 
 
 
 def one_hot(vector):
@@ -61,33 +62,48 @@ def train_spn(spn, train_im, train_lab=None, num_epochs=50, batch_size=100, sess
         acc = num_correct / (batch_size * batches_per_epoch)
         print(i, acc, cur_loss)
 
+def softmax(x, axis=0):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x, axis=axis, keepdims=True))
+    return e_x / e_x.sum(axis=axis, keepdims=True)
 
 if __name__ == '__main__':
-    #rg = region_graph.RegionGraph(range(28 * 28))
-    rg = region_graph.RegionGraph(range(3 * 3))
+    rg = region_graph.RegionGraph(range(28 * 28))
+    # rg = region_graph.RegionGraph(range(3 * 3))
     for _ in range(0, 2):
-        rg.random_split(2, 2)
+        rg.random_split(2, 1)
 
     args = RAT_SPN.SpnArgs()
     args.normalized_sums = True
+    args.num_sums = 2
+    args.num_gauss = 2
     spn = RAT_SPN.RatSpn(10, region_graph=rg, name='obj-spn', args=args)
     print('num_params', spn.num_params())
 
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
-    dummy_input = np.random.normal(0.0, 1.2, [10, 9])
-    input_ph = tf.placeholder(tf.float32, [10, 9])
+
+    (train_im, train_labels), _ = load_mnist()
+    train_spn(spn, train_im, train_labels, num_epochs=3, sess=sess)
+
+    # dummy_input = np.random.normal(0.0, 1.2, [10, 9])
+    dummy_input = train_im[:5]
+    input_ph = tf.placeholder(tf.float32, dummy_input.shape)
     output_tensor = spn.forward(input_ph)
     tf_output = sess.run(output_tensor, feed_dict={input_ph: dummy_input})
 
     output_nodes = spn.get_simple_spn(sess)
     simple_output = []
     for node in output_nodes:
-        simple_output.append(inference.likelihood(node, dummy_input))
-    simple_output = np.stack(simple_output)
-    relative_error = simple_output / np.exp(tf_output)
-    print(np.average(relative_error) - 1)
+        simple_output.append(inference.log_likelihood(node, dummy_input)[:, 0])
+    # graphics.plot_spn2(output_nodes[0])
+    # graphics.plot_spn_to_svg(output_nodes[0])
+    simple_output = np.stack(simple_output, axis=-1)
+    print(tf_output, simple_output)
+    simple_output = softmax(simple_output, axis=1)
+    tf_output = softmax(tf_output, axis=1) + 1e-100
+    print(tf_output, simple_output)
+    relative_error = np.abs(simple_output / tf_output - 1)
+    print(np.average(relative_error))
 
 
-    # (train_im, train_labels), _ = load_mnist()
-    # train_spn(spn, train_im, train_labels)
