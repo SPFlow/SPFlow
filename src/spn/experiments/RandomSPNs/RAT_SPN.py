@@ -377,6 +377,7 @@ class RatSpn(object):
 
     def get_simple_spn(self, sess):
         vec_to_nodes = {}
+        node_id = 0
 
         for leaf_vector in self.vector_list[0]:
             vec_to_nodes[leaf_vector] = []
@@ -384,11 +385,14 @@ class RatSpn(object):
             stdevs = np.sqrt(sigmas) + np.zeros_like(means) # Use broadcasting to expand stdev is necessary
             for i in range(leaf_vector.size):
                 prod = base.Product()
+                prod.id = node_id = node_id + 1
                 prod.scope.extend(leaf_vector.scope)
                 for j, r in enumerate(leaf_vector.scope):
-                    prod.children.append(para.Gaussian(mean=means[j, i],
-                                                       stdev=stdevs[j, i],
-                                                       scope=[r]))
+                    gaussian = para.Gaussian(mean=means[j, i],
+                                             stdev=stdevs[j, i],
+                                             scope=[r])
+                    gaussian.id = node_id = node_id + 1
+                    prod.children.append(gaussian)
 
                 vec_to_nodes[leaf_vector].append(prod)
 
@@ -408,6 +412,7 @@ class RatSpn(object):
                     for c2 in range(input2.size):
                         for c1 in range(input1.size):
                             prod = base.Product()
+                            prod.id = node_id = node_id + 1
                             prod.children.append(vec_to_nodes[input1][c1])
                             prod.children.append(vec_to_nodes[input2][c2])
                             prod.scope.extend(input1.scope)
@@ -422,6 +427,7 @@ class RatSpn(object):
 
                     for j in range(sum_vector.size):
                         sum_node = base.Sum()
+                        sum_node.id = node_id = node_id + 1
                         sum_node.scope.extend(sum_vector.scope)
                         input_vecs = [vec_to_nodes[prod_vec] for prod_vec in sum_vector.inputs]
                         input_nodes = [node for vec in input_vecs for node in vec]

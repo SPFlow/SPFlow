@@ -6,6 +6,8 @@ Created on March 29, 2018
 from matplotlib.ticker import NullLocator
 from networkx.drawing.nx_agraph import graphviz_layout
 
+# import matplotlib
+# matplotlib.use('Agg')
 
 def get_networkx_obj(spn):
     import networkx as nx
@@ -13,6 +15,7 @@ def get_networkx_obj(spn):
     import numpy as np
 
     all_nodes = get_nodes_by_type(spn)
+    print(all_nodes)
 
     g = nx.Graph()
 
