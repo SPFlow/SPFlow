@@ -4,6 +4,8 @@ Created on March 29, 2018
 @author: Alejandro Molina
 '''
 
+# import matplotlib
+# matplotlib.use('Agg')
 
 def plot_spn2(spn, fname="plot.pdf"):
     import networkx as nx
@@ -14,6 +16,7 @@ def plot_spn2(spn, fname="plot.pdf"):
     import numpy as np
 
     all_nodes = get_nodes_by_type(spn)
+    print(all_nodes)
 
     g = nx.DiGraph()
 
