@@ -28,10 +28,11 @@ class Conditional(Leaf):
 
 class Conditional_Gaussian(Conditional):
     """
-    Implements a univariate gaussian distribution with parameters
+    Implements a conditional univariate gaussian distribution with parameters
     \mu(mean)
     \sigma ^ 2 (variance)
     (alternatively \sigma is the standard deviation(stdev) and \sigma ^ {-2} the precision)
+    self.mean is a list of mean values
     """
 
     # def __init__(self, mean=None, stdev=None, scope=None):
@@ -65,6 +66,7 @@ class Conditional_Poisson(Conditional):
     """
     Implements a univariate Poisson distribution with parameter
     \lambda (mean)
+    self.mean is a list param values
     """
 
     # def __init__(self, mean=None, scope=None):
@@ -91,6 +93,7 @@ class Conditional_Bernoulli(Conditional):
     """
     Implements a univariate Bernoulli distribution with parameter
     p (probability of a success)
+    self.p is a list param values
     """
 
     # def __init__(self, p=None, scope=None):
