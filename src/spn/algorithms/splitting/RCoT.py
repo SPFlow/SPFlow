@@ -8,7 +8,7 @@ from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import SignatureTranslatedAnonymousPackage
 
 
-with open("/home/xiaoting/DeployedProjectes/SDCIT/R/RCoT.R", "r") as mixfile:
+with open("RCoT.R", "r") as mixfile:
    code = ''.join(mixfile.readlines())
    CoTest = SignatureTranslatedAnonymousPackage(code, "RCoT")
 
