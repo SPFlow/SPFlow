@@ -24,16 +24,20 @@ def conditional_likelihood(node, data, scope, dtype=np.float64):
     :param dtype: data type
     :return: conditional likelihood
     """
-    assert len(node.scope) == 1, node.scope
+    assert len(node.scope) == 1, node.scope  #todo should node.scope be adjusted?
+    num_instance = data.shape[0]
 
-    idx = scope[0]
-    dataOut = data[:, idx]
-    dataIn = data[:, ~idx]
+    # idx = scope[0]
+    output_mask = np.zeros(data.shape, dtype=bool)
+    output_mask[:, scope] = True
+
+    dataOut = data[output_mask].reshape(num_instance, -1)
+    dataIn = data[~output_mask].reshape(num_instance, -1)
 
     probs = np.ones((dataOut.shape[0], 1), dtype=dtype)
 
     if dataOut.shape[1] > 1:
-        dataOut = dataOut[:, node.scope]
+        dataOut = dataOut[:, node.scope]   # todo check again node.scope and par scope
 
     assert dataOut.shape[1] == 1, dataOut.shape
 
