@@ -13,9 +13,13 @@ def update_glm_parameters_mle(node, data, scope):   # assume data is tuple (outp
     assert len(scope) == 1, 'more than one output variable in scope?'
     data = data[~np.isnan(data)]
 
-    idx = scope[0]
-    dataOut = data[:, idx]
-    dataIn = data[:, ~idx] # todo double check here
+    num_instance = data.shape[0]
+
+    output_mask = np.zeros(data.shape, dtype=bool)   # todo check scope and node.scope again
+    output_mask[:, scope] = True
+
+    dataOut = data[output_mask].reshape(num_instance, -1)
+    dataIn = data[~output_mask].reshape(num_instance, -1)
 
     assert dataOut.shape[1] == 1, 'more than one output variable in scope?'
 
