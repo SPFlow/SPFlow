@@ -16,30 +16,38 @@ POS_EPS = 1e-7
 LOG_ZERO = -300
 
 
-def conditional_likelihood(node, data, dtype=np.float64): # Assume data is tuple (output, conditional)
-
+def conditional_likelihood(node, data, scope, dtype=np.float64):
+    """
+    :param node: the query
+    :param data: data including conditional columns
+    :param scope: scope indicates the output columns in data
+    :param dtype: data type
+    :return: conditional likelihood
+    """
     assert len(node.scope) == 1, node.scope
 
-    dataOut, dataIn = data
+    idx = scope[0]
+    dataOut = data[:, idx]
+    dataIn = data[:, ~idx]
 
     probs = np.ones((dataOut.shape[0], 1), dtype=dtype)
 
     if dataOut.shape[1] > 1:
         dataOut = dataOut[:, node.scope]
 
-    assert dataOut.shape[1] == 1, data.shape
+    assert dataOut.shape[1] == 1, dataOut.shape
 
     # marginalize over something?
     marg_ids = np.isnan(dataOut)
 
     if isinstance(node, Conditional_Gaussian):
         scipy_obj, params = get_scipy_obj_params(node, dataIn)   # params is a vector instead of a scalar
-        probs[~marg_ids] = [scipy_obj.pdf(data, **param) for data, param in zip(dataOut[~marg_ids], params)]  #todo double check
+        probs[~marg_ids] = [scipy_obj.pdf(obs, **param) for obs, param in zip(dataOut[~marg_ids], params)]  #todo double check
 
 
     elif isinstance(node, Conditional_Poisson) or isinstance(node, Conditional_Bernoulli):
         scipy_obj, params = get_scipy_obj_params(node, dataIn)
-        probs[~marg_ids] = [scipy_obj.pmf(data[~marg_ids], **params) for data, param in zip(dataOut[~marg_ids], params)] # todo double check
+        probs[~marg_ids] = [scipy_obj.pmf(obs[~marg_ids], **param) for obs, param in zip(dataOut[~marg_ids], params)] # todo double check
 
     else:
         raise Exception("Unknown parametric " + str(type(node)))
@@ -47,8 +55,18 @@ def conditional_likelihood(node, data, dtype=np.float64): # Assume data is tuple
     return probs
 
 
-
-def conditional_mpe_log_likelihood(node, data, log_space=True, dtype=np.float64, context=None, node_mpe_likelihood=None):
+# todo rewrite?
+def conditional_mpe_log_likelihood(node, data, scope=None, log_space=True, dtype=np.float64, context=None, node_mpe_likelihood=None):
+    """
+    :param node:
+    :param data:
+    :param scope:
+    :param log_space:
+    :param dtype:
+    :param context:
+    :param node_mpe_likelihood:
+    :return:
+    """
     assert len(node.scope) == 1, node.scope
     dataOut, dataIn = data
 

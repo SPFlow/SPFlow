@@ -8,7 +8,7 @@ from spn.structure.leaves.conditional.Conditional import *
 import numpy as np
 
 
-def parametric_expectation(node):
+def conditional_expectation(node):
     if isinstance(node, Conditional_Gaussian) or isinstance(node, Conditional_Poisson):
         return node.mean
 
@@ -20,6 +20,6 @@ def parametric_expectation(node):
 
 
 def add_parametric_expectation_support():
-    add_node_expectation(Conditional_Gaussian, parametric_expectation)
-    add_node_expectation(Conditional_Poisson, parametric_expectation)
-    add_node_expectation(Conditional_Bernoulli, parametric_expectation)
+    add_node_expectation(Conditional_Gaussian, conditional_expectation)
+    add_node_expectation(Conditional_Poisson, conditional_expectation)
+    add_node_expectation(Conditional_Bernoulli, conditional_expectation)
