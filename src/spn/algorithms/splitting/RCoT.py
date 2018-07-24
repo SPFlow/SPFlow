@@ -6,6 +6,7 @@ from networkx.convert_matrix import from_numpy_matrix
 from rpy2 import robjects
 from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import SignatureTranslatedAnonymousPackage
+import multiprocessing as mp
 
 
 with open("RCoT.R", "r") as mixfile:
@@ -18,13 +19,19 @@ data_cond_file = path.join(mkdtemp(), 'data_cond_file.dat')
 
 
 
-def getCIGroups(dataIn, alpha=0.0001, families=None):
+def getCIGroups(data, scope=None, alpha=0.0001, families=None):
     """
+    :param dataIn:
+    :param alpha:
+    :param families:
+    :return:
+
     This function take tuple (output, conditional) as input and returns independent groups
     alpha is the cutoff parameter for connected components
     BE CAREFUL WITH SPARSE DATA!
     """
-    data, data_cond = dataIn
+    dataOut = data[:, scope]
+    dataIn = data[:, scope]
 
     DATA = np.memmap(data_file, dtype=data.dtype, mode='w+', shape=data.shape)
     DATA[:] = data[:]
