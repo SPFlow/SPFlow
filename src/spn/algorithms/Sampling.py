@@ -63,7 +63,7 @@ def add_node_sampling(node_type, lambda_func):
     _node_sampling[node_type] = sample_leaf
 
 
-def sample_instances(node, data, rand_gen, node_sampling=_node_sampling):
+def sample_instances(node, input_data, rand_gen, node_sampling=_node_sampling, in_place=False):
     """
     Implementing hierarchical sampling
 
@@ -71,6 +71,11 @@ def sample_instances(node, data, rand_gen, node_sampling=_node_sampling):
 
     # first, we do a bottom-up pass to compute the likelihood taking into account marginals.
     # then we do a top-down pass, to sample taking into account the likelihoods.
+
+    if in_place:
+        data = input_data
+    else:
+        data = np.array(input_data)
 
     valid, err = is_valid(node)
     assert valid, err
@@ -88,3 +93,5 @@ def sample_instances(node, data, rand_gen, node_sampling=_node_sampling):
 
     eval_spn_top_down(node, node_sampling, input_vals=instance_ids, data=data, lls_per_node=lls_per_node,
                       rand_gen=rand_gen)
+
+    return data

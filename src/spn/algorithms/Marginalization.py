@@ -13,7 +13,7 @@ from spn.structure.Base import Sum, Leaf, assign_ids
 def marginalize(node, keep):
     #keep must be a set of features that you want to keep
     
-    assert isinstance(keep, set), "scope must be a set"
+    keep = set(keep)
 
     def marg_recursive(node):
         new_node_scope = keep.intersection(set(node.scope))
