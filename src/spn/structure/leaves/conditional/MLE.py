@@ -9,13 +9,19 @@ from scipy.stats import gamma, lognorm
 from spn.structure.leaves.conditional.Conditional import Conditional_Gaussian, Conditional_Poisson
 import statsmodels.api as sm
 
-def update_glm_parameters_mle(node, data):   # assume data is tuple (output np array, conditional np array)
-
+def update_glm_parameters_mle(node, data, scope):   # assume data is tuple (output np array, conditional np array)
+    assert len(scope) == 1, 'more than one output variable in scope?'
     data = data[~np.isnan(data)]
 
-    dataOut, dataIn = data
+    num_instance = data.shape[0]
 
-    assert dataOut.shape[1] == 1
+    output_mask = np.zeros(data.shape, dtype=bool)   # todo check scope and node.scope again
+    output_mask[:, scope] = True
+
+    dataOut = data[output_mask].reshape(num_instance, -1)
+    dataIn = data[~output_mask].reshape(num_instance, -1)
+
+    assert dataOut.shape[1] == 1, 'more than one output variable in scope?'
 
     if dataOut.shape[0] == 0:
         return
@@ -43,21 +49,19 @@ def update_glm_parameters_mle(node, data):   # assume data is tuple (output np a
 
 if __name__ == '__main__':
     node = Conditional_Gaussian(np.inf, np.inf)
-    data = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
-    update_glm_parameters_mle(node, data)
+    dataOut = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
+    dataIn = np.ones((dataOut.shape[0], 5))
+    data = np.concatenate((dataOut, dataIn), axis=1)
+    scope = [0]
+    update_glm_parameters_mle(node, data, scope)
     assert np.isclose(node.mean, np.mean(data))
     assert np.isclose(node.stdev, np.std(data))
 
     node = Conditional_Poisson(np.inf)
-    data = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
-    update_glm_parameters_mle(node, data)
+    dataOut = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
+    dataIn = np.ones((dataOut.shape[0], 5))
+    data = np.concatenate((dataOut, dataIn), axis=1)
+    scope = [0]
+    update_glm_parameters_mle(node, data, scope)
     assert np.isclose(node.mean, np.mean(data))
 
-    node = Conditional_Categorical(np.array([1, 1, 1, 1, 1, 1]) / 6)
-    data = np.array([0, 0, 1, 3, 5]).reshape(-1, 1)
-    update_glm_parameters_mle(node, data)
-    assert np.isclose(node.p[0], 2 / 5)
-    assert np.isclose(node.p[1], 1 / 5)
-    assert np.isclose(node.p[2], 0)
-    assert np.isclose(node.p[3], 1 / 5)
-    assert np.isclose(node.p[4], 0)
