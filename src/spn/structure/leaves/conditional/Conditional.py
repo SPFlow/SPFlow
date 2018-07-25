@@ -32,7 +32,7 @@ class Conditional_Gaussian(Conditional):
     \mu(mean)
     \sigma ^ 2 (variance)
     (alternatively \sigma is the standard deviation(stdev) and \sigma ^ {-2} the precision)
-    self.mean is a list of mean values
+    self.mean is a vector
     """
 
     # def __init__(self, mean=None, stdev=None, scope=None):
@@ -66,7 +66,7 @@ class Conditional_Poisson(Conditional):
     """
     Implements a univariate Poisson distribution with parameter
     \lambda (mean)
-    self.mean is a list param values
+    self.mean is a vector
     """
 
     # def __init__(self, mean=None, scope=None):
@@ -117,12 +117,14 @@ class Conditional_Bernoulli(Conditional):
 
 
 def create_conditional_leaf(data, ds_context, scope):
-    from spn.structure.leaves.parametric.MLE import update_parametric_parameters_mle
-
-    assert len(scope) == 1, "scope of univariate parametric for more than one variable?"
-    assert data.shape[1] == 1, "data has more than one feature?"
+    from spn.structure.leaves.conditional.MLE import update_glm_parameters_mle
 
     idx = scope[0]
+    dataOut = data[:, idx]
+
+    assert len(scope) == 1, "scope of univariate parametric for more than one variable?"
+    assert dataOut.shape[1] == 1, "data has more than one feature?"
+
     parametric_type = ds_context.parametric_type[idx]
 
     assert parametric_type is not None
@@ -130,6 +132,6 @@ def create_conditional_leaf(data, ds_context, scope):
     node = parametric_type()
     node.scope.append(idx)
 
-    update_parametric_parameters_mle(node, data)
+    update_glm_parameters_mle(node, data, scope)
 
     return node
