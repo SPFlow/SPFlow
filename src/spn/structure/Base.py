@@ -91,6 +91,12 @@ class Context:
         self.domains = domains
         self.parametric_type = parametric_type
 
+        if self.meta_types is None and parametric_type is not None:
+            self.meta_types = []
+            for p in parametric_type:
+                self.meta_types.append(p.type.meta_type)
+
+
     def get_meta_types_by_scope(self, scopes):
         return [self.meta_types[s] for s in scopes]
 
@@ -114,6 +120,8 @@ class Context:
                 domain.append(np.arange(domain_values[0], domain_values[1] + 1, 1))
 
         self.domains = np.asanyarray(domain)
+
+        return self
 
 
 def get_number_of_edges(node):

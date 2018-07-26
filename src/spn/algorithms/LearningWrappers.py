@@ -20,10 +20,10 @@ from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
 
 
-def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, cpus=-1):
+def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, cpus=-1, rand_gen=None):
     spn = Sum()
     for label, count in zip(*np.unique(data[:, label_idx], return_counts=True)):
-        branch = spn_learn_wrapper(data[data[:, label_idx] == label, :], ds_context, cpus=cpus)
+        branch = spn_learn_wrapper(data[data[:, label_idx] == label, :], ds_context, cpus=cpus, rand_gen=rand_gen)
         spn.children.append(branch)
         spn.weights.append(count / data.shape[0])
 
@@ -37,13 +37,13 @@ def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, cpus=-1):
 
 
 def learn_mspn_with_missing(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3,
-                            linear=False, ohe=False,
-                            leaves=None, memory=None, cpus=-1):
+                            linear=False, ohe=False, leaves=None, memory=None, rand_gen=None, cpus=-1):
     if leaves is None:
         # leaves = create_histogram_leaf
         leaves = create_piecewise_leaf
 
-    rand_gen = np.random.RandomState(17)
+    if rand_gen is None:
+        rand_gen = np.random.RandomState(17)
 
     def learn(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe):
         if cols == "rdc":
@@ -67,11 +67,12 @@ def learn_mspn_with_missing(data, ds_context, cols="rdc", rows="kmeans", min_ins
 
 
 def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3, ohe=False,
-               leaves=None, memory=None, cpus=-1):
+               leaves=None, memory=None, rand_gen=None, cpus=-1):
     if leaves is None:
         leaves = create_histogram_leaf
 
-    rand_gen = np.random.RandomState(17)
+    if rand_gen is None:
+        rand_gen = np.random.RandomState(17)
 
     def learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
         if cols == "rdc":
@@ -92,9 +93,12 @@ def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=
 
 
 def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3, ohe=False,
-                     leaves=None, memory=None, cpus=-1):
+                     leaves=None, memory=None, rand_gen=None, cpus=-1):
     if leaves is None:
         leaves = create_parametric_leaf
+
+    if rand_gen is None:
+        rand_gen = np.random.RandomState(17)
 
     def learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
         if cols == "rdc":
