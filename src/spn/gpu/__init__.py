@@ -1,0 +1,3 @@
+from spn.structure.leaves.parametric.Tensorflow import add_parametric_tensorflow_support
+
+add_parametric_tensorflow_support()
