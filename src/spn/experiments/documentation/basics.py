@@ -5,17 +5,17 @@ Created on July 24, 2018
 '''
 from numpy.random.mtrand import RandomState
 
-from spn.algorithms.Inference import likelihood
+from spn.algorithms.Inference import likelihood, log_likelihood, add_node_likelihood
 from spn.algorithms.LearningWrappers import learn_parametric, learn_classifier
 from spn.algorithms.MPE import mpe
 from spn.algorithms.Marginalization import marginalize
 from spn.algorithms.Sampling import sample_instances
 from spn.algorithms.Statistics import get_structure_stats
 from spn.algorithms.Validity import is_valid
+from spn.gpu.TensorFlow import spn_to_tf_graph, eval_tf
 from spn.io.Graphics import plot_spn
 from spn.io.Text import spn_to_str_equation
-from spn.structure.Base import Context
-from spn.structure.StatisticalTypes import MetaType
+from spn.structure.Base import Context, Leaf
 from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
 import numpy as np
 
@@ -32,9 +32,15 @@ if __name__ == '__main__':
 
     print(spn_to_str_equation(marginalize(spn, [0])))
 
-    print(likelihood(spn, np.array([1, 0, 1]).reshape(-1, 3)))
+    test_data = np.array([1.0, 0.0, 1.0]).reshape(-1, 3)
 
-    print(likelihood(spn, np.array([1, 0, np.nan]).reshape(-1, 3)))
+    print("python", log_likelihood(spn, test_data))
+
+    tf_graph, placeholder, _ = spn_to_tf_graph(spn, test_data)
+
+    print("tf", eval_tf(tf_graph, placeholder, test_data))
+
+    print("marg", log_likelihood(spn, np.array([1, 0, np.nan]).reshape(-1, 3)))
 
     print(is_valid(spn))
 
@@ -52,3 +58,23 @@ if __name__ == '__main__':
                            learn_parametric, 2)
 
     print(mpe(spn, np.array([3.0, 4.0, np.nan, 12.0, 18.0, np.nan]).reshape(-1, 3)))
+
+
+    class Pareto(Leaf):
+        def __init__(self, a, scope=None):
+            Leaf.__init__(self, scope=scope)
+            self.a = a
+
+
+    def pareto_likelihood(node, data, dtype=np.float64):
+        probs = np.ones((data.shape[0], 1), dtype=dtype)
+        from scipy.stats import pareto
+        probs[:] = pareto.pdf(data[:, node.scope], node.a)
+        return probs
+
+
+    add_node_likelihood(Pareto, pareto_likelihood)
+
+    spn =  0.3 * Pareto(2.0, scope=0) + 0.7 * Pareto(3.0, scope=0)
+
+    print("python", log_likelihood(spn, np.array([1.0, 1.5]).reshape(-1, 1)))
