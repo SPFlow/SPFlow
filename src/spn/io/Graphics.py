@@ -3,6 +3,7 @@ Created on March 29, 2018
 
 @author: Alejandro Molina
 '''
+from matplotlib.ticker import NullLocator
 from networkx.drawing.nx_agraph import graphviz_layout
 
 
@@ -47,18 +48,27 @@ def plot_spn(spn, fname="plot.pdf"):
     g, labels = get_networkx_obj(spn)
 
     pos = graphviz_layout(g, prog='dot')
-    # pos = nx.drawing.layout.rescale_layout(pos, 10)
     #plt.figure(figsize=(18, 12))
     ax = plt.gca()
+
     #ax.invert_yaxis()
 
-    nx.draw(g, pos, with_labels=True, arrows=False, node_color='#DDDDDD', edge_color='#DDDDDD', width=1, node_size=450,
-            labels=labels, font_size=12)
-    ax.collections[0].set_edgecolor("#888888")
-    edge_labels = nx.draw_networkx_edge_labels(g, pos=pos, edge_labels=nx.get_edge_attributes(g, 'weight'), font_size=12,
+    nx.draw(g, pos, with_labels=True, arrows=False, node_color='#DDDDDD', edge_color='#888888', width=1, node_size=1250,
+            labels=labels, font_size=16)
+    ax.collections[0].set_edgecolor("#333333")
+    edge_labels = nx.draw_networkx_edge_labels(g, pos=pos, edge_labels=nx.get_edge_attributes(g, 'weight'), font_size=16,
                                                clip_on=False, alpha=0.6)
+
+    xpos = list(map(lambda p: p[0], pos.values()))
+    ypos = list(map(lambda p: p[1], pos.values()))
+
+    ax.set_xlim(min(xpos)-20,max(xpos)+20)
+    ax.set_ylim(min(ypos)-20,max(ypos)+20)
     plt.tight_layout()
-    plt.savefig(fname)
+    plt.margins(0, 0)
+    plt.gca().xaxis.set_major_locator(NullLocator())
+    plt.gca().yaxis.set_major_locator(NullLocator())
+    plt.savefig(fname,bbox_inches='tight', pad_inches = 0)
 
 def plot_spn2(spn, fname="plot.pdf"):
     import networkx as nx
