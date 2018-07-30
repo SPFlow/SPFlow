@@ -1,5 +1,6 @@
-import unittest
+# import unittest
 import numpy as np
+import sys; sys.path.append('/home/shao/simple_spn/simple_spn/src')
 
 from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.LearningWrappers import learn_conditional
@@ -16,7 +17,7 @@ if __name__ == '__main__':
     np.random.seed(42)
     dataIn = np.random.randint(low=0, high=3, size=600).reshape(-1, 2)
     dataOut = np.random.randint(low=0, high=3, size=600).reshape(-1, 4)
-    data = np.concatenate(dataOut, dataIn, axis=1)
+    data = np.concatenate((dataOut, dataIn), axis=1)
     assert data.shape[1] == dataIn.shape[1] + dataOut.shape[1], 'invalid column size'
     assert data.shape[0] == dataIn.shape[0] == dataOut.shape[0], 'invalid row size'
 
