@@ -23,10 +23,10 @@ from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
 from spn.structure.leaves.conditional.Conditional import create_conditional_leaf
 
 
-def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx):
+def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, cpus=-1, rand_gen=None):
     spn = Sum()
     for label, count in zip(*np.unique(data[:, label_idx], return_counts=True)):
-        branch = spn_learn_wrapper(data[data[:, label_idx] == label, :], ds_context)
+        branch = spn_learn_wrapper(data[data[:, label_idx] == label, :], ds_context, cpus=cpus, rand_gen=rand_gen)
         spn.children.append(branch)
         spn.weights.append(count / data.shape[0])
 
@@ -40,26 +40,21 @@ def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx):
 
 
 def learn_mspn_with_missing(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3,
-                            linear=False, ohe=False,
-                            leaves=None, memory=None):
+                            linear=False, ohe=False, leaves=None, memory=None, rand_gen=None, cpus=-1):
     if leaves is None:
         # leaves = create_histogram_leaf
         leaves = create_piecewise_leaf
 
-    rand_gen = np.random.RandomState(17)
+    if rand_gen is None:
+        rand_gen = np.random.RandomState(17)
 
     def learn(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe):
-        split_cols = None
         if cols == "rdc":
-            split_cols = get_split_cols_RDC_py(threshold, ohe=True, k=10, s=1 / 6,
-                                               non_linearity=np.sin,
-                                               rand_gen=rand_gen)
-        if rows == "kmeans":
-            split_rows = get_split_rows_RDC_py(n_clusters=2, ohe=True, k=10, s=1 / 6,
-                                               non_linearity=np.sin,
-                                               rand_gen=rand_gen)
-        elif rows == "rdc":
-            split_rows = get_split_rows_RDC(ohe=ohe)
+            split_cols = get_split_cols_RDC_py(threshold, rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
+        if rows == "rdc":
+            split_rows = get_split_rows_RDC_py(rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
+        elif rows == "kmeans":
+            split_rows = get_split_rows_KMeans()
 
         if leaves is None:
             leaves = create_histogram_leaf
@@ -75,16 +70,18 @@ def learn_mspn_with_missing(data, ds_context, cols="rdc", rows="kmeans", min_ins
 
 
 def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3, ohe=False,
-               leaves=None, memory=None):
+               leaves=None, memory=None, rand_gen=None, cpus=-1):
     if leaves is None:
         leaves = create_histogram_leaf
 
+    if rand_gen is None:
+        rand_gen = np.random.RandomState(17)
+
     def learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
-        split_cols = None
         if cols == "rdc":
-            split_cols = get_split_cols_RDC_py(threshold, ohe=ohe)
+            split_cols = get_split_cols_RDC_py(threshold, rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
         if rows == "rdc":
-            split_rows = get_split_rows_RDC_py(ohe=ohe)
+            split_rows = get_split_rows_RDC_py(rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
         elif rows == "kmeans":
             split_rows = get_split_rows_KMeans()
 
@@ -99,16 +96,18 @@ def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=
 
 
 def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3, ohe=False,
-                     leaves=None, memory=None):
+                     leaves=None, memory=None, rand_gen=None, cpus=-1):
     if leaves is None:
         leaves = create_parametric_leaf
 
+    if rand_gen is None:
+        rand_gen = np.random.RandomState(17)
+
     def learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
-        split_cols = None
         if cols == "rdc":
-            split_cols = get_split_cols_RDC_py(threshold, ohe=ohe)
+            split_cols = get_split_cols_RDC_py(threshold, rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
         if rows == "rdc":
-            split_rows = get_split_rows_RDC_py(ohe=ohe)
+            split_rows = get_split_rows_RDC_py(rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
         elif rows == "kmeans":
             split_rows = get_split_rows_KMeans()
 

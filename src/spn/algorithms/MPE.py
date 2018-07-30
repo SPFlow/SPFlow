@@ -55,12 +55,17 @@ def add_node_mpe(node_type, lambda_func):
     _node_mpe[node_type] = lambda_func
 
 
-def mpe(node, data, node_mpe=_node_mpe):
+def mpe(node, input_data, node_mpe=_node_mpe, in_place=False):
     valid, err = is_valid(node)
     assert valid, err
 
     assert np.all(
-        np.any(np.isnan(data), axis=1)), "each row must have at least a nan value where the samples will be substituted"
+        np.any(np.isnan(input_data), axis=1)), "each row must have at least a nan value where the samples will be substituted"
+
+    if in_place:
+        data = input_data
+    else:
+        data = np.array(input_data)
 
     nodes = get_nodes_by_type(node)
 
@@ -73,3 +78,5 @@ def mpe(node, data, node_mpe=_node_mpe):
 
     # one pass top down to decide on the max branch until it reaches a leaf, then it fills the nan slot with the mode
     eval_spn_top_down(node, node_mpe, input_vals=instance_ids, data=data, lls_per_node=lls_per_node)
+
+    return data
