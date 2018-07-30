@@ -9,7 +9,7 @@ from rpy2.robjects.packages import SignatureTranslatedAnonymousPackage
 import multiprocessing as mp
 
 
-with open("RCoT.R", "r") as mixfile:
+with open(path+"/RCoT.R", "r") as mixfile:
    code = ''.join(mixfile.readlines())
    CoTest = SignatureTranslatedAnonymousPackage(code, "RCoT")
 

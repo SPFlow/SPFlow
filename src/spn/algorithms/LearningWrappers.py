@@ -145,12 +145,12 @@ def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", m
         if cols == "ci":
             split_cols = getCIGroups(data, scope, threshold)
         else:
-            raise ValueError, 'invalid independence test'
+            raise ValueError('invalid independence test')
         if rows == "rand_hp":
             split_rows = get_split_rows_binary_random_partition(ohe=ohe)
         else:
             #todo add other clustering?
-            raise ValueError, 'invalid clustering method'
+            raise ValueError('invalid clustering method')
 
         nextop = get_next_operation(min_instances_slice)
 
