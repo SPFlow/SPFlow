@@ -21,31 +21,39 @@ data_cond_file = path.join(mkdtemp(), 'data_cond_file.dat')
 
 def getCIGroups(data, scope=None, alpha=0.0001, families=None):
     """
-    :param dataIn:
-    :param alpha:
-    :param families:
+    :param data: np array
+    :param scope: index to output variables
+    :param alpha: threshold
+    :param families: obsolete
     :return:
 
     This function take tuple (output, conditional) as input and returns independent groups
     alpha is the cutoff parameter for connected components
     BE CAREFUL WITH SPARSE DATA!
     """
-    dataOut = data[:, scope]
-    dataIn = data[:, scope]
 
-    DATA = np.memmap(data_file, dtype=data.dtype, mode='w+', shape=data.shape)
-    DATA[:] = data[:]
+    num_instance = data.shape[0]
+
+    output_mask = np.zeros(data.shape, dtype=bool)   # todo check scope and node.scope again
+    output_mask[:, scope] = True
+
+    dataOut = data[output_mask].reshape(num_instance, -1)
+    dataIn = data[~output_mask].reshape(num_instance, -1)
+
+
+    DATA = np.memmap(data_file, dtype=dataOut.dtype, mode='w+', shape=dataOut.shape)
+    DATA[:] = dataOut[:]
     DATA.flush()
 
-    DATA_COND = np.memmap(data_cond_file, dtype=data_cond.dtype, mode='w+', shape=data_cond.shape)
-    DATA_COND[:] = data_cond[:]
+    DATA_COND = np.memmap(data_cond_file, dtype=dataIn.dtype, mode='w+', shape=dataIn.shape)
+    DATA_COND[:] = dataIn[:]
     DATA_COND.flush()
 
-    num_X = data.shape[1] #len(data[0])
-    num_Y = data_cond.shape[1] #len(data_cond[0])
+    num_X = dataOut.shape[1] #len(data[0])
+    num_Y = dataIn.shape[1] #len(data_cond[0])
     p_value_matrix = np.zeros((num_X, num_X))
 
-    index_matrix = [(x, y, data.dtype, data.shape, data_cond.shape) for x in range(num_X) for y in range(num_X)]
+    index_matrix = [(x, y, dataOut.dtype, dataOut.shape, dataIn.shape) for x in range(num_X) for y in range(num_X)]
     index_matrix = [s for s in index_matrix if s[0]!=s[1]]
 
     with mp.Pool() as pool:
@@ -68,7 +76,7 @@ def getCIGroups(data, scope=None, alpha=0.0001, families=None):
     pvals[pvals > alpha] = 0
 
 
-    result = np.zeros(data.shape[1])
+    result = np.zeros(dataOut.shape[1])
     for i, c in enumerate(connected_components(from_numpy_matrix(pvals))):
         result[list(c)] = i + 1
 

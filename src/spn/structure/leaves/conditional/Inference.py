@@ -95,7 +95,7 @@ def conditional_mpe_log_likelihood(node, data, scope=None, log_space=True, dtype
     return log_probs
 
 
-def add_parametric_inference_support():
+def add_conditional_inference_support():
     add_node_likelihood(Conditional_Gaussian, conditional_likelihood)
     add_node_likelihood(Conditional_Poisson, conditional_likelihood)
     add_node_likelihood(Conditional_Bernoulli, conditional_likelihood)
