@@ -13,11 +13,14 @@ from spn.algorithms.splitting.RDC import get_split_rows_RDC, get_split_cols_RDC_
     get_split_rows_RDC_py
 from spn.algorithms.splitting.Random import get_split_cols_binary_random_partition, \
     get_split_rows_binary_random_partition
+from spn.algorithms.splitting.RCoT import getCIGroups
+
 from spn.structure.Base import Sum, assign_ids
 
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
+from spn.structure.leaves.conditional.Conditional import create_conditional_leaf
 
 
 def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx):
@@ -117,3 +120,44 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
         learn = memory.cache(learn)
 
     return learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
+
+
+
+def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", min_instances_slice=200, threshold=0.3, ohe=False,
+                     leaves=None, memory=None):
+    """
+    :param data: np array
+    :param ds_context: Context object
+    :param scope: list of indices of output variables
+    :param cols: column splitting method
+    :param rows: row splitting method
+    :param min_instances_slice: minimal instance slice
+    :param threshold: threshold scalar
+    :param ohe: ohe
+    :param leaves: boolean
+    :param memory: boolean
+    :return: method to learn structure
+    """
+    if leaves is None:
+        leaves = create_conditional_leaf
+
+    def learn(data, ds_context, scope, cols, rows, min_instances_slice, threshold, ohe):
+        split_cols = None
+        if cols == "ci":
+            split_cols = getCIGroups(data, scope, threshold)
+        else:
+            raise ValueError, 'invalid independence test'
+        if rows == "rand_hp":
+            split_rows = get_split_rows_binary_random_partition(ohe=ohe)
+        else:
+            #todo add other clustering?
+            raise ValueError, 'invalid clustering method'
+
+        nextop = get_next_operation(min_instances_slice)
+
+        return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop, scope)
+
+    if memory:
+        learn = memory.cache(learn)
+
+    return learn(data, ds_context, scope, cols, rows, min_instances_slice, threshold, ohe)
