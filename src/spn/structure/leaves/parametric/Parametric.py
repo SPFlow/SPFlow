@@ -31,8 +31,10 @@ class Gaussian(Parametric):
     (alternatively \sigma is the standard deviation(stdev) and \sigma ^ {-2} the precision)
     """
 
+    type = Type.REAL
+
     def __init__(self, mean=None, stdev=None, scope=None):
-        Parametric.__init__(self, Type.REAL, scope=scope)
+        Parametric.__init__(self, type(self).type, scope=scope)
 
         # parameters
         self.mean = mean
@@ -68,6 +70,7 @@ class Uniform(Parametric):
     def params(self):
         return {'density': self.density, 'start': self.start, 'end': self.end}
 
+
 class Gamma(Parametric):
     """
     Implements a univariate Gamma distribution with parameter
@@ -76,9 +79,10 @@ class Gamma(Parametric):
     where \alpha(shape) is known and fixed
 
     """
+    type = Type.POSITIVE
 
     def __init__(self, alpha=None, beta=None, scope=None):
-        Parametric.__init__(self, Type.POSITIVE, scope=scope)
+        Parametric.__init__(self, type(self).type, scope=scope)
 
         # parameters
         self.alpha = alpha
@@ -92,6 +96,7 @@ class Gamma(Parametric):
     def mode(self):
         return (self.alpha - 1) / self.beta
 
+
 class LogNormal(Parametric):
     """
     Implements a univariate Log - Normal distribution with parameter
@@ -99,9 +104,9 @@ class LogNormal(Parametric):
 
     where the precition \tau(shape) is known and fixed.
     """
-
+    type = Type.POSITIVE
     def __init__(self, mean=None, stdev=None, scope=None):
-        Parametric.__init__(self, Type.POSITIVE, scope=scope)
+        Parametric.__init__(self, type(self).type, scope=scope)
 
         # parameters
         self.mean = mean
@@ -124,14 +129,15 @@ class LogNormal(Parametric):
         return np.exp(self.mean - self.variance)
         # return np.exp(self.mean)
 
+
 class Poisson(Parametric):
     """
     Implements a univariate Poisson distribution with parameter
     \lambda (mean)
     """
-
+    type = Type.COUNT
     def __init__(self, mean=None, scope=None):
-        Parametric.__init__(self, Type.COUNT, scope=scope)
+        Parametric.__init__(self, type(self).type, scope=scope)
 
         self.mean = mean
 
@@ -143,14 +149,15 @@ class Poisson(Parametric):
     def mode(self):
         return np.floor(self.mean)
 
+
 class Bernoulli(Parametric):
     """
     Implements a univariate Bernoulli distribution with parameter
     p (probability of a success)
     """
-
+    type = Type.BINARY
     def __init__(self, p=None, scope=None):
-        Parametric.__init__(self, Type.BINARY, scope=scope)
+        Parametric.__init__(self, type(self).type, scope=scope)
 
         self.p = p
 
@@ -165,6 +172,7 @@ class Bernoulli(Parametric):
         else:
             return 0
 
+
 class NegativeBinomial(Parametric):
     """
     Implements a univariate NegativeBinomial distribution with  parameter
@@ -172,9 +180,9 @@ class NegativeBinomial(Parametric):
 
     FIXME: mismatch from wiki to scipy
     """
-
+    type = Type.COUNT
     def __init__(self, n=None, p=None, scope=None):
-        Parametric.__init__(self, Type.COUNT, scope=scope)
+        Parametric.__init__(self, type(self).type, scope=scope)
 
         self.n = n
         self.p = p
@@ -190,6 +198,7 @@ class NegativeBinomial(Parametric):
         else:
             return np.floor(self.p * (self.n - 1) / (1 - self.p))
 
+
 class Hypergeometric(Parametric):
     """
     Implements a univariate Hypergeometric distribution with  parameter
@@ -197,9 +206,9 @@ class Hypergeometric(Parametric):
 
     FIXME: mismatch in the wiki in the conjugate prior table
     """
-
+    type = Type.COUNT
     def __init__(self, K=None, N=None, n=None, scope=None):
-        Parametric.__init__(self, Type.COUNT, scope=scope)
+        Parametric.__init__(self, type(self).type, scope=scope)
 
         self.n = n
         self.K = K
@@ -213,15 +222,16 @@ class Hypergeometric(Parametric):
     def mode(self):
         return np.floor((self.n + 1) * (self.K + 1 / (self.N + 2)))
 
+
 class Geometric(Parametric):
     """
     Implements a univariate Geometric distribution with  parameter
     p,  the probability of success on each trial
 
     """
-
+    type = Type.COUNT
     def __init__(self, p=None, scope=None):
-        Parametric.__init__(self, Type.COUNT, scope=scope)
+        Parametric.__init__(self, type(self).type, scope=scope)
 
         self.p = p
 
@@ -234,6 +244,7 @@ class Geometric(Parametric):
         # return 0  # or 1? check wiki
         return 1
 
+
 class Categorical(Parametric):
     """
     Implements a univariate categorical distribution with $k$ parameters
@@ -245,9 +256,9 @@ class Categorical(Parametric):
 
     p(\{\pi_{k}\}) = Dir(\boldsymbol\alpha)
     """
-
+    type = Type.CATEGORICAL
     def __init__(self, p=None, scope=None):
-        Parametric.__init__(self, Type.CATEGORICAL, scope=scope)
+        Parametric.__init__(self, type(self).type, scope=scope)
 
         # parameters
         if p is not None:
@@ -269,15 +280,16 @@ class Categorical(Parametric):
     def sample(self, n_samples, rand_gen):
         return rand_gen.choice(np.arange(self.k), p=self._p, size=n_samples)
 
+
 class Exponential(Parametric):
     """
     Implements a univariate Exponential distribution with  parameter
     \lambda,  the rate of the distribution
 
     """
-
+    type = Type.POSITIVE
     def __init__(self, l=None, scope=None):
-        Parametric.__init__(self, Type.POSITIVE, scope=scope)
+        Parametric.__init__(self, type(self).type, scope=scope)
 
         self.l = l
 
@@ -289,6 +301,7 @@ class Exponential(Parametric):
     def mode(self):
         return 0
 
+
 def create_parametric_leaf(data, ds_context, scope):
     from spn.structure.leaves.parametric.MLE import update_parametric_parameters_mle
 
@@ -296,6 +309,11 @@ def create_parametric_leaf(data, ds_context, scope):
     assert data.shape[1] == 1, "data has more than one feature?"
 
     idx = scope[0]
+
+    assert ds_context.parametric_type is not None, "for parametric leaves, the ds_context.parametric_type can't be None"
+    assert len(ds_context.parametric_type) > idx, \
+        "for parametric leaves, the ds_context.parametric_type must have a parametric type at pos %s " % (idx)
+
     parametric_type = ds_context.parametric_type[idx]
 
     assert parametric_type is not None

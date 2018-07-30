@@ -12,8 +12,6 @@ from spn.structure.leaves.parametric.utils import get_scipy_obj_params
 
 POS_EPS = 1e-7
 
-LOG_ZERO = -300
-
 
 def parametric_likelihood(node, data, dtype=np.float64):
     assert len(node.scope) == 1, node.scope
@@ -61,7 +59,6 @@ def parametric_likelihood(node, data, dtype=np.float64):
         raise Exception("Unknown parametric " + str(type(node)))
 
     return probs
-
 
 
 def parametric_mpe_log_likelihood(node, data, log_space=True, dtype=np.float64, context=None, node_mpe_likelihood=None):
