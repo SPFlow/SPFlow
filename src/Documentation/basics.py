@@ -157,31 +157,13 @@ def classification():
                            learn_parametric, 2)
 
     test_classification = np.array([3.0, 4.0, np.nan, 12.0, 18.0, np.nan]).reshape(-1, 3)
-
+    print(test_classification)
     from spn.algorithms.MPE import mpe
     print(mpe(spn_classification, test_classification))
 
-if __name__ == '__main__':
-    create_SPN()
-    to_str()
-    plot()
-    inference()
-    # tensorflow()
-    valid()
-    stats()
-    sample()
-    classification()
-
-    0 / 0
-
-    print(mpe(spn, np.array([np.nan, 0, 0]).reshape(-1, 3)))
-
-    spn = learn_classifier(train_data,
-                           Context(parametric_type=[Gaussian, Gaussian, Categorical]).add_domains(train_data),
-                           learn_parametric, 2)
-
-    print(mpe(spn, np.array([3.0, 4.0, np.nan, 12.0, 18.0, np.nan]).reshape(-1, 3)))
-
+def extend():
+    import numpy as np
+    from spn.structure.leaves.parametric.Parametric import Leaf
 
     class Pareto(Leaf):
         def __init__(self, a, scope=None):
@@ -195,9 +177,30 @@ if __name__ == '__main__':
         probs[:] = pareto.pdf(data[:, node.scope], node.a)
         return probs
 
+    from spn.algorithms.Inference import add_node_likelihood
 
     add_node_likelihood(Pareto, pareto_likelihood)
 
     spn = 0.3 * Pareto(2.0, scope=0) + 0.7 * Pareto(3.0, scope=0)
 
-    print("python", log_likelihood(spn, np.array([1.0, 1.5]).reshape(-1, 1)))
+    from spn.algorithms.Inference import log_likelihood
+
+    print("pareto", log_likelihood(spn, np.array([1.5]).reshape(-1, 1)))
+
+if __name__ == '__main__':
+    create_SPN()
+    to_str()
+    plot()
+    inference()
+    # tensorflow()
+    valid()
+    stats()
+    sample()
+    classification()
+    extend()
+
+
+
+
+
+
