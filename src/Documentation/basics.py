@@ -3,23 +3,27 @@ Created on July 24, 2018
 
 @author: Alejandro Molina
 '''
-from numpy.random.mtrand import RandomState
+def test():
+    from numpy.random.mtrand import RandomState
 
-from spn.algorithms.Inference import likelihood, log_likelihood, add_node_likelihood
-from spn.algorithms.LearningWrappers import learn_parametric, learn_classifier
-from spn.algorithms.MPE import mpe
-from spn.algorithms.Marginalization import marginalize
-from spn.algorithms.Sampling import sample_instances
-from spn.algorithms.Statistics import get_structure_stats
-from spn.algorithms.Validity import is_valid
-from spn.gpu.TensorFlow import spn_to_tf_graph, eval_tf, optimize_tf
-from spn.io.Graphics import plot_spn
-from spn.io.Text import spn_to_str_equation
-from spn.structure.Base import Context, Leaf
-from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
-import numpy as np
+    from spn.algorithms.Inference import likelihood, log_likelihood, add_node_likelihood
+    from spn.algorithms.LearningWrappers import learn_parametric, learn_classifier
+    from spn.algorithms.MPE import mpe
+    from spn.algorithms.Marginalization import marginalize
+    from spn.algorithms.Sampling import sample_instances
+    from spn.algorithms.Statistics import get_structure_stats
+    from spn.algorithms.Validity import is_valid
+    from spn.gpu.TensorFlow import spn_to_tf_graph, eval_tf, optimize_tf
+    from spn.io.Graphics import plot_spn
+    from spn.io.Text import spn_to_str_equation
+    from spn.structure.Base import Context, Leaf
+    from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
+    import numpy as np
 
-if __name__ == '__main__':
+
+def create_SPN():
+    from spn.structure.leaves.parametric.Parametric import Categorical
+
     spn = 0.4 * (Categorical(p=[0.2, 0.8], scope=0) * \
                  (0.3 * (Categorical(p=[0.3, 0.7], scope=1) * Categorical(p=[0.4, 0.6], scope=2)) + \
                   0.7 * (Categorical(p=[0.5, 0.5], scope=1) * Categorical(p=[0.6, 0.4], scope=2)))) \
@@ -27,8 +31,28 @@ if __name__ == '__main__':
                    Categorical(p=[0.3, 0.7], scope=1) * \
                    Categorical(p=[0.4, 0.6], scope=2))
 
+    return spn
+
+def to_str():
+    spn = create_SPN()
+
+    from spn.io.Text import spn_to_str_equation
+
     print(spn_to_str_equation(spn))
-    plot_spn(spn, '/tmp/basicspn.pdf')
+
+def plot():
+    spn = create_SPN()
+
+    from spn.io.Graphics import plot_spn
+
+    plot_spn(spn, 'basicspn.png')
+
+if __name__ == '__main__':
+    create_SPN()
+    to_str()
+    plot()
+
+    0/0
 
     print(spn_to_str_equation(marginalize(spn, [0])))
 

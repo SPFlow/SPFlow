@@ -21,7 +21,7 @@ def is_module(name):
 
 if __name__ == '__main__':
     current_path = os.path.split(__file__)[0]
-    project_path = os.path.abspath(current_path + "/../../")
+    project_path = os.path.abspath(current_path + "/../")
     print(project_path)
 
     all_imports = set()
