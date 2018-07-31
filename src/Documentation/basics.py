@@ -42,10 +42,22 @@ def to_str():
 
 def plot():
     spn = create_SPN()
+    spn_marg = marginalize()
 
     from spn.io.Graphics import plot_spn
 
     plot_spn(spn, 'basicspn.png')
+    plot_spn(spn_marg, 'marginalspn.png')
+
+def marginalize():
+    spn = create_SPN()
+
+    from spn.algorithms.Marginalization import marginalize
+
+    spn_marg = marginalize(spn, [1,2])
+
+    return spn_marg
+
 
 if __name__ == '__main__':
     create_SPN()
@@ -54,7 +66,7 @@ if __name__ == '__main__':
 
     0/0
 
-    print(spn_to_str_equation(marginalize(spn, [0])))
+    print(spn_to_str_equation())
 
     test_data = np.array([1.0, 0.0, 1.0]).reshape(-1, 3)
 
