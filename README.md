@@ -133,7 +133,7 @@ The output is:
 [[-1.68416146]] [[0.1856]]
 ```
 
-Another alternative, is marginal inference on the original SPN. This is done by setting as nan the feature we want to marginalize on the fly.
+Another alternative, is marginal inference on the original SPN. This is done by setting as np.nan the feature we want to marginalize on the fly.
 It does not change the structure.
 
 ```python
@@ -142,12 +142,12 @@ llom =  log_likelihood(spn, test_data2)
 print(llom, np.exp(llom))
 ```
 
-The output is:
+The output is exactly the same as the evaluation of the marginal spn:
 ```python
 [[-1.68416146]] [[0.1856]]
 ```
 
-We can also use tensorflow to do the evaluation in a GPU:
+We can use tensorflow to do the evaluation in a GPU:
 ```python
 from spn.gpu.TensorFlow import eval_tf
 lltf = eval_tf(spn, test_data)
@@ -157,6 +157,72 @@ The output is as expected, equal to the one in python:
 ```python
 [[-1.90730501]] [[0.14848]]
 ```
+
+We can also use tensorflow to do the parameter optimization in a GPU:
+```python
+from spn.gpu.TensorFlow import optimize_tf
+optimized_spn = optimize_tf(spn, test_data)
+lloptimized = log_likelihood(optimized_spn, test_data)
+print(lloptimized, np.exp(lloptimized))
+```
+The output is of course, higher likelihoods:
+```python
+[[-1.38152628]] [[0.25119487]]
+```
+
+We can generate new samples that follow the joint distribution captured by the SPN!
+```python
+from numpy.random.mtrand import RandomState
+from spn.algorithms.Sampling import sample_instances
+print(sample_instances(spn, np.array([np.nan, np.nan, np.nan] * 5).reshape(-1, 3), RandomState(123)))
+```
+Here we created 5 new instances that follow the distribution
+```python
+[[0. 1. 0.]
+ [1. 0. 0.]
+ [1. 1. 0.]
+ [1. 1. 1.]
+ [1. 1. 0.]]
+```
+the np.nan values indicate the columns we want to sample.
+
+We can also do conditional sampling, that is, if we have evidence for some of the variables we can pass that information
+to the SPN and sample for the rest of the variables:
+```python
+from numpy.random.mtrand import RandomState
+from spn.algorithms.Sampling import sample_instances
+print(sample_instances(spn, np.array([np.nan, 0, 0] * 5).reshape(-1, 3), RandomState(123)))
+```
+Here we created 5 new instances whose evidence is V1=0 and V2=0
+```python
+[[0. 0. 0.]
+ [1. 0. 0.]
+ [0. 0. 0.]
+ [1. 0. 0.]
+ [1. 0. 0.]]
+```
+
+
+
+
+Finally, we have some basic utilities for working with SPNs:
+
+We can make sure that the SPN that we are using is valid, that is, it is consistent and complete.
+```python
+from spn.algorithms.Validity import is_valid
+print(is_valid(spn))
+```
+The output indicates that the SPN is valid and there are no debugging error messages:
+```python
+(True, None)
+```
+
+To compute basic statistics on the structure of the SPN:
+```python
+from spn.algorithms.Statistics import get_structure_stats
+print(get_structure_stats(spn))
+```
+
 
 
 
