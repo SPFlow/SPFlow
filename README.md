@@ -71,6 +71,20 @@ plot_spn(spn, 'basicspn.png')
 
 ![basicspn.png](src/Documentation/basicspn.png)
 
+Marginalizing an SPN means summing out all the other non-relevant variables. That can be achieved by using:
+```python
+from spn.algorithms.Marginalization import marginalize
+
+spn_marg = marginalize(spn, [1,2])
+```
+
+We can use this new spn to do all the operations we are interested in. That means, we can also plot it!
+```python
+plot_spn(spn_marg, 'marginalspn.png')
+```
+![basicspn.png](src/Documentation/marginalspn.png)
+
+
 ## Authors
 
 * **Alejandro Molina** - *TU Darmstadt*
