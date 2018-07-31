@@ -35,6 +35,7 @@ def create_SPN():
 
     return spn
 
+
 def to_str():
     spn = create_SPN()
     spn_marg = marginalize()
@@ -43,7 +44,6 @@ def to_str():
 
     print(spn_to_str_equation(spn))
     print(spn_to_str_equation(spn_marg))
-
 
 
 def plot():
@@ -55,14 +55,16 @@ def plot():
     plot_spn(spn, 'basicspn.png')
     plot_spn(spn_marg, 'marginalspn.png')
 
+
 def marginalize():
     spn = create_SPN()
 
     from spn.algorithms.Marginalization import marginalize
 
-    spn_marg = marginalize(spn, [1,2])
+    spn_marg = marginalize(spn, [1, 2])
 
     return spn_marg
+
 
 def inference():
     import numpy as np
@@ -81,7 +83,7 @@ def inference():
     print("python ll spn_marg", llm, np.exp(llm))
 
     test_data2 = np.array([np.nan, 0.0, 1.0]).reshape(-1, 3)
-    llom =  log_likelihood(spn, test_data2)
+    llom = log_likelihood(spn, test_data2)
     print("python ll spn with nan", llom, np.exp(llom))
 
 
@@ -96,36 +98,69 @@ def tensorflow():
     lltf = eval_tf(spn, test_data)
     print("tensorflow ll", lltf, np.exp(lltf))
 
+    from spn.algorithms.Inference import log_likelihood
+    from spn.gpu.TensorFlow import optimize_tf
+    optimized_spn = optimize_tf(spn, test_data)
+    lloptimized = log_likelihood(optimized_spn, test_data)
+    print("tensorflow optimized ll", lloptimized, np.exp(lloptimized))
+
+
+def valid():
+    spn = create_SPN()
+    spn_marg = marginalize()
+    from spn.algorithms.Validity import is_valid
+    print(is_valid(spn))
+    print(is_valid(spn_marg))
+
+
+def stats():
+    spn = create_SPN()
+    from spn.algorithms.Statistics import get_structure_stats
+    print(get_structure_stats(spn))
+
+
+def sample():
+    spn = create_SPN()
+    import numpy as np
+
+    from numpy.random.mtrand import RandomState
+    from spn.algorithms.Sampling import sample_instances
+    print(sample_instances(spn, np.array([np.nan, 0, 0] * 5).reshape(-1, 3), RandomState(123)))
+    print(sample_instances(spn, np.array([np.nan, np.nan, np.nan] * 5).reshape(-1, 3), RandomState(123)))
+
+
+def classification():
+    import numpy as np
+    np.random.seed(123)
+    train_data = np.c_[np.r_[np.random.normal(5, 1, (500, 2)), np.random.normal(15, 1, (500, 2))],
+                       np.r_[np.zeros((500, 1)), np.ones((500, 1))]]
+
+    import matplotlib.pyplot as plt
+    colors = ['#4EACC5', '#FF9C34']
+    plt.figure()
+    plt.hold(True)
+    for k, col in zip(range(2), colors):
+        my_members = train_data[:, 2] == k
+        plt.plot(train_data[my_members, 0], train_data[my_members, 1], 'w', markerfacecolor=col, marker='.')
+    plt.title('Training Data')
+    plt.grid(True)
+    plt.savefig("classification_training_data.png", bbox_inches='tight', pad_inches=0)
+
+
 if __name__ == '__main__':
     create_SPN()
     to_str()
     plot()
     inference()
-    tensorflow()
-    0/0
+    # tensorflow()
+    valid()
+    stats()
+    sample()
+    classification()
 
-
-    print("tf", eval_tf(spn, test_data))
-
-    print(test_data)
-
-    optimized_spn = optimize_tf(spn, test_data)
-    print(spn_to_str_equation(optimized_spn))
-    print("python", log_likelihood(optimized_spn, test_data))
-    print("tf optimized", eval_tf(optimized_spn, test_data))
-
-    print("marg", log_likelihood(spn, np.array([1, 0, np.nan]).reshape(-1, 3)))
-
-    print(is_valid(spn))
-
-    print(get_structure_stats(spn))
-
-    print(sample_instances(spn, np.array([np.nan, 0, 0]).reshape(-1, 3), RandomState(123)))
+    0 / 0
 
     print(mpe(spn, np.array([np.nan, 0, 0]).reshape(-1, 3)))
-
-    train_data = np.c_[np.r_[np.random.normal(5, 1, (500, 2)), np.random.normal(15, 1, (500, 2))],
-                       np.r_[np.zeros((500, 1)), np.ones((500, 1))]]
 
     spn = learn_classifier(train_data,
                            Context(parametric_type=[Gaussian, Gaussian, Categorical]).add_domains(train_data),
@@ -149,6 +184,6 @@ if __name__ == '__main__':
 
     add_node_likelihood(Pareto, pareto_likelihood)
 
-    spn =  0.3 * Pareto(2.0, scope=0) + 0.7 * Pareto(3.0, scope=0)
+    spn = 0.3 * Pareto(2.0, scope=0) + 0.7 * Pareto(3.0, scope=0)
 
     print("python", log_likelihood(spn, np.array([1.0, 1.5]).reshape(-1, 1)))
