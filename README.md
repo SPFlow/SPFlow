@@ -309,7 +309,6 @@ Now, we can create SPNs that use the new distribution and also evaluate them.
 
 ```python
 spn = 0.3 * Pareto(2.0, scope=0) + 0.7 * Pareto(3.0, scope=0)
-from spn.algorithms.Inference import log_likelihood
 log_likelihood(spn, np.array([1.5]).reshape(-1, 1))
 ```
 
@@ -317,6 +316,8 @@ this produces the output:
 ```python
 [[-0.52324814]]
 ```
+
+All other aspects of the SPN library can be extended in a similar same way.
 
 ## Authors
 
