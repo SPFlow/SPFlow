@@ -12,7 +12,7 @@ from spn.algorithms.Marginalization import marginalize
 from spn.algorithms.Sampling import sample_instances
 from spn.algorithms.Statistics import get_structure_stats
 from spn.algorithms.Validity import is_valid
-from spn.gpu.TensorFlow import spn_to_tf_graph, eval_tf
+from spn.gpu.TensorFlow import spn_to_tf_graph, eval_tf, optimize_tf
 from spn.io.Graphics import plot_spn
 from spn.io.Text import spn_to_str_equation
 from spn.structure.Base import Context, Leaf
@@ -36,9 +36,14 @@ if __name__ == '__main__':
 
     print("python", log_likelihood(spn, test_data))
 
-    tf_graph, placeholder, _ = spn_to_tf_graph(spn, test_data)
+    print("tf", eval_tf(spn, test_data))
 
-    print("tf", eval_tf(tf_graph, placeholder, test_data))
+    print(test_data)
+
+    optimized_spn = optimize_tf(spn, test_data)
+    print(spn_to_str_equation(optimized_spn))
+    print("python", log_likelihood(optimized_spn, test_data))
+    print("tf optimized", eval_tf(optimized_spn, test_data))
 
     print("marg", log_likelihood(spn, np.array([1, 0, np.nan]).reshape(-1, 3)))
 
