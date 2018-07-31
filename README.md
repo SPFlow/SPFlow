@@ -47,7 +47,7 @@ git clone https://github.com/alejandromolinaml/SPFlow
 ## Examples
 
 We start by creating an SPN. Using a Domain-Specific Language (DSL), we can quickly create an SPN of categorical
-leave nodes:
+leave nodes like this:
 
 
 ```python
@@ -61,7 +61,10 @@ spn = 0.4 * (Categorical(p=[0.2, 0.8], scope=0) * \
                Categorical(p=[0.4, 0.6], scope=2))
 ```
 
-We can visualize the SPN using:
+The p parameter indicates the probabilities, and the scope indicates the variable we are modeling.
+
+
+We can now visualize the SPN using:
 
 ```python
 from spn.io.Graphics import plot_spn
@@ -71,18 +74,90 @@ plot_spn(spn, 'basicspn.png')
 
 ![basicspn.png](src/Documentation/basicspn.png)
 
-Marginalizing an SPN means summing out all the other non-relevant variables. That can be achieved by using:
+Marginalizing an SPN means summing out all the other non-relevant variables.
+So, if we want to marginalize the above SPN and sum out all other variables leaving only variables 1 and 2, we can do:
+
 ```python
 from spn.algorithms.Marginalization import marginalize
 
 spn_marg = marginalize(spn, [1,2])
 ```
+Here, we marginalize all the variables not in [1,2], and create a *NEW* structure that knows nothing about the previous one
+nor about the variable 0.
 
 We can use this new spn to do all the operations we are interested in. That means, we can also plot it!
 ```python
 plot_spn(spn_marg, 'marginalspn.png')
 ```
 ![basicspn.png](src/Documentation/marginalspn.png)
+
+We can also dump the SPN as text:
+```python
+from spn.io.Text import spn_to_str_equation
+txt = spn_to_str_equation(spn_marg)
+print(txt)
+```
+And the output is:
+```python
+(0.6*((Categorical(V1|p=[0.3, 0.7]) * Categorical(V2|p=[0.4, 0.6]))) + 0.12000000000000002*((Categorical(V1|p=[0.3, 0.7]) * Categorical(V2|p=[0.4, 0.6]))) + 0.27999999999999997*((Categorical(V1|p=[0.5, 0.5]) * Categorical(V2|p=[0.6, 0.4]))))
+```
+
+However, the most interesting aspect of SPNs is the tractable inference. Here is an example on how to evaluate the SPNs from above.
+Since we have 3 variables, we want to create a 2D numpy array of 3 columns and 1 row.
+```python
+import numpy as np
+test_data = np.array([1.0, 0.0, 1.0]).reshape(-1, 3)
+```
+
+We then compute the log-likelihood:
+```python
+from spn.algorithms.Inference import log_likelihood
+
+ll = log_likelihood(spn, test_data)
+print(ll, (np.exp(ll))
+```
+
+And the output is:
+```python
+[[-1.90730501]] [[0.14848]]
+```
+
+We can also compute the log-likelihood of the marginal SPN:
+```python
+llm = log_likelihood(spn_marg, test_data)
+print(llm, np.exp(llm))
+```
+Note that we used the same test_data input, as the SPN is still expecting a numpy array with data at columns 1 and 2, ignoring column 0.
+The output is:
+```python
+[[-1.68416146]] [[0.1856]]
+```
+
+Another alternative, is marginal inference on the original SPN. This is done by setting as nan the feature we want to marginalize on the fly.
+It does not change the structure.
+
+```python
+test_data2 = np.array([np.nan, 0.0, 1.0]).reshape(-1, 3)
+llom =  log_likelihood(spn, test_data2)
+print(llom, np.exp(llom))
+```
+
+The output is:
+```python
+[[-1.68416146]] [[0.1856]]
+```
+
+We can also use tensorflow to do the evaluation in a GPU:
+```python
+from spn.gpu.TensorFlow import eval_tf
+lltf = eval_tf(spn, test_data)
+print(lltf, np.exp(lltf))
+```
+The output is as expected, equal to the one in python:
+```python
+[[-1.90730501]] [[0.14848]]
+```
+
 
 
 ## Authors
