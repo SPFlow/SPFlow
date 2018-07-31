@@ -9,11 +9,7 @@ import numpy as np
 from spn.algorithms.StructureLearning import get_next_operation, learn_structure
 from spn.algorithms.Validity import is_valid
 from spn.algorithms.splitting.Clustering import get_split_rows_KMeans
-from spn.algorithms.splitting.RDC import get_split_rows_RDC, get_split_cols_RDC_py, \
-    get_split_rows_RDC_py
-from spn.algorithms.splitting.Random import get_split_cols_binary_random_partition, \
-    get_split_rows_binary_random_partition
-from spn.algorithms.splitting.RCoT import getCIGroups
+from spn.algorithms.splitting.RDC import get_split_cols_RDC_py, get_split_rows_RDC_py
 
 from spn.structure.Base import Sum, assign_ids
 
@@ -121,9 +117,9 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
     return learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
 
-
-def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", min_instances_slice=200, threshold=0.3, ohe=False,
-                     leaves=None, memory=None):
+def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", min_instances_slice=200, threshold=0.3,
+                      ohe=False,
+                      leaves=None, memory=None):
     """
     :param data: np array
     :param ds_context: Context object
@@ -143,13 +139,17 @@ def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", m
     def learn(data, ds_context, scope, cols, rows, min_instances_slice, threshold, ohe):
         split_cols = None
         if cols == "ci":
+            from spn.algorithms.splitting.RCoT import getCIGroups
+
             split_cols = getCIGroups(data, scope, threshold)
         else:
             raise ValueError('invalid independence test')
         if rows == "rand_hp":
+            from spn.algorithms.splitting.Random import get_split_rows_binary_random_partition
+
             split_rows = get_split_rows_binary_random_partition(ohe=ohe)
         else:
-            #todo add other clustering?
+            # todo add other clustering?
             raise ValueError('invalid clustering method')
 
         nextop = get_next_operation(min_instances_slice)
