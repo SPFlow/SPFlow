@@ -228,14 +228,21 @@ spn_classification = learn_classifier(train_data,
 Here, we model our problem as containing 3 features, two Gaussians for the coordinates and one Categorical for the label.
 We specify that the label is in column 2, and create the corresponding SPN.
 
-To classify new instances, we first create an array with two rows one at (3,4) and another one at (12,18), and we don't indicate a label, that is, we set np.nan on the label column.
-We expect the first instance to be labeled as 0 and the second one as 1.
+Now, imagine we want to classify two instances, one located at (3,4) and another one at (12,8).
+To do that, we first create an array with two rows and 3 columns. We set the last column to np.nan to indicate that we don't know the labels.
+And we set the rest of the values in the 2D array accordingly.
 
 ```python
 test_classification = np.array([3.0, 4.0, np.nan, 12.0, 18.0, np.nan]).reshape(-1, 3)
 ```
+the first row is the first instance, the second row is the second instance.
+```python
+[[ 3.  4. nan]
+ [12. 18. nan]]
+```
 
 We can do classification via approximate most probable explanation (MPE).
+Here, we expect the first instance to be labeled as 0 and the second one as 1.
 ```python
 from spn.algorithms.MPE import mpe
 print(mpe(spn_classification, test_classification))
@@ -268,6 +275,48 @@ print(get_structure_stats(spn))
 
 ### Extending the library
 
+Using the SPN is as we have seen, relatively easy. However, we might need to extend it if we want to work with new distributions.
+
+Imagine, we wanted to create a new Leaf type that models the Pareto distribution.
+We start by creating a new class:
+```python
+from spn.structure.leaves.parametric.Parametric import Leaf
+class Pareto(Leaf):
+    def __init__(self, a, scope=None):
+        Leaf.__init__(self, scope=scope)
+        self.a = a
+```
+
+Now, if we want to do inference with this new node type, we just implement the corresponding likelihood function:
+```python
+def pareto_likelihood(node, data, dtype=np.float64):
+    probs = np.ones((data.shape[0], 1), dtype=dtype)
+    from scipy.stats import pareto
+    probs[:] = pareto.pdf(data[:, node.scope], node.a)
+    return probs
+```
+
+This function receives the node, the data on which to compute the probability and the numpy dtype for the result.
+
+Now, we just need to register this function so that it can be used seamlessly by the rest of the infrastructure:
+
+```python
+from spn.algorithms.Inference import add_node_likelihood
+add_node_likelihood(Pareto, pareto_likelihood)
+```
+
+Now, we can create SPNs that use the new distribution and also evaluate them.
+
+```python
+spn = 0.3 * Pareto(2.0, scope=0) + 0.7 * Pareto(3.0, scope=0)
+from spn.algorithms.Inference import log_likelihood
+log_likelihood(spn, np.array([1.5]).reshape(-1, 1))
+```
+
+this produces the output:
+```python
+[[-0.52324814]]
+```
 
 ## Authors
 
