@@ -132,20 +132,34 @@ def sample():
 def classification():
     import numpy as np
     np.random.seed(123)
-    train_data = np.c_[np.r_[np.random.normal(5, 1, (500, 2)), np.random.normal(15, 1, (500, 2))],
+    train_data = np.c_[np.r_[np.random.normal(5, 1, (500, 2)), np.random.normal(10, 1, (500, 2))],
                        np.r_[np.zeros((500, 1)), np.ones((500, 1))]]
 
+    centers = [[5, 5], [10, 10]]
+
     import matplotlib.pyplot as plt
-    colors = ['#4EACC5', '#FF9C34']
+    colors = ['#bda36b', '#7aaab4']
     plt.figure()
-    plt.hold(True)
+    #plt.hold(True)
     for k, col in zip(range(2), colors):
         my_members = train_data[:, 2] == k
         plt.plot(train_data[my_members, 0], train_data[my_members, 1], 'w', markerfacecolor=col, marker='.')
+        plt.plot(centers[k][0], centers[k][1], 'o', markerfacecolor=col, markeredgecolor='k', markersize=6)
     plt.title('Training Data')
     plt.grid(True)
     plt.savefig("classification_training_data.png", bbox_inches='tight', pad_inches=0)
 
+    from spn.algorithms.LearningWrappers import learn_parametric, learn_classifier
+    from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
+    from spn.structure.Base import Context
+    spn_classification = learn_classifier(train_data,
+                           Context(parametric_type=[Gaussian, Gaussian, Categorical]).add_domains(train_data),
+                           learn_parametric, 2)
+
+    test_classification = np.array([3.0, 4.0, np.nan, 12.0, 18.0, np.nan]).reshape(-1, 3)
+
+    from spn.algorithms.MPE import mpe
+    print(mpe(spn_classification, test_classification))
 
 if __name__ == '__main__':
     create_SPN()
