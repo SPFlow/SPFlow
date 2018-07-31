@@ -3,6 +3,8 @@ Created on July 24, 2018
 
 @author: Alejandro Molina
 '''
+
+
 def test():
     from numpy.random.mtrand import RandomState
 
@@ -35,10 +37,14 @@ def create_SPN():
 
 def to_str():
     spn = create_SPN()
+    spn_marg = marginalize()
 
     from spn.io.Text import spn_to_str_equation
 
     print(spn_to_str_equation(spn))
+    print(spn_to_str_equation(spn_marg))
+
+
 
 def plot():
     spn = create_SPN()
@@ -58,19 +64,46 @@ def marginalize():
 
     return spn_marg
 
+def inference():
+    import numpy as np
+
+    spn = create_SPN()
+    spn_marg = marginalize()
+
+    test_data = np.array([1.0, 0.0, 1.0]).reshape(-1, 3)
+
+    from spn.algorithms.Inference import log_likelihood
+
+    ll = log_likelihood(spn, test_data)
+    print("python ll", ll, np.exp(ll))
+
+    llm = log_likelihood(spn_marg, test_data)
+    print("python ll spn_marg", llm, np.exp(llm))
+
+    test_data2 = np.array([np.nan, 0.0, 1.0]).reshape(-1, 3)
+    llom =  log_likelihood(spn, test_data2)
+    print("python ll spn with nan", llom, np.exp(llom))
+
+
+def tensorflow():
+    import numpy as np
+
+    spn = create_SPN()
+
+    test_data = np.array([1.0, 0.0, 1.0]).reshape(-1, 3)
+
+    from spn.gpu.TensorFlow import eval_tf
+    lltf = eval_tf(spn, test_data)
+    print("tensorflow ll", lltf, np.exp(lltf))
 
 if __name__ == '__main__':
     create_SPN()
     to_str()
     plot()
-
+    inference()
+    tensorflow()
     0/0
 
-    print(spn_to_str_equation())
-
-    test_data = np.array([1.0, 0.0, 1.0]).reshape(-1, 3)
-
-    print("python", log_likelihood(spn, test_data))
 
     print("tf", eval_tf(spn, test_data))
 
