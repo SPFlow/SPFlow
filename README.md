@@ -53,13 +53,13 @@ leave nodes like this:
 ```python
 from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian, Gamma
 
-spn = 0.4 * (Categorical(p=[0.1, 0.9], scope=0) *\
-                        (0.3 * (Gaussian(mean=-2, stdev=1, scope=1) *\
-                                Gamma(alpha=2, beta=2, scope=2)) +\
-                         0.7 * (Gaussian(mean=-2, stdev=1, scope=1) *\
-                                Gamma(alpha=1, beta=5, scope=2)))) +\
-      0.6 * (Categorical(p=[0.2, 0.8], scope=0) *\
-             Gaussian(mean=-2, stdev=1, scope=1) *\
+spn = 0.4 * (Categorical(p=[0.9, 0.1], scope=0) * 
+            (0.3 * (Gaussian(mean=10, stdev=3, scope=1) * 
+                    Gamma(alpha=2, beta=2, scope=2)) + 
+             0.7 * (Gaussian(mean=0, stdev=0.1, scope=1) * 
+                    Gamma(alpha=1, beta=5, scope=2)))) + 
+      0.6 * (Categorical(p=[0.2, 0.8], scope=0) * 
+             Gaussian(mean=-2, stdev=1, scope=1) * 
              Gaussian(mean=1, stdev=1, scope=2))
 ```
 
