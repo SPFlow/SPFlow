@@ -147,7 +147,7 @@ def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", m
         else:
             raise ValueError('invalid independence test')
         if rows == "rand_hp":
-            split_rows = get_split_rows_binary_random_partition(ohe=ohe)
+            split_rows = get_split_rows_binary_random_partition()
         else:
             #todo add other clustering?
             raise ValueError('invalid clustering method')

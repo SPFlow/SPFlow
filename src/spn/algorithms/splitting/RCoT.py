@@ -14,9 +14,11 @@ with open(path+"/RCoT.R", "r") as mixfile:
    CoTest = SignatureTranslatedAnonymousPackage(code, "RCoT")
 
 
-data_file = path.join(mkdtemp(), 'data_file.dat')
-data_cond_file = path.join(mkdtemp(), 'data_cond_file.dat')
+# data_file = path.join([mkdtemp(), 'data_file.dat'])
+# data_cond_file = path.join([mkdtemp(), 'data_cond_file.dat'])
 
+data_file = path + 'data_file.dat'
+data_cond_file = path + 'data_cond_file.dat'
 
 
 def getCIGroups(data, scope=None, alpha=0.0001, families=None):

@@ -10,16 +10,22 @@ from spn.structure.leaves.conditional.Conditional import Conditional_Gaussian, C
 import statsmodels.api as sm
 
 def update_glm_parameters_mle(node, data, scope):   # assume data is tuple (output np array, conditional np array)
+    print(scope)
+    print(np.shape(data))
+
     assert len(scope) == 1, 'more than one output variable in scope?'
-    data = data[~np.isnan(data)]
+    data = data[~np.isnan(data)].reshape(data.shape)
 
-    num_instance = data.shape[0]
+    dataOut = data[:, :len(scope)]
+    dataIn = data[:, len(scope):]
 
-    output_mask = np.zeros(data.shape, dtype=bool)   # todo check scope and node.scope again
-    output_mask[:, scope] = True
-
-    dataOut = data[output_mask].reshape(num_instance, -1)
-    dataIn = data[~output_mask].reshape(num_instance, -1)
+    # num_instance = data.shape[0]
+    #
+    # output_mask = np.zeros(data.shape, dtype=bool)   # todo check scope and node.scope again
+    # output_mask[:, scope] = True
+    #
+    # dataOut = data[output_mask].reshape(num_instance, -1)
+    # dataIn = data[~output_mask].reshape(num_instance, -1)
 
     assert dataOut.shape[1] == 1, 'more than one output variable in scope?'
 
@@ -28,8 +34,8 @@ def update_glm_parameters_mle(node, data, scope):   # assume data is tuple (outp
 
     if isinstance(node, Conditional_Gaussian):
 
-        dataOut = np.c_[dataOut, np.ones((dataOut.shape[0]))]
-        weights = sm.GLM(dataIn, dataOut, family=sm.families.Gaussian).fit().params
+        dataIn = np.c_[dataIn, np.ones((dataIn.shape[0]))]
+        weights = sm.GLM(dataOut, dataIn, family=sm.families.Gaussian).fit().params
         node.mean = node.inv_linkfunc(np.dot(dataIn, weights))
         # todo node.stdev?
 
@@ -38,10 +44,9 @@ def update_glm_parameters_mle(node, data, scope):   # assume data is tuple (outp
 
     elif isinstance(node, Conditional_Poisson):
 
-        dataOut = np.c_[dataOut, np.ones((dataOut.shape[0]))]
-        weights = sm.GLM(dataIn, dataOut, family=sm.families.Poisson()).fit().params
+        dataIn = np.c_[dataIn, np.ones((dataIn.shape[0]))]
+        weights = sm.GLM(dataOut, dataIn, family=sm.families.Poisson()).fit().params
         node.mean = node.inv_linkfunc(np.dot(dataIn, weights))
-
 
     else:
         raise Exception("Unknown conditional " + str(type(node)))
