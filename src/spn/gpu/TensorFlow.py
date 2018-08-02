@@ -8,6 +8,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.client import timeline
 
+from spn.algorithms.TransformStructure import Copy
 from spn.structure.Base import Product, Sum, eval_spn_bottom_up
 from spn.structure.leaves.histogram.Histograms import Histogram
 from spn.structure.leaves.histogram.Inference import histogram_likelihood
@@ -70,7 +71,7 @@ def add_tf_graph_to_node(node_type, lambda_func):
 def spn_to_tf_graph(node, data, node_tf_graph=_node_log_tf_graph, log_space=True):
     tf.reset_default_graph()
     # data is a placeholder, with shape same as numpy data
-    data_placeholder = tf.placeholder(data.dtype, data.shape)
+    data_placeholder = tf.placeholder(data.dtype, (None, data.shape[1]))
     variable_dict = {}
     tf_graph = eval_spn_bottom_up(node, node_tf_graph, input_vals=data_placeholder, log_space=log_space,
                                   variable_dict=variable_dict, dtype=data.dtype)
@@ -86,8 +87,28 @@ def likelihood_loss(tf_graph):
     # minimize negative log likelihood
     return -tf.reduce_sum(tf_graph)
 
+def optimize_tf(spn, data, epochs=1000, optimizer=None):
+    spn_copy = Copy(spn)
+    tf_graph, data_placeholder, variable_dict = spn_to_tf_graph(spn_copy, data)
+    optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=epochs, optimizer=optimizer)
+    return spn_copy
 
-def eval_tf(tf_graph, data_placeholder, data, save_graph_path=None):
+def optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=1000, optimizer=None):
+    if optimizer is None:
+        optimizer = tf.train.GradientDescentOptimizer(0.001)
+    opt_op = optimizer.minimize(-tf.reduce_sum(tf_graph))
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        for _ in range(epochs):
+            sess.run(opt_op, feed_dict={data_placeholder: data})
+        tf_graph_to_spn(variable_dict)
+
+
+def eval_tf(spn, data, save_graph_path=None):
+    tf_graph, placeholder, _ = spn_to_tf_graph(spn, data)
+    return eval_tf_graph(tf_graph, placeholder, data, save_graph_path=save_graph_path)
+
+def eval_tf_graph(tf_graph, data_placeholder, data, save_graph_path=None):
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         result = sess.run(tf_graph, feed_dict={data_placeholder: data})
