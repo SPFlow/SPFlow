@@ -74,8 +74,9 @@ class Conditional_Poisson(Conditional):
         Conditional.__init__(self, Type.COUNT, scope=scope)
 
         self.weights = params
-        self.inv_linkfunc = inv_linkfunc
-        self.mean = self.inv_linkfunc(np.dot(inputs, self.weights))
+        self._inv_linkfunc = inv_linkfunc
+        if inputs is not None and self.weights is not None:
+            self.mean = self._inv_linkfunc(np.dot(inputs, self.weights))
 
     @property
     def params(self):
@@ -83,7 +84,7 @@ class Conditional_Poisson(Conditional):
 
     @property
     def inv_linkfunc(self):
-        return {'inversed link function': self.inv_linkfunc}
+        return self._inv_linkfunc
 
     @property
     def mode(self):
@@ -119,11 +120,9 @@ class Conditional_Bernoulli(Conditional):
 def create_conditional_leaf(data, ds_context, scope):
     from spn.structure.leaves.conditional.MLE import update_glm_parameters_mle
 
-    idx = scope[0]
-    dataOut = data[:, idx]
-
     assert len(scope) == 1, "scope of univariate parametric for more than one variable?"
-    assert dataOut.shape[1] == 1, "data has more than one feature?"
+    idx = scope[0]
+    # dataOut = data[:, [idx]]
 
     parametric_type = ds_context.parametric_type[idx]
 
