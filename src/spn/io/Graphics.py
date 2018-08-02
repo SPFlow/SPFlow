@@ -40,10 +40,13 @@ def get_networkx_obj(spn):
 
 
 def plot_spn(spn, fname="plot.pdf"):
+
     import networkx as nx
     from networkx.drawing.nx_pydot import graphviz_layout
 
     import matplotlib.pyplot as plt
+
+    plt.clf()
 
     g, labels = get_networkx_obj(spn)
 
