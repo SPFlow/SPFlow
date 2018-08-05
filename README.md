@@ -51,16 +51,16 @@ leave nodes like this:
 
 
 ```python
-from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian, Gamma
+from spn.structure.leaves.parametric.Parametric import Categorical
 
-spn = 0.4 * (Categorical(p=[0.9, 0.1], scope=0) * 
-            (0.3 * (Gaussian(mean=10, stdev=3, scope=1) * 
-                    Gamma(alpha=2, beta=2, scope=2)) + 
-             0.7 * (Gaussian(mean=0, stdev=0.1, scope=1) * 
-                    Gamma(alpha=1, beta=5, scope=2)))) + 
-      0.6 * (Categorical(p=[0.2, 0.8], scope=0) * 
-             Gaussian(mean=-2, stdev=1, scope=1) * 
-             Gaussian(mean=1, stdev=1, scope=2))
+spn = 0.4 * (Categorical(p=[0.2, 0.8], scope=0) * 
+             (0.3 * (Categorical(p=[0.3, 0.7], scope=1) * 
+                     Categorical(p=[0.4, 0.6], scope=2)) 
+            + 0.7 * (Categorical(p=[0.5, 0.5], scope=1) * 
+                     Categorical(p=[0.6, 0.4], scope=2)))) 
+    + 0.6 * (Categorical(p=[0.2, 0.8], scope=0) * 
+             Categorical(p=[0.3, 0.7], scope=1) * 
+             Categorical(p=[0.4, 0.6], scope=2))
 ```
 
 The p parameter indicates the probabilities, and the scope indicates the variable we are modeling.
