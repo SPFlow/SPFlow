@@ -26,7 +26,6 @@ import scipy
 
 if __name__ == '__main__':
     images_tr, labels_tr, images_te, labels_te = get_mnist()
-
     images = np.reshape(images_tr, (-1, 28, 28))
     downscaled_image = np.asarray([scipy.misc.imresize(image, (9,9)) for image in np.asarray(images)], dtype=int)
     #toimage = [scipy.misc.toimage(image) for image in downscaled_image]
