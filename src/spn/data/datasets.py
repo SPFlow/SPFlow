@@ -38,10 +38,8 @@ def get_binary_data(name):
 
 def get_mnist(cachefile=path+'count/mnist.npz'):
     if cachefile and os.path.exists(cachefile):
-        # mndata = np.load(cachefile)
-        # train_x, train_l = mndata.load_training()
-        # test_x, test_l = mndata.load_testing()
-        images_tr, labels_tr, images_te, labels_te = np.load(cachefile)
+        npzfile = np.load(cachefile)
+        images_tr, labels_tr, images_te, labels_te = npzfile['images_tr'], npzfile['labels_tr'], npzfile['images_te'], npzfile['labels_te']
     else:
         from mnist import MNIST
         mndata = MNIST(path+'count/mnist')
@@ -49,5 +47,5 @@ def get_mnist(cachefile=path+'count/mnist.npz'):
         images_te, labels_te = mndata.load_testing()
 
         if cachefile:
-            np.savez(cachefile, *(images_tr, labels_tr, images_te, labels_te))
+            np.savez(cachefile, images_tr=images_tr, labels_tr=labels_tr, images_te=images_te, labels_te=labels_te)
     return (images_tr, labels_tr, images_te, labels_te)
