@@ -1,0 +1,12 @@
+jupyter
+numpy
+matplotlib
+plotly
+pandas
+scipy
+sklearn
+numba
+rpy2
+networkx
+pydot
+joblib
