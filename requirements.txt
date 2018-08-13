@@ -10,3 +10,10 @@ rpy2
 networkx
 pydot
 joblib
+cppyy
+natsort
+statsmodels
+tqdm
+py-cpuinfo
+lark-parser
+tensorflow
