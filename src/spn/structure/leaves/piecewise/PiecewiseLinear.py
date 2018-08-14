@@ -5,14 +5,11 @@ Created on May 4, 2018
 @author: Antonio Vergari
 '''
 import numpy as np
-from rpy2 import robjects
-from rpy2.robjects import numpy2ri
 
 from spn.structure.Base import Leaf
 from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 import itertools
-from rpy2.robjects.packages import importr
 
 
 class PiecewiseLinear(Leaf):
@@ -49,6 +46,9 @@ def isotonic_unimodal_regression_R(x, y):
     """
     Perform unimodal isotonic regression via the Iso package in R
     """
+    from rpy2.robjects.packages import importr
+    from rpy2 import robjects
+    from rpy2.robjects import numpy2ri
 
     numpy2ri.activate()
     # n_instances = x.shape[0]

@@ -1,7 +1,7 @@
 from spn.data.datasets import get_binary_data, get_nips_data, get_mnist
-from os.path import dirname; path = dirname(__file__)
+#from os.path import dirname; path = dirname(__file__)
 import numpy as np
-import sys; sys.path.append('/home/shao/simple_spn/simple_spn/src')
+#import sys; sys.path.append('/home/shao/simple_spn/simple_spn/src')
 
 from spn.algorithms.Inference import log_likelihood, conditional_log_likelihood
 from spn.algorithms.LearningWrappers import learn_conditional, learn_structure, learn_parametric
@@ -16,8 +16,9 @@ from spn.io.Graphics import plot_spn
 
 
 from spn.algorithms.splitting.Clustering import get_split_rows_KMeans, get_split_rows_Gower
-from spn.algorithms.splitting.RDC import get_split_cols_RDC
-from spn.algorithms.splitting.Random import get_split_cols_binary_random_partition
+from spn.algorithms.splitting.RDC import get_split_cols_RDC, get_split_cols_RDC_py
+from spn.algorithms.splitting.Random import get_split_cols_binary_random_partition, \
+    get_split_rows_random_partition, get_split_cols_random_partition
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
 
 import matplotlib
@@ -26,12 +27,12 @@ import scipy
 
 if __name__ == '__main__':
     images_tr, labels_tr, images_te, labels_te = get_mnist()
+    print("mnist loaded")
     images = np.reshape(images_tr, (-1, 28, 28))
     downscaled_image = np.asarray([scipy.misc.imresize(image, (9,9)) for image in np.asarray(images)], dtype=int)
     #toimage = [scipy.misc.toimage(image) for image in downscaled_image]
 
     #add_conditional_inference_support()
-    add_parametric_inference_support()
 
     labels = np.asarray(labels_tr)
     zeros = downscaled_image[labels==0]
@@ -43,7 +44,9 @@ if __name__ == '__main__':
     ds_context.add_domains(data)
     ds_context.parametric_type = [Poisson] * data.shape[1]
 
-    # spn = learn_structure(data, ds_context, get_split_rows_Gower(), get_split_cols_binary_random_partition(0.01), create_parametric_leaf)
+    print("data ready", data.shape)
+    #the following two options should be working now.
+    spn = learn_structure(data, ds_context, get_split_rows_random_partition(np.random.RandomState(17)), get_split_cols_random_partition(np.random.RandomState(17)), create_parametric_leaf)
     spn = learn_parametric(data, ds_context, min_instances_slice=1000, ohe=False)
     print(spn)
     plot_spn(spn, 'basicspn.png')
