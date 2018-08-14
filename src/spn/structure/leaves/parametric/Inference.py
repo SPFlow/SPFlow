@@ -65,7 +65,7 @@ def parametric_mpe_log_likelihood(node, data, log_space=True, dtype=np.float64, 
     assert len(node.scope) == 1, node.scope
 
     log_probs = np.zeros((data.shape[0], 1), dtype=dtype)
-    log_probs[:] = parametric_log_likelihood(node, np.array([[node.mode]]), dtype=dtype)
+    log_probs[:] = np.log(parametric_likelihood(node, np.array([[node.mode]]), dtype=dtype))
 
     if data.shape[1] > 1:
         data = data[:, node.scope]
@@ -76,8 +76,7 @@ def parametric_mpe_log_likelihood(node, data, log_space=True, dtype=np.float64, 
     # collecting query rvs
     mpe_ids = np.isnan(data)
 
-    log_probs[~mpe_ids] = parametric_log_likelihood(
-        node, data[~mpe_ids].reshape(-1, 1), dtype=dtype)[:, 0]
+    log_probs[~mpe_ids] = np.log(parametric_likelihood(node, data[~mpe_ids].reshape(-1, 1), dtype=dtype)[:, 0])
 
     if not log_space:
         return np.exp(log_probs)

@@ -116,7 +116,7 @@ We then compute the log-likelihood:
 from spn.algorithms.Inference import log_likelihood
 
 ll = log_likelihood(spn, test_data)
-print(ll, (np.exp(ll))
+print(ll, np.exp(ll))
 ```
 
 And the output is:
