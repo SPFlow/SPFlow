@@ -5,22 +5,6 @@ Created on July 24, 2018
 '''
 
 
-def test():
-    from numpy.random.mtrand import RandomState
-
-    from spn.algorithms.Inference import likelihood, log_likelihood, add_node_likelihood
-    from spn.algorithms.LearningWrappers import learn_parametric, learn_classifier
-    from spn.algorithms.MPE import mpe
-    from spn.algorithms.Marginalization import marginalize
-    from spn.algorithms.Sampling import sample_instances
-    from spn.algorithms.Statistics import get_structure_stats
-    from spn.algorithms.Validity import is_valid
-    from spn.gpu.TensorFlow import spn_to_tf_graph, eval_tf, optimize_tf
-    from spn.io.Graphics import plot_spn
-    from spn.io.Text import spn_to_str_equation
-    from spn.structure.Base import Context, Leaf
-    from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
-    import numpy as np
 
 
 def create_SPN():

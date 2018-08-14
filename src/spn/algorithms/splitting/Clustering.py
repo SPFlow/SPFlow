@@ -5,6 +5,7 @@ Created on March 25, 2018
 '''
 import numpy as np
 from sklearn.cluster import KMeans, DBSCAN
+from sklearn.metrics import pairwise
 
 from spn.algorithms.splitting.Base import split_data_by_clusters, preproc
 
@@ -51,6 +52,7 @@ def get_split_rows_DBScan(eps=2, min_samples=10, pre_proc=None, ohe=False):
 
 
 def get_split_rows_Gower(n_clusters=2, pre_proc=None, seed=17):
+
     from rpy2 import robjects
     init_rpy()
 

@@ -27,7 +27,7 @@ def is_consistent(node):
             allchildscope.update(child.scope)
 
         if allchildscope != nscope or sum_features != len(allchildscope):
-            return False, "children of (prod) node %s don' have exclusive scope" % (prod_node.id)
+            return False, "children of (prod) node %s do not have exclusive scope" % (prod_node.id)
 
     return True, None
 
@@ -47,7 +47,7 @@ def is_complete(node):
 
         for child in sum_node.children:
             if nscope != set(child.scope):
-                return False, "children of (sum) node %s don't have the same scope as parent" % (sum_node.id)
+                return False, "children of (sum) node %s do not have the same scope as parent" % (sum_node.id)
 
     return True, None
 
