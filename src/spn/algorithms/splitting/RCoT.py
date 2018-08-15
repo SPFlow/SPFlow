@@ -7,6 +7,7 @@ from rpy2 import robjects
 from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import SignatureTranslatedAnonymousPackage
 import multiprocessing as mp
+from spn.algorithms.splitting.Base import split_conditional_data_by_clusters, preproc
 
 
 with open(path+"/RCoT.R", "r") as mixfile:
@@ -21,70 +22,74 @@ data_file = path + 'data_file.dat'
 data_cond_file = path + 'data_cond_file.dat'
 
 
-def getCIGroups(data, scope=None, alpha=0.0001, families=None):
-    """
-    :param data: np array
-    :param scope: index to output variables
-    :param alpha: threshold
-    :param families: obsolete
-    :return:
+def getCIGroup(rand_gen, ohe=False):
+    # def getCIGroups(data, scope=None, alpha=0.001, families=None):
+    def getCIGroups(local_data, ds_context=None, scope=None, alpha=0.001, families=None):
+        """
+        :param local_data: np array
+        :param scope: a list of index to output variables
+        :param alpha: threshold
+        :param families: obsolete
+        :return: np array of clustering
 
-    This function take tuple (output, conditional) as input and returns independent groups
-    alpha is the cutoff parameter for connected components
-    BE CAREFUL WITH SPARSE DATA!
-    """
+        This function take tuple (output, conditional) as input and returns independent groups
+        alpha is the cutoff parameter for connected components
+        BE CAREFUL WITH SPARSE DATA!
+        """
 
-    num_instance = data.shape[0]
+        data = preproc(local_data, ds_context, None, ohe)
 
-    output_mask = np.zeros(data.shape, dtype=bool)   # todo check scope and node.scope again
-    output_mask[:, scope] = True
+        num_instance = data.shape[0]
 
-    dataOut = data[output_mask].reshape(num_instance, -1)
-    dataIn = data[~output_mask].reshape(num_instance, -1)
-
-
-    DATA = np.memmap(data_file, dtype=dataOut.dtype, mode='w+', shape=dataOut.shape)
-    DATA[:] = dataOut[:]
-    DATA.flush()
-
-    DATA_COND = np.memmap(data_cond_file, dtype=dataIn.dtype, mode='w+', shape=dataIn.shape)
-    DATA_COND[:] = dataIn[:]
-    DATA_COND.flush()
-
-    num_X = dataOut.shape[1] #len(data[0])
-    num_Y = dataIn.shape[1] #len(data_cond[0])
-    p_value_matrix = np.zeros((num_X, num_X))
-
-    index_matrix = [(x, y, dataOut.dtype, dataOut.shape, dataIn.shape) for x in range(num_X) for y in range(num_X)]
-    index_matrix = [s for s in index_matrix if s[0]!=s[1]]
-
-    with mp.Pool() as pool:
-        pvals = pool.starmap(computePvals, index_matrix) #index_matrix)
-
-    pvals_container = np.zeros((num_X,num_X))
-    d = np.diag_indices_from(pvals_container)
-    pvals_container[d] = 0
-
-    pvals = np.array(pvals).ravel()
-    for i in range(len(pvals)):
-        x, y, _, _, _ = index_matrix[i]
-        pvals_container[x,y] = pvals[i]
-
-    pvals = pvals_container
-
-    for i, j in zip(*np.tril_indices(pvals.shape[1])):
-        pvals[i, j] = pvals[j, i] = min(pvals[i, j], pvals[j, i])
-
-    pvals[pvals > alpha] = 0
+        output_mask = np.zeros(data.shape, dtype=bool)   # todo check scope and node.scope again
+        output_mask[:, np.arange(len(scope))] = True
 
 
-    result = np.zeros(dataOut.shape[1])
-    for i, c in enumerate(connected_components(from_numpy_matrix(pvals))):
-        result[list(c)] = i + 1
+        dataOut = data[output_mask].reshape(num_instance, -1)
+        dataIn = data[~output_mask].reshape(num_instance, -1)
 
-    print('result', result)
-    return result
 
+        DATA = np.memmap(data_file, dtype=dataOut.dtype, mode='w+', shape=dataOut.shape)
+        DATA[:] = dataOut[:]
+        DATA.flush()
+
+        DATA_COND = np.memmap(data_cond_file, dtype=dataIn.dtype, mode='w+', shape=dataIn.shape)
+        DATA_COND[:] = dataIn[:]
+        DATA_COND.flush()
+
+        num_X = dataOut.shape[1] #len(data[0])
+        num_Y = dataIn.shape[1] #len(data_cond[0])
+        p_value_matrix = np.zeros((num_X, num_X))
+
+        index_matrix = [(x, y, dataOut.dtype, dataOut.shape, dataIn.shape) for x in range(num_X) for y in range(num_X)]
+        index_matrix = [s for s in index_matrix if s[0]!=s[1]]
+
+        with mp.Pool() as pool:
+            pvals = pool.starmap(computePvals, index_matrix) #index_matrix)
+
+        pvals_container = np.zeros((num_X,num_X))
+        d = np.diag_indices_from(pvals_container)
+        pvals_container[d] = 0
+
+        pvals = np.array(pvals).ravel()
+        for i in range(len(pvals)):
+            x, y, _, _, _ = index_matrix[i]
+            pvals_container[x,y] = pvals[i]
+
+        pvals = pvals_container
+
+        for i, j in zip(*np.tril_indices(pvals.shape[1])):
+            pvals[i, j] = pvals[j, i] = min(pvals[i, j], pvals[j, i])
+
+        pvals[pvals > alpha] = 0
+
+        clusters = np.zeros(dataOut.shape[1])
+        for i, c in enumerate(connected_components(from_numpy_matrix(pvals))):
+            clusters[list(c)] = i + 1
+
+        return split_conditional_data_by_clusters(local_data, clusters, scope, rows=False)
+
+    return getCIGroups
 
 def computePvals(x, y, data_type, data_shape, data_cond_shape):
 
