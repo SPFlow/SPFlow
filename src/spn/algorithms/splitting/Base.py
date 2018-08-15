@@ -84,3 +84,24 @@ def split_data_by_clusters(data, clusters, scope, rows=True):
             result.append((local_data, nscope[clusters == uc].tolist(), proportion))
 
     return result
+
+
+def split_conditional_data_by_clusters(data, clusters, scope, rows=True):
+    unique_clusters = np.unique(clusters)
+    result = []
+
+    local_scope = np.arange(len(scope))
+    nscope = np.asarray(scope)
+
+    dataOut = data[:, local_scope]
+    dataIn = data[:, ~local_scope]
+
+    for uc in unique_clusters:
+        if rows:
+            raise NotImplementedError
+        else:
+            local_data = np.concatenate((dataOut[:, clusters == uc].reshape((data.shape[0], -1)), dataIn), axis=1)
+            proportion = local_data.shape[1] / data.shape[1]
+            result.append((local_data, nscope[clusters == uc].tolist(), proportion))
+
+    return result
