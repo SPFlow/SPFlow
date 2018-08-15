@@ -74,11 +74,14 @@ def get_next_operation(min_instances_slice=100):
     return next_operation
 
 
-def default_slicer(data, cols):
-    if len(cols) == 1:
-        return data[:, cols[0]].reshape((-1, 1))
+def default_slicer(data, cols, num_cond_cols=None):
+    if num_cond_cols is None:
+        if len(cols) == 1:
+            return data[:, cols[0]].reshape((-1, 1))
 
-    return data[:, cols]
+        return data[:, cols]
+    else:
+        return np.concatenate((data[:, cols], data[:, -num_cond_cols:]), axis=1)
 
 
 def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, next_operation=get_next_operation(),
@@ -95,6 +98,12 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
     if initial_scope is None:
         initial_scope = list(range(dataset.shape[1]))
+        num_conditional_cols = None
+    elif len(initial_scope) < dataset.shape[1]:
+        num_conditional_cols = dataset.shape[1] - len(initial_scope)
+    else:
+        num_conditional_cols = None
+        assert len(initial_scope) > dataset.shape[1], 'check initial scope: %s' % initial_scope
 
     tasks = deque()
     tasks.append((dataset, root, 0, initial_scope, False, False))
@@ -119,7 +128,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             for col in op_params:
                 rest_scope.remove(col)
                 node.children.append(None)
-                tasks.append((data_slicer(local_data, [col]), node, len(node.children) - 1, [scope[col]], True, True))
+                tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1, [scope[col]], True, True))
 
             node.children.append(None)
             c_pos = len(node.children) - 1
@@ -131,7 +140,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
             rest_scope = list(rest_scope)
 
-            tasks.append((data_slicer(local_data, rest_scope), node, c_pos, rest_scope, next_final, next_final))
+            tasks.append((data_slicer(local_data, rest_scope, num_conditional_cols), node, c_pos, rest_scope, next_final, next_final))
 
             continue
 
@@ -191,7 +200,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             split_start_t = perf_counter()
             for col in range(len(scope)):
                 node.children.append(None)
-                tasks.append((data_slicer(local_data, [col]), node, len(node.children) - 1, [scope[col]], True, True))
+                tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1, [scope[col]], True, True))
             split_end_t = perf_counter()
 
             logging.debug('\t\tsplit {} columns (in {:.5f} secs)'.format(len(scope), split_end_t - split_start_t))
@@ -199,7 +208,6 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             continue
 
         elif operation == Operation.CREATE_LEAF:
-
             leaf_start_t = perf_counter()
             node = create_leaf(local_data, ds_context, scope)
             parent.children[children_pos] = node

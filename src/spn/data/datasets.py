@@ -7,6 +7,7 @@ Created on March 30, 2018
 from os.path import dirname
 
 import numpy as np
+import os
 
 path = dirname(__file__) + "/"
 
@@ -33,3 +34,18 @@ def get_binary_data(name):
 
     return (
     name.upper(), np.asarray(features), D, train, test, np.asarray(["discrete"] * F), np.asarray(["bernoulli"] * F))
+
+
+def get_mnist(cachefile=path+'count/mnist.npz'):
+    if cachefile and os.path.exists(cachefile):
+        npzfile = np.load(cachefile)
+        images_tr, labels_tr, images_te, labels_te = npzfile['images_tr'], npzfile['labels_tr'], npzfile['images_te'], npzfile['labels_te']
+    else:
+        from mnist import MNIST
+        mndata = MNIST(path+'count/mnist')
+        images_tr, labels_tr = mndata.load_training()
+        images_te, labels_te = mndata.load_testing()
+
+        if cachefile:
+            np.savez(cachefile, images_tr=images_tr, labels_tr=labels_tr, images_te=images_te, labels_te=labels_te)
+    return (images_tr, labels_tr, images_te, labels_te)
