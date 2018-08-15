@@ -6,7 +6,7 @@ Created on April 15, 2018
 import numpy as np
 from scipy.stats import gamma, lognorm
 
-from spn.structure.leaves.conditional.Conditional import Conditional_Gaussian, Conditional_Poisson
+from spn.structure.leaves.conditional.Conditional import Conditional_Gaussian, Conditional_Poisson, Conditional_Bernoulli
 import statsmodels.api as sm
 
 def update_glm_parameters_mle(node, data, scope):   # assume data is tuple (output np array, conditional np array)
@@ -45,8 +45,26 @@ def update_glm_parameters_mle(node, data, scope):   # assume data is tuple (outp
     elif isinstance(node, Conditional_Poisson):
 
         dataIn = np.c_[dataIn, np.ones((dataIn.shape[0]))]
-        weights = sm.GLM(dataOut, dataIn, family=sm.families.Poisson()).fit().params
+        try:
+            weights = sm.GLM(dataOut, dataIn, family=sm.families.Poisson()).fit().params
+        except Exception:
+            print(dataIn)
+            print(np.where(dataOut)==1)
+            0/0
+
         node.mean = node.inv_linkfunc(np.dot(dataIn, weights))
+
+    elif isinstance(node, Conditional_Bernoulli):
+
+        dataIn = np.c_[dataIn, np.ones((dataIn.shape[0]))]
+        try:
+            weights = sm.GLM(dataOut, dataIn, family=sm.families.Binomial()).fit().params
+        except Exception:
+            print(dataIn)
+            print(np.where(dataOut)==1)
+            0/0
+
+        node.p = node.inv_linkfunc(np.dot(dataIn, weights))
 
     else:
         raise Exception("Unknown conditional " + str(type(node)))
