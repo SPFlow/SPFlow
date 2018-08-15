@@ -51,7 +51,9 @@ def sample_leaf(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
     if n_samples == 0:
         return None
 
-    data[input_vals[data_nans], node.scope] = _leaf_sampling[type(node)](node, n_samples=n_samples, rand_gen=rand_gen)
+    data[input_vals[data_nans], node.scope] = _leaf_sampling[type(node)](node, n_samples=n_samples,
+                                                                         data=data[input_vals[data_nans], :],
+                                                                         rand_gen=rand_gen)
 
 
 _node_sampling = {Product: sample_prod, Sum: sample_sum}

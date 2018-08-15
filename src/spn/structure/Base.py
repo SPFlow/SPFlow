@@ -86,14 +86,14 @@ class Leaf(Node):
 
 
 class Context:
-    def __init__(self, meta_types=None, domains=None, parametric_type=None):
+    def __init__(self, meta_types=None, domains=None, parametric_types=None):
         self.meta_types = meta_types
         self.domains = domains
-        self.parametric_type = parametric_type
+        self.parametric_type = parametric_types
 
-        if self.meta_types is None and parametric_type is not None:
+        if self.meta_types is None and parametric_types is not None:
             self.meta_types = []
-            for p in parametric_type:
+            for p in parametric_types:
                 self.meta_types.append(p.type.meta_type)
 
 
@@ -204,12 +204,17 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, 
         all_results.clear()
 
     for n in nodes:
+        type_n = type(n)
+        func = eval_functions.get(type_n, None)
+
+        if func is None:
+            raise Exception("No lambda function associated with type: %s" % (type_n))
 
         if isinstance(n, Leaf):
-            result = eval_functions[type(n)](n, input_vals, **args)
+            result = func(n, input_vals, **args)
         else:
             children = [all_results[c] for c in n.children]
-            result = eval_functions[type(n)](n, children, input_vals, **args)
+            result = func(n, children, input_vals, **args)
 
         if after_eval_function is not None:
             after_eval_function(n, result)

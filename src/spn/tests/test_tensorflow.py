@@ -24,7 +24,7 @@ class TestTensorflow(unittest.TestCase):
         data = np.random.normal(10, 0.01, size=2000).tolist() + np.random.normal(30, 10, size=2000).tolist()
         data = np.array(data).reshape((-1, 10))
 
-        ds_context = Context(meta_types=[MetaType.REAL] * data.shape[1], parametric_type=[Gaussian] * data.shape[1])
+        ds_context = Context(meta_types=[MetaType.REAL] * data.shape[1], parametric_types=[Gaussian] * data.shape[1])
 
         spn = learn_parametric(data, ds_context)
 
@@ -59,7 +59,7 @@ class TestTensorflow(unittest.TestCase):
         data = np.random.normal(10, 0.01, size=2000).tolist() + np.random.normal(30, 10, size=2000).tolist()
         data = np.array(data).reshape((-1, 10))
 
-        ds_context = Context(meta_types=[MetaType.REAL] * data.shape[1], parametric_type=[Gaussian] * data.shape[1])
+        ds_context = Context(meta_types=[MetaType.REAL] * data.shape[1], parametric_types=[Gaussian] * data.shape[1])
 
         spn = learn_parametric(data, ds_context)
 
