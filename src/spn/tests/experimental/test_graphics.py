@@ -6,7 +6,7 @@ Created on March 29, 2018
 from spn.leaves.Histograms import Histogram_str_to_spn
 
 from spn.experiments.FPGA.GenerateSPNs import fpga_count_ops
-from spn.io.Graphics import plot_spn2
+from spn.io.Graphics import plot_spn
 from spn.io.Text import str_to_spn
 
 if __name__ == '__main__':
@@ -24,6 +24,6 @@ if __name__ == '__main__':
     print(spn)
 
     print(fpga_count_ops(spn))
-    plot_spn2(spn)
+    plot_spn(spn)
 
 
