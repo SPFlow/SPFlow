@@ -11,47 +11,32 @@ from spn.algorithms.Inference import add_node_likelihood, add_node_mpe_likelihoo
 from spn.structure.leaves.conditional.Conditional import *
 from spn.structure.leaves.conditional.utils import get_scipy_obj_params
 
-POS_EPS = 1e-7
 
-LOG_ZERO = -300
-
-
-def conditional_likelihood(node, data, scope, dtype=np.float64):
+def conditional_likelihood(node, data, dtype=np.float64):
     """
     :param node: the query
     :param data: data including conditional columns
-    :param scope: scope indicates the output columns in data
     :param dtype: data type
     :return: conditional likelihood
     """
-    assert len(node.scope) == 1, node.scope  #todo should node.scope be adjusted?
-    num_instance = data.shape[0]
+    assert len(node.scope) == 1, node.scope
 
-    # idx = scope[0]
-    output_mask = np.zeros(data.shape, dtype=bool)
-    output_mask[:, scope] = True
+    dataIn = data[:, node.evidence_size:]
+    dataOut = data[:, node.scope[0]]
 
-    dataOut = data[output_mask].reshape(num_instance, -1)
-    dataIn = data[~output_mask].reshape(num_instance, -1)
-
-    probs = np.ones((dataOut.shape[0], 1), dtype=dtype)
-
-    if dataOut.shape[1] > 1:
-        dataOut = dataOut[:, node.scope]   # todo check again node.scope and par scope
-
-    assert dataOut.shape[1] == 1, dataOut.shape
+    probs = np.ones((data.shape[0], 1), dtype=dtype)
 
     # marginalize over something?
     marg_ids = np.isnan(dataOut)
 
-    if isinstance(node, Conditional_Gaussian):
-        scipy_obj, params = get_scipy_obj_params(node, dataIn)   # params is a vector instead of a scalar
-        probs[~marg_ids] = [scipy_obj.pdf(obs, **param) for obs, param in zip(dataOut[~marg_ids], params)]  #todo double check
+    scipy_obj, params = get_scipy_obj_params(node, dataIn[~marg_ids])
 
+    if isinstance(node, Conditional_Gaussian):
+        # params is a vector instead of a scalar
+        probs[~marg_ids,0] = scipy_obj.pdf(dataOut[~marg_ids], **params)
 
     elif isinstance(node, Conditional_Poisson) or isinstance(node, Conditional_Bernoulli):
-        scipy_obj, params = get_scipy_obj_params(node, dataIn)
-        probs[~marg_ids] = [scipy_obj.pmf(obs[~marg_ids], **param) for obs, param in zip(dataOut[~marg_ids], params)] # todo double check
+        probs[~marg_ids,0] = scipy_obj.pmf(dataOut[~marg_ids], **params)
 
     else:
         raise Exception("Unknown parametric " + str(type(node)))
@@ -60,7 +45,8 @@ def conditional_likelihood(node, data, scope, dtype=np.float64):
 
 
 # todo rewrite?
-def conditional_mpe_log_likelihood(node, data, scope=None, log_space=True, dtype=np.float64, context=None, node_mpe_likelihood=None):
+def conditional_mpe_log_likelihood(node, data, scope=None, log_space=True, dtype=np.float64, context=None,
+                                   node_mpe_likelihood=None):
     """
     :param node:
     :param data:
@@ -75,7 +61,8 @@ def conditional_mpe_log_likelihood(node, data, scope=None, log_space=True, dtype
     dataOut, dataIn = data
 
     log_probs = np.zeros((dataOut.shape[0], 1), dtype=dtype)
-    log_probs[:] = parametric_log_likelihood(node, np.array([[node.mode]]), dtype=dtype)  # todo where is parametric_log_likelihood?
+    log_probs[:] = parametric_log_likelihood(node, np.array([[node.mode]]),
+                                             dtype=dtype)  # todo where is parametric_log_likelihood?
 
     if dataOut.shape[1] > 1:
         dataOut = dataOut[:, node.scope]
@@ -87,7 +74,7 @@ def conditional_mpe_log_likelihood(node, data, scope=None, log_space=True, dtype
     mpe_ids = np.isnan(dataOut)
 
     log_probs[~mpe_ids] = parametric_log_likelihood(
-        node, dataOut[~mpe_ids].reshape(-1, 1), dtype=dtype)[:, 0]   # todo where is parametric_log_likelihood?
+        node, dataOut[~mpe_ids].reshape(-1, 1), dtype=dtype)[:, 0]  # todo where is parametric_log_likelihood?
 
     if not log_space:
         return np.exp(log_probs)

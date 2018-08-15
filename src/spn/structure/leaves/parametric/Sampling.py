@@ -13,7 +13,7 @@ import numpy as np
 from spn.structure.leaves.parametric.utils import get_scipy_obj_params
 
 
-def sample_parametric_node(node, n_samples, rand_gen):
+def sample_parametric_node(node, n_samples, data, rand_gen):
     assert isinstance(node, Parametric)
     assert n_samples > 0
 
