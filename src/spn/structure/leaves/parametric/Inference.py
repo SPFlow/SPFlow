@@ -27,7 +27,7 @@ def parametric_likelihood(node, data, dtype=np.float64):
     # marginalize over something?
     marg_ids = np.isnan(data)
 
-    if isinstance(node, Gaussian) or isinstance(node, LogNormal) or isinstance(node, Exponential):
+    if isinstance(node, (Gaussian, LogNormal, Exponential)):
         scipy_obj, params = get_scipy_obj_params(node)
         probs[~marg_ids] = scipy_obj.pdf(data[~marg_ids], **params)
 
@@ -37,7 +37,7 @@ def parametric_likelihood(node, data, dtype=np.float64):
         data_m[data_m == 0] += POS_EPS
         probs[~marg_ids] = scipy_obj.pdf(data_m, **params)
 
-    elif isinstance(node, Poisson) or isinstance(node, Bernoulli) or isinstance(node, Geometric):
+    elif isinstance(node, (Poisson, Bernoulli, Geometric)):
         scipy_obj, params = get_scipy_obj_params(node)
         probs[~marg_ids] = scipy_obj.pmf(data[~marg_ids], **params)
 

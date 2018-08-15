@@ -137,8 +137,8 @@ def classification():
     from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
     from spn.structure.Base import Context
     spn_classification = learn_classifier(train_data,
-                           Context(parametric_type=[Gaussian, Gaussian, Categorical]).add_domains(train_data),
-                           learn_parametric, 2)
+                                          Context(parametric_types=[Gaussian, Gaussian, Categorical]).add_domains(train_data),
+                                          learn_parametric, 2)
 
     test_classification = np.array([3.0, 4.0, np.nan, 12.0, 18.0, np.nan]).reshape(-1, 3)
     print(test_classification)

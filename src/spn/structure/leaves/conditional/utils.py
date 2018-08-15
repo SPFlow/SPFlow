@@ -8,24 +8,23 @@ from scipy.stats import *
 from spn.structure.leaves.conditional.Conditional import *
 
 
+def logit(x):
+    return np.exp(x) / (1 + np.exp(x))
+
+
 def get_scipy_obj_params(node, obs):
+    # w*x + bias
+    pred = np.dot(obs, node.weights[:-1]) + node.weights[-1]
     if isinstance(node, Conditional_Gaussian):
-        mean = node.inv_linkfunc(np.dot(obs, node.weights))
-        assert len(mean) == obs.shape[0]
-        # assert len(node.mean) == obs.shape[0]
-        # assert len(node.stdev) == obs.shape[0]
-        return norm, {"loc": mean, "scale": node.stdev}  # should be a vector, instead of a scalar
+        mean = pred
+        return norm, {"loc": mean, "scale": np.ones(obs.shape[0])}
 
     elif isinstance(node, Conditional_Poisson):
-        # assert len(node.mean) == obs.shape[0]
-        mu = node.inv_linkfunc(np.dot(obs, node.weights))
-        assert len(mu) == obs.shape[0]
+        mu = np.exp(pred)
         return poisson, {"mu": mu}
 
     elif isinstance(node, Conditional_Bernoulli):
-        # assert len(node.p) == obs.shape[0]
-        p = node.inv_linkfunc(np.dot(obs, node.weights))
-        assert len(p) == obs.shape[0]
+        p = logit(pred)
         return bernoulli, {"p": p}
 
     else:

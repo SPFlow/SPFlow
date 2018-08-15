@@ -21,9 +21,11 @@
 #' RCIT(x,y,z,seed=2);
 
 
-library(devtools)
-install_github("ericstrobl/RCIT")
-library(RCIT)
+if(!require(RCIT)){
+    library(devtools)
+    install_github("ericstrobl/RCIT")
+    library(RCIT)
+}
 
 RCoT <- function(x,y,z=NULL,approx="lpd4",num_f=25,seed=17){
   #print(typeof(-6.661338e-16))

@@ -14,7 +14,7 @@ class TestParametric(unittest.TestCase):
 
         domains = [[np.min(data), np.max(data)]]
 
-        mle = create_parametric_leaf(data, ds_context=Context(parametric_type=[type(expected)], domains=domains), scope=[0])
+        mle = create_parametric_leaf(data, ds_context=Context(parametric_types=[type(expected)], domains=domains), scope=[0])
 
         mle_p = {k: v for k, v in vars(mle).items() if not k.startswith('_')}
         exp_p = {k: v for k, v in vars(expected).items() if not k.startswith('_')}
