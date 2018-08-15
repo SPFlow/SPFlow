@@ -43,7 +43,8 @@ class Conditional_Gaussian(Conditional):
         self.weights = params
         self.inv_linkfunc = inv_linkfunc
         self.mean = self.inv_linkfunc(np.dot(inputs, self.weights))
-        self.stdev = 1  #todo
+        if inputs is not None and self.weights is not None:
+            self.stdev = 1  #todo
 
     @property
     def params(self):
@@ -74,17 +75,19 @@ class Conditional_Poisson(Conditional):
         Conditional.__init__(self, Type.COUNT, scope=scope)
 
         self.weights = params
-        self._inv_linkfunc = inv_linkfunc
+        # self._inv_linkfunc = inv_linkfunc
+        self.inv_linkfunc = inv_linkfunc
         if inputs is not None and self.weights is not None:
-            self.mean = self._inv_linkfunc(np.dot(inputs, self.weights))
+            self.mean = self.inv_linkfunc(np.dot(inputs, self.weights))
+            # self.mean = self._inv_linkfunc(np.dot(inputs, self.weights))
 
     @property
     def params(self):
         return {'mean': self.mean}
 
-    @property
-    def inv_linkfunc(self):
-        return self._inv_linkfunc
+    # @property
+    # def inv_linkfunc(self):
+    #     return self._inv_linkfunc
 
     @property
     def mode(self):
@@ -103,7 +106,8 @@ class Conditional_Bernoulli(Conditional):
 
         self.weights = params
         self.inv_linkfunc = inv_linkfunc
-        self.p = self.inv_linkfunc(np.dot(inputs, self.weights))
+        if inputs is not None and self.weights is not None:
+            self.p = self.inv_linkfunc(np.dot(inputs, self.weights))
 
     @property
     def params(self):
@@ -129,6 +133,7 @@ def create_conditional_leaf(data, ds_context, scope):
     assert parametric_type is not None
 
     node = parametric_type()
+
     node.scope.append(idx)
 
     update_glm_parameters_mle(node, data, scope)

@@ -117,7 +117,7 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
     return learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
 
-def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", min_instances_slice=200, threshold=0.3,
+def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", min_instances_slice=200, threshold=0.01,
                       ohe=False,
                       leaves=None, memory=None):
     """
@@ -139,15 +139,15 @@ def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", m
     def learn(data, ds_context, scope, cols, rows, min_instances_slice, threshold, ohe):
         split_cols = None
         if cols == "ci":
-            from spn.algorithms.splitting.RCoT import getCIGroups
+            from spn.algorithms.splitting.RCoT import getCIGroup
 
-            split_cols = getCIGroups(data, scope, threshold)
+            split_cols = getCIGroup(np.random.RandomState(17)) #(data, scope, threshold)
         else:
             raise ValueError('invalid independence test')
         if rows == "rand_hp":
-            from spn.algorithms.splitting.Random import get_split_rows_binary_random_partition
+            from spn.algorithms.splitting.Random import get_split_rows_random_partition
 
-            split_rows = get_split_rows_binary_random_partition(ohe=ohe)
+            split_rows = get_split_rows_random_partition(np.random.RandomState(17)) #(data, scope, threshold)
         else:
             # todo add other clustering?
             raise ValueError('invalid clustering method')
