@@ -68,13 +68,13 @@ class SpnArgs(object):
 class GaussVector(NodeVector):
     def __init__(self, region, args, name, given_means=None, given_stddevs=None, mean=0.0):
         super().__init__(name)
-        local_size = len(region)
+        self.local_size = len(region)
         self.args = args
         self.scope = sorted(list(region))
         self.size = args.num_gauss
 
         self.means = variable_with_weight_decay(name + '_means',
-                                                shape=[1, local_size, args.num_gauss],
+                                                shape=[1, self.local_size, args.num_gauss],
                                                 stddev=1e-1,
                                                 mean=mean,
                                                 wd=args.gauss_param_l2,
@@ -89,7 +89,7 @@ class GaussVector(NodeVector):
                                                           values=given_stddevs)
             else:
                 sigma_params = variable_with_weight_decay(name + '_sigma_params',
-                                                          shape=[1, local_size, args.num_gauss],
+                                                          shape=[1, self.local_size, args.num_gauss],
                                                           stddev=1e-1,
                                                           wd=args.gauss_param_l2,
                                                           values=given_stddevs)
@@ -118,6 +118,16 @@ class GaussVector(NodeVector):
 
         gauss_log_pdf = tf.reduce_sum(gauss_log_pdf_single, 1)
         return gauss_log_pdf
+
+    def sample(self, num_samples, num_dims, seed=None):
+        # sample_values = self.dist.sample([num_samples], seed=seed)[:, 0]
+        sample_values = self.means + tf.zeros([num_samples, self.local_size, self.args.num_gauss])
+        sample_shape = [num_samples, num_dims, self.size]
+        indices = tf.meshgrid(tf.range(num_samples), self.scope, tf.range(self.size))
+        indices = tf.stack(indices, axis=-1)
+        indices = tf.transpose(indices, [1, 0, 2, 3])
+        samples = tf.scatter_nd(indices, sample_values, sample_shape)
+        return samples
 
     def num_params(self):
         result = self.means.shape.num_elements()
@@ -160,6 +170,15 @@ class ProductVector(NodeVector):
 
     def num_params(self):
         return 0
+
+    def sample(self, inputs, seed=None):
+        in1_expand = tf.expand_dims(inputs[0], -1)
+        in2_expand = tf.expand_dims(inputs[1], -2)
+
+        output_shape = [inputs[0].shape[0], inputs[0].shape[1], (inputs[0].shape[2] * inputs[1].shape[2])]
+
+        result = tf.reshape(in1_expand + in2_expand, output_shape)
+        return result
 
 
 class SumVector(NodeVector):
@@ -224,6 +243,22 @@ class SumVector(NodeVector):
 
         return sums
 
+    def sample(self, inputs, seed=None):
+        inputs = tf.concat(inputs, 2)
+        logits = tf.transpose(self.weights[0])
+        dist = dists.Categorical(logits=logits)
+
+        indices = dist.sample([inputs.shape[0]], seed=seed)
+        indices = tf.reshape(tf.tile(indices, [1, inputs.shape[1]]), [inputs.shape[0], self.size, inputs.shape[1]])
+        indices = tf.transpose(indices, [0, 2, 1])
+
+        others = tf.meshgrid(tf.range(inputs.shape[1]), tf.range(inputs.shape[0]), tf.range(self.size))
+
+        indices = tf.stack([others[1], others[0], indices], axis=-1)
+
+        result = tf.gather_nd(inputs, indices)
+        return result
+
     def num_params(self):
         return self.weights.shape.num_elements()
 
@@ -247,6 +282,7 @@ class RatSpn(object):
         self._region_products = dict()
 
         self.vector_list = []
+        self.output_vector = None
 
         # make the SPN...
         with tf.variable_scope(self.name) as scope:
@@ -258,6 +294,7 @@ class RatSpn(object):
                 raise ValueError('Either vector_list or region_graph must not be None')
 
         self.variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
+        self.num_dims = len(self.output_vector.scope)
 
     def _make_spn_from_vector_list(self, vector_list):
         self.vector_list = [[]]
@@ -367,6 +404,20 @@ class RatSpn(object):
 
         return obj_to_tensor[self.output_vector]
 
+    # Does not work currently!
+    def sample(self, num_samples=10, seed=None):
+        vec_to_samples = {}
+        for leaf_vector in self.vector_list[0]:
+            vec_to_samples[leaf_vector] = leaf_vector.sample(num_samples, self.num_dims, seed=seed)
+
+        for layer_idx in range(1, len(self.vector_list)):
+            for vector in self.vector_list[layer_idx]:
+                input_samples = [vec_to_samples[vec] for vec in vector.inputs]
+                result = vector.sample(input_samples, seed=seed)
+                vec_to_samples[vector] = result
+
+        return vec_to_samples[self.output_vector]
+
     def num_params(self):
         result = 0
         for layer in self.vector_list:
@@ -375,9 +426,9 @@ class RatSpn(object):
 
         return result
 
-    def get_simple_spn(self, sess):
+    def get_simple_spn(self, sess, single_root=False):
         vec_to_nodes = {}
-        node_id = 0
+        node_id = -1
 
         for leaf_vector in self.vector_list[0]:
             vec_to_nodes[leaf_vector] = []
@@ -427,7 +478,10 @@ class RatSpn(object):
 
                     for j in range(sum_vector.size):
                         sum_node = base.Sum()
-                        sum_node.id = node_id = node_id + 1
+                        if layer_idx < len(self.vector_list) - 1:
+                            sum_node.id = node_id = node_id + 1
+                        else:
+                            sum_node.id = node_id + 1
                         sum_node.scope.extend(sum_vector.scope)
                         input_vecs = [vec_to_nodes[prod_vec] for prod_vec in sum_vector.inputs]
                         input_nodes = [node for vec in input_vecs for node in vec]
@@ -440,8 +494,17 @@ class RatSpn(object):
                         normalized_weights = scaled_weights / np.sum(scaled_weights)
                         sum_node.weights.extend(normalized_weights)
 
-        return vec_to_nodes[self.output_vector]
+        output_nodes = vec_to_nodes[self.output_vector]
 
+        if single_root:
+            root = base.Sum()
+            root.id = node_id = node_id + 1
+            root.children.extend(output_nodes)
+            root.scope.extend(output_nodes[0].scope)
+            root.weights.extend([1.0 / float(len(output_nodes))] * len(output_nodes))
+            return root
+
+        return output_nodes
 
 def compute_performance(sess, data_x, data_labels, batch_size, spn):
     """Compute classification accuracy"""
