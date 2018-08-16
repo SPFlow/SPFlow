@@ -497,6 +497,9 @@ class RatSpn(object):
         output_nodes = vec_to_nodes[self.output_vector]
 
         if single_root:
+            for i, node in enumerate(output_nodes):
+                node.id = node.id + i
+                node_id += 1
             root = base.Sum()
             root.id = node_id = node_id + 1
             root.children.extend(output_nodes)
