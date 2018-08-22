@@ -53,6 +53,8 @@ def parametric_likelihood(node, data, dtype=np.float64):
         out_domain_ids = cat_data >= node.k
         probs[~marg_ids & out_domain_ids] = 0
         probs[~marg_ids & ~out_domain_ids] = np.array(node.p)[cat_data[~marg_ids & ~out_domain_ids]]
+    elif isinstance(node, CategoricalDictionary):
+        probs[~marg_ids] = [node.p.get(val, 0.0) for val in data[~marg_ids]]
     elif isinstance(node, Uniform):
         probs[~marg_ids] = node.density
     else:
@@ -96,6 +98,8 @@ def add_parametric_inference_support():
     add_node_likelihood(Geometric, parametric_likelihood)
     add_node_likelihood(Exponential, parametric_likelihood)
     add_node_likelihood(Uniform, parametric_likelihood)
+    add_node_likelihood(CategoricalDictionary, parametric_likelihood)
+
 
     add_node_mpe_likelihood(Gaussian, parametric_mpe_log_likelihood)
     add_node_mpe_likelihood(Gamma, parametric_mpe_log_likelihood)
