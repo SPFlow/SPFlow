@@ -26,7 +26,7 @@ def plot_img(image, rows, cols):
 
 
 if __name__ == '__main__':
-    px = 10
+    px = 100
     py = 20
 
     images = create_images_horizontal_lines(px, py)
