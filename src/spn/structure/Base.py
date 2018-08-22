@@ -194,9 +194,13 @@ def assign_ids(node, ids=None):
     bfs(node, assign_id)
 
 
-def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, after_eval_function=None, **args):
+def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, after_eval_function=None, debug=False, **args):
     # evaluating in reverse order, means that we compute all the children first then their parents
     nodes = reversed(get_nodes_by_type(node))
+
+    if debug:
+        from tqdm import tqdm
+        nodes = tqdm(list(nodes))
 
     if all_results is None:
         all_results = {}
