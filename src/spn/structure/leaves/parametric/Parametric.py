@@ -105,6 +105,7 @@ class LogNormal(Parametric):
     where the precition \tau(shape) is known and fixed.
     """
     type = Type.POSITIVE
+
     def __init__(self, mean=None, stdev=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
 
@@ -136,6 +137,7 @@ class Poisson(Parametric):
     \lambda (mean)
     """
     type = Type.COUNT
+
     def __init__(self, mean=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
 
@@ -156,6 +158,7 @@ class Bernoulli(Parametric):
     p (probability of a success)
     """
     type = Type.BINARY
+
     def __init__(self, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
 
@@ -181,6 +184,7 @@ class NegativeBinomial(Parametric):
     FIXME: mismatch from wiki to scipy
     """
     type = Type.COUNT
+
     def __init__(self, n=None, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
 
@@ -207,6 +211,7 @@ class Hypergeometric(Parametric):
     FIXME: mismatch in the wiki in the conjugate prior table
     """
     type = Type.COUNT
+
     def __init__(self, K=None, N=None, n=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
 
@@ -230,6 +235,7 @@ class Geometric(Parametric):
 
     """
     type = Type.COUNT
+
     def __init__(self, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
 
@@ -257,6 +263,7 @@ class Categorical(Parametric):
     p(\{\pi_{k}\}) = Dir(\boldsymbol\alpha)
     """
     type = Type.CATEGORICAL
+
     def __init__(self, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
 
@@ -281,6 +288,34 @@ class Categorical(Parametric):
         return rand_gen.choice(np.arange(self.k), p=self._p, size=n_samples)
 
 
+class CategoricalDictionary(Parametric):
+    """
+    Implements a univariate categorical distribution with $k$ parameters
+    {\pi_{k}}
+
+    representing the probability of the k-th category
+
+    The conjugate prior for these values would be a Dirichlet
+
+    p(\{\pi_{k}\}) = Dir(\boldsymbol\alpha)
+    """
+    type = Type.CATEGORICAL
+
+    def __init__(self, p=None, scope=None):
+        Parametric.__init__(self, type(self).type, scope=scope)
+        if p is not None:
+            assert np.isclose(sum(p.values()), 1), 'Probabilities shall sum to 1'
+        self.p = p
+
+    @property
+    def params(self):
+        return {"p": self.p}
+
+    @property
+    def mode(self):
+        return self.params.keys()[np.argmax(self.params.values())]
+
+
 class Exponential(Parametric):
     """
     Implements a univariate Exponential distribution with  parameter
@@ -288,6 +323,7 @@ class Exponential(Parametric):
 
     """
     type = Type.POSITIVE
+
     def __init__(self, l=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
 

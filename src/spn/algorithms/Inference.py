@@ -72,7 +72,7 @@ def add_node_mpe_likelihood(node_type, lambda_func):
     _node_mpe_likelihood[node_type] = lambda_func
 
 
-def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, lls_matrix=None):
+def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, lls_matrix=None, debug=False):
     assert len(data.shape) == 2, "data must be 2D, found: {}".format(data.shape)
 
     all_results = {}
@@ -82,7 +82,7 @@ def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, l
         assert not np.all(np.isnan(ll)), "ll is nan %s " % (node.id)
 
     result = eval_spn_bottom_up(node, node_likelihood, all_results=all_results, input_vals=data,
-                                after_eval_function=val_funct, dtype=dtype)
+                                after_eval_function=val_funct, debug=debug, dtype=dtype)
 
     if lls_matrix is not None:
         for n, ll in all_results.items():
@@ -91,8 +91,8 @@ def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, l
     return result
 
 
-def log_likelihood(node, data, dtype=np.float64, node_log_likelihood=_node_log_likelihood, lls_matrix=None):
-    return likelihood(node, data, dtype=dtype, node_likelihood=node_log_likelihood, lls_matrix=lls_matrix)
+def log_likelihood(node, data, dtype=np.float64, node_log_likelihood=_node_log_likelihood, lls_matrix=None, debug=False):
+    return likelihood(node, data, dtype=dtype, node_likelihood=node_log_likelihood, lls_matrix=lls_matrix, debug=debug)
 
 
 def conditional_log_likelihood(node_joint, node_marginal, data, log_space=True, dtype=np.float64):
