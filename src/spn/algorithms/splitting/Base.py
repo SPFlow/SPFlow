@@ -87,6 +87,8 @@ def split_data_by_clusters(data, clusters, scope, rows=True):
 
 
 def split_conditional_data_by_clusters(data, clusters, scope, rows=True):
+    print(clusters)
+
     unique_clusters = np.unique(clusters)
     result = []
 
@@ -94,8 +96,9 @@ def split_conditional_data_by_clusters(data, clusters, scope, rows=True):
     nscope = np.asarray(scope)
 
     dataOut = data[:, local_scope]
-    dataIn = data[:, ~local_scope]
+    dataIn = data[:, len(scope):]
 
+    # print(np.shape(data), np.shape(dataOut), np.shape(dataIn))
     for uc in unique_clusters:
         if rows:
             raise NotImplementedError
@@ -103,5 +106,6 @@ def split_conditional_data_by_clusters(data, clusters, scope, rows=True):
             local_data = np.concatenate((dataOut[:, clusters == uc].reshape((data.shape[0], -1)), dataIn), axis=1)
             proportion = local_data.shape[1] / data.shape[1]
             result.append((local_data, nscope[clusters == uc].tolist(), proportion))
-
+            # print(uc)
+            # print('cplit cols', np.shape(data), np.shape(local_data), np.shape(dataOut[:, clusters == uc].reshape((data.shape[0], -1))), np.shape(dataIn))
     return result
