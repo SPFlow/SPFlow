@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<labels xmlns="http://mulan.sourceforge.net/labels">
+<label name="red"></label>
+<label name="green"></label>
+<label name="blue"></label>
+<label name="yellow"></label>
+<label name="white"></label>
+<label name="black"></label>
+<label name="orange"></label>
+</labels>
