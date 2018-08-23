@@ -13,7 +13,7 @@ def sample_conditional_node(node, n_samples, data, rand_gen):  # n_samples -> ob
     if not isinstance(node, (Conditional_Bernoulli, Conditional_Gaussian, Conditional_Poisson)):
         raise Exception('Node type unknown: ' + str(type(node)))
 
-    scipy_obj, params = get_scipy_obj_params(node, data[:, node.evidence_size:])
+    scipy_obj, params = get_scipy_obj_params(node, data[:, -node.evidence_size:])
 
     X = scipy_obj.rvs(size=data.shape[0], random_state=rand_gen, **params)
 
