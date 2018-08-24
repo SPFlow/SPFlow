@@ -247,6 +247,11 @@ def get_keys(dep_tree, meta_data, attributes_in_table):
     return keys_per_attribute, ancestors
 
 
+def cluster_ids(tables, attributes_in_table):
+
+    pass
+
+
 if __name__ == '__main__':
     path = "/Users/alejomc/Downloads/100k/"
 
@@ -260,6 +265,8 @@ if __name__ == '__main__':
     keys_per_attribute, ancestors = get_keys(dep_tree, meta_data, attributes_in_table)
 
     tables = load_tables(path, debug=False)
+
+    tables = cluster_ids(tables, attributes_in_table)
 
     spn = None
 
