@@ -1,11 +1,15 @@
 # import unittest
 import numpy as np
-import sys; sys.path.append('/home/shao/simple_spn/simple_spn/src')
+import sys;
+
+from spn.structure.leaves.conditional.MPE import add_conditional_mpe_support
+
+sys.path.append('/home/shao/simple_spn/simple_spn/src')
 
 from spn.algorithms.Inference import log_likelihood, conditional_log_likelihood
 from spn.algorithms.LearningWrappers import learn_conditional
 from spn.io.Text import spn_to_str_equation
-from spn.structure.Base import Context, Sum
+from spn.structure.Base import Context, Sum, assign_ids
 from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.conditional.Inference import add_conditional_inference_support
 from spn.structure.leaves.conditional.Conditional import Conditional_Poisson, Conditional_Bernoulli
@@ -36,12 +40,22 @@ if __name__ == '__main__':
 
     spn.scope.extend(branch.scope)
 
+    assign_ids(spn)
+
     print(spn)
 
+    mpe_test = data[[0, 1, 2], :].astype(float)
+    mpe_test[:, 0] = np.nan
+
+    from spn.algorithms.MPE import mpe
+    add_conditional_mpe_support()
+
+    print(mpe(spn, mpe_test)[:, 0])
 
 
 
-# class TestBase(unittest.TestCase):
+
+    # class TestBase(unittest.TestCase):
 #
 #     def test_bfs(self):
 #         add_parametric_inference_support()
