@@ -10,11 +10,15 @@ import pickle
 import numpy as np
 import os
 
+from lark import Tree
+
 from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Marginalization import marginalize
 from spn.algorithms.Validity import is_valid
+from spn.io.Text import spn_to_str_ref_graph
 from spn.structure.Base import Sum, Product, assign_ids, rebuild_scopes_bottom_up
 from spn.structure.leaves.parametric.Parametric import CategoricalDictionary
+import itertools
 
 
 class Dependency:
@@ -30,21 +34,38 @@ class Dependency:
                     %import common.WS
                     %ignore WS
                     %import common.WORD -> WORD
-                    node: "(" WORD ")"
-                        | "(" WORD node ("," node)* ")"
+                    TABLE.1: "@" WORD
+                    ATTRIBUTE.2: WORD
+                    ?parent_node.3: node "(" node ")"
+                    ?node_list.4: node ("," node)+
+                    ?node: TABLE | ATTRIBUTE
+                        | node_list
+                        | parent_node
                     """
         tree = Lark(grammar, start='node').parse(txt)
 
         def parse_tree(tree, parents=None):
-            result = Dependency(str(tree.children[0]))
+            result = None
+            if type(tree) == Tree:
+                if tree.data == "node_list":
+                    result = []
+                    for c in tree.children:
+                        result.extend(parse_tree(c, parents=parents))
+                    return result
+                elif tree.data == "parent_node":
+                    result = Dependency(str(tree.children[0]))
+                    for c in tree.children[1:]:
+                        child = parse_tree(c, parents=parents + [result])
+                        result.children.extend(child)
+            else:
+                result = Dependency(str(tree))
+
             if parents is not None:
                 result.parents = parents
-            for c in tree.children[1:]:
-                child = parse_tree(c, parents=result.parents + [result])
-                result.children.append(child)
-            return result
 
-        return parse_tree(tree)
+            return [result]
+
+        return parse_tree(tree, [])[0]
 
     def __repr__(self):
         txt = ("%s %s" % (self.name, ",".join(map(str, self.children)))).strip()
@@ -156,56 +177,6 @@ def get_values(attributes_in_table, meta_data, tables, att_name, constraints, ta
         yield (val, value_count[val], filtered_table_row_idxs_by_value[val])
 
 
-def build_csn(attributes_in_table, meta_data, tables, dependency_node, keys_per_attribute, ancestors, constraints=None,
-              table_row_idxs=None, cache=None,
-              debug=False):
-    if constraints is None:
-        constraints = {}
-
-    att_name = dependency_node.name
-
-    key = keys_per_attribute[att_name]
-    can_cache = tuple(ancestors[att_name]) != tuple(key)
-
-    if can_cache:
-        cache_key = tuple([(k, constraints[k]) for k in key])
-        new_node = cache.get(cache_key, None)
-        if new_node is not None:
-            return new_node
-
-    new_node = Sum()
-
-    new_constraints = dict(constraints)
-
-    for val, count, filtered_table_row_idxs in get_values(attributes_in_table, meta_data, tables, att_name,
-                                                          constraints, table_row_idxs):
-        if debug:
-            print("att_name", att_name, val)
-        new_node.weights.append(count)
-
-        p_node = Product()
-        p_node.children.append(CategoricalDictionary(p={float(val): 1.0}, scope=scopes[att_name]))
-
-        for dep_node in dependency_node.children:
-            new_constraints[att_name] = val
-            p_node.children.append(
-                build_csn(attributes_in_table, meta_data, tables, dep_node, keys_per_attribute, ancestors,
-                          constraints=new_constraints,
-                          table_row_idxs=filtered_table_row_idxs,
-                          cache=cache,
-                          debug=False))
-
-        new_node.children.append(p_node)
-
-    wsum = np.sum(new_node.weights)
-    new_node.weights = [w / wsum for w in new_node.weights]
-
-    if can_cache:
-        cache[cache_key] = new_node
-
-    return new_node
-
-
 def get_keys(dep_tree, meta_data, attributes_in_table):
     # keys are the attributes that show up in more than one table.
     keys = set()
@@ -225,6 +196,10 @@ def get_keys(dep_tree, meta_data, attributes_in_table):
         att_name = dep_node.name
 
         ancestors[att_name] = set(list(map(lambda d: d.name, dep_node.parents)))
+        if att_name[0] == '@':
+            keys_per_attribute[att_name] = keys_per_table[att_name[1:]]
+            return
+
         tables = attributes_in_table[att_name]
 
         if len(dep_node.parents) == 0:
@@ -244,12 +219,175 @@ def get_keys(dep_tree, meta_data, attributes_in_table):
             process_dep_tree(c)
 
     process_dep_tree(dep_tree)
-    return keys_per_attribute, ancestors
+    return keys, keys_per_attribute, ancestors
 
 
-def cluster_ids(tables, attributes_in_table):
+def build_cache(tables, meta_data, table_keys):
+    cache = {}
+    for table_name, constraint_groups in table_keys.items():
+        table = tables[table_name]
 
-    pass
+        for keys in constraint_groups:  # for different clustering orders
+            constraint_atts = None
+
+            for att_name in keys:
+                att_pos = meta_data[table_name][att_name]
+
+                new_constraints = []
+                for v in np.unique(table[:, att_pos]):
+                    new_constraints.append((att_name, v))
+                if constraint_atts is None:
+                    constraint_atts = new_constraints
+                else:
+                    constraint_atts = list(itertools.product(constraint_atts, new_constraints))
+
+            for constraint in constraint_atts:
+                # get data
+                idx = np.ones(table.shape[0]) == 1
+                if not isinstance(constraint[0], tuple):
+                    constraint = [constraint]
+
+                for grounding in constraint:
+                    idx = idx & (table[:, meta_data[table_name][grounding[0]]] == grounding[1])
+                group_data = table[idx, :].astype(float)
+
+                # compute leaf
+                if table_name not in cache:
+                    cache[table_name] = {}
+                table_cache = cache[table_name]
+                table_key = tuple(keys)
+                if table_key not in table_cache:
+                    table_cache[table_key] = {}
+                constraint_cache = table_cache[table_key]
+
+                constraint_cache[tuple(constraint)] = p_node = Product()
+
+                for att, pos in meta_data[table_name].items():
+                    pdf_v, pdf_c = np.unique(group_data[:, pos], return_counts=True)
+                    p_node.children.append(CategoricalDictionary(p=dict(zip(pdf_v, pdf_c / group_data.shape[0])),
+                                                                 scope=scopes[att]))
+
+    return cache
+
+
+def get_table_ancestors(dep_tree, attributes_in_table):
+    keys = set()
+    keys_per_table = {}
+    for att, table_names in attributes_in_table.items():
+        if len(table_names) > 1:
+            keys.add(att)
+            for table_name in table_names:
+                if table_name not in keys_per_table:
+                    keys_per_table[table_name] = []
+                keys_per_table[table_name].append(att)
+
+    table_keys = {}
+    ancestors = {}
+
+    def process_dep_tree(dep_node):
+        att_name = dep_node.name
+
+        if att_name[0] == '@':
+            table_name = att_name[1:]
+            all_keys_in_table = set(keys_per_table[table_name])
+            ancestors_per_table = [p.name for p in dep_node.parents]
+            ancestors[table_name] = ancestors_per_table
+            table_keys[table_name] = [[a for a in ancestors_per_table if a in all_keys_in_table]]
+
+        for c in dep_node.children:
+            process_dep_tree(c)
+
+    process_dep_tree(dep_tree)
+
+    keys_to_tables = {}
+    for table_name, groups in table_keys.items():
+        for group in groups:
+            key = tuple(group)
+            if key not in keys_to_tables:
+                keys_to_tables[key] = []
+            keys_to_tables[key].append(table_name)
+
+    return table_keys, keys_to_tables, ancestors
+
+
+def build_csn(attributes_in_table, meta_data, tables, dependency_node, table_keys, ancestors, constraints=None,
+              table_row_idxs=None, cache=None,
+              debug=False):
+    if constraints is None:
+        constraints = {}
+
+    att_name = dependency_node.name
+
+    if att_name[0] == "@":
+        key = keys_per_attribute[att_name]
+        cache_key = tuple([(k, constraints[k]) for k in key if k in constraints])
+        return cache[att_name[1:]][cache_key]
+
+    new_node = Sum()
+
+    new_constraints = dict(constraints)
+
+    for val, count, filtered_table_row_idxs in get_values(attributes_in_table, meta_data, tables, att_name,
+                                                          constraints, table_row_idxs):
+        if debug:
+            print("att_name", att_name, val)
+        new_node.weights.append(count)
+
+        p_node = Product()
+        p_node.children.append(CategoricalDictionary(p={float(val): 1.0}, scope=scopes[att_name]))
+
+        for dep_node in dependency_node.children:
+            new_constraints[att_name] = val
+            p_node.children.append(
+                build_csn(attributes_in_table, meta_data, tables, dep_node, table_keys, ancestors,
+                          constraints=new_constraints,
+                          table_row_idxs=filtered_table_row_idxs,
+                          cache=cache,
+                          debug=False))
+
+        new_node.children.append(p_node)
+
+    wsum = np.sum(new_node.weights)
+    new_node.weights = [w / wsum for w in new_node.weights]
+
+    if can_cache:
+        cache[cache_key] = new_node
+
+    return new_node
+
+
+def build_csn2(dep_tree, keys_to_tables, ancestors, cache=None):
+
+    tables_to_process = []
+    for c in dep_tree.children:
+        if c.name[0] == '@':
+            tables_to_process.append(c.name[1:])
+
+    if len(tables_to_process) == 0:
+        assert len(dep_tree.children) == 1
+        return build_csn2(dep_tree.children[0], keys_to_tables, ancestors, cache)
+
+
+
+    constraints = []
+    for table_name, _ in join_order:
+        constraint_groups = cache[table_name]
+        node = Sum()
+        node.weights = [1 / len(constraint_groups)] * len(constraint_groups)
+        for v, cached_constraints in constraint_groups.items():
+            constraint_node = Sum()
+            node.children.append(constraint_node)
+            constraint_node.weights = [1 / len(cached_constraints)] * len(cached_constraints)
+
+            for c, node in cached_constraints.items():
+                constraint_node.children.append(node)
+                dep_node = None
+                node_constraint = list(constraints)
+                node_constraint.append(c)
+                add_children(dep_node, node, node_constraint)
+                print(table_name, v)
+
+    print(1)
 
 
 if __name__ == '__main__':
@@ -257,23 +395,27 @@ if __name__ == '__main__':
 
     with open(path + "dependencies.txt", "r") as depfile:
         dep_tree = Dependency.parse(depfile.read())
-
     print(dep_tree)
+
+    cluster_by = {}
+    with open(path + "cluster_by.txt", "r") as cbfile:
+        for l in cbfile.readlines():
+            table_name, cluster_by_atts = l.split(':')
+            cluster_by[table_name] = cluster_by_atts.strip().split(',')
 
     attributes_in_table, scopes, meta_data = parse_attributes(path)
 
-    keys_per_attribute, ancestors = get_keys(dep_tree, meta_data, attributes_in_table)
+    table_keys, keys_to_tables, ancestors = get_table_ancestors(dep_tree, attributes_in_table)
 
     tables = load_tables(path, debug=False)
 
-    tables = cluster_ids(tables, attributes_in_table)
+    cache = build_cache(tables, meta_data, table_keys)
 
     spn = None
 
     file_cache_path = "/tmp/csn.bin"
-    if not os.path.isfile(file_cache_path):
-        spn = build_csn(attributes_in_table, meta_data, tables, dep_tree, keys_per_attribute, ancestors, cache={},
-                        debug=True)
+    if not os.path.isfile(file_cache_path) or True:
+        spn = build_csn2(dep_tree, keys_to_tables, ancestors, cache=cache, debug=False)
         rebuild_scopes_bottom_up(spn)
         print(spn)
         assign_ids(spn)
@@ -304,19 +446,21 @@ if __name__ == '__main__':
     def compute_conditional(spn, scopes, query, **evidence):
         q_e = dict(query)
         q_e.update(evidence)
-        query_str = ",".join(map(lambda t: "%s=%s"%(t[0],t[1]), query.items()))
-        evidence_str = ",".join(map(lambda t: "%s=%s"%(t[0],t[1]), evidence.items()))
-        prob_str = "P(%s|%s)" % (query_str, evidence_str )
-        #print("computing ", prob_str)
+        query_str = ",".join(map(lambda t: "%s=%s" % (t[0], t[1]), query.items()))
+        evidence_str = ",".join(map(lambda t: "%s=%s" % (t[0], t[1]), evidence.items()))
+        prob_str = "P(%s|%s)" % (query_str, evidence_str)
+        # print("computing ", prob_str)
 
         a = log_likelihood(spn, to_data(scopes, **q_e), debug=False)
-        #print("query ", query_str, np.exp(a))
+        # print("query ", query_str, np.exp(a))
         b = log_likelihood(spn, to_data(scopes, **evidence), debug=False)
-        #print("evidence ", evidence_str, b, np.exp(b))
+        # print("evidence ", evidence_str, b, np.exp(b))
         result = np.exp(a - b)
         print(prob_str, "=", result, "query ", query_str, np.exp(a), evidence_str, np.exp(b))
         return result
 
+
+    print(spn_to_str_ref_graph(spn))
 
     compute_conditional(spn, scopes, {'rating': 5}, age=25.0, occupation=3.0)
     compute_conditional(spn, scopes, {'rating': 5}, fantasy=1.0, romance=1.0)
