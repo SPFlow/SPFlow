@@ -43,7 +43,7 @@ def sample_leaf(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
     if len(input_vals) == 0:
         return None
 
-    # we need to find the cells where we need to replace nans with mpes
+    # we need to find the cells where we need to replace nans with samples
     data_nans = np.isnan(data[input_vals, node.scope])
 
     n_samples = np.sum(data_nans)
