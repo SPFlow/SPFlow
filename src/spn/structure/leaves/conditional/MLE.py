@@ -34,4 +34,4 @@ def update_glm_parameters_mle(node, data, scope):  # assume data is tuple (outpu
         raise Exception("Unknown conditional " + str(type(node)))
 
     dataIn = np.c_[dataIn, np.ones((dataIn.shape[0]))]
-    node.weights = sm.GLM(dataOut, dataIn, family=family).fit().params
+    node.weights = sm.GLM(dataOut, dataIn, family=family).fit_regularized(alpha=0.1).params
