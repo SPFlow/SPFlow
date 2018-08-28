@@ -66,21 +66,26 @@ if __name__ == '__main__':
     data = data / float(np.max(data))
 
 
+
     blocked_images = (data[:, :horizontal_middle, :vertical_middle].reshape(len(data), -1),
                       data[:, :horizontal_middle, vertical_middle:].reshape(len(data), -1),
                       data[:, horizontal_middle:, :vertical_middle].reshape(len(data), -1),
                       data[:, horizontal_middle:, vertical_middle:].reshape(len(data), -1))
 
-    # spn
-    ds_context = Context(meta_types=[MetaType.REAL] * 10)
-    ds_context.add_domains(data_labels)
-    ds_context.parametric_type = [Gaussian] * 10
-    spn = learn_parametric(data_labels, ds_context, min_instances_slice=3 * len(data_labels))
+    # # spn
+    # ds_context = Context(meta_types=[MetaType.REAL] * 10)
+    # ds_context.add_domains(data_labels)
+    # ds_context.parametric_type = [Gaussian] * 10
+    # spn = learn_parametric(data_labels, ds_context, min_instances_slice=3 * len(data_labels))
 
 
     # first cspn
     dataIn = data_labels
     dataOut = blocked_images[0]
+
+    #scipy.misc.imsave('dataOut.png', np.concatenate((dataOut, dataIn), axis=1)[3].reshape(downscaleto//2, downscaleto//2))
+    #print(dataIn[3])
+    #0/0
 
     ds_context = Context(meta_types=[MetaType.REAL] * dataOut.shape[1])
     ds_context.add_domains(dataOut)
@@ -90,6 +95,8 @@ if __name__ == '__main__':
     cspn_1st = learn_conditional(np.concatenate((dataOut, dataIn), axis=1), ds_context, scope,
                              min_instances_slice=3 * len(data))
 
+
+    0/0
 
     # a list of cspns
     cspn_army = []
