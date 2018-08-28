@@ -76,11 +76,17 @@ def parse_attributes(path):
     attributes_in_table = {}
     scopes = {}
     meta_data = {}
+    attribute_owners = {}
     with open(path + "attributes.csv", "r") as attfile:
         for line in attfile:
             table = line.strip().split(':')
-            attributes = table[1].split(',')
             table_name = table[0]
+            key_attributes = table[1].split(',')
+            for ka in key_attributes:
+                if ka[-1] == "*":
+                    attribute_owners[ka[:-1]] = table_name
+
+            attributes = table[1].replace("*","").split(',')
             meta_data[table_name] = {key: index for index, key in enumerate(attributes)}
 
             for att in attributes:
@@ -90,7 +96,7 @@ def parse_attributes(path):
                 if att not in attributes_in_table:
                     attributes_in_table[att] = set()
                 attributes_in_table[att].add(table_name)
-    return (attributes_in_table, scopes, meta_data)
+    return (attributes_in_table, scopes, meta_data, attribute_owners)
 
 
 def load_tables(path, debug=False):
@@ -222,7 +228,7 @@ def get_keys(dep_tree, meta_data, attributes_in_table):
     return keys, keys_per_attribute, ancestors
 
 
-def build_cache(tables, meta_data, table_keys):
+def build_cache(tables, meta_data, table_keys, attribute_owners):
     cache = {}
     for table_name, constraint_groups in table_keys.items():
         table = tables[table_name]
@@ -251,6 +257,10 @@ def build_cache(tables, meta_data, table_keys):
                     idx = idx & (table[:, meta_data[table_name][grounding[0]]] == grounding[1])
                 group_data = table[idx, :].astype(float)
 
+                if group_data.shape[0] == 0:
+                    print("WARNING: empty group data" )
+                    continue
+
                 # compute leaf
                 if table_name not in cache:
                     cache[table_name] = {}
@@ -260,9 +270,24 @@ def build_cache(tables, meta_data, table_keys):
                     table_cache[table_key] = {}
                 constraint_cache = table_cache[table_key]
 
-                constraint_cache[tuple(constraint)] = p_node = Product()
+                p_node = Product()
+                for i, (c, val) in enumerate(constraint):
+                    if c not in constraint_cache:
+                        constraint_cache[c] = {}
+                    constraint_cache = constraint_cache[c]
+                    if val not in constraint_cache:
+                        if i == len(constraint)-1:
+                            constraint_cache[val] = (p_node, np.sum(idx))
+                        else:
+                            constraint_cache[val] = {}
+                    constraint_cache = constraint_cache[val]
 
+                constraint_vars = [c[0] for c in constraint]
                 for att, pos in meta_data[table_name].items():
+                    if att in constraint_vars:
+                        continue
+                    if att in attribute_owners and attribute_owners[att] != table_name:
+                        continue
                     pdf_v, pdf_c = np.unique(group_data[:, pos], return_counts=True)
                     p_node.children.append(CategoricalDictionary(p=dict(zip(pdf_v, pdf_c / group_data.shape[0])),
                                                                  scope=scopes[att]))
@@ -355,39 +380,80 @@ def build_csn(attributes_in_table, meta_data, tables, dependency_node, table_key
 
     return new_node
 
+def get_dependncy_keys(dep_tree, table_keys, path_constraints):
+    children_tables = [dc for dc in dep_tree.children if dc.name[0] == "@"]
+    #if my children contains a table, I'm a key, otherwise traverse down.
+    #assert len(children_tables) == 1
 
-def build_csn2(dep_tree, keys_to_tables, ancestors, cache=None):
+    path = [d.name for d in dep_tree.parents]
+    path.append(dep_tree.name)
 
-    tables_to_process = []
-    for c in dep_tree.children:
-        if c.name[0] == '@':
-            tables_to_process.append(c.name[1:])
-
-    if len(tables_to_process) == 0:
-        assert len(dep_tree.children) == 1
-        return build_csn2(dep_tree.children[0], keys_to_tables, ancestors, cache)
-
+    keys = []
+    for dc in children_tables:
+        table_name = dc.name[1:]
+        for key in table_keys[table_name]:
+            if key == path[-len(key):]:
+                keys.append((table_name, tuple(key), dep_tree))
+                break
 
 
-    constraints = []
-    for table_name, _ in join_order:
-        constraint_groups = cache[table_name]
-        node = Sum()
-        node.weights = [1 / len(constraint_groups)] * len(constraint_groups)
-        for v, cached_constraints in constraint_groups.items():
-            constraint_node = Sum()
-            node.children.append(constraint_node)
-            constraint_node.weights = [1 / len(cached_constraints)] * len(cached_constraints)
+    return [keys[0]]
 
-            for c, node in cached_constraints.items():
-                constraint_node.children.append(node)
-                dep_node = None
-                node_constraint = list(constraints)
-                node_constraint.append(c)
-                add_children(dep_node, node, node_constraint)
-                print(table_name, v)
+def get_constraint_values(key, table_name, path_constraints, cache):
+    cache_values = cache[table_name][key]
 
-    print(1)
+    for k in key:
+        constraints = [c for c in path_constraints if c[0] == k]
+        if len(constraints) > 0:
+            cache_values = cache_values[k][constraints[0][1]]
+            continue
+        else:
+            cache_values = cache_values[k]
+
+    for k, v in cache_values.items():
+        yield (k, v[1])
+
+
+def build_csn2(dep_tree, table_keys, scopes, path_constraints=None, cache=None):
+    if path_constraints is None:
+        path_constraints = []
+
+    if dep_tree.name[0] == "@":
+        table_name = dep_tree.name[1:]
+        path_vars = [p[0] for p in path_constraints]
+        matching_keys = [k for k in table_keys[table_name] if k == path_vars[-len(k):]][0]
+        cache_nodes = cache[table_name][tuple(matching_keys)]
+
+        for pc in path_constraints[-len(matching_keys):]:
+            cache_nodes = cache_nodes[pc[0]][pc[1]]
+
+        return cache_nodes[0]
+
+    new_node = Sum()
+    for table_name, key, dep_node in get_dependncy_keys(dep_tree, table_keys, path_constraints):
+        new_constraints = []
+        new_constraints.extend(path_constraints)
+        new_constraints.append(None)
+
+
+        constraint_name = dep_node.name
+        for constraint_value, count in get_constraint_values(key, table_name, path_constraints, cache):
+            p_node = Product()
+            new_node.children.append(p_node)
+            new_node.weights.append(count)
+
+            p_node.children.append(CategoricalDictionary(p={float(constraint_value): 1.0}, scope=scopes[constraint_name]))
+
+            new_constraints[-1] = (constraint_name, constraint_value)
+            for dep_children_node in dep_node.children:
+                p_node.children.append(build_csn2(dep_children_node, table_keys, scopes, path_constraints=new_constraints, cache=cache))
+
+
+        wsum = np.sum(new_node.weights)
+    new_node.weights = [w / wsum for w in new_node.weights]
+
+    return new_node
+
 
 
 if __name__ == '__main__':
@@ -403,19 +469,19 @@ if __name__ == '__main__':
             table_name, cluster_by_atts = l.split(':')
             cluster_by[table_name] = cluster_by_atts.strip().split(',')
 
-    attributes_in_table, scopes, meta_data = parse_attributes(path)
+    attributes_in_table, scopes, meta_data, attribute_owners = parse_attributes(path)
 
     table_keys, keys_to_tables, ancestors = get_table_ancestors(dep_tree, attributes_in_table)
 
     tables = load_tables(path, debug=False)
 
-    cache = build_cache(tables, meta_data, table_keys)
+    cache = build_cache(tables, meta_data, table_keys, attribute_owners)
 
     spn = None
 
     file_cache_path = "/tmp/csn.bin"
     if not os.path.isfile(file_cache_path) or True:
-        spn = build_csn2(dep_tree, keys_to_tables, ancestors, cache=cache, debug=False)
+        spn = build_csn2(dep_tree, table_keys, scopes, path_constraints=None, cache=cache)
         rebuild_scopes_bottom_up(spn)
         print(spn)
         assign_ids(spn)
