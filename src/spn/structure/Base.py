@@ -114,10 +114,12 @@ class Context:
             feature_meta_type = self.meta_types[col]
             domain_values = [np.min(data[:, col]), np.max(data[:, col])]
 
-            if feature_meta_type == MetaType.REAL:
+            if feature_meta_type == MetaType.REAL or feature_meta_type == MetaType.BINARY:
                 domain.append(domain_values)
             elif feature_meta_type == MetaType.DISCRETE:
                 domain.append(np.arange(domain_values[0], domain_values[1] + 1, 1))
+            else:
+                raise Exception("Unkown MetaType " + str(feature_meta_type))
 
         self.domains = np.asanyarray(domain)
 
