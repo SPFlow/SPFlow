@@ -255,7 +255,7 @@ as we can see, both instances are classified correctly, as the correct label is 
  [12. 18.  1.]]
 ```
 
-We can learn an MSPN from data:
+We can learn an MSPN and a parametric SPN from data:
 
 ```python
 import numpy as np
@@ -267,6 +267,11 @@ c = np.r_[np.random.normal(10, 5, (300, 1)), np.random.normal(20, 10, (700, 1))]
 d = 5 * a + 3 * b + c
 train_data = np.c_[a, b, c, d]
 
+```
+Here, we have a dataset containing four features, two Discrete and two Real valued.
+
+We can learn an MSPN with:
+```python
 from spn.structure.Base import Context
 from spn.structure.StatisticalTypes import MetaType
 
@@ -277,8 +282,18 @@ from spn.algorithms.LearningWrappers import learn_mspn
 
 mspn = learn_mspn(train_data, ds_context, min_instances_slice=20)
 ```
-Here, we have a dataset containing 4 features, two Discrete and two Real valued.
-And create the corresponding MSPN.
+
+We can learn a parametric SPN with:
+```python
+from spn.structure.Base import Context
+from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
+
+ds_context = Context(parametric_types=[Categorical, Categorical, Gaussian, Gaussian]).add_domains(train_data)
+
+from spn.algorithms.LearningWrappers import learn_parametric
+
+spn = learn_parametric(train_data, ds_context, min_instances_slice=20)
+```
 
 
 
