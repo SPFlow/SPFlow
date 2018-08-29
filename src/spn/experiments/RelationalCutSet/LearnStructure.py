@@ -99,12 +99,12 @@ def parse_attributes(path):
     return (attributes_in_table, scopes, meta_data, attribute_owners)
 
 
-def load_tables(path, debug=False):
+def load_tables(path, meta_data, debug=False):
     tables = {}
     for fname in glob.glob(path + "*.tbl"):
         table_name = os.path.splitext(os.path.basename(fname))[0]
         print("loading", table_name, "from", fname)
-        tables[table_name] = np.loadtxt(fname, delimiter='|', usecols=range(0, len(meta_data[table_name])))
+        tables[table_name] = np.genfromtxt(fname, delimiter='|')[:,0:len(meta_data[table_name])]
 
     # if in debug mode, reduce size
     if debug:
@@ -458,6 +458,11 @@ def build_csn2(dep_tree, table_keys, scopes, path_constraints=None, cache=None):
 
 if __name__ == '__main__':
     path = "/Users/alejomc/Downloads/100k/"
+    test_path = path + "test/"
+
+    attributes_in_table_test, test_scopes, test_meta_data, _ = parse_attributes(test_path)
+    test_tables = load_tables(test_path, test_meta_data, debug=False)
+
 
     with open(path + "dependencies.txt", "r") as depfile:
         dep_tree = Dependency.parse(depfile.read())
@@ -473,7 +478,7 @@ if __name__ == '__main__':
 
     table_keys, keys_to_tables, ancestors = get_table_ancestors(dep_tree, attributes_in_table)
 
-    tables = load_tables(path, debug=False)
+    tables = load_tables(path, meta_data, debug=False)
 
     cache = build_cache(tables, meta_data, table_keys, attribute_owners)
 
@@ -527,6 +532,10 @@ if __name__ == '__main__':
 
 
     print(spn_to_str_ref_graph(spn))
+
+
+
+
 
     compute_conditional(spn, scopes, {'rating': 5}, age=25.0, occupation=3.0)
     compute_conditional(spn, scopes, {'rating': 5}, fantasy=1.0, romance=1.0)
