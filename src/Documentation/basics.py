@@ -179,7 +179,6 @@ def learn_MSPN():
     a = np.random.randint(2, size=1000).reshape(-1, 1)
     b = np.random.randint(3, size=1000).reshape(-1, 1)
     c = np.r_[np.random.normal(10, 5, (300, 1)), np.random.normal(20, 10, (700, 1))]
-    #d = np.r_[np.random.normal(100, 10, (500, 1)), np.random.normal(200, 10, (500, 1))]
     d = 5 * a + 3 * b + c
     train_data = np.c_[a, b, c, d]
 
@@ -196,10 +195,34 @@ def learn_MSPN():
     from spn.algorithms.Statistics import get_structure_stats
     print(get_structure_stats(mspn))
 
+def learn_PSPN():
+    import numpy as np
+
+    np.random.seed(123)
+
+    a = np.random.randint(2, size=1000).reshape(-1, 1)
+    b = np.random.randint(3, size=1000).reshape(-1, 1)
+    c = np.r_[np.random.normal(10, 5, (300, 1)), np.random.normal(20, 10, (700, 1))]
+    d = 5 * a + 3 * b + c
+    train_data = np.c_[a, b, c, d]
+
+    from spn.structure.Base import Context
+    from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
+
+    ds_context = Context(parametric_types=[Categorical, Categorical, Gaussian, Gaussian]).add_domains(train_data)
+
+    from spn.algorithms.LearningWrappers import learn_parametric
+
+    spn = learn_parametric(train_data, ds_context, min_instances_slice=20)
+
+    from spn.algorithms.Statistics import get_structure_stats
+    print(get_structure_stats(spn))
+
 
 if __name__ == '__main__':
+    learn_PSPN()
+    0/0
     learn_MSPN()
-    0 / 0
     create_SPN()
     to_str()
     plot()
