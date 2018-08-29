@@ -84,19 +84,18 @@ if __name__ == '__main__':
 
         if mpe_query_blocks is None:
             # first time, we only care about the structure to put nans
-            mpe_query_blocks = tr_block[0:10, :].reshape(10, -1)
+            mpe_query_blocks = np.zeros_like(tr_block[0:10, :].reshape(10, -1))
             sample_query_blocks = mpe_query_blocks
         else:
             # i+1 time: we set the previous mpe values as evidence
-            mpe_query_blocks = np.array(tr_block[0:10, :].reshape(10, -1))
+            mpe_query_blocks = np.zeros_like(np.array(tr_block[0:10, :].reshape(10, -1)))
             mpe_query_blocks[:, -(mpe_result.shape[1] - 10):] = mpe_result[:, 0:-10]
 
-            sample_query_blocks = np.array(tr_block[0:10, :].reshape(10, -1))
+            sample_query_blocks = np.zeros_like(np.array(tr_block[0:10, :].reshape(10, -1)))
             sample_query_blocks[:, -(sample_result.shape[1] - 10):] = sample_result[:, 0:-10]
 
         cspn_mpe_query = np.concatenate((set_sub_block_nans(mpe_query_blocks, inp=block_idx, nans=[block_idx[0]]),
-                                         np.eye(10, 10)),
-                                        axis=1)
+                                         np.eye(10, 10)), axis=1)
         mpe_result = mpe(cspn, cspn_mpe_query)
 
         mpe_img_blocks = stitch_imgs(mpe_result.shape[0], img_size=(20, 20), num_blocks=(2, 2),
