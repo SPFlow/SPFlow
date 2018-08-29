@@ -119,7 +119,6 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
         logging.debug('OP: {} on slice {} (remaining tasks {})'.format(operation, local_data.shape, len(tasks)))
 
         if operation == Operation.REMOVE_UNINFORMATIVE_FEATURES:
-
             node = Product()
             node.scope.extend(scope)
             parent.children[children_pos] = node
@@ -138,9 +137,10 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             if len(rest_scope) == 1:
                 next_final = True
 
-            rest_scope = list(rest_scope)
+            rest_cols = list(rest_scope)
+            rest_scope = [scope[col] for col in rest_scope]
 
-            tasks.append((data_slicer(local_data, rest_scope, num_conditional_cols), node, c_pos, rest_scope, next_final, next_final))
+            tasks.append((data_slicer(local_data, rest_cols, num_conditional_cols), node, c_pos, rest_scope, next_final, next_final))
 
             continue
 
@@ -159,6 +159,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             node = Sum()
             node.scope.extend(scope)
             parent.children[children_pos] = node
+            # assert parent.scope == node.scope
 
             for data_slice, scope_slice, proportion in data_slices:
                 assert isinstance(scope_slice, list), "slice must be a list"
@@ -170,7 +171,6 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             continue
 
         elif operation == Operation.SPLIT_COLUMNS:
-
             split_start_t = perf_counter()
             data_slices = split_cols(local_data, ds_context, scope)
             split_end_t = perf_counter()
@@ -179,6 +179,8 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
             if len(data_slices) == 1:
                 tasks.append((local_data, parent, children_pos, scope, False, True))
+                assert np.shape(data_slices[0][0]) == np.shape(local_data)
+                assert data_slices[0][1] == scope
                 continue
 
             node = Product()
