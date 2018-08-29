@@ -8,9 +8,37 @@ from os.path import dirname
 
 import numpy as np
 import os
+from scipy.io import arff
+import pandas as pd
 
 path = dirname(__file__) + "/"
 
+def one_hot(y):
+  if len(y.shape) != 1:
+    return y
+  values = np.array(sorted(list(set(y))))
+  return np.array([values == v for v in y], dtype=np.int8)
+
+def preproc_data(raw_data):
+    train = [list(row) for row in raw_data]
+
+    non_numeric_idx = np.asarray([type(elem) == np.bytes_ for elem in train[0]])
+    preproc_train = np.asarray([list(row) for row in train], dtype=np.float)
+
+    non_numeric_train = preproc_train[:, non_numeric_idx]
+    numeric_train = preproc_train[:, ~non_numeric_idx]
+
+    # ohe_data_arr = [one_hot(non_numeric_data[:,i]) for i in range(non_numeric_data.shape[1])]
+    ohe_data_arr = None
+    for i in range(non_numeric_train.shape[1]):
+        if ohe_data_arr is None:
+            ohe_data_arr = one_hot(non_numeric_train[:, i])
+        else:
+            ohe_data_arr = np.concatenate((ohe_data_arr, one_hot(non_numeric_train[:, i])), axis=1)
+
+    preproc_data_train = np.concatenate((ohe_data_arr, numeric_train), axis=1)
+
+    return preproc_data_train
 
 def get_nips_data(test_size=0.2):
     fname = path + "count/nips100.csv"
@@ -49,3 +77,16 @@ def get_mnist(cachefile=path+'count/mnist.npz'):
         if cachefile:
             np.savez(cachefile, images_tr=images_tr, labels_tr=labels_tr, images_te=images_te, labels_te=labels_te)
     return (images_tr, labels_tr, images_te, labels_te)
+
+
+def get_categorical_data(name):
+    train = arff.loadarff(path + "/categorical/" + name + "/" + name + "-train.arff")
+    test = arff.loadarff(path + "/categorical/" + name + "/" + name + "-test.arff")
+    valid = arff.loadarff(path + "/categorical/" + name + "/" + name + ".arff")
+
+    train = preproc_data(train[0])
+    test = preproc_data(test[0])
+    valid = preproc_data(valid[0])
+
+    return (train[:, :-7], train[:, -7:], test[:, :-7], test[:, -7:], valid[:, :-7], valid[:, -7:])
+

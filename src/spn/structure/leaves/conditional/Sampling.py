@@ -20,7 +20,7 @@ def sample_conditional_node(node, n_samples, data, rand_gen):  # n_samples -> ob
     try:
         X = scipy_obj.rvs(size=data.shape[0], random_state=rand_gen, **params)
     except Exception:
-        print("node", node)
+        print("node", node, node.weights)
         print("params", params, np.shape(params))
         print("data shape", np.shape(data))
         print("input shape", np.shape(data[:, -node.evidence_size:]))
