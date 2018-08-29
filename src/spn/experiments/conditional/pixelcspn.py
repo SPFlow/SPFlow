@@ -84,7 +84,7 @@ if __name__ == '__main__':
     # spn
     ds_context = Context(meta_types=[MetaType.DISCRETE] * 10)
     ds_context.add_domains(data_labels)
-    ds_context.parametric_type = [Bernoulli] * blocked_images[0].shape[1]
+    ds_context.parametric_types = [Bernoulli] * blocked_images[0].shape[1]
     spn = learn_parametric(data_labels, ds_context, min_instances_slice=0.3 * len(data_labels))
 
 
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     dataOut = blocked_images[0]
     ds_context = Context(meta_types=[MetaType.DISCRETE] * dataOut.shape[1])
     ds_context.add_domains(dataOut)
-    ds_context.parametric_type = [Conditional_Poisson] * dataOut.shape[1]
+    ds_context.parametric_types = [Conditional_Poisson] * dataOut.shape[1]
 
     scope = list(range(dataOut.shape[1]))
     print(np.shape(dataIn), np.shape(dataOut))
@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
         ds_context = Context(meta_types=[MetaType.DISCRETE] * dataOut.shape[1])
         ds_context.add_domains(dataOut)
-        ds_context.parametric_type = [Conditional_Poisson] * dataOut.shape[1]
+        ds_context.parametric_types = [Conditional_Poisson] * dataOut.shape[1]
 
         scope = list(range(dataOut.shape[1]))
         cspn = learn_conditional(np.concatenate((dataOut, dataIn), axis=1), ds_context, scope, min_instances_slice=0.3*len(data))

@@ -89,7 +89,7 @@ class Context:
     def __init__(self, meta_types=None, domains=None, parametric_types=None):
         self.meta_types = meta_types
         self.domains = domains
-        self.parametric_type = parametric_types
+        self.parametric_types = parametric_types
 
         if self.meta_types is None and parametric_types is not None:
             self.meta_types = []

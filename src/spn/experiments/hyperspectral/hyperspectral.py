@@ -45,7 +45,7 @@ def train_spn(window_size=3, min_instances_slice=10000, features=None, number_of
 
     ds_context = Context(meta_types=context_list)
     ds_context.add_domains(data)
-    ds_context.parametric_type = parametric_list
+    ds_context.parametric_types = parametric_list
 
     spn = load_spn(window_size, features, min_instances_slice, number_of_classes)
     if spn is None:

@@ -3,7 +3,8 @@ Created on August 29, 2018
 
 @author: Alejandro Molina
 '''
-from scipy.misc import imresize
+from numpy.random.mtrand import RandomState
+from scipy.misc import imresize, imsave
 
 from spn.data.datasets import get_mnist
 import numpy as np
@@ -21,18 +22,29 @@ def get_blocks(imgs, num_blocks=(2, 2), blocks=[0, 1]):
     vsplits = np.split(imgs, num_blocks[0], axis=1)
     splits = [np.split(vs, num_blocks[1], axis=2) for vs in vsplits]
     blocks_imgs = np.concatenate(splits)
-    ds = np.concatenate(blocks_imgs[blocks], axis=2)
-    return ds.reshape(imgs.shape[0], -1)
+    ds = np.concatenate([b.reshape(imgs.shape[0], -1) for b in blocks_imgs[blocks]], axis=1)
+    return ds, blocks
 
 
-def stitch_imgs(img_size=(20, 20), num_blocks=(2, 2)):
-    block_size = (img_size[0] / num_blocks[0], img_size[1] / num_blocks[1])
+def stitch_imgs(imgs=0, img_size=(20, 20), num_blocks=(2, 2), blocks=None):
+    block_size = (img_size[0] // num_blocks[0], img_size[1] // num_blocks[1])
 
-    result = np.zeros(ds.shape[0], img_size[0], img_size[1])
+    result = np.zeros((imgs, block_size[0], block_size[1] * np.prod(num_blocks)))
 
-    vsplits = np.split(imgs, num_blocks[0], axis=1)
-    splits = [np.split(vs, num_blocks[1], axis=2) for vs in vsplits]
-    blocks_imgs = np.concatenate(splits)
+    for block_pos, block_values in blocks.items():
+        if type(block_pos) == int:
+            block_pos = [block_pos]
+        sub_blocks = np.split(block_values, len(block_pos), axis=1)
+        for bp, bv in zip(block_pos, sub_blocks):
+            bv = bv.reshape(-1, block_size[0], block_size[1])
+            rpos = bp * block_size[1]
+            result[:, :, rpos:rpos + block_size[1]] = bv
+            # print(bp, bv)
+
+    # vsplits = np.split(imgs, num_blocks[0], axis=1)
+    # splits = [np.split(vs, num_blocks[1], axis=2) for vs in vsplits]
+    # blocks_imgs = np.concatenate(splits)
+    result = np.concatenate(np.split(result, num_blocks[1], axis=2), axis=1)
 
     return result
 
@@ -51,17 +63,56 @@ def show_img(img):
     plt.show()
 
 
+def save_img(img, path):
+    imsave(path, img)
+
+
+def standardize(imgs):
+    return imgs / np.max(imgs)
+
+
+def add_poisson_noise(imgs, seed=123):
+    poisson_noise = RandomState(seed).poisson(lam=1, size=imgs.shape)
+    return imgs + poisson_noise
+
+
+def get_sub_blocks(block, inp=[1, 0], output=[0]):
+    sub_blocks = np.split(block, len(inp), axis=1)
+    res_blocks = [sub_blocks[inp.index(o)] for o in output]
+    result = np.concatenate(res_blocks, axis=1)
+    return result
+
+
+def set_sub_block_nans(block, inp=[1, 0], nans=[0]):
+    block_size = block.shape[1] // len(inp)
+    for o in nans:
+        clear_index = inp.index(o)
+        rpos = clear_index * block_size
+        block[:, rpos:rpos + block_size] = np.nan
+    return block
+
+
 if __name__ == '__main__':
     images_tr, labels_tr, images_te, labels_te = get_mnist()
 
     ds = images_tr[[0, 1, 2], :]
 
-    ds = rescale(ds, original_size=(28, 28), new_size=(20, 20))
+    ds = rescale(ds, original_size=(28, 28), new_size=(20, 40))
 
-    imgs = get_imgs(ds, size=(20, 20))
-
-    blocks = get_blocks(imgs, blocks=[0, 2])
-
-    block_img = stitch_imgs(img_size=(20, 20), num_blocks=(2, 2))
+    imgs = get_imgs(ds, size=(20, 40))
     show_img(imgs[0])
+
+    blocks0, _ = get_blocks(imgs, num_blocks=(2, 2), blocks=[0])
+    blocks10, _ = get_blocks(imgs, num_blocks=(2, 2), blocks=[1, 0])
+    blocks210, _ = get_blocks(imgs, num_blocks=(2, 2), blocks=[2, 1, 0])
+    blocks3210, _ = get_blocks(imgs, num_blocks=(2, 2), blocks=[3, 2, 1, 0])
+
+    block_img = stitch_imgs(blocks0.shape[0], img_size=(20, 40), num_blocks=(2, 2),
+                            blocks={(3, 2, 1, 0): set_sub_block_nans(blocks3210, inp=[3, 2, 1, 0], nans=[0])}
+                            # blocks={(0): blocks0,
+                            #        (1): get_sub_blocks(blocks10, inp=[1, 0], output=[1]),
+                            #        (2): get_sub_blocks(blocks210, inp=[2, 1, 0], output=[2]),
+                            #        (3): get_sub_blocks(blocks3210, inp=[3, 2, 1, 0], output=[3])}
+                            )
+
     show_img(block_img[0])

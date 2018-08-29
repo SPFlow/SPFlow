@@ -77,7 +77,7 @@ if __name__ == '__main__':
     # spn
     ds_context = Context(meta_types=[MetaType.REAL] * blocked_images[0].shape[1])
     ds_context.add_domains(blocked_images[0])
-    ds_context.parametric_type = [Poisson] * blocked_images[0].shape[1]
+    ds_context.parametric_types = [Poisson] * blocked_images[0].shape[1]
 
     print("data ready", data.shape)
     #the following two options should be working now.
@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
     ds_context = Context(meta_types=[MetaType.REAL] * dataOut.shape[1])
     ds_context.add_domains(dataOut)
-    ds_context.parametric_type = [Conditional_Poisson] * dataOut.shape[1]
+    ds_context.parametric_types = [Conditional_Poisson] * dataOut.shape[1]
 
     scope = list(range(dataOut.shape[1]))
     print(np.shape(dataIn), np.shape(dataOut))
