@@ -11,6 +11,8 @@ import numpy as np
 import os
 
 from lark import Tree
+from sklearn.metrics import confusion_matrix
+from tqdm._tqdm import tqdm
 
 from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Marginalization import marginalize
@@ -34,8 +36,9 @@ class Dependency:
                     %import common.WS
                     %ignore WS
                     %import common.WORD -> WORD
-                    TABLE.1: "@" WORD
-                    ATTRIBUTE.2: WORD
+                    %import common.CNAME   -> STRING
+                    TABLE.1: "@" STRING
+                    ATTRIBUTE.2: STRING
                     ?parent_node.3: node "(" node ")"
                     ?node_list.4: node ("," node)+
                     ?node: TABLE | ATTRIBUTE
@@ -86,7 +89,7 @@ def parse_attributes(path):
                 if ka[-1] == "*":
                     attribute_owners[ka[:-1]] = table_name
 
-            attributes = table[1].replace("*","").split(',')
+            attributes = table[1].replace("*", "").split(',')
             meta_data[table_name] = {key: index for index, key in enumerate(attributes)}
 
             for att in attributes:
@@ -104,7 +107,7 @@ def load_tables(path, meta_data, debug=False):
     for fname in glob.glob(path + "*.tbl"):
         table_name = os.path.splitext(os.path.basename(fname))[0]
         print("loading", table_name, "from", fname)
-        tables[table_name] = np.genfromtxt(fname, delimiter='|')[:,0:len(meta_data[table_name])]
+        tables[table_name] = np.genfromtxt(fname, delimiter='|')[:, 0:len(meta_data[table_name])]
 
     # if in debug mode, reduce size
     if debug:
@@ -258,7 +261,7 @@ def build_cache(tables, meta_data, table_keys, attribute_owners):
                 group_data = table[idx, :].astype(float)
 
                 if group_data.shape[0] == 0:
-                    print("WARNING: empty group data" )
+                    print("WARNING: empty group data")
                     continue
 
                 # compute leaf
@@ -276,7 +279,7 @@ def build_cache(tables, meta_data, table_keys, attribute_owners):
                         constraint_cache[c] = {}
                     constraint_cache = constraint_cache[c]
                     if val not in constraint_cache:
-                        if i == len(constraint)-1:
+                        if i == len(constraint) - 1:
                             constraint_cache[val] = (p_node, np.sum(idx))
                         else:
                             constraint_cache[val] = {}
@@ -380,10 +383,11 @@ def build_csn(attributes_in_table, meta_data, tables, dependency_node, table_key
 
     return new_node
 
+
 def get_dependncy_keys(dep_tree, table_keys, path_constraints):
     children_tables = [dc for dc in dep_tree.children if dc.name[0] == "@"]
-    #if my children contains a table, I'm a key, otherwise traverse down.
-    #assert len(children_tables) == 1
+    # if my children contains a table, I'm a key, otherwise traverse down.
+    # assert len(children_tables) == 1
 
     path = [d.name for d in dep_tree.parents]
     path.append(dep_tree.name)
@@ -396,8 +400,8 @@ def get_dependncy_keys(dep_tree, table_keys, path_constraints):
                 keys.append((table_name, tuple(key), dep_tree))
                 break
 
-
     return [keys[0]]
+
 
 def get_constraint_values(key, table_name, path_constraints, cache):
     cache_values = cache[table_name][key]
@@ -435,25 +439,24 @@ def build_csn2(dep_tree, table_keys, scopes, path_constraints=None, cache=None):
         new_constraints.extend(path_constraints)
         new_constraints.append(None)
 
-
         constraint_name = dep_node.name
         for constraint_value, count in get_constraint_values(key, table_name, path_constraints, cache):
             p_node = Product()
             new_node.children.append(p_node)
             new_node.weights.append(count)
 
-            p_node.children.append(CategoricalDictionary(p={float(constraint_value): 1.0}, scope=scopes[constraint_name]))
+            p_node.children.append(
+                CategoricalDictionary(p={float(constraint_value): 1.0}, scope=scopes[constraint_name]))
 
             new_constraints[-1] = (constraint_name, constraint_value)
             for dep_children_node in dep_node.children:
-                p_node.children.append(build_csn2(dep_children_node, table_keys, scopes, path_constraints=new_constraints, cache=cache))
-
+                p_node.children.append(
+                    build_csn2(dep_children_node, table_keys, scopes, path_constraints=new_constraints, cache=cache))
 
         wsum = np.sum(new_node.weights)
     new_node.weights = [w / wsum for w in new_node.weights]
 
     return new_node
-
 
 
 if __name__ == '__main__':
@@ -462,7 +465,6 @@ if __name__ == '__main__':
 
     attributes_in_table_test, test_scopes, test_meta_data, _ = parse_attributes(test_path)
     test_tables = load_tables(test_path, test_meta_data, debug=False)
-
 
     with open(path + "dependencies.txt", "r") as depfile:
         dep_tree = Dependency.parse(depfile.read())
@@ -491,54 +493,83 @@ if __name__ == '__main__':
         print(spn)
         assign_ids(spn)
         print(is_valid(spn))
+        print(spn_to_str_ref_graph(spn))
 
         keep = set(scopes.values())
         keep.discard(scopes["userid"])
         keep.discard(scopes["movieid"])
 
-        marg = marginalize(spn, keep)
         with open(file_cache_path, 'wb') as f:
-            pickle.dump((spn, marg), f, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(spn, f, pickle.HIGHEST_PROTOCOL)
     else:
         print("loading cached spn")
         with open(file_cache_path, 'rb') as f:
-            spn, marg = pickle.load(f)
+            spn = pickle.load(f)
         print("loaded cached spn")
 
 
-    def to_data(scopes, **kwargs):
-        data = np.zeros((1, max(scopes.values()) + 1))
+    def to_data(scopes, rows, **kwargs):
+        data = np.zeros((rows, max(scopes.values()) + 1))
         data[:] = np.nan
         for k, v in kwargs.items():
-            data[0, scopes[k]] = v
+            data[:, scopes[k]] = v
         return data
 
 
-    def compute_conditional(spn, scopes, query, **evidence):
+    def compute_conditional(spn, rows, scopes, query, **evidence):
         q_e = dict(query)
         q_e.update(evidence)
-        query_str = ",".join(map(lambda t: "%s=%s" % (t[0], t[1]), query.items()))
-        evidence_str = ",".join(map(lambda t: "%s=%s" % (t[0], t[1]), evidence.items()))
-        prob_str = "P(%s|%s)" % (query_str, evidence_str)
+        # query_str = ",".join(map(lambda t: "%s=%s" % (t[0], t[1]), query.items()))
+        # evidence_str = ",".join(map(lambda t: "%s=%s" % (t[0], t[1]), evidence.items()))
+        # prob_str = "P(%s|%s)" % (query_str, evidence_str)
         # print("computing ", prob_str)
 
-        a = log_likelihood(spn, to_data(scopes, **q_e), debug=False)
+        a = log_likelihood(spn, to_data(scopes, rows, **q_e), debug=False)
         # print("query ", query_str, np.exp(a))
-        b = log_likelihood(spn, to_data(scopes, **evidence), debug=False)
+        b = log_likelihood(spn, to_data(scopes, rows, **evidence), debug=False)
         # print("evidence ", evidence_str, b, np.exp(b))
         result = np.exp(a - b)
-        print(prob_str, "=", result, "query ", query_str, np.exp(a), evidence_str, np.exp(b))
+        # print(prob_str, "=", result, "query ", query_str, np.exp(a), evidence_str, np.exp(b))
         return result
 
 
     print(spn_to_str_ref_graph(spn))
 
+    evidence_atts = ['year', 'action', 'adventure', 'animation', 'children', 'comedy', 'crime', 'documentary', 'drama',
+                     'fantasy', 'filmnoir', 'horror', 'musical', 'mystery', 'romance', 'scifi',
+                     'thriller', 'war', 'western', 'age', 'gender', 'occupation']
+
+    test_table = test_tables["Test"]
+    rating_values = np.zeros((test_table.shape[0], 5))
+    for rating in tqdm(list(range(5))):
+        evidence_query = {}
+        for ea in evidence_atts:
+            evidence_query[ea] = test_table[:, test_scopes[ea]]
+        rating_values[:, rating] = compute_conditional(spn, test_table.shape[0], scopes,
+                                                       {'rating': np.repeat(rating + 1, test_table.shape[0], axis=0)},
+                                                       **evidence_query)[:, 0]
+    pred_ratings = np.argmax(rating_values, axis=1) + 1
+    true_ratings = test_table[:, test_scopes["rating"]]
+    print(confusion_matrix(true_ratings, pred_ratings))
+
+    for i in range(4):
+        sdiff = np.sum(np.abs(true_ratings - pred_ratings) <= i)
+        print("rating diffeerence at most", i, sdiff, sdiff/test_table.shape[0])
+
+    from sklearn.metrics import mean_squared_error
+    from math import sqrt
 
 
+    def rmse(prediction, ground_truth):
+        prediction = prediction[ground_truth.nonzero()].flatten()
+        ground_truth = ground_truth[ground_truth.nonzero()].flatten()
+        return sqrt(mean_squared_error(prediction, ground_truth))
 
 
-    compute_conditional(spn, scopes, {'rating': 5}, age=25.0, occupation=3.0)
-    compute_conditional(spn, scopes, {'rating': 5}, fantasy=1.0, romance=1.0)
-    compute_conditional(spn, scopes, {'rating': 5}, fantasy=1.0, romance=1.0, age=25.0)
-    compute_conditional(spn, scopes, {'rating': 3}, fantasy=1.0, romance=1.0, age=25.0)
-    compute_conditional(spn, scopes, {'rating': 3}, crime=1.0, occupation=4.0, age=25.0)
+    print("rmse", rmse(pred_ratings, true_ratings))
+
+# compute_conditional(spn, scopes, {'rating': 5}, age=25.0, occupation=3.0)
+# compute_conditional(spn, scopes, {'rating': 5}, fantasy=1.0, romance=1.0)
+# compute_conditional(spn, scopes, {'rating': 5}, fantasy=1.0, romance=1.0, age=25.0)
+# compute_conditional(spn, scopes, {'rating': 3}, fantasy=1.0, romance=1.0, age=25.0)
+# compute_conditional(spn, scopes, {'rating': 3}, crime=1.0, occupation=4.0, age=25.0)
