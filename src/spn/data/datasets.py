@@ -8,8 +8,10 @@ from os.path import dirname
 
 import numpy as np
 import os
-from scipy.io import arff
+import arff
+from scipy.io.arff import loadarff
 import pandas as pd
+import xml.etree.ElementTree as ET
 
 path = dirname(__file__) + "/"
 
@@ -80,13 +82,30 @@ def get_mnist(cachefile=path+'count/mnist.npz'):
 
 
 def get_categorical_data(name):
-    train = arff.loadarff(path + "/categorical/" + name + "/" + name + "-train.arff")
-    test = arff.loadarff(path + "/categorical/" + name + "/" + name + "-test.arff")
-    valid = arff.loadarff(path + "/categorical/" + name + "/" + name + ".arff")
 
-    train = preproc_data(train[0])
-    test = preproc_data(test[0])
-    valid = preproc_data(valid[0])
+    train = loadarff(path + "/categorical/" + name + "/" + name + "-train.arff",'r')
+    test = loadarff(path + "/categorical/" + name + "/" + name + "-test.arff")
+    # valid = arff.loadarff(path + "/categorical/" + name + "/" + name + ".arff")
 
-    return (train[:, :-7], train[:, -7:], test[:, :-7], test[:, -7:], valid[:, :-7], valid[:, -7:])
+    labels = ET.parse(path + "/categorical/" + name + "/" + name + '.xml')
+    root = labels.getroot()
+
+    labels = [child.attrib['name'] for child in root]
+    attributes = [attr for attr in train[1]]
+    input_attrbutes = [attr for attr in attributes if attr not in labels]
+
+    # train
+    train_labels = [train[0][label] for label in labels]
+    train_input = [train[0][attr] for attr in input_attrbutes]
+    train_labels = list(map(list, zip(*train_labels)))
+    train_input = list(map(list, zip(*train_input)))
+
+    # test
+    test_labels = [test[0][label] for label in labels]
+    test_input = [test[0][attr] for attr in input_attrbutes]
+    test_labels = list(map(list, zip(*test_labels)))
+    test_input = list(map(list, zip(*test_input)))
+
+    # return (train_input, train_output, test_input, test_output)
+    return (preproc_data(train_input), preproc_data(train_labels), preproc_data(test_input), preproc_data(test_labels))
 
