@@ -17,7 +17,7 @@ def get_scipy_obj_params(node, obs):
     pred = np.dot(obs, node.weights[:-1]) + node.weights[-1]
     if isinstance(node, Conditional_Gaussian):
         mean = pred
-        return norm, {"loc": mean, "scale": np.ones(obs.shape[0])}
+        return norm, {"loc": mean, "scale": np.ones(obs.shape[0])*0.01}
 
     elif isinstance(node, Conditional_Poisson):
         mu = np.exp(pred)
