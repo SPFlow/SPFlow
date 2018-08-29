@@ -224,7 +224,7 @@ from spn.algorithms.LearningWrappers import learn_parametric, learn_classifier
 from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
 from spn.structure.Base import Context
 spn_classification = learn_classifier(train_data,
-                       Context(parametric_type=[Gaussian, Gaussian, Categorical]).add_domains(train_data),
+                       Context(parametric_types=[Gaussian, Gaussian, Categorical]).add_domains(train_data),
                        learn_parametric, 2)
 ```
 Here, we model our problem as containing 3 features, two Gaussians for the coordinates and one Categorical for the label.
@@ -254,6 +254,31 @@ as we can see, both instances are classified correctly, as the correct label is 
 [[ 3.  4.  0.]
  [12. 18.  1.]]
 ```
+
+We can learn an MSPN from data:
+
+```python
+import numpy as np
+np.random.seed(123)
+
+a = np.random.randint(2, size=1000).reshape(-1, 1)
+b = np.random.randint(3, size=1000).reshape(-1, 1)
+c = np.r_[np.random.normal(10, 5, (300, 1)), np.random.normal(20, 10, (700, 1))]
+d = 5 * a + 3 * b + c
+train_data = np.c_[a, b, c, d]
+
+from spn.structure.Base import Context
+from spn.structure.StatisticalTypes import MetaType
+
+ds_context = Context(meta_types=[MetaType.DISCRETE, MetaType.DISCRETE, MetaType.REAL, MetaType.REAL])
+ds_context.add_domains(train_data)
+
+from spn.algorithms.LearningWrappers import learn_mspn
+
+mspn = learn_mspn(train_data, ds_context, min_instances_slice=20)
+```
+Here, we have a dataset containing 4 features, two Discrete and two Real valued.
+And create the corresponding MSPN.
 
 
 
