@@ -163,10 +163,10 @@ def bfs(root, func):
         node = queue.popleft()
         func(node)
         if not isinstance(node, Leaf):
-            for node in node.children:
-                if node not in seen:
-                    seen.add(node)
-                    queue.append(node)
+            for c in node.children:
+                if c not in seen:
+                    seen.add(c)
+                    queue.append(c)
 
 
 def get_nodes_by_type(node, ntype=Node):
