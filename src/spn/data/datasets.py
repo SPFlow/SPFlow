@@ -15,32 +15,52 @@ import xml.etree.ElementTree as ET
 
 path = dirname(__file__) + "/"
 
-def one_hot(y):
+def one_hot(y, values):
   if len(y.shape) != 1:
     return y
-  values = np.array(sorted(list(set(y))))
+  values = np.array(sorted(list(set(values))))
   return np.array([values == v for v in y], dtype=np.int8)
 
-def preproc_data(raw_data):
-    train = [list(row) for row in raw_data]
 
-    non_numeric_idx = np.asarray([type(elem) == np.bytes_ for elem in train[0]])
-    preproc_train = np.asarray([list(row) for row in train], dtype=np.float)
+def transpose_list(data):
+    return list(map(list, zip(*data)))
 
-    non_numeric_train = preproc_train[:, non_numeric_idx]
-    numeric_train = preproc_train[:, ~non_numeric_idx]
 
-    # ohe_data_arr = [one_hot(non_numeric_data[:,i]) for i in range(non_numeric_data.shape[1])]
+def preproc_arff_data(raw_data, labels):
+
+    data = raw_data['data']
+    data_transposed = transpose_list(data)
+    labels = [child.attrib['name'] for child in labels.getroot()]
+    labels_idx = np.asarray([elem[0] in labels for elem in raw_data['attributes']])
+    numeric_idx = np.asarray([elem[1] == 'NUMERIC'for elem in raw_data['attributes']])
+    values = [elem[1] for elem in raw_data['attributes']]   # the range of ohe
+
+    num_data_rows = len(data)
+    num_labels = len(labels)
+    num_data_cols = len(raw_data['attributes'])
+    num_input_cols = num_data_cols - num_labels
+
+
+    # split input and labels
+    input_transposed = np.asarray([input for i, input in enumerate(data_transposed) if labels_idx[i] == False])
+    values_input = [value for i, value in enumerate(values) if labels_idx[i] == False]
+    labels = [one_hot(np.asarray(label), values[i]) for i, label in enumerate(data_transposed) if labels_idx[i] == True]   # do we need to ohe labels?
+    labels_ohe = np.swapaxes(np.asarray(labels), 0, 1).reshape(num_data_rows, -1)   # shape is now (#instance, #labels, #ohe)
+
     ohe_data_arr = None
-    for i in range(non_numeric_train.shape[1]):
+    for i in range(num_input_cols):
         if ohe_data_arr is None:
-            ohe_data_arr = one_hot(non_numeric_train[:, i])
+            if numeric_idx[i] == False:
+                ohe_data_arr = one_hot(input_transposed[i], values[i]).reshape(-1,num_data_rows)
+            else:
+                ohe_data_arr = input_transposed[i].reshape(-1,num_data_rows)
         else:
-            ohe_data_arr = np.concatenate((ohe_data_arr, one_hot(non_numeric_train[:, i])), axis=1)
+            if numeric_idx[i] == False:
+                ohe_data_arr = np.concatenate((ohe_data_arr, one_hot(input_transposed[i], values[i]).reshape(-1,num_data_rows)), axis=0)
+            else:
+                ohe_data_arr = np.concatenate((ohe_data_arr, input_transposed[i].reshape(-1, num_data_rows)), axis=0)
 
-    preproc_data_train = np.concatenate((ohe_data_arr, numeric_train), axis=1)
-
-    return preproc_data_train
+    return transpose_list(ohe_data_arr), labels_ohe
 
 def get_nips_data(test_size=0.2):
     fname = path + "count/nips100.csv"
@@ -83,29 +103,21 @@ def get_mnist(cachefile=path+'count/mnist.npz'):
 
 def get_categorical_data(name):
 
-    train = loadarff(path + "/categorical/" + name + "/" + name + "-train.arff",'r')
-    test = loadarff(path + "/categorical/" + name + "/" + name + "-test.arff")
-    # valid = arff.loadarff(path + "/categorical/" + name + "/" + name + ".arff")
+    cachefile = path + 'count/' + name + '.npz'
 
-    labels = ET.parse(path + "/categorical/" + name + "/" + name + '.xml')
-    root = labels.getroot()
+    if cachefile and os.path.exists(cachefile):
+        npzfile = np.load(cachefile)
+        train_input, train_labels, test_input, test_labels = npzfile['train_input'], npzfile['train_labels'], npzfile['test_input'], npzfile['test_labels']
+    else:
+        train = arff.load(open(path + "/categorical/" + name + "/" + name + "-train.arff", 'r'))
+        test = arff.load(open(path + "/categorical/" + name + "/" + name + "-test.arff", 'r'))
+        labels = ET.parse(path + "/categorical/" + name + "/" + name + '.xml')
 
-    labels = [child.attrib['name'] for child in root]
-    attributes = [attr for attr in train[1]]
-    input_attrbutes = [attr for attr in attributes if attr not in labels]
+        train_input, train_labels = preproc_arff_data(train, labels)
+        test_input, test_labels = preproc_arff_data(test, labels)
 
-    # train
-    train_labels = [train[0][label] for label in labels]
-    train_input = [train[0][attr] for attr in input_attrbutes]
-    train_labels = list(map(list, zip(*train_labels)))
-    train_input = list(map(list, zip(*train_input)))
+        if cachefile:
+            np.savez(cachefile, train_input=train_input, train_labels=train_labels, test_input=test_input, test_labels=test_labels)
 
-    # test
-    test_labels = [test[0][label] for label in labels]
-    test_input = [test[0][attr] for attr in input_attrbutes]
-    test_labels = list(map(list, zip(*test_labels)))
-    test_input = list(map(list, zip(*test_input)))
-
-    # return (train_input, train_output, test_input, test_output)
-    return (preproc_data(train_input), preproc_data(train_labels), preproc_data(test_input), preproc_data(test_labels))
+    return (train_input, train_labels, test_input, test_labels)
 
