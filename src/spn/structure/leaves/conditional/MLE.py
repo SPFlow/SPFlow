@@ -6,8 +6,6 @@ Created on April 15, 2018
 import numpy as np
 import warnings
 from scipy.stats import gamma, lognorm
-import tensorflow as tf
-import tensorflow_probability as tfp;  tfd = tfp.distributions
 
 from spn.structure.leaves.conditional.Conditional import Conditional_Gaussian, Conditional_Poisson, \
     Conditional_Bernoulli
@@ -39,7 +37,14 @@ def update_glm_parameters_mle(node, data, scope):  # assume data is tuple (outpu
         raise Exception("Unknown conditional " + str(type(node)))
 
     dataIn = np.c_[dataIn, np.ones((dataIn.shape[0]))]
+    glmfit = sm.GLM(dataOut, dataIn, family=family).fit_regularized(alpha=0.0001, maxiter=5)
+    node.weights = glmfit.params
+    return
     try:
+        import tensorflow as tf
+        import tensorflow_probability as tfp;
+        tfd = tfp.distributions
+
         dataOut = dataOut.reshape(-1)
         w, linear_response, is_converged, num_iter = tfp.glm.fit(
             model_matrix=tf.constant(dataIn),
