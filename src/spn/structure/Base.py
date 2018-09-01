@@ -96,7 +96,6 @@ class Context:
             for p in parametric_types:
                 self.meta_types.append(p.type.meta_type)
 
-
     def get_meta_types_by_scope(self, scopes):
         return [self.meta_types[s] for s in scopes]
 
@@ -196,7 +195,8 @@ def assign_ids(node, ids=None):
     bfs(node, assign_id)
 
 
-def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, after_eval_function=None, debug=False, **args):
+def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, after_eval_function=None, debug=False,
+                       **args):
     # evaluating in reverse order, means that we compute all the children first then their parents
     nodes = reversed(get_nodes_by_type(node))
 
@@ -209,24 +209,37 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, 
     else:
         all_results.clear()
 
+    for node_type, func in eval_functions.items():
+        node_type._eval_func = func
+        node_type._is_leaf = issubclass(node_type, Leaf)
+
+    tmp_children_list = []
+    len_tmp_children_list = 0
     for n in nodes:
-        type_n = type(n)
-        func = eval_functions.get(type_n, None)
+        #type_n = type(n)
+        #func = eval_functions.get(type_n, None)
+        func = n.__class__._eval_func
 
         if func is None:
-            raise Exception("No lambda function associated with type: %s" % (type_n))
+            raise Exception("No lambda function associated with type: %s" % (n.__class__))
 
-        if isinstance(n, Leaf):
+        #if isinstance(n, Leaf):
+        if n.__class__._is_leaf:
             result = func(n, input_vals, **args)
         else:
-            children = [all_results[c] for c in n.children]
-            result = func(n, children, input_vals, **args)
+            len_children = len(n.children)
+            if len_tmp_children_list < len_children:
+                tmp_children_list.extend([None] * len_children)
+                len_tmp_children_list = len(tmp_children_list)
+            for i, c in enumerate(n.children):
+                tmp_children_list[i] = all_results[c.id]
+            result = func(n, tmp_children_list[0:len_children], input_vals, **args)
 
         if after_eval_function is not None:
             after_eval_function(n, result)
-        all_results[n] = result
+        all_results[n.id] = result
 
-    return all_results[node]
+    return all_results[node.id]
 
 
 def eval_spn_top_down(root, eval_functions, all_results=None, input_vals=None, **args):
