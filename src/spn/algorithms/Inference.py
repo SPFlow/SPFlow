@@ -77,12 +77,15 @@ def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, l
 
     all_results = {}
 
-    def val_funct(node, ll):
-        assert ll.shape == (data.shape[0], 1), "node %s result has to match dimensions (N,1)" % (node.id)
-        assert not np.all(np.isnan(ll)), "ll is nan %s " % (node.id)
+    vf = None
+    if debug:
+        def val_funct(node, ll):
+            assert ll.shape == (data.shape[0], 1), "node %s result has to match dimensions (N,1)" % (node.id)
+            assert not np.all(np.isnan(ll)), "ll is nan %s " % (node.id)
+        vf = val_funct
 
     result = eval_spn_bottom_up(node, node_likelihood, all_results=all_results, input_vals=data,
-                                after_eval_function=val_funct, debug=debug, dtype=dtype)
+                                after_eval_function=vf, debug=debug, dtype=dtype)
 
     if lls_matrix is not None:
         for n, ll in all_results.items():
