@@ -1,6 +1,6 @@
 import numpy as np
 import os; path = os.path.dirname(__file__)
-from tempfile import mkdtemp
+from tempfile import mkdtemp, TemporaryDirectory
 from networkx.algorithms.components.connected import connected_components
 from networkx.convert_matrix import from_numpy_matrix
 from rpy2 import robjects
@@ -9,17 +9,19 @@ from rpy2.robjects.packages import SignatureTranslatedAnonymousPackage
 import multiprocessing as mp
 from spn.algorithms.splitting.Base import split_conditional_data_by_clusters, preproc
 
-
 with open(path+"/RCoT.R", "r") as mixfile:
    code = ''.join(mixfile.readlines())
    CoTest = SignatureTranslatedAnonymousPackage(code, "RCoT")
 
+temp_path = TemporaryDirectory()
+data_file = temp_path.name + '/data_file.dat'
+data_cond_file = temp_path.name + '/data_cond_file.dat'
 
-# data_file = path.join([mkdtemp(), 'data_file.dat'])
-# data_cond_file = path.join([mkdtemp(), 'data_cond_file.dat'])
+def remove_tmp_folder():
+    temp_path.cleanup()
 
-data_file = path + 'data_file.dat'
-data_cond_file = path + 'data_cond_file.dat'
+import atexit
+atexit.register(remove_tmp_folder)
 
 
 def getCIGroup(rand_gen, ohe=False):
@@ -48,10 +50,12 @@ def getCIGroup(rand_gen, ohe=False):
         dataOut = data[output_mask].reshape(num_instance, -1)
         dataIn = data[~output_mask].reshape(num_instance, -1)
 
+        assert len(dataIn) > 0
+        assert len(dataOut) > 0
 
         DATA = np.memmap(data_file, dtype=dataOut.dtype, mode='w+', shape=dataOut.shape)
         DATA[:] = dataOut[:]
-        DATA.flush()
+        # DATA.flush()
 
         DATA_COND = np.memmap(data_cond_file, dtype=dataIn.dtype, mode='w+', shape=dataIn.shape)
         DATA_COND[:] = dataIn[:]
@@ -60,6 +64,7 @@ def getCIGroup(rand_gen, ohe=False):
         num_X = dataOut.shape[1] #len(data[0])
         num_Y = dataIn.shape[1] #len(data_cond[0])
         p_value_matrix = np.zeros((num_X, num_X))
+
 
         index_matrix = [(x, y, dataOut.dtype, dataOut.shape, dataIn.shape) for x in range(num_X) for y in range(num_X)]
         index_matrix = [s for s in index_matrix if s[0]!=s[1]]
@@ -87,14 +92,14 @@ def getCIGroup(rand_gen, ohe=False):
         for i, c in enumerate(connected_components(from_numpy_matrix(pvals))):
             clusters[list(c)] = i + 1
 
+
         return split_conditional_data_by_clusters(local_data, clusters, scope, rows=False)
 
     return getCIGroups
 
 def computePvals(x, y, data_type, data_shape, data_cond_shape):
-
-    DATA = np.memmap(data_file, dtype=data_type, mode='r', shape=data_shape)
-    DATA_COND = np.memmap(data_cond_file, dtype=data_type, mode='r', shape=data_cond_shape)
+    DATA = np.memmap(data_file, dtype=data_type, mode='r+', shape=data_shape)
+    DATA_COND = np.memmap(data_cond_file, dtype=data_type, mode='r+', shape=data_cond_shape)
 
     num_inst = np.shape(DATA[:,x])[0]
     X_1 = np.asarray(DATA[:,x]).reshape(num_inst, 1)
