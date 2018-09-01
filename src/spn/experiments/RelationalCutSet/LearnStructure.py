@@ -18,7 +18,7 @@ from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Marginalization import marginalize
 from spn.algorithms.Validity import is_valid
 from spn.io.Text import spn_to_str_ref_graph
-from spn.structure.Base import Sum, Product, Node, assign_ids, rebuild_scopes_bottom_up
+from spn.structure.Base import Sum, Product, Node, assign_ids, rebuild_scopes_bottom_up, get_nodes_by_type
 from spn.structure.leaves.parametric.Parametric import CategoricalDictionary
 import itertools
 
@@ -174,7 +174,7 @@ def get_keys(dep_tree, meta_data, attributes_in_table):
 
 
 def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
-    def process_data(lower, higher, table, table_meta_data, scopes, keys_left, non_key_features, siblings, cache):
+    def process_data(table_name, lower, higher, table, table_meta_data, scopes, keys_left, non_key_features, siblings, cache):
         # dig into the constraints
         curr_att = keys_left[0]
         att_pos = table_meta_data[curr_att]
@@ -189,7 +189,10 @@ def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
         column = table[:, att_pos]
         vals, counts = np.unique(column, return_counts=True)
         for val, count in zip(vals, counts):
-            node = CategoricalDictionary(p={val: 1.0}, scope=scopes[curr_att])
+            node = None
+            if attribute_owners[curr_att] == table_name:
+                #if I'm the owner, we add the filter
+                CategoricalDictionary(p={val: 1.0}, scope=scopes[curr_att])
 
             if len(keys_left) > 1:
                 val_constraint_table = constraint_table.get(val, None)
@@ -200,8 +203,10 @@ def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
 
                 l = np.searchsorted(column, val, side='left')
                 h = np.searchsorted(column, val, side='right')
-                new_siblings = siblings + [node]
-                process_data(l, h, table, table_meta_data, scopes, keys_left[1:], non_key_features, new_siblings,
+                new_siblings = siblings
+                if node is not None:
+                    new_siblings += [node]
+                process_data(table_name, l, h, table, table_meta_data, scopes, keys_left[1:], non_key_features, new_siblings,
                              val_constraint_table)
             else:
                 p_node = Product()
@@ -211,7 +216,8 @@ def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
                     assert False
 
                 p_node.children.extend(siblings)
-                p_node.children.append(node)
+                if node is not None:
+                    p_node.children.append(node)
                 for (att, pos) in non_key_features:
                     pdf_v, pdf_c = np.unique(table[:, pos], return_counts=True)
                     p_node.children.append(CategoricalDictionary(p=dict(zip(pdf_v, pdf_c / table.shape[0])),
@@ -239,10 +245,10 @@ def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
             sort_order = [table[:, table_meta_data[att_name]] for att_name in reversed(keys)]
             sorted_table = table[np.lexsort(sort_order), :].astype(float)
 
-            non_key_features = [(k, table_meta_data[k]) for k in table_meta_data.keys() \
-                                if k not in keys and (k not in attribute_owners or attribute_owners[k] == table_name)]
+            non_key_features = [(k, table_meta_data[k]) for k in table_meta_data.keys() if
+                                k not in keys and (k not in attribute_owners or attribute_owners[k] == table_name)]
 
-            process_data(0, sorted_table.shape[0], sorted_table, table_meta_data, scopes, keys, non_key_features, [],
+            process_data(table_name, 0, sorted_table.shape[0], sorted_table, table_meta_data, scopes, keys, non_key_features, [],
                          constraint_cache)
 
     return cache
@@ -295,11 +301,6 @@ def get_dependncy_keys(dep_tree, table_keys, attribute_owners, path_constraints)
         # we have to traverse down
         assert len(dep_tree.children) == 1
         return get_dependncy_keys(dep_tree.children[0], table_keys, attribute_owners, path_constraints)
-    elif len(children_tables) > 1:
-        children_tables = [c for c in children_tables if attribute_owners[dep_tree.name] == c.name[1:]]
-        assert len(children_tables) == 1
-
-    # assert len(children_tables) == 1
 
     path = [d.name for d in dep_tree.parents]
     path.append(dep_tree.name)
@@ -342,36 +343,48 @@ def get_constraint_values(key, table_name, path_constraints, cache):
     yield from traverse_cache_values(cache_values, path_constraints)
 
 
-def build_csn2(dep_tree, table_keys, scopes, attribute_owners, path_constraints=None, cache=None):
-    if path_constraints is None:
-        path_constraints = []
+def build_spn(dep_tree, table_keys, scopes, attribute_owners, path_constraints=None, cache=None):
+    def build_recursive(dep_tree, table_keys, scopes, attribute_owners, path_constraints=None, cache=None):
+        if path_constraints is None:
+            path_constraints = []
 
-    new_node = Sum()
-    i = 0
-    for table_name, key, dep_node in get_dependncy_keys(dep_tree, table_keys, attribute_owners, path_constraints):
-        i += 1
-        for constraint_configuration, cached_node, count in get_constraint_values(key, table_name, path_constraints,
-                                                                                  cache):
-            p_node = Product()
-            new_node.children.append(p_node)
-            new_node.weights.append(count)
-            p_node.children.append(cached_node)
+        new_node = Sum()
+        i = 0
+        for table_name, key, dep_node in get_dependncy_keys(dep_tree, table_keys, attribute_owners, path_constraints):
+            i += 1
+            for constraint_configuration, cached_node, count in get_constraint_values(key, table_name, path_constraints,
+                                                                                      cache):
+                p_node = Product()
+                new_node.children.append(p_node)
 
-            # p_node.children.append(
-            #    CategoricalDictionary(p={float(constraint_value): 1.0}, scope=scopes[constraint_name]))
+                p_node.children.append(cached_node)
 
-            for dep_children_node in dep_node.children:
-                if dep_children_node.name[0] == '@':
-                    continue
-                p_node.children.append(
-                    build_csn2(dep_children_node, table_keys, scopes, attribute_owners,
-                               path_constraints=constraint_configuration,
-                               cache=cache))
-    assert i == 1
-    wsum = np.sum(new_node.weights)
-    new_node.weights = [w / wsum for w in new_node.weights]
+                # p_node.children.append(
+                #    CategoricalDictionary(p={float(constraint_value): 1.0}, scope=scopes[constraint_name]))
+                count_value = count
+                for dep_children_node in dep_node.children:
+                    if dep_children_node.name[0] == '@':
+                        continue
 
-    return new_node
+                    node, count = build_recursive(dep_children_node, table_keys, scopes, attribute_owners,
+                                                  path_constraints=constraint_configuration,
+                                                  cache=cache)
+                    p_node.children.append(node)
+                    count_value *= count
+                new_node.weights.append(count_value)
+
+        assert i == 1
+        wsum = np.sum(new_node.weights)
+        # new_node.weights = [w / wsum for w in new_node.weights]
+
+        return new_node, wsum
+
+    root, count = build_recursive(dep_tree, table_keys, scopes, attribute_owners, path_constraints=path_constraints,
+                                  cache=cache)
+    for sum_node in get_nodes_by_type(root, Sum):
+        normalization = np.sum(sum_node.weights)
+        sum_node.weights = [w / normalization for w in sum_node.weights]
+    return root
 
 
 if __name__ == '__main__':
@@ -403,12 +416,14 @@ if __name__ == '__main__':
     if not os.path.isfile(file_cache_path):
         cache = build_cache(tables, meta_data, table_keys, scopes, attribute_owners)
 
-        spn = build_csn2(dep_tree, table_keys, scopes, attribute_owners, path_constraints=None, cache=cache)
+        spn = build_spn(dep_tree, table_keys, scopes, attribute_owners, path_constraints=None, cache=cache)
         rebuild_scopes_bottom_up(spn)
         print(spn)
         assign_ids(spn)
-        print(is_valid(spn))
-        # print(spn_to_str_ref_graph(spn))
+        val, msg = is_valid(spn)
+        print(spn_to_str_ref_graph(spn))
+        assert val, msg
+        print(spn_to_str_ref_graph(spn))
 
         keep = set(scopes.values())
         keep.discard(scopes["userid"])
@@ -441,7 +456,7 @@ if __name__ == '__main__':
 
         a = log_likelihood(spn, to_data(scopes, rows, **q_e), debug=True)
         # print("query ", query_str, np.exp(a))
-        b = log_likelihood(spn, to_data(scopes, rows, **evidence), debug=True)
+        b = 0  # log_likelihood(spn, to_data(scopes, rows, **evidence), debug=True)
         # print("evidence ", evidence_str, b, np.exp(b))
         result = np.exp(a - b)
         # print(prob_str, "=", result, "query ", query_str, np.exp(a), evidence_str, np.exp(b))
@@ -452,7 +467,9 @@ if __name__ == '__main__':
 
     evidence_atts = ['year', 'action', 'adventure', 'animation', 'children', 'comedy', 'crime', 'documentary', 'drama',
                      'fantasy', 'filmnoir', 'horror', 'musical', 'mystery', 'romance', 'scifi',
-                     'thriller', 'war', 'western', 'age', 'gender', 'occupation']
+                     'thriller', 'war', 'western', 'age', 'gender', 'occupation'] + ['genre_group1', 'genre_group2',
+                                                                                     'genre_group3', 'genre_group4',
+                                                                                     'genre_group5']
 
     test_table = test_tables["Test"]
     rating_values = np.zeros((test_table.shape[0], 5))
