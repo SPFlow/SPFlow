@@ -40,15 +40,17 @@ def conditional_poisson_mpe_leaf(node, input_vals, data=None, lls_per_node=None,
     if data_nans is None:
         return
 
-    data[input_vals[data_nans], node.scope] = params["mu"]
+    data[input_vals[data_nans], node.scope] = np.floor(params["mu"])
 
 
 def conditional_bernoulli_mpe_leaf(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
     data_nans, params = get_conditional_params(node, input_vals, data)
+
     if data_nans is None:
         return
-
-    data[input_vals[data_nans], node.scope] = params["p"]
+    p = params["p"]
+    q = 1 - p
+    data[input_vals[data_nans], node.scope] = (q <= p).astype(int)
 
 
 def add_conditional_mpe_support():
