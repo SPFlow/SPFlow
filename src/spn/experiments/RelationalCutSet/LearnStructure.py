@@ -171,11 +171,26 @@ def get_keys(dep_tree, meta_data, attributes_in_table):
     return keys, keys_per_attribute, ancestors
 
 
-def build_cache(tables, meta_data, table_keys, attribute_owners):
+def process_data(lower, higher, table, table_meta_data, scopes, atts_left, siblings):
+    curr_att = atts_left[0]
+    att_pos = table_meta_data[curr_att]
+    table = table[lower:higher]
+    column = table[:, att_pos]
+    vals, counts = np.unique(column, return_counts=True)
+    for val, count in zip(vals, counts):
+        node = CategoricalDictionary(p={val: 1.0}, scope=scopes[curr_att])
+        l = np.searchsorted(column, val, side='left')
+        h = np.searchsorted(column, val, side='right')
+        new_siblings = siblings + [node]
+        process_data(l, h, table, table_meta_data, scopes, atts_left[1:], new_siblings)
+
+
+def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
     cache = {}
     for table_name, constraint_groups in table_keys.items():
         table = tables[table_name]
         print("loading: ", table_name)
+        table_meta_data = meta_data[table_name]
 
         table_cache = cache.get(table_name, None)
         if table_cache is None:
@@ -187,7 +202,11 @@ def build_cache(tables, meta_data, table_keys, attribute_owners):
             print("loading constraint group: ", constraint_groups)
             table_key = tuple(keys)
 
-            sort_order = []
+            sort_order = [table[:, table_meta_data[att_name]] for att_name in keys]
+            sorted_table = table[np.lexsort(sort_order), :].astype(float)
+
+            process_data(0, sorted_table.shape[0], sorted_table, table_meta_data, scopes, keys, [])
+
             for att_name in keys:
                 att_pos = meta_data[table_name][att_name]
 
@@ -198,7 +217,7 @@ def build_cache(tables, meta_data, table_keys, attribute_owners):
                     constraint_atts = new_constraints
                 else:
                     constraint_atts = list(itertools.product(constraint_atts, new_constraints))
-                sort_order.append(table[:, meta_data[table_name][att_name]])
+                sort_order.append()
 
             sorted_table = table[np.lexsort(sort_order), :].astype(float)
             for constraint in constraint_atts:
@@ -387,12 +406,11 @@ if __name__ == '__main__':
 
     tables = load_tables(path, meta_data, debug=False)
 
-
     spn = None
 
     file_cache_path = "/tmp/csn.bin"
     if not os.path.isfile(file_cache_path):
-        cache = build_cache(tables, meta_data, table_keys, attribute_owners)
+        cache = build_cache(tables, meta_data, table_keys, scopes, attribute_owners)
 
         spn = build_csn2(dep_tree, table_keys, scopes, path_constraints=None, cache=cache)
         rebuild_scopes_bottom_up(spn)
@@ -439,7 +457,7 @@ if __name__ == '__main__':
         return result
 
 
-    #print(spn_to_str_ref_graph(spn))
+    # print(spn_to_str_ref_graph(spn))
 
     evidence_atts = ['year', 'action', 'adventure', 'animation', 'children', 'comedy', 'crime', 'documentary', 'drama',
                      'fantasy', 'filmnoir', 'horror', 'musical', 'mystery', 'romance', 'scifi',
