@@ -232,14 +232,14 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, 
                 tmp_children_list.extend([None] * len_children)
                 len_tmp_children_list = len(tmp_children_list)
             for i, c in enumerate(n.children):
-                tmp_children_list[i] = all_results[c.id]
+                tmp_children_list[i] = all_results[c]
             result = func(n, tmp_children_list[0:len_children], input_vals, **args)
 
         if after_eval_function is not None:
             after_eval_function(n, result)
-        all_results[n.id] = result
+        all_results[n] = result
 
-    return all_results[node.id]
+    return all_results[node]
 
 
 def eval_spn_top_down(root, eval_functions, all_results=None, input_vals=None, **args):

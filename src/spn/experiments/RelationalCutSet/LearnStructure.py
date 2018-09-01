@@ -18,7 +18,7 @@ from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Marginalization import marginalize
 from spn.algorithms.Validity import is_valid
 from spn.io.Text import spn_to_str_ref_graph
-from spn.structure.Base import Sum, Product, assign_ids, rebuild_scopes_bottom_up
+from spn.structure.Base import Sum, Product, Node, assign_ids, rebuild_scopes_bottom_up
 from spn.structure.leaves.parametric.Parametric import CategoricalDictionary
 import itertools
 
@@ -107,7 +107,9 @@ def load_tables(path, meta_data, debug=False):
     for fname in glob.glob(path + "*.tbl"):
         table_name = os.path.splitext(os.path.basename(fname))[0]
         print("loading", table_name, "from", fname)
-        tables[table_name] = np.genfromtxt(fname, delimiter='|')[:, 0:len(meta_data[table_name])]
+        table = np.genfromtxt(fname, delimiter='|')[:, 0:len(meta_data[table_name])]
+        tables[table_name] = table
+        assert not np.any(np.isnan(table)), "found missing values in table: " + table_name
 
     # if in debug mode, reduce size
     if debug:
@@ -171,21 +173,50 @@ def get_keys(dep_tree, meta_data, attributes_in_table):
     return keys, keys_per_attribute, ancestors
 
 
-def process_data(lower, higher, table, table_meta_data, scopes, atts_left, siblings):
-    curr_att = atts_left[0]
-    att_pos = table_meta_data[curr_att]
-    table = table[lower:higher]
-    column = table[:, att_pos]
-    vals, counts = np.unique(column, return_counts=True)
-    for val, count in zip(vals, counts):
-        node = CategoricalDictionary(p={val: 1.0}, scope=scopes[curr_att])
-        l = np.searchsorted(column, val, side='left')
-        h = np.searchsorted(column, val, side='right')
-        new_siblings = siblings + [node]
-        process_data(l, h, table, table_meta_data, scopes, atts_left[1:], new_siblings)
-
-
 def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
+    def process_data(lower, higher, table, table_meta_data, scopes, keys_left, non_key_features, siblings, cache):
+        # dig into the constraints
+        curr_att = keys_left[0]
+        att_pos = table_meta_data[curr_att]
+
+        constraint_table = cache.get(curr_att, None)
+        if constraint_table is None:
+            cache[curr_att] = constraint_table = {}
+        else:
+            assert False
+
+        table = table[lower:higher]
+        column = table[:, att_pos]
+        vals, counts = np.unique(column, return_counts=True)
+        for val, count in zip(vals, counts):
+            node = CategoricalDictionary(p={val: 1.0}, scope=scopes[curr_att])
+
+            if len(keys_left) > 1:
+                val_constraint_table = constraint_table.get(val, None)
+                if val_constraint_table is None:
+                    constraint_table[val] = val_constraint_table = {}
+                else:
+                    assert False
+
+                l = np.searchsorted(column, val, side='left')
+                h = np.searchsorted(column, val, side='right')
+                new_siblings = siblings + [node]
+                process_data(l, h, table, table_meta_data, scopes, keys_left[1:], non_key_features, new_siblings,
+                             val_constraint_table)
+            else:
+                p_node = Product()
+                if val not in constraint_table:
+                    constraint_table[val] = (p_node, count)
+                else:
+                    assert False
+
+                p_node.children.extend(siblings)
+                p_node.children.append(node)
+                for (att, pos) in non_key_features:
+                    pdf_v, pdf_c = np.unique(table[:, pos], return_counts=True)
+                    p_node.children.append(CategoricalDictionary(p=dict(zip(pdf_v, pdf_c / table.shape[0])),
+                                                                 scope=scopes[att]))
+
     cache = {}
     for table_name, constraint_groups in table_keys.items():
         table = tables[table_name]
@@ -201,69 +232,18 @@ def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
 
             print("loading constraint group: ", constraint_groups)
             table_key = tuple(keys)
+            constraint_cache = table_cache.get(table_key, None)
+            if constraint_cache is None:
+                constraint_cache = table_cache[table_key] = {}
 
-            sort_order = [table[:, table_meta_data[att_name]] for att_name in keys]
+            sort_order = [table[:, table_meta_data[att_name]] for att_name in reversed(keys)]
             sorted_table = table[np.lexsort(sort_order), :].astype(float)
 
-            process_data(0, sorted_table.shape[0], sorted_table, table_meta_data, scopes, keys, [])
+            non_key_features = [(k, table_meta_data[k]) for k in table_meta_data.keys() \
+                                if k not in keys and (k not in attribute_owners or attribute_owners[k] == table_name)]
 
-            for att_name in keys:
-                att_pos = meta_data[table_name][att_name]
-
-                new_constraints = []
-                for v in np.unique(table[:, att_pos]):
-                    new_constraints.append((att_name, v))
-                if constraint_atts is None:
-                    constraint_atts = new_constraints
-                else:
-                    constraint_atts = list(itertools.product(constraint_atts, new_constraints))
-                sort_order.append()
-
-            sorted_table = table[np.lexsort(sort_order), :].astype(float)
-            for constraint in constraint_atts:
-                print(constraint)
-                # get data
-                if not isinstance(constraint[0], tuple):
-                    constraint = [constraint]
-
-                for grounding in constraint:
-                    sorted_col = sorted_table[:, meta_data[table_name][grounding[0]]]
-                    l = np.searchsorted(sorted_col, grounding[1], side='left')
-                    r = np.searchsorted(sorted_col, grounding[1], side='right')
-                    if l == r:
-                        # constraint not found
-                        continue
-                    sorted_table = sorted_table[l:r, :]
-                group_data = sorted_table
-
-                if group_data.shape[0] == 0:
-                    continue
-
-                constraint_cache = table_cache.get(table_key, None)
-                if constraint_cache is None:
-                    constraint_cache = table_cache[table_key] = {}
-
-                p_node = Product()
-                for i, (c, val) in enumerate(constraint):
-                    if c not in constraint_cache:
-                        constraint_cache[c] = {}
-                    constraint_cache = constraint_cache[c]
-                    if val not in constraint_cache:
-                        if i == len(constraint) - 1:
-                            constraint_cache[val] = (p_node, group_data.shape[0])
-                        else:
-                            constraint_cache[val] = {}
-                    constraint_cache = constraint_cache[val]
-
-                constraint_vars = [c[0] for c in constraint]
-                for att, pos in meta_data[table_name].items():
-                    if att in constraint_vars:
-                        continue
-                    if att in attribute_owners and attribute_owners[att] != table_name:
-                        continue
-                    pdf_v, pdf_c = np.unique(group_data[:, pos], return_counts=True)
-                    p_node.children.append(CategoricalDictionary(p=dict(zip(pdf_v, pdf_c / group_data.shape[0])),
-                                                                 scope=scopes[att]))
+            process_data(0, sorted_table.shape[0], sorted_table, table_meta_data, scopes, keys, non_key_features, [],
+                         constraint_cache)
 
     return cache
 
@@ -308,9 +288,17 @@ def get_table_ancestors(dep_tree, attributes_in_table):
     return table_keys, keys_to_tables, ancestors
 
 
-def get_dependncy_keys(dep_tree, table_keys, path_constraints):
+def get_dependncy_keys(dep_tree, table_keys, attribute_owners, path_constraints):
     children_tables = [dc for dc in dep_tree.children if dc.name[0] == "@"]
     # if my children contains a table, I'm a key, otherwise traverse down.
+    if len(children_tables) == 0:
+        # we have to traverse down
+        assert len(dep_tree.children) == 1
+        return get_dependncy_keys(dep_tree.children[0], table_keys, attribute_owners, path_constraints)
+    elif len(children_tables) > 1:
+        children_tables = [c for c in children_tables if attribute_owners[dep_tree.name] == c.name[1:]]
+        assert len(children_tables) == 1
+
     # assert len(children_tables) == 1
 
     path = [d.name for d in dep_tree.parents]
@@ -323,60 +311,63 @@ def get_dependncy_keys(dep_tree, table_keys, path_constraints):
             if key == path[-len(key):]:
                 keys.append((table_name, tuple(key), dep_tree))
                 break
+    assert len(keys) > 0, "invalid path, no table has keys :" + str(path)
 
     return [keys[0]]
 
 
 def get_constraint_values(key, table_name, path_constraints, cache):
     cache_values = cache[table_name][key]
+    key_constraints = set(key)
+    path_constraints = [pc for pc in path_constraints if pc[0] in key_constraints]
 
-    for k in key:
-        constraints = [c for c in path_constraints if c[0] == k]
-        if len(constraints) > 0:
-            cache_values = cache_values[k][constraints[0][1]]
-            continue
+    def traverse_cache_values(cache_vals, path_constraints):
+        if len(path_constraints) > 0:
+            constraint = path_constraints[0]
+            for c in traverse_cache_values(cache_vals[constraint[0]][constraint[1]], path_constraints[1:]):
+                yield ([constraint] + c[0], c[1], c[2])
         else:
-            cache_values = cache_values[k]
+            # { key: {val : key ...
+            for k, pointer in cache_vals.items():
+                # { key: {val
+                for value, sub_pointer in pointer.items():
+                    if isinstance(sub_pointer, dict):
+                        for constraint in traverse_cache_values(sub_pointer, path_constraints):
+                            result = [(k, value)]
+                            result.extend(constraint[0])
+                            yield (result, constraint[1], constraint[2])
+                    else:
+                        yield ([(k, value)], sub_pointer[0], sub_pointer[1])
 
-    for k, v in cache_values.items():
-        yield (k, v[1])
+    yield from traverse_cache_values(cache_values, path_constraints)
 
 
-def build_csn2(dep_tree, table_keys, scopes, path_constraints=None, cache=None):
+def build_csn2(dep_tree, table_keys, scopes, attribute_owners, path_constraints=None, cache=None):
     if path_constraints is None:
         path_constraints = []
 
-    if dep_tree.name[0] == "@":
-        table_name = dep_tree.name[1:]
-        path_vars = [p[0] for p in path_constraints]
-        matching_keys = [k for k in table_keys[table_name] if k == path_vars[-len(k):]][0]
-        cache_nodes = cache[table_name][tuple(matching_keys)]
-
-        for pc in path_constraints[-len(matching_keys):]:
-            cache_nodes = cache_nodes[pc[0]][pc[1]]
-
-        return cache_nodes[0]
-
     new_node = Sum()
-    for table_name, key, dep_node in get_dependncy_keys(dep_tree, table_keys, path_constraints):
-        new_constraints = []
-        new_constraints.extend(path_constraints)
-        new_constraints.append(None)
-
-        constraint_name = dep_node.name
-        for constraint_value, count in get_constraint_values(key, table_name, path_constraints, cache):
+    i = 0
+    for table_name, key, dep_node in get_dependncy_keys(dep_tree, table_keys, attribute_owners, path_constraints):
+        i += 1
+        for constraint_configuration, cached_node, count in get_constraint_values(key, table_name, path_constraints,
+                                                                                  cache):
             p_node = Product()
             new_node.children.append(p_node)
             new_node.weights.append(count)
+            p_node.children.append(cached_node)
 
-            p_node.children.append(
-                CategoricalDictionary(p={float(constraint_value): 1.0}, scope=scopes[constraint_name]))
+            # p_node.children.append(
+            #    CategoricalDictionary(p={float(constraint_value): 1.0}, scope=scopes[constraint_name]))
 
-            new_constraints[-1] = (constraint_name, constraint_value)
             for dep_children_node in dep_node.children:
+                if dep_children_node.name[0] == '@':
+                    continue
                 p_node.children.append(
-                    build_csn2(dep_children_node, table_keys, scopes, path_constraints=new_constraints, cache=cache))
-
+                    build_csn2(dep_children_node, table_keys, scopes, attribute_owners,
+                               path_constraints=constraint_configuration,
+                               cache=cache))
+    assert i == 1
     wsum = np.sum(new_node.weights)
     new_node.weights = [w / wsum for w in new_node.weights]
 
@@ -412,19 +403,19 @@ if __name__ == '__main__':
     if not os.path.isfile(file_cache_path):
         cache = build_cache(tables, meta_data, table_keys, scopes, attribute_owners)
 
-        spn = build_csn2(dep_tree, table_keys, scopes, path_constraints=None, cache=cache)
+        spn = build_csn2(dep_tree, table_keys, scopes, attribute_owners, path_constraints=None, cache=cache)
         rebuild_scopes_bottom_up(spn)
         print(spn)
         assign_ids(spn)
-        # print(is_valid(spn))
+        print(is_valid(spn))
         # print(spn_to_str_ref_graph(spn))
 
         keep = set(scopes.values())
         keep.discard(scopes["userid"])
         keep.discard(scopes["movieid"])
 
-        with open(file_cache_path, 'wb') as f:
-            pickle.dump(spn, f, pickle.HIGHEST_PROTOCOL)
+        # with open(file_cache_path, 'wb') as f:
+        #    pickle.dump(spn, f, pickle.HIGHEST_PROTOCOL)
     else:
         print("loading cached spn")
         with open(file_cache_path, 'rb') as f:
