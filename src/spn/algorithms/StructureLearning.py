@@ -19,7 +19,10 @@ import numpy as np
 from spn.algorithms.TransformStructure import Prune
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, assign_ids
+import multiprocessing
+import os
 
+pool = multiprocessing.Pool(processes=os.cpu_count() - 1)
 
 class Operation(Enum):
     CREATE_LEAF = 1
@@ -127,7 +130,8 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             for col in op_params:
                 rest_scope.remove(col)
                 node.children.append(None)
-                tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1, [scope[col]], True, True))
+                tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1,
+                              [scope[col]], True, True))
 
             node.children.append(None)
             c_pos = len(node.children) - 1
@@ -140,7 +144,8 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             rest_cols = list(rest_scope)
             rest_scope = [scope[col] for col in rest_scope]
 
-            tasks.append((data_slicer(local_data, rest_cols, num_conditional_cols), node, c_pos, rest_scope, next_final, next_final))
+            tasks.append((data_slicer(local_data, rest_cols, num_conditional_cols), node, c_pos, rest_scope, next_final,
+                          next_final))
 
             continue
 
@@ -199,10 +204,20 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             node.scope.extend(scope)
             parent.children[children_pos] = node
 
+            local_tasks = []
+            local_children_params = []
             split_start_t = perf_counter()
             for col in range(len(scope)):
                 node.children.append(None)
-                tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1, [scope[col]], True, True))
+                # tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1, [scope[col]], True, True))
+                local_tasks.append((node, len(node.children) - 1))
+                child_data_slice = data_slicer(local_data, [col], num_conditional_cols)
+                local_children_params.append((child_data_slice, ds_context, [scope[col]]))
+
+            result_nodes = pool.starmap(create_leaf, local_children_params)
+            for (parent, children_pos), child in zip(local_tasks, result_nodes):
+                parent.children[children_pos] = child
+
             split_end_t = perf_counter()
 
             logging.debug('\t\tsplit {} columns (in {:.5f} secs)'.format(len(scope), split_end_t - split_start_t))
