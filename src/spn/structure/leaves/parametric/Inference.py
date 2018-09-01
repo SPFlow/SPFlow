@@ -54,7 +54,8 @@ def parametric_likelihood(node, data, dtype=np.float64):
         probs[~marg_ids & out_domain_ids] = 0
         probs[~marg_ids & ~out_domain_ids] = np.array(node.p)[cat_data[~marg_ids & ~out_domain_ids]]
     elif isinstance(node, CategoricalDictionary):
-        probs[~marg_ids] = [node.p.get(val, 0.0) for val in data[~marg_ids]]
+        dict_probs = [node.p.get(val, 0.0) for val in data[~marg_ids]]
+        probs[~marg_ids] = dict_probs
     elif isinstance(node, Uniform):
         probs[~marg_ids] = node.density
     else:
