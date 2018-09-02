@@ -303,8 +303,8 @@ class CategoricalDictionary(Parametric):
 
     def __init__(self, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
-        if p is not None:
-            assert np.isclose(sum(p.values()), 1), 'Probabilities shall sum to 1'
+        #if p is not None:
+        #    assert np.isclose(sum(p.values()), 1), 'Probabilities shall sum to 1'
         self.p = p
 
     @property

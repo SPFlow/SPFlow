@@ -220,7 +220,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
             split_end_t = perf_counter()
 
-            logging.debug('\t\tsplit {} columns (in {:.5f} secs)'.format(len(scope), split_end_t - split_start_t))
+            logging.debug('\t\tnaive factorization {} columns (in {:.5f} secs)'.format(len(scope), split_end_t - split_start_t))
 
             continue
 
