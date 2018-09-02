@@ -11,12 +11,15 @@ class Node:
     def __init__(self):
         self.id = 0
         self.scope = []
+        self.debug = None
 
     @property
     def name(self):
         return "%sNode_%s" % (self.__class__.__name__, self.id)
 
     def __repr__(self):
+        if self.debug is not None:
+            return self.debug(self)
         return self.name
 
     def __rmul__(self, weight):

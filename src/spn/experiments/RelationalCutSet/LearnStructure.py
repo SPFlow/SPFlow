@@ -7,6 +7,8 @@ Created on August 16, 2018
 import glob
 
 import pickle
+from collections import OrderedDict
+
 import numpy as np
 import os
 
@@ -174,7 +176,18 @@ def get_keys(dep_tree, meta_data, attributes_in_table):
 
 
 def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
-    def process_data(table_name, lower, higher, table, table_meta_data, scopes, keys_left, non_key_features, siblings, cache):
+    def factorize_data(lower, higher, table, non_key_features):
+        table = table[lower:higher]
+
+        for (att, pos) in non_key_features:
+            pdf_v, pdf_c = np.unique(table[:, pos], return_counts=True)
+            pchild = CategoricalDictionary(p=OrderedDict(zip(pdf_v, pdf_c)), scope=scopes[att])
+            pchild.att = att
+            pchild.debug = lambda self: "C_%s(%s,%s)" % (self.id, self.params, self.att)
+            yield pchild
+
+    def process_data(table_name, lower, higher, table, table_meta_data, scopes, keys_left, non_key_features, siblings,
+                     cache):
         # dig into the constraints
         curr_att = keys_left[0]
         att_pos = table_meta_data[curr_att]
@@ -189,10 +202,15 @@ def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
         column = table[:, att_pos]
         vals, counts = np.unique(column, return_counts=True)
         for val, count in zip(vals, counts):
+            l = np.searchsorted(column, val, side='left')
+            h = np.searchsorted(column, val, side='right')
+
             node = None
-            if attribute_owners[curr_att] == table_name:
-                #if I'm the owner, we add the filter
-                CategoricalDictionary(p={val: 1.0}, scope=scopes[curr_att])
+            if attribute_owners[curr_att] == table_name or True:
+                # if I'm the owner, we add the filter
+                node = CategoricalDictionary(p={val: count}, scope=scopes[curr_att])
+                node.att = curr_att
+                node.debug = lambda self: "C_%s(%s,%s)" % (self.id, self.params, self.att)
 
             if len(keys_left) > 1:
                 val_constraint_table = constraint_table.get(val, None)
@@ -201,15 +219,15 @@ def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
                 else:
                     assert False
 
-                l = np.searchsorted(column, val, side='left')
-                h = np.searchsorted(column, val, side='right')
-                new_siblings = siblings
+                new_siblings = list(siblings)
                 if node is not None:
                     new_siblings += [node]
-                process_data(table_name, l, h, table, table_meta_data, scopes, keys_left[1:], non_key_features, new_siblings,
-                             val_constraint_table)
+                process_data(table_name, l, h, table, table_meta_data, scopes, keys_left[1:], non_key_features,
+                             new_siblings, val_constraint_table)
             else:
                 p_node = Product()
+                #p_node.debug = lambda self: "P_%s(%s)" % (self.id, ",".join([str(p) for p in self.children]))
+
                 if val not in constraint_table:
                     constraint_table[val] = (p_node, count)
                 else:
@@ -218,10 +236,7 @@ def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
                 p_node.children.extend(siblings)
                 if node is not None:
                     p_node.children.append(node)
-                for (att, pos) in non_key_features:
-                    pdf_v, pdf_c = np.unique(table[:, pos], return_counts=True)
-                    p_node.children.append(CategoricalDictionary(p=dict(zip(pdf_v, pdf_c / table.shape[0])),
-                                                                 scope=scopes[att]))
+                p_node.children.extend(factorize_data(l, h, table, non_key_features))
 
     cache = {}
     for table_name, constraint_groups in table_keys.items():
@@ -248,7 +263,8 @@ def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
             non_key_features = [(k, table_meta_data[k]) for k in table_meta_data.keys() if
                                 k not in keys and (k not in attribute_owners or attribute_owners[k] == table_name)]
 
-            process_data(table_name, 0, sorted_table.shape[0], sorted_table, table_meta_data, scopes, keys, non_key_features, [],
+            process_data(table_name, 0, sorted_table.shape[0], sorted_table, table_meta_data, scopes, keys,
+                         non_key_features, [],
                          constraint_cache)
 
     return cache
@@ -356,12 +372,12 @@ def build_spn(dep_tree, table_keys, scopes, attribute_owners, path_constraints=N
                                                                                       cache):
                 p_node = Product()
                 new_node.children.append(p_node)
-
+                new_node.weights.append(count)
                 p_node.children.append(cached_node)
 
                 # p_node.children.append(
                 #    CategoricalDictionary(p={float(constraint_value): 1.0}, scope=scopes[constraint_name]))
-                count_value = count
+                # count_value = count
                 for dep_children_node in dep_node.children:
                     if dep_children_node.name[0] == '@':
                         continue
@@ -370,8 +386,8 @@ def build_spn(dep_tree, table_keys, scopes, attribute_owners, path_constraints=N
                                                   path_constraints=constraint_configuration,
                                                   cache=cache)
                     p_node.children.append(node)
-                    count_value *= count
-                new_node.weights.append(count_value)
+                    # count_value *= count
+                    # new_node.weights.append(count_value)
 
         assert i == 1
         wsum = np.sum(new_node.weights)
@@ -389,6 +405,8 @@ def build_spn(dep_tree, table_keys, scopes, attribute_owners, path_constraints=N
 
 if __name__ == '__main__':
     path = "/Users/alejomc/Downloads/100k/"
+
+    path = "/Users/alejomc/PycharmProjects/idbspn/datasets/ml-small/"
     test_path = path + "test/"
 
     attributes_in_table_test, test_scopes, test_meta_data, _ = parse_attributes(test_path)
