@@ -206,7 +206,7 @@ def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
             h = np.searchsorted(column, val, side='right')
 
             node = None
-            if attribute_owners[curr_att] == table_name or True:
+            if attribute_owners[curr_att] == table_name and False:
                 # if I'm the owner, we add the filter
                 node = CategoricalDictionary(p={val: count}, scope=scopes[curr_att])
                 node.att = curr_att
@@ -226,7 +226,7 @@ def build_cache(tables, meta_data, table_keys, scopes, attribute_owners):
                              new_siblings, val_constraint_table)
             else:
                 p_node = Product()
-                #p_node.debug = lambda self: "P_%s(%s)" % (self.id, ",".join([str(p) for p in self.children]))
+                # p_node.debug = lambda self: "P_%s(%s)" % (self.id, ",".join([str(p) for p in self.children]))
 
                 if val not in constraint_table:
                     constraint_table[val] = (p_node, count)
@@ -326,37 +326,56 @@ def get_dependncy_keys(dep_tree, table_keys, attribute_owners, path_constraints)
         table_name = dc.name[1:]
         for key in table_keys[table_name]:
             if key == path[-len(key):]:
-                keys.append((table_name, tuple(key), dep_tree))
+                keys.append((table_name, tuple(key)))
                 break
     assert len(keys) > 0, "invalid path, no table has keys :" + str(path)
 
-    return [keys[0]]
+    return [(keys, dep_tree)]
 
 
-def get_constraint_values(key, table_name, path_constraints, cache):
-    cache_values = cache[table_name][key]
-    key_constraints = set(key)
-    path_constraints = [pc for pc in path_constraints if pc[0] in key_constraints]
+def get_constraint_values(table_names_keys, path_constraints, cache):
+    def iterate_all_values(table_names_keys, path_constraints, cache):
+        for table_name, key in table_names_keys:
+            cache_values = cache[table_name][key]
+            key_constraints = set(key)
+            filtered_path_constraints = [pc for pc in path_constraints if pc[0] in key_constraints]
+            hierarchy_path_constraints = [pc for pc in path_constraints if pc[0] not in key_constraints]
 
-    def traverse_cache_values(cache_vals, path_constraints):
-        if len(path_constraints) > 0:
-            constraint = path_constraints[0]
-            for c in traverse_cache_values(cache_vals[constraint[0]][constraint[1]], path_constraints[1:]):
-                yield ([constraint] + c[0], c[1], c[2])
+            def traverse_cache_values(hierarchy_p_c, cache_vals, path_constraints):
+                if len(path_constraints) > 0:
+                    constraint = path_constraints[0]
+                    for c in traverse_cache_values(hierarchy_p_c, cache_vals[constraint[0]][constraint[1]],
+                                                   path_constraints[1:]):
+                        yield ([constraint] + c[0], c[1], c[2], c[3])
+                else:
+                    # { key: {val : key ...
+                    for k, pointer in cache_vals.items():
+                        # { key: {val
+                        for value, sub_pointer in pointer.items():
+                            if isinstance(sub_pointer, dict):
+                                for constraint in traverse_cache_values(hierarchy_p_c, sub_pointer, path_constraints):
+                                    result = [(k, value)]
+                                    result.extend(constraint[0])
+                                    yield (result, constraint[1], constraint[2], constraint[3])
+                            else:
+                                yield ([(k, value)], sub_pointer[0], sub_pointer[1], hierarchy_p_c)
+
+            yield from traverse_cache_values(hierarchy_path_constraints, cache_values, filtered_path_constraints)
+
+    result = {}
+    for constraint, node, count, hierarchy_path_constraints in iterate_all_values(table_names_keys, path_constraints,
+                                                                                  cache):
+
+        constraint = tuple(hierarchy_path_constraints + constraint)
+        if constraint not in result:
+            result[constraint] = []
+        result[constraint].append((node, count))
+
+    for rk, rv in result.items():
+        if len(rv) == len(table_names_keys):
+            yield (rk, rv)
         else:
-            # { key: {val : key ...
-            for k, pointer in cache_vals.items():
-                # { key: {val
-                for value, sub_pointer in pointer.items():
-                    if isinstance(sub_pointer, dict):
-                        for constraint in traverse_cache_values(sub_pointer, path_constraints):
-                            result = [(k, value)]
-                            result.extend(constraint[0])
-                            yield (result, constraint[1], constraint[2])
-                    else:
-                        yield ([(k, value)], sub_pointer[0], sub_pointer[1])
-
-    yield from traverse_cache_values(cache_values, path_constraints)
+            print("missing", rk, rv)
 
 
 def build_spn(dep_tree, table_keys, scopes, attribute_owners, path_constraints=None, cache=None):
@@ -365,19 +384,19 @@ def build_spn(dep_tree, table_keys, scopes, attribute_owners, path_constraints=N
             path_constraints = []
 
         new_node = Sum()
-        i = 0
-        for table_name, key, dep_node in get_dependncy_keys(dep_tree, table_keys, attribute_owners, path_constraints):
-            i += 1
-            for constraint_configuration, cached_node, count in get_constraint_values(key, table_name, path_constraints,
-                                                                                      cache):
+        for (table_names_keys, dep_node) in get_dependncy_keys(dep_tree, table_keys, attribute_owners,
+                                                               path_constraints):
+
+            for constraint_configuration, cached_node_count in get_constraint_values(table_names_keys, path_constraints,
+                                                                                     cache):
                 p_node = Product()
                 new_node.children.append(p_node)
-                new_node.weights.append(count)
-                p_node.children.append(cached_node)
+                count_value = 1
 
-                # p_node.children.append(
-                #    CategoricalDictionary(p={float(constraint_value): 1.0}, scope=scopes[constraint_name]))
-                # count_value = count
+                for cached_node, node_count in cached_node_count:
+                    p_node.children.append(cached_node)
+                    count_value *= node_count
+
                 for dep_children_node in dep_node.children:
                     if dep_children_node.name[0] == '@':
                         continue
@@ -386,10 +405,9 @@ def build_spn(dep_tree, table_keys, scopes, attribute_owners, path_constraints=N
                                                   path_constraints=constraint_configuration,
                                                   cache=cache)
                     p_node.children.append(node)
-                    # count_value *= count
-                    # new_node.weights.append(count_value)
+                    count_value *= count
+                new_node.weights.append(count_value)
 
-        assert i == 1
         wsum = np.sum(new_node.weights)
         # new_node.weights = [w / wsum for w in new_node.weights]
 
@@ -397,16 +415,23 @@ def build_spn(dep_tree, table_keys, scopes, attribute_owners, path_constraints=N
 
     root, count = build_recursive(dep_tree, table_keys, scopes, attribute_owners, path_constraints=path_constraints,
                                   cache=cache)
-    for sum_node in get_nodes_by_type(root, Sum):
-        normalization = np.sum(sum_node.weights)
-        sum_node.weights = [w / normalization for w in sum_node.weights]
+    if True:
+        for sum_node in get_nodes_by_type(root, Sum):
+            normalization = np.sum(sum_node.weights)
+            sum_node.weights = [w / normalization for w in sum_node.weights]
+        for cat_node in get_nodes_by_type(root, CategoricalDictionary):
+            psum = 0
+            for name, count in cat_node.p.items():
+                psum += count
+            cat_node.p = {name: count / psum for name, count in cat_node.p.items()}
     return root
 
 
 if __name__ == '__main__':
     path = "/Users/alejomc/Downloads/100k/"
 
-    path = "/Users/alejomc/PycharmProjects/idbspn/datasets/ml-small/"
+    # path = "/Users/alejomc/PycharmProjects/idbspn/datasets/ml-tiny/"
+    # path = "/Users/alejomc/PycharmProjects/idbspn/datasets/ml-small/"
     test_path = path + "test/"
 
     attributes_in_table_test, test_scopes, test_meta_data, _ = parse_attributes(test_path)
@@ -441,7 +466,8 @@ if __name__ == '__main__':
         val, msg = is_valid(spn)
         print(spn_to_str_ref_graph(spn))
         assert val, msg
-        print(spn_to_str_ref_graph(spn))
+        # 0/0
+        # print(spn_to_str_ref_graph(spn))
 
         keep = set(scopes.values())
         keep.discard(scopes["userid"])

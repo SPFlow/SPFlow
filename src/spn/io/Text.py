@@ -40,13 +40,16 @@ def spn_to_str_ref_graph(node, feature_names=None, node_to_str=None):
             return node_to_str[t_node](node, feature_names, node_to_str)
 
     if isinstance(node, Leaf):
-        return node.name + " " + spn_to_str_equation(node, feature_names) + "\n"
+        return str(node) + " " + spn_to_str_equation(node, feature_names) + "\n"
 
     if isinstance(node, Product):
+        dbg = ""
+        if node.debug is not None:
+            dbg = node.debug
         pd = ", ".join(map(lambda c: c.name, node.children))
         chld_str = "".join(map(lambda c: spn_to_str_ref_graph(c, feature_names, node_to_str), node.children))
         chld_str = chld_str.replace("\n", "\n\t")
-        return "%s ProductNode(%s){\n\t%s}\n" % (node.name, pd, chld_str)
+        return "%s ProductNode(%s){\n\t%s}\n" % (str(node), pd, chld_str)
 
     if isinstance(node, Sum):
         w = node.weights
@@ -54,7 +57,7 @@ def spn_to_str_ref_graph(node, feature_names=None, node_to_str=None):
         sumw = ", ".join(map(lambda i: "%s*%s" % (w[i], ch[i].name), range(len(ch))))
         child_str = "".join(map(lambda c: spn_to_str_ref_graph(c, feature_names, node_to_str), node.children))
         child_str = child_str.replace("\n", "\n\t")
-        return "%s SumNode(%s){\n\t%s}\n" % (node.name, sumw, child_str)
+        return "%s SumNode(%s){\n\t%s}\n" % (str(node), sumw, child_str)
 
     raise Exception('Node type not registered: ' + str(type(node)))
 
