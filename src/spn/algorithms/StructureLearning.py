@@ -22,7 +22,7 @@ from spn.structure.Base import Product, Sum, assign_ids
 import multiprocessing
 import os
 
-pool = multiprocessing.Pool(processes=os.cpu_count() - 1)
+pool = multiprocessing.Pool(processes=os.cpu_count() - 1, )
 
 class Operation(Enum):
     CREATE_LEAF = 1

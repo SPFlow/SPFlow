@@ -99,7 +99,7 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
     if rand_gen is None:
         rand_gen = np.random.RandomState(17)
 
-    def learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
+    def learn_param(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
         if cols == "rdc":
             split_cols = get_split_cols_RDC_py(threshold, rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
         if rows == "rdc":
@@ -112,9 +112,9 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
         return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop)
 
     if memory:
-        learn = memory.cache(learn)
+        learn_param = memory.cache(learn_param)
 
-    return learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
+    return learn_param(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
 
 def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", min_instances_slice=200, threshold=0.01,
@@ -136,7 +136,7 @@ def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", m
     if leaves is None:
         leaves = create_conditional_leaf
 
-    def learn(data, ds_context, scope, cols, rows, min_instances_slice, threshold, ohe):
+    def learn_cond(data, ds_context, scope, cols, rows, min_instances_slice, threshold, ohe):
         split_cols = None
         if cols == "ci":
             from spn.algorithms.splitting.RCoT import getCIGroup
@@ -159,6 +159,6 @@ def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", m
         return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop, scope)
 
     if memory:
-        learn = memory.cache(learn)
+        learn_cond = memory.cache(learn_cond)
 
-    return learn(data, ds_context, scope, cols, rows, min_instances_slice, threshold, ohe)
+    return learn_cond(data, ds_context, scope, cols, rows, min_instances_slice, threshold, ohe)
