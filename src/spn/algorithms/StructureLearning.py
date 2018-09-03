@@ -7,6 +7,8 @@ import logging
 from collections import deque
 from enum import Enum
 
+from tqdm import tqdm
+
 try:
     from time import perf_counter
 except:
@@ -22,7 +24,8 @@ from spn.structure.Base import Product, Sum, assign_ids
 import multiprocessing
 import os
 
-pool = multiprocessing.Pool(processes=os.cpu_count() - 1, )
+cpus = os.cpu_count() - 2 - int(os.getloadavg()[2])
+pool = multiprocessing.Pool(processes=cpus,)
 
 class Operation(Enum):
     CREATE_LEAF = 1
@@ -215,6 +218,10 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
                 local_children_params.append((child_data_slice, ds_context, [scope[col]]))
 
             result_nodes = pool.starmap(create_leaf, local_children_params)
+            #result_nodes = []
+            #for l in tqdm(local_children_params):
+            #    result_nodes.append(create_leaf(*l))
+            #result_nodes = [create_leaf(*l) for l in local_children_params]
             for (parent, children_pos), child in zip(local_tasks, result_nodes):
                 parent.children[children_pos] = child
 
