@@ -29,7 +29,9 @@ def get_blocks(imgs, num_blocks=(2, 2), blocks=[0, 1]):
 def stitch_imgs(imgs=0, img_size=(20, 20), num_blocks=(2, 2), blocks=None):
     block_size = (img_size[0] // num_blocks[0], img_size[1] // num_blocks[1])
 
-    result = np.zeros((imgs, block_size[0], block_size[1] * np.prod(num_blocks)))
+    result = np.zeros((imgs, img_size[0], img_size[1]))
+
+    result_idx = np.arange(0, np.prod(num_blocks)).reshape(num_blocks[0], num_blocks[1])
 
     for block_pos, block_values in blocks.items():
         if type(block_pos) == int:
@@ -37,14 +39,11 @@ def stitch_imgs(imgs=0, img_size=(20, 20), num_blocks=(2, 2), blocks=None):
         sub_blocks = np.split(block_values, len(block_pos), axis=1)
         for bp, bv in zip(block_pos, sub_blocks):
             bv = bv.reshape(-1, block_size[0], block_size[1])
-            rpos = bp * block_size[1]
-            result[:, :, rpos:rpos + block_size[1]] = bv
-            # print(bp, bv)
+            idx, idy = np.where(result_idx == bp)
+            idx = idx[0] * block_size[0]
+            idy = idy[0] * block_size[1]
+            result[:, idx:idx+block_size[0], idy:idy + block_size[1]] = bv
 
-    # vsplits = np.split(imgs, num_blocks[0], axis=1)
-    # splits = [np.split(vs, num_blocks[1], axis=2) for vs in vsplits]
-    # blocks_imgs = np.concatenate(splits)
-    result = np.concatenate(np.split(result, num_blocks[1], axis=2), axis=1)
 
     return result
 
