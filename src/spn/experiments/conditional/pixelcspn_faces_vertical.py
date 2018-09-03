@@ -1,15 +1,11 @@
-import hashlib
 import logging
 
+import numpy as np
 from joblib import Memory
 
 from spn.algorithms.MPE import mpe
-from spn.experiments.conditional.img_tools import rescale, standardize, add_poisson_noise, get_blocks, get_imgs, \
-    set_sub_block_nans, stitch_imgs, show_img, save_img
+from spn.experiments.conditional.img_tools import get_blocks, set_sub_block_nans, stitch_imgs, save_img
 from spn.structure.leaves.conditional.MPE import add_conditional_mpe_support
-
-from spn.data.datasets import get_mnist
-import numpy as np
 
 np.random.seed(42)
 
@@ -22,6 +18,7 @@ from spn.structure.leaves.parametric.Parametric import Gaussian
 from numpy.random.mtrand import RandomState
 from spn.algorithms.Sampling import sample_instances
 from spn.structure.leaves.conditional.Sampling import add_conditional_sampling_support
+import os
 
 add_conditional_inference_support()
 add_conditional_sampling_support()
@@ -40,7 +37,9 @@ def one_hot(y):
 
 
 if __name__ == '__main__':
-    output_path = '/Users/alejomc/PycharmProjects/SimpleSPN/src/spn/experiments/conditional/imgs_pixelcspn_faces/'
+
+
+    output_path = os.path.dirname(os.path.abspath(__file__)) + '/imgs_pixelcspn_faces/'
 
     logging.basicConfig(level=logging.DEBUG)
     logging.captureWarnings(True)
@@ -61,7 +60,7 @@ if __name__ == '__main__':
         datasets.append((get_blocks(images, num_blocks=num_blocks, blocks=block_ids.tolist()), 1))
 
     num_mpes = 1
-    num_samples = 1
+    num_samples = 10
 
     cspns = []
     mpe_query_blocks = None
@@ -69,13 +68,13 @@ if __name__ == '__main__':
     for i, ((tr_block, block_idx), conditional_blocks) in enumerate(datasets):
         print('learning', i)
         conditional_features_count = (tr_block.shape[1] // len(block_idx)) * conditional_blocks
-        if i == 0 or True:
+        if i == 0:
             # spn
             ds_context = Context(meta_types=[MetaType.REAL] * tr_block.shape[1])
             ds_context.add_domains(tr_block)
             ds_context.parametric_types = [Gaussian] * tr_block.shape[1]
 
-            cspn = learn_parametric(tr_block, ds_context, min_instances_slice=10.5 * len(tr_block), ohe=False,
+            cspn = learn_parametric(tr_block, ds_context, min_instances_slice=0.5 * len(tr_block), ohe=False,
                                     memory=memory)
         else:
             cspn = learn_conditional(
@@ -83,9 +82,12 @@ if __name__ == '__main__':
                 Context(meta_types=[MetaType.REAL] * tr_block.shape[1],
                         parametric_types=[Conditional_Gaussian] * tr_block.shape[1]).add_domains(tr_block),
                 scope=list(range(conditional_features_count)),
-                min_instances_slice=10.5 * tr_block.shape[0], memory=memory)
+                min_instances_slice=0.05 * tr_block.shape[0], memory=memory)
         cspns.append(cspn)
         print('done')
+
+    #for i, ((tr_block, block_idx), conditional_blocks) in enumerate(datasets):
+    #    cspn = cspns[i]
         if i == 0:
             # first time, we only care about the structure to put nans
             mpe_query_blocks = np.zeros_like(tr_block[0:num_mpes, :].reshape(num_mpes, -1))
@@ -108,7 +110,7 @@ if __name__ == '__main__':
         cspn_sample_query = set_sub_block_nans(sample_query_blocks, inp=block_idx, nans=block_idx[0:conditional_blocks])
         sample_result = sample_instances(cspn, cspn_sample_query, RandomState(123))
 
-        sample_img_blocks = stitch_imgs(mpe_result.shape[0], img_size=img_size, num_blocks=num_blocks,
+        sample_img_blocks = stitch_imgs(sample_result.shape[0], img_size=img_size, num_blocks=num_blocks,
                                         blocks={tuple(block_idx): sample_result})
 
         for j in range(num_mpes):
