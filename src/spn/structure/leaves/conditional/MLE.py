@@ -36,7 +36,7 @@ def update_glm_parameters_mle(node, data, scope):  # assume data is tuple (outpu
         reg = ElasticNet(random_state=0, alpha=0.01, max_iter=2000, fit_intercept=False)
         reg.fit(dataIn, dataOut)
         if reg.n_iter_ < reg.max_iter:
-            node.weight = reg.coef_.tolist()
+            node.weights = reg.coef_.tolist()
             return
 
 
@@ -50,7 +50,7 @@ def update_glm_parameters_mle(node, data, scope):  # assume data is tuple (outpu
         raise Exception("Unknown conditional " + str(type(node)))
 
     glmfit = sm.GLM(dataOut, dataIn, family=family).fit_regularized(alpha=0.0001, maxiter=5)
-    node.weights = glmfit.params
+    node.weights = glmfit.params.tolist()
     return
     try:
         import tensorflow as tf

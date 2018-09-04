@@ -24,7 +24,7 @@ from spn.structure.Base import Product, Sum, assign_ids
 import multiprocessing
 import os
 
-cpus = os.cpu_count() - 2 - int(os.getloadavg()[2])
+cpus = os.cpu_count() - 2 #- int(os.getloadavg()[2])
 pool = multiprocessing.Pool(processes=cpus,)
 
 class Operation(Enum):
@@ -195,11 +195,26 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             node.scope.extend(scope)
             parent.children[children_pos] = node
 
+            local_tasks = []
+            local_children_params = []
             for data_slice, scope_slice, _ in data_slices:
                 assert isinstance(scope_slice, list), "slice must be a list"
 
                 node.children.append(None)
-                tasks.append((data_slice, node, len(node.children) - 1, scope_slice, False, False))
+                if len(scope_slice) > 1:
+                    tasks.append((data_slice, node, len(node.children) - 1, scope_slice, False, False))
+                elif len(scope_slice) == 1:
+                    local_tasks.append((node, len(node.children) - 1))
+                    child_data_slice = data_slicer(data_slice, scope_slice, num_conditional_cols)
+                    local_children_params.append((child_data_slice, ds_context, scope_slice))
+                else:
+                    assert False
+
+
+            if len(local_tasks) > 0:
+                result_nodes = pool.starmap(create_leaf, local_children_params)
+                for (nparent, children_pos), child in zip(local_tasks, result_nodes):
+                    nparent.children[children_pos] = child
             continue
 
         elif operation == Operation.NAIVE_FACTORIZATION:
