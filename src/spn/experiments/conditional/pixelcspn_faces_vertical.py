@@ -74,7 +74,7 @@ if __name__ == '__main__':
             ds_context.add_domains(tr_block)
             ds_context.parametric_types = [Gaussian] * tr_block.shape[1]
 
-            cspn = learn_parametric(tr_block, ds_context, min_instances_slice=0.5 * len(tr_block), ohe=False,
+            cspn = learn_parametric(tr_block, ds_context, min_instances_slice=20, ohe=False,
                                     memory=memory)
         else:
             cspn = learn_conditional(
@@ -82,7 +82,7 @@ if __name__ == '__main__':
                 Context(meta_types=[MetaType.REAL] * tr_block.shape[1],
                         parametric_types=[Conditional_Gaussian] * tr_block.shape[1]).add_domains(tr_block),
                 scope=list(range(conditional_features_count)),
-                min_instances_slice=0.05 * tr_block.shape[0], memory=memory)
+                min_instances_slice=30, memory=memory)
         cspns.append(cspn)
         print('done')
 
