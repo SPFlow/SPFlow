@@ -62,14 +62,14 @@ def get_split_cols_binary_random_partition(threshold, rand_gen, beta_a=4, beta_b
         # with a certain percentage it may fail, such that row partitioning may happen
         clusters = None
         p = rand_gen.rand()
-        print('P', p)
+        #print('P', p)
         if p > threshold:
             #
             # draw percentage of split from  a Beta
             alloc_perc = rand_gen.beta(a=beta_a, b=beta_b)
             clusters = rand_gen.choice(2, size=local_data.shape[1], p=[alloc_perc,
                                                                        1 - alloc_perc])
-            print(clusters, clusters.sum(), clusters.shape, alloc_perc)
+            #print(clusters, clusters.sum(), clusters.shape, alloc_perc)
         else:
             clusters = np.zeros(local_data.shape[1])
 

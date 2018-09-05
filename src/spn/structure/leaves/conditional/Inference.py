@@ -30,10 +30,10 @@ def conditional_likelihood(node, data, dtype=np.float64):
     # marginalize over something?
     marg_ids = np.isnan(dataOut)
 
-    print("evidence", node.evidence_size)
-    print("data", np.shape(data))
-    print("dataIn/Out shape", np.shape(dataIn), np.shape(dataOut))
-    print("dataIn[~marg_ids])", np.shape(dataIn[~marg_ids]))
+    #print("evidence", node.evidence_size)
+    #print("data", np.shape(data))
+    #print("dataIn/Out shape", np.shape(dataIn), np.shape(dataOut))
+    #print("dataIn[~marg_ids])", np.shape(dataIn[~marg_ids]))
     scipy_obj, params = get_scipy_obj_params(node, dataIn[~marg_ids])
 
     if isinstance(node, Conditional_Gaussian):
@@ -46,7 +46,7 @@ def conditional_likelihood(node, data, dtype=np.float64):
     else:
         raise Exception("Unknown parametric " + str(type(node)))
 
-    print(probs)
+    #print(probs)
     return probs
 
 
