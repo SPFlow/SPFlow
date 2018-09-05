@@ -44,7 +44,7 @@ def learn_mspn_with_missing(data, ds_context, cols="rdc", rows="kmeans", min_ins
     if rand_gen is None:
         rand_gen = np.random.RandomState(17)
 
-    def learn(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe):
+    def l_mspn_missing(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe):
         if cols == "rdc":
             split_cols = get_split_cols_RDC_py(threshold, rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
         if rows == "rdc":
@@ -60,9 +60,9 @@ def learn_mspn_with_missing(data, ds_context, cols="rdc", rows="kmeans", min_ins
         return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop)
 
     if memory:
-        learn = memory.cache(learn)
+        l_mspn_missing = memory.cache(l_mspn_missing)
 
-    return learn(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe)
+    return l_mspn_missing(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe)
 
 
 def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3, ohe=False,
@@ -73,7 +73,7 @@ def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=
     if rand_gen is None:
         rand_gen = np.random.RandomState(17)
 
-    def learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
+    def l_mspn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
         if cols == "rdc":
             split_cols = get_split_cols_RDC_py(threshold, rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
         if rows == "rdc":
@@ -86,9 +86,9 @@ def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=
         return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop)
 
     if memory:
-        learn = memory.cache(learn)
+        l_mspn = memory.cache(l_mspn)
 
-    return learn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
+    return l_mspn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
 
 def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3, ohe=False,
