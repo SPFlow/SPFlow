@@ -146,9 +146,10 @@ def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", m
             raise ValueError('invalid independence test')
         if rows == "rand_hp":
             from spn.algorithms.splitting.Random import get_split_rows_random_partition
-
             split_rows = get_split_rows_random_partition(np.random.RandomState(17)) #(data, scope, threshold)
         elif rows == "kmeans":
+            split_rows = get_split_rows_KMeans()
+        elif rows == "tsne":
             split_rows = get_split_rows_KMeans()
         else:
             # todo add other clustering?
