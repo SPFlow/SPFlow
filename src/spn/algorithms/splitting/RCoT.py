@@ -45,8 +45,9 @@ def getCIGroup(rand_gen, ohe=False):
         dataOut = data[output_mask].reshape(num_instance, -1)
         dataIn = data[~output_mask].reshape(num_instance, -1)
 
-        assert len(dataIn) > 0
-        assert len(dataOut) > 0
+        assert dataIn.shape[0] > 0
+        assert dataOut.shape[0] > 0
+        assert dataOut.shape[1] > 1
 
         pvals = testRcoT(dataOut, dataIn)
 

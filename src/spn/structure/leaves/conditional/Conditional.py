@@ -60,7 +60,6 @@ class Conditional_Bernoulli(Conditional):
 
 def create_conditional_leaf(data, ds_context, scope):
     from spn.structure.leaves.conditional.MLE import update_glm_parameters_mle
-    from spn.structure.leaves.conditional.BayesianEstimator import update_glm_parameters_bayesian
 
     assert len(scope) == 1, "scope of univariate parametric for more than one variable?"
     idx = scope[0]
@@ -73,11 +72,5 @@ def create_conditional_leaf(data, ds_context, scope):
     node = contidional_type(scope=idx, evidence_size=data.shape[1] - len(scope))
 
     update_glm_parameters_mle(node, data, scope)
-
-    # try:
-    #     update_glm_parameters_mle(node, data, scope)
-    # except:
-    #     print("MLE failed, attempting Bayesian")
-    #     update_glm_parameters_bayesian(node, data, scope)
 
     return node

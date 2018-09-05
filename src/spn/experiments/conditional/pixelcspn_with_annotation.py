@@ -1,3 +1,5 @@
+import logging
+
 from joblib import Memory
 
 from spn.algorithms.MPE import mpe
@@ -25,6 +27,8 @@ add_conditional_mpe_support()
 
 memory = Memory(cachedir="/tmp/cspn_cache", verbose=0, compress=9)
 
+logging.basicConfig(level=logging.DEBUG)
+logging.captureWarnings(True)
 
 def one_hot(y):
     if len(y.shape) != 1:
@@ -45,10 +49,10 @@ if __name__ == '__main__':
     data_labels_tr = np.concatenate(data_labels_tr, axis=0)
 
     print("mnist loaded")
-    images = rescale(data_tr, original_size=(28, 28), new_size=(20, 20))
-    images = get_imgs(images, size=(20, 20))
+    #images = rescale(data_tr, original_size=(28, 28), new_size=(20, 20))
+    images = get_imgs(data_tr, size=(28, 28))
     images = standardize(images)
-    images = add_poisson_noise(images)
+    #images = add_poisson_noise(images)
 
     data_labels_tr = one_hot(data_labels_tr)
 
@@ -79,8 +83,10 @@ if __name__ == '__main__':
             Context(meta_types=[MetaType.REAL] * tr_block.shape[1],
                     parametric_types=[Conditional_Gaussian] * tr_block.shape[1]).add_domains(tr_block),
             scope=list(range(datasets[0][0].shape[1])),
-            min_instances_slice=3 * tr_block.shape[0], memory=memory)
+            min_instances_slice=0.1 * tr_block.shape[0], memory=memory)
         cspns.append(cspn)
+
+        continue
 
         if mpe_query_blocks is None:
             # first time, we only care about the structure to put nans
@@ -93,6 +99,9 @@ if __name__ == '__main__':
 
             sample_query_blocks = np.zeros_like(np.array(tr_block[0:10, :].reshape(10, -1)))
             sample_query_blocks[:, -(sample_result.shape[1] - 10):] = sample_result[:, 0:-10]
+
+
+
 
         cspn_mpe_query = np.concatenate((set_sub_block_nans(mpe_query_blocks, inp=block_idx, nans=[block_idx[0]]),
                                          np.eye(10, 10)), axis=1)
