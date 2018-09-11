@@ -1,0 +1,34 @@
+%
+    i ~believe $person.name is ~around $person.age ~yearsOld and @theyIs($person.gender) $characteristic
+
+~believe
+    believe
+    think
+
+~around
+    around
+    about
+    approx
+
+~yearsOld
+    years old
+    years of age
+
+$person
+    *
+        name: joey
+        age: 5
+        gender: m
+    *
+        name: jill
+        age: 50
+        gender: f
+
+$characteristic
+    inspiring
+    ignorant
+    interesting
+
+@theyIs
+    m: he is
+

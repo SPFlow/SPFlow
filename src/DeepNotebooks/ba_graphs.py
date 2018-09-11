@@ -1,4 +1,4 @@
-import igraph
+#import igraph
 import itertools
 import numpy as np
 from ba_functions import get_correlation_matrix

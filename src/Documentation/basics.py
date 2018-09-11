@@ -172,15 +172,25 @@ def extend():
     print("pareto", log_likelihood(spn, np.array([1.5]).reshape(-1, 1)))
 
 if __name__ == '__main__':
+    print('create_SPN')
     create_SPN()
+    print('to_string')
     to_str()
+    print('plot')
     plot()
+    print('inference')
     inference()
+    # print('tensorflow')
     # tensorflow()
+    print('valid')
     valid()
+    print('stats')
     stats()
+    print('sample')
     sample()
+    print('classification')
     classification()
+    print('extend')
     extend()
 
 

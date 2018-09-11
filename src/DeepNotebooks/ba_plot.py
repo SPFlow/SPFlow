@@ -1,4 +1,4 @@
-import igraph
+#import igraph
 import numpy as np
 import ba_graphs as g
 import matplotlib.pyplot as plt

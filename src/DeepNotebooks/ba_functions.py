@@ -1,39 +1,70 @@
 import itertools
-import random
 import csv
 import math
 import numpy as np
 import pandas as pd
-from joblib.memory import Memory
+# from joblib.memory import Memory
 import scipy.integrate as integrate
 from sklearn.preprocessing import LabelEncoder
-from tfspn.SPN import SPN, Splitting
-from tfspn.tfspn import ProductNode
-from sympy.utilities.iterables import multiset_permutations
+# from tfspn.SPN import SPN, Splitting
+# from tfspn.tfspn import ProductNode
 from IPython.display import display, Markdown
+from spn.structure.leaves.parametric.Parametric import Categorical
+from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
+from spn.structure.Base import Context
+
+from spn.algorithms.LearningWrappers import learn_mspn
 
 
 def query(spn, instance):
+    '''
+    simple query wrapper which performs exponentiation on an spn query return
+    :param spn: a valid spn used for the query
+    :param instance: an instantiation of all rvs
+    :return: exponential of the query result
+    '''
     return np.exp(spn.root.eval(instance))
 
 
-def predict_proba(spn, feature, instances):
-    return spn_predict_proba(spn, feature, instances)
-
-
 def predict(spn, feature, instances):
-    return np.argmax(predict_proba(spn, feature, instances), axis = 1)
+    '''
+    Returns the most probable configuration of the feature given the instance as evidence
+
+    :param spn: the spn used for the query
+    :param feature: the feature to predict (must be a categorical feature)
+    :param instances: the query instance
+    :return: argmax_x P(x|instance)
+    '''
+    return np.argmax(predict_proba(spn, feature, instances), axis=1)
 
 
 def get_variance(node, numFeatures):
+    '''
+    returns the variance of all RVs encapsuled by the node
+    :param node: the node (most often an spn.root)
+    :param numFeatures: the amount of features encapsuled by the node
+    :return: the variance of all RVs
+    '''
     return node.moment(2, numFeatures) - node.moment(1, numFeatures) ** 2
 
 
 def printmd(string=''):
+    '''
+    a display wrapper for Jupyter notebooks
+    TODO: move to ba_plot
+    :param string: a markdown string
+    :return: a jupyter display object
+    '''
     display(Markdown(str(string)))
 
 
 def save_dataset(dataset, file_location):
+    '''
+    Wrapper to save a preformated pandas
+    :param dataset:
+    :param file_location:
+    :return:
+    '''
     values = dataset.data
     targets = dataset.target.reshape(np.size(dataset.target), 1)
     whole = np.append(values, targets, axis=1)
@@ -41,78 +72,58 @@ def save_dataset(dataset, file_location):
 
 
 def learn_spn(dataset="data/iris", precision=25, independence=0.1, header=0, date=None, isotonic=False, histogram=True, types=False):
+    '''
+    Learning wrapper for the jupyter notebooks. Performs some preliminary feature analysis on the given dataset and prepares the data
+    for the mspn
+    :param dataset: file location of the dataset
+    :param precision: the precision used for calculating the notebooks spn TODO: find better name
+    :param independence: the maximum dependence a statistical independence test
+                         may show to split columns
+    :param header: the location of the csv header
+    :param date: location of datetime columns in the csv
+    :param isotonic: whether to use isotonic nodes
+    :param histogram: whether to ue histogram nodes
+    :param types: whether the csv contains type annotations
+    :return: a valid spn and a data dictionary containing preprocessing information
+    '''
     skiprows = [1] if types else []
     df = pd.read_csv(dataset, delimiter=",", header=header, parse_dates=date, skiprows=skiprows)
     df = df.dropna(axis=0, how='any')
-    featureNames = df.columns.values.tolist() if header == 0 else ["X_{}".format(i) for i in range(len(df.columns))]
+    feature_names = df.columns.values.tolist() if header == 0 else ["X_{}".format(i) for i in range(len(df.columns))]
     
     dtypes = df.dtypes
 
-    if types:
-        featureTypes = []
-        families = []
-        with open(dataset, 'r') as csvfile:
-            csvreader = csv.reader(csvfile, delimiter=',', quotechar='|')
-            csvreader.__next__()
-            _types = csvreader.__next__()
-        for featureType in _types:
-            print(featureType)
-            if featureType == 'cat':
-                featureTypes.append('categorical')
-                if histogram:
-                    families.append('histogram')
-                elif isotonic:
-                    families.append('isotonic')
-                else:
-                    families.append('piecewise')
-            elif featureType == 'con':
-                featureTypes.append('continuous')
-                families.append('piecewise' if not isotonic else 'isotonic')
-            elif featureType == 'dis':
-                featureTypes.append('discrete')
-                families.append('piecewise' if not isotonic else 'isotonic')
+    def to_feature_types(types):
+        feature_types = []
+        for feature_type in types:
+            if feature_type.kind == 'O':
+                feature_types.append(Categorical)
+            elif feature_type.kind == 'f':
+                feature_types.append(PiecewiseLinear)
+            elif feature_type.kind == np.dtype('i'):
+                feature_types.append(PiecewiseLinear)
             else:
-                featureTypes.append('unknown')
-                families.append('piecewise' if not isotonic else 'isotonic')
-
-    
-    def to_featureTypes(types):
-        featureTypes = []
-        families = []
-        for featureType in types:
-            if featureType.kind == 'O':
-                featureTypes.append('categorical')
-                if histogram:
-                    families.append('histogram')
-                elif isotonic:
-                    families.append('isotonic')
-                else:
-                    families.append('piecewise')
-            elif featureType.kind == 'f':
-                featureTypes.append('continuous')
-                families.append('piecewise' if not isotonic else 'isotonic')
-            elif featureType.kind == np.dtype('i'):
-                featureTypes.append('discrete')
-                families.append('piecewise' if not isotonic else 'isotonic')
-            else:
-                featureTypes.append('unknown')
-                families.append('piecewise' if not isotonic else 'isotonic')
-        return featureTypes, families
+                feature_types.append(PiecewiseLinear)
+        return feature_types
 
     if not types:
-        featureTypes, families = to_featureTypes(dtypes)
+        feature_types = to_feature_types(dtypes)
+
+    # TODO: Build Context wrapper according to README.md, this should work pretty well
 
     data_dictionary = {
-            'features': [{"name": name, "family": family, "type": typ, 'pandas_type': dtypes[i]} for i, (name, family, typ) in enumerate(zip(featureNames, families, featureTypes))],
+            'features': [{"name": name,
+                          "type": typ,
+                          "pandas_type": dtypes[i]}
+                         for i, (name, typ)
+                         in enumerate(zip(feature_names, feature_types))],
             'num_entries': len(df)
             } 
-
-    # print(df.info())
 
     idx = df.columns
     
     for id, name in enumerate(idx):
-        if featureTypes[id] == 'categorical':
+        if feature_types[id] == Categorical:
             lb = LabelEncoder()
             data_dictionary['features'][id]["encoder"] = lb
             df[name] = df[name].astype('category')
@@ -121,23 +132,33 @@ def learn_spn(dataset="data/iris", precision=25, independence=0.1, header=0, dat
         if dtypes[id].kind == 'M':
             df[name] = (df[name] - df[name].min())  / np.timedelta64(1,'D')
 
-    # print(df.head())
     data = np.array(df)
 
-    # print(featureTypes)
-    spn = SPN.LearnStructure(data, 
-                             featureTypes = featureTypes,
-                             featureNames = featureNames,
-                             min_instances_slice=precision,
-                             families=families,
-                             row_split_method=Splitting.KmeansRDCRows(),
-                             col_split_method=Splitting.RDCTest(threshold=independence))
+    # TODO: PiecewiseLinear Types do not work like the ParametricNodes
+
+    spn = learn_mspn(data,
+                     Context(parametric_types=feature_types).add_domains(data),
+                     cols="rdc",
+                     rows="kmeans",
+                     min_instances_slice=200,
+                     threshold=0.3,
+                     ohe=False,
+                     leaves=None)
     
     spn.name = dataset
     return spn, data_dictionary
 
 
 def learn_with_cross_valid(search_grid, dataset="data/iris", header=0, date=None, isotonic=True):
+    '''
+    A wrapper to learn a crossvalidated spn
+    :param search_grid:
+    :param dataset:
+    :param header:
+    :param date:
+    :param isotonic:
+    :return:
+    '''
     spn, d = learn_spn(dataset=dataset, header=header, date=date, isotonic=isotonic)
     valid = load_dataset(dataset + '.valid', d)
     precisions = np.linspace(search_grid['pre'][0], search_grid['pre'][1], search_grid['pre'][2])
@@ -151,6 +172,14 @@ def learn_with_cross_valid(search_grid, dataset="data/iris", header=0, date=None
 
 
 def spn_query_id(spn, index, value, query=None):
+    '''
+
+    :param spn:
+    :param index:
+    :param value:
+    :param query:
+    :return:
+    '''
     if not query:
         query = np.array([[np.nan] * spn.numFeatures])
     query[:,index] = value
@@ -444,7 +473,7 @@ def get_node_description(spn, parent_node, size):
     return node_descriptions
 
 
-def spn_predict_proba(spn, feature, query):
+def predict_proba(spn, feature, query):
     from concurrent.futures import ThreadPoolExecutor
     domain = np.linspace(spn.domains[feature][0], spn.domains[feature][-1], len(spn.domains[feature]))
     proba = []

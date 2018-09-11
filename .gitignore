@@ -212,3 +212,6 @@ venv.bak/
 src/spn/experiments/hyperspectral/trainedSPNs/
 
 # End of https://www.gitignore.io/api/osx,linux,python,pycharm
+#
+# # IDE files
+.idea/*
