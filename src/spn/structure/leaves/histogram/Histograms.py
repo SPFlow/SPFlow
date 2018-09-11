@@ -6,7 +6,7 @@ Created on March 20, 2018
 import numpy as np
 
 from spn.structure.Base import Leaf
-from spn.structure.StatisticalTypes import MetaType
+from spn.structure.StatisticalTypes import MetaType, Type
 
 rpy_initialized = False
 
@@ -27,8 +27,12 @@ def init_rpy():
 
 
 class Histogram(Leaf):
-    def __init__(self, breaks, densities, bin_repr_points, scope=None, meta_type=MetaType.REAL):
+
+    type = Type.CATEGORICAL
+
+    def __init__(self, breaks, densities, bin_repr_points, scope=None, meta_type=MetaType.DISCRETE):
         Leaf.__init__(self, scope=scope)
+        self.type = type(self).type
         self.meta_type = meta_type
         self.breaks = breaks
         self.densities = densities

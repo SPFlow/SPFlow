@@ -6,6 +6,8 @@ Created on March 20, 2018
 import numpy as np
 import collections
 
+from spn.structure.StatisticalTypes import Type
+
 
 class Node:
     def __init__(self):
@@ -122,6 +124,13 @@ class Context:
         self.domains = np.asanyarray(domain)
 
         return self
+
+    def get_categoricals(self):
+        '''
+        a helper function returning the ids of categorical variables
+        :return: the ids of categorical variables
+        '''
+        return [i for i, t in enumerate(self.parametric_type) if t.type == Type.CATEGORICAL]
 
 
 def get_number_of_edges(node):
