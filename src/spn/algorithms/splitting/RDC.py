@@ -269,7 +269,7 @@ def rdc_test(local_data,
                                    return_matrix=False,
                                    rand_gen=rand_gen)
 
-    pairwise_comparisons = itertools.combinations(np.arange(n_features), 2)
+    pairwise_comparisons = list(itertools.combinations(np.arange(n_features), 2))
 
     from joblib import Parallel, delayed
     rdc_vals = Parallel(n_jobs=n_jobs, max_nbytes=1024, backend="threading")(delayed(rdc_cca)((i, j, rdc_features))

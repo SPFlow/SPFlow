@@ -13,12 +13,15 @@ class Node:
     def __init__(self):
         self.id = 0
         self.scope = []
+        self.debug = None
 
     @property
     def name(self):
         return "%sNode_%s" % (self.__class__.__name__, self.id)
 
     def __repr__(self):
+        if self.debug is not None:
+            return self.debug(self)
         return self.name
 
     def __rmul__(self, weight):
@@ -91,13 +94,12 @@ class Context:
     def __init__(self, meta_types=None, domains=None, parametric_types=None):
         self.meta_types = meta_types
         self.domains = domains
-        self.parametric_type = parametric_types
+        self.parametric_types = parametric_types
 
         if self.meta_types is None and parametric_types is not None:
             self.meta_types = []
             for p in parametric_types:
                 self.meta_types.append(p.type.meta_type)
-
 
     def get_meta_types_by_scope(self, scopes):
         return [self.meta_types[s] for s in scopes]
@@ -116,10 +118,12 @@ class Context:
             feature_meta_type = self.meta_types[col]
             domain_values = [np.min(data[:, col]), np.max(data[:, col])]
 
-            if feature_meta_type == MetaType.REAL:
+            if feature_meta_type == MetaType.REAL or feature_meta_type == MetaType.BINARY:
                 domain.append(domain_values)
             elif feature_meta_type == MetaType.DISCRETE:
                 domain.append(np.arange(domain_values[0], domain_values[1] + 1, 1))
+            else:
+                raise Exception("Unkown MetaType " + str(feature_meta_type))
 
         self.domains = np.asanyarray(domain)
 
@@ -170,10 +174,10 @@ def bfs(root, func):
         node = queue.popleft()
         func(node)
         if not isinstance(node, Leaf):
-            for node in node.children:
-                if node not in seen:
-                    seen.add(node)
-                    queue.append(node)
+            for c in node.children:
+                if c not in seen:
+                    seen.add(c)
+                    queue.append(c)
 
 
 def get_nodes_by_type(node, ntype=Node):
@@ -203,7 +207,8 @@ def assign_ids(node, ids=None):
     bfs(node, assign_id)
 
 
-def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, after_eval_function=None, debug=False, **args):
+def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, after_eval_function=None, debug=False,
+                       **args):
     # evaluating in reverse order, means that we compute all the children first then their parents
     nodes = reversed(get_nodes_by_type(node))
 
@@ -216,18 +221,31 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, 
     else:
         all_results.clear()
 
+    for node_type, func in eval_functions.items():
+        node_type._eval_func = func
+        node_type._is_leaf = issubclass(node_type, Leaf)
+
+    tmp_children_list = []
+    len_tmp_children_list = 0
     for n in nodes:
-        type_n = type(n)
-        func = eval_functions.get(type_n, None)
+        #type_n = type(n)
+        #func = eval_functions.get(type_n, None)
+        func = n.__class__._eval_func
 
         if func is None:
-            raise Exception("No lambda function associated with type: %s" % (type_n))
+            raise Exception("No lambda function associated with type: %s" % (n.__class__))
 
-        if isinstance(n, Leaf):
+        #if isinstance(n, Leaf):
+        if n.__class__._is_leaf:
             result = func(n, input_vals, **args)
         else:
-            children = [all_results[c] for c in n.children]
-            result = func(n, children, input_vals, **args)
+            len_children = len(n.children)
+            if len_tmp_children_list < len_children:
+                tmp_children_list.extend([None] * len_children)
+                len_tmp_children_list = len(tmp_children_list)
+            for i, c in enumerate(n.children):
+                tmp_children_list[i] = all_results[c]
+            result = func(n, tmp_children_list[0:len_children], input_vals, **args)
 
         if after_eval_function is not None:
             after_eval_function(n, result)

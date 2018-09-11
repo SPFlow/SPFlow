@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     ds_context = Context(meta_types=[MetaType.DISCRETE, MetaType.DISCRETE, MetaType.DISCRETE, MetaType.DISCRETE])
     ds_context.add_domains(dataOut)
-    ds_context.parametric_type = [Conditional_Poisson, Conditional_Poisson, Conditional_Poisson, Conditional_Poisson]
+    ds_context.parametric_types = [Conditional_Poisson, Conditional_Poisson, Conditional_Poisson, Conditional_Poisson]
 
     scope = list(range(dataOut.shape[1]))
 

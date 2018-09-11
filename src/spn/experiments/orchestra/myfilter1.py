@@ -39,7 +39,7 @@ data=np.array(data).astype(np.float)
 types=[MetaType.DISCRETE,MetaType.DISCRETE,MetaType.DISCRETE,MetaType.DISCRETE]
 
 ds_context = Context(meta_types=types)
-ds_context.parametric_type = [Gaussian, Gaussian, Gaussian, Categorical]
+ds_context.parametric_types = [Gaussian, Gaussian, Gaussian, Categorical]
 ds_context.add_domains(data)
 
 num_classes = len(np.unique(data[:, 3]))

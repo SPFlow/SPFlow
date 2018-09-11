@@ -7,6 +7,8 @@ import logging
 from collections import deque
 from enum import Enum
 
+from tqdm import tqdm
+
 try:
     from time import perf_counter
 except:
@@ -19,7 +21,11 @@ import numpy as np
 from spn.algorithms.TransformStructure import Prune
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, assign_ids
+import multiprocessing
+import os
 
+cpus = os.cpu_count() - 2 #- int(os.getloadavg()[2])
+pool = multiprocessing.Pool(processes=cpus,)
 
 class Operation(Enum):
     CREATE_LEAF = 1
@@ -119,7 +125,6 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
         logging.debug('OP: {} on slice {} (remaining tasks {})'.format(operation, local_data.shape, len(tasks)))
 
         if operation == Operation.REMOVE_UNINFORMATIVE_FEATURES:
-
             node = Product()
             node.scope.extend(scope)
             parent.children[children_pos] = node
@@ -128,7 +133,8 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             for col in op_params:
                 rest_scope.remove(col)
                 node.children.append(None)
-                tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1, [scope[col]], True, True))
+                tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1,
+                              [scope[col]], True, True))
 
             node.children.append(None)
             c_pos = len(node.children) - 1
@@ -138,9 +144,11 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             if len(rest_scope) == 1:
                 next_final = True
 
-            rest_scope = list(rest_scope)
+            rest_cols = list(rest_scope)
+            rest_scope = [scope[col] for col in rest_scope]
 
-            tasks.append((data_slicer(local_data, rest_scope, num_conditional_cols), node, c_pos, rest_scope, next_final, next_final))
+            tasks.append((data_slicer(local_data, rest_cols, num_conditional_cols), node, c_pos, rest_scope, next_final,
+                          next_final))
 
             continue
 
@@ -159,6 +167,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             node = Sum()
             node.scope.extend(scope)
             parent.children[children_pos] = node
+            # assert parent.scope == node.scope
 
             for data_slice, scope_slice, proportion in data_slices:
                 assert isinstance(scope_slice, list), "slice must be a list"
@@ -170,7 +179,6 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             continue
 
         elif operation == Operation.SPLIT_COLUMNS:
-
             split_start_t = perf_counter()
             data_slices = split_cols(local_data, ds_context, scope)
             split_end_t = perf_counter()
@@ -179,17 +187,34 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
             if len(data_slices) == 1:
                 tasks.append((local_data, parent, children_pos, scope, False, True))
+                assert np.shape(data_slices[0][0]) == np.shape(local_data)
+                assert data_slices[0][1] == scope
                 continue
 
             node = Product()
             node.scope.extend(scope)
             parent.children[children_pos] = node
 
+            local_tasks = []
+            local_children_params = []
             for data_slice, scope_slice, _ in data_slices:
                 assert isinstance(scope_slice, list), "slice must be a list"
 
                 node.children.append(None)
-                tasks.append((data_slice, node, len(node.children) - 1, scope_slice, False, False))
+                if len(scope_slice) > 1:
+                    tasks.append((data_slice, node, len(node.children) - 1, scope_slice, False, False))
+                elif len(scope_slice) == 1:
+                    local_tasks.append((node, len(node.children) - 1))
+                    child_data_slice = data_slicer(data_slice, scope_slice, num_conditional_cols)
+                    local_children_params.append((child_data_slice, ds_context, scope_slice))
+                else:
+                    assert False
+
+
+            if len(local_tasks) > 0:
+                result_nodes = pool.starmap(create_leaf, local_children_params)
+                for (nparent, children_pos), child in zip(local_tasks, result_nodes):
+                    nparent.children[children_pos] = child
             continue
 
         elif operation == Operation.NAIVE_FACTORIZATION:
@@ -197,13 +222,27 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             node.scope.extend(scope)
             parent.children[children_pos] = node
 
+            local_tasks = []
+            local_children_params = []
             split_start_t = perf_counter()
             for col in range(len(scope)):
                 node.children.append(None)
-                tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1, [scope[col]], True, True))
+                # tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1, [scope[col]], True, True))
+                local_tasks.append((node, len(node.children) - 1))
+                child_data_slice = data_slicer(local_data, [col], num_conditional_cols)
+                local_children_params.append((child_data_slice, ds_context, [scope[col]]))
+
+            result_nodes = pool.starmap(create_leaf, local_children_params)
+            #result_nodes = []
+            #for l in tqdm(local_children_params):
+            #    result_nodes.append(create_leaf(*l))
+            #result_nodes = [create_leaf(*l) for l in local_children_params]
+            for (parent, children_pos), child in zip(local_tasks, result_nodes):
+                parent.children[children_pos] = child
+
             split_end_t = perf_counter()
 
-            logging.debug('\t\tsplit {} columns (in {:.5f} secs)'.format(len(scope), split_end_t - split_start_t))
+            logging.debug('\t\tnaive factorization {} columns (in {:.5f} secs)'.format(len(scope), split_end_t - split_start_t))
 
             continue
 
@@ -222,7 +261,8 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
     node = root.children[0]
     assign_ids(node)
-
+    valid, err = is_valid(node)
+    assert valid, "invalid spn: " + err
     node = Prune(node)
     valid, err = is_valid(node)
     assert valid, "invalid spn: " + err

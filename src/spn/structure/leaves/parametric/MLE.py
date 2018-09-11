@@ -4,10 +4,10 @@ Created on April 15, 2018
 @author: Alejandro Molina
 '''
 import numpy as np
-from scipy.stats import gamma, lognorm
+from scipy.stats import gamma, lognorm, bernoulli
 
 from spn.structure.leaves.parametric.Parametric import Gaussian, LogNormal, Gamma, Poisson, Exponential, Geometric, \
-    Categorical
+    Categorical, Bernoulli
 
 
 def update_parametric_parameters_mle(node, data):
@@ -49,6 +49,8 @@ def update_parametric_parameters_mle(node, data):
         node.mean = np.log(lognorm_params[2])
         node.stdev = lognorm_params[0]
 
+    elif isinstance(node, Bernoulli):
+        node.p = data.sum() / len(data)
 
     elif isinstance(node, Poisson):
         node.mean = np.mean(data)
