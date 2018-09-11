@@ -64,6 +64,7 @@ def inference():
     print("python ll", ll, np.exp(ll))
 
     llm = log_likelihood(spn_marg, test_data)
+
     print("python ll spn_marg", llm, np.exp(llm))
 
     test_data2 = np.array([np.nan, 0.0, 1.0]).reshape(-1, 3)
@@ -171,6 +172,37 @@ def extend():
 
     print("pareto", log_likelihood(spn, np.array([1.5]).reshape(-1, 1)))
 
+def learn():
+    import numpy as np
+    from spn.algorithms.LearningWrappers import learn_piecewise_from_data
+    spn, data_dictionary = learn_piecewise_from_data('src/DeepNotebooks/example_data/iris')
+    from spn.algorithms.Statistics import get_structure_stats
+    print(get_structure_stats(spn))
+    from spn.io.Text import spn_to_str_equation
+    print(spn_to_str_equation(spn))
+
+    np.random.seed(123)
+    train_data = np.c_[np.r_[
+                           np.random.normal(5, 1, (500, 2)), np.random.normal(
+                               10, 1, (500, 2))],
+                       np.r_[np.zeros((500, 1)), np.ones((500, 1))]]
+
+    from spn.algorithms.LearningWrappers import learn_parametric, \
+        learn_classifier
+    from spn.structure.leaves.parametric.Parametric import Categorical, \
+        Gaussian
+    from spn.structure.Base import Context
+    spn_classification = learn_classifier(train_data,
+                                          Context(parametric_types=[Gaussian,
+                                                                    Gaussian,
+                                                                    Categorical]).add_domains(
+                                              train_data),
+                                          learn_parametric, 2)
+
+    print(get_structure_stats(spn_classification))
+    print(spn_to_str_equation(spn_classification))
+
+
 if __name__ == '__main__':
     print('create_SPN')
     create_SPN()
@@ -192,6 +224,8 @@ if __name__ == '__main__':
     classification()
     print('extend')
     extend()
+    print('learn from data')
+    learn()
 
 
 
