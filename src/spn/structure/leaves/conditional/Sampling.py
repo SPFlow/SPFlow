@@ -15,7 +15,16 @@ def sample_conditional_node(node, n_samples, data, rand_gen):  # n_samples -> ob
 
     scipy_obj, params = get_scipy_obj_params(node, data[:, -node.evidence_size:])
 
-    X = scipy_obj.rvs(size=data.shape[0], random_state=rand_gen, **params)
+    if isinstance(node, Conditional_Poisson):
+        params['mu'] = np.clip(params['mu'], 0., 256.)  # todo tmp test
+    try:
+        X = scipy_obj.rvs(size=data.shape[0], random_state=rand_gen, **params)
+    except Exception:
+        print("node", node, node.weights)
+        print("params", params, np.shape(params))
+        print("data shape", np.shape(data))
+        print("input shape", np.shape(data[:, -node.evidence_size:]))
+        0/0
 
     assert X.shape[0] == data.shape[0]
 

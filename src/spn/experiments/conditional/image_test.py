@@ -88,7 +88,7 @@ if __name__ == '__main__':
 
     ds_context = Context(meta_types=[MetaType.DISCRETE] * dataOut.shape[1])
     ds_context.add_domains(dataOut)
-    ds_context.parametric_type = [Conditional_Poisson] * dataOut.shape[1]
+    ds_context.parametric_types = [Conditional_Poisson] * dataOut.shape[1]
 
     scope = list(range(dataOut.shape[1]))
 

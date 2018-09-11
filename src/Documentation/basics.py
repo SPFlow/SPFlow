@@ -5,8 +5,6 @@ Created on July 24, 2018
 '''
 
 
-
-
 def create_SPN():
     from spn.structure.leaves.parametric.Parametric import Categorical
 
@@ -125,7 +123,7 @@ def classification():
     import matplotlib.pyplot as plt
     colors = ['#bda36b', '#7aaab4']
     plt.figure()
-    #plt.hold(True)
+    # plt.hold(True)
     for k, col in zip(range(2), colors):
         my_members = train_data[:, 2] == k
         plt.plot(train_data[my_members, 0], train_data[my_members, 1], 'w', markerfacecolor=col, marker='.')
@@ -138,13 +136,15 @@ def classification():
     from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
     from spn.structure.Base import Context
     spn_classification = learn_classifier(train_data,
-                                          Context(parametric_types=[Gaussian, Gaussian, Categorical]).add_domains(train_data),
+                                          Context(parametric_types=[Gaussian, Gaussian, Categorical]).add_domains(
+                                              train_data),
                                           learn_parametric, 2)
 
     test_classification = np.array([3.0, 4.0, np.nan, 12.0, 18.0, np.nan]).reshape(-1, 3)
     print(test_classification)
     from spn.algorithms.MPE import mpe
     print(mpe(spn_classification, test_classification))
+
 
 def extend():
     import numpy as np
@@ -154,7 +154,6 @@ def extend():
         def __init__(self, a, scope=None):
             Leaf.__init__(self, scope=scope)
             self.a = a
-
 
     def pareto_likelihood(node, data, dtype=np.float64):
         probs = np.ones((data.shape[0], 1), dtype=dtype)
@@ -172,7 +171,8 @@ def extend():
 
     print("pareto", log_likelihood(spn, np.array([1.5]).reshape(-1, 1)))
 
-def learn():
+
+def learn_from_data():
     import numpy as np
     from spn.algorithms.LearningWrappers import learn_piecewise_from_data
     spn, data_dictionary = learn_piecewise_from_data('src/DeepNotebooks/example_data/iris')
@@ -203,8 +203,58 @@ def learn():
     print(spn_to_str_equation(spn_classification))
 
 
+def learn_MSPN():
+    import numpy as np
+
+    np.random.seed(123)
+
+    a = np.random.randint(2, size=1000).reshape(-1, 1)
+    b = np.random.randint(3, size=1000).reshape(-1, 1)
+    c = np.r_[np.random.normal(10, 5, (300, 1)), np.random.normal(20, 10, (700, 1))]
+    d = 5 * a + 3 * b + c
+    train_data = np.c_[a, b, c, d]
+
+    from spn.structure.Base import Context
+    from spn.structure.StatisticalTypes import MetaType
+
+    ds_context = Context(meta_types=[MetaType.DISCRETE, MetaType.DISCRETE, MetaType.REAL, MetaType.REAL]).add_domains(
+        train_data)
+
+    from spn.algorithms.LearningWrappers import learn_mspn
+
+    mspn = learn_mspn(train_data, ds_context, min_instances_slice=20)
+
+    from spn.algorithms.Statistics import get_structure_stats
+    print(get_structure_stats(mspn))
+
+def learn_PSPN():
+    import numpy as np
+
+    np.random.seed(123)
+
+    a = np.random.randint(2, size=1000).reshape(-1, 1)
+    b = np.random.randint(3, size=1000).reshape(-1, 1)
+    c = np.r_[np.random.normal(10, 5, (300, 1)), np.random.normal(20, 10, (700, 1))]
+    d = 5 * a + 3 * b + c
+    train_data = np.c_[a, b, c, d]
+
+    from spn.structure.Base import Context
+    from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
+
+    ds_context = Context(parametric_types=[Categorical, Categorical, Gaussian, Gaussian]).add_domains(train_data)
+
+    from spn.algorithms.LearningWrappers import learn_parametric
+
+    spn = learn_parametric(train_data, ds_context, min_instances_slice=20)
+
+    from spn.algorithms.Statistics import get_structure_stats
+    print(get_structure_stats(spn))
+
+
 if __name__ == '__main__':
     print('create_SPN')
+    learn_PSPN()
+    learn_MSPN()
     create_SPN()
     print('to_string')
     to_str()
@@ -225,10 +275,4 @@ if __name__ == '__main__':
     print('extend')
     extend()
     print('learn from data')
-    learn()
-
-
-
-
-
-
+    learn_from_data()

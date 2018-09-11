@@ -66,7 +66,7 @@ def create_conditional_leaf(data, ds_context, scope):
     idx = scope[0]
     # dataOut = data[:, [idx]]
 
-    contidional_type = ds_context.parametric_type[idx]
+    contidional_type = ds_context.parametric_types[idx]
 
     assert contidional_type is not None
 
