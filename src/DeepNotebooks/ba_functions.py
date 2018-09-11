@@ -612,8 +612,6 @@ def node_likelihood_contribution(spn, query):
     return log_likelihood
 
 
-def get_categoricals(spn):
-    return [i for i in range(spn.numFeatures) if spn.featureTypes[i] == 'categorical']
 
 
 def categorical_nodes_description(spn):
