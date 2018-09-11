@@ -1,0 +1,23 @@
+~prefix
+    ~greeting
+
+~greeting
+    hey there
+    yo
+    hello
+    hi
+
+~suffix
+    ~great? thanks
+    thank you
+    ~please
+
+~great
+    great
+    awesome
+    sweet
+
+~please
+    please
+    pretty please
+    plox
