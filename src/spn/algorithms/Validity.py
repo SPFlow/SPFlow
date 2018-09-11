@@ -14,7 +14,7 @@ def is_consistent(node):
     assert node is not None
 
     allchildscope = set()
-    for prod_node in get_nodes_by_type(node, Product):
+    for prod_node in reversed(get_nodes_by_type(node, Product)):
         nscope = set(prod_node.scope)
 
         if len(prod_node.children) == 0:
@@ -39,7 +39,7 @@ def is_complete(node):
 
     assert node is not None
 
-    for sum_node in get_nodes_by_type(node, Sum):
+    for sum_node in reversed(get_nodes_by_type(node, Sum)):
         nscope = set(sum_node.scope)
 
         if len(sum_node.children) == 0:

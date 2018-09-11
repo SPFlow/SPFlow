@@ -77,7 +77,7 @@ class TestParametric(unittest.TestCase):
         data = np.vstack((adata, bdata))
 
         ds_context = Context(meta_types=[MetaType.REAL, MetaType.DISCRETE])
-        ds_context.parametric_type = [None, Categorical]
+        ds_context.parametric_types = [None, Categorical]
         ds_context.add_domains(data)
         L = (create_piecewise_leaf(adata[:, 0].reshape(-1, 1), ds_context, scope=[0], prior_weight=None) *
              create_parametric_leaf(adata[:, 1].reshape(-1, 1), ds_context, scope=[1]))

@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     ds_context = Context(meta_types=[MetaType.DISCRETE, MetaType.DISCRETE, MetaType.DISCRETE])
     ds_context.add_domains(data)
-    ds_context.parametric_type = [Poisson, Poisson, Categorical]
+    ds_context.parametric_types = [Poisson, Poisson, Categorical]
 
     spn = Sum()
 
