@@ -1,0 +1,46 @@
+# This example uses passthrough phrases and synonyms to generate sentences
+# like "this apple is so great" which parse to a single %sentiment.* token.
+
+%
+    this ~item is %sentiment
+
+# Because this is a passthrough, and synonym tokens aren't included, the
+# output tree of these will only be %sentiment.*
+
+%sentiment=
+    ~so? %sentiment.good
+    ~so? %sentiment.bad
+    %sentiment.neutral
+
+%sentiment.good
+    ~good
+
+%sentiment.bad
+    ~bad
+
+%sentiment.neutral
+    ~ok
+
+~item
+    apple
+    orange
+    banana
+
+~so
+    so
+    very
+    extremely
+
+~good
+    good
+    great
+    wonderful
+
+~bad
+    bad
+    terrible
+    awful
+
+~ok
+    ok
+    fine

@@ -224,7 +224,7 @@ from spn.algorithms.LearningWrappers import learn_parametric, learn_classifier
 from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
 from spn.structure.Base import Context
 spn_classification = learn_classifier(train_data,
-                       Context(parametric_type=[Gaussian, Gaussian, Categorical]).add_domains(train_data),
+                       Context(parametric_types=[Gaussian, Gaussian, Categorical]).add_domains(train_data),
                        learn_parametric, 2)
 ```
 Here, we model our problem as containing 3 features, two Gaussians for the coordinates and one Categorical for the label.
