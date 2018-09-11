@@ -18,3 +18,4 @@ py-cpuinfo
 lark-parser
 #tensorflow
 sympy
+arff
