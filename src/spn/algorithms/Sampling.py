@@ -65,7 +65,7 @@ def add_node_sampling(node_type, lambda_func):
     _node_sampling[node_type] = sample_leaf
 
 
-def sample_instances(node, input_data, rand_gen, node_sampling=_node_sampling, in_place=False):
+def sample_instances(node, input_data, rand_gen=None, node_sampling=_node_sampling, in_place=False):
     """
     Implementing hierarchical sampling
 

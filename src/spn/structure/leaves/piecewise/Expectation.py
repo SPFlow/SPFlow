@@ -10,7 +10,7 @@ from spn.algorithms.stats.Expectations import add_node_expectation
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 
 
-def piecewise_expectation(node):
+def piecewise_expectation(node, moment=1):
     exp = 0
     for i in range(len(node.x_range) - 1):
         y0 = node.y_range[i]
@@ -20,16 +20,15 @@ def piecewise_expectation(node):
 
         # compute the line of the top of the trapezoid
         m = (y0 - y1) / (x0 - x1)
-        b = (x0 * y1 - x1 * y0) / (x0 - x1)
-
-        # integral from w to z, of x * (mx+b) dx
-        w = x0
-        z = x1
-        integral = (1 / 6) * (-3 * b * (w ** 2) + 3 * b * (z ** 2) - 2 * m * (w ** 3) + 2 * m * (z ** 3))
+        b = - m * x0 + y0
+        k = moment
+        integral = m / (k + 2) * (x1 ** (k + 2) - x0 ** (k + 2)) + b / (k + 1) * (x1 ** (k + 1) - x0 ** (k + 1))
         exp += integral
 
-    return exp
-
+    ret_val = np.zeros((1, len(node.full_scope)))
+    ret_val[:] = np.nan
+    ret_val[:,node.scope[0]] = exp
+    return ret_val
 
 def add_piecewise_expectation_support():
     add_node_expectation(PiecewiseLinear, piecewise_expectation)

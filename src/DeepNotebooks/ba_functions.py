@@ -9,11 +9,13 @@ from sklearn.preprocessing import LabelEncoder
 # from tfspn.SPN import SPN, Splitting
 # from tfspn.tfspn import ProductNode
 from IPython.display import display, Markdown
+
 from spn.structure.leaves.parametric.Parametric import Categorical
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 from spn.structure.Base import Context
 
 from spn.algorithms.LearningWrappers import learn_mspn
+from spn.algorithms.Inference import likelihood
 
 
 def query(spn, instance):
@@ -204,14 +206,14 @@ def get_moment(spn, query_id, moment=1, evidence=None, detail=1000):
     return integrate.quad(lambda x: np.exp(spn_query_id(spn, query_id, x)) * (x - mean) ** moment, spn.domains[query_id][0], spn.domains[query_id][1])[0]
 
 
-def func_from_spn(spn, featureId):
-    size = spn.numFeatures
-    marg_spn = spn.marginalize([featureId])
-    query = np.zeros((1, size))
-    
+def func_from_spn(spn, feature_id):
+    size = len(spn.full_scope)
+
     def func(x):
-        query[:,featureId] = x
-        return marg_spn.eval(query)
+        query = np.zeros((len(x), size))
+        query[:] = np.nan
+        query[:, feature_id] = x
+        return likelihood(spn, query)
 
     return func
 
@@ -612,6 +614,8 @@ def node_likelihood_contribution(spn, query):
     return log_likelihood
 
 
+def get_categoricals(spn):
+    return [i for i in range(spn.numFeatures) if spn.featureTypes[i] == 'categorical']
 
 
 def categorical_nodes_description(spn):
