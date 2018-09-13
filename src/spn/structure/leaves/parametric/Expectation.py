@@ -8,7 +8,10 @@ from spn.structure.leaves.parametric.Parametric import *
 import numpy as np
 
 
-def parametric_expectation(node):
+def parametric_expectation(node, moment=1):
+    if moment > 1:
+        return NotImplementedError('Higher moments are not implemented yet')
+
     if isinstance(node, Gaussian) or isinstance(node, Poisson):
         return node.mean
 
@@ -29,7 +32,6 @@ def parametric_expectation(node):
 
     elif isinstance(node, Hypergeometric):
         return node.n * (node.K / node.N)
-
 
     elif isinstance(node, Geometric):
         return -1 / np.log2(1-node.p)

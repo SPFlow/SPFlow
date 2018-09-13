@@ -8,10 +8,12 @@ from spn.structure.leaves.conditional.Conditional import *
 import numpy as np
 
 
-def conditional_expectation(node):
+def conditional_expectation(node, moment=1):
+    if moment > 1:
+        return NotImplementedError('Higher moments are not implemented yet')
+
     if isinstance(node, Conditional_Gaussian) or isinstance(node, Conditional_Poisson):
         return node.mean
-
     elif isinstance(node, Conditional_Bernoulli):
         return node.p
 
@@ -19,7 +21,7 @@ def conditional_expectation(node):
         raise Exception("Unknown parametric " + str(type(node)))
 
 
-def add_parametric_expectation_support():
+def add_conditional_expectation_support():
     add_node_expectation(Conditional_Gaussian, conditional_expectation)
     add_node_expectation(Conditional_Poisson, conditional_expectation)
     add_node_expectation(Conditional_Bernoulli, conditional_expectation)

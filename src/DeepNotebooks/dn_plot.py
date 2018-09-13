@@ -1,20 +1,83 @@
 #import igraph
 import numpy as np
-import ba_graphs as g
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import plotly.tools as tls
 import plotly.plotly as py
-from matplotlib import cm
 from plotly.graph_objs import Heatmap, Layout, ColorBar, Scatter, Bar, Table, Histogram
-from ba_functions import func_from_spn, get_correlation_matrix
+
+from DeepNotebooks.ba_functions import func_from_spn, get_correlation_matrix
+import DeepNotebooks.ba_graphs as g
+
+from spn.algorithms.Marginalization import marginalize
+from spn.structure.StatisticalTypes import Type
+
+
+def plot_marginal(spn, feature_id, dictionary=None, fname=None, detail=100):
+    context = dictionary['context']
+    scope = set([feature_id])
+    domain = context.get_domains_by_scope(scope)[0]
+
+    # marg = marginalize(spn, scope)
+    size = len(spn.full_scope)
+
+    is_categorical = feature_id in context.get_categoricals()
+
+    if is_categorical:
+        enc = dictionary['features'][feature_id]['encoder'].inverse_transform
+        x_range = domain
+        y_range = func_from_spn(spn, feature_id)(x_range).reshape(-1)
+        data = [Bar(
+                    x=enc([int(x) for x in x_range]),
+                    y=y_range,
+                    )
+                ]
+    else:
+        domain = context.get_domains_by_scope(scope)[0]
+        _min = domain[0]
+        _max = domain[-1]
+
+        x_range = np.linspace(_min, _max, detail)
+        values = func_from_spn(spn, feature_id)(x_range).reshape(-1)
+        data = [Scatter(
+                    x=x_range,
+                    y=values,
+                    mode='lines',
+                    )
+                ]
+    layout = dict(width=450,
+                  height=450,
+                  xaxis=dict(title=context.feature_names[feature_id]),
+                  yaxis=dict(title='Probability density' if not is_categorical else 'Probability')
+                  )
+
+    if fname is None:
+        return {'data': data, 'layout': layout}
+    else:
+        raise NotImplementedError
+
+
+
+
+
 
 def plot_related_features(spn, featureId_x, featureId_y, detail=100, dictionary=None, evidence=None, fname=None):
-    # find the marginalization and conditioning
-    #marg_ids = [featureId_x, featureId_y]
-    #marg_spn = spn.marginalize(marg_ids)
-    
+    """
+    Plots a 2d representation of the joint marginal probability of these two
+    features.
+
+    :param spn: the root node of the spn
+    :param featureId_x: featureid of the first feature
+    :param featureId_y: featureid of the second feature
+    :param detail: granularity of the plotting grid
+    :param dictionary: the data dictionary to extract meta information
+    :param evidence: evidence to condition the plot on
+    :param fname: file name to save the resulting plot
+    :return: a plotly dictionary containing data and context
+    """
+
     # construct the grid
-    numFeatures = spn.numFeatures
+    num_features = len(spn.full_scope)
     x_range = (spn.domains[featureId_x][0], spn.domains[featureId_x][-1])
     y_range = (spn.domains[featureId_y][0], spn.domains[featureId_y][-1])
     x_detail = detail
@@ -37,7 +100,7 @@ def plot_related_features(spn, featureId_x, featureId_y, detail=100, dictionary=
     grid = grid.reshape(2,-1).T
 
     # construct query
-    query = np.zeros((1,numFeatures))
+    query = np.zeros((1,num_features))
     query[:] = np.nan
     query = np.repeat(query, grid.shape[0], axis=0)
     query[:,featureId_x] = grid[:,0]
@@ -144,51 +207,6 @@ def plot_conditional(spn, featureId, evidence, fname=None, detail=100):
     else:
         raise NotImplementedError
 
-
-
-def plot_marginal(spn, featureId, dictionary=None, fname=None, detail=100):
-    marg = spn.marginalize([featureId])
-    size = spn.numFeatures
-
-    is_categorical = spn.featureTypes[featureId] == 'categorical'
-
-    if is_categorical:
-        enc = dictionary['features'][featureId]['encoder'].inverse_transform
-        x_range = spn.domains[featureId]
-        y_range = np.array([np.exp(func_from_spn(spn, featureId)(x)) for x in x_range]).reshape(len(x_range))
-        data = [Bar(
-                    x = enc(x_range),
-                    y = y_range,
-                    )
-                ]
-    else:
-        _min = spn.domains[featureId][0]
-        _max = spn.domains[featureId][-1]
-        if marg.leaf:
-            turning_points = marg.x_range
-        else:
-            turning_points = np.concatenate([n.x_range for n in marg.children])
-        turning_points = np.unique(np.sort(np.array([p for p in turning_points if (p >= _min) and (p <= _max)])))
-        query = np.zeros((len(turning_points), spn.numFeatures))
-        query[:,:] = np.nan
-        query[:,featureId] = turning_points
-        values = np.exp(marg.eval(query))
-        data = [Scatter(
-                    x = turning_points,
-                    y = values,
-                    mode = 'lines',
-                    )
-                ]
-    layout = dict(width=450, 
-                  height=450,
-                  xaxis=dict(title=spn.featureNames[featureId]),
-                  yaxis=dict(title='Probability density' if not is_categorical else 'Probability')
-                 )
-
-    if fname is None:
-        return {'data': data, 'layout': layout}
-    else:
-        raise NotImplementedError
 
 def plot_error_bar(names, means, stds, feature, fname=None):
     x = names
