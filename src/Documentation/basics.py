@@ -181,27 +181,6 @@ def learn_from_data():
     from spn.io.Text import spn_to_str_equation
     print(spn_to_str_equation(spn))
 
-    np.random.seed(123)
-    train_data = np.c_[np.r_[
-                           np.random.normal(5, 1, (500, 2)), np.random.normal(
-                               10, 1, (500, 2))],
-                       np.r_[np.zeros((500, 1)), np.ones((500, 1))]]
-
-    from spn.algorithms.LearningWrappers import learn_parametric, \
-        learn_classifier
-    from spn.structure.leaves.parametric.Parametric import Categorical, \
-        Gaussian
-    from spn.structure.Base import Context
-    spn_classification = learn_classifier(train_data,
-                                          Context(parametric_types=[Gaussian,
-                                                                    Gaussian,
-                                                                    Categorical]).add_domains(
-                                              train_data),
-                                          learn_parametric, 2)
-
-    print(get_structure_stats(spn_classification))
-    print(spn_to_str_equation(spn_classification))
-
 
 def learn_MSPN():
     import numpy as np
@@ -227,6 +206,7 @@ def learn_MSPN():
     from spn.algorithms.Statistics import get_structure_stats
     print(get_structure_stats(mspn))
 
+
 def learn_PSPN():
     import numpy as np
 
@@ -250,29 +230,48 @@ def learn_PSPN():
     from spn.algorithms.Statistics import get_structure_stats
     print(get_structure_stats(spn))
 
+def condition():
+    import numpy as np
+    from spn.algorithms.LearningWrappers import learn_piecewise_from_data
+    from spn.algorithms.Condition import condition
+    from spn.algorithms.Marginalization import marginalize
+    from spn.algorithms.MPE import mpe
+    spn, data_dictionary = learn_piecewise_from_data('src/DeepNotebooks/example_data/iris', min_instances=10, independence_threshold=0.1)
+    condition_evidence = np.array([[np.nan, np.nan, np.nan, np.nan, 0]])
+    test_data = mpe(spn, condition_evidence)
+    new_spn = condition(spn, condition_evidence)
+    marg_spn = marginalize(spn, {4})
+    print(new_spn)
+    from spn.algorithms.Inference import likelihood
+    print(likelihood(spn, test_data)/likelihood(marg_spn, condition_evidence))
+    print(likelihood(new_spn, test_data))
+
+
 
 if __name__ == '__main__':
-    print('create_SPN')
-    learn_PSPN()
-    learn_MSPN()
-    create_SPN()
-    print('to_string')
-    to_str()
-    print('plot')
-    plot()
-    print('inference')
-    inference()
+    # print('create_SPN')
+    # learn_PSPN()
+    # learn_MSPN()
+    # create_SPN()
+    # print('to_string')
+    # to_str()
+    # print('plot')
+    # plot()
+    # print('inference')
+    # inference()
     # print('tensorflow')
     # tensorflow()
-    print('valid')
-    valid()
-    print('stats')
-    stats()
-    print('sample')
-    sample()
-    print('classification')
-    classification()
-    print('extend')
-    extend()
-    print('learn from data')
-    learn_from_data()
+    # print('valid')
+    # valid()
+    # print('stats')
+    # stats()
+    # print('sample')
+    # sample()
+    # print('classification')
+    # classification()
+    # print('extend')
+    # extend()
+    # print('learn from data')
+    # #learn_from_data()
+    print('conditional')
+    condition()

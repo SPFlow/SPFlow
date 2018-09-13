@@ -54,12 +54,9 @@ def Prune(node):
 
 
 def Copy(node):
-    v, err = is_valid(node)
-    assert v, err
-
+    # v, err = is_valid(node)
+    # assert v, err
     return deepcopy(node)
-
-
 
 
 def SPN_Reshape(node, max_children=2):
