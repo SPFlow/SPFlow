@@ -205,7 +205,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
                     tasks.append((data_slice, node, len(node.children) - 1, scope_slice, False, False))
                 elif len(scope_slice) == 1:
                     local_tasks.append((node, len(node.children) - 1))
-                    child_data_slice = data_slicer(data_slice, scope_slice, num_conditional_cols)
+                    child_data_slice = data_slicer(data_slice, np.arange(len(scope_slice)), num_conditional_cols)
                     local_children_params.append((child_data_slice, ds_context, scope_slice))
                 else:
                     assert False
