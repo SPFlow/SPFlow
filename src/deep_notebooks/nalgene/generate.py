@@ -18,10 +18,10 @@ def walk_tree(root, current, context, start_w=0):
 
     # TODO: Remove?
     if seq.is_leaf:
-        print('flat seq', seq)
+        # print('flat seq', seq)
         flat.add(seq)
         tree.add(seq)
-        print('tree flat', tree)
+        # print('tree flat', tree)
         return flat, tree
 
     for child in seq:
@@ -114,9 +114,9 @@ def generate_from_file(base_dir, filename, root_context=None):
     parsed.map_leaves(tokenizeLeaf)
     walked_flat, walked_tree = walk_tree(parsed, parsed['%'], root_context['%'])
     # print(walked_flat)
-    print('>', fix_sentence(walked_flat.raw_str))
-    print(walked_tree)
-    print('-' * 80)
+    # print('>', fix_sentence(walked_flat.raw_str))
+    # print(walked_tree)
+    # print('-' * 80)
     return parsed, walked_flat, walked_tree
 
 if __name__ == "__main__":

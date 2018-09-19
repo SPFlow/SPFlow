@@ -1,0 +1,39 @@
+%
+    %mainClause
+    %mainClause %subClause?
+
+
+%mainClause
+    %preamble %body
+    %body %preamble
+
+
+%subClause
+    and %secondaryClause
+    but %secondaryClause
+
+%secondaryClause
+    {STRENGTH_2_ADV} for points centered around {MEAN_2}
+
+
+%preamble
+    for data points centered around {MEAN}
+
+
+%body
+    the feature influences the classification {STRENGTH_ADV}
+    the classification is {STRENGTH_ADV} influenced ~by?
+    the ~influenceSynonym ~of? on the classification is {STRENGTH}
+
+
+~influenceSynonym
+    influence
+    impact
+
+~by
+    by the feature
+    by it
+
+~of
+    of the feature
+    of it
