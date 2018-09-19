@@ -6,8 +6,8 @@ import plotly.tools as tls
 import plotly.plotly as py
 from plotly.graph_objs import Heatmap, Layout, ColorBar, Scatter, Bar, Table, Histogram
 
-from DeepNotebooks.ba_functions import func_from_spn, get_correlation_matrix
-import DeepNotebooks.ba_graphs as g
+from deep_notebooks.ba_functions import func_from_spn, get_correlation_matrix
+import deep_notebooks.ba_graphs as g
 
 from spn.algorithms.Marginalization import marginalize
 from spn.structure.StatisticalTypes import Type

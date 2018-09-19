@@ -11,11 +11,12 @@ from IPython.display import display, Image
 
 from spn.structure.StatisticalTypes import Type
 from spn.algorithms.stats.Expectations import get_means, get_variances
+from spn.algorithms.stats.Correlations import get_full_correlation
 
-import DeepNotebooks.ba_functions as f
-import DeepNotebooks.dn_plot as p
-from DeepNotebooks.nalgene.generate import fix_sentence, generate_from_file
-from DeepNotebooks.ba_functions import printmd
+import deep_notebooks.ba_functions as f
+import deep_notebooks.dn_plot as p
+from deep_notebooks.nalgene.generate import fix_sentence, generate_from_file
+from deep_notebooks.ba_functions import printmd
 
 # GLOBAL SETTINGS FOR THE MODULE
 correlation_threshold = 0.3
@@ -219,7 +220,7 @@ def correlation_description(spn, dictionary):
     high_correlation = correlation_threshold
     categoricals = context.get_categoricals()
     non_categoricals = [i for i in spn.full_scope if i not in categoricals]
-    corr = f.get_full_correlation(spn)
+    corr = get_full_correlation(spn, context)
     labels = spn.featureNames
     iplot(p.matshow(corr, x_labels=labels, y_labels=labels))
     

@@ -1,7 +1,7 @@
 #import igraph
 import itertools
 import numpy as np
-from ba_functions import get_correlation_matrix
+from deep_notebooks.ba_functions import get_correlation_matrix
 
 def get_graph(spn):
     color_dict = {"Pro": "blue", "Sum": "green"}
