@@ -1,7 +1,7 @@
 jupyter
 numpy
 matplotlib
-plotly
+plotly==2.4.1
 pandas
 scipy
 sklearn

@@ -24,13 +24,15 @@ explanation_vector_threshold = 0.3
 num_of_feature_marginals = 10
 num_of_explanation_vectors = 10
 num_of_correlations = 20
+feature_combinations = 2
+show_conditional = True
 
 features_shown = 'all'
 
 Modifier = namedtuple('Modifier', ['strength', 'strength_adv', 'direction', 'neg_pos'])
 
-EXPLANATION_VECTOR_NLG = ['.', 'explanation_vector_description.nlg']
-CORRELATION_NLG = ['.', 'correlation_description.nlg']
+EXPLANATION_VECTOR_NLG = ['deep_notebooks/grammar', 'explanation_vector_description.nlg']
+CORRELATION_NLG = ['deep_notebooks/grammar', 'correlation_description.nlg']
 
 
 def get_nlg_phrase(base_dir, file_name):
@@ -201,19 +203,6 @@ def show_feature_marginals(spn, dictionary):
         iplot(x)
 
 
-# ------------------------------------------------ #
-# ------------------- OLD CODE ------------------- #
-# ------------------------------------------------ #
-
-
-
-
-
-
-
-
-
-
 def correlation_description(spn, dictionary):
     context = dictionary['context']
     features = context.feature_names
@@ -221,7 +210,7 @@ def correlation_description(spn, dictionary):
     categoricals = context.get_categoricals()
     non_categoricals = [i for i in spn.full_scope if i not in categoricals]
     corr = get_full_correlation(spn, context)
-    labels = spn.featureNames
+    labels = features
     iplot(p.matshow(corr, x_labels=labels, y_labels=labels))
     
     idx = np.where(np.abs(corr) > high_correlation)
@@ -274,6 +263,63 @@ def correlation_description(spn, dictionary):
     else:
         printmd(deep_join(phrases, ' ') + '\n\nAll other features do not have more then a very weak correlation.')
     return corr
+
+
+def categorical_correlations(spn, dictionary):
+    context = dictionary['context']
+    categoricals = context.get_categoricals()
+    corr = get_full_correlation(spn, context)
+    num_features = len(spn.scope)
+    feature_names = context.feature_names
+
+    all_combinations = [(i, j) for i, j in
+                        itertools.product(range(num_features),
+                                          range(num_features)) if
+                        i > j and np.abs(corr[i, j]) > correlation_threshold]
+    if isinstance(feature_combinations, int):
+        num_choices = min(feature_combinations, len(all_combinations))
+        shown_combinations = random.sample(all_combinations, k=num_choices)
+    elif feature_combinations == 'all':
+        shown_combinations = all_combinations
+    else:
+        shown_combinations = feature_combinations
+
+    for cat_counter, cat in enumerate(
+            set([combination[0] for combination in shown_combinations])):
+        for i in [combination[1] for combination in shown_combinations if
+                  combination[0] == cat]:
+            phrase = get_nlg_phrase(*CORRELATION_NLG)
+            while '{z}' in phrase or 'As' in phrase or 'linear' in phrase:
+                phrase = get_nlg_phrase(*CORRELATION_NLG)
+            strength = ['weak', 'moderate', 'strong', 'very strong', 'perfect']
+            strength_values = [0.3, 0.6, 0.8, 0.99]
+            strength_descr = strength[
+                threshold(strength_values, np.abs(corr[cat, i]))]
+            strength_adv = strength_descr + 'ly'
+            if show_conditional:
+                iplot(p.plot_related_features(spn, i, cat,
+                                              dictionary=dictionary))
+            printmd(phrase.format(
+                x=feature_names[cat],
+                y=feature_names[i],
+                strength=strength_descr,
+                strength_adv=strength_adv,
+                direction='',
+                neg_pos=''))
+
+
+# ------------------------------------------------ #
+# ------------------- OLD CODE ------------------- #
+# ------------------------------------------------ #
+
+
+
+
+
+
+
+
+
 
 
 def node_introduction(spn, nodes):
@@ -790,39 +836,6 @@ def explanation_vector_description(spn, dictionary, data_dict, cat_features):
                     else:
                         all_gradients[i][j][k] = _gradients.mean()
     return all_gradients
-
-
-def categorical_correlations(spn, dictionary):
-    categoricals = f.get_categoricals(spn)
-    corr = f.get_full_correlation(spn)
-    
-    all_combinations = [(i,j) for i,j in itertools.product(range(spn.numFeatures), range(spn.numFeatures)) if i > j and np.abs(corr[i,j]) > correlation_threshold]
-    if isinstance(feature_combinations, int):
-        num_choices = min(feature_combinations, len(all_combinations))
-        shown_combinations = random.sample(all_combinations, k=num_choices)
-    elif feature_combinations == 'all':
-        shown_combinations = all_combinations
-    else:
-        shown_combinations = feature_combinations
-    
-    for cat_counter, cat in enumerate(set([combination[0] for combination in shown_combinations])):
-        for i in [combination[1] for combination in shown_combinations if combination[0] == cat]:
-            phrase = get_nlg_phrase(*CORRELATION_NLG)
-            while '{z}' in phrase or 'As' in phrase or 'linear' in phrase:
-                phrase = get_nlg_phrase(*CORRELATION_NLG)
-            strength = ['weak', 'moderate', 'strong', 'very strong', 'perfect']
-            strength_values = [0.3, 0.6, 0.8, 0.99]
-            strength_descr = strength[threshold(strength_values, np.abs(corr[cat,i]))]
-            strength_adv = strength_descr+'ly'
-            if show_conditional:
-                iplot(p.plot_related_features(spn, i, cat, dictionary=dictionary))
-            printmd(phrase.format(
-                x=spn.featureNames[cat],
-                y=spn.featureNames[i],
-                strength=strength_descr,
-                strength_adv=strength_adv,
-                direction='',
-                neg_pos=''))
 
 
 def show_node_separation(spn, nodes):

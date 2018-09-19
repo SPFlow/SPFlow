@@ -40,17 +40,13 @@ def sum_correlation(node, children, input_vals, dtype=np.float64):
 def get_full_correlation(spn, context):
     categoricals = context.get_categoricals()
     full_corr = get_correlation_matrix(spn)
+    for cat in categoricals:
+        full_corr[:, cat] = np.nan
+        full_corr[cat, :] = np.nan
     cat_corr = get_categorical_correlation(spn, context)
     cat_cat_corr = get_mutual_information_correlation(spn, context)
-    print(full_corr)
-    print(cat_corr)
-    print(cat_cat_corr)
-    for i, cat in enumerate(categoricals):
-        cat_corr[:, cat] = cat_cat_corr[:, i]
-    if cat_corr.size > 0:
-        full_corr[categoricals, :] = cat_corr
-        full_corr[:, categoricals] = cat_corr.T
-    return full_corr
+    result = np.nansum([full_corr, cat_corr, cat_cat_corr], axis = 0)
+    return result
 
 
 def get_correlation_matrix(spn):
@@ -80,7 +76,11 @@ def get_categorical_correlation(spn, context):
     categoricals = context.get_categoricals()
     num_features = len(spn.full_scope)
     var = get_variances(spn)
-    all_vars = []
+    # all_vars = []
+    full_matrix = np.zeros((num_features, num_features))
+    full_matrix[:] = np.nan
+
+    # OLD CODE
     for cat in categoricals:
         all_probs = []
         cat_vars = []
@@ -99,11 +99,13 @@ def get_categorical_correlation(spn, context):
         all_probs = np.array(all_probs).reshape(-1, 1)
         total_var = np.sum(cat_vars * all_probs, axis=0)
         result = 1 - (total_var/var)
-        all_vars.append(result)
-    all_vars = np.array(all_vars)
-    assert np.all(np.logical_or(all_vars > -0.0001, np.isnan(all_vars)))
-    all_vars[all_vars < 0] = 0
-    return np.sqrt(all_vars)
+        full_matrix[:, cat] = result
+        full_matrix[cat, :] = result
+        #all_vars.append(result)
+    #all_vars = np.array(all_vars)
+    assert np.all(np.logical_or(full_matrix > -0.0001, np.isnan(full_matrix)))
+    full_matrix[full_matrix < 0] = 0
+    return np.sqrt(full_matrix)
 
 
 def get_mutual_information_correlation(spn, context):
@@ -112,57 +114,58 @@ def get_mutual_information_correlation(spn, context):
 
     correlation_matrix = []
 
-    for x in categoricals:
-        x_correlation = []
-        x_range = context.get_domains_by_scope([x])[0]
-        spn_x = marginalize(spn, [x])
-        query_x = np.array([[np.nan] * num_features] * len(x_range))
-        query_x[:, x] = x_range
-        for y in categoricals:
-            if x == y:
-                # TODO: Check whether this is correct
-                corr = [np.nan] * num_features
-                corr[x] = 1
-                x_correlation.append(corr)
-                continue
-            spn_y = marginalize(spn, [y])
-            spn_xy = marginalize(spn, [x, y])
-            y_range = context.get_domains_by_scope([y])[0]
-            query_y = np.array([[np.nan] * num_features] * len(y_range))
-            query_y[:, y] = y_range
-            query_xy = np.array([[np.nan] * num_features] * (
-                        len(x_range + 1) * (len(y_range + 1))))
-            xy = np.mgrid[x_range[0]:x_range[-1]:len(x_range) * 1j,
-                          y_range[0]:y_range[-1]:len(y_range) * 1j]
-            xy = xy.reshape(2, -1)
-            query_xy[:, x] = xy[0, :]
-            query_xy[:, y] = xy[1, :]
-            results_xy = likelihood(spn_xy, query_xy)
-            results_xy = results_xy.reshape(len(x_range), len(y_range))
-            results_x = likelihood(spn_x, query_x)
-            results_y = likelihood(spn_y, query_y)
+    for x in range(num_features):
+        if x not in categoricals:
+            correlation_matrix.append([np.nan] * num_features)
+        else:
+            x_correlation = [np.nan] * num_features
+            x_range = context.get_domains_by_scope([x])[0]
+            spn_x = marginalize(spn, [x])
+            query_x = np.array([[np.nan] * num_features] * len(x_range))
+            query_x[:, x] = x_range
+            for y in categoricals:
+                if x == y:
+                    x_correlation[x] = 1
+                    continue
+                #TODO: still need correct code for setting proper array indices
+                spn_y = marginalize(spn, [y])
+                spn_xy = marginalize(spn, [x, y])
+                y_range = context.get_domains_by_scope([y])[0]
+                query_y = np.array([[np.nan] * num_features] * len(y_range))
+                query_y[:, y] = y_range
+                query_xy = np.array([[np.nan] * num_features] * (
+                            len(x_range + 1) * (len(y_range + 1))))
+                xy = np.mgrid[x_range[0]:x_range[-1]:len(x_range) * 1j,
+                              y_range[0]:y_range[-1]:len(y_range) * 1j]
+                xy = xy.reshape(2, -1)
+                query_xy[:, x] = xy[0, :]
+                query_xy[:, y] = xy[1, :]
+                results_xy = likelihood(spn_xy, query_xy)
+                results_xy = results_xy.reshape(len(x_range), len(y_range))
+                results_x = likelihood(spn_x, query_x)
+                results_y = likelihood(spn_y, query_y)
 
-            xx, yy = np.mgrid[0:len(x_range) - 1:len(x_range) * 1j,
-                     0:len(y_range) - 1:len(y_range) * 1j]
-            xx = xx.astype(int)
-            yy = yy.astype(int)
+                xx, yy = np.mgrid[0:len(x_range) - 1:len(x_range) * 1j,
+                         0:len(y_range) - 1:len(y_range) * 1j]
+                xx = xx.astype(int)
+                yy = yy.astype(int)
 
-            grid_results_x = results_x[xx]
-            grid_results_y = results_y[yy]
-            grid_results_xy = results_xy
+                grid_results_x = results_x[xx]
+                grid_results_y = results_y[yy]
+                grid_results_xy = results_xy
 
-            log = np.log(grid_results_xy / (
-                np.multiply(grid_results_x, grid_results_y)))
-            prod = np.prod(np.array([log, grid_results_xy]), axis=0)
+                log = np.log(grid_results_xy / (
+                    np.multiply(grid_results_x, grid_results_y)))
+                prod = np.prod(np.array([log, grid_results_xy]), axis=0)
 
-            log_x = np.log(results_x)
-            log_y = np.log(results_y)
+                log_x = np.log(results_x)
+                log_y = np.log(results_y)
 
-            entropy_x = -1 * np.sum(np.multiply(log_x, results_x))
-            entropy_y = -1 * np.sum(np.multiply(log_y, results_y))
+                entropy_x = -1 * np.sum(np.multiply(log_x, results_x))
+                entropy_y = -1 * np.sum(np.multiply(log_y, results_y))
 
-            x_correlation.append(np.sum(prod) / np.sqrt(entropy_x * entropy_y))
-        correlation_matrix.append(x_correlation)
+                x_correlation.append(np.sum(prod) / np.sqrt(entropy_x * entropy_y))
+            correlation_matrix.append(x_correlation)
 
     return np.array(correlation_matrix)
 

@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import plotly.tools as tls
 import plotly.plotly as py
-from plotly.graph_objs import Heatmap, Layout, ColorBar, Scatter, Bar, Table, Histogram
+from plotly.graph_objs import Heatmap, Layout, Scatter, Bar, Table, Histogram, ColorBar
 
 from deep_notebooks.ba_functions import func_from_spn, get_correlation_matrix
 import deep_notebooks.ba_graphs as g
 
 from spn.algorithms.Marginalization import marginalize
 from spn.structure.StatisticalTypes import Type
+from spn.algorithms.Inference import likelihood
 
 
 def plot_marginal(spn, feature_id, dictionary=None, fname=None, detail=100):
@@ -57,10 +58,6 @@ def plot_marginal(spn, feature_id, dictionary=None, fname=None, detail=100):
         raise NotImplementedError
 
 
-
-
-
-
 def plot_related_features(spn, featureId_x, featureId_y, detail=100, dictionary=None, evidence=None, fname=None):
     """
     Plots a 2d representation of the joint marginal probability of these two
@@ -78,24 +75,33 @@ def plot_related_features(spn, featureId_x, featureId_y, detail=100, dictionary=
 
     # construct the grid
     num_features = len(spn.full_scope)
-    x_range = (spn.domains[featureId_x][0], spn.domains[featureId_x][-1])
-    y_range = (spn.domains[featureId_y][0], spn.domains[featureId_y][-1])
+    context = dictionary['context']
+    categoricals = context.get_categoricals()
+    domain_x = context.get_domains_by_scope([featureId_x])[0]
+    domain_y = context.get_domains_by_scope([featureId_y])[0]
+    feature_names = context.feature_names
+    x_range = (domain_x[0],
+               domain_x[-1])
+    y_range = (domain_y[0],
+               domain_y[-1])
     x_detail = detail
     y_detail = detail
     x_cat = False
     y_cat = False
-    if spn.featureTypes[featureId_x] == 'categorical':
+    if featureId_x in categoricals:
         x_cat = True
-        x_detail = len(spn.domains[featureId_x])
+        x_detail = len(domain_x)
         enc = dictionary['features'][featureId_x]['encoder'].inverse_transform
-        x_range = spn.domains[featureId_x]
+        x_range = domain_x
+        print([int(x) for x in x_range])
         x_names = enc(x_range)
-    if spn.featureTypes[featureId_y] == 'categorical':
+    if featureId_y in categoricals:
         y_cat = True
-        y_detail = len(spn.domains[featureId_y])
+        y_detail = len(domain_y)
         enc = dictionary['features'][featureId_y]['encoder'].inverse_transform
-        y_range = spn.domains[featureId_y]
-        y_names = enc(y_range)
+        y_range = domain_y
+        print(y_range)
+        y_names = enc([int(y) for y in y_range])
     grid = np.mgrid[x_range[0]:x_range[-1]:x_detail*1j, y_range[0]:y_range[-1]:y_detail*1j]
     grid = grid.reshape(2,-1).T
 
@@ -103,32 +109,54 @@ def plot_related_features(spn, featureId_x, featureId_y, detail=100, dictionary=
     query = np.zeros((1,num_features))
     query[:] = np.nan
     query = np.repeat(query, grid.shape[0], axis=0)
-    query[:,featureId_x] = grid[:,0]
-    query[:,featureId_y] = grid[:,1]
+    query[:, featureId_x] = grid[:, 0]
+    query[:, featureId_y] = grid[:, 1]
 
     # calculate the probability and shape the array
-    result = np.exp(spn.root.eval(query))
+    result = likelihood(spn, query)
 
     result.shape = (x_detail, y_detail)
     
     # plot
     data = [Heatmap(z=result,
-            x=np.linspace(spn.domains[featureId_y][0], spn.domains[featureId_y][-1], y_detail) if not y_cat else y_names,
-            y=np.linspace(spn.domains[featureId_x][0], spn.domains[featureId_x][-1], x_detail) if not x_cat else x_names,
+            x=np.linspace(domain_y[0], domain_y[-1], y_detail) if not y_cat else y_names,
+            y=np.linspace(domain_x[0], domain_x[-1], x_detail) if not x_cat else x_names,
             colorbar=ColorBar(
                 title='Colorbar'
             ),
             colorscale='Hot')]
     layout = dict(width=450, 
                   height=450,
-                  xaxis=dict(title=spn.featureNames[featureId_y], autotick=True),
-                  yaxis=dict(title=spn.featureNames[featureId_x], autotick=True)
+                  xaxis=dict(title=feature_names[featureId_y], autotick=True),
+                  yaxis=dict(title=feature_names[featureId_x], autotick=True)
                  )
 
     if fname is None:
         return {'data': data, 'layout': layout}
     else:
         raise NotImplementedError
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def plot_related_features_nodes(spn, featureId_x, featureId_y, evidence=None, sample_size=10000, fname=None):
@@ -249,7 +277,7 @@ def matshow(matrix, title=None, x_labels=None, y_labels=None, fname=None):
             colorbar=ColorBar(
                 title='Colorbar'
             ),
-            colorscale='RdBl')]
+            colorscale='RdBu')]
     layout = dict(width=450, 
                   height=450,
                   title=title,
