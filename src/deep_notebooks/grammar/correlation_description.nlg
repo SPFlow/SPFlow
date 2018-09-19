@@ -1,0 +1,62 @@
+%
+    %fullClause
+    %joinedClause
+
+%fullClause
+    %subject_feature %object_dependency
+    %subject_dependency %object_feature
+    "{x}" and "{y}" influence each other {strength_adv}. As one increases, the other {direction}s.
+
+
+%subject_dependency
+    There is a {strength} {neg_pos} ~dependency
+    The model shows a {strength} {neg_pos} ~dependency
+
+
+%object_feature
+    ~conjunctionFor ~features? "{x}" and "{y}"
+
+
+%subject_feature
+    ~features? "{x}" and "{y}" have
+
+
+%object_dependency
+    a {strength} {neg_pos} ~dependency
+
+
+~conjunctionFor
+    between
+    for
+
+
+~dependency
+    linear? dependency
+    linear? interdependency
+    linear? relation
+    linear? relationship
+    
+
+~features
+    the features
+
+
+%joinedClause
+    %preClause ~conjunctionWhile %postClause
+
+
+%preClause
+    "{x}" and "{y}" influence each other {strength_adv}
+    "{x}" and "{y}" have a {strength} {neg_pos_1} influence on each other
+
+
+%postClause
+    "{x}" and "{z}" influence each other {strength_2_adv}
+    the influence of feature "{x}" and "{z}" is {strength_2_adv} {neg_pos_2}
+    "{x}" and "{z}" have a {strength_2} {neg_pos_2} influence on each other
+
+
+~conjunctionWhile
+    , while
+    , but
+    . on the other hand
