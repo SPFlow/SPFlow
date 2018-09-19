@@ -3,7 +3,7 @@ import math
 import random
 import json
 import sys
-from nalgene.node import *
+from deep_notebooks.nalgene.node import *
 
 SHIFT_WIDTH = 4
 
