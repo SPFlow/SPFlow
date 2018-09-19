@@ -8,8 +8,7 @@ from spn.algorithms.Inference import log_likelihood
 
 def prod_condition(node, children, evidence, scope=None):
     if not scope.intersection(node.scope):
-        new_node = Copy(node), 0
-        return new_node
+        return Copy(node), 0
     new_node = Product()
     new_node.scope = list(set(node.scope) - scope)
     probability = 0
@@ -22,8 +21,7 @@ def prod_condition(node, children, evidence, scope=None):
 
 def sum_condition(node, children, evidence, scope=None):
     if not scope.intersection(node.scope):
-        new_node = Copy(node), 0
-        return new_node
+        return Copy(node), 0
     new_node = Sum()
     new_node.scope = list(set(node.scope) - scope)
     new_weights = []

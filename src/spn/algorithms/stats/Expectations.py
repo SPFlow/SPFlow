@@ -83,9 +83,13 @@ def Expectation(spn, feature_scope, evidence_scope, evidence, node_expectation=_
 
 
 def get_means(spn):
-    return Expectation(spn, spn.full_scope, None, None)
+    if not spn.full_scope:
+        set_full_scope(spn)
+    return Expectation(spn, set(spn.full_scope), None, None)
 
 
 def get_variances(spn):
-    return get_means(spn) - Expectation(spn, spn.full_scope, None, None,
-                                        moment=2) ** 2
+    if not spn.full_scope:
+        set_full_scope(spn)
+    return Expectation(spn, set(spn.full_scope), None, None,
+                       moment=2) - get_means(spn) ** 2
