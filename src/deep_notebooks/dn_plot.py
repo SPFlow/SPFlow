@@ -1,4 +1,4 @@
-#import igraph
+import igraph
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -167,11 +167,11 @@ def plot_related_features_nodes(spn, featureId_x, featureId_y, evidence=None, sa
     spn.root = root
 
 
-def plot_graph(graph=None, spn=None, fname=None):
+def plot_graph(graph=None, spn=None, fname=None, context=None):
     if not graph and not spn:
         raise ValueError
     elif not graph:
-        graph = g.get_graph(spn)
+        graph = g.get_graph(spn, context)
 
     layout = graph.layout_kamada_kawai()
     edge_width = graph.es["weight"] if graph.is_weighted() else [1] * len(graph.es)

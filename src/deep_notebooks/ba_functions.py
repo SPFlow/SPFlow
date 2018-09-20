@@ -326,13 +326,6 @@ def get_gradient(spn, instance, fixed_instances=[], step_size=0.0001):
     return (prob_plus-prob_minus)/step_size*2
 
 
-def get_spn_depth(node, depth=0):
-    if node.leaf:
-        return depth
-    else:
-        return max((get_spn_depth(node, depth=depth+1) for node in node.children))
-
-
 def get_strongly_related_features(spn):
     """
     spn: a valid tfspn.SPN object
@@ -428,51 +421,6 @@ def calculate_overlap(inv, invs, area=0.9):
         if covered/(i[1]-i[0]) >= area and covered/(inv[1]-inv[0]) >= area:
             overlap.append(i)
     return overlap
-
-
-def get_node_description(spn, parent_node, size):
-    root = spn.root
-    parent_node.validate()
-    parent_type = type(parent_node).__name__
-    node_descriptions = dict()
-    node_descriptions['num'] = len(parent_node.children)
-    nodes = list()
-    for i, node in enumerate(parent_node.children):
-        spn.root = node
-        node_dir = dict()
-        node_dir['weight'] = parent_node.weights[i] if parent_type == 'SumNode' else 1
-        node_dir['size'] = node.size() - 1
-        node_dir['num_children'] = len(node.children) if not node.leaf else 0
-        node_dir['leaf'] = node.leaf
-        node_dir['type'] = type(node).__name__
-        node_dir['split_features'] = [list(c.scope) for c in node.children] if not node.leaf else node.scope
-        node_dir['split_features'].sort(key=lambda x: len(x))
-        node_dir['depth'] = get_spn_depth(node)
-        node_dir['child_depths'] = [get_spn_depth(c) for c in node.children]
-
-        descriptor = node_dir['type']
-        if all((d == 0 for d in node_dir['child_depths'])):
-            descriptor = 'shallow ' + descriptor
-            node_dir['quick'] = 'shallow'
-        elif len([d for d in node_dir['child_depths'] if d == 0]) == 1:
-            node_dir['quick'] = 'split_one'
-            descriptor += ', which seperates one feature'
-        else:
-            node_dir['quick'] = 'deep'
-            descriptor = 'deep ' + descriptor
-        descriptor = 'a ' + descriptor
-        node_dir['descriptor'] = descriptor
-        node_dir['short_descriptor'] = descriptor
-        node_dir['representative'] = node.mpe_eval(np.array([[np.nan] * size]))[1]
-        nodes.append(node_dir)
-    node_descriptions['shallow'] = len([d for d in nodes if d['quick'] == 'shallow'])
-    node_descriptions['split_one'] = len([d for d in nodes if d['quick'] == 'split_one'])
-    node_descriptions['deep'] = len([d for d in nodes if d['quick'] == 'deep'])
-    nodes.sort(key=lambda x: x['weight'])
-    nodes.reverse()
-    node_descriptions['nodes'] = nodes
-    spn.root = root
-    return node_descriptions
 
 
 def predict_proba(spn, feature, query):
@@ -617,42 +565,6 @@ def node_likelihood_contribution(spn, query):
 def get_categoricals(spn):
     return [i for i in range(spn.numFeatures) if spn.featureTypes[i] == 'categorical']
 
-
-def categorical_nodes_description(spn):
-    #TODO: That threshold needs some evidence or theoretical grounding
-    root = spn.root
-    categoricals = get_categoricals(spn)
-    total_analysis = {}
-    for cat in categoricals:
-        marg_total = spn.marginalize([cat])
-        categorical_probabilities = []
-        for i, n in enumerate(root.children):
-            node_weight = root.log_weights[i]
-            node_probabilities = []
-            for cat_instance in spn.domains[cat]:
-                spn.root = n
-                marg = spn.marginalize([cat])
-                query = np.zeros((1, spn.numFeatures))
-                query[:,:] = np.nan
-                query[:,cat] = cat_instance
-                proba = np.exp(marg.eval(query)+node_weight-marg_total.eval(query))
-                node_probabilities.append(proba)
-            categorical_probabilities.append(node_probabilities)
-        total_analysis[cat] = np.sum(np.array(categorical_probabilities), axis=2)
-        spn.root = root
-    node_categoricals = {}
-    for cat in categoricals:
-        node_categoricals[cat] = {}
-        node_categoricals[cat]['contrib'] = []
-        node_categoricals[cat]['explained'] = []
-        domain_length = len(spn.domains[cat])
-        for cat_instance in spn.domains[cat]:
-            probs = total_analysis[cat]
-            contrib_nodes = np.where(probs[:,cat_instance]/(np.sum(probs, axis=1))>0.4)
-            explained_probs = np.sum(probs[contrib_nodes], axis=0)
-            node_categoricals[cat]['contrib'].append(contrib_nodes)
-            node_categoricals[cat]['explained'].append(explained_probs)
-    return node_categoricals, total_analysis
 
 def get_marginal_arrays(spn):
     vals = []
@@ -837,41 +749,6 @@ def get_mutual_information_correlation(spn):
     return np.array(correlation_matrix)
 
 
-def cluster_variance_separation(spn):
-    all_means = []
-    all_vars = []
-    all_probs = spn.root.weights
-    real_var = get_variance(spn.root, spn.numFeatures)
-
-    for node in spn.root.children:
-        var = get_variance(node, spn.numFeatures)
-        mean = node.moment(1, spn.numFeatures)
-        all_vars.append(var)
-        all_means.append(mean)
-    all_vars = np.array(all_vars)
-    all_means = np.array(all_means)
-    all_probs = np.array(all_probs).reshape(-1, 1)
-    total_var = np.sum(all_vars * all_probs, axis = 0)
-    result = 1 - (total_var/real_var)
-    return result
-
-
-def cluster_mean_var_distance(nodes, spn):
-    all_means = []
-    all_vars = []
-    real_var = get_variance(spn.root, spn.numFeatures)
-    real_mean = spn.root.moment(1, spn.numFeatures)
-    for node in nodes:
-        var = get_variance(node, spn.numFeatures)
-        mean = node.moment(1, spn.numFeatures)
-        all_vars.append(var)
-        all_means.append(mean)
-    all_vars = np.array(all_vars)
-    all_means = np.array(all_means)
-
-    return (all_vars - all_vars.mean(axis=0))/np.sqrt(all_vars.var(axis=0)), (all_means - real_mean)/np.sqrt(real_var)
-
-
 def get_full_correlation(spn):
     categoricals = get_categoricals(spn)
     full_corr = get_correlation_matrix(spn)
@@ -904,7 +781,7 @@ def get_categorical_data(spn, df, dictionary, header=1, types=False, date=False)
 
 
 def get_sorted_nodes(spn):
-    root = spn.root
+    root = spn
     weights_nodes = [(node, weight) for node, weight in zip(root.children, root.weights)]
     weights_nodes.sort(key=lambda x: x[1])
     weights_nodes.reverse()
