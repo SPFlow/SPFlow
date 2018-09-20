@@ -280,3 +280,18 @@ def eval_spn_top_down(root, eval_functions, all_results=None, input_vals=None, *
 
 def set_full_scope(node):
     bfs(node, lambda x: x.set_full_scope(node.scope))
+
+
+def get_size(node):
+    if isinstance(node, Leaf):
+        return 1
+    else:
+        return sum([get_size(child) for child in node.children]) + 1
+
+
+def get_spn_depth(node, depth=0):
+    if isinstance(node, Leaf):
+        return depth
+    else:
+        return max((get_spn_depth(node, depth=depth+1)
+                    for node in node.children))

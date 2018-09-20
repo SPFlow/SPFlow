@@ -1,32 +1,39 @@
-#import igraph
 import itertools
-import numpy as np
-from deep_notebooks.ba_functions import get_correlation_matrix
 
-def get_graph(spn):
+import numpy as np
+import igraph
+
+from deep_notebooks.ba_functions import get_correlation_matrix
+from spn.structure.Base import Leaf
+
+
+def get_graph(spn, context):
     color_dict = {"Pro": "blue", "Sum": "green"}
+    feature_names = context.feature_names
     g = igraph.Graph()
     labels = []
     colors = []
     
-    def recurse(spn):
-        label = spn.featureName if spn.leaf else spn.name[:3]
+    def recurse(node):
+        label = feature_names[node.full_scope[0]] if isinstance(node, Leaf) \
+            else node.name[:3]
         labels.append(label)
         colors.append(color_dict.get(label, "red"))
-        if not spn.leaf:
-            for c in spn.children:
+        if not isinstance(node, Leaf):
+            for c in node.children:
                 g.add_vertices([c.name])
-                g.add_edges([(spn.name, c.name)])
+                g.add_edges([(node.name, c.name)])
                 recurse(c)
-    g.add_vertices([spn.root.name])
-    recurse(spn.root)
+    g.add_vertices([spn.name])
+    recurse(spn)
     colors[0] = "white"
     g.vs["label"] = labels
     g.vs["color"] = colors
     return g
 
-def get_correlation_graph(spn):
-    features = spn.featureNames
+
+def get_correlation_graph(spn, context):
+    features = context.feature_names
     features = list(enumerate(features))
     combinations = list(itertools.combinations(features, 2))
     cor = get_correlation_matrix(spn)
@@ -77,7 +84,7 @@ def analyze_correlation_graph(spn):
 
 def get_predictive_graph(spn, instance, categorical):
     norm = instance.copy(deep=True)
-    norm[:,categorical] = np.nan
+    norm[:, categorical] = np.nan
     vertex_size = 20
     color_dict = {"Pro": "blue", "Sum": "green"}
     g = igraph.Graph()
@@ -85,18 +92,18 @@ def get_predictive_graph(spn, instance, categorical):
     colors = []
     sizes = []
     
-    def recurse(spn):
-        label = spn.featureName if spn.leaf else spn.name[:3]
+    def recurse(node):
+        label = node.featureName if isinstance(node, Leaf) else node.name[:3]
         labels.append(label)
         colors.append(color_dict.get(label, "red"))
-        sizes.append(vertex_size * (spn.eval(instance)-spn.eval(norm)))
-        if not spn.leaf:
-            for c in spn.children:
+        sizes.append(vertex_size * (node.eval(instance) - node.eval(norm)))
+        if not isinstance(node, Leaf):
+            for c in node.children:
                 g.add_vertices([c.name])
-                g.add_edges([(spn.name, c.name)])
+                g.add_edges([(node.name, c.name)])
                 recurse(c)
-    g.add_vertices([spn.root.name])
-    recurse(spn.root)
+    g.add_vertices([spn.name])
+    recurse(spn)
     colors[0] = "white"
     g.vs["label"] = labels
     g.vs["color"] = colors

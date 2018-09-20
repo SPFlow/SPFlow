@@ -10,8 +10,12 @@ from plotly.offline import iplot
 from IPython.display import display, Image
 
 from spn.structure.StatisticalTypes import Type
+from spn.structure.Base import get_size, Leaf, get_spn_depth
 from spn.algorithms.stats.Expectations import get_means, get_variances
 from spn.algorithms.stats.Correlations import get_full_correlation
+from spn.algorithms.stats.ClusterAnalysis import cluster_anova, cluster_mean_var_distance, categorical_nodes_description
+from spn.algorithms.MPE import mpe
+from spn.algorithms.TransformStructure import Copy, assign_ids
 
 import deep_notebooks.ba_functions as f
 import deep_notebooks.dn_plot as p
@@ -26,8 +30,13 @@ num_of_explanation_vectors = 10
 num_of_correlations = 20
 feature_combinations = 2
 show_conditional = True
-
+nodes = 'all'
+show_node_graphs = True
 features_shown = 'all'
+features_shown = 2
+mean_threshold = 1
+variance_threshold = 2
+separation_threshold = 0.3
 
 Modifier = namedtuple('Modifier', ['strength', 'strength_adv', 'direction', 'neg_pos'])
 
@@ -101,7 +110,7 @@ def introduction(spn):
     printmd('# Exploring the {} dataset'.format(strip_dataset_name(spn.name)))
     printmd('''<figure align="right" style="padding: 1em; float:right; width: 300px">
 	<img alt="the logo of TU Darmstadt"
-		src="images/tu_logo.gif">
+		src="deep_notebooks/tu_logo.gif">
 	<figcaption><i>Report framework created @ TU Darmstadt</i></figcaption>
         </figure>
 This report describes the dataset {} and contains general statistical
@@ -308,36 +317,21 @@ def categorical_correlations(spn, dictionary):
                 neg_pos=''))
 
 
-# ------------------------------------------------ #
-# ------------------- OLD CODE ------------------- #
-# ------------------------------------------------ #
-
-
-
-
-
-
-
-
-
-
-
-def node_introduction(spn, nodes):
-    root = spn.root
-    desc = f.get_node_description(spn, spn.root, spn.numFeatures)
+def node_introduction(spn, nodes, context):
+    root = spn
+    desc = get_node_description(spn, spn, len(spn.scope))
     printmd('The SPN contains {} clusters.\n'.format(desc['num']))
     printmd('These are:')
     for i, d in enumerate(desc['nodes']):
         node_description = '- {}, representing {}% of the data.\n'.format(
             d['short_descriptor'], np.round(d['weight'] * 100, 2))
         if d['quick'] != 'shallow':
-            spn.root = nodes[i]
             if show_node_graphs:
-                graph, visual_style = p.plot_graph(spn=spn, fname="node" + str(i) + ".png")
-            spn.root = root
+                graph, visual_style = p.plot_graph(spn=nodes[i], fname="node" + str(
+                    i) + ".png", context=context)
             node_description += '  - The node has {} children and {} descendants,\
                     resulting in a remaining depth of {}.\n'.format(
-                            d['num_children'], d['size'], d['depth'])
+                d['num_children'], d['size'], d['depth'])
             printmd(node_description)
             if show_node_graphs:
                 display(Image(filename="node" + str(i) + ".png", retina=True))
@@ -357,42 +351,167 @@ def node_introduction(spn, nodes):
     if desc['shallow'] > 0:
         printmd(node_desc)
     printmd('The node representatives are the most likely data points for each node.\
-            They are archetypical for what the node represents and what subgroup of\
-            the data it encapsules.')
-    
-    header = spn.featureNames
-    representatives = np.array([np.round(d['representative'][0],2) for d in desc['nodes']])
+            They are archetypal for what the node represents and what subgroup of\
+            the data it encapsulates.')
+
+    header = context.feature_names
+    representatives = np.array(
+        [np.round(d['representative'][0], 2) for d in desc['nodes']])
     cells = representatives.T
     plot = p.plot_table(header, cells)
-    #plot['layout']['title'] = 'The representatives (most likely instances) of each node'
+    # plot['layout']['title'] = 'The representatives (most likely instances) of each node'
     iplot(plot)
     spn.root = root
-    
+
+
+def get_node_description(spn, parent_node, size):
+    root = spn
+    # parent_node.validate()
+    parent_type = type(parent_node).__name__
+    node_descriptions = dict()
+    node_descriptions['num'] = len(parent_node.children)
+    nodes = list()
+    for i, node in enumerate(parent_node.children):
+        node_spn = Copy(node)
+        assign_ids(node_spn)
+        node_dir = dict()
+        node_dir['weight'] = parent_node.weights[i] if parent_type == 'Sum' else 1
+        node_dir['size'] = get_size(node) - 1
+        node_dir['num_children'] = len(node.children) if not isinstance(node, Leaf) else 0
+        node_dir['leaf'] = isinstance(node, Leaf)
+        node_dir['type'] = type(node).__name__ + ' Node'
+        node_dir['split_features'] = [list(c.scope) for c in node.children] if not isinstance(node, Leaf) else node.scope
+        node_dir['split_features'].sort(key=lambda x: len(x))
+        node_dir['depth'] = get_spn_depth(node)
+        node_dir['child_depths'] = [get_spn_depth(c) for c in node.children]
+
+        descriptor = node_dir['type']
+        if all((d == 0 for d in node_dir['child_depths'])):
+            descriptor = 'shallow ' + descriptor
+            node_dir['quick'] = 'shallow'
+        elif len([d for d in node_dir['child_depths'] if d == 0]) == 1:
+            node_dir['quick'] = 'split_one'
+            descriptor += ', which separates one feature'
+        else:
+            node_dir['quick'] = 'deep'
+            descriptor = 'deep ' + descriptor
+        descriptor = 'a ' + descriptor
+        node_dir['descriptor'] = descriptor
+        node_dir['short_descriptor'] = descriptor
+        node_dir['representative'] = mpe(node_spn, np.array([[np.nan] * size]))
+        nodes.append(node_dir)
+    node_descriptions['shallow'] = len([d for d in nodes if d['quick'] == 'shallow'])
+    node_descriptions['split_one'] = len([d for d in nodes if d['quick'] == 'split_one'])
+    node_descriptions['deep'] = len([d for d in nodes if d['quick'] == 'deep'])
+    nodes.sort(key=lambda x: x['weight'])
+    nodes.reverse()
+    node_descriptions['nodes'] = nodes
+    spn.root = root
+    return node_descriptions
+
+
+def show_node_separation(spn, nodes, context):
+    categoricals = context.get_categoricals()
+    all_features = spn.scope
+    feature_names = context.feature_names
+
+    if features_shown == 'all':
+        shown_features = all_features
+    elif isinstance(features_shown, int):
+        num_choices = min(features_shown, len(all_features))
+        shown_features = random.sample(all_features, k=num_choices)
+    else:
+        shown_features = features_shown
+
+    node_means = np.array([get_means(node).reshape(-1) for node in nodes])
+    node_vars = np.array([get_variances(node).reshape(-1) for node in nodes])
+    node_stds = np.sqrt(node_vars)
+    names = np.arange(1,len(nodes)+1,1)
+    strength_separation = cluster_anova(spn)
+    node_var, node_mean = cluster_mean_var_distance(nodes, spn)
+    all_seps = {i: separation for i, separation in zip(shown_features, strength_separation)}
+    for i in shown_features:
+        if i not in categoricals:
+            description_string = ''
+            plot = p.plot_error_bar(names, node_means[:,i], node_vars[:,i], feature_names[i])
+            strength = ['weak', 'moderate', 'strong', 'very strong', 'perfect']
+            strength_values = [0.3, 0.6, 0.8, 0.99]
+            strength_adv = strength[threshold(strength_values, strength_separation[i])]+'ly'
+            var_outliers = np.where(node_var[:,i] > variance_threshold)[0]
+            if len(var_outliers) == 1:
+                node_string = ', '.join([str(v) for v in var_outliers])
+                description_string += 'The variance of node {} is significantly larger then the average node. '.format(node_string)
+            elif len(var_outliers) > 0:
+                node_string = ', '.join([str(v) for v in var_outliers])
+                description_string += 'The variances of the nodes {} are significantly larger then the average node. '.format(node_string)
+            mean_high_outliers = np.where(node_mean[:,i] > mean_threshold)[0]
+            mean_low_outliers = np.where(node_mean[:,i] < -mean_threshold)[0]
+            if len(mean_high_outliers) == 1:
+                node_string = ', '.join([str(v) for v in mean_high_outliers])
+                description_string += 'The mean of node {} is significantly larger then the average node. '.format(node_string)
+            elif len(mean_high_outliers) > 0:
+                node_string = ', '.join([str(v) for v in mean_high_outliers])
+                description_string += 'The means of the nodes {} are significantly larger then the average node. '.format(node_string)
+            if len(mean_low_outliers) == 1:
+                node_string = ', '.join([str(v) for v in mean_low_outliers])
+                description_string += 'The mean of node {} is significantly smaller then the average node.'.format(node_string)
+            elif len(mean_low_outliers) > 0:
+                node_string = ', '.join([str(v) for v in mean_low_outliers])
+                description_string += 'The means of the nodes {} are significantly smaller then the average node.'.format(node_string)
+            if description_string or strength_separation[i] > separation_threshold:
+                description_string = 'The feature "{}" is {} separated by the clustering. '.format(feature_names[i], strength_adv) + description_string
+                iplot(plot)
+                f.printmd(description_string)
+    return all_seps
+
 
 def node_categorical_description(spn, dictionary):
-    categoricals = f.get_categoricals(spn)
+    context = dictionary['context']
+    categoricals = context.get_categoricals()
+    feature_names = context.feature_names
+
     enc = [dictionary['features'][cat]['encoder'] for cat in categoricals]
-    summarized, contributions = f.categorical_nodes_description(spn)
-    
+    summarized, contributions = categorical_nodes_description(spn, context)
+
+
     for i, cat in enumerate(categoricals):
-        printmd('#### Distribution of {}'.format(spn.featureNames[cat]))
-        for cat_instance in spn.domains[cat]:
+        printmd('#### Distribution of {}'.format(feature_names[cat]))
+        for cat_instance in [int(c) for c in context.get_domains_by_scope([cat])[0]]:
+            print(summarized[cat]['explained'][cat_instance])
+
             name = enc[i].inverse_transform(cat_instance)
             contrib_nodes = summarized[cat]['contrib'][cat_instance][0]
-            prop_of_instance = summarized[cat]['explained'][cat_instance][cat_instance]
-            prop_of_nodes = prop_of_instance/np.sum(summarized[cat]['explained'][cat_instance])
+            prop_of_instance = summarized[cat]['explained'][cat_instance][
+                cat_instance]
+            prop_of_nodes = prop_of_instance / np.sum(
+                summarized[cat]['explained'][cat_instance])
             if prop_of_instance < 0.7:
                 printmd('The feature "{}" is not separated well along the primary\
-                        clusters.'.format(spn.featureNames[cat]))
+                        clusters.'.format(feature_names[cat]))
                 break
             else:
                 desc = '{}% of "{}" is captured by the nodes {}. The probability of\
                         "{}" for this group of nodes is {}%'
-                printmd(desc.format(np.round(prop_of_instance*100,2),
-                              name, 
-                              ', '.join([str(n) for n in contrib_nodes]),
-                              name,
-                              np.round(prop_of_nodes*100,2),))
+                printmd(desc.format(np.round(prop_of_instance * 100, 2),
+                                    name,
+                                    ', '.join([str(n) for n in contrib_nodes]),
+                                    name,
+                                    np.round(prop_of_nodes * 100, 2), ))
+
+
+# ------------------------------------------------ #
+# ------------------- OLD CODE ------------------- #
+# ------------------------------------------------ #
+
+
+
+
+
+
+
+
+
+
 
 
 def explain_misclassified(spn, dictionary, misclassified, categorical, predicted, original):
@@ -836,61 +955,6 @@ def explanation_vector_description(spn, dictionary, data_dict, cat_features):
                     else:
                         all_gradients[i][j][k] = _gradients.mean()
     return all_gradients
-
-
-def show_node_separation(spn, nodes):
-    categoricals = f.get_categoricals(spn)
-    all_features = list(range(spn.numFeatures))
-
-    if features_shown == 'all':
-        shown_features = all_features
-    elif isinstance(features_shown, int):
-        num_choices = min(features_shown, len(all_features))
-        shown_features = random.sample(all_features, k=num_choices)
-    else:
-        shown_features = features_shown
-
-    node_means = np.array([node.moment(1, spn.numFeatures) for node in nodes])
-    node_vars = np.array([node.moment(2, spn.numFeatures) - node.moment(1, spn.numFeatures) ** 2
-                          for node in nodes])
-    node_stds = np.sqrt(node_vars)
-    names = np.arange(1,len(nodes)+1,1)
-    strength_separation = f.cluster_variance_separation(spn)
-    node_var, node_mean = f.cluster_mean_var_distance(nodes, spn)
-    all_seps = {i: separation for i, separation in zip(shown_features, strength_separation)}
-    for i in shown_features:
-        if i not in categoricals:
-            description_string = ''
-            plot = p.plot_error_bar(names, node_means[:,i], node_vars[:,i], spn.featureNames[i])
-            strength = ['weak', 'moderate', 'strong', 'very strong', 'perfect']
-            strength_values = [0.3, 0.6, 0.8, 0.99]
-            strength_adv = strength[threshold(strength_values, strength_separation[i])]+'ly'
-            var_outliers = np.where(node_var[:,i] > variance_threshold)[0]
-            if len(var_outliers) == 1:
-                node_string = ', '.join([str(v) for v in var_outliers])
-                description_string += 'The variance of node {} is significantly larger then the average node. '.format(node_string)
-            elif len(var_outliers) > 0:
-                node_string = ', '.join([str(v) for v in var_outliers])
-                description_string += 'The variances of the nodes {} are significantly larger then the average node. '.format(node_string)
-            mean_high_outliers = np.where(node_mean[:,i] > mean_threshold)[0]
-            mean_low_outliers = np.where(node_mean[:,i] < -mean_threshold)[0]
-            if len(mean_high_outliers) == 1:
-                node_string = ', '.join([str(v) for v in mean_high_outliers])
-                description_string += 'The mean of node {} is significantly larger then the average node. '.format(node_string)
-            elif len(mean_high_outliers) > 0:
-                node_string = ', '.join([str(v) for v in mean_high_outliers])
-                description_string += 'The means of the nodes {} are significantly larger then the average node. '.format(node_string)
-            if len(mean_low_outliers) == 1:
-                node_string = ', '.join([str(v) for v in mean_low_outliers])
-                description_string += 'The mean of node {} is significantly smaller then the average node.'.format(node_string)
-            elif len(mean_low_outliers) > 0:
-                node_string = ', '.join([str(v) for v in mean_low_outliers])
-                description_string += 'The means of the nodes {} are significantly smaller then the average node.'.format(node_string)
-            if description_string or strength_separation[i] > separation_threshold:
-                description_string = 'The feature "{}" is {} separated by the clustering. '.format(spn.featureNames[i], strength_adv) + description_string
-                iplot(plot)
-                f.printmd(description_string)
-    return all_seps
 
 
 def classification(spn, numerical_data, categorical_data):
