@@ -215,3 +215,6 @@ src/spn/experiments/hyperspectral/trainedSPNs/
 #
 # # IDE files
 .idea/*
+
+# deep notebook image files
+src/deep_notebooks/images/*
