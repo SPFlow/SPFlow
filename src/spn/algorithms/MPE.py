@@ -80,3 +80,8 @@ def mpe(node, input_data, node_mpe=_node_mpe, in_place=False):
     eval_spn_top_down(node, node_mpe, input_vals=instance_ids, data=data, lls_per_node=lls_per_node)
 
     return data
+
+
+def predict_mpe(spn, feature_id, query, context):
+    query[:, feature_id] = np.nan
+    return mpe(spn, query, in_place=True)[:, feature_id]

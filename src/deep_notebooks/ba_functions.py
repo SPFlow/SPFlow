@@ -1,14 +1,9 @@
 import itertools
-import csv
 import math
 import numpy as np
 import pandas as pd
-# from joblib.memory import Memory
 import scipy.integrate as integrate
 from sklearn.preprocessing import LabelEncoder
-# from tfspn.SPN import SPN, Splitting
-# from tfspn.tfspn import ProductNode
-from IPython.display import display, Markdown
 
 from spn.structure.leaves.parametric.Parametric import Categorical
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
@@ -48,16 +43,6 @@ def get_variance(node, numFeatures):
     :return: the variance of all RVs
     '''
     return node.moment(2, numFeatures) - node.moment(1, numFeatures) ** 2
-
-
-def printmd(string=''):
-    '''
-    a display wrapper for Jupyter notebooks
-    TODO: move to ba_plot
-    :param string: a markdown string
-    :return: a jupyter display object
-    '''
-    display(Markdown(str(string)))
 
 
 def save_dataset(dataset, file_location):
@@ -560,10 +545,6 @@ def node_likelihood_contribution(spn, query):
     spn.root.children = children
     spn.root.weights = children_weights
     return log_likelihood
-
-
-def get_categoricals(spn):
-    return [i for i in range(spn.numFeatures) if spn.featureTypes[i] == 'categorical']
 
 
 def get_marginal_arrays(spn):
