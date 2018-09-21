@@ -45,7 +45,6 @@ def cluster_mean_var_distance(nodes, spn):
 
 
 def categorical_nodes_description(spn, context):
-    #TODO: That threshold needs some evidence or theoretical grounding
     categoricals = context.get_categoricals()
     num_features = len(spn.scope)
     total_analysis = {}
@@ -60,9 +59,9 @@ def categorical_nodes_description(spn, context):
                 query = np.zeros((1, num_features))
                 query[:, :] = np.nan
                 query[:, cat] = cat_instance
-                proba = np.exp(log_likelihood(marg, query) + node_weight - log_likelihood(marg_total, query))
+                proba = np.exp(log_likelihood(marg, query) + node_weight - log_likelihood(marg_total, query)).reshape(-1)
                 node_probabilities.append(proba)
-            categorical_probabilities.append(node_probabilities)
+            categorical_probabilities.append(np.array(node_probabilities))
         total_analysis[cat] = np.sum(np.array(categorical_probabilities), axis=2)
 
     node_categoricals = {}
@@ -72,7 +71,8 @@ def categorical_nodes_description(spn, context):
         node_categoricals[cat]['explained'] = []
         for cat_instance in [int(c) for c in context.get_domains_by_scope([cat])[0]]:
             probs = total_analysis[cat]
-            contrib_nodes = np.where(probs[:, cat_instance]/(np.sum(probs, axis=1))>0.4)
+            # TODO: That threshold needs some evidence or theoretical grounding
+            contrib_nodes = np.where(probs[:, cat_instance]/(np.sum(probs, axis=1)) > 0.4)
             explained_probs = np.sum(probs[contrib_nodes], axis=0)
             node_categoricals[cat]['contrib'].append(contrib_nodes)
             node_categoricals[cat]['explained'].append(explained_probs)

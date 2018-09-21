@@ -14,13 +14,13 @@ from spn.structure.Base import get_size, Leaf, get_spn_depth
 from spn.algorithms.stats.Expectations import get_means, get_variances
 from spn.algorithms.stats.Correlations import get_full_correlation
 from spn.algorithms.stats.ClusterAnalysis import cluster_anova, cluster_mean_var_distance, categorical_nodes_description
-from spn.algorithms.MPE import mpe
+from spn.algorithms.Inference import log_likelihood
+from spn.algorithms.MPE import mpe, predict_mpe
 from spn.algorithms.TransformStructure import Copy, assign_ids
 
 import deep_notebooks.ba_functions as f
 import deep_notebooks.dn_plot as p
-from deep_notebooks.nalgene.generate import fix_sentence, generate_from_file
-from deep_notebooks.ba_functions import printmd
+from deep_notebooks.text_util import printmd, strip_dataset_name, get_nlg_phrase, deep_join, colored_string
 
 # GLOBAL SETTINGS FOR THE MODULE
 correlation_threshold = 0.3
@@ -37,25 +37,15 @@ features_shown = 2
 mean_threshold = 1
 variance_threshold = 2
 separation_threshold = 0.3
+use_shapley = False
+shapley_sample_size = 1
+misclassified_explanations = 1
+
 
 Modifier = namedtuple('Modifier', ['strength', 'strength_adv', 'direction', 'neg_pos'])
 
 EXPLANATION_VECTOR_NLG = ['deep_notebooks/grammar', 'explanation_vector_description.nlg']
 CORRELATION_NLG = ['deep_notebooks/grammar', 'correlation_description.nlg']
-
-
-def get_nlg_phrase(base_dir, file_name):
-    phrase = fix_sentence(generate_from_file(base_dir, file_name)[1].raw_str)
-    return phrase
-
-
-def deep_join(deep_list, string):
-    is_string = [isinstance(x, str) for x in deep_list]
-    if all(is_string):
-        return string.join(deep_list)
-    
-    result = [x if isinstance(x, str) else deep_join(x, string) for x in deep_list]
-    return string.join(result)
 
 
 def correlation_statement(corr, feature1, feature2):
@@ -94,13 +84,6 @@ def get_correlation_modifier(corr):
     return Modifier(strength, strength_adv, direction, neg_pos)
 
 
-def colored_string(string, color):
-    return '<span style="color:' + color + '">' + string + '</span>'
-
-
-def strip_dataset_name(string):
-    return os.path.splitext(os.path.basename(string))[0]
-
 # ---------------------------------------- #
 # ------ ACTUAL DESCRIPTIVE CLASSES ------ #
 # ---------------------------------------- #
@@ -110,7 +93,7 @@ def introduction(spn):
     printmd('# Exploring the {} dataset'.format(strip_dataset_name(spn.name)))
     printmd('''<figure align="right" style="padding: 1em; float:right; width: 300px">
 	<img alt="the logo of TU Darmstadt"
-		src="deep_notebooks/tu_logo.gif">
+		src="deep_notebooks/images/tu_logo.gif">
 	<figcaption><i>Report framework created @ TU Darmstadt</i></figcaption>
         </figure>
 This report describes the dataset {} and contains general statistical
@@ -221,9 +204,9 @@ def correlation_description(spn, dictionary):
     corr = get_full_correlation(spn, context)
     labels = features
     iplot(p.matshow(corr, x_labels=labels, y_labels=labels))
-    
+
     idx = np.where(np.abs(corr) > high_correlation)
-    
+
     phrases = []
     for i in range(corr.shape[0]):
         correlated_features = [j for j in range(corr.shape[1]) if i > j and np.abs(corr[i,j]) > high_correlation]
@@ -327,14 +310,14 @@ def node_introduction(spn, nodes, context):
             d['short_descriptor'], np.round(d['weight'] * 100, 2))
         if d['quick'] != 'shallow':
             if show_node_graphs:
-                graph, visual_style = p.plot_graph(spn=nodes[i], fname="node" + str(
+                graph, visual_style = p.plot_graph(spn=nodes[i], fname="deep_notebooks/images/node" + str(
                     i) + ".png", context=context)
             node_description += '  - The node has {} children and {} descendants,\
                     resulting in a remaining depth of {}.\n'.format(
                 d['num_children'], d['size'], d['depth'])
             printmd(node_description)
             if show_node_graphs:
-                display(Image(filename="node" + str(i) + ".png", retina=True))
+                display(Image(filename="deep_notebooks/images/node" + str(i) + ".png", retina=True))
         else:
             break
     remaining = 0
@@ -461,7 +444,7 @@ def show_node_separation(spn, nodes, context):
             if description_string or strength_separation[i] > separation_threshold:
                 description_string = 'The feature "{}" is {} separated by the clustering. '.format(feature_names[i], strength_adv) + description_string
                 iplot(plot)
-                f.printmd(description_string)
+                printmd(description_string)
     return all_seps
 
 
@@ -473,16 +456,12 @@ def node_categorical_description(spn, dictionary):
     enc = [dictionary['features'][cat]['encoder'] for cat in categoricals]
     summarized, contributions = categorical_nodes_description(spn, context)
 
-
     for i, cat in enumerate(categoricals):
         printmd('#### Distribution of {}'.format(feature_names[cat]))
         for cat_instance in [int(c) for c in context.get_domains_by_scope([cat])[0]]:
-            print(summarized[cat]['explained'][cat_instance])
-
             name = enc[i].inverse_transform(cat_instance)
             contrib_nodes = summarized[cat]['contrib'][cat_instance][0]
-            prop_of_instance = summarized[cat]['explained'][cat_instance][
-                cat_instance]
+            prop_of_instance = summarized[cat]['explained'][cat_instance][cat_instance]
             prop_of_nodes = prop_of_instance / np.sum(
                 summarized[cat]['explained'][cat_instance])
             if prop_of_instance < 0.7:
@@ -497,6 +476,89 @@ def node_categorical_description(spn, dictionary):
                                     ', '.join([str(n) for n in contrib_nodes]),
                                     name,
                                     np.round(prop_of_nodes * 100, 2), ))
+
+
+def classification(spn, numerical_data, dictionary):
+    context = dictionary['context']
+    categoricals = context.get_categoricals()
+    misclassified = {}
+    data_dict = {}
+    for i in categoricals:
+        y_true = numerical_data[:, i].reshape(-1, 1)
+        query = np.copy(numerical_data)
+        y_pred = predict_mpe(spn, i, query, context).reshape(-1, 1)
+        misclassified[i] = np.where(y_true != y_pred)[0]
+        misclassified_instances = misclassified[i].shape[0]
+        print(query)
+        print(y_pred)
+        data_dict[i] = np.concatenate((query[:, :i], y_pred, query[:, i+1:]), axis=1)
+        printmd('For feature "{}" the SPN misclassifies {} instances, resulting in a precision of {}%.'.format(
+                context.feature_names[i], misclassified_instances, np.round(100 * (1 - misclassified_instances/len(numerical_data)),2)))
+    return misclassified, data_dict
+
+
+def describe_misclassified(spn, dictionary, misclassified, data_dict,
+                           numerical_data):
+    context = dictionary['context']
+    categoricals = context.get_categoricals()
+    empty = np.array([[np.nan] * len(spn.scope)])
+    for i in categoricals:
+        if use_shapley:
+            raise NotImplementedError
+        else:
+            if misclassified_explanations == 'all':
+                show_misclassified = misclassified[i]
+            elif isinstance(misclassified_explanations, int):
+                num_choices = min(misclassified_explanations,
+                                  len(misclassified[i]))
+                show_misclassified = random.sample(misclassified[i].tolist(),
+                                                   k=num_choices)
+            else:
+                show_misclassified = misclassified_explanations
+            for inst_num in show_misclassified:
+                instance = data_dict[i][inst_num:inst_num + 1]
+                evidence = instance.copy()
+                evidence[:, i] = np.nan
+                prior = log_likelihood(spn, evidence)
+                posterior = log_likelihood(spn, instance)
+                total = 0
+                all_nodes = []
+                for j, node in enumerate(spn.children):
+                    node_prob = np.exp(np.log(spn.weights[j]) + log_likelihood(spn, instance) - posterior)
+                    total += node_prob
+                    all_nodes.append((node_prob, j))
+                all_nodes.sort()
+                all_nodes.reverse()
+                needed_nodes = []
+                all_reps = []
+                total_prob = 0
+                for prob, idx in all_nodes:
+                    node = Copy(spn.children[idx])
+                    assign_ids(node)
+                    total_prob += prob
+                    needed_nodes.append(idx)
+                    all_reps.append(mpe(node, empty)[0])
+                    if total_prob > 0.9:
+                        break
+                real_value = dictionary['features'][i][
+                    'encoder'].inverse_transform(
+                    int(numerical_data[inst_num, i]))
+                pred_value = dictionary['features'][i][
+                    'encoder'].inverse_transform(
+                    int(data_dict[i][inst_num, i]))
+                printmd(
+                    'Instance {} was predicted as "{}", even though it is "{}", because it was most similar to the following clusters: {}'.format(
+                        inst_num, pred_value, real_value,
+                        ', '.join(map(str, needed_nodes))))
+                all_reps = np.array(all_reps).reshape(len(needed_nodes),
+                                                      len(spn.scope))
+                table = np.round(np.concatenate([instance, all_reps], axis=0),
+                                 2)
+                node_nums = np.array(['instance'] + needed_nodes).reshape(-1,
+                                                                          1)
+                table = np.append(node_nums, table, axis=1)
+
+                iplot(p.plot_table([''] + context.feature_names, table.transpose()))
 
 
 # ------------------------------------------------ #
@@ -553,270 +615,6 @@ def explain_misclassified(spn, dictionary, misclassified, categorical, predicted
         printmd()
 
 
-class NodeNotReadyException(Exception):
-    pass
-
-
-class ExplanationNode:
-
-    def __init__(self):
-        self.children = []
-
-    def add_child(self, child):
-        self.children.append(child)
-
-    def get_text(self):
-        text = [c.get_text() for c in self.children if c.get_text() is not None]
-        if text:
-            return deep_join(text, '\n')
-        else:
-            return ''
-
-
-class IntroNode(ExplanationNode):
-
-    def __init__(self, feature_name, feature_instance, class_name, class_instance, type_):
-        self.feature_name = feature_name
-        self.feature_instance = feature_instance
-        self.class_name = class_name
-        self.class_instance = class_instance
-        self.type = type_
-        self.ready = False
-
-    def compute_strength(self, gradients):
-        self.ready = True
-        direction = np.mean(gradients)
-        strength = ['very weak', 'weak', 'moderate', 'strong', 'very strong']
-        strength_values = [0.05, 0.15, 0.3, 0.5]
-        direction_descriptor = ['negative', 'positive']
-        self.strength = strength[threshold(strength_values, np.abs(direction))]
-        self.direction = 'positive' if direction > 0 else 'negative'
-
-
-    def get_text(self):
-        if not self.ready:
-            raise NodeNotReadyException
-        if self.type == 'categorical':
-            result = 'The instance "{}" of feature "{}" is a {} {} predictor \
-                      for the instance "{}" of class "{}".'.format(
-                              self.feature_instance,
-                              self.feature_name,
-                              self.strength,
-                              self.direction,
-                              self.class_instance,
-                              self.class_name)
-        else:
-            result = 'The feature "{}" is a {} {} predictor for the instance \
-                      "{}" of class "{}".'.format(
-                              self.feature_name,
-                              self.strength,
-                              self.direction,
-                              self.class_instance,
-                              self.class_name)
-        return result
-
-
-class BinNode(ExplanationNode):
-
-    def __init__(self, data, percentage, descriptor, _bin):
-        self.data = data
-        self.percentage = percentage
-        self.descriptor = descriptor[0]
-        self.direction = descriptor[1]
-        # magic, don't touch
-        self.bin = (_bin - 3) * 0.25 - 0.125
-        self.text = None
-        self.ready = False
-        self.useful = True
-
-    def analyze(self):
-        self.ready = True
-        if self.percentage < 0.05 or len(self.data) < 3 or self.descriptor == 'very weak':
-            self.useful = False
-        else:
-            self.mean = self.data.mean()
-            self.var = self.data.var()
-
-
-class BodyNode(ExplanationNode):
-
-    def __init__(self, type_):
-        ExplanationNode.__init__(self)
-        self.type = type_
-        self.text = None
-
-    def analyze(self):
-        for c in self.children:
-            c.analyze()
-
-    def parse(self, abstract_phrase, nodes):
-        means = [n.mean for n in nodes]
-        descriptors = [n.descriptor for n in nodes]
-        directions = [n.direction for n in nodes]
-        grammar = abstract_phrase.split(' ')
-        sentence = []
-        phrase_end = '.'
-        node_counter = -1
-        for i, comp in enumerate(grammar):
-            if comp == '<CONJ>':
-                continue
-            else:
-                node_counter += 1
-            phrase = 'for data points centered around {}, the feature has a {} {} impact on the classification'.format(
-                    np.round(means[node_counter],2),
-                    descriptors[node_counter],
-                    directions[node_counter])
-            if i == len(grammar) - 1:
-                sentence.append(phrase)
-            else:
-                if phrase_end == '.':
-                    phrase = phrase.capitalize()
-                if grammar[i+1] == '<CONJ>':
-                    phrase_end = ', '
-                    conj = np.random.choice(CONJUNCTIONS, 1)[0]
-                    phrase_end += conj
-                else:
-                    phrase_end = '.'
-                phrase += phrase_end
-                sentence.append(phrase)
-        return ' '.join(sentence) 
-
-    def pure_description(self, direction, useful_nodes):
-        descriptor = 'increases' if direction == 'positive' else 'decreases'
-        if self.type == 'categorical':
-            return 'Choosing another instance of this feature always \
-                    {} the probability of this classification.'.format(descriptor)
-        else:
-            comp_main = 'Generally, a higher value for this feature \
-                    will {} the class probability. \n\n'.format(
-                            descriptor)
-            comp_body = fix_sentence(generate_from_file(*EXPLANATION_VECTOR_NLG))
-            return ' '.join([comp_main, comp_body])
-    
-    def description(self, useful_nodes):
-        if self.type == 'categorical':
-            node_strengths = [c.bin for c in self.children]
-            node_percentages = [c.percentage for c in self.children]
-            direction = sum([p*b for p,b in zip(node_percentages, node_strengths)])
-            descriptor = 'increases' if direction > 1 else 'decreases'
-            return 'In general, this value for the feature {} the probability of the prediction.'.format(descriptor)
-        else:
-            #comps = ['<PHRASE>' for n in useful_nodes]
-            counter = 0
-            phrases = []
-            while counter < len(useful_nodes):
-                phrase = get_nlg_phrase(*EXPLANATION_VECTOR_NLG)
-                if 'and' in phrase or 'but' in phrase:
-                    if counter == len(useful_nodes) - 1:
-                        continue
-                    node1 = useful_nodes[counter]
-                    node2 = useful_nodes[counter + 1]
-                    phrase = phrase.format(
-                            strength=node1.descriptor,
-                            strength_adv=node1.descriptor + 'ly',
-                            strength_2=node2.descriptor,
-                            strength_2_adv=node2.descriptor + 'ly',
-                            mean=np.round(node1.mean, 2),
-                            mean_2=np.round(node2.mean, 2),
-                            )
-                    counter += 2
-                    phrases.append(phrase)
-                else:
-                    node1 = useful_nodes[counter]
-                    phrase = phrase.format(
-                            strength=node1.descriptor,
-                            strength_adv=node1.descriptor + 'ly',
-                            mean=np.round(node1.mean, 2),
-                            )
-                    counter += 1
-                    phrases.append(phrase)
-            return ' '.join(phrases)
-
-    def get_text(self):
-        useful_nodes = [c for c in self.children if c.useful]
-        if len(useful_nodes) == 0:
-            return ''
-
-        pure = len(set([c.direction for c in self.children if len(c.data) > 0])) == 1
-        if pure:
-            return self.pure_description(list(set([c.direction for c in self.children]))[0], useful_nodes)
-        else:
-            return self.description(useful_nodes)
-
-
-class ExplanationVectorDescription:
-
-    def __init__(self):
-        self.type = None
-        self.feature_idx = None
-        self.feature_name = None
-        self.feature_instance = None
-        self.class_idx = None
-        self.class_name = None
-        self.class_instance = None
-        self.raw_data = None
-        self.gradients = None
-
-    def add_type(self, type_):
-        self.type = type_
-    
-    def add_feature(self, name, idx, instance):
-        self.feature_name = name
-        self.feature_idx = idx
-        self.feature_instance = instance
-
-    def add_class(self, name, idx, instance):
-        self.class_name = name
-        self.class_idx = idx
-        self.class_instance = instance
-
-    def add_data(self, data):
-        self.raw_data = data
-
-    def add_gradients(self, gradients):
-        self.gradients = gradients
-
-    def compute_body(self):
-        binned_data = f.bin_gradient_data(self.raw_data, self.gradients, 8)
-        bin_counts = [b.shape[0] for b in binned_data]
-        percentual = bin_counts/np.sum(bin_counts)
-
-        description = BodyNode(self.type)
-        descriptors = [
-                ('very strong', 'negative'), 
-                ('strong', 'negative'),  
-                ('moderate', 'negative'), 
-                ('weak', 'negative'),
-                ('weak', 'positive'),
-                ('moderate', 'positive'), 
-                ('strong', 'positive'),  
-                ('very strong', 'positive')]
-        for data, percent, descriptor, _bin in zip(binned_data, percentual, descriptors, range(8)):
-            node = BinNode(data[:,self.feature_idx], percent, descriptor, _bin)
-            description.add_child(node)
-
-        return description
-
-    def build_description(self):
-        description = ExplanationNode()
-        
-        intro = IntroNode(self.feature_name, 
-                self.feature_instance, 
-                self.class_name, 
-                self.class_instance, 
-                self.type)
-        intro.compute_strength(self.gradients)
-        description.add_child(intro)
-
-        body = self.compute_body()
-        body.analyze()
-        description.add_child(body)
-        self.text = description.get_text()
-
-    def get_text(self):
-        return self.text
-
-
 def explanation_vector(gradients, discretize, data, query, query_dict):
     '''
     Generates a textual description of an array of gradients. It describes general orientation and impact of the feature on a classification.
@@ -844,7 +642,7 @@ def explanation_vector(gradients, discretize, data, query, query_dict):
     data = p.plot_explanation_vectors(gradients, discretize)
     if query_dict['type'] == 'categorical':
         header = '##### Predictive categorical feature "{}": "{}"\n\n'.format(
-                query_dict['feature'], query_dict['feature_instance'])    
+                query_dict['feature'], query_dict['feature_instance'])
     else:
         header = '##### Predictive {} feature "{}"\n\n'.format(
                 query_dict['type'], query_dict['feature'])
@@ -866,7 +664,7 @@ def explanation_vector_description(spn, dictionary, data_dict, cat_features):
         shown_classes = explanation_vector_classes
     else:
         shown_classes = categoricals
-    
+
     def plot_query(query, data, query_dict):
         if len(query[0]) == 0:
             return None
@@ -880,9 +678,9 @@ def explanation_vector_description(spn, dictionary, data_dict, cat_features):
         header, description, plot = explanation_vector(_gradients, discretize, data, query, query_dict)
         if not header:
             return _gradients
-        f.printmd(header)
+        printmd(header)
         iplot(plot)
-        f.printmd(description)
+        printmd(description)
         return _gradients
 
     all_gradients = {}
@@ -890,12 +688,12 @@ def explanation_vector_description(spn, dictionary, data_dict, cat_features):
         all_gradients[i] = {}
         for j in spn.domains[i]:
             all_gradients[i][j] = {}
-            f.printmd('#### Class "{}": "{}"'.format(
+            printmd('#### Class "{}": "{}"'.format(
                 spn.featureNames[i],
                 dictionary['features'][i]['encoder'].inverse_transform(j)))
             test_query = np.where((data_dict[i][:,i] == j))
             if len(test_query[0]) == 0:
-                f.printmd('For this particular class instance, no instances in the predicted data were found. \
+                printmd('For this particular class instance, no instances in the predicted data were found. \
                 This might be because the predictive precision of the network was not high enough.')
                 continue
             for k in range(spn.numFeatures - 1):
@@ -919,7 +717,7 @@ def explanation_vector_description(spn, dictionary, data_dict, cat_features):
                         query_dict['feature_idx'] = instance
                         query_dict['class_idx'] = i
                         #_gradients = plot_query(query, data_dict[i], query_dict)
-                        
+
                         gradients = f.gradient(spn, data_dict[i][query], i)
                         gradients_norm = np.linalg.norm(gradients, axis = 1).reshape(-1,1)
                         _gradients = (gradients/gradients_norm)[:,k]
@@ -929,10 +727,10 @@ def explanation_vector_description(spn, dictionary, data_dict, cat_features):
                         #header, description, plot = explanation_vector(_gradients, discretize, data, query, query_dict)
                     plot = p.plot_cat_explanation_vector(plot_data)
                     header = '##### Predictive categorical feature "{}": "{}"\n\n'.format(
-                        query_dict['feature'], query_dict['feature_instance'])    
-                    f.printmd(header)
+                        query_dict['feature'], query_dict['feature_instance'])
+                    printmd(header)
                     iplot(plot)
-                    #f.printmd(description)
+                    #printmd(description)
 
                     if _gradients is None:
                         all_gradients[i][j][k][l] = 0
@@ -957,83 +755,8 @@ def explanation_vector_description(spn, dictionary, data_dict, cat_features):
     return all_gradients
 
 
-def classification(spn, numerical_data, categorical_data):
-    categoricals = f.get_categoricals(spn)
-    misclassified = {}
-    data_dict = {}
-    for i in categoricals:
-        y_true = numerical_data[:,i].reshape(-1,1)
-        query = np.copy(numerical_data)
-        y_pred = np.argmax(f.spn_predict_proba(spn, i, query), axis=1)
-        y_pred = y_pred.reshape(-1,1)
-        misclassified[i] = np.where(y_true != y_pred)[0]
-        misclassified_instances = misclassified[i].shape[0]
-        data_dict[i] = np.concatenate((query[:,:i], y_pred, query[:,i+1:]), axis = 1)
-        f.printmd('For feature "{}" the SPN misclassifies {} instances, resulting in a precision of {}%.'.format(
-                spn.featureNames[i], misclassified_instances, np.round(100 * (1 - misclassified_instances/len(numerical_data)),2)))
-    return misclassified, data_dict
-
-
-def describe_misclassified(spn, dictionary, misclassified, data_dict, numerical_data):
-    categoricals = f.get_categoricals(spn)
-    for i in categoricals:
-        if use_shapley:
-            for value in spn.domains[i]:
-                idx = misclassified[i][data_dict[i][misclassified[i],i] == value]
-                if len(idx) > 0:
-                    shapley = f.feature_contribution(spn, data_dict[i][show_misclassified], i, sample_size = shapley_sample_size)
-        else:
-            if misclassified_explanations == 'all':
-                show_misclassified = misclassified[i]
-            elif isinstance(misclassified_explanations, int):
-                num_choices = min(misclassified_explanations, len(misclassified[i]))
-                show_misclassified = random.sample(misclassified[i].tolist(), k=num_choices)
-            else:
-                show_misclassified = misclassified_explanations
-            for inst_num in show_misclassified:
-                #graph = g.get_predictive_graph(spn, data_dict[i][inst], i)
-
-                #printmd('Instance {} was classified as {}, even though it is {}'.format(inst_num, data_dict[i][inst_num,i], numerical_data[inst_num,i]))
-                instance = data_dict[i][inst_num:inst_num+1]
-                evidence = instance.copy()
-                evidence[:,i] = np.nan
-                prior = spn.root.eval(evidence)
-                posterior = spn.root.eval(instance)
-                empty = np.array([[np.nan] * spn.numFeatures])
-                total = 0
-                all_nodes = []
-                for j, node in enumerate(spn.root.children):
-                    node_prob = np.exp(spn.root.log_weights[j] + node.eval(instance) - posterior)
-                    total += node_prob
-                    all_nodes.append((node_prob, j))
-                all_nodes.sort()
-                all_nodes.reverse()
-                needed_nodes = []
-                all_reps = []
-                total_prob = 0
-                for prob, idx in all_nodes:
-                    total_prob += prob
-                    needed_nodes.append(idx)
-                    all_reps.append(spn.root.children[idx].mpe_eval(empty)[1])
-                    if total_prob > 0.9:
-                        break
-                real_value = dictionary['features'][i]['encoder'].inverse_transform(int(numerical_data[inst_num,i]))
-                pred_value = dictionary['features'][i]['encoder'].inverse_transform(int(data_dict[i][inst_num,i]))
-                printmd('Instance {} was predicted as "{}", even though it is "{}", because it was most similar to the following clusters: {}'.format(
-                    inst_num, pred_value, real_value, ', '.join(map(str, needed_nodes))))
-                all_reps = np.array(all_reps).reshape(len(needed_nodes), spn.numFeatures)
-                table = np.round(np.concatenate([instance, all_reps], axis = 0), 2)
-                node_nums = np.array(['instance'] + needed_nodes).reshape(-1,1)
-                table = np.append(node_nums, table, axis=1)
-                
-                iplot(p.plot_table([''] + spn.featureNames, table.transpose()))
-
-
-
-
-
-def node_correlation(spn):
-    all_nodes = list(i for i, node in enumerate(spn.root.children) if f.get_spn_depth(node) > 1)
+def node_correlation(spn, dictionary):
+    all_nodes = list(i for i, node in enumerate(spn.root.children) if get_spn_depth(node) > 1)
 
     if nodes == 'all':
         shown_nodes = all_nodes
@@ -1042,17 +765,15 @@ def node_correlation(spn):
         shown_nodes = random.sample(all_nodes, k=num_choices)
     else:
         shown_nodes = nodes
-    
+
     root = spn.root
     shown_nodes = [spn.root.children[i] for i in shown_nodes]
-    node_descritions = f.get_node_description(spn, spn.root, spn.numFeatures)
-    used_descriptions = [node_descritions['nodes'][i] for i,_ in enumerate(shown_nodes)]
+    node_descritions = get_node_description(spn, spn.root, len(spn.scope))
+    used_descriptions = [node_descritions['nodes'][i] for i, _ in enumerate(shown_nodes)]
     for i, (node, d) in enumerate(zip(shown_nodes, used_descriptions)):
         if not d['quick'] == 'shallow':
             printmd('### Correlations for node {}'.format(i))
-            spn.root = node
-            correlation_description(spn)
-            spn.root = root
+            correlation_description(node, dictionary)
 
 
 def print_conclusion(spn, dictionary, corr, nodes, node_separations, explanation_vectors):
@@ -1065,12 +786,12 @@ def print_conclusion(spn, dictionary, corr, nodes, node_separations, explanation
     printmd('The initial findings show, that the following variables have a significant connections with each other.')
 
     printmd('\n'.join(['- "{}" - "{}"'.format(pair[0], pair[1]) for pair in correlated_names]))
-    
+
     printmd('The intial clustering performed by the algorithm seperates the following features well:')
 
     separated_well = ['- ' + spn.featureNames[i] for i in node_separations if node_separations[i] > 0.6]
     printmd('\n'.join(separated_well))
-    
+
     relevant_classifications = []
     try:
         for cat in explanation_vectors:
