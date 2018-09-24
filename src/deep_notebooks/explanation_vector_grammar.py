@@ -2,6 +2,11 @@ from bisect import bisect_right as threshold
 
 import numpy as np
 
+from deep_notebooks.data_util import bin_gradient_data
+from deep_notebooks.text_util import get_nlg_phrase, deep_join
+
+
+EXPLANATION_VECTOR_NLG = ['deep_notebooks/grammar', 'explanation_vector_description.nlg']
 
 class NodeNotReadyException(Exception):
     pass
@@ -236,7 +241,7 @@ class ExplanationVectorDescription:
         self.gradients = gradients
 
     def compute_body(self):
-        binned_data = f.bin_gradient_data(self.raw_data, self.gradients, 8)
+        binned_data = bin_gradient_data(self.raw_data, self.gradients, 8)
         bin_counts = [b.shape[0] for b in binned_data]
         percentual = bin_counts / np.sum(bin_counts)
 

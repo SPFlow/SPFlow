@@ -639,15 +639,6 @@ def prediction_nodes(spn, query, categorical):
     return np.array(result)
 
 
-def bin_gradient_data(data, gradients, bins):
-    bin_borders = np.linspace(-1, 1, num=bins+1)
-    query_list = [np.where((gradients >= bin_borders[i]) & (gradients < bin_borders[i+1])) for i in range(len(bin_borders) - 1)]
-    binned_data = []
-    for query in query_list:
-        binned_data.append(data[query[0],:])
-    return binned_data
-
-
 def get_categorical_correlation(spn):
     categoricals = [i for i, t in enumerate(spn.featureTypes) if t == 'categorical']
     var = get_variance(spn.root, spn.numFeatures)
