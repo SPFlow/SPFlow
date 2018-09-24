@@ -59,4 +59,6 @@ def gradient(spn, evidence):
 
 def conditional_gradient(spn, conditional_evidence, gradient_evidence):
     cond_spn = condition(spn, conditional_evidence)
-    return gradient(cond_spn, gradient_evidence)
+    keep_idx = np.isnan(conditional_evidence)[0]
+    evidence = gradient_evidence[:, keep_idx]
+    return gradient(cond_spn, evidence)

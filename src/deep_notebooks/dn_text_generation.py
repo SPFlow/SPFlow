@@ -15,12 +15,14 @@ from spn.algorithms.stats.Expectations import get_means, get_variances
 from spn.algorithms.stats.Correlations import get_full_correlation
 from spn.algorithms.stats.ClusterAnalysis import cluster_anova, cluster_mean_var_distance, categorical_nodes_description
 from spn.algorithms.Inference import log_likelihood
+from spn.algorithms.Gradient import conditional_gradient
 from spn.algorithms.MPE import mpe, predict_mpe
 from spn.algorithms.TransformStructure import Copy, assign_ids
 
 import deep_notebooks.ba_functions as f
 import deep_notebooks.dn_plot as p
 from deep_notebooks.text_util import printmd, strip_dataset_name, get_nlg_phrase, deep_join, colored_string
+import deep_notebooks.explanation_vector_grammar as expl_vec_grammar
 
 # GLOBAL SETTINGS FOR THE MODULE
 correlation_threshold = 0.3
@@ -40,11 +42,13 @@ separation_threshold = 0.3
 use_shapley = False
 shapley_sample_size = 1
 misclassified_explanations = 1
+explanation_vector_threshold = 0
+explanation_vector_classes = None
+explanation_vectors_show = 'all'
 
 
 Modifier = namedtuple('Modifier', ['strength', 'strength_adv', 'direction', 'neg_pos'])
 
-EXPLANATION_VECTOR_NLG = ['deep_notebooks/grammar', 'explanation_vector_description.nlg']
 CORRELATION_NLG = ['deep_notebooks/grammar', 'correlation_description.nlg']
 
 
@@ -489,8 +493,6 @@ def classification(spn, numerical_data, dictionary):
         y_pred = predict_mpe(spn, i, query, context).reshape(-1, 1)
         misclassified[i] = np.where(y_true != y_pred)[0]
         misclassified_instances = misclassified[i].shape[0]
-        print(query)
-        print(y_pred)
         data_dict[i] = np.concatenate((query[:, :i], y_pred, query[:, i+1:]), axis=1)
         printmd('For feature "{}" the SPN misclassifies {} instances, resulting in a precision of {}%.'.format(
                 context.feature_names[i], misclassified_instances, np.round(100 * (1 - misclassified_instances/len(numerical_data)),2)))
@@ -561,6 +563,149 @@ def describe_misclassified(spn, dictionary, misclassified, data_dict,
                 iplot(p.plot_table([''] + context.feature_names, table.transpose()))
 
 
+def explanation_vector_description(spn, dictionary, data_dict, cat_features):
+    context = dictionary['context']
+    categoricals = context.get_categoricals()
+    num_features = len(spn.scope)
+    feature_types = context.parametric_types
+    domains = context.get_domains_by_scope(spn.scope)
+    feature_names = context.feature_names
+    all_combinations = list(itertools.product(categoricals, list(range(num_features))))
+    if explanation_vectors_show == 'all':
+        shown_combinations = all_combinations
+    elif isinstance(explanation_vectors_show, int):
+        num_choices = min(explanation_vectors_show, len(all_combinations))
+        shown_combinations = random.sample(all_combinations, k=num_choices)
+    else:
+        shown_combinations = features_shown
+
+    if explanation_vector_classes:
+        shown_classes = explanation_vector_classes
+    else:
+        shown_classes = categoricals
+
+    def plot_query(query, data, query_dict):
+        if len(query[0]) == 0:
+            return None
+        conditional_evidence = np.full((1, num_features), np.nan)
+        conditional_evidence[:, i] = data[0,i]
+        gradients = conditional_gradient(spn, conditional_evidence, data[query])
+        gradients_norm = np.linalg.norm(gradients, axis = 1).reshape(-1,1)
+        _gradients = (gradients/gradients_norm)[:,k]
+        discretize = np.histogram(_gradients, range=(-1,1), bins = 20)
+        binsize = discretize[1][1] - discretize[1][0]
+        if np.abs(_gradients.mean()) < explanation_vector_threshold:
+            return _gradients
+        header, description, plot = explanation_vector(_gradients, discretize, data, query, query_dict)
+        if not header:
+            return _gradients
+        printmd(header)
+        iplot(plot)
+        printmd(description)
+        return _gradients
+
+    all_gradients = {}
+    for i in shown_classes:
+        all_gradients[i] = {}
+        for j in domains[i]:
+            all_gradients[i][j] = {}
+            printmd('#### Class "{}": "{}"'.format(
+                feature_names[i],
+                dictionary['features'][i]['encoder'].inverse_transform(int(j))))
+            test_query = np.where((data_dict[i][:,i] == j))
+            if len(test_query[0]) == 0:
+                printmd('For this particular class instance, no instances in the predicted data were found. \
+                This might be because the predictive precision of the network was not high enough.')
+                continue
+            for k in range(num_features - 1):
+                all_gradients[i][j][k] = {}
+                this_range = [x for x in range(num_features) if x != i]
+                instance = this_range[k]
+                if (i,k) not in shown_combinations:
+                    continue
+                if instance in categoricals:
+                    plot_data = []
+                    for l in domains[instance]:
+                        query = np.where((data_dict[i][:,i] == j) & (data_dict[i][:,instance] == l))
+                        query_dict = {'type': 'categorical',
+                                      'class': feature_names[i],
+                                      'class_instance':
+                                          dictionary['features'][i][
+                                              'encoder'].inverse_transform(
+                                              int(j)),
+                                      'feature': feature_names[instance],
+                                      'feature_instance':
+                                          dictionary['features'][instance][
+                                              'encoder'].inverse_transform(
+                                              int(l)), 'feature_idx': instance,
+                                      'class_idx': i}
+
+                        gradients = f.gradient(spn, data_dict[i][query], i)
+                        gradients_norm = np.linalg.norm(gradients, axis = 1).reshape(-1,1)
+                        _gradients = (gradients/gradients_norm)[:,k]
+                        discretize = np.histogram(_gradients, range=(-1,1), bins = 10)
+                        binsize = discretize[1][1] - discretize[1][0]
+                        plot_data.append((_gradients, discretize, query_dict['feature_instance']))
+                    plot = p.plot_cat_explanation_vector(plot_data)
+                    header = '##### Predictive categorical feature "{}": "{}"\n\n'.format(
+                        query_dict['feature'], query_dict['feature_instance'])
+                    printmd(header)
+                    iplot(plot)
+
+                    if _gradients is None:
+                        all_gradients[i][j][k][l] = 0
+                    else:
+                        all_gradients[i][j][k][l] = _gradients.mean()
+                else:
+                    query = np.where((data_dict[i][:,i] == j))
+                    query_dict = {'type': feature_types[instance],
+                                  'class': feature_names[i],
+                                  'class_instance': dictionary['features'][i][
+                                      'encoder'].inverse_transform(int(j)),
+                                  'feature': feature_names[instance],
+                                  'feature_instance': '',
+                                  'feature_idx': instance, 'class_idx': i}
+                    _gradients = plot_query(query, data_dict[i], query_dict)
+                    if _gradients is None:
+                        all_gradients[i][j][k] = 0
+                    else:
+                        all_gradients[i][j][k] = _gradients.mean()
+    return all_gradients
+
+
+def explanation_vector(gradients, discretize, data, query, query_dict):
+    '''
+    Generates a textual description of an array of gradients. It describes general orientation and impact of the feature on a classification.
+    Args:
+        gradients (np.array): a numpy 1d array of gradient information
+        discretize (np.array): a numpy 1d array of the binned gradients
+        data (np.array): a numpy 2d array containing the original data on which the gradients were computed
+        query (tuple of np.array): the entries of the array that were used to compute the gradients
+        query_dict (dict): dictionary containing the class, feature and instance names and information about the feature type
+    Returns:
+        string: textual description of the gradient vector
+    '''
+    # general information about the direction of the gradients
+    query_data = data[query]
+    if np.abs(gradients.mean()) < explanation_vector_threshold:
+        return None, None, None
+
+    description_tree = expl_vec_grammar.ExplanationVectorDescription()
+    description_tree.add_type(query_dict['type'])
+    description_tree.add_feature(query_dict['feature'], query_dict['feature_idx'], query_dict['feature_instance'])
+    description_tree.add_class(query_dict['class'], query_dict['class_idx'], query_dict['class_instance'])
+    description_tree.add_data(query_data)
+    description_tree.add_gradients(gradients)
+    description_tree.build_description()
+    data = p.plot_explanation_vectors(gradients, discretize)
+    if query_dict['type'] == 'categorical':
+        header = '##### Predictive categorical feature "{}": "{}"\n\n'.format(
+                query_dict['feature'], query_dict['feature_instance'])
+    else:
+        header = '##### Predictive {} feature "{}"\n\n'.format(
+                query_dict['type'], query_dict['feature'])
+    return header, description_tree.get_text(), data
+
 # ------------------------------------------------ #
 # ------------------- OLD CODE ------------------- #
 # ------------------------------------------------ #
@@ -615,144 +760,6 @@ def explain_misclassified(spn, dictionary, misclassified, categorical, predicted
         printmd()
 
 
-def explanation_vector(gradients, discretize, data, query, query_dict):
-    '''
-    Generates a textual description of an array of gradients. It describes general orientation and impact of the feature on a classification.
-    Args:
-        gradients (np.array): a numpy 1d array of gradient information
-        discretize (np.array): a numpy 1d array of the binned gradients
-        data (np.array): a numpy 2d array containing the original data on which the gradients were computed
-        query (tuple of np.array): the entries of the array that were used to compute the gradients
-        query_dict (dict): dictionary containing the class, feature and instance names and information about the feature type
-    Returns:
-        string: textual description of the gradient vector
-    '''
-    # general information about the direction of the gradients
-    query_data = data[query]
-    if np.abs(gradients.mean()) < explanation_vector_threshold:
-        return None, None, None
-
-    description_tree = ExplanationVectorDescription()
-    description_tree.add_type(query_dict['type'])
-    description_tree.add_feature(query_dict['feature'], query_dict['feature_idx'], query_dict['feature_instance'])
-    description_tree.add_class(query_dict['class'], query_dict['class_idx'], query_dict['class_instance'])
-    description_tree.add_data(query_data)
-    description_tree.add_gradients(gradients)
-    description_tree.build_description()
-    data = p.plot_explanation_vectors(gradients, discretize)
-    if query_dict['type'] == 'categorical':
-        header = '##### Predictive categorical feature "{}": "{}"\n\n'.format(
-                query_dict['feature'], query_dict['feature_instance'])
-    else:
-        header = '##### Predictive {} feature "{}"\n\n'.format(
-                query_dict['type'], query_dict['feature'])
-    return header, description_tree.get_text(), data
-
-
-def explanation_vector_description(spn, dictionary, data_dict, cat_features):
-    categoricals = f.get_categoricals(spn)
-    all_combinations = list(itertools.product(categoricals, list(range(spn.numFeatures))))
-    if explanation_vectors_show == 'all':
-        shown_combinations = all_combinations
-    elif isinstance(explanation_vectors_show, int):
-        num_choices = min(explanation_vectors_show, len(all_combinations))
-        shown_combinations = random.sample(all_combinations, k=num_choices)
-    else:
-        shown_combinations = features_shown
-
-    if explanation_vector_classes:
-        shown_classes = explanation_vector_classes
-    else:
-        shown_classes = categoricals
-
-    def plot_query(query, data, query_dict):
-        if len(query[0]) == 0:
-            return None
-        gradients = f.gradient(spn, data[query], i)
-        gradients_norm = np.linalg.norm(gradients, axis = 1).reshape(-1,1)
-        _gradients = (gradients/gradients_norm)[:,k]
-        discretize = np.histogram(_gradients, range=(-1,1), bins = 20)
-        binsize = discretize[1][1] - discretize[1][0]
-        if np.abs(_gradients.mean()) < explanation_vector_threshold:
-            return _gradients
-        header, description, plot = explanation_vector(_gradients, discretize, data, query, query_dict)
-        if not header:
-            return _gradients
-        printmd(header)
-        iplot(plot)
-        printmd(description)
-        return _gradients
-
-    all_gradients = {}
-    for i in shown_classes:
-        all_gradients[i] = {}
-        for j in spn.domains[i]:
-            all_gradients[i][j] = {}
-            printmd('#### Class "{}": "{}"'.format(
-                spn.featureNames[i],
-                dictionary['features'][i]['encoder'].inverse_transform(j)))
-            test_query = np.where((data_dict[i][:,i] == j))
-            if len(test_query[0]) == 0:
-                printmd('For this particular class instance, no instances in the predicted data were found. \
-                This might be because the predictive precision of the network was not high enough.')
-                continue
-            for k in range(spn.numFeatures - 1):
-                all_gradients[i][j][k] = {}
-                this_range = [x for x in range(spn.numFeatures) if x != i]
-                instance = this_range[k]
-                if (i,k) not in shown_combinations:
-                    continue
-                query = []
-                if spn.featureTypes[instance] == 'categorical':
-                    plot_data = []
-                    for l in spn.domains[instance]:
-                        query = np.where((data_dict[i][:,i] == j) & (data_dict[i][:,instance] == l))
-                        query_dict = {
-                            'type': 'categorical',
-                            'class': spn.featureNames[i],
-                            'class_instance':dictionary['features'][i]['encoder'].inverse_transform(j),
-                            'feature': spn.featureNames[instance],
-                            'feature_instance': dictionary['features'][instance]['encoder'].inverse_transform(l),
-                        }
-                        query_dict['feature_idx'] = instance
-                        query_dict['class_idx'] = i
-                        #_gradients = plot_query(query, data_dict[i], query_dict)
-
-                        gradients = f.gradient(spn, data_dict[i][query], i)
-                        gradients_norm = np.linalg.norm(gradients, axis = 1).reshape(-1,1)
-                        _gradients = (gradients/gradients_norm)[:,k]
-                        discretize = np.histogram(_gradients, range=(-1,1), bins = 10)
-                        binsize = discretize[1][1] - discretize[1][0]
-                        plot_data.append((_gradients, discretize, query_dict['feature_instance']))
-                        #header, description, plot = explanation_vector(_gradients, discretize, data, query, query_dict)
-                    plot = p.plot_cat_explanation_vector(plot_data)
-                    header = '##### Predictive categorical feature "{}": "{}"\n\n'.format(
-                        query_dict['feature'], query_dict['feature_instance'])
-                    printmd(header)
-                    iplot(plot)
-                    #printmd(description)
-
-                    if _gradients is None:
-                        all_gradients[i][j][k][l] = 0
-                    else:
-                        all_gradients[i][j][k][l] = _gradients.mean()
-                else:
-                    query = np.where((data_dict[i][:,i] == j))
-                    query_dict = {
-                        'type': spn.featureTypes[instance],
-                        'class': spn.featureNames[i],
-                        'class_instance':dictionary['features'][i]['encoder'].inverse_transform(j),
-                        'feature': spn.featureNames[instance],
-                        'feature_instance': '',
-                    }
-                    query_dict['feature_idx'] = instance
-                    query_dict['class_idx'] = i
-                    _gradients = plot_query(query, data_dict[i], query_dict)
-                    if _gradients is None:
-                        all_gradients[i][j][k] = 0
-                    else:
-                        all_gradients[i][j][k] = _gradients.mean()
-    return all_gradients
 
 
 def node_correlation(spn, dictionary):
@@ -777,11 +784,13 @@ def node_correlation(spn, dictionary):
 
 
 def print_conclusion(spn, dictionary, corr, nodes, node_separations, explanation_vectors):
+    context = dictionary['context']
+    feature_names = context.feature_names
     printmd('This concludes the automated report on the {} dataset.'.format(strip_dataset_name(spn.name)))
 
     correlated = np.where(np.abs(corr) > correlation_threshold)
     correlated_features = [(i,j) for i,j in zip(correlated[0], correlated[1]) if i > j]
-    correlated_names = [(spn.featureNames[i], spn.featureNames[j]) for i, j in correlated_features]
+    correlated_names = [(feature_names[i], feature_names[j]) for i, j in correlated_features]
 
     printmd('The initial findings show, that the following variables have a significant connections with each other.')
 
@@ -789,7 +798,7 @@ def print_conclusion(spn, dictionary, corr, nodes, node_separations, explanation
 
     printmd('The intial clustering performed by the algorithm seperates the following features well:')
 
-    separated_well = ['- ' + spn.featureNames[i] for i in node_separations if node_separations[i] > 0.6]
+    separated_well = ['- ' + feature_names[i] for i in node_separations if node_separations[i] > 0.6]
     printmd('\n'.join(separated_well))
 
     relevant_classifications = []
@@ -803,10 +812,10 @@ def print_conclusion(spn, dictionary, corr, nodes, node_separations, explanation
                         summed = abs(explanation_vectors[cat][cat_value][predictor])
                     if summed > explanation_vector_threshold:
                         encoder_cat = dictionary['features'][cat]['encoder']
-                        categorical = '{} - {}'.format(spn.featureNames[cat],
+                        categorical = '{} - {}'.format(feature_names[cat],
                                 encoder_cat.inverse_transform(cat_value))
-                        class_descriptor = str(spn.featureNames[cat]) + ' - ' + str(encoder_cat.inverse_transform(cat_value))
-                        relevant_classifications.append((class_descriptor, spn.featureNames[predictor]))
+                        class_descriptor = str(feature_names[cat]) + ' - ' + str(encoder_cat.inverse_transform(cat_value))
+                        relevant_classifications.append((class_descriptor, feature_names[predictor]))
     except Exception as e:
         pass
 
