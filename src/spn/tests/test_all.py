@@ -18,6 +18,7 @@ from test_pwl import TestParametric
 from test_sampling_spn import TestSampling
 # from test_tensorflow
 from test_transformation import TestTransformation
+from test_gradients import TestGradient
 
 
 if __name__ == "__main__":
