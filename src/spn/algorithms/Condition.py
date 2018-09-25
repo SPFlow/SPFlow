@@ -42,9 +42,7 @@ def leaf_condition(node, evidence, scope=None):
 
 
 def condition(spn, evidence):
-    if not spn.full_scope:
-        set_full_scope(spn)
-    scope = set([i for i in range(len(spn.full_scope)) if not np.isnan(evidence)[0][i]])
+    scope = set([i for i in range(len(spn.scope)) if not np.isnan(evidence)[0][i]])
     node_conditions = {type(leaf): leaf_condition for leaf in get_nodes_by_type(spn, Leaf)}
     node_conditions.update({Sum: sum_condition,
                             Product: prod_condition})

@@ -5,7 +5,7 @@ from spn.algorithms.stats.Expectations import Expectation, _node_expectation, ge
 from spn.algorithms.Inference import likelihood
 from spn.algorithms.Marginalization import marginalize
 from spn.algorithms.Condition import condition
-from spn.structure.Base import Leaf, get_nodes_by_type, Sum, Product, set_full_scope
+from spn.structure.Base import Leaf, get_nodes_by_type, Sum, Product, set_full_scope, eval_spn_bottom_up
 
 
 def node_correlation(node, unused, dtype=np.float64):
@@ -13,7 +13,7 @@ def node_correlation(node, unused, dtype=np.float64):
     size = len(node.full_scope)
     idx = node.scope[0]
     mat = np.zeros((size, size))
-    mat[idx, idx] = func(node)[:, idx]
+    mat[idx, idx] = func(node, None)
     return mat
 
 
@@ -84,7 +84,7 @@ def get_categorical_correlation(spn, context):
     for cat in categoricals:
         all_probs = []
         cat_vars = []
-        query = np.array([[np.nan] * num_features])
+        query = np.full((1, num_features), np.nan)
         domain = context.get_domains_by_scope([cat])[0]
         for value in domain:
             query[:, cat] = value
@@ -97,12 +97,32 @@ def get_categorical_correlation(spn, context):
         cat_vars = np.insert(cat_vars, cat, values=np.nan, axis=2)
         cat_vars = cat_vars.reshape((cat_vars.shape[0], cat_vars.shape[2]))
         all_probs = np.array(all_probs).reshape(-1, 1)
+        all_probs /= np.sum(all_probs)
         total_var = np.sum(cat_vars * all_probs, axis=0)
         result = 1 - (total_var/var)
+        if np.any(result < 0):
+            print('FUUUUCK')
+            print('complete var')
+            print(var)
+            print('cat')
+            print(cat)
+            print('cat_vars')
+            print(cat_vars)
+            print('all_probs')
+            print(all_probs)
+            print('result')
+            print(result)
+            print()
+            print()
         full_matrix[:, cat] = result
         full_matrix[cat, :] = result
-        #all_vars.append(result)
-    #all_vars = np.array(all_vars)
+        for cat2 in categoricals:
+            if cat != cat2:
+                full_matrix[cat, cat2] = np.nan
+                full_matrix[cat2, cat] = np.nan
+            else:
+                full_matrix[cat, cat] = 1
+    print(full_matrix)
     assert np.all(np.logical_or(full_matrix > -0.0001, np.isnan(full_matrix)))
     full_matrix[full_matrix < 0] = 0
     return np.sqrt(full_matrix)
@@ -189,6 +209,5 @@ def joined_means(spn):
     node_functions.update({Sum: sum_correlation,
                            Product: prod_correlation})
 
-    fake_evidence = np.zeros((1, len(spn.scope))).reshape(1,-1)
-    expectation = likelihood(spn, fake_evidence, node_likelihood=node_functions)
+    expectation = eval_spn_bottom_up(spn, node_functions)
     return expectation

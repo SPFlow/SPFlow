@@ -11,7 +11,7 @@ from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.histogram.Histograms import Histogram
 
 
-def histogram_expectation(node, moment=1):
+def histogram_expectation(node, unused, moment=1):
 
     exp = 0
     for i in range(len(node.breaks) - 1):
@@ -21,13 +21,10 @@ def histogram_expectation(node, moment=1):
         if node.meta_type == MetaType.DISCRETE:
             sum_x = a ** moment
         else:
-            # integral of x dx, from a to b
             sum_x = (b ** (moment+1) - a ** (moment+1)) / (moment + 1)
+
         exp += d * sum_x
-    ret_val = np.zeros((1, len(node.full_scope)))
-    ret_val[:] = np.nan
-    ret_val[:, node.scope[0]] = exp
-    return ret_val
+    return exp
 
 
 def add_histogram_expectation_support():
