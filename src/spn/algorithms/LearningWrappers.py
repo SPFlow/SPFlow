@@ -16,10 +16,10 @@ from spn.algorithms.splitting.RDC import get_split_cols_RDC_py, get_split_rows_R
 from spn.structure.Base import Sum, assign_ids, Context, Leaf
 
 from spn.algorithms.LeafLearning import learn_leaf_from_context
-from spn.structure.leaves.histogram.Histograms import create_histogram_leaf, Histogram
-from spn.structure.leaves.parametric.Parametric import create_parametric_leaf, Parametric
-from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf, Linear
-from spn.structure.leaves.conditional.Conditional import create_conditional_leaf, Conditional
+from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
+from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
+from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
+from spn.structure.leaves.conditional.Conditional import create_conditional_leaf
 
 
 def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, cpus=-1, rand_gen=None):
@@ -187,8 +187,7 @@ def learn_piecewise_from_data(data_file, header=0, min_instances=25, independenc
                      min_instances_slice=min_instances,
                      threshold=independence_threshold,
                      ohe=False,
-                     leaves=learn_leaf_from_context,
-                     cpus=1)
+                     leaves=create_piecewise_leaf)
     assert is_valid(spn), 'No valid spn could be created from datafile'
     data_dictionary['context'] = context
     return spn, data_dictionary

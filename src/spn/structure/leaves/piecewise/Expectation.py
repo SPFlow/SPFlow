@@ -10,7 +10,7 @@ from spn.algorithms.stats.Expectations import add_node_expectation
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 
 
-def piecewise_expectation(node, moment=1):
+def piecewise_expectation(node, unused, moment=1):
     exp = 0
     for i in range(len(node.x_range) - 1):
         y0 = node.y_range[i]
@@ -24,11 +24,7 @@ def piecewise_expectation(node, moment=1):
         k = moment
         integral = m / (k + 2) * (x1 ** (k + 2) - x0 ** (k + 2)) + b / (k + 1) * (x1 ** (k + 1) - x0 ** (k + 1))
         exp += integral
-
-    ret_val = np.zeros((1, len(node.full_scope)))
-    ret_val[:] = np.nan
-    ret_val[:,node.scope[0]] = exp
-    return ret_val
+    return np.array([[exp]])
 
 def add_piecewise_expectation_support():
     add_node_expectation(PiecewiseLinear, piecewise_expectation)
