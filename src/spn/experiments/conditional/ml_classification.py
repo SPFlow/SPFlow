@@ -43,8 +43,8 @@ if __name__ == '__main__':
 
     train_data = np.concatenate((train_labels, train_input), axis=1)
 
-    cspn = learn_conditional(train_data, ds_context, scope=list(range(num_labels)),
-                             min_instances_slice=50, threshold=0.5, memory=memory)
+    cspn = learn_conditional(train_data, ds_context, scope=list(range(num_labels)),rows='tsne',
+                             min_instances_slice=500, threshold=0.5, memory=memory)
 
     test_data = np.zeros_like(test_labels, dtype=np.float32)
     test_data[:] = np.nan

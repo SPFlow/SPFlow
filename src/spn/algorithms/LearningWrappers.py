@@ -8,7 +8,7 @@ import numpy as np
 
 from spn.algorithms.StructureLearning import get_next_operation, learn_structure
 from spn.algorithms.Validity import is_valid
-from spn.algorithms.splitting.Clustering import get_split_rows_KMeans
+from spn.algorithms.splitting.Clustering import get_split_rows_KMeans, get_split_rows_TSNE
 from spn.algorithms.splitting.RDC import get_split_cols_RDC_py, get_split_rows_RDC_py
 
 from spn.structure.Base import Sum, assign_ids
@@ -150,7 +150,7 @@ def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", m
         elif rows == "kmeans":
             split_rows = get_split_rows_KMeans()
         elif rows == "tsne":
-            split_rows = get_split_rows_KMeans()
+            split_rows = get_split_rows_TSNE()
         else:
             # todo add other clustering?
             raise ValueError('invalid clustering method')

@@ -41,6 +41,7 @@ def get_split_rows_KMeans(n_clusters=2, pre_proc=None, ohe=False, seed=17):
 
 
 def get_split_rows_TSNE(n_clusters=2, pre_proc=None, ohe=False, seed=17, verbose=10, n_jobs=-1):
+    #https://github.com/DmitryUlyanov/Multicore-TSNE
     from MulticoreTSNE import MulticoreTSNE as TSNE
     import os
     ncpus = n_jobs
@@ -49,7 +50,7 @@ def get_split_rows_TSNE(n_clusters=2, pre_proc=None, ohe=False, seed=17, verbose
 
     def split_rows_KMeans(local_data, ds_context, scope):
         data = preproc(local_data, ds_context, pre_proc, ohe)
-        kmeans_data = TSNE(n_components=3, verbose=10, n_jobs=ncpus, random_state=seed).fit_transform(data)
+        kmeans_data = TSNE(n_components=3, verbose=verbose, n_jobs=ncpus, random_state=seed).fit_transform(data)
         clusters = KMeans(n_clusters=n_clusters, random_state=seed).fit_predict(kmeans_data)
 
         return split_data_by_clusters(local_data, clusters, scope, rows=True)

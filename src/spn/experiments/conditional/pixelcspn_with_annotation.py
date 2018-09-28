@@ -83,7 +83,8 @@ if __name__ == '__main__':
             Context(meta_types=[MetaType.REAL] * tr_block.shape[1],
                     parametric_types=[Conditional_Gaussian] * tr_block.shape[1]).add_domains(tr_block),
             scope=list(range(datasets[0][0].shape[1])),
-            min_instances_slice=0.1 * tr_block.shape[0], memory=memory)
+            rows='tsne',
+            min_instances_slice=1000, memory=memory)
         cspns.append(cspn)
 
         continue
