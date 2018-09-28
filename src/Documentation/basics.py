@@ -221,13 +221,12 @@ def learn_PSPN():
 
 if __name__ == '__main__':
     learn_PSPN()
-    0/0
     learn_MSPN()
     create_SPN()
     to_str()
     plot()
     inference()
-    # tensorflow()
+    tensorflow()
     valid()
     stats()
     sample()
