@@ -6,109 +6,88 @@ Created on April 15, 2018
 
 import numpy as np
 
-from spn.algorithms.Inference import add_node_likelihood, add_node_mpe_likelihood
+from spn.algorithms.Inference import add_node_likelihood, add_node_mpe_likelihood, leaf_marginalized_likelihood
 from spn.structure.leaves.parametric.Parametric import *
 from spn.structure.leaves.parametric.utils import get_scipy_obj_params
+from scipy.stats import *
 
 POS_EPS = 1e-7
 
 
-def parametric_likelihood(node, data, dtype=np.float64):
-    assert len(node.scope) == 1, node.scope
-
-    probs = np.ones((data.shape[0], 1), dtype=dtype)
-
-    if data.shape[1] > 1:
-        data = data[:, node.scope]
-
-    assert data.shape[1] == 1, data.shape
-
-    #
-    # marginalize over something?
-    marg_ids = np.isnan(data)
-
-    if isinstance(node, (Gaussian, LogNormal, Exponential)):
-        scipy_obj, params = get_scipy_obj_params(node)
-        probs[~marg_ids] = scipy_obj.pdf(data[~marg_ids], **params)
-
-    elif isinstance(node, Gamma):
-        scipy_obj, params = get_scipy_obj_params(node)
-        data_m = data[~marg_ids]
-        data_m[data_m == 0] += POS_EPS
-        probs[~marg_ids] = scipy_obj.pdf(data_m, **params)
-
-    elif isinstance(node, (Poisson, Bernoulli, Geometric)):
-        scipy_obj, params = get_scipy_obj_params(node)
-        probs[~marg_ids] = scipy_obj.pmf(data[~marg_ids], **params)
-
-    elif isinstance(node, NegativeBinomial):
-        raise ValueError('Mismatch with scipy')
-    elif isinstance(node, Hypergeometric):
-        raise ValueError('Mismatch with wiki')
-    elif isinstance(node, Categorical):
-        #
-        # forcing casting
-        cat_data = data.astype(np.int64)
-        assert np.all(np.equal(np.mod(cat_data[~marg_ids], 1), 0))
-        out_domain_ids = cat_data >= node.k
-        probs[~marg_ids & out_domain_ids] = 0
-        probs[~marg_ids & ~out_domain_ids] = np.array(node.p)[cat_data[~marg_ids & ~out_domain_ids]]
-    elif isinstance(node, CategoricalDictionary):
-        dict_probs = [node.p.get(val, 0.0) for val in data[~marg_ids]]
-        probs[~marg_ids] = dict_probs
-    elif isinstance(node, Uniform):
-        probs[~marg_ids] = node.density
-    else:
-        raise Exception("Unknown parametric " + str(type(node)))
-
+def gaussian_likelihood(node, data=None, dtype=np.float64):
+    probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
+    scipy_obj, params = get_scipy_obj_params(node)
+    probs[~marg_ids] = scipy_obj.pdf(observations, **params)
     return probs
 
 
-def parametric_mpe_log_likelihood(node, data, log_space=True, dtype=np.float64, context=None, node_mpe_likelihood=None):
-    assert len(node.scope) == 1, node.scope
+lognormal_likelihood = gaussian_likelihood
+exponential_likelihood = gaussian_likelihood
 
-    log_probs = np.zeros((data.shape[0], 1), dtype=dtype)
-    log_probs[:] = np.log(parametric_likelihood(node, np.array([[node.mode]]), dtype=dtype))
 
-    if data.shape[1] > 1:
-        data = data[:, node.scope]
+def gamma_likelihood(node, data=None, dtype=np.float64):
+    probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
 
-    assert data.shape[1] == 1, data.shape
+    observations[observations == 0] += POS_EPS
 
-    #
-    # collecting query rvs
-    mpe_ids = np.isnan(data)
+    scipy_obj, params = get_scipy_obj_params(node)
+    probs[~marg_ids] = scipy_obj.pdf(observations, **params)
+    return probs
 
-    log_probs[~mpe_ids] = np.log(parametric_likelihood(node, data[~mpe_ids].reshape(-1, 1), dtype=dtype)[:, 0])
 
-    if not log_space:
-        return np.exp(log_probs)
+def poisson_likelihood(node, data=None, dtype=np.float64):
+    probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
+    scipy_obj, params = get_scipy_obj_params(node)
+    probs[~marg_ids] = scipy_obj.pmf(observations, **params)
+    return probs
 
-    return log_probs
+
+bernoulli_likelihood = poisson_likelihood
+geometric_likelihood = poisson_likelihood
+
+
+def categorical_likelihood(node, data=None, dtype=np.float64):
+    probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
+
+    cat_data = observations.astype(np.int64)
+    assert np.all(np.equal(np.mod(cat_data, 1), 0))
+    out_domain_ids = cat_data >= node.k
+
+    idx_out = ~marg_ids
+    idx_out[idx_out] = out_domain_ids
+    probs[idx_out] = 0
+
+    idx_in = ~marg_ids
+    idx_in[idx_in] = ~out_domain_ids
+    probs[idx_in] = np.array(node.p)[cat_data[~out_domain_ids]]
+    return probs
+
+
+def categorical_dictionary_likelihood(node, data=None, dtype=np.float64):
+    probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
+
+    dict_probs = [node.p.get(val, 0.0) for val in observations]
+    probs[~marg_ids] = dict_probs
+    return probs
+
+
+def uniform_likelihood(node, data=None, dtype=np.float64):
+    probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
+
+    probs[~marg_ids] = node.density
+    return probs
+
+
 
 
 def add_parametric_inference_support():
-    add_node_likelihood(Gaussian, parametric_likelihood)
-    add_node_likelihood(Gamma, parametric_likelihood)
-    add_node_likelihood(LogNormal, parametric_likelihood)
-    add_node_likelihood(Poisson, parametric_likelihood)
-    add_node_likelihood(Bernoulli, parametric_likelihood)
-    add_node_likelihood(Categorical, parametric_likelihood)
-    add_node_likelihood(NegativeBinomial, parametric_likelihood)
-    add_node_likelihood(Hypergeometric, parametric_likelihood)
-    add_node_likelihood(Geometric, parametric_likelihood)
-    add_node_likelihood(Exponential, parametric_likelihood)
-    add_node_likelihood(Uniform, parametric_likelihood)
-    add_node_likelihood(CategoricalDictionary, parametric_likelihood)
-
-
-    add_node_mpe_likelihood(Gaussian, parametric_mpe_log_likelihood)
-    add_node_mpe_likelihood(Gamma, parametric_mpe_log_likelihood)
-    add_node_mpe_likelihood(LogNormal, parametric_mpe_log_likelihood)
-    add_node_mpe_likelihood(Poisson, parametric_mpe_log_likelihood)
-    add_node_mpe_likelihood(Bernoulli, parametric_mpe_log_likelihood)
-    add_node_mpe_likelihood(Categorical, parametric_mpe_log_likelihood)
-    add_node_mpe_likelihood(NegativeBinomial, parametric_mpe_log_likelihood)
-    add_node_mpe_likelihood(Hypergeometric, parametric_mpe_log_likelihood)
-    add_node_mpe_likelihood(Geometric, parametric_mpe_log_likelihood)
-    add_node_mpe_likelihood(Exponential, parametric_mpe_log_likelihood)
+    add_node_likelihood(Gaussian, gaussian_likelihood)
+    add_node_likelihood(Gamma, gamma_likelihood)
+    add_node_likelihood(LogNormal, lognormal_likelihood)
+    add_node_likelihood(Poisson, poisson_likelihood)
+    add_node_likelihood(Bernoulli, bernoulli_likelihood)
+    add_node_likelihood(Categorical, categorical_likelihood)
+    add_node_likelihood(Geometric, geometric_likelihood)
+    add_node_likelihood(Exponential, exponential_likelihood)
+    add_node_likelihood(Uniform, uniform_likelihood)
+    add_node_likelihood(CategoricalDictionary, categorical_dictionary_likelihood)
