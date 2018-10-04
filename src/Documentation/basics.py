@@ -154,7 +154,7 @@ def extend():
             Leaf.__init__(self, scope=scope)
             self.a = a
 
-    def pareto_likelihood(node, data, dtype=np.float64):
+    def pareto_likelihood(node, data=None, dtype=np.float64):
         probs = np.ones((data.shape[0], 1), dtype=dtype)
         from scipy.stats import pareto
         probs[:] = pareto.pdf(data[:, node.scope], node.a)
@@ -226,7 +226,7 @@ if __name__ == '__main__':
     to_str()
     plot()
     inference()
-    tensorflow()
+    #tensorflow()
     valid()
     stats()
     sample()

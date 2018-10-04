@@ -15,7 +15,7 @@ from spn.structure.leaves.histogram.Inference import histogram_likelihood
 from spn.structure.leaves.parametric.Parametric import Gaussian
 
 
-def log_sum_to_tf_graph(node, children, data_placeholder, variable_dict, log_space=True, dtype=np.float32):
+def log_sum_to_tf_graph(node, children, data_placeholder=None, variable_dict=None, log_space=True, dtype=np.float32):
     assert log_space
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         softmaxInverse = np.log(node.weights / np.max(node.weights)).astype(dtype)
@@ -29,13 +29,13 @@ def tf_graph_to_sum(node, tfvar):
     node.weights = tfvar.eval().tolist()
 
 
-def log_prod_to_tf_graph(node, children, data_placeholder, variable_dict=None, log_space=True, dtype=np.float32):
+def log_prod_to_tf_graph(node, children, data_placeholder=None, variable_dict=None, log_space=True, dtype=np.float32):
     assert log_space
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         return tf.add_n(children)
 
 
-def histogram_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=None, dtype=np.float32):
+def histogram_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         inps = np.arange(int(max(node.breaks))).reshape((-1, 1))
         tmpscope = node.scope[0]
@@ -50,8 +50,6 @@ def histogram_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=
         col = data_placeholder[:, node.scope[0]]
 
         return tf.squeeze(tf.gather(lls, col))
-
-
 
 
 _node_log_tf_graph = {Sum: log_sum_to_tf_graph, Product: log_prod_to_tf_graph, Histogram: histogram_to_tf_graph}
@@ -73,7 +71,7 @@ def spn_to_tf_graph(node, data, node_tf_graph=_node_log_tf_graph, log_space=True
     # data is a placeholder, with shape same as numpy data
     data_placeholder = tf.placeholder(data.dtype, (None, data.shape[1]))
     variable_dict = {}
-    tf_graph = eval_spn_bottom_up(node, node_tf_graph, input_vals=data_placeholder, log_space=log_space,
+    tf_graph = eval_spn_bottom_up(node, node_tf_graph, data_placeholder=data_placeholder, log_space=log_space,
                                   variable_dict=variable_dict, dtype=data.dtype)
     return tf_graph, data_placeholder, variable_dict
 
@@ -87,11 +85,13 @@ def likelihood_loss(tf_graph):
     # minimize negative log likelihood
     return -tf.reduce_sum(tf_graph)
 
+
 def optimize_tf(spn, data, epochs=1000, optimizer=None):
     spn_copy = Copy(spn)
     tf_graph, data_placeholder, variable_dict = spn_to_tf_graph(spn_copy, data)
     optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=epochs, optimizer=optimizer)
     return spn_copy
+
 
 def optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=1000, optimizer=None):
     if optimizer is None:
@@ -107,6 +107,7 @@ def optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=10
 def eval_tf(spn, data, save_graph_path=None):
     tf_graph, placeholder, _ = spn_to_tf_graph(spn, data)
     return eval_tf_graph(tf_graph, placeholder, data, save_graph_path=save_graph_path)
+
 
 def eval_tf_graph(tf_graph, data_placeholder, data, save_graph_path=None):
     with tf.Session() as sess:
