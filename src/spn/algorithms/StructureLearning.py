@@ -7,7 +7,6 @@ import logging
 from collections import deque
 from enum import Enum
 
-from tqdm import tqdm
 
 try:
     from time import perf_counter

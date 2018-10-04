@@ -331,7 +331,7 @@ class Pareto(Leaf):
 
 Now, if we want to do inference with this new node type, we just implement the corresponding likelihood function:
 ```python
-def pareto_likelihood(node, data, dtype=np.float64):
+def pareto_likelihood(node, data=None, dtype=np.float64):
     probs = np.ones((data.shape[0], 1), dtype=dtype)
     from scipy.stats import pareto
     probs[:] = pareto.pdf(data[:, node.scope], node.a)

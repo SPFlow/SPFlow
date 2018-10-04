@@ -6,9 +6,9 @@ Created on April 15, 2018
 
 import numpy as np
 
-from spn.algorithms.Inference import EPSILON, add_node_likelihood, add_node_mpe_likelihood
+from spn.algorithms.Inference import EPSILON, add_node_likelihood
 from spn.structure.leaves.histogram.Histograms import Histogram
-from numba import jit
+#from numba import jit
 import bisect
 
 #@jit("float64[:](float64[:], float64[:], float64[:,:])", nopython=True)
@@ -36,7 +36,7 @@ def histogram_ll(breaks, densities, data):
     return probs
 
 
-def histogram_likelihood(node, data, dtype=np.float64):
+def histogram_likelihood(node, data=None, dtype=np.float64):
     probs = np.ones((data.shape[0], 1), dtype=dtype)
 
     nd = data[:, node.scope[0]]
@@ -47,25 +47,6 @@ def histogram_likelihood(node, data, dtype=np.float64):
     return probs
 
 
-def histogram_mpe_log_likelihood(node, data, log_space=True, dtype=np.float64, context=None, node_mpe_likelihood=None):
-    assert len(node.scope) == 1, node.scope
-
-    log_probs = np.zeros((data.shape[0], 1), dtype=dtype)
-    log_probs[:] = histogram_log_likelihood(node, np.ones((1, data.shape[1])) * node.mode, dtype=dtype)
-
-    #
-    # collecting query rvs
-    mpe_ids = np.isnan(data[:, node.scope[0]])
-
-    log_probs[~mpe_ids] = histogram_log_likelihood(node, data[~mpe_ids, :], dtype=dtype)
-
-    if not log_space:
-        return np.exp(log_probs)
-
-    return log_probs
-
 
 def add_histogram_inference_support():
     add_node_likelihood(Histogram, histogram_likelihood)
-
-    add_node_mpe_likelihood(Histogram, histogram_mpe_log_likelihood)
