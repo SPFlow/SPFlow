@@ -12,7 +12,7 @@ from spn.structure.leaves.parametric.Parametric import Gaussian, Categorical, Lo
 import numpy as np
 
 
-def gaussian_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=None, dtype=np.float32):
+def gaussian_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         mean = tf.get_variable("mean", initializer=node.mean, dtype=dtype)
         stdev = tf.get_variable("stdev", initializer=node.stdev, dtype=dtype)
@@ -25,7 +25,7 @@ def gaussian_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=N
         return dist.prob(data_placeholder[:, node.scope[0]])
 
 
-def exponential_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=None, dtype=np.float32):
+def exponential_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         l = tf.get_variable("rate", initializer=node.l, dtype=dtype)
         variable_dict[node] = l
@@ -36,7 +36,7 @@ def exponential_to_tf_graph(node, data_placeholder, log_space=True, variable_dic
 
         return dist.prob(data_placeholder[:, node.scope[0]])
 
-def poisson_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=None, dtype=np.float32):
+def poisson_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         mean = tf.maximum(tf.get_variable("lambda", initializer=node.mean, dtype=dtype), 0.001)
         variable_dict[node] = mean
@@ -46,7 +46,7 @@ def poisson_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=No
 
         return dist.prob(data_placeholder[:, node.scope[0]])
 
-def bernoulli_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=None, dtype=np.float32):
+def bernoulli_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         p = tf.maximum(tf.get_variable("p", initializer=node.p, dtype=dtype), 0.001)
         variable_dict[node] = p
@@ -57,7 +57,7 @@ def bernoulli_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=
         return dist.prob(data_placeholder[:, node.scope[0]])
 
 
-def gamma_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=None, dtype=np.float32):
+def gamma_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         alpha = tf.maximum(tf.get_variable("alpha", initializer=node.alpha, dtype=dtype), 0.001)
         beta = tf.maximum(tf.get_variable("beta", initializer=node.beta, dtype=dtype), 0.001)
@@ -69,7 +69,7 @@ def gamma_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=None
         return dist.prob(data_placeholder[:, node.scope[0]])
 
 
-def lognormal_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=None, dtype=np.float32):
+def lognormal_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         mean = tf.get_variable("mean", initializer=node.mean, dtype=dtype)
         stdev = tf.get_variable("stdev", initializer=node.stdev, dtype=dtype)
@@ -84,7 +84,7 @@ def lognormal_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=
         return dist.prob(data_placeholder[:, node.scope[0]])
 
 
-def categorical_to_tf_graph(node, data_placeholder, log_space=True, variable_dict=None, dtype=np.float32):
+def categorical_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         p = np.array(node.p, dtype=dtype)
         softmaxInverse = np.log(p / np.max(p)).astype(dtype)

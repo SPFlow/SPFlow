@@ -41,7 +41,7 @@ class Histogram(Leaf):
         return self.bin_repr_points[_x]
 
 
-def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="R"):
+def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="kde"):
     assert len(scope) == 1, "scope of univariate histogram for more than one variable?"
     assert data.shape[1] == 1, "data has more than one feature?"
 
@@ -86,7 +86,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="R"):
     return Histogram(breaks.tolist(), densities.tolist(), repr_points.tolist(), scope=idx, meta_type=meta_type)
 
 
-def getHistogramVals(data, meta_type, domain, source="R"):
+def getHistogramVals(data, meta_type, domain, source="kde"):
     if meta_type == MetaType.DISCRETE:
         # for discrete, we just have to count
         breaks = np.array([d for d in domain] + [domain[-1] + 1])
