@@ -11,7 +11,10 @@ def expand(array, left, right):
     return expanded
 
 
-def piecewise_gradient(node, data, dtype=np.float64):
+def piecewise_gradient(node, input_vals=None, dtype=np.float64):
+    if input_vals is None:
+        raise ValueError('Input to piecewise_gradient cannot be None')
+    data = input_vals
     obs = data[:, node.scope[0]]
     marg_ids = np.isnan(obs)
 

@@ -6,16 +6,12 @@ Created on March 20, 2018
 import numpy as np
 import collections
 
-from spn.structure.StatisticalTypes import Type
-
 
 class Node(object):
     def __init__(self):
-        self.is_leaf = False
         self.id = 0
         self.scope = []
         self.debug = None
-        self.full_scope = None
 
     @property
     def name(self):
@@ -66,9 +62,6 @@ class Node(object):
         assign_ids(result)
         return result
 
-    def set_full_scope(self, scope):
-        self.full_scope = scope
-
 
 class Sum(Node):
     def __init__(self):
@@ -86,7 +79,6 @@ class Product(Node):
 class Leaf(Node):
     def __init__(self, scope=None):
         Node.__init__(self)
-        self.is_leaf = True
         if scope is not None:
             if type(scope) == int:
                 self.scope.append(scope)
@@ -97,11 +89,10 @@ class Leaf(Node):
 
 
 class Context:
-    def __init__(self, meta_types=None, domains=None, parametric_types=None, feature_names=None):
+    def __init__(self, meta_types=None, domains=None, parametric_types=None):
         self.meta_types = meta_types
         self.domains = domains
         self.parametric_types = parametric_types
-        self.feature_names = None
 
         if self.meta_types is None and parametric_types is not None:
             self.meta_types = []
@@ -135,16 +126,6 @@ class Context:
         self.domains = np.asanyarray(domain)
 
         return self
-
-    def add_feature_names(self, feature_names):
-        self.feature_names = feature_names
-
-    def get_categoricals(self):
-        '''
-        a helper function returning the ids of categorical variables
-        :return: the ids of categorical variables
-        '''
-        return [i for i, t in enumerate(self.parametric_types) if t.type == Type.CATEGORICAL]
 
 
 def get_number_of_edges(node):
@@ -239,17 +220,21 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
     else:
         all_results.clear()
 
+    for node_type, func in eval_functions.items():
+        node_type._eval_func = func
+        node_type._is_leaf = issubclass(node_type, Leaf)
+
     tmp_children_list = []
     len_tmp_children_list = 0
-
     for n in nodes:
+
         func = None
 
         try:
             func = n.__class__._eval_func
         except:
             pass
-        
+
         if func is None:
             raise Exception("No lambda function associated with type: %s" % (n.__class__.__name__))
 
@@ -297,6 +282,7 @@ def eval_spn_top_down(root, eval_functions, all_results=None, input_vals=None, *
                 queue.append((node, result[i]))
 
     return all_results[root]
+
 
 
 def set_full_scope(node):
