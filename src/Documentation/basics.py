@@ -62,7 +62,6 @@ def inference():
     print("python ll", ll, np.exp(ll))
 
     llm = log_likelihood(spn_marg, test_data)
-
     print("python ll spn_marg", llm, np.exp(llm))
 
     test_data2 = np.array([np.nan, 0.0, 1.0]).reshape(-1, 3)
@@ -155,7 +154,7 @@ def extend():
             Leaf.__init__(self, scope=scope)
             self.a = a
 
-    def pareto_likelihood(node, data, dtype=np.float64):
+    def pareto_likelihood(node, data=None, dtype=np.float64):
         probs = np.ones((data.shape[0], 1), dtype=dtype)
         from scipy.stats import pareto
         probs[:] = pareto.pdf(data[:, node.scope], node.a)
@@ -170,15 +169,6 @@ def extend():
     from spn.algorithms.Inference import log_likelihood
 
     print("pareto", log_likelihood(spn, np.array([1.5]).reshape(-1, 1)))
-
-
-def learn_from_data():
-    from spn.algorithms.LearningWrappers import learn_piecewise_from_data
-    spn, data_dictionary = learn_piecewise_from_data('src/DeepNotebooks/example_data/iris')
-    from spn.algorithms.Statistics import get_structure_stats
-    print(get_structure_stats(spn))
-    from spn.io.Text import spn_to_str_equation
-    print(spn_to_str_equation(spn))
 
 
 def learn_MSPN():
@@ -205,7 +195,6 @@ def learn_MSPN():
     from spn.algorithms.Statistics import get_structure_stats
     print(get_structure_stats(mspn))
 
-
 def learn_PSPN():
     import numpy as np
 
@@ -229,48 +218,17 @@ def learn_PSPN():
     from spn.algorithms.Statistics import get_structure_stats
     print(get_structure_stats(spn))
 
-def condition():
-    import numpy as np
-    from spn.algorithms.LearningWrappers import learn_piecewise_from_data
-    from spn.algorithms.Condition import condition
-    from spn.algorithms.Marginalization import marginalize
-    from spn.algorithms.MPE import mpe
-    spn, data_dictionary = learn_piecewise_from_data('src/DeepNotebooks/example_data/iris', min_instances=10, independence_threshold=0.1)
-    condition_evidence = np.array([[np.nan, np.nan, np.nan, np.nan, 0]])
-    test_data = mpe(spn, condition_evidence)
-    new_spn = condition(spn, condition_evidence)
-    marg_spn = marginalize(spn, {4})
-    print(new_spn)
-    from spn.algorithms.Inference import likelihood
-    print(likelihood(spn, test_data)/likelihood(marg_spn, condition_evidence))
-    print(likelihood(new_spn, test_data))
-
-
 
 if __name__ == '__main__':
-    print('create_SPN')
     learn_PSPN()
     learn_MSPN()
     create_SPN()
-    print('to_string')
     to_str()
-    print('plot')
     plot()
-    print('inference')
     inference()
-    # print('tensorflow')
-    # tensorflow()
-    print('valid')
+    #tensorflow()
     valid()
-    print('stats')
     stats()
-    print('sample')
     sample()
-    print('classification')
     classification()
-    print('extend')
     extend()
-    print('learn from data')
-    learn_from_data()
-    print('conditional')
-    condition()

@@ -7,7 +7,6 @@ import logging
 from collections import deque
 from enum import Enum
 
-from tqdm import tqdm
 
 try:
     from time import perf_counter
@@ -141,13 +140,15 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
                 tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1,
                               [scope[col]], True, True))
 
-            node.children.append(None)
-            c_pos = len(node.children) - 1
-
             next_final = False
 
-            if len(rest_scope) == 1:
+            if len(rest_scope) == 0:
+                continue
+            elif len(rest_scope) == 1:
                 next_final = True
+
+            node.children.append(None)
+            c_pos = len(node.children) - 1
 
             rest_cols = list(rest_scope)
             rest_scope = [scope[col] for col in rest_scope]
@@ -200,26 +201,12 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             node.scope.extend(scope)
             parent.children[children_pos] = node
 
-            local_tasks = []
-            local_children_params = []
             for data_slice, scope_slice, _ in data_slices:
                 assert isinstance(scope_slice, list), "slice must be a list"
 
                 node.children.append(None)
-                if len(scope_slice) > 1:
-                    tasks.append((data_slice, node, len(node.children) - 1, scope_slice, False, False))
-                elif len(scope_slice) == 1:
-                    local_tasks.append((node, len(node.children) - 1))
-                    child_data_slice = data_slicer(data_slice, np.arange(len(scope_slice)), num_conditional_cols)
-                    local_children_params.append((child_data_slice, ds_context, scope_slice))
-                else:
-                    assert False
+                tasks.append((data_slice, node, len(node.children) - 1, scope_slice, False, False))
 
-
-            if len(local_tasks) > 0:
-                result_nodes = pool.starmap(create_leaf, local_children_params)
-                for (nparent, children_pos), child in zip(local_tasks, result_nodes):
-                    nparent.children[children_pos] = child
             continue
 
         elif operation == Operation.NAIVE_FACTORIZATION:
@@ -233,7 +220,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             for col in range(len(scope)):
                 node.children.append(None)
                 # tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1, [scope[col]], True, True))
-                local_tasks.append((node, len(node.children) - 1))
+                local_tasks.append(len(node.children) - 1)
                 child_data_slice = data_slicer(local_data, [col], num_conditional_cols)
                 local_children_params.append((child_data_slice, ds_context, [scope[col]]))
 
@@ -242,8 +229,8 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             #for l in tqdm(local_children_params):
             #    result_nodes.append(create_leaf(*l))
             #result_nodes = [create_leaf(*l) for l in local_children_params]
-            for (parent, children_pos), child in zip(local_tasks, result_nodes):
-                parent.children[children_pos] = child
+            for child_pos, child in zip(local_tasks, result_nodes):
+                node.children[child_pos] = child
 
             split_end_t = perf_counter()
 
