@@ -9,7 +9,7 @@ import collections
 from spn.structure.StatisticalTypes import Type
 
 
-class Node:
+class Node(object):
     def __init__(self):
         self.is_leaf = False
         self.id = 0
@@ -217,8 +217,16 @@ def assign_ids(node, ids=None):
     bfs(node, assign_id)
 
 
-def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, after_eval_function=None, debug=False,
-                       **args):
+def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **args):
+    """
+
+    :param node:
+    :param eval_functions:
+    :param all_results:
+    :param debug:
+    :param args:
+    :return:
+    """
     # evaluating in reverse order, means that we compute all the children first then their parents
     nodes = reversed(get_nodes_by_type(node))
 
@@ -235,31 +243,44 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, input_vals=None, 
     len_tmp_children_list = 0
 
     for n in nodes:
-        type_n = type(n)
-        func = eval_functions[type_n]
+        func = None
 
+        try:
+            func = n.__class__._eval_func
+        except:
+            pass
+        
         if func is None:
-            raise Exception("No lambda function associated with type: %s" % (n.__class__))
+            raise Exception("No lambda function associated with type: %s" % (n.__class__.__name__))
 
-        if n.is_leaf:
-            result = func(n, input_vals, **args)
+        if n.__class__._is_leaf:
+            result = func(n, **args)
         else:
             len_children = len(n.children)
             if len_tmp_children_list < len_children:
                 tmp_children_list.extend([None] * len_children)
                 len_tmp_children_list = len(tmp_children_list)
-            for i, c in enumerate(n.children):
-                tmp_children_list[i] = all_results[c]
-            result = func(n, tmp_children_list[0:len_children], input_vals, **args)
+            for i in range(len_children):
+                tmp_children_list[i] = all_results[n.children[i]]
+            result = func(n, tmp_children_list[0:len_children], **args)
 
-        if after_eval_function is not None:
-            after_eval_function(n, result)
         all_results[n] = result
 
     return all_results[node]
 
 
 def eval_spn_top_down(root, eval_functions, all_results=None, input_vals=None, **args):
+    """
+    evaluates an spn top to down
+
+
+    :param root:
+    :param eval_functions:
+    :param all_results:
+    :param input_vals:
+    :param args:
+    :return:
+    """
     if all_results is None:
         all_results = {}
     else:

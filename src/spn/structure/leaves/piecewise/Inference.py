@@ -7,19 +7,16 @@ Created on May 4, 2018
 
 import numpy as np
 
-from spn.algorithms.Inference import EPSILON, add_node_likelihood, add_node_mpe_likelihood
+from spn.algorithms.Inference import EPSILON, add_node_likelihood, add_node_mpe_likelihood, leaf_marginalized_likelihood
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 
 LOG_ZERO = -300
 
 
-def piecewise_likelihood(node, data, dtype=np.float64):
-    probs = np.ones((data.shape[0], 1), dtype=dtype)
+def piecewise_likelihood(node, data=None, dtype=np.float64):
+    probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
 
-    nd = data[:, node.scope[0]]
-    marg_ids = np.isnan(nd)
-
-    probs[~marg_ids] = piecewise_complete_cases_likelihood(node, nd[~marg_ids], dtype=dtype)
+    probs[~marg_ids] = piecewise_complete_cases_likelihood(node, observations, dtype=dtype)
 
     return probs
 
@@ -43,29 +40,13 @@ def _compute_probability_for_range(node, interval):
 
 
 def piecewise_complete_cases_likelihood(node, obs, dtype=np.float64):
-    probs = np.ones((obs.shape[0], 1), dtype=dtype)# + EPSILON
+    probs = np.ones((obs.shape[0], 1), dtype=dtype)  # + EPSILON
     ivalues = np.interp(x=obs, xp=node.x_range, fp=node.y_range)
-    probs[:,0] = ivalues
-    #ividx = ivalues > 0
-    #probs[ividx, 0] = ivalues[ividx]
+    probs[:, 0] = ivalues
+    # ividx = ivalues > 0
+    # probs[ividx, 0] = ivalues[ividx]
     return probs
-
-
-def piecewise_mpe_likelihood(node, data, log_space=True, dtype=np.float64, context=None, node_mpe_likelihood=None):
-    assert len(node.scope) == 1, node.scope
-
-    log_probs = np.zeros((data.shape[0], 1), dtype=dtype)
-    log_probs[:] = piecewise_likelihood(node, np.ones((1, data.shape[1])) * node.mode, dtype=dtype, context=context)
-
-    #
-    # collecting query rvs
-    mpe_ids = np.isnan(data[:, node.scope[0]])
-
-    log_probs[~mpe_ids] = piecewise_log_likelihood(node, data[~mpe_ids, :], dtype=dtype, context=context)
-
-    return np.exp(log_probs)
 
 
 def add_piecewise_inference_support():
     add_node_likelihood(PiecewiseLinear, piecewise_likelihood)
-    add_node_mpe_likelihood(PiecewiseLinear, piecewise_mpe_likelihood)

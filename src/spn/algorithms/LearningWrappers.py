@@ -10,7 +10,7 @@ from spn.data.datasets import load_from_csv
 
 from spn.algorithms.StructureLearning import get_next_operation, learn_structure
 from spn.algorithms.Validity import is_valid
-from spn.algorithms.splitting.Clustering import get_split_rows_KMeans
+from spn.algorithms.splitting.Clustering import get_split_rows_KMeans, get_split_rows_TSNE
 from spn.algorithms.splitting.RDC import get_split_cols_RDC_py, get_split_rows_RDC_py
 
 from spn.structure.Base import Sum, assign_ids, Context, Leaf
@@ -149,10 +149,11 @@ def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", m
             raise ValueError('invalid independence test')
         if rows == "rand_hp":
             from spn.algorithms.splitting.Random import get_split_rows_random_partition
-
             split_rows = get_split_rows_random_partition(np.random.RandomState(17)) #(data, scope, threshold)
         elif rows == "kmeans":
             split_rows = get_split_rows_KMeans()
+        elif rows == "tsne":
+            split_rows = get_split_rows_TSNE()
         else:
             # todo add other clustering?
             raise ValueError('invalid clustering method')
