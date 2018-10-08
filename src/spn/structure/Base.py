@@ -64,16 +64,23 @@ class Node(object):
 
 
 class Sum(Node):
-    def __init__(self):
+    def __init__(self, weights=None, children=None):
         Node.__init__(self)
-        self.weights = []
-        self.children = []
+        if weights is None:
+            weights = []
+        self.weights = weights
+
+        if children is None:
+            children = []
+        self.children = children
 
 
 class Product(Node):
-    def __init__(self):
+    def __init__(self, children=None):
         Node.__init__(self)
-        self.children = []
+        if children is None:
+            children = []
+        self.children = children
 
 
 class Leaf(Node):
