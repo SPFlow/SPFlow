@@ -6,7 +6,7 @@ Created on October 08, 2018
 
 import setuptools
 
-with open("README.md", "r") as fh:
+with open("../README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
@@ -24,5 +24,6 @@ setuptools.setup(
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
-    install_requires=['numpy', 'scipy', 'sklearn', 'statsmodels', 'networkx', 'joblib', 'matplotlib', 'pydot', 'lark-parser', 'tqdm'],
+    install_requires=['numpy', 'scipy', 'sklearn', 'statsmodels', 'networkx', 'joblib', 'matplotlib', 'pydot',
+                      'lark-parser', 'tqdm'],
 )
