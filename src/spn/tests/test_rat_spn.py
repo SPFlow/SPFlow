@@ -31,7 +31,7 @@ class TestRatSpn(unittest.TestCase):
         simple_output = np.stack(simple_output)
         deviation = simple_output / np.exp(tf_output)
         rel_error = np.abs(deviation - 1.0)
-        print(rel_error)
+        #print(rel_error)
 
         self.assertTrue(np.all(rel_error < 1e-2))
 
