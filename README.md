@@ -56,6 +56,9 @@ from spn.structure.leaves.parametric.Parametric import Categorical
     p4 = Product(children=[p3, Categorical(p=[0.4, 0.6], scope=2)])
     spn = Sum(weights=[0.4, 0.6], children=[p2, p4])
 
+    assign_ids(spn)
+    rebuild_scopes_bottom_up(spn)
+
     return spn
 ```
 

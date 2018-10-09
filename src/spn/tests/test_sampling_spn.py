@@ -35,9 +35,6 @@ class TestSampling(unittest.TestCase):
             sample_instances(spn, rand_gen.rand(10, 3), rand_gen)
 
     def test_induced_trees(self):
-        add_parametric_inference_support()
-        add_parametric_sampling_support()
-
         spn = 0.5 * (Gaussian(mean=10, stdev=0.000000001, scope=0) * Categorical(p=[1.0, 0], scope=1)) + \
               0.5 * (Gaussian(mean=50, stdev=0.000000001, scope=0) * Categorical(p=[0, 1.0], scope=1))
 
@@ -49,10 +46,10 @@ class TestSampling(unittest.TestCase):
 
         data[:, 0] = np.nan
 
-        sample_instances(spn, data, rand_gen)
+        samples = sample_instances(spn, data, rand_gen)
 
-        self.assertAlmostEqual(data[0, 0], 10)
-        self.assertAlmostEqual(data[1, 0], 50)
+        self.assertAlmostEqual(samples[0, 0], 10)
+        self.assertAlmostEqual(samples[1, 0], 50)
 
 
 if __name__ == '__main__':

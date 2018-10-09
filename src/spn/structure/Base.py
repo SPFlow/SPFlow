@@ -200,6 +200,7 @@ def assign_ids(node, ids=None):
         node.id = ids[node]
 
     bfs(node, assign_id)
+    return node
 
 
 def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **args):
@@ -225,7 +226,9 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
         all_results.clear()
 
     for node_type, func in eval_functions.items():
-        node_type._eval_func = func
+        if not hasattr(node_type, '_eval_func'):
+            node_type._eval_func = []
+        node_type._eval_func.append(func)
         node_type._is_leaf = issubclass(node_type, Leaf)
 
     tmp_children_list = []
@@ -235,7 +238,7 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
         func = None
 
         try:
-            func = n.__class__._eval_func
+            func = n.__class__._eval_func[-1]
         except:
             pass
 
@@ -254,6 +257,9 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
             result = func(n, tmp_children_list[0:len_children], **args)
 
         all_results[n] = result
+
+    for node_type, func in eval_functions.items():
+        del node_type._eval_func[-1]
 
     return all_results[node]
 

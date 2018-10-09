@@ -7,7 +7,7 @@ Created on June 11, 2018
 import unittest
 
 from spn.algorithms.TransformStructure import SPN_Reshape
-from spn.structure.Base import Leaf, Product
+from spn.structure.Base import Leaf, Product, assign_ids, rebuild_scopes_bottom_up
 
 
 class TestTransformation(unittest.TestCase):
@@ -15,6 +15,9 @@ class TestTransformation(unittest.TestCase):
         spn = Product()
         for s in range(7):
             spn.children.append(Leaf(scope=s))
+
+        assign_ids(spn)
+        rebuild_scopes_bottom_up(spn)
 
         new_spn = SPN_Reshape(spn, 2)
 
