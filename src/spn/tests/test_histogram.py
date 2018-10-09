@@ -31,7 +31,7 @@ class TestParametric(unittest.TestCase):
         ds_context = Context([MetaType.DISCRETE])
         ds_context.add_domains(data)
         hist = create_histogram_leaf(data, ds_context, [0], alpha=True)
-        print(np.var(data.shape[0]))
+        #print(np.var(data.shape[0]))
         prob = np.exp(log_likelihood(hist, data))
         self.assertAlmostEqual(float(prob[0]), 3 / 9)
         self.assertAlmostEqual(float(prob[1]), 3 / 9)
@@ -54,7 +54,7 @@ class TestParametric(unittest.TestCase):
         ye = likelihood(hist, x.reshape((-1, 1)))
         error = np.sum(np.abs(ye[:, 0] - y))
         self.assertLessEqual(error, 900)
-        print(error)
+        #print(error)
 
         # import matplotlib.pyplot as plt
         # fig, ax = plt.subplots()
