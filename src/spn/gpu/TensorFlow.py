@@ -66,13 +66,13 @@ def add_tf_graph_to_node(node_type, lambda_func):
     _tf_graph_to_node[node_type] = lambda_func
 
 
-def spn_to_tf_graph(node, data, node_tf_graph=_node_log_tf_graph, log_space=True):
+def spn_to_tf_graph(node, data, node_tf_graph=_node_log_tf_graph, log_space=True, dtype=np.float32):
     tf.reset_default_graph()
     # data is a placeholder, with shape same as numpy data
     data_placeholder = tf.placeholder(data.dtype, (None, data.shape[1]))
     variable_dict = {}
     tf_graph = eval_spn_bottom_up(node, node_tf_graph, data_placeholder=data_placeholder, log_space=log_space,
-                                  variable_dict=variable_dict, dtype=data.dtype)
+                                  variable_dict=variable_dict, dtype=dtype)
     return tf_graph, data_placeholder, variable_dict
 
 
@@ -104,8 +104,8 @@ def optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=10
         tf_graph_to_spn(variable_dict)
 
 
-def eval_tf(spn, data, save_graph_path=None):
-    tf_graph, placeholder, _ = spn_to_tf_graph(spn, data)
+def eval_tf(spn, data, save_graph_path=None, dtype=np.float32):
+    tf_graph, placeholder, _ = spn_to_tf_graph(spn, data, dtype=dtype)
     return eval_tf_graph(tf_graph, placeholder, data, save_graph_path=save_graph_path)
 
 
