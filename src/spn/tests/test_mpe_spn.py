@@ -37,10 +37,10 @@ class TestMPE(unittest.TestCase):
 
         data[:, 0] = np.nan
 
-        mpe(spn, data)
+        mpevals = mpe(spn, data)
 
-        self.assertAlmostEqual(data[0, 0], 10)
-        self.assertAlmostEqual(data[1, 0], 50)
+        self.assertAlmostEqual(mpevals[0, 0], 10)
+        self.assertAlmostEqual(mpevals[1, 0], 50)
 
 
 if __name__ == '__main__':

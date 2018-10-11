@@ -7,7 +7,7 @@ from spn.structure.leaves.parametric.Inference import add_parametric_inference_s
 from spn.structure.leaves.parametric.Parametric import *
 from spn.structure.leaves.parametric.Sampling import sample_parametric_node
 from spn.structure.leaves.parametric.utils import get_scipy_obj_params
-
+import os
 
 class TestParametricSampling(unittest.TestCase):
     def setUp(self):
@@ -16,7 +16,7 @@ class TestParametricSampling(unittest.TestCase):
     def assert_correct_node_sampling_continuous(self, node, samples, plot):
         node.scope = [0]
         rand_gen = np.random.RandomState(1234)
-        samples_gen = sample_parametric_node(node, 1000000, rand_gen)
+        samples_gen = sample_parametric_node(node, 1000000, None, rand_gen)
 
         if plot:
             import matplotlib.pyplot as plt
@@ -44,7 +44,7 @@ class TestParametricSampling(unittest.TestCase):
     def assert_correct_node_sampling_discrete(self, node, samples, plot):
         node.scope = [0]
         rand_gen = np.random.RandomState(1234)
-        samples_gen = sample_parametric_node(node, 1000000, rand_gen)
+        samples_gen = sample_parametric_node(node, 1000000, None, rand_gen)
 
         fvals, fobs = np.unique(samples, return_counts=True)
 
@@ -65,25 +65,26 @@ class TestParametricSampling(unittest.TestCase):
         # this test loads datasets generated in R
         # then does a quick and dirty goodness of fit test to see if that data came from the given distribution
         # and then generates data and applies the same goodness of fit test, checking that it came from the same given distribution
-        geom_samples = np.loadtxt("parametric_samples/geom_prob0.7.csv", skiprows=1)
+        fpath = os.path.dirname(os.path.abspath(__file__)) + "/"
+        geom_samples = np.loadtxt(fpath + "parametric_samples/geom_prob0.7.csv", skiprows=1)
         self.assert_correct_node_sampling_discrete(Geometric(p=0.7), geom_samples + 1, False)
 
-        pois_samples = np.loadtxt("parametric_samples/pois_lambda_3.csv", skiprows=1)
+        pois_samples = np.loadtxt(fpath + "parametric_samples/pois_lambda_3.csv", skiprows=1)
         self.assert_correct_node_sampling_discrete(Poisson(mean=3), pois_samples, False)
 
-        bern_samples = np.loadtxt("parametric_samples/bern_prob0.7.csv", skiprows=1)
+        bern_samples = np.loadtxt(fpath + "parametric_samples/bern_prob0.7.csv", skiprows=1)
         self.assert_correct_node_sampling_discrete(Bernoulli(p=0.7), bern_samples, False)
 
-        norm_samples = np.loadtxt("parametric_samples/norm_mean10_sd3.csv", skiprows=1)
+        norm_samples = np.loadtxt(fpath + "parametric_samples/norm_mean10_sd3.csv", skiprows=1)
         self.assert_correct_node_sampling_continuous(Gaussian(mean=10, stdev=3), norm_samples, False)
 
-        gamma_samples = np.loadtxt("parametric_samples/gamma_shape2_scale0.5.csv", skiprows=1)
+        gamma_samples = np.loadtxt(fpath + "parametric_samples/gamma_shape2_scale0.5.csv", skiprows=1)
         self.assert_correct_node_sampling_continuous(Gamma(alpha=2, beta=2), gamma_samples, False)
 
-        lognormal_samples = np.loadtxt("parametric_samples/lnorm_meanlog_10_sdlog_3.csv", skiprows=1)
+        lognormal_samples = np.loadtxt(fpath + "parametric_samples/lnorm_meanlog_10_sdlog_3.csv", skiprows=1)
         self.assert_correct_node_sampling_continuous(LogNormal(mean=10, stdev=3), lognormal_samples, False)
 
-        exp_samples = np.loadtxt("parametric_samples/exp_rate_2.csv", skiprows=1)
+        exp_samples = np.loadtxt(fpath + "parametric_samples/exp_rate_2.csv", skiprows=1)
         self.assert_correct_node_sampling_continuous(Exponential(l=2), exp_samples, False)
 
 

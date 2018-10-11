@@ -9,6 +9,9 @@ import spn.algorithms.Inference as Inference
 
 class TestRatSpn(unittest.TestCase):
     def test_inference_results(self):
+        np.random.seed(123)
+        tf.set_random_seed(123)
+
         rg = region_graph.RegionGraph(range(3 * 3))
         for _ in range(0, 2):
             rg.random_split(2, 2)

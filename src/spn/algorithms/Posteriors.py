@@ -187,7 +187,7 @@ def update_params_GaussianNode(node, X, rand_gen, nig_prior):
                                           random_state=rand_gen)
     sigma2_sam = sigma2_sam * b_n
     std_n = np.sqrt(sigma2_sam * V_n)
-    mu_sam = sample_parametric_node(Gaussian(m_n, std_n), 1, rand_gen)
+    mu_sam = sample_parametric_node(Gaussian(m_n, std_n), 1, None, rand_gen)
     # print('sigm', sigma2_sam, 'std_n', std_n, 'v_n', V_n, mu_sam, m_n)
 
     #
@@ -238,7 +238,7 @@ def update_params_GammaFixAlphaNode(node, X, rand_gen, gamma_prior):
     #
     # sampling
     # TODO, optimize it with numba
-    rate_sam = sample_parametric_node(Gamma(a_n, b_n), 1, rand_gen)
+    rate_sam = sample_parametric_node(Gamma(a_n, b_n), 1,  None, rand_gen)
 
     #
     # updating params (only scale)
@@ -286,7 +286,7 @@ def update_params_LogNormalFixVarNode(node, X, rand_gen, normal_prior):
     std_n = 1.0 / np.sqrt(tau_n)
     # print('STDN', std_n, tau_n, mu_n, log_sum_x)
 
-    mu_sam = sample_parametric_node(Gaussian(mu_n, std_n), 1, rand_gen)
+    mu_sam = sample_parametric_node(Gaussian(mu_n, std_n), 1,  None, rand_gen)
     # print('STDN', std_n, tau_n, mu_n, sum_x, np.log(mu_sam), mu_sam)
     #
     # updating params (only mean)
@@ -327,7 +327,7 @@ def update_params_PoissonNode(node, X, rand_gen, gamma_prior):
     #
     # sampling
     # TODO, optimize it with numba
-    lambda_sam = sample_parametric_node(Gamma(a_n, b_n), 1, rand_gen)
+    lambda_sam = sample_parametric_node(Gamma(a_n, b_n), 1,  None, rand_gen)
     lambda_sam = lambda_sam  # / b_n
 
     #
@@ -468,7 +468,7 @@ def update_params_ExponentialNode(node, X, rand_gen, gamma_prior):
 
     #
     # sampling
-    lambda_sam = sample_parametric_node(Gamma(a_n, b_n), 1, rand_gen)
+    lambda_sam = sample_parametric_node(Gamma(a_n, b_n), 1,  None, rand_gen)
     lambda_sam = lambda_sam  # / b_n
 
     #
