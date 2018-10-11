@@ -41,7 +41,7 @@ class Histogram(Leaf):
         return self.bin_repr_points[_x]
 
 
-def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="kde"):
+def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy"):
     assert len(scope) == 1, "scope of univariate histogram for more than one variable?"
     assert data.shape[1] == 1, "data has more than one feature?"
 
@@ -50,6 +50,8 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="kde")
     idx = scope[0]
     meta_type = ds_context.meta_types[idx]
     domain = ds_context.domains[idx]
+
+    assert not np.isclose(np.max(domain), np.min(domain)), 'invalid domain, min and max are the same'
 
     if data.shape[0] == 0:
         # no data or all were nans
@@ -86,7 +88,9 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="kde")
     return Histogram(breaks.tolist(), densities.tolist(), repr_points.tolist(), scope=idx, meta_type=meta_type)
 
 
-def getHistogramVals(data, meta_type, domain, source="kde"):
+def getHistogramVals(data, meta_type, domain, source="numpy"):
+    #check this: https://github.com/theodoregoetz/histogram
+
     if meta_type == MetaType.DISCRETE:
         # for discrete, we just have to count
         breaks = np.array([d for d in domain] + [domain[-1] + 1])
@@ -118,4 +122,20 @@ def getHistogramVals(data, meta_type, domain, source="kde"):
         densities = kde.pdf(mids)
         densities / np.sum(densities)
 
+        if len(densities.shape) == 0:
+            densities = np.array([densities])
+
         return breaks, densities, mids
+
+    if source == "numpy":
+        densities, breaks = np.histogram(data, bins='auto', density=True)
+        mids = ((breaks + np.roll(breaks, -1)) / 2.0)[:-1]
+        return breaks, densities, mids
+
+    if source == "astropy":
+        from astropy.stats import histogram
+        densities, breaks = histogram(data, bins='blocks', density=True)
+        mids = ((breaks + np.roll(breaks, -1)) / 2.0)[:-1]
+        return breaks, densities, mids
+
+    assert False, 'unkown histogram method ' + source

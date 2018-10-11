@@ -12,7 +12,7 @@ class TestPosterior(unittest.TestCase):
         def update_params(generator, ll_node, prior, n=1000000):
             ll_node.row_ids = list(range(n))
             ll_node.scope = [0]
-            X = sample_parametric_node(generator, n, RandomState(1234)).reshape(-1, 1)
+            X = sample_parametric_node(generator, n, None, RandomState(1234)).reshape(-1, 1)
             update_parametric_parameters_posterior(ll_node, X, RandomState(1234), prior)
             print("expected", generator.params, "found", ll_node.params)
             return generator, ll_node
