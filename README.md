@@ -45,21 +45,21 @@ We can create the same SPN using the object hierarchy:
 ```python
 from spn.structure.leaves.parametric.Parametric import Categorical
 
-    from spn.structure.Base import Sum, Product
+from spn.structure.Base import Sum, Product
 
 
-    p0 = Product(children=[Categorical(p=[0.3, 0.7], scope=1), Categorical(p=[0.4, 0.6], scope=2)])
-    p1 = Product(children=[Categorical(p=[0.5, 0.5], scope=1), Categorical(p=[0.6, 0.4], scope=2)])
-    s1 = Sum(weights=[0.3, 0.7], children=[p0, p1])
-    p2 = Product(children=[Categorical(p=[0.2, 0.8], scope=0), s1])
-    p3 = Product(children=[Categorical(p=[0.2, 0.8], scope=0), Categorical(p=[0.3, 0.7], scope=1)])
-    p4 = Product(children=[p3, Categorical(p=[0.4, 0.6], scope=2)])
-    spn = Sum(weights=[0.4, 0.6], children=[p2, p4])
+p0 = Product(children=[Categorical(p=[0.3, 0.7], scope=1), Categorical(p=[0.4, 0.6], scope=2)])
+p1 = Product(children=[Categorical(p=[0.5, 0.5], scope=1), Categorical(p=[0.6, 0.4], scope=2)])
+s1 = Sum(weights=[0.3, 0.7], children=[p0, p1])
+p2 = Product(children=[Categorical(p=[0.2, 0.8], scope=0), s1])
+p3 = Product(children=[Categorical(p=[0.2, 0.8], scope=0), Categorical(p=[0.3, 0.7], scope=1)])
+p4 = Product(children=[p3, Categorical(p=[0.4, 0.6], scope=2)])
+spn = Sum(weights=[0.4, 0.6], children=[p2, p4])
 
-    assign_ids(spn)
-    rebuild_scopes_bottom_up(spn)
+assign_ids(spn)
+rebuild_scopes_bottom_up(spn)
 
-    return spn
+return spn
 ```
 
 The p parameter indicates the probabilities, and the scope indicates the variable we are modeling.

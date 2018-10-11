@@ -3,22 +3,14 @@ import unittest
 from spn.algorithms.stats.Expectations import Expectation
 from spn.structure.Base import Context
 from spn.structure.StatisticalTypes import MetaType
-from spn.structure.leaves.histogram.Expectation import add_histogram_expectation_support
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
-from spn.structure.leaves.parametric.Expectation import add_parametric_expectation_support
-from spn.structure.leaves.parametric.Inference import add_parametric_inference_support
 from spn.structure.leaves.parametric.Parametric import *
-from spn.structure.leaves.piecewise.Expectation import add_piecewise_expectation_support
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
 
 
 class TestParametric(unittest.TestCase):
     def setUp(self):
         np.random.seed(17)
-        add_parametric_inference_support()
-        add_parametric_expectation_support()
-        add_histogram_expectation_support()
-        add_piecewise_expectation_support()
 
     def test_Parametric_expectations(self):
         spn = 0.3 * (Gaussian(1.0, 1.0, scope=[0]) * Gaussian(5.0, 1.0, scope=[1])) + \
@@ -57,7 +49,7 @@ class TestParametric(unittest.TestCase):
 
         self.assertAlmostEqual(np.mean(data[:, 0]), expectation[0, 0], 2)
 
-        data = np.random.randint(0, high=100, size=20000).reshape(-1, 1)
+        data = np.random.randint(0, high=100, size=2000).reshape(-1, 1)
         ds_context = Context(meta_types=[MetaType.DISCRETE])
         ds_context.add_domains(data)
         pl = create_piecewise_leaf(data, ds_context, scope=[0], prior_weight=None)
@@ -79,9 +71,11 @@ class TestParametric(unittest.TestCase):
         ds_context = Context(meta_types=[MetaType.REAL, MetaType.DISCRETE])
         ds_context.parametric_types = [None, Categorical]
         ds_context.add_domains(data)
-        L = (create_piecewise_leaf(adata[:, 0].reshape(-1, 1), ds_context, scope=[0], prior_weight=None) *
+        L = (create_piecewise_leaf(adata[:, 0].reshape(-1, 1), ds_context, scope=[0], prior_weight=None,
+                                   hist_source='numpy') *
              create_parametric_leaf(adata[:, 1].reshape(-1, 1), ds_context, scope=[1]))
-        R = (create_piecewise_leaf(bdata[:, 0].reshape(-1, 1), ds_context, scope=[0], prior_weight=None) *
+        R = (create_piecewise_leaf(bdata[:, 0].reshape(-1, 1), ds_context, scope=[0], prior_weight=None,
+                                   hist_source='numpy') *
              create_parametric_leaf(bdata[:, 1].reshape(-1, 1), ds_context, scope=[1]))
 
         spn = 0.5 * L + 0.5 * R
@@ -92,121 +86,109 @@ class TestParametric(unittest.TestCase):
 
         self.assertAlmostEqual(np.mean(adata[:, 0]), expectation[0, 0], 2)
         self.assertAlmostEqual(np.mean(bdata[:, 0]), expectation[1, 0], 2)
-    
-    
+
     def test_Piecewise_full(self):
-        
         from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
-        from spn.structure.leaves.piecewise.Inference import add_piecewise_inference_support
-        add_piecewise_inference_support()
-        
-        
-        #In order to create piecewise nodes        
+
+        # In order to create piecewise nodes
         def create_piecewise_node(x_range, y_range, scope):
             x_range, y_range = np.array(x_range), np.array(y_range)
             auc = np.trapz(y_range, x_range)
             y_range = y_range / auc
             return PiecewiseLinear(x_range=x_range, y_range=y_range, bin_repr_points=x_range[1:-1], scope=scope)
-        
-            
-        #Create node
-        node1 = create_piecewise_node([0.,  1.,  2.,  3., 4.], 
-                                      [0.,  10.,  20., 30., 0.], 
+
+        # Create node
+        node1 = create_piecewise_node([0., 1., 2., 3., 4.],
+                                      [0., 10., 20., 30., 0.],
                                       [0])
-        
-        node2 = create_piecewise_node([0.,  1.,  2.,  3., 4.], 
-                                      [0.,  30.,  20., 10., 0.], 
+
+        node2 = create_piecewise_node([0., 1., 2., 3., 4.],
+                                      [0., 30., 20., 10., 0.],
                                       [0])
-        
-        
-        #Test expectation node1 
+
+        # Test expectation node1
         true_value = 2.33333333
         expectation = Expectation(node1, set([0]), None, None)
         self.assertAlmostEqual(true_value, expectation[0, 0], 5)
-        
-        #Test expectation node2
+
+        # Test expectation node2
         true_value = 1.66666666
         expectation = Expectation(node2, set([0]), None, None)
         self.assertAlmostEqual(true_value, expectation[0, 0], 5)
-        
-        #Test expectation with evidence
+
+        # Test expectation with evidence
         true_value = 1.
         evidence = np.zeros((1, 1))
         evidence[0, 0] = 1.
         with self.assertRaises(AssertionError):
             expectation = Expectation(node2, set([0]), set([0]), evidence)
-            #self.assertAlmostEqual(true_value, expectation[0, 0], 5)
+            # self.assertAlmostEqual(true_value, expectation[0, 0], 5)
             '''
             Above fails because the evidence is ignored on features for which the expectation
             is computed. This is even more important if we evaluate ranges.
             '''
-        
-        
-        #Test expectation of SPN with node1 and node2
+
+        # Test expectation of SPN with node1 and node2
         spn1 = 0.5 * node1 + 0.5 * node2
         true_value = 2.
         expectation = Expectation(spn1, set([0]), None, None)
         self.assertAlmostEqual(true_value, expectation[0, 0], 5)
-        
-        
-        
-        
-        #Create more nodes
-        node3 = create_piecewise_node([0.,  1.,  2.,  3., 4., 5.], 
-                                      [0.,  10.,  10., 10., 0., 0.], 
+
+        # Create more nodes
+        node3 = create_piecewise_node([0., 1., 2., 3., 4., 5.],
+                                      [0., 10., 10., 10., 0., 0.],
                                       [1])
-        
-        node4 = create_piecewise_node([0.,  1.,  2.,  3., 4., 5.], 
-                                      [0.,  0.,  10., 10., 10., 0.], 
+
+        node4 = create_piecewise_node([0., 1., 2., 3., 4., 5.],
+                                      [0., 0., 10., 10., 10., 0.],
                                       [1])
-        
-        #Test expectation node3 
+
+        # Test expectation node3
         true_value = 2.
         expectation = Expectation(node3, set([1]), None, None)
         self.assertAlmostEqual(true_value, expectation[0, 0], 5)
-        
-        #Test expectation node4
+
+        # Test expectation node4
         true_value = 3.
         expectation = Expectation(node4, set([1]), None, None)
         self.assertAlmostEqual(true_value, expectation[0, 0], 5)
-        
-        #Test expectation of SPN with node1, node2, node3 and node4
+
+        # Test expectation of SPN with node1, node2, node3 and node4
         spn2 = 0.5 * (node1 * node3) + 0.5 * (node2 * node4)
         true_value = 2.5
         expectation = Expectation(spn2, set([1]), None, None)
         self.assertAlmostEqual(true_value, expectation[0, 0], 5)
-        
-        
+
         # Probability of both subtrees is the same due to the evidence
         # since the expectation of node3 and node3 have the same weight 
         # resulting in expectation of 2.5
         true_value = 2.5
         evidence = np.zeros((1, 2))
-        evidence[0, 0] = 2. #Since node1 and node2 return 33% the true value will be the same as without evidence
-        evidence[0, 1] = np.nan     
+        evidence[0, 0] = 2.  # Since node1 and node2 return 33% the true value will be the same as without evidence
+        evidence[0, 1] = np.nan
         expectation = Expectation(spn2, set([1]), set([0]), evidence)
         self.assertAlmostEqual(true_value, expectation[0, 0], 5)
-        
+
         # Probability of right subtree will be higher due to the evidence
         # since node2 has a higher probability for 1. than node1 
         # Hence the expectation of node4 has a higher impact
         evidence = np.zeros((1, 2))
-        evidence[0, 0] = 1. 
-        evidence[0, 1] = np.nan     
+        evidence[0, 0] = 1.
+        evidence[0, 1] = np.nan
         expectation = Expectation(spn2, set([1]), set([0]), evidence)
         self.assertTrue(2.5 < expectation[0, 0], 5)
-        
+
         # Probability of left subtree will be higher due to the evidence
         # since node1 has a higher probability for 3. than node2
         # Hence the expectation of node3 has a higher impact
         evidence = np.zeros((1, 2))
-        evidence[0, 0] = 3. 
-        evidence[0, 1] = np.nan     
+        evidence[0, 0] = 3.
+        evidence[0, 1] = np.nan
         expectation = Expectation(spn2, set([1]), set([0]), evidence)
         self.assertTrue(2.5 > expectation[0, 0], 5)
 
         with self.assertRaises(AssertionError):
-            #Test with evidence is None
+            # Test with evidence is None
             expectation = Expectation(spn2, set([0]), set([1]), None)
             '''
             Above fails because the the fake evidence which is defined in 
