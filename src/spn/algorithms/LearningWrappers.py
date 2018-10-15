@@ -16,7 +16,6 @@ from spn.structure.Base import Sum, assign_ids
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
-from spn.structure.leaves.conditional.Conditional import create_conditional_leaf
 
 
 def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, cpus=-1, rand_gen=None):
@@ -117,49 +116,3 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
     return learn_param(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
 
-def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", min_instances_slice=200, threshold=0.01,
-                      ohe=False,
-                      leaves=None, memory=None):
-    """
-    :param data: np array
-    :param ds_context: Context object
-    :param scope: list of indices of output variables
-    :param cols: column splitting method
-    :param rows: row splitting method
-    :param min_instances_slice: minimal instance slice
-    :param threshold: threshold scalar
-    :param ohe: ohe
-    :param leaves: boolean
-    :param memory: boolean
-    :return: method to learn structure
-    """
-    if leaves is None:
-        leaves = create_conditional_leaf
-
-    def learn_cond(data, ds_context, scope, cols, rows, min_instances_slice, threshold, ohe):
-        split_cols = None
-        if cols == "ci":
-            from spn.algorithms.splitting.RCoT import getCIGroup
-
-            split_cols = getCIGroup(np.random.RandomState(17)) #(data, scope, threshold)
-        else:
-            raise ValueError('invalid independence test')
-        if rows == "rand_hp":
-            from spn.algorithms.splitting.Random import get_split_rows_random_partition
-            split_rows = get_split_rows_random_partition(np.random.RandomState(17)) #(data, scope, threshold)
-        elif rows == "kmeans":
-            split_rows = get_split_rows_KMeans()
-        elif rows == "tsne":
-            split_rows = get_split_rows_TSNE()
-        else:
-            # todo add other clustering?
-            raise ValueError('invalid clustering method')
-
-        nextop = get_next_operation(min_instances_slice)
-
-        return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop, scope)
-
-    if memory:
-        learn_cond = memory.cache(learn_cond)
-
-    return learn_cond(data, ds_context, scope, cols, rows, min_instances_slice, threshold, ohe)

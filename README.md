@@ -73,7 +73,7 @@ from spn.io.Graphics import plot_spn
 plot_spn(spn, 'basicspn.png')
 ```
 
-![basicspn.png](src/Documentation/basicspn.png)
+![basicspn.png](Documentation/basicspn.png)
 
 Marginalizing an SPN means summing out all the other non-relevant variables.
 So, if we want to marginalize the above SPN and sum out all other variables leaving only variables 1 and 2, we can do:
@@ -90,7 +90,7 @@ We can use this new spn to do all the operations we are interested in. That mean
 ```python
 plot_spn(spn_marg, 'marginalspn.png')
 ```
-![basicspn.png](src/Documentation/marginalspn.png)
+![basicspn.png](Documentation/marginalspn.png)
 
 We can also dump the SPN as text:
 ```python
