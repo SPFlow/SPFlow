@@ -34,12 +34,6 @@ class Histogram(Leaf):
         self.densities = densities
         self.bin_repr_points = bin_repr_points
 
-    @property
-    def mode(self):
-        areas = np.diff(self.breaks) * self.densities
-        _x = np.argmax(areas)
-        return self.bin_repr_points[_x]
-
 
 def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy"):
     assert len(scope) == 1, "scope of univariate histogram for more than one variable?"
