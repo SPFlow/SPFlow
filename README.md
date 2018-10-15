@@ -374,6 +374,6 @@ See also the list of [contributors](https://github.com/alejandromolinaml/SPFlow/
 
 This project is licensed under the Apache License, Version 2.0 - see the [LICENSE.md](LICENSE.md) file for details
 
-## Acknowledgments
+### Acknowledgments
 
 * Moritz Kulessa for the valuable code contributions
