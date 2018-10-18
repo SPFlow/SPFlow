@@ -93,7 +93,7 @@ def sample_instances(node, input_data, rand_gen, node_sampling=_node_sampling, i
 
     instance_ids = np.arange(data.shape[0])
 
-    eval_spn_top_down(node, node_sampling, input_vals=instance_ids, data=data, lls_per_node=lls_per_node,
+    eval_spn_top_down(node, node_sampling, parent_result=instance_ids, data=data, lls_per_node=lls_per_node,
                       rand_gen=rand_gen)
 
     return data
