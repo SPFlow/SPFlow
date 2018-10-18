@@ -22,6 +22,9 @@ def json_default(obj):
     if isinstance(obj, dict):
         return dict([(str(key), json_default(val)) for key, val in obj.items()])
 
+    if isinstance(obj, list):
+        return [json_default(e) for e in obj]
+
     try:
         json.dumps(obj)
         return obj
