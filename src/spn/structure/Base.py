@@ -205,13 +205,15 @@ def assign_ids(node, ids=None):
 
 def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **args):
     """
+    Evaluates the spn bottom up
 
-    :param node:
-    :param eval_functions:
-    :param all_results:
-    :param debug:
-    :param args:
-    :return:
+
+    :param node: spn root
+    :param eval_functions: is a dictionary that contains k:Class of the node, v:lambda function that receives as parameters (node, args**) for leave nodes and (node, [children results], args**)
+    :param all_results: is a dictionary that contains k:Class of the node, v:result of the evaluation of the lambda function for that node. It is used to store intermediate results so that non-tree graphs can be computed in O(n) size of the network
+    :param debug: whether to present progress information on the evaluation
+    :param args: free parameters that will be fed to the lambda functions.
+    :return: the result of computing and propagating all the values throught the network
     """
     # evaluating in reverse order, means that we compute all the children first then their parents
     nodes = reversed(get_nodes_by_type(node))
@@ -264,24 +266,24 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
     return all_results[node]
 
 
-def eval_spn_top_down(root, eval_functions, all_results=None, input_vals=None, **args):
+def eval_spn_top_down(root, eval_functions, all_results=None, parent_result=None, **args):
     """
     evaluates an spn top to down
 
 
-    :param root:
-    :param eval_functions:
-    :param all_results:
-    :param input_vals:
-    :param args:
-    :return:
+    :param root: spnt root
+    :param eval_functions: is a dictionary that contains k:Class of the node, v:lambda function that receives as parameters (node, parent_results, args**) and returns [node, intermediate_result]. This intermediate_result will be passed to node as parent_result. If intermediate_result is None, no further propagation occurs
+    :param all_results: is a dictionary that contains k:Class of the node, v:result of the evaluation of the lambda function for that node.
+    :param parent_result: initial input to the root node
+    :param args: free parameters that will be fed to the lambda functions.
+    :return: the result of computing and propagating all the values throught the network
     """
     if all_results is None:
         all_results = {}
     else:
         all_results.clear()
 
-    queue = collections.deque([(root, input_vals)])
+    queue = collections.deque([(root, parent_result)])
     while queue:
         node, parent_result = queue.popleft()
         result = eval_functions[type(node)](node, parent_result, **args)

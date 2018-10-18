@@ -9,26 +9,26 @@ from spn.structure.Base import Product, Sum, get_nodes_by_type, eval_spn_top_dow
 import numpy as np
 
 
-def mpe_prod(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
-    if len(input_vals) == 0:
+def mpe_prod(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
+    if len(parent_result) == 0:
         return None
-    return [input_vals] * len(node.children)
+    return [parent_result] * len(node.children)
 
 
-def mpe_sum(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
-    if len(input_vals) == 0:
+def mpe_sum(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
+    if len(parent_result) == 0:
         return None
 
-    w_children_log_probs = np.zeros((len(input_vals), len(node.weights)))
+    w_children_log_probs = np.zeros((len(parent_result), len(node.weights)))
     for i, c in enumerate(node.children):
-        w_children_log_probs[:, i] = lls_per_node[input_vals, c.id] + np.log(node.weights[i])
+        w_children_log_probs[:, i] = lls_per_node[parent_result, c.id] + np.log(node.weights[i])
 
     max_child_branches = np.argmax(w_children_log_probs, axis=1)
 
     children_row_ids = []
 
     for i, c in enumerate(node.children):
-        children_row_ids.append(input_vals[max_child_branches == i])
+        children_row_ids.append(parent_result[max_child_branches == i])
 
     return children_row_ids
 
@@ -80,6 +80,6 @@ def mpe(node, input_data, node_top_down_mpe=_node_top_down_mpe, node_bottom_up_m
     instance_ids = np.arange(data.shape[0])
 
     # one pass top down to decide on the max branch until it reaches a leaf, then it fills the nan slot with the mode
-    eval_spn_top_down(node, node_top_down_mpe, input_vals=instance_ids, data=data, lls_per_node=lls_per_node)
+    eval_spn_top_down(node, node_top_down_mpe, parent_result=instance_ids, data=data, lls_per_node=lls_per_node)
 
     return data
