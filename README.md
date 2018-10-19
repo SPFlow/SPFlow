@@ -360,6 +360,12 @@ this produces the output:
 
 All other aspects of the SPN library can be extended in a similar same way.
 
+## Papers implemented in SPFlow
+
+* Molina, Alejandro, Sriraam Natarajan, and Kristian Kersting. "Poisson Sum-Product Networks: A Deep Architecture for Tractable Multivariate Poisson Distributions." In AAAI, pp. 2357-2363. 2017.
+
+* Molina, Alejandro, Antonio Vergari, Nicola Di Mauro, Sriraam Natarajan, Floriana Esposito, and Kristian Kersting. "Mixed sum-product networks: A deep architecture for hybrid domains." In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI). 2018.
+
 ## Authors
 
 * **Alejandro Molina** - *TU Darmstadt*
