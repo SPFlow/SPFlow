@@ -3,11 +3,12 @@ Created on April 15, 2018
 
 @author: Alejandro Molina
 '''
+
 import numpy as np
 from scipy.stats import gamma, lognorm, bernoulli
 
 from spn.structure.leaves.parametric.Parametric import Gaussian, LogNormal, Gamma, Poisson, Exponential, Geometric, \
-    Categorical, Bernoulli
+    Categorical, Bernoulli, CategoricalDictionary
 
 
 def update_parametric_parameters_mle(node, data):
@@ -70,6 +71,13 @@ def update_parametric_parameters_mle(node, data):
             psum += node.p[i]
         node.p = node.p / psum
         node.p = node.p.tolist()
+
+    elif isinstance(node, CategoricalDictionary):
+        if node.p is not None:
+            node.p.clear()
+        v, c = np.unique(data, return_counts=True)
+        p = c / c.sum()
+        node.p = dict(zip(v, p))
 
     else:
         raise Exception("Unknown parametric " + str(type(node)))

@@ -6,6 +6,8 @@ Created on July 24, 2018
 
 
 def create_SPN():
+    from spn.algorithms.Validity import is_valid
+
     from spn.structure.leaves.parametric.Parametric import Categorical
 
     spn = 0.4 * (Categorical(p=[0.2, 0.8], scope=0) * \
@@ -15,6 +17,34 @@ def create_SPN():
                    Categorical(p=[0.3, 0.7], scope=1) * \
                    Categorical(p=[0.4, 0.6], scope=2))
 
+    assert is_valid(spn)
+
+    return spn
+
+
+def create_SPN2():
+    from spn.structure.Base import assign_ids
+    from spn.structure.Base import rebuild_scopes_bottom_up
+
+    from spn.algorithms.Validity import is_valid
+    from spn.structure.leaves.parametric.Parametric import Categorical
+
+    from spn.structure.Base import Sum, Product
+
+    p0 = Product(children=[Categorical(p=[0.3, 0.7], scope=1), Categorical(p=[0.4, 0.6], scope=2)])
+    p1 = Product(children=[Categorical(p=[0.5, 0.5], scope=1), Categorical(p=[0.6, 0.4], scope=2)])
+    s1 = Sum(weights=[0.3, 0.7], children=[p0, p1])
+    p2 = Product(children=[Categorical(p=[0.2, 0.8], scope=0), s1])
+    p3 = Product(children=[Categorical(p=[0.2, 0.8], scope=0), Categorical(p=[0.3, 0.7], scope=1)])
+    p4 = Product(children=[p3, Categorical(p=[0.4, 0.6], scope=2)])
+    spn = Sum(weights=[0.4, 0.6], children=[p2, p4])
+
+    assign_ids(spn)
+    rebuild_scopes_bottom_up(spn)
+
+    val, msg = is_valid(spn)
+    assert val, msg
+
     return spn
 
 
@@ -23,6 +53,12 @@ def to_str():
     spn_marg = marginalize()
 
     from spn.io.Text import spn_to_str_equation
+
+    print(spn_to_str_equation(spn))
+    print(spn_to_str_equation(spn_marg))
+
+    spn = create_SPN2()
+    spn_marg = marginalize()
 
     print(spn_to_str_equation(spn))
     print(spn_to_str_equation(spn_marg))
@@ -195,6 +231,7 @@ def learn_MSPN():
     from spn.algorithms.Statistics import get_structure_stats
     print(get_structure_stats(mspn))
 
+
 def learn_PSPN():
     import numpy as np
 
@@ -223,12 +260,15 @@ if __name__ == '__main__':
     learn_PSPN()
     learn_MSPN()
     create_SPN()
+    create_SPN2()
     to_str()
     plot()
     inference()
-    #tensorflow()
+
     valid()
     stats()
     sample()
     classification()
     extend()
+
+    # tensorflow()

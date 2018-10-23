@@ -106,7 +106,7 @@ def get_cpp_function(node):
     c_code = to_cpp(node, c_data_type="double")
     import cppyy
     cppyy.cppdef(c_code)
-    print(c_code)
+    #print(c_code)
     from cppyy.gbl import spn_many
 
     import numpy as np
