@@ -6,12 +6,13 @@ from spn.algorithms.TransformStructure import Copy, Prune
 from spn.algorithms.Inference import log_likelihood
 
 
-def prod_condition(node, children, evidence, scope=None):
+def prod_condition(node, children, input_vals=None, scope=None):
     if not scope.intersection(node.scope):
         return Copy(node), 0
     new_node = Product()
     new_node.scope = list(set(node.scope) - scope)
     probability = 0
+
     for c in children:
         if c[0]:
             new_node.children.append(c[0])
@@ -19,25 +20,32 @@ def prod_condition(node, children, evidence, scope=None):
     return new_node, probability
 
 
-def sum_condition(node, children, evidence, scope=None):
+def sum_condition(node, children, input_vals=None, scope=None):
     if not scope.intersection(node.scope):
         return Copy(node), 0
     new_node = Sum()
     new_node.scope = list(set(node.scope) - scope)
     new_weights = []
+    probs = []
     for i, c in enumerate(children):
         if c[0]:
             new_node.children.append(c[0])
             new_weights.append(node.weights[i] * np.exp(c[1]))
+        else:
+            probs.append(node.weights[i] * np.exp(c[1]))
     new_node.weights = [w/sum(new_weights) for w in new_weights]
+    assert np.all(np.logical_not(np.isnan(new_node.weights))), 'Found nan weights'
+    assert 
+    if not new_node.scope:
+        return None, np.log(sum(probs))
     return new_node, np.log(sum(new_weights))
 
 
-def leaf_condition(node, evidence, scope=None):
+def leaf_condition(node, input_vals=None, scope=None):
     if not scope.intersection(node.scope):
         return Copy(node), 0
 
-    _likelihood = log_likelihood(node, evidence)
+    _likelihood = log_likelihood(node, input_vals)
     return None, _likelihood
 
 

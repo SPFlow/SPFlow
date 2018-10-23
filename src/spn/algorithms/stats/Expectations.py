@@ -11,13 +11,15 @@ def add_node_expectation(node_type, lambda_func):
     _node_expectation[node_type] = lambda_func
 
 
-def prod_expectation(node, children, input_vals, moment=1, dtype=np.float64):
-    llchildren = np.concatenate(children, axis=1)
-    ret_val = np.nansum(llchildren, axis=0, keepdims=True)
-    return ret_val
+def prod_expectation(node, children, moment=1, dtype=np.float64):
+    joined = np.zeros((1, len(node.scope)))
+    joined[:] = np.nan
+    for i, c in enumerate(children):
+        joined[:, node.children[i].scope] = c
+    return joined
 
 
-def sum_expectation(node, children, input_vals, moment=1, dtype=np.float64):
+def sum_expectation(node, children, moment=1, dtype=np.float64):
     llchildren = np.array(children).reshape(len(children), len(node.scope))
     b = np.array(node.weights, dtype=dtype).reshape(1, -1)
     ret_val = np.dot(b, llchildren)
@@ -43,7 +45,6 @@ def Expectation(spn, feature_scope, evidence_scope, evidence, node_expectation=_
     assert len(feature_scope.intersection(evidence_scope)) == 0
 
     marg_spn = marginalize(spn, keep=feature_scope | evidence_scope)
-    set_full_scope(marg_spn)
 
     node_expectations = _node_expectation
     node_expectations.update({Sum: sum_expectation,
@@ -63,13 +64,9 @@ def Expectation(spn, feature_scope, evidence_scope, evidence, node_expectation=_
 
 
 def get_means(spn):
-    if not spn.full_scope:
-        set_full_scope(spn)
-    return Expectation(spn, set(spn.full_scope), None, None)
+    return Expectation(spn, set(spn.scope), None, None)
 
 
 def get_variances(spn):
-    if not spn.full_scope:
-        set_full_scope(spn)
-    return Expectation(spn, set(spn.full_scope), None, None,
+    return Expectation(spn, set(spn.scope), None, None,
                        moment=2) - get_means(spn) ** 2

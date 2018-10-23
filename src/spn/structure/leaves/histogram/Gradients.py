@@ -26,7 +26,7 @@ def histogramm_gradient(node, input_vals=None, dtype=np.float64):
     gradients = ((probs_center - probs_left) + probs_right - probs_center) / 2
     gradients[marg_ids] = np.nan
 
-    return gradients
+    return gradients.reshape((-1, 1))
 
 
 def add_histogram_gradient_support():

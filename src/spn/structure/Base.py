@@ -6,6 +6,8 @@ Created on March 20, 2018
 import numpy as np
 import collections
 
+from spn.structure.StatisticalTypes import MetaType
+
 
 class Node(object):
     def __init__(self):
@@ -97,6 +99,7 @@ class Context:
         self.meta_types = meta_types
         self.domains = domains
         self.parametric_types = parametric_types
+        self.feature_names = []
 
         if self.meta_types is None and parametric_types is not None:
             self.meta_types = []
@@ -130,6 +133,14 @@ class Context:
         self.domains = np.asanyarray(domain)
 
         return self
+
+    def add_feature_names(self, names):
+        self.feature_names = names
+
+    def get_categoricals(self):
+        return [i for i, meta_type in enumerate(self.meta_types)
+                if meta_type == MetaType.DISCRETE]
+
 
 
 def get_number_of_edges(node):

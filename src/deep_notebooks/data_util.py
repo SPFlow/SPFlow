@@ -25,12 +25,12 @@ def get_categorical_data(spn, df, dictionary, header=1, types=False, date=False)
             df_numerical.values[:, i])
         df_numerical.iloc[:, i] = transformed
 
-    numerical_data = df_numerical.values
+    numerical_data = df_numerical.values.astype(float)
 
     categorical_data = {}
     for i in categoricals:
         data = df_numerical.groupby(context.feature_names[i])
-        data = [data.get_group(x).values for x in data.groups]
+        data = [data.get_group(x).values.astype(float) for x in data.groups]
         categorical_data[i] = data
 
     return numerical_data, categorical_data
