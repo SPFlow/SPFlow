@@ -256,7 +256,51 @@ def learn_PSPN():
     print(get_structure_stats(spn))
 
 
+def learn_CLTSPN():
+    import numpy as np
+
+    np.random.seed(123)
+
+    train_data = np.random.binomial(1, [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.1], size=(100,10))
+    print(np.mean(train_data, axis=0))
+
+    from spn.structure.leaves.cltree.CLTree import create_cltree_leaf
+    from spn.structure.Base import Context
+    from spn.structure.leaves.parametric.Parametric import Bernoulli
+
+    ds_context = Context(parametric_types=[Bernoulli,Bernoulli,Bernoulli,Bernoulli,
+                                           Bernoulli,Bernoulli,Bernoulli,Bernoulli,
+                                           Bernoulli,Bernoulli]).add_domains(train_data)
+
+    from spn.algorithms.LearningWrappers import learn_parametric
+
+    spn = learn_parametric(train_data, ds_context, min_instances_slice=20, leaves=create_cltree_leaf)
+
+    from spn.algorithms.Statistics import get_structure_stats
+    print(get_structure_stats(spn))
+
+    from spn.io.Text import spn_to_str_equation
+
+    print(spn_to_str_equation(spn))
+
+    from spn.algorithms.Inference import log_likelihood
+
+    ll = log_likelihood(spn, train_data)
+    for i,x in enumerate(train_data):
+        print(i,x,ll[i])
+
+    """
+    llm = log_likelihood(spn_marg, test_data)
+    print("python ll spn_marg", llm, np.exp(llm))
+
+    test_data2 = np.array([np.nan, 0.0, 1.0]).reshape(-1, 3)
+    llom = log_likelihood(spn, test_data2)
+    print("python ll spn with nan", llom, np.exp(llom))
+    """
+
+    
 if __name__ == '__main__':
+    learn_CLTSPN()
     learn_PSPN()
     learn_MSPN()
     create_SPN()
