@@ -1,19 +1,11 @@
 import unittest
 
+import numpy as np
 from numpy.random.mtrand import RandomState
 
-from spn.algorithms.Inference import add_node_likelihood, log_likelihood
 from spn.algorithms.MPE import mpe
-from spn.algorithms.Sampling import sample_instances
-from spn.structure.Base import assign_ids, Leaf, Sum, get_nodes_by_type
-
-from scipy.stats import chisquare
-
-import numpy as np
-
-from spn.structure.leaves.parametric.Inference import add_parametric_inference_support
+from spn.structure.Base import assign_ids, Leaf
 from spn.structure.leaves.parametric.Parametric import Gaussian, Categorical
-from spn.structure.leaves.parametric.Sampling import add_parametric_sampling_support
 
 
 class TestMPE(unittest.TestCase):
@@ -45,10 +37,10 @@ class TestMPE(unittest.TestCase):
 
         data[:, 0] = np.nan
 
-        mpe(spn, data)
+        mpevals = mpe(spn, data)
 
-        self.assertAlmostEqual(data[0, 0], 10)
-        self.assertAlmostEqual(data[1, 0], 50)
+        self.assertAlmostEqual(mpevals[0, 0], 10)
+        self.assertAlmostEqual(mpevals[1, 0], 50)
 
 
 if __name__ == '__main__':

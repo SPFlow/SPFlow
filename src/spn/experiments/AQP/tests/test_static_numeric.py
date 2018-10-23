@@ -131,27 +131,27 @@ class TestStatic(unittest.TestCase):
         node = create_static_leaf(val, scope)
         
 
-        samples = SamplingRange.sample_static_node(node, 10)[:,0]
+        samples = SamplingRange.sample_static_node(node, 10)
         self.assertAlmostEqual(np.average(samples), 20)
         
         rang = NumericRange([[20, 20.321]])
         ranges = np.array([rang])
-        samples = SamplingRange.sample_static_node(node, 10, ranges=ranges)[:,0]
+        samples = SamplingRange.sample_static_node(node, 10, ranges=ranges)
         self.assertAlmostEqual(np.average(samples), 20)
         
         rang = NumericRange([[19, 20]])
         ranges = np.array([rang])
-        samples = SamplingRange.sample_static_node(node, 10, ranges=ranges)[:,0]
+        samples = SamplingRange.sample_static_node(node, 10, ranges=ranges)
         self.assertAlmostEqual(np.average(samples), 20)
         
         rang = NumericRange([[19, 19.5], [19.999, 20.111], [20.5, 21]])
         ranges = np.array([rang])
-        samples = SamplingRange.sample_static_node(node, 10, ranges=ranges)[:,0]
+        samples = SamplingRange.sample_static_node(node, 10, ranges=ranges)
         self.assertAlmostEqual(np.average(samples), 20)
         
         rang = NumericRange([[19, 19.5]])
         ranges = np.array([rang])
-        samples = SamplingRange.sample_static_node(node, 10, ranges=ranges)[:,0]
+        samples = SamplingRange.sample_static_node(node, 10, ranges=ranges)
         self.assertTrue(all(np.isnan(samples)))
 
 
