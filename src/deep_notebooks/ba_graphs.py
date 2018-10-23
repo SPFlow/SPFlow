@@ -15,7 +15,7 @@ def get_graph(spn, context):
     colors = []
     
     def recurse(node):
-        label = feature_names[node.full_scope[0]] if isinstance(node, Leaf) \
+        label = feature_names[node.scope[0]] if isinstance(node, Leaf) \
             else node.name[:3]
         labels.append(label)
         colors.append(color_dict.get(label, "red"))

@@ -5,20 +5,19 @@ from spn.algorithms.stats.Expectations import Expectation, _node_expectation, ge
 from spn.algorithms.Inference import likelihood
 from spn.algorithms.Marginalization import marginalize
 from spn.algorithms.Condition import condition
-from spn.structure.Base import Leaf, get_nodes_by_type, Sum, Product, set_full_scope, eval_spn_bottom_up
+from spn.structure.Base import Leaf, get_nodes_by_type, Sum, Product, eval_spn_bottom_up
 
 
-def node_correlation(node, unused, dtype=np.float64):
+def node_correlation(node, full_scope=0, dtype=np.float64):
     func = _node_expectation[type(node)]
-    size = len(node.full_scope)
     idx = node.scope[0]
-    mat = np.zeros((size, size))
-    mat[idx, idx] = func(node, None)
+    mat = np.zeros((full_scope, full_scope))
+    mat[idx, idx] = func(node)
     return mat
 
 
-def prod_correlation(node, children, input_vals, dtype=np.float64):
-    assert node.full_scope is not None, 'Scope not set'
+def prod_correlation(node, children, full_scope=0, dtype=np.float64):
+    assert node.scope is not None, 'Scope not set'
     means = np.array(children)
 
     def comb(x, y):
@@ -31,7 +30,7 @@ def prod_correlation(node, children, input_vals, dtype=np.float64):
     return means
 
 
-def sum_correlation(node, children, input_vals, dtype=np.float64):
+def sum_correlation(node, children, full_scope=0, dtype=np.float64):
     return np.sum(np.array([c * weight
                             for c, weight in zip(children, node.weights)]),
                   axis=0)
@@ -50,7 +49,7 @@ def get_full_correlation(spn, context):
 
 
 def get_correlation_matrix(spn):
-    size = len(spn.full_scope)
+    size = len(spn.scope)
     covariance = get_covariance_matrix(spn)
     sigmas = np.sqrt(get_variances(spn)).reshape(1, size)
     sigma_matrix = sigmas.T.dot(sigmas)
@@ -60,7 +59,7 @@ def get_correlation_matrix(spn):
 
 
 def get_covariance_matrix(spn):
-    size = len(spn.full_scope)
+    size = len(spn.scope)
     j_means = joined_means(spn)
     means = j_means.diagonal().reshape(1, size)
     squared_means = means.T.dot(means)
@@ -74,7 +73,7 @@ def get_covariance_matrix(spn):
 
 def get_categorical_correlation(spn, context):
     categoricals = context.get_categoricals()
-    num_features = len(spn.full_scope)
+    num_features = len(spn.scope)
     var = get_variances(spn)
     # all_vars = []
     full_matrix = np.zeros((num_features, num_features))
@@ -100,20 +99,6 @@ def get_categorical_correlation(spn, context):
         all_probs /= np.sum(all_probs)
         total_var = np.sum(cat_vars * all_probs, axis=0)
         result = 1 - (total_var/var)
-        if np.any(result < 0):
-            print('FUUUUCK')
-            print('complete var')
-            print(var)
-            print('cat')
-            print(cat)
-            print('cat_vars')
-            print(cat_vars)
-            print('all_probs')
-            print(all_probs)
-            print('result')
-            print(result)
-            print()
-            print()
         full_matrix[:, cat] = result
         full_matrix[cat, :] = result
         for cat2 in categoricals:
@@ -122,7 +107,6 @@ def get_categorical_correlation(spn, context):
                 full_matrix[cat2, cat] = np.nan
             else:
                 full_matrix[cat, cat] = 1
-    print(full_matrix)
     assert np.all(np.logical_or(full_matrix > -0.0001, np.isnan(full_matrix)))
     full_matrix[full_matrix < 0] = 0
     return np.sqrt(full_matrix)
@@ -201,13 +185,10 @@ def joined_means(spn):
     spn -- the spn to compute the probabilities from
     """
 
-    if not spn.full_scope:
-        set_full_scope(spn)
-
     node_functions = {type(leaf): node_correlation
                       for leaf in get_nodes_by_type(spn, Leaf)}
     node_functions.update({Sum: sum_correlation,
                            Product: prod_correlation})
 
-    expectation = eval_spn_bottom_up(spn, node_functions)
+    expectation = eval_spn_bottom_up(spn, node_functions, full_scope=len(spn.scope))
     return expectation

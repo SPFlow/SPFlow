@@ -121,3 +121,15 @@ def conditional_log_likelihood(node_joint, node_marginal, data, log_space=True, 
         return result
 
     return np.exp(result)
+
+
+def func_from_spn(spn, feature_id):
+    size = len(spn.scope)
+
+    def func(x):
+        query = np.zeros((len(x), size))
+        query[:] = np.nan
+        query[:, feature_id] = x
+        return likelihood(spn, query)
+
+    return func

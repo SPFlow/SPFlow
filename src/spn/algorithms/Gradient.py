@@ -2,7 +2,7 @@ import numpy as np
 
 from spn.algorithms.Inference import likelihood
 from spn.algorithms.Condition import condition
-from spn.structure.Base import Sum, Product, eval_spn_bottom_up
+from spn.structure.Base import Sum, Product, eval_spn_bottom_up, eval_spn_top_down
 
 
 _node_gradients = {}
@@ -14,28 +14,25 @@ def add_node_gradients(node_type, lambda_func):
 
 def sum_gradient_forward(node, children, input_vals, dtype=np.float64):
     b = np.array(node.weights, dtype=dtype)
-    gradient_children = np.array([weight * child for weight, child in zip(b, children)])
-    gradient_children = np.sum(gradient_children, axis=0)
-    return gradient_children
+    joined_c = np.stack(children)
+    gradient_children = np.array([weight * tensor for weight, tensor in zip(b, joined_c)])
+    results = np.sum(gradient_children, axis=0)
+    assert len(node.scope) == results.shape[1], '{} vs {}'.format(node.scope, results.shape)
+    return results
 
 
 def prod_gradient_forward(node, children, input_vals, dtype=np.float64):
-    shape = input_vals.shape
+    probs = [likelihood(c, input_vals) for c in node.children]
 
-    probs = np.concatenate([likelihood(c, input_vals) for c in node.children], axis=1)
+    results = []
 
-    joined = np.zeros(shape)
-    joined[:] = np.nan
-    for i, c in enumerate(children):
-        joined[:, node.children[i].scope] = c
+    for index, c in enumerate(children):
+        array = np.prod([l for i, l in enumerate(probs) if i != index], axis=0)
+        results.append(array * c)
 
-    results = np.zeros(shape)
-    results[:] = np.nan
-    for index in range(shape[1]):
-        mask = np.full(shape, False)
-        mask[:, index] = True
-        array = np.ma.masked_array(probs, mask=mask)
-        results[:, index] = np.prod(array, axis=1) * joined[:, index]
+    results = np.concatenate(results, axis=1)
+
+    assert len(node.scope) == results.shape[1], '{} vs {}: got {}'.format(node.scope, results.shape, [c.shape for c in children])
     return results
 
 
@@ -57,8 +54,30 @@ def gradient(spn, evidence):
     return gradients
 
 
+def sum_gradient_backward():
+    pass
+
+
+def prod_gradient_backward():
+    pass
+
+
+def backprop_gradient(spn, evidence):
+    probs = likelihood(spn, evidence)
+    _node_gradients[Sum] = sum_gradient_backward
+    _node_gradients[Product] = prod_gradient_backward
+
+    node_gradients = _node_gradients
+
+    all_gradients = {}
+    gradients_input = eval_spn_top_down(
+        spn, node_gradients, all_results=all_gradients, probs=probs)
+
+    return gradients_input
+
+
 def conditional_gradient(spn, conditional_evidence, gradient_evidence):
+    print(conditional_evidence)
     cond_spn = condition(spn, conditional_evidence)
-    keep_idx = np.isnan(conditional_evidence)[0]
-    evidence = gradient_evidence[:, keep_idx]
-    return gradient(cond_spn, evidence)
+    gradients = gradient(cond_spn, gradient_evidence)
+    return gradients

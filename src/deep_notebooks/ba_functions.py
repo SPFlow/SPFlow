@@ -190,19 +190,6 @@ def get_moment(spn, query_id, moment=1, evidence=None, detail=1000):
         return mean
     return integrate.quad(lambda x: np.exp(spn_query_id(spn, query_id, x)) * (x - mean) ** moment, spn.domains[query_id][0], spn.domains[query_id][1])[0]
 
-
-def func_from_spn(spn, feature_id):
-    size = len(spn.full_scope)
-
-    def func(x):
-        query = np.zeros((len(x), size))
-        query[:] = np.nan
-        query[:, feature_id] = x
-        return likelihood(spn, query)
-
-    return func
-
-
 def validate_feature(spn, featureId, precision=0.1):
     if spn.families[featureId] == ('categorical'):
         pass
