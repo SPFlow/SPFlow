@@ -11,15 +11,12 @@ class Node(object):
     def __init__(self):
         self.id = 0
         self.scope = []
-        self.debug = None
 
     @property
     def name(self):
         return "%sNode_%s" % (self.__class__.__name__, self.id)
 
     def __repr__(self):
-        if self.debug is not None:
-            return self.debug(self)
         return self.name
 
     def __rmul__(self, weight):
@@ -64,16 +61,23 @@ class Node(object):
 
 
 class Sum(Node):
-    def __init__(self):
+    def __init__(self, weights=None, children=None):
         Node.__init__(self)
-        self.weights = []
-        self.children = []
+        if weights is None:
+            weights = []
+        self.weights = weights
+
+        if children is None:
+            children = []
+        self.children = children
 
 
 class Product(Node):
-    def __init__(self):
+    def __init__(self, children=None):
         Node.__init__(self)
-        self.children = []
+        if children is None:
+            children = []
+        self.children = children
 
 
 class Leaf(Node):
@@ -196,17 +200,20 @@ def assign_ids(node, ids=None):
         node.id = ids[node]
 
     bfs(node, assign_id)
+    return node
 
 
 def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **args):
     """
+    Evaluates the spn bottom up
 
-    :param node:
-    :param eval_functions:
-    :param all_results:
-    :param debug:
-    :param args:
-    :return:
+
+    :param node: spn root
+    :param eval_functions: is a dictionary that contains k:Class of the node, v:lambda function that receives as parameters (node, args**) for leave nodes and (node, [children results], args**)
+    :param all_results: is a dictionary that contains k:Class of the node, v:result of the evaluation of the lambda function for that node. It is used to store intermediate results so that non-tree graphs can be computed in O(n) size of the network
+    :param debug: whether to present progress information on the evaluation
+    :param args: free parameters that will be fed to the lambda functions.
+    :return: the result of computing and propagating all the values throught the network
     """
     # evaluating in reverse order, means that we compute all the children first then their parents
     nodes = reversed(get_nodes_by_type(node))
@@ -221,7 +228,9 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
         all_results.clear()
 
     for node_type, func in eval_functions.items():
-        node_type._eval_func = func
+        if not hasattr(node_type, '_eval_func'):
+            node_type._eval_func = []
+        node_type._eval_func.append(func)
         node_type._is_leaf = issubclass(node_type, Leaf)
 
     tmp_children_list = []
@@ -231,7 +240,7 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
         func = None
 
         try:
-            func = n.__class__._eval_func
+            func = n.__class__._eval_func[-1]
         except:
             pass
 
@@ -251,27 +260,30 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
 
         all_results[n] = result
 
+    for node_type, func in eval_functions.items():
+        del node_type._eval_func[-1]
+
     return all_results[node]
 
 
-def eval_spn_top_down(root, eval_functions, all_results=None, input_vals=None, **args):
+def eval_spn_top_down(root, eval_functions, all_results=None, parent_result=None, **args):
     """
     evaluates an spn top to down
 
 
-    :param root:
-    :param eval_functions:
-    :param all_results:
-    :param input_vals:
-    :param args:
-    :return:
+    :param root: spnt root
+    :param eval_functions: is a dictionary that contains k:Class of the node, v:lambda function that receives as parameters (node, parent_results, args**) and returns [node, intermediate_result]. This intermediate_result will be passed to node as parent_result. If intermediate_result is None, no further propagation occurs
+    :param all_results: is a dictionary that contains k:Class of the node, v:result of the evaluation of the lambda function for that node.
+    :param parent_result: initial input to the root node
+    :param args: free parameters that will be fed to the lambda functions.
+    :return: the result of computing and propagating all the values throught the network
     """
     if all_results is None:
         all_results = {}
     else:
         all_results.clear()
 
-    queue = collections.deque([(root, input_vals)])
+    queue = collections.deque([(root, parent_result)])
     while queue:
         node, parent_result = queue.popleft()
         result = eval_functions[type(node)](node, parent_result, **args)

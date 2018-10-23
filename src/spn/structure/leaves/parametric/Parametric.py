@@ -52,10 +52,6 @@ class Gaussian(Parametric):
     def variance(self):
         return self.stdev * self.stdev
 
-    @property
-    def mode(self):
-        return self.mean
-
 
 class Uniform(Parametric):
     def __init__(self, density=None, start=None, end=None, type=None, scope=None):
@@ -92,10 +88,6 @@ class Gamma(Parametric):
     def params(self):
         return {'alpha': self.alpha, 'beta': self.beta}
 
-    @property
-    def mode(self):
-        return (self.alpha - 1) / self.beta
-
 
 class LogNormal(Parametric):
     """
@@ -125,11 +117,6 @@ class LogNormal(Parametric):
     def precision(self):
         return 1 / self.variance
 
-    @property
-    def mode(self):
-        return np.exp(self.mean - self.variance)
-        # return np.exp(self.mean)
-
 
 class Poisson(Parametric):
     """
@@ -147,10 +134,6 @@ class Poisson(Parametric):
     def params(self):
         return {'mean': self.mean}
 
-    @property
-    def mode(self):
-        return np.floor(self.mean)
-
 
 class Bernoulli(Parametric):
     """
@@ -167,13 +150,6 @@ class Bernoulli(Parametric):
     @property
     def params(self):
         return {'p': self.p}
-
-    @property
-    def mode(self):
-        if self.p > 0:
-            return 1
-        else:
-            return 0
 
 
 class NegativeBinomial(Parametric):
@@ -194,13 +170,6 @@ class NegativeBinomial(Parametric):
     @property
     def params(self):
         return {'p': self.p, 'n': self.n}
-
-    @property
-    def mode(self):
-        if self.n <= 1:
-            return 0
-        else:
-            return np.floor(self.p * (self.n - 1) / (1 - self.p))
 
 
 class Hypergeometric(Parametric):
@@ -223,10 +192,6 @@ class Hypergeometric(Parametric):
     def params(self):
         return {'N': self.N, 'K': self.K, 'n': self.n}
 
-    @property
-    def mode(self):
-        return np.floor((self.n + 1) * (self.K + 1 / (self.N + 2)))
-
 
 class Geometric(Parametric):
     """
@@ -244,11 +209,6 @@ class Geometric(Parametric):
     @property
     def params(self):
         return {'p': self.p}
-
-    @property
-    def mode(self):
-        # return 0  # or 1? check wiki
-        return 1
 
 
 class Categorical(Parametric):
@@ -280,13 +240,6 @@ class Categorical(Parametric):
     def k(self):
         return len(self.p)
 
-    @property
-    def mode(self):
-        return np.argmax(self.p)
-
-    def sample(self, n_samples, rand_gen):
-        return rand_gen.choice(np.arange(self.k), p=self._p, size=n_samples)
-
 
 class CategoricalDictionary(Parametric):
     """
@@ -303,17 +256,14 @@ class CategoricalDictionary(Parametric):
 
     def __init__(self, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
-        #if p is not None:
-        #    assert np.isclose(sum(p.values()), 1), 'Probabilities shall sum to 1'
+        if p is not None:
+            assert np.isclose(sum(p.values()), 1), 'Probabilities shall sum to 1'
         self.p = p
 
     @property
     def params(self):
         return {"p": self.p}
 
-    @property
-    def mode(self):
-        return self.params.keys()[np.argmax(self.params.values())]
 
 
 class Exponential(Parametric):
@@ -332,10 +282,6 @@ class Exponential(Parametric):
     @property
     def params(self):
         return {'l': self.l}
-
-    @property
-    def mode(self):
-        return 0
 
 
 def create_parametric_leaf(data, ds_context, scope):

@@ -13,35 +13,12 @@ by  injecting  custom  code  into  a light-weight functional-oriented API framew
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-### Prerequisites
-
-The following modules must be installed:
-
-```sh
-$ pip3 install cppyy
-$ pip3 install joblib
-$ pip3 install matplotlib
-$ pip3 install natsort
-$ pip3 install networkx
-$ pip3 install numba
-$ pip3 install numpy
-$ pip3 install pydot
-$ pip3 install scipy
-$ pip3 install sklearn
-$ pip3 install statsmodels
-$ pip3 install tqdm
-$ pip3 install py-cpuinfo
-$ pip3 install lark-parser
-$ pip3 install tensorflow
-```
-
 ### Installing
 
-To install SPFlow, all you have to do is clone the repository.
+To install the latest released version of SPFlow using pip
 
 ```sh
-mkdir SPFlow
-git clone https://github.com/alejandromolinaml/SPFlow
+pip3 install spflow
 ```
 
 ## Examples
@@ -53,14 +30,36 @@ leave nodes like this:
 ```python
 from spn.structure.leaves.parametric.Parametric import Categorical
 
-spn = 0.4 * (Categorical(p=[0.2, 0.8], scope=0) * 
-             (0.3 * (Categorical(p=[0.3, 0.7], scope=1) * 
-                     Categorical(p=[0.4, 0.6], scope=2)) 
-            + 0.7 * (Categorical(p=[0.5, 0.5], scope=1) * 
-                     Categorical(p=[0.6, 0.4], scope=2)))) 
-    + 0.6 * (Categorical(p=[0.2, 0.8], scope=0) * 
-             Categorical(p=[0.3, 0.7], scope=1) * 
+spn = 0.4 * (Categorical(p=[0.2, 0.8], scope=0) *
+             (0.3 * (Categorical(p=[0.3, 0.7], scope=1) *
+                     Categorical(p=[0.4, 0.6], scope=2))
+            + 0.7 * (Categorical(p=[0.5, 0.5], scope=1) *
+                     Categorical(p=[0.6, 0.4], scope=2))))
+    + 0.6 * (Categorical(p=[0.2, 0.8], scope=0) *
+             Categorical(p=[0.3, 0.7], scope=1) *
              Categorical(p=[0.4, 0.6], scope=2))
+```
+
+We can create the same SPN using the object hierarchy:
+
+```python
+from spn.structure.leaves.parametric.Parametric import Categorical
+
+from spn.structure.Base import Sum, Product
+
+
+p0 = Product(children=[Categorical(p=[0.3, 0.7], scope=1), Categorical(p=[0.4, 0.6], scope=2)])
+p1 = Product(children=[Categorical(p=[0.5, 0.5], scope=1), Categorical(p=[0.6, 0.4], scope=2)])
+s1 = Sum(weights=[0.3, 0.7], children=[p0, p1])
+p2 = Product(children=[Categorical(p=[0.2, 0.8], scope=0), s1])
+p3 = Product(children=[Categorical(p=[0.2, 0.8], scope=0), Categorical(p=[0.3, 0.7], scope=1)])
+p4 = Product(children=[p3, Categorical(p=[0.4, 0.6], scope=2)])
+spn = Sum(weights=[0.4, 0.6], children=[p2, p4])
+
+assign_ids(spn)
+rebuild_scopes_bottom_up(spn)
+
+return spn
 ```
 
 The p parameter indicates the probabilities, and the scope indicates the variable we are modeling.
@@ -74,7 +73,7 @@ from spn.io.Graphics import plot_spn
 plot_spn(spn, 'basicspn.png')
 ```
 
-![basicspn.png](src/Documentation/basicspn.png)
+![basicspn.png](Documentation/basicspn.png)
 
 Marginalizing an SPN means summing out all the other non-relevant variables.
 So, if we want to marginalize the above SPN and sum out all other variables leaving only variables 1 and 2, we can do:
@@ -91,7 +90,7 @@ We can use this new spn to do all the operations we are interested in. That mean
 ```python
 plot_spn(spn_marg, 'marginalspn.png')
 ```
-![basicspn.png](src/Documentation/marginalspn.png)
+![basicspn.png](Documentation/marginalspn.png)
 
 We can also dump the SPN as text:
 ```python
@@ -361,6 +360,12 @@ this produces the output:
 
 All other aspects of the SPN library can be extended in a similar same way.
 
+## Papers implemented in SPFlow
+
+* Molina, Alejandro, Sriraam Natarajan, and Kristian Kersting. "Poisson Sum-Product Networks: A Deep Architecture for Tractable Multivariate Poisson Distributions." In AAAI, pp. 2357-2363. 2017.
+
+* Molina, Alejandro, Antonio Vergari, Nicola Di Mauro, Sriraam Natarajan, Floriana Esposito, and Kristian Kersting. "Mixed sum-product networks: A deep architecture for hybrid domains." In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI). 2018.
+
 ## Authors
 
 * **Alejandro Molina** - *TU Darmstadt*
@@ -375,6 +380,6 @@ See also the list of [contributors](https://github.com/alejandromolinaml/SPFlow/
 
 This project is licensed under the Apache License, Version 2.0 - see the [LICENSE.md](LICENSE.md) file for details
 
-## Acknowledgments
+### Acknowledgments
 
 * Moritz Kulessa for the valuable code contributions

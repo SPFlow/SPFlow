@@ -19,7 +19,6 @@ from spn.algorithms.LeafLearning import learn_leaf_from_context
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
-from spn.structure.leaves.conditional.Conditional import create_conditional_leaf
 
 
 def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, cpus=-1, rand_gen=None):

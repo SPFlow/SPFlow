@@ -78,7 +78,7 @@ def isotonic_unimodal_regression_R(x, y):
     return iso_x, iso_y
 
 
-def create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=0.1, hist_source="R"):
+def create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=0.1, hist_source="numpy"):
     assert len(scope) == 1, "scope of univariate Piecewise for more than one variable?"
     assert data.shape[1] == 1, "data has more than one feature?"
 

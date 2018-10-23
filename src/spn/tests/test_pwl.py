@@ -12,21 +12,26 @@ from spn.structure.leaves.piecewise.Inference import add_piecewise_inference_sup
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
 
 
-class TestParametric(unittest.TestCase):
-    def setUp(self):
-        add_histogram_inference_support()
-        add_piecewise_inference_support()
+class TestPWL(unittest.TestCase):
 
     def test_PWL_no_variance(self):
         data = np.array([1.0, 1.0]).reshape(-1, 1)
         ds_context = Context([MetaType.REAL])
         ds_context.add_domains(data)
-        leaf = create_piecewise_leaf(data, ds_context, scope=[0], hist_source="kde")
+        with self.assertRaises(AssertionError):
+            create_piecewise_leaf(data, ds_context, scope=[0], hist_source="kde")
+
+    def test_PWL(self):
+        #data = np.array([1.0, 1.0, 2.0, 3.0]*100).reshape(-1, 1)
+
+        data = np.r_[np.random.normal(10, 5, (300, 1)), np.random.normal(20, 10, (700, 1))]
+
+        ds_context = Context([MetaType.REAL])
+        ds_context.add_domains(data)
+        leaf = create_piecewise_leaf(data, ds_context, scope=[0], prior_weight=None, hist_source="kde")
         prob = np.exp(log_likelihood(leaf, data))
 
-        self.assertAlmostEqual(float(prob[0]), 2 / 6)
-        self.assertAlmostEqual(float(prob[1]), 2 / 6)
-
+        # TODO: add more test to the PWL
 
 
 if __name__ == '__main__':

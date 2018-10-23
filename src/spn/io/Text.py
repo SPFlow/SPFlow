@@ -3,6 +3,7 @@ Created on March 21, 2018
 
 @author: Alejandro Molina
 '''
+import json
 from collections import OrderedDict
 from enum import Enum
 
@@ -11,26 +12,30 @@ from spn.structure.Base import Product, Sum, rebuild_scopes_bottom_up, assign_id
 import numpy as np
 
 
+def json_default(obj):
+    if isinstance(obj, np.ndarray):
+        return str(obj)
+
+    if isinstance(obj, Enum):
+        return obj.name
+
+    if isinstance(obj, dict):
+        return dict([(str(key), json_default(val)) for key, val in obj.items()])
+
+    if isinstance(obj, list):
+        return [json_default(e) for e in obj]
+
+    try:
+        json.dumps(obj)
+        return obj
+    except:
+        obj_dict = obj.__dict__
+        values = dict([(str(key), json_default(val)) for key, val in obj_dict.items() if key[0] != "_"])
+        return {obj.__class__.__name__: values}
+
+
 def to_JSON(node):
-    import json
-
-    from collections import OrderedDict
-
-    def dumper(obj):
-        if isinstance(obj, np.ndarray):
-            return str(obj)
-
-        if isinstance(obj, Enum):
-            return obj.name
-
-        try:
-            return obj.toJSON()
-        except:
-            obj_dict = obj.__dict__
-            values = OrderedDict([(key, obj_dict[key]) for key in sorted(obj_dict.keys()) if key[0] != "_"])
-            return {obj.__class__.__name__: values}
-
-    return json.dumps(node, default=dumper)
+    return json.dumps(node, sort_keys=True, default=json_default)
 
 
 def spn_to_str_ref_graph(node, feature_names=None, node_to_str=None):
@@ -43,9 +48,6 @@ def spn_to_str_ref_graph(node, feature_names=None, node_to_str=None):
         return str(node) + " " + spn_to_str_equation(node, feature_names) + "\n"
 
     if isinstance(node, Product):
-        dbg = ""
-        if node.debug is not None:
-            dbg = node.debug
         pd = ", ".join(map(lambda c: c.name, node.children))
         chld_str = "".join(map(lambda c: spn_to_str_ref_graph(c, feature_names, node_to_str), node.children))
         chld_str = chld_str.replace("\n", "\n\t")
@@ -157,6 +159,7 @@ sumnode: "(" [NUMBERS "*" node ("+" NUMBERS "*" node)*] ")"
 
     spn = tree_to_spn(tree, features)
 
+    assign_ids(spn)
     rebuild_scopes_bottom_up(spn)
     valid, err = is_valid(spn)
     assert valid, err
