@@ -6,8 +6,8 @@ Created on October 18, 2018
 from spn.algorithms.stats.Expectations import add_node_expectation
 from spn.structure.leaves.cltree.CLTree import *
 
-def parametric_expectation(node):
+def cltree_expectation(node):
     raise ValueError('Not Implemented')
 
-def add_parametric_expectation_support():
-    add_node_expectation(CLTree, parametric_expectation)
+def add_cltree_expectation_support():
+    add_node_expectation(CLTree, cltree_expectation)
