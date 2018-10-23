@@ -32,35 +32,50 @@ class Operation(Enum):
     SPLIT_ROWS = 3
     NAIVE_FACTORIZATION = 4
     REMOVE_UNINFORMATIVE_FEATURES = 5
+    CREATE_CLTREE_LEAF = 6
 
 
 def get_next_operation(min_instances_slice=100):
-    def next_operation(data, scope, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True,
+    def next_operation(data, scope, create_leaf, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True,
                        cluster_univariate=False):
 
         minimalFeatures = len(scope) == 1
         minimalInstances = data.shape[0] <= min_instances_slice
 
+        cltree_leaf = (create_leaf.__name__ == "create_cltree_leaf")
+
         if minimalFeatures:
             if minimalInstances or no_clusters:
-                return Operation.CREATE_LEAF, None
+                if cltree_leaf:
+                    return Operation.CREATE_CLTREE_LEAF, None
+                else:
+                    return Operation.CREATE_LEAF, None
             else:
                 if cluster_univariate:
                     return Operation.SPLIT_ROWS, None
                 else:
-                    return Operation.CREATE_LEAF, None
+                    if cltree_leaf:
+                        return Operation.CREATE_CLTREE_LEAF, None
+                    else:
+                        return Operation.CREATE_LEAF, None
 
         uninformative_features_idx = np.var(data[:, 0:len(scope)], 0) == 0
         ncols_zero_variance = np.sum(uninformative_features_idx)
         if ncols_zero_variance > 0:
             if ncols_zero_variance == data.shape[1]:
-                return Operation.NAIVE_FACTORIZATION, None
+                if cltree_leaf:
+                    return Operation.CREATE_CLTREE_LEAF, None
+                else:
+                    return Operation.NAIVE_FACTORIZATION, None
             else:
                 return Operation.REMOVE_UNINFORMATIVE_FEATURES, np.arange(len(scope))[
                     uninformative_features_idx].tolist()
 
         if minimalInstances or (no_clusters and no_independencies):
-            return Operation.NAIVE_FACTORIZATION, None
+            if cltree_leaf:
+                return Operation.CREATE_CLTREE_LEAF, None
+            else:
+                return Operation.NAIVE_FACTORIZATION, None
 
         if no_independencies:
             return Operation.SPLIT_ROWS, None
@@ -113,11 +128,13 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
     tasks = deque()
     tasks.append((dataset, root, 0, initial_scope, False, False))
 
+    cltree_leaf = (create_leaf.__name__ == "create_cltree_leaf")
+    
     while tasks:
 
         local_data, parent, children_pos, scope, no_clusters, no_independencies = tasks.popleft()
 
-        operation, op_params = next_operation(local_data, scope, no_clusters=no_clusters,
+        operation, op_params = next_operation(local_data, scope, create_leaf, no_clusters=no_clusters,
                                               no_independencies=no_independencies,
                                               is_first=(parent is root))
 
@@ -243,6 +260,12 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
                                                                                       scope,
                                                                                       leaf_end_t - leaf_start_t))
 
+        elif operation == Operation.CREATE_CLTREE_LEAF:
+            cltree_start_t = perf_counter()
+            node = create_leaf(local_data, ds_context, scope)
+            parent.children[children_pos] = node
+            cltree_end_t = perf_counter()
+            
         else:
             raise Exception('Invalid operation: ' + operation)
 
