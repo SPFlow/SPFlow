@@ -10,7 +10,6 @@ class CLTree(Leaf):
     def __init__(self, scope=None):
         self._type = Type.BINARY
         Leaf.__init__(self, scope=scope)
-        print(scope)
 
     @property
     def type(self):
