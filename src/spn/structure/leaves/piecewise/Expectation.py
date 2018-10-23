@@ -10,7 +10,7 @@ from spn.algorithms.stats.Expectations import add_node_expectation
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 
 
-def piecewise_expectation(node, unused, moment=1):
+def piecewise_expectation(node, moment=1):
     exp = 0
     for i in range(len(node.x_range) - 1):
         y0 = node.y_range[i]

@@ -23,6 +23,7 @@ import deep_notebooks.ba_functions as f
 import deep_notebooks.dn_plot as p
 from deep_notebooks.text_util import printmd, strip_dataset_name, get_nlg_phrase, deep_join, colored_string
 import deep_notebooks.explanation_vector_grammar as expl_vec_grammar
+from deep_notebooks.nalgene.generate import fix_sentence, generate_from_file
 
 # GLOBAL SETTINGS FOR THE MODULE
 correlation_threshold = 0.3
@@ -185,7 +186,7 @@ def means_table(spn, context):
 
 
 def show_feature_marginals(spn, dictionary):
-    all_features = list(spn.full_scope)
+    all_features = list(spn.scope)
     if features_shown == 'all':
         shown_features = all_features
     elif isinstance(features_shown, int):
@@ -204,7 +205,7 @@ def correlation_description(spn, dictionary):
     features = context.feature_names
     high_correlation = correlation_threshold
     categoricals = context.get_categoricals()
-    non_categoricals = [i for i in spn.full_scope if i not in categoricals]
+    non_categoricals = [i for i in spn.scope if i not in categoricals]
     corr = get_full_correlation(spn, context)
     labels = features
     iplot(p.matshow(corr, x_labels=labels, y_labels=labels))
@@ -463,7 +464,7 @@ def node_categorical_description(spn, dictionary):
     for i, cat in enumerate(categoricals):
         printmd('#### Distribution of {}'.format(feature_names[cat]))
         for cat_instance in [int(c) for c in context.get_domains_by_scope([cat])[0]]:
-            name = enc[i].inverse_transform(cat_instance)
+            name = enc[i].inverse_transform([cat_instance])
             contrib_nodes = summarized[cat]['contrib'][cat_instance][0]
             prop_of_instance = summarized[cat]['explained'][cat_instance][cat_instance]
             prop_of_nodes = prop_of_instance / np.sum(
@@ -490,6 +491,7 @@ def classification(spn, numerical_data, dictionary):
     for i in categoricals:
         y_true = numerical_data[:, i].reshape(-1, 1)
         query = np.copy(numerical_data)
+        print(i)
         y_pred = predict_mpe(spn, i, query, context).reshape(-1, 1)
         misclassified[i] = np.where(y_true != y_pred)[0]
         misclassified_instances = misclassified[i].shape[0]
@@ -544,10 +546,10 @@ def describe_misclassified(spn, dictionary, misclassified, data_dict,
                         break
                 real_value = dictionary['features'][i][
                     'encoder'].inverse_transform(
-                    int(numerical_data[inst_num, i]))
+                    [int(numerical_data[inst_num, i])])
                 pred_value = dictionary['features'][i][
                     'encoder'].inverse_transform(
-                    int(data_dict[i][inst_num, i]))
+                    [int(data_dict[i][inst_num, i])])
                 printmd(
                     'Instance {} was predicted as "{}", even though it is "{}", because it was most similar to the following clusters: {}'.format(
                         inst_num, pred_value, real_value,
@@ -611,7 +613,7 @@ def explanation_vector_description(spn, dictionary, data_dict, cat_features):
             all_gradients[i][j] = {}
             printmd('#### Class "{}": "{}"'.format(
                 feature_names[i],
-                dictionary['features'][i]['encoder'].inverse_transform(int(j))))
+                dictionary['features'][i]['encoder'].inverse_transform([int(j)])))
             test_query = np.where((data_dict[i][:,i] == j))
             if len(test_query[0]) == 0:
                 printmd('For this particular class instance, no instances in the predicted data were found. \
@@ -632,17 +634,21 @@ def explanation_vector_description(spn, dictionary, data_dict, cat_features):
                                       'class_instance':
                                           dictionary['features'][i][
                                               'encoder'].inverse_transform(
-                                              int(j)),
+                                              [int(j)]),
                                       'feature': feature_names[instance],
                                       'feature_instance':
                                           dictionary['features'][instance][
                                               'encoder'].inverse_transform(
-                                              int(l)), 'feature_idx': instance,
+                                              [int(l)]), 'feature_idx': instance,
                                       'class_idx': i}
 
-                        gradients = f.gradient(spn, data_dict[i][query], i)
+                        data = data_dict[i][query]
+                        evidence = np.full((1, data.shape[1]), np.nan)
+                        evidence[:, i] = data[0, i]
+                        gradients = conditional_gradient(spn, evidence, data)
                         gradients_norm = np.linalg.norm(gradients, axis = 1).reshape(-1,1)
                         _gradients = (gradients/gradients_norm)[:,k]
+
                         discretize = np.histogram(_gradients, range=(-1,1), bins = 10)
                         binsize = discretize[1][1] - discretize[1][0]
                         plot_data.append((_gradients, discretize, query_dict['feature_instance']))
@@ -661,7 +667,7 @@ def explanation_vector_description(spn, dictionary, data_dict, cat_features):
                     query_dict = {'type': feature_types[instance],
                                   'class': feature_names[i],
                                   'class_instance': dictionary['features'][i][
-                                      'encoder'].inverse_transform(int(j)),
+                                      'encoder'].inverse_transform([int(j)]),
                                   'feature': feature_names[instance],
                                   'feature_instance': '',
                                   'feature_idx': instance, 'class_idx': i}
@@ -706,20 +712,6 @@ def explanation_vector(gradients, discretize, data, query, query_dict):
                 query_dict['type'], query_dict['feature'])
     return header, description_tree.get_text(), data
 
-# ------------------------------------------------ #
-# ------------------- OLD CODE ------------------- #
-# ------------------------------------------------ #
-
-
-
-
-
-
-
-
-
-
-
 
 def explain_misclassified(spn, dictionary, misclassified, categorical, predicted, original):
     k = categorical
@@ -751,9 +743,9 @@ def explain_misclassified(spn, dictionary, misclassified, categorical, predicted
                 d,
                 expl,
                 np.round(proba_summed*100, 2),
-                dictionary['features'][k]['encoder'].inverse_transform(int(predicted[d,k])),
+                dictionary['features'][k]['encoder'].inverse_transform([int(predicted[d,k])]),
                 np.round(prob_pred*100, 2),
-                dictionary['features'][k]['encoder'].inverse_transform(int(original[d,k])),
+                dictionary['features'][k]['encoder'].inverse_transform([int(original[d,k])]),
                 np.round(prob_true*100, 2)))
         spn.root = root
         feature_contib = f.get_feature_decomposition(spn, k)
@@ -813,8 +805,8 @@ def print_conclusion(spn, dictionary, corr, nodes, node_separations, explanation
                     if summed > explanation_vector_threshold:
                         encoder_cat = dictionary['features'][cat]['encoder']
                         categorical = '{} - {}'.format(feature_names[cat],
-                                encoder_cat.inverse_transform(cat_value))
-                        class_descriptor = str(feature_names[cat]) + ' - ' + str(encoder_cat.inverse_transform(cat_value))
+                                encoder_cat.inverse_transform([cat_value]))
+                        class_descriptor = str(feature_names[cat]) + ' - ' + str(encoder_cat.inverse_transform([cat_value]))
                         relevant_classifications.append((class_descriptor, feature_names[predictor]))
     except Exception as e:
         pass

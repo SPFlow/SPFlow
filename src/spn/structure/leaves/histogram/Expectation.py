@@ -11,7 +11,7 @@ from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.histogram.Histograms import Histogram
 
 
-def histogram_expectation(node, unused, moment=1):
+def histogram_expectation(node, moment=1):
 
     exp = 0
     for i in range(len(node.breaks) - 1):
