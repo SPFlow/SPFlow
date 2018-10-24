@@ -1,4 +1,4 @@
-from spn.algorithms.MPE import add_node_mpe, mpe_leaf
+from spn.algorithms.MPE import add_node_mpe
 
 from spn.structure.leaves.histogram.Expectation import add_histogram_expectation_support
 from spn.structure.leaves.histogram.Inference import add_histogram_inference_support
