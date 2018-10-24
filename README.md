@@ -47,6 +47,8 @@ from spn.structure.leaves.parametric.Parametric import Categorical
 
 from spn.structure.Base import Sum, Product
 
+from spn.structure.base import assign_ids, rebuild_scopes_bottom_up
+
 
 p0 = Product(children=[Categorical(p=[0.3, 0.7], scope=1), Categorical(p=[0.4, 0.6], scope=2)])
 p1 = Product(children=[Categorical(p=[0.5, 0.5], scope=1), Categorical(p=[0.6, 0.4], scope=2)])
