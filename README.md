@@ -382,15 +382,12 @@ See also the list of [contributors](https://github.com/alejandromolinaml/SPFlow/
 
 This project is licensed under the Apache License, Version 2.0 - see the [LICENSE.md](LICENSE.md) file for details
 
+### Contributors
+* **Moritz Kulessa** - *TU Darmstadt*
+
 ### Acknowledgments
-
-<img src="Documentation/bmbf.png" alt="bmbf" height="200"/>
-<img src="Documentation/dfg.png" alt="bmbf" height="200"/>
-
-
-
-
+<img src="Documentation/acknowledgements/bmbf.png" height="100"/>
+<img src="Documentation/acknowledgements/dfg.png"  height="70"/>
 * Parts of SPflow as well as its motivating research have been supported by the Germany Scienc Foundation (DFG) — AIPHES, GRK 1994, and CAML, KE 1686/3-1 as part of SPP 1999— and the Federal Ministry of Education and Research (BMBF) — InDaS, 01IS17063B.
 
 
-* Moritz Kulessa for the valuable code contributions
