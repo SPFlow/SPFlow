@@ -242,10 +242,7 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
         try:
             func = n.__class__._eval_func[-1]
         except:
-            pass
-
-        if func is None:
-            raise Exception("No lambda function associated with type: %s" % (n.__class__.__name__))
+            raise AssertionError("No lambda function associated with type: %s" % (n.__class__.__name__))
 
         if n.__class__._is_leaf:
             result = func(n, **args)
