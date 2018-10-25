@@ -28,11 +28,10 @@ def piecewise_bottom_up_ll(node, data=None, dtype=np.float64):
 def piecewise_top_down(node, input_vals, data=None):
     get_mpe_top_down_leaf(node, input_vals, data=data, mode=piecewise_mode(node))
 
-<<<<<<< HEAD
+
 def add_piecewise_mpe_support():
     add_node_mpe(PiecewiseLinear, mpe_leaf)
-=======
->>>>>>> 96fdc7d... Dass MPE support for piecewise linear nodes
+
 
 def add_piecewise_mpe_support():
     add_node_mpe(PiecewiseLinear, piecewise_bottom_up_ll, piecewise_top_down)
