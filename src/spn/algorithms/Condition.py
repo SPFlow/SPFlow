@@ -35,7 +35,6 @@ def sum_condition(node, children, input_vals=None, scope=None):
             probs.append(node.weights[i] * np.exp(c[1]))
     new_node.weights = [w/sum(new_weights) for w in new_weights]
     assert np.all(np.logical_not(np.isnan(new_node.weights))), 'Found nan weights'
-    assert 
     if not new_node.scope:
         return None, np.log(sum(probs))
     return new_node, np.log(sum(new_weights))
