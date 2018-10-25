@@ -5,7 +5,7 @@ from spn.structure.Base import Leaf
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf, Histogram
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf, Parametric
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf, Linear
-from spn.structure.leaves.conditional.Conditional import create_conditional_leaf, Conditional
+#from spn.structure.leaves.conditional.Conditional import create_conditional_leaf, Conditional
 
 
 def learn_leaf_from_context(data, ds_context, scope):
