@@ -292,7 +292,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
     return node
 
-def learn_structure_cnet(dataset, ds_context, create_leaf, next_operation_cnet=get_next_operation_cnet(),
+def learn_structure_cnet(dataset, ds_context, conditioning, create_leaf, next_operation_cnet=get_next_operation_cnet(),
                          initial_scope=None, data_slicer=default_slicer):
     assert dataset is not None
     assert ds_context is not None
@@ -319,15 +319,17 @@ def learn_structure_cnet(dataset, ds_context, create_leaf, next_operation_cnet=g
         if operation == Operation.CONDITIONING:
             from spn.algorithms.splitting.Base import split_data_by_clusters
 
-            # random conditioning
             conditioning_start_t = perf_counter()
 
-            while True:
-                col_conditioning = np.random.choice(len(scope))
-                ones = np.sum(local_data[:,col_conditioning])
-                if  ones > 0 or ones < local_data.shape[0]:
-                    break
+            col_conditioning, found_conditioning = conditioning(local_data)
 
+            if not found_conditioning:
+                node = create_leaf(local_data, ds_context, scope)
+                parent.children[children_pos] = node
+
+                continue
+
+            
             clusters = (local_data[:,col_conditioning]==1).astype(int)
             data_slices = split_data_by_clusters(local_data, clusters, scope, rows=True)
 

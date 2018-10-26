@@ -18,7 +18,7 @@ from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
 from spn.structure.leaves.cltree.CLTree import create_cltree_leaf
-
+from spn.algorithms.splitting.Conditioning import get_split_rows_naive_mle_conditioning, get_split_rows_random_conditioning
 
 def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, cpus=-1, rand_gen=None):
     spn = Sum()
@@ -117,18 +117,23 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
 
     return learn_param(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
-def learn_cnet(data, ds_context, min_instances_slice=200, memory=None, rand_gen=None, cpus=-1):
+def learn_cnet(data, ds_context, cond="naive_mle", min_instances_slice=200, memory=None, rand_gen=None, cpus=-1):
 
     leaves = create_cltree_leaf
+
+    if cond == "naive_mle":
+        conditioning = get_split_rows_naive_mle_conditioning()
+    elif cond == "random":
+        conditioning = get_split_rows_random_conditioning()
 
     if rand_gen is None:
         rand_gen = np.random.RandomState(17)
 
-    def learn_param(data, ds_context, min_instances_slice):
+    def learn_param(data, ds_context, conditioning, min_instances_slice):
         nextop = get_next_operation_cnet(min_instances_slice)
-        return learn_structure_cnet(data, ds_context, leaves, nextop)
+        return learn_structure_cnet(data, ds_context, conditioning, leaves, nextop)
 
     if memory:
         learn_param = memory.cache(learn_param)
 
-    return learn_param(data, ds_context, min_instances_slice)
+    return learn_param(data, ds_context, conditioning, min_instances_slice)
