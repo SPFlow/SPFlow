@@ -33,7 +33,7 @@ class Operation(Enum):
     NAIVE_FACTORIZATION = 4
     REMOVE_UNINFORMATIVE_FEATURES = 5
     CREATE_CLTREE_LEAF = 6
-
+    CONDITIONING = 7
 
 def get_next_operation(min_instances_slice=100):
     def next_operation(data, scope, create_leaf, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True,
@@ -90,8 +90,21 @@ def get_next_operation(min_instances_slice=100):
                 return Operation.SPLIT_COLUMNS, None
 
         return Operation.SPLIT_COLUMNS, None
-
     return next_operation
+
+
+def get_next_operation_cnet(min_instances_slice=100):
+    def next_operation_cnet(data, scope):
+
+        minimalFeatures = len(scope) == 1
+        minimalInstances = data.shape[0] <= min_instances_slice
+
+        if minimalFeatures or minimalInstances:
+            return Operation.CREATE_CLTREE_LEAF, None
+        else:
+            return Operation.CONDITIONING, None
+
+    return next_operation_cnet
 
 
 def default_slicer(data, cols, num_cond_cols=None):
@@ -266,6 +279,94 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             parent.children[children_pos] = node
             cltree_end_t = perf_counter()
             
+        else:
+            raise Exception('Invalid operation: ' + operation)
+
+    node = root.children[0]
+    assign_ids(node)
+    valid, err = is_valid(node)
+    assert valid, "invalid spn: " + err
+    node = Prune(node)
+    valid, err = is_valid(node)
+    assert valid, "invalid spn: " + err
+
+    return node
+
+def learn_structure_cnet(dataset, ds_context, create_leaf, next_operation_cnet=get_next_operation_cnet(),
+                         initial_scope=None, data_slicer=default_slicer):
+    assert dataset is not None
+    assert ds_context is not None
+    assert create_leaf is not None
+    assert next_operation_cnet is not None
+
+    root = Product()
+    root.children.append(None)
+
+    if initial_scope is None:
+        initial_scope = list(range(dataset.shape[1]))
+
+    tasks = deque()
+    tasks.append((dataset, root, 0, initial_scope))
+
+    while tasks:
+
+        local_data, parent, children_pos, scope = tasks.popleft()
+
+        operation, op_params = next_operation_cnet(local_data, scope)
+
+        logging.debug('OP: {} on slice {} (remaining tasks {})'.format(operation, local_data.shape, len(tasks)))
+
+        if operation == Operation.CONDITIONING:
+            from spn.algorithms.splitting.Base import split_data_by_clusters
+
+            # random conditioning
+            conditioning_start_t = perf_counter()
+
+            while True:
+                col_conditioning = np.random.choice(len(scope))
+                ones = np.sum(local_data[:,col_conditioning])
+                if  ones > 0 or ones < local_data.shape[0]:
+                    break
+
+            clusters = (local_data[:,col_conditioning]==1).astype(int)
+            data_slices = split_data_by_clusters(local_data, clusters, scope, rows=True)
+
+            node = Sum()
+            node.scope.extend(scope)
+            parent.children[children_pos] = node
+
+            for data_slice, scope_slice, proportion in data_slices:
+                assert isinstance(scope_slice, list), "slice must be a list"
+
+                node.weights.append(proportion)
+
+                product_node = Product()
+                node.children.append(product_node)
+                node.children[-1].scope.extend(scope)
+
+                right_data_slice = np.hstack((data_slice[:,:col_conditioning],data_slice[:,(col_conditioning+1):])).reshape(data_slice.shape[0],data_slice.shape[1]-1)
+                product_node.children.append(None)
+                tasks.append((right_data_slice, product_node, len(product_node.children) - 1,
+                              scope_slice[:col_conditioning]+scope_slice[col_conditioning+1:]))
+                
+                left_data_slice = data_slice[:,col_conditioning].reshape(data_slice.shape[0],1)
+                product_node.children.append(None)
+                tasks.append((left_data_slice, product_node, len(product_node.children) - 1,
+                              [scope_slice[col_conditioning]]))
+
+
+            conditioning_end_t = perf_counter()
+            logging.debug(
+                '\t\tconditioning  (in {:.5f} secs)'.format(conditioning_end_t - conditioning_start_t))
+
+            continue
+
+
+        elif operation == Operation.CREATE_CLTREE_LEAF:
+            cltree_start_t = perf_counter()
+            node = create_leaf(local_data, ds_context, scope)
+            parent.children[children_pos] = node
+            cltree_end_t = perf_counter()
         else:
             raise Exception('Invalid operation: ' + operation)
 
