@@ -256,6 +256,7 @@ def learn_PSPN():
     print(get_structure_stats(spn))
 
 
+# learn a SPN having cltrees as leave
 def learn_CLTSPN():
     import numpy as np
 
@@ -286,21 +287,47 @@ def learn_CLTSPN():
     from spn.algorithms.Inference import log_likelihood
 
     ll = log_likelihood(spn, train_data)
-    for i,x in enumerate(train_data):
-        print(i,x,ll[i])
+    print(np.mean(ll))
 
-    """
-    llm = log_likelihood(spn_marg, test_data)
-    print("python ll spn_marg", llm, np.exp(llm))
 
-    test_data2 = np.array([np.nan, 0.0, 1.0]).reshape(-1, 3)
-    llom = log_likelihood(spn, test_data2)
-    print("python ll spn with nan", llom, np.exp(llom))
-    """
+def learn_CNET():
+    import numpy as np
 
+    np.random.seed(123)
+
+    train_data = np.random.binomial(1, [0.1,0.2,0.3,0.4], size=(1000,4))
+    print(np.mean(train_data, axis=0))
+
+    from spn.structure.leaves.cltree.CLTree import create_cltree_leaf
+    from spn.structure.Base import Context
+    from spn.structure.leaves.parametric.Parametric import Bernoulli
+
+    ds_context = Context(parametric_types=[Bernoulli,Bernoulli,Bernoulli,Bernoulli]).add_domains(train_data)
+
+    from spn.algorithms.LearningWrappers import learn_parametric, learn_cnet
+
+    cnet_naive_mle = learn_cnet(train_data, ds_context, cond="naive_mle", min_instances_slice=20)
+    cnet_random = learn_cnet(train_data, ds_context, cond="random", min_instances_slice=20)    
+
+    from spn.algorithms.Statistics import get_structure_stats
+    from spn.io.Text import spn_to_str_equation
+    from spn.algorithms.Inference import log_likelihood
+    
+    print(get_structure_stats(cnet_naive_mle))
+    print(spn_to_str_equation(cnet_naive_mle))
+    ll = log_likelihood(cnet_naive_mle, train_data)
+    print(np.mean(ll))
+    print(get_structure_stats(cnet_random))
+    print(spn_to_str_equation(cnet_random))
+
+    ll = log_likelihood(cnet_random, train_data)
+    print(np.mean(ll))
+
+    
     
 if __name__ == '__main__':
     learn_CLTSPN()
+    learn_CNET()    
     learn_PSPN()
     learn_MSPN()
     create_SPN()
