@@ -13,7 +13,8 @@ from spn.structure.leaves.cltree.CLTree import CLTree
 
 
 def cltree_to_str(node, feature_names=None, node_to_str=None):
-    decimals = 4
+    decimals = 3
+
     if feature_names is None:
         fname = "V" + str(node.scope[0])
         for i in range(1,len(node.scope)):
@@ -21,7 +22,9 @@ def cltree_to_str(node, feature_names=None, node_to_str=None):
     else:
         fname = feature_names[node.scope[0]]
 
-    return "CLTREE(%s)" % (fname)
+    factors = np.array2string(np.exp(node.log_factors), separator=',', precision=decimals).replace('\n', '')
+        
+    return "CLTREE(%s|%s)" % (fname,factors)
 
 
 """
