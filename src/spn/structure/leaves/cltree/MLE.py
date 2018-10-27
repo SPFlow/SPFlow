@@ -54,7 +54,7 @@ def compute_log_probs(node, data, alpha):
 
     return (log_probs, log_j_probs)
 
-def update_cltree_parameters_mle(node, data, alpha=0.1):
+def update_cltree_parameters_mle(node, data, alpha=0.01):
     """ learn the structure and parameters of a CLTree """
 
     node.n_features = data.shape[1]
