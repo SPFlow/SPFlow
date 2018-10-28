@@ -7,7 +7,7 @@ Created on March 30, 2018
 import numpy as np
 
 from spn.algorithms.StructureLearning import get_next_operation, learn_structure
-from spn.algorithms.StructureLearning import get_next_operation_cnet, learn_structure_cnet
+from spn.algorithms.CnetStructureLearning import get_next_operation_cnet, learn_structure_cnet
 from spn.algorithms.Validity import is_valid
 from spn.algorithms.splitting.Clustering import get_split_rows_KMeans, get_split_rows_TSNE
 from spn.algorithms.splitting.RDC import get_split_cols_RDC_py, get_split_rows_RDC_py
