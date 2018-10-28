@@ -319,9 +319,13 @@ def learn_CNET():
     print(np.mean(ll))
     print(get_structure_stats(cnet_random))
     print(spn_to_str_equation(cnet_random))
-
     ll = log_likelihood(cnet_random, train_data)
     print(np.mean(ll))
+
+    from spn.algorithms.MPE import mpe
+    train_data_mpe = train_data.astype(float)
+    train_data_mpe[:,0] = np.nan
+    print(mpe(cnet_random, train_data_mpe)[:30])
 
     
     
