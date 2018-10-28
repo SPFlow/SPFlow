@@ -327,6 +327,8 @@ def learn_CNET():
     train_data_mpe[:,0] = np.nan
     print(mpe(cnet_random, train_data_mpe)[:30])
 
+    ll = log_likelihood(cnet_random, train_data_mpe)
+    print(np.mean(ll))
     
     
 if __name__ == '__main__':
