@@ -48,21 +48,31 @@ def cltree_mpe(node, data, probs):
                     state_evidence = int(state_evidence)
                     states[i][0] = state_evidence
                     states[i][1] = state_evidence
-                    messages[node.tree[i],0] += node.log_factors[i,state_evidence,0] + messages[i,state_evidence]
-                    messages[node.tree[i],1] += node.log_factors[i,state_evidence,1] + messages[i,state_evidence]
+                    messages[node.tree[i],0] += \
+                                                node.log_factors[i,state_evidence,0] + \
+                                                messages[i,state_evidence]
+                    messages[node.tree[i],1] += \
+                                                node.log_factors[i,state_evidence,1] + \
+                                                messages[i,state_evidence]
                 else:
                     state_evidence_parent = data[r,node.scope[node.tree[i]]]
                     if not np.isnan(state_evidence_parent):
                         state_evidence_parent = int(state_evidence_parent)
-                        if (node.log_factors[i,0,state_evidence_parent] + messages[i,0] > node.log_factors[i,1,state_evidence_parent] + messages[i,1]):
+                        if (node.log_factors[i,0,state_evidence_parent] + messages[i,0] >
+                            node.log_factors[i,1,state_evidence_parent] + messages[i,1]):
                             states[i][state_evidence_parent] = 0
-                            messages[node.tree[i], state_evidence_parent] += node.log_factors[i,0,state_evidence_parent] + messages[i,0]
+                            messages[node.tree[i], state_evidence_parent] += \
+                                                                             node.log_factors[i,0,state_evidence_parent] + \
+                                                                             messages[i,0]
                         else:
                             states[i][state_evidence_parent] = 1
-                            messages[node.tree[i],state_evidence_parent] += node.log_factors[i,1,state_evidence_parent]+messages[i,1]
+                            messages[node.tree[i],state_evidence_parent] += \
+                                                                            node.log_factors[i,1,state_evidence_parent] + \
+                                                                            messages[i,1]
                     else:
                         for parent in range(2):
-                            if (node.log_factors[i,0,parent] + messages[i,0] > node.log_factors[i,1,parent] + messages[i,1]):
+                            if (node.log_factors[i,0,parent] + messages[i,0] >
+                                node.log_factors[i,1,parent] + messages[i,1]):
                                 states[i][parent] = 0
                                 messages[node.tree[i],parent] += node.log_factors[i,0,parent] + messages[i,0]
                             else:
