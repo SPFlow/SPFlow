@@ -9,7 +9,7 @@ from spn.structure.leaves.cltree.CLTree import CLTree
 
 import numpy as np
 
-def cltree_likelihood(node, data=None, dtype=np.float64):
+def cltree_likelihood_(node, data=None, dtype=np.float64):
     probs = np.zeros(data.shape[0], dtype=dtype)
 
     for feature in range(0, node.n_features):
@@ -25,7 +25,7 @@ def cltree_likelihood(node, data=None, dtype=np.float64):
     return np.exp(probs.reshape(data.shape[0],1))
     
 
-def cltree_marginal_likelihood(node, data=None, dtype=np.float64):
+def cltree_likelihood(node, data=None, dtype=np.float64):
     probs = np.zeros(data.shape[0], dtype=dtype)
 
     for r in range(data.shape[0]):
@@ -59,8 +59,8 @@ def cltree_marginal_likelihood(node, data=None, dtype=np.float64):
                     logprob = \
                               np.log( np.exp(node.log_factors[i,0,0] + messages[0,0]) +
                                       np.exp(node.log_factors[i,1,0]+messages[0,1]))
-        probs[r] = np.exp(logprob)
-    return probs
+        probs[r] = logprob
+    return np.exp(probs.reshape(data.shape[0],1))
 
 
 def add_cltree_inference_support():
