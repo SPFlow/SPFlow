@@ -66,10 +66,12 @@ def add_tf_graph_to_node(node_type, lambda_func):
     _tf_graph_to_node[node_type] = lambda_func
 
 
-def spn_to_tf_graph(node, data, node_tf_graph=_node_log_tf_graph, log_space=True, dtype=np.float32):
+def spn_to_tf_graph(node, data, batch_size=None, node_tf_graph=_node_log_tf_graph, log_space=True, dtype=None):
     tf.reset_default_graph()
+    if not dtype:
+        dtype=data.dtype
     # data is a placeholder, with shape same as numpy data
-    data_placeholder = tf.placeholder(data.dtype, (None, data.shape[1]))
+    data_placeholder = tf.placeholder(dtype, (batch_size, data.shape[1]))
     variable_dict = {}
     tf_graph = eval_spn_bottom_up(node, node_tf_graph, data_placeholder=data_placeholder, log_space=log_space,
                                   variable_dict=variable_dict, dtype=dtype)
@@ -86,21 +88,29 @@ def likelihood_loss(tf_graph):
     return -tf.reduce_sum(tf_graph)
 
 
-def optimize_tf(spn, data, epochs=1000, optimizer=None):
+def optimize_tf(spn, data, epochs=1000, batch_size=None, optimizer=None):
     spn_copy = Copy(spn)
-    tf_graph, data_placeholder, variable_dict = spn_to_tf_graph(spn_copy, data)
-    optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=epochs, optimizer=optimizer)
+    tf_graph, data_placeholder, variable_dict = spn_to_tf_graph(spn_copy, data, batch_size)
+    optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=epochs, batch_size=batch_size, optimizer=optimizer)
     return spn_copy
 
 
-def optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=1000, optimizer=None):
+def optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=1000, batch_size=None, optimizer=None):
     if optimizer is None:
         optimizer = tf.train.GradientDescentOptimizer(0.001)
-    opt_op = optimizer.minimize(-tf.reduce_sum(tf_graph))
+    loss = -tf.reduce_sum(tf_graph)
+    opt_op = optimizer.minimize(loss)
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for _ in range(epochs):
-            sess.run(opt_op, feed_dict={data_placeholder: data})
+        if not batch_size:
+            batch_size = data.shape[0]
+        batches_per_epoch = data.shape[0] // batch_size
+
+        for i in range(epochs):
+            for j in range(batches_per_epoch):
+                data_batch = data[j * batch_size: (j+1) * batch_size, :]
+                _, cur_loss = sess.run([opt_op, loss], feed_dict={data_placeholder: data_batch})
+            print("epoch: {}, loss: {}".format(i, cur_loss))
         tf_graph_to_spn(variable_dict)
 
 
