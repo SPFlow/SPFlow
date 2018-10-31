@@ -57,22 +57,23 @@ def compute_log_probs(node, data, alpha):
 def update_cltree_parameters_mle(node, data, alpha=0.01):
     """ learn the structure and parameters of a CLTree """
 
-    node.tree = np.zeros(node.n_features, dtype=np.int)
-    node.tree[0] = -1
-    node.log_factors = np.zeros((node.n_features, 2, 2))
+    log_factors = np.zeros((node.n_features, 2, 2))
     
     if node.n_features == 1:
         p = (data.sum() + 2*alpha) / (len(data) + 4*alpha)
 
-        node.log_factors[0, 0, 0] = np.log(1-p)
-        node.log_factors[0, 0, 1] = np.log(1-p)
-        node.log_factors[0, 1, 0] = np.log(p)
-        node.log_factors[0, 1, 1] = np.log(p)
+        log_factors[0, 0, 0] = np.log(1-p)
+        log_factors[0, 0, 1] = np.log(1-p)
+        log_factors[0, 1, 0] = np.log(p)
+        log_factors[0, 1, 1] = np.log(p)
         
+        node.tree = [-1]
         node.df_order = [0]
         node.post_order = [0]    
 
     else:
+        node.tree = [0] * node.n_features
+        node.tree[0] = -1
         
         (log_probs, log_j_probs) = compute_log_probs(node, data, alpha)
     
@@ -89,8 +90,8 @@ def update_cltree_parameters_mle(node, data, alpha=0.01):
         mst = minimum_spanning_tree(-(MI))
         dfs_tree = depth_first_order(mst, directed=False, i_start=0)
 
-        node.df_order = dfs_tree[0]
-        node.post_order = dfs_tree[0][::-1]    
+        node.df_order = dfs_tree[0].tolist()
+        node.post_order = dfs_tree[0][::-1].tolist()    
     
         for p in range(1, node.n_features):
             node.tree[p] = dfs_tree[1][p]
@@ -100,15 +101,17 @@ def update_cltree_parameters_mle(node, data, alpha=0.01):
 
         for feature in range(0, node.n_features):
             if node.tree[feature]==-1:
-                node.log_factors[feature, 0, 0] = log_probs[feature, 0]
-                node.log_factors[feature, 0, 1] = log_probs[feature, 0]
-                node.log_factors[feature, 1, 0] = log_probs[feature, 1]
-                node.log_factors[feature, 1, 1] = log_probs[feature, 1]
+                log_factors[feature, 0, 0] = log_probs[feature, 0]
+                log_factors[feature, 0, 1] = log_probs[feature, 0]
+                log_factors[feature, 1, 0] = log_probs[feature, 1]
+                log_factors[feature, 1, 1] = log_probs[feature, 1]
             else:
                 parent = int(node.tree[feature])
                 for feature_val in range(2):
                     for parent_val in range(2):
-                        node.log_factors[feature, feature_val, parent_val] = log_j_probs[feature,parent,feature_val, parent_val] - log_probs[parent, parent_val] 
+                        log_factors[feature, feature_val, parent_val] = log_j_probs[feature,parent,feature_val, parent_val] - log_probs[parent, parent_val]
+
+    node.log_factors = log_factors.tolist()
 
 
 
