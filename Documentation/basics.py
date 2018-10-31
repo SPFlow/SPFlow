@@ -275,7 +275,7 @@ def learn_CLTSPN():
 
     from spn.algorithms.LearningWrappers import learn_parametric
 
-    spn = learn_parametric(train_data, ds_context, min_instances_slice=20, leaves=create_cltree_leaf)
+    spn = learn_parametric(train_data, ds_context, min_instances_slice=20, min_features_slice=1, multivariate_leaf=True, leaves=create_cltree_leaf)
 
     from spn.algorithms.Statistics import get_structure_stats
     print(get_structure_stats(spn))
@@ -306,8 +306,8 @@ def learn_CNET():
 
     from spn.algorithms.LearningWrappers import learn_parametric, learn_cnet
 
-    cnet_naive_mle = learn_cnet(train_data, ds_context, cond="naive_mle", min_instances_slice=20)
-    cnet_random = learn_cnet(train_data, ds_context, cond="random", min_instances_slice=20)    
+    cnet_naive_mle = learn_cnet(train_data, ds_context, cond="naive_mle", min_instances_slice=20, min_features_slice=1)
+    cnet_random = learn_cnet(train_data, ds_context, cond="random", min_instances_slice=20, min_features_slice=1)    
 
     from spn.algorithms.Statistics import get_structure_stats
     from spn.io.Text import spn_to_str_equation
