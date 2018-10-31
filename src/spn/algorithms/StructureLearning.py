@@ -35,11 +35,11 @@ class Operation(Enum):
     CREATE_CLTREE_LEAF = 6
     CONDITIONING = 7
 
-def get_next_operation(min_instances_slice=100):
+def get_next_operation(min_instances_slice=100, min_features_slice=1):
     def next_operation(data, scope, create_leaf, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True,
                        cluster_univariate=False):
 
-        minimalFeatures = len(scope) == 1
+        minimalFeatures = len(scope) == min_features_slice
         minimalInstances = data.shape[0] <= min_instances_slice
 
         cltree_leaf = (create_leaf.__name__ == "create_cltree_leaf")
