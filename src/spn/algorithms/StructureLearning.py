@@ -32,8 +32,7 @@ class Operation(Enum):
     SPLIT_ROWS = 3
     NAIVE_FACTORIZATION = 4
     REMOVE_UNINFORMATIVE_FEATURES = 5
-    CREATE_CLTREE_LEAF = 6
-    CONDITIONING = 7
+    CONDITIONING = 6
 
 def get_next_operation(min_instances_slice=100, min_features_slice=1, multivariate_leaf=False):
     def next_operation(data, scope, create_leaf, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True,

@@ -92,7 +92,7 @@ def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=
     return l_mspn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
 
-def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3, ohe=False,
+def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, min_features_slice=1, multivariate_leaf=False, threshold=0.3, ohe=False,
                      leaves=None, memory=None, rand_gen=None, cpus=-1):
     if leaves is None:
         leaves = create_parametric_leaf
@@ -108,7 +108,7 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
         elif rows == "kmeans":
             split_rows = get_split_rows_KMeans()
 
-        nextop = get_next_operation(min_instances_slice)
+        nextop = get_next_operation(min_instances_slice, min_features_slice, multivariate_leaf)
 
         return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop)
 
@@ -117,7 +117,7 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
 
     return learn_param(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
-def learn_cnet(data, ds_context, cond="naive_mle", min_instances_slice=200, memory=None, rand_gen=None, cpus=-1):
+def learn_cnet(data, ds_context, cond="naive_mle", min_instances_slice=200, min_features_slice=1, memory=None, rand_gen=None, cpus=-1):
 
     leaves = create_cltree_leaf
 
@@ -130,7 +130,7 @@ def learn_cnet(data, ds_context, cond="naive_mle", min_instances_slice=200, memo
         rand_gen = np.random.RandomState(17)
 
     def learn_param(data, ds_context, conditioning, min_instances_slice):
-        nextop = get_next_operation_cnet(min_instances_slice)
+        nextop = get_next_operation_cnet(min_instances_slice, min_features_slice)
         return learn_structure_cnet(data, ds_context, conditioning, leaves, nextop)
 
     if memory:

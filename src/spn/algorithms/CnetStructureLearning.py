@@ -27,14 +27,14 @@ cpus = os.cpu_count() - 2 #- int(os.getloadavg()[2])
 pool = multiprocessing.Pool(processes=cpus,)
 
 
-def get_next_operation_cnet(min_instances_slice=100):
+def get_next_operation_cnet(min_instances_slice=100, min_features_slice=1):
     def next_operation_cnet(data, scope):
 
-        minimalFeatures = len(scope) == 1
+        minimalFeatures = len(scope) == min_features_slice
         minimalInstances = data.shape[0] <= min_instances_slice
 
         if minimalFeatures or minimalInstances:
-            return Operation.CREATE_CLTREE_LEAF, None
+            return Operation.CREATE_LEAF, None
         else:
             return Operation.CONDITIONING, None
 
@@ -112,7 +112,7 @@ def learn_structure_cnet(dataset, ds_context, conditioning, create_leaf, next_op
             continue
 
 
-        elif operation == Operation.CREATE_CLTREE_LEAF:
+        elif operation == Operation.CREATE_LEAF:
             cltree_start_t = perf_counter()
             node = create_leaf(local_data, ds_context, scope)
             parent.children[children_pos] = node
