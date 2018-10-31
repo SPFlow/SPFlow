@@ -57,7 +57,6 @@ def compute_log_probs(node, data, alpha):
 def update_cltree_parameters_mle(node, data, alpha=0.01):
     """ learn the structure and parameters of a CLTree """
 
-    node.n_features = data.shape[1]
     node.tree = np.zeros(node.n_features, dtype=np.int)
     node.tree[0] = -1
     node.log_factors = np.zeros((node.n_features, 2, 2))
