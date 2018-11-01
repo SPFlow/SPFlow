@@ -1,6 +1,6 @@
 import numpy as np
 
-from spn.structure.Base import Sum, Product, Leaf, get_nodes_by_type, eval_spn_bottom_up, set_full_scope, assign_ids
+from spn.structure.Base import Sum, Product, Leaf, get_nodes_by_type, eval_spn_bottom_up, assign_ids
 
 from spn.algorithms.TransformStructure import Copy, Prune
 from spn.algorithms.Inference import log_likelihood

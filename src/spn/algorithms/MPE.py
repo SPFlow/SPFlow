@@ -83,10 +83,3 @@ def mpe(node, input_data, node_top_down_mpe=_node_top_down_mpe, node_bottom_up_m
     eval_spn_top_down(node, node_top_down_mpe, parent_result=instance_ids, data=data, lls_per_node=lls_per_node)
 
     return data
-
-
-def predict_mpe(spn, feature_id, query, context):
-    query[:, feature_id] = np.nan
-    print(query)
-    print(feature_id)
-    return mpe(spn, query, in_place=True)[:, feature_id]

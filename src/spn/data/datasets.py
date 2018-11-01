@@ -16,10 +16,6 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
-from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
-from spn.structure.leaves.histogram.Histograms import Histogram
-
-
 path = dirname(__file__) + "/"
 
 def one_hot(y, values):
@@ -108,7 +104,7 @@ def get_mnist(cachefile=path+'count/mnist.npz'):
     return (images_tr, labels_tr, images_te, labels_te)
 
 
-def load_from_csv(data_file, header=0, histogram=True):
+def load_from_csv(data_file, header=0):
     df = pd.read_csv(data_file, delimiter=",", header=header)
     df = df.dropna(axis=0, how='any')
 
@@ -119,9 +115,9 @@ def load_from_csv(data_file, header=0, histogram=True):
     feature_types = []
     for feature_type in dtypes:
         if feature_type.kind == 'O':
-            feature_types.append(Histogram)
+            feature_types.append('hist')
         else:
-            feature_types.append(PiecewiseLinear)
+            feature_types.append('piecewise')
 
     data_dictionary = {
         'features': [{"name": name,
