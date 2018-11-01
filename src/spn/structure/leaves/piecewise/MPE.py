@@ -1,6 +1,7 @@
 '''
 Created on October 24, 2018
 
+@author: Alejandro Molina
 @author: Claas Voelcker
 '''
 import numpy as np

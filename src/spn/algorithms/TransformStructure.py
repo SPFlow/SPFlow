@@ -53,9 +53,10 @@ def Prune(node):
     return node
 
 
-def Copy(node):
-    # v, err = is_valid(node)
-    # assert v, err
+def Copy(node, validate=False):
+    if validate:
+        v, err = is_valid(node)
+        assert v, err
     return deepcopy(node)
 
 
