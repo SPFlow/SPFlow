@@ -137,14 +137,13 @@ class Context:
     def add_feature_names(self, names):
         self.feature_names = names
 
-    def get_categoricals(self):
-        return [i for i, meta_type in enumerate(self.meta_types)
-                if meta_type == MetaType.DISCRETE]
-
-
 
 def get_number_of_edges(node):
     return sum([len(c.children) for c in get_nodes_by_type(node, (Sum, Product))])
+
+
+def get_number_of_nodes(spn, node=Node):
+    return len(get_nodes_by_type(spn, node))
 
 
 def get_number_of_layers(node):
@@ -305,23 +304,3 @@ def eval_spn_top_down(root, eval_functions, all_results=None, parent_result=None
                 queue.append((node, result[i]))
 
     return all_results[root]
-
-
-
-def set_full_scope(node):
-    bfs(node, lambda x: x.set_full_scope(node.scope))
-
-
-def get_size(node):
-    if isinstance(node, Leaf):
-        return 1
-    else:
-        return sum([get_size(child) for child in node.children]) + 1
-
-
-def get_spn_depth(node, depth=0):
-    if isinstance(node, Leaf):
-        return depth
-    else:
-        return max((get_spn_depth(node, depth=depth+1)
-                    for node in node.children))

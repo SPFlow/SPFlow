@@ -3,13 +3,13 @@ Created on April 15, 2018
 
 @author: Alejandro Molina
 '''
-from spn.algorithms.stats.Expectations import add_node_expectation
+from spn.algorithms.stats.Moments import add_node_moment
 from spn.structure.leaves.parametric.Parametric import *
 import numpy as np
 
 
-def parametric_expectation(node, moment=1):
-    if moment > 1:
+def parametric_moment(node, oder=1):
+    if oder > 1:
         return NotImplementedError('Higher moments are not implemented yet')
 
     if isinstance(node, Gaussian) or isinstance(node, Poisson):
@@ -45,15 +45,15 @@ def parametric_expectation(node, moment=1):
         raise Exception("Unknown parametric " + str(type(node)))
 
 
-def add_parametric_expectation_support():
-    add_node_expectation(Gaussian, parametric_expectation)
-    add_node_expectation(Gamma, parametric_expectation)
-    add_node_expectation(LogNormal, parametric_expectation)
-    add_node_expectation(Poisson, parametric_expectation)
-    add_node_expectation(Bernoulli, parametric_expectation)
-    add_node_expectation(Categorical, parametric_expectation)
-    add_node_expectation(NegativeBinomial, parametric_expectation)
-    add_node_expectation(Hypergeometric, parametric_expectation)
-    add_node_expectation(Geometric, parametric_expectation)
-    add_node_expectation(Exponential, parametric_expectation)
-    add_node_expectation(Uniform, parametric_expectation)
+def add_parametric_moment_support():
+    add_node_moment(Gaussian, parametric_moment)
+    add_node_moment(Gamma, parametric_moment)
+    add_node_moment(LogNormal, parametric_moment)
+    add_node_moment(Poisson, parametric_moment)
+    add_node_moment(Bernoulli, parametric_moment)
+    add_node_moment(Categorical, parametric_moment)
+    add_node_moment(NegativeBinomial, parametric_moment)
+    add_node_moment(Hypergeometric, parametric_moment)
+    add_node_moment(Geometric, parametric_moment)
+    add_node_moment(Exponential, parametric_moment)
+    add_node_moment(Uniform, parametric_moment)

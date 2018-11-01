@@ -1,16 +1,12 @@
-jupyter
 numpy
 matplotlib
-plotly==2.4.1
 pandas
 scipy
 sklearn
 numba
-rpy2
 networkx
 pydot
 joblib
-cppyy
 natsort
 statsmodels
 tqdm
@@ -19,3 +15,5 @@ lark-parser
 #tensorflow
 sympy
 arff
+statsmodels
+cppyy

@@ -6,8 +6,6 @@ Created on March 30, 2018
 
 import numpy as np
 
-from spn.data.datasets import load_from_csv
-
 from spn.algorithms.StructureLearning import get_next_operation, learn_structure
 from spn.algorithms.Validity import is_valid
 from spn.algorithms.splitting.Clustering import get_split_rows_KMeans, get_split_rows_TSNE
@@ -15,7 +13,6 @@ from spn.algorithms.splitting.RDC import get_split_cols_RDC_py, get_split_rows_R
 
 from spn.structure.Base import Sum, assign_ids, Context, Leaf
 
-from spn.algorithms.LeafLearning import learn_leaf_from_context
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
@@ -117,77 +114,3 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
         learn_param = memory.cache(learn_param)
 
     return learn_param(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
-
-
-def learn_conditional(data, ds_context, scope=None, cols="ci", rows="rand_hp", min_instances_slice=200, threshold=0.01,
-                      ohe=False,
-                      leaves=None, memory=None):
-    """
-    :param data: np array
-    :param ds_context: Context object
-    :param scope: list of indices of output variables
-    :param cols: column splitting method
-    :param rows: row splitting method
-    :param min_instances_slice: minimal instance slice
-    :param threshold: threshold scalar
-    :param ohe: ohe
-    :param leaves: boolean
-    :param memory: boolean
-    :return: method to learn structure
-    """
-    if leaves is None:
-        leaves = create_conditional_leaf
-
-    def learn_cond(data, ds_context, scope, cols, rows, min_instances_slice, threshold, ohe):
-        split_cols = None
-        if cols == "ci":
-            from spn.algorithms.splitting.RCoT import getCIGroup
-
-            split_cols = getCIGroup(np.random.RandomState(17)) #(data, scope, threshold)
-        else:
-            raise ValueError('invalid independence test')
-        if rows == "rand_hp":
-            from spn.algorithms.splitting.Random import get_split_rows_random_partition
-            split_rows = get_split_rows_random_partition(np.random.RandomState(17)) #(data, scope, threshold)
-        elif rows == "kmeans":
-            split_rows = get_split_rows_KMeans()
-        elif rows == "tsne":
-            split_rows = get_split_rows_TSNE()
-        else:
-            # todo add other clustering?
-            raise ValueError('invalid clustering method')
-
-        nextop = get_next_operation(min_instances_slice)
-
-        return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop, scope)
-
-    if memory:
-        learn_cond = memory.cache(learn_cond)
-    return learn_cond(data, ds_context, scope, cols, rows, min_instances_slice,
-                  threshold, ohe)
-
-
-def learn_piecewise_from_data(data_file, header=0, min_instances=25, independence_threshold=0.1, histogram=True):
-    """
-    Learning wrapper for automatically building an SPN from a datafile
-
-    :param data_file: String: location of the data csv
-    :param header: Int: row of the data header
-    :param min_instances: Int: minimum data instances per leaf node
-    :param independence_threshold: Float: threshold for the independence test
-    :param histogram: Boolean: use histogram for categorical data?
-    :return: a valid spn, a data dictionary
-    """
-    data, feature_types, data_dictionary = load_from_csv(data_file, header, histogram)
-    context = Context(parametric_types=feature_types).add_domains(data)
-    context.add_feature_names([entry['name']
-                                  for entry in data_dictionary['features']])
-    spn = learn_mspn(data,
-                     context,
-                     min_instances_slice=min_instances,
-                     threshold=independence_threshold,
-                     ohe=False,
-                     leaves=create_piecewise_leaf)
-    assert is_valid(spn), 'No valid spn could be created from datafile'
-    data_dictionary['context'] = context
-    return spn, data_dictionary

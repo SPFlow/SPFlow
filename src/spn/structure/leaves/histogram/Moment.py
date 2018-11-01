@@ -2,16 +2,17 @@
 Created on April 15, 2018
 
 @author: Alejandro Molina
+@author: Claas Völcker
 '''
 
 import numpy as np
 
-from spn.algorithms.stats.Expectations import add_node_expectation
+from spn.algorithms.stats.Moments import add_node_moment
 from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.histogram.Histograms import Histogram
 
 
-def histogram_expectation(node, moment=1):
+def histogram_moment(node, order=1):
 
     exp = 0
     for i in range(len(node.breaks) - 1):
@@ -19,13 +20,13 @@ def histogram_expectation(node, moment=1):
         b = node.breaks[i + 1]
         d = node.densities[i]
         if node.meta_type == MetaType.DISCRETE:
-            sum_x = a ** moment
+            sum_x = a ** order
         else:
-            sum_x = (b ** (moment+1) - a ** (moment+1)) / (moment + 1)
+            sum_x = (b ** (order+1) - a ** (order+1)) / (order + 1)
 
         exp += d * sum_x
     return exp
 
 
-def add_histogram_expectation_support():
-    add_node_expectation(Histogram, histogram_expectation)
+def add_histogram_moment_support():
+    add_node_moment(Histogram, histogram_moment)
