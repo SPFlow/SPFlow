@@ -256,6 +256,14 @@ def learn_PSPN():
     print(get_structure_stats(spn))
 
 
+def visualize_tree():
+    spn = create_SPN()
+
+    from spn.io.plot import TreeVisualization
+    TreeVisualization.spn_visualize(spn, file_name='tree_spn.png')
+
+
+
 if __name__ == '__main__':
     learn_PSPN()
     learn_MSPN()
@@ -272,3 +280,5 @@ if __name__ == '__main__':
     extend()
 
     # tensorflow()
+
+    visualize_tree()
