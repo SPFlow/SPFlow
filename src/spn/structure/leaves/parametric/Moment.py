@@ -8,8 +8,8 @@ from spn.structure.leaves.parametric.Parametric import *
 import numpy as np
 
 
-def parametric_moment(node, oder=1):
-    if oder > 1:
+def parametric_moment(node, order=1):
+    if order > 1:
         return NotImplementedError('Higher moments are not implemented yet')
 
     if isinstance(node, Gaussian) or isinstance(node, Poisson):
