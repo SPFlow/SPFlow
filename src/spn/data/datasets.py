@@ -13,9 +13,6 @@ from scipy.io.arff import loadarff
 import pandas as pd
 import xml.etree.ElementTree as ET
 
-import pandas as pd
-from sklearn.preprocessing import LabelEncoder
-
 path = dirname(__file__) + "/"
 
 def one_hot(y, values):
@@ -102,48 +99,6 @@ def get_mnist(cachefile=path+'count/mnist.npz'):
         if cachefile:
             np.savez(cachefile, images_tr=images_tr, labels_tr=labels_tr, images_te=images_te, labels_te=labels_te)
     return (images_tr, labels_tr, images_te, labels_te)
-
-
-def load_from_csv(data_file, header=0):
-    df = pd.read_csv(data_file, delimiter=",", header=header)
-    df = df.dropna(axis=0, how='any')
-
-    feature_names = df.columns.values.tolist() if header == 0 else [
-        "X_{}".format(i) for i in range(len(df.columns))]
-
-    dtypes = df.dtypes
-    feature_types = []
-    for feature_type in dtypes:
-        if feature_type.kind == 'O':
-            feature_types.append('hist')
-        else:
-            feature_types.append('piecewise')
-
-    data_dictionary = {
-        'features': [{"name": name,
-                      "type": typ,
-                      "pandas_type": dtypes[i]}
-                     for i, (name, typ)
-                     in enumerate(zip(feature_names, feature_types))],
-        'num_entries': len(df)
-    }
-
-    idx = df.columns
-
-    for id, name in enumerate(idx):
-        if feature_types[id] == Histogram:
-            lb = LabelEncoder()
-            data_dictionary['features'][id]["encoder"] = lb
-            df[name] = df[name].astype('category')
-            df[name] = lb.fit_transform(df[name])
-            data_dictionary['features'][id]["values"] = lb.transform(
-                lb.classes_)
-        if dtypes[id].kind == 'M':
-            df[name] = (df[name] - df[name].min()) / np.timedelta64(1, 'D')
-
-    data = np.array(df)
-
-    return data, feature_types, data_dictionary
 
 
 def get_categorical_data(name):
