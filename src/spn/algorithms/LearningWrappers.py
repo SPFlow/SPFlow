@@ -12,7 +12,7 @@ from spn.algorithms.Validity import is_valid
 from spn.algorithms.splitting.Clustering import get_split_rows_KMeans, get_split_rows_TSNE
 from spn.algorithms.splitting.RDC import get_split_cols_RDC_py, get_split_rows_RDC_py
 
-from spn.structure.Base import Sum, assign_ids
+from spn.structure.Base import Sum, assign_ids, Context, Leaf
 
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
@@ -116,6 +116,7 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
         learn_param = memory.cache(learn_param)
 
     return learn_param(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
+
 
 def learn_cnet(data, ds_context, cond="naive_mle", min_instances_slice=200, min_features_slice=1, memory=None, rand_gen=None, cpus=-1):
 

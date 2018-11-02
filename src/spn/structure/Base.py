@@ -6,6 +6,8 @@ Created on March 20, 2018
 import numpy as np
 import collections
 
+from spn.structure.StatisticalTypes import MetaType
+
 
 class Node(object):
     def __init__(self):
@@ -97,6 +99,7 @@ class Context:
         self.meta_types = meta_types
         self.domains = domains
         self.parametric_types = parametric_types
+        self.feature_names = []
 
         if self.meta_types is None and parametric_types is not None:
             self.meta_types = []
@@ -131,12 +134,20 @@ class Context:
 
         return self
 
+    def add_feature_names(self, names):
+        self.feature_names = names
+
 
 def get_number_of_edges(node):
     return sum([len(c.children) for c in get_nodes_by_type(node, (Sum, Product))])
 
 def get_number_of_nodes(spn, node_type=Node):
     return len(get_nodes_by_type(spn, node_type))
+
+
+def get_number_of_nodes(spn, node=Node):
+    return len(get_nodes_by_type(spn, node))
+
 
 def get_depth(node):
     node_depth = {}
