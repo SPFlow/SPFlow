@@ -7,14 +7,31 @@ Created on May 4, 2018
 import numpy as np
 
 from spn.structure.Base import Leaf
-from spn.structure.StatisticalTypes import MetaType
+from spn.structure.StatisticalTypes import MetaType, Type
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 import itertools
 
 
-class PiecewiseLinear(Leaf):
-    def __init__(self, x_range, y_range, bin_repr_points, scope=None):
+class Linear(Leaf):
+    def __init__(self, type, scope=None):
         Leaf.__init__(self, scope=scope)
+        self._type = type
+
+        @property
+        def types(self):
+            return self._type
+
+        @property
+        def params(self):
+            raise Exception('Not valid')
+
+
+class PiecewiseLinear(Linear):
+
+    type = Type.REAL
+
+    def __init__(self, x_range, y_range, bin_repr_points, scope=None):
+        Linear.__init__(self, type(self).type, scope=scope)
         self.x_range = x_range
         self.y_range = y_range
 

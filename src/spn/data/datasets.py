@@ -120,4 +120,3 @@ def get_categorical_data(name):
             np.savez(cachefile, train_input=train_input, train_labels=train_labels, test_input=test_input, test_labels=test_labels)
 
     return (train_input, train_labels, test_input, test_labels)
-
