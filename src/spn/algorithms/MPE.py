@@ -11,7 +11,7 @@ import numpy as np
 
 def mpe_prod(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
     if len(parent_result) == 0:
-        return None
+        return None    
     return [parent_result] * len(node.children)
 
 
