@@ -64,9 +64,9 @@ def Moment(spn, feature_scope, evidence_scope, evidence, node_moment=_node_momen
 
 
 def get_mean(spn):
-    return moment(spn, set(spn.scope), None, None)
+    return Moment(spn, set(spn.scope), None, None)
 
 
 def get_variance(spn):
-    return moment(spn, set(spn.scope), None, None,
-                       order=2) - get_means(spn) ** 2
+    return Moment(spn, set(spn.scope), None, None,
+                       order=2) - get_mean(spn) ** 2
