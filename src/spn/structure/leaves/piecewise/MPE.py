@@ -1,7 +1,7 @@
 '''
 Created on October 24, 2018
 
-@author: Alejandro Molina
+
 @author: Claas Voelcker
 '''
 import numpy as np
@@ -19,7 +19,6 @@ def piecewise_mode(node):
 
 def piecewise_bottom_up_ll(node, data=None, dtype=np.float64):
     probs = piecewise_likelihood(node, data=data, dtype=dtype)
-
     mpe_ids = np.isnan(data[:, node.scope[0]])
     probs[mpe_ids] = piecewise_mode(node)
 
@@ -29,9 +28,6 @@ def piecewise_bottom_up_ll(node, data=None, dtype=np.float64):
 def piecewise_top_down(node, input_vals, data=None):
     get_mpe_top_down_leaf(node, input_vals, data=data, mode=piecewise_mode(node))
 
-
-def add_piecewise_mpe_support():
-    add_node_mpe(PiecewiseLinear, mpe_leaf)
 
 
 def add_piecewise_mpe_support():
