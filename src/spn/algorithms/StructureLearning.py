@@ -23,7 +23,12 @@ from spn.structure.Base import Product, Sum, assign_ids
 import multiprocessing
 import os
 
-cpus = os.cpu_count() - 2 #- int(os.getloadavg()[2])
+parallel = True
+
+if parallel:
+    cpus = os.cpu_count() - 2  # - int(os.getloadavg()[2])
+else:
+    cpus = 1
 pool = multiprocessing.Pool(processes=cpus,)
 
 class Operation(Enum):
@@ -248,7 +253,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             logging.debug('\t\t created leaf {} for scope={} (in {:.5f} secs)'.format(node.__class__.__name__,
                                                                                       scope,
                                                                                       leaf_end_t - leaf_start_t))
-            
+
         else:
             raise Exception('Invalid operation: ' + operation)
 
