@@ -15,7 +15,7 @@ from natsort import natsorted
 from spn.algorithms.Inference import likelihood
 from spn.experiments.FPGA.GenerateSPNs import load_spn_from_file, fpga_count_ops
 from spn.gpu.TensorFlow import spn_to_tf_graph
-from spn.structure.Base import get_nodes_by_type, Node, get_number_of_edges, get_number_of_layers, Product, Leaf, Sum
+from spn.structure.Base import get_nodes_by_type, Node, get_number_of_edges, get_depth, Product, Leaf, Sum
 
 np.set_printoptions(precision=50)
 
@@ -82,7 +82,7 @@ def run_experiment(exp, spn, test_data, test_type, exp_lambda):
     results["spn prod nodes"] = len(get_nodes_by_type(spn, Product))
     results["spn leaves"] = len(get_nodes_by_type(spn, Leaf))
     results["spn edges"] = get_number_of_edges(spn)
-    results["spn layers"] = get_number_of_layers(spn)
+    results["spn layers"] = get_depth(spn)
     results["time per task"] = test_time
     results["time per instance"] = test_time / test_n
     results["avg ll"] = np.mean(ll, dtype=np.float128)

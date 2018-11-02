@@ -6,6 +6,8 @@ Created on March 20, 2018
 import numpy as np
 import collections
 
+from spn.structure.StatisticalTypes import MetaType
+
 
 class Node(object):
     def __init__(self):
@@ -97,6 +99,7 @@ class Context:
         self.meta_types = meta_types
         self.domains = domains
         self.parametric_types = parametric_types
+        self.feature_names = []
 
         if self.meta_types is None and parametric_types is not None:
             self.meta_types = []
@@ -131,12 +134,22 @@ class Context:
 
         return self
 
+    def add_feature_names(self, names):
+        self.feature_names = names
+
 
 def get_number_of_edges(node):
     return sum([len(c.children) for c in get_nodes_by_type(node, (Sum, Product))])
 
+def get_number_of_nodes(spn, node_type=Node):
+    return len(get_nodes_by_type(spn, node_type))
 
-def get_number_of_layers(node):
+
+def get_number_of_nodes(spn, node=Node):
+    return len(get_nodes_by_type(spn, node))
+
+
+def get_depth(node):
     node_depth = {}
 
     def count_layers(node):
@@ -242,10 +255,7 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
         try:
             func = n.__class__._eval_func[-1]
         except:
-            pass
-
-        if func is None:
-            raise Exception("No lambda function associated with type: %s" % (n.__class__.__name__))
+            raise AssertionError("No lambda function associated with type: %s" % (n.__class__.__name__))
 
         if n.__class__._is_leaf:
             result = func(n, **args)
