@@ -15,8 +15,9 @@ LOG_ZERO = -300
 
 def piecewise_likelihood(node, data=None, dtype=np.float64):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
-    probs[~marg_ids] = piecewise_complete_cases_likelihood(node, observations, dtype=dtype)     
-    return piecewise_complete_cases_likelihood(node, observations, dtype=dtype)
+    probs[~marg_ids] = piecewise_complete_cases_likelihood(node, observations, dtype=dtype)
+    x = piecewise_complete_cases_likelihood(node, observations, dtype=dtype)
+    return probs
 
 
 def _compute_probability_for_range(node, interval):
