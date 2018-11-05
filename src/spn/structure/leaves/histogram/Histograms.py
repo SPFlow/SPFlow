@@ -30,9 +30,9 @@ class Histogram(Leaf):
 
     type = Type.CATEGORICAL
 
-    def __init__(self, breaks, densities, bin_repr_points, scope=None, meta_type=MetaType.DISCRETE):
+    def __init__(self, breaks, densities, bin_repr_points, scope=None, type_=None, meta_type=MetaType.DISCRETE):
         Leaf.__init__(self, scope=scope)
-        self.type = type(self).type
+        self.type = type(self).type if not type_ else type_
         self.meta_type = meta_type
         self.breaks = breaks
         self.densities = densities
