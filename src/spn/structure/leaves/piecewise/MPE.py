@@ -25,7 +25,7 @@ def piecewise_bottom_up_ll(node, data=None, dtype=np.float64):
     return probs
 
 
-def piecewise_top_down(node, input_vals, data=None):
+def piecewise_top_down(node, input_vals, lls_per_node, data=None):
     get_mpe_top_down_leaf(node, input_vals, data=data, mode=piecewise_mode(node))
 
 

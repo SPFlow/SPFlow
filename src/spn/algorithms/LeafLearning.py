@@ -4,7 +4,7 @@
 from spn.structure.Base import Leaf
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf, Histogram
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf, Parametric
-from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf, Linear
+from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf, PiecewiseLinear
 #from spn.structure.leaves.conditional.Conditional import create_conditional_leaf, Conditional
 
 
@@ -28,6 +28,6 @@ def learn_leaf_from_context(data, ds_context, scope):
         return create_conditional_leaf(data, ds_context, scope)
     if issubclass(conditional_type, Histogram):
         return create_histogram_leaf(data, ds_context, scope)
-    if issubclass(conditional_type, Linear):
+    if issubclass(conditional_type, PiecewiseLinear):
         return create_piecewise_leaf(data, ds_context, scope)
     raise Exception('No fitting leaf type found')
