@@ -23,7 +23,12 @@ from spn.structure.Base import Product, Sum, assign_ids
 import multiprocessing
 import os
 
-cpus = os.cpu_count() - 2 #- int(os.getloadavg()[2])
+parallel = True
+
+if parallel:
+    cpus = os.cpu_count() - 2  # - int(os.getloadavg()[2])
+else:
+    cpus = 1
 pool = multiprocessing.Pool(processes=cpus,)
 
 class Operation(Enum):
@@ -32,13 +37,13 @@ class Operation(Enum):
     SPLIT_ROWS = 3
     NAIVE_FACTORIZATION = 4
     REMOVE_UNINFORMATIVE_FEATURES = 5
+    CONDITIONING = 6
 
-
-def get_next_operation(min_instances_slice=100):
-    def next_operation(data, scope, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True,
+def get_next_operation(min_instances_slice=100, min_features_slice=1, multivariate_leaf=False):
+    def next_operation(data, scope, create_leaf, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True,
                        cluster_univariate=False):
 
-        minimalFeatures = len(scope) == 1
+        minimalFeatures = len(scope) == min_features_slice
         minimalInstances = data.shape[0] <= min_instances_slice
 
         if minimalFeatures:
@@ -54,13 +59,19 @@ def get_next_operation(min_instances_slice=100):
         ncols_zero_variance = np.sum(uninformative_features_idx)
         if ncols_zero_variance > 0:
             if ncols_zero_variance == data.shape[1]:
-                return Operation.NAIVE_FACTORIZATION, None
+                if multivariate_leaf:
+                    return Operation.CREATE_LEAF, None
+                else:
+                    return Operation.NAIVE_FACTORIZATION, None
             else:
                 return Operation.REMOVE_UNINFORMATIVE_FEATURES, np.arange(len(scope))[
                     uninformative_features_idx].tolist()
 
         if minimalInstances or (no_clusters and no_independencies):
-            return Operation.NAIVE_FACTORIZATION, None
+            if multivariate_leaf:
+                return Operation.CREATE_LEAF, None
+            else:
+                return Operation.NAIVE_FACTORIZATION, None
 
         if no_independencies:
             return Operation.SPLIT_ROWS, None
@@ -75,8 +86,8 @@ def get_next_operation(min_instances_slice=100):
                 return Operation.SPLIT_COLUMNS, None
 
         return Operation.SPLIT_COLUMNS, None
-
     return next_operation
+
 
 
 def default_slicer(data, cols, num_cond_cols=None):
@@ -117,7 +128,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
         local_data, parent, children_pos, scope, no_clusters, no_independencies = tasks.popleft()
 
-        operation, op_params = next_operation(local_data, scope, no_clusters=no_clusters,
+        operation, op_params = next_operation(local_data, scope, create_leaf, no_clusters=no_clusters,
                                               no_independencies=no_independencies,
                                               is_first=(parent is root))
 
@@ -255,3 +266,4 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
     assert valid, "invalid spn: " + err
 
     return node
+

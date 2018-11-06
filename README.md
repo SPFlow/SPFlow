@@ -374,6 +374,7 @@ All other aspects of the SPN library can be extended in a similar same way.
 * **Antonio Vergari** - *Max-Planck-Institute*
 * **Karl Stelzner** - *TU Darmstadt*
 * **Robert Peharz** - *University of Cambridge*
+* **Nicola Di Mauro** - *University of Bari Aldo Moro*
 * **Kristian Kersting** - *TU Darmstadt*
 
 See also the list of [contributors](https://github.com/alejandromolinaml/SPFlow/contributors) who participated in this project.

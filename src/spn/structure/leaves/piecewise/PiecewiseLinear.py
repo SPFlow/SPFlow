@@ -7,14 +7,18 @@ Created on May 4, 2018
 import numpy as np
 
 from spn.structure.Base import Leaf
-from spn.structure.StatisticalTypes import MetaType
+from spn.structure.StatisticalTypes import MetaType, Type
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 import itertools
 
 
 class PiecewiseLinear(Leaf):
+
+    type = Type.REAL
+
     def __init__(self, x_range, y_range, bin_repr_points, scope=None):
         Leaf.__init__(self, scope=scope)
+        self._type = type
         self.x_range = x_range
         self.y_range = y_range
 
@@ -40,6 +44,10 @@ class PiecewiseLinear(Leaf):
             mean += x * y_range_norm[k]
 
         return mean
+
+    @property
+    def types(self):
+        return self._type
 
 
 def isotonic_unimodal_regression_R(x, y):

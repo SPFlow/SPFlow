@@ -4,8 +4,12 @@ import numpy as np
 from numpy.random.mtrand import RandomState
 
 from spn.algorithms.MPE import mpe
-from spn.structure.Base import assign_ids, Leaf
+from spn.algorithms.Validity import is_valid
+from spn.structure.Base import assign_ids, Leaf, Context
+from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.parametric.Parametric import Gaussian, Categorical
+from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
+from spn.structure.leaves.histogram.Histograms import Histogram, create_histogram_leaf
 
 
 class TestMPE(unittest.TestCase):
@@ -41,6 +45,39 @@ class TestMPE(unittest.TestCase):
 
         self.assertAlmostEqual(mpevals[0, 0], 10)
         self.assertAlmostEqual(mpevals[1, 0], 50)
+
+    def test_piecewise_leaf(self):
+        piecewise1 = PiecewiseLinear([0, 1, 2], [0, 1, 0], [], scope=[0])
+        piecewise2 = PiecewiseLinear([-2, -1, 0], [0, 1, 0], [], scope=[0])
+        self.assertTrue(is_valid(piecewise1))
+        self.assertTrue(is_valid(piecewise2))
+        
+        self.assertTrue(
+            np.array_equal(
+                mpe(piecewise1, np.array([[np.nan]])), 
+                np.array([[1]])), 
+                'mpe should be 1')
+        
+        self.assertTrue(
+            np.array_equal(
+                mpe(piecewise2, np.array([[np.nan]])), 
+                np.array([[-1]])), 
+                'mpe should be -1')
+
+        with self.assertRaises(AssertionError) as error:
+                mpe(piecewise1, np.array([[1]]))
+
+
+    def test_histogram_leaf(self):
+        data = np.array([1, 1, 2, 3, 3, 3]).reshape(-1, 1)
+        ds_context = Context([MetaType.DISCRETE])
+        ds_context.add_domains(data)
+        hist = create_histogram_leaf(data, ds_context, [0], alpha=False)
+        self.assertTrue(
+            np.array_equal(
+                mpe(hist, np.array([[np.nan]])),
+                np.array([[3]])),
+                'mpe should be 3')
 
 
 if __name__ == '__main__':
