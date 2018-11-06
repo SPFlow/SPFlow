@@ -1,6 +1,6 @@
 import numpy as np
 
-from spn.algorithms.Inference import likelihood
+from spn.algorithms.Inference import likelihood, _node_likelihood
 from spn.algorithms.Marginalization import marginalize
 from spn.structure.Base import Leaf, get_nodes_by_type, Sum, Product, eval_spn_bottom_up
 
@@ -11,7 +11,7 @@ def add_node_moment(node_type, lambda_func):
     _node_moment[node_type] = lambda_func
 
 
-def prod_moment(node, children, order=1, dtype=np.float64):
+def prod_moment(node, children, order=1, evidence=None, dtype=np.float64):
     joined = np.zeros((1, len(node.scope)))
     joined[:] = np.nan
     for i, c in enumerate(children):
@@ -19,14 +19,29 @@ def prod_moment(node, children, order=1, dtype=np.float64):
     return joined
 
 
-def sum_moment(node, children, order=1, dtype=np.float64):
+def sum_moment(node, children, order=1, evidence=None, dtype=np.float64):
     llchildren = np.array(children).reshape(len(children), len(node.scope))
     b = np.array(node.weights, dtype=dtype).reshape(1, -1)
     ret_val = np.dot(b, llchildren)
     return ret_val
 
 
-def Moment(spn, feature_scope, evidence_scope, evidence, node_moment=_node_moment, order=1):
+def leaf_moment(_node_moment, _node_likelihood):
+    def leaf_moment_function(node, order=1, evidence=None):
+        shape = evidence.shape
+        evidence = evidence[:, node.scope]
+        moment_ids = np.isnan(evidence)
+        moment = _node_moment(node, order)
+        data = np.full(evidence.shape, np.nan)
+        data[moment_ids] = moment
+        data[~moment_ids] = _node_likelihood(node, evidence[~moment_ids])
+        full_data = np.full(shape, np.nan)
+        full_data[:,node.scope] = data
+        return full_data
+    return leaf_moment_function
+
+
+def Moment(spn, evidence, node_moment=_node_moment, node_likelihoods=_node_likelihood, order=1):
     """Compute the moment:
 
         E[X_feature_scope | X_evidence_scope] given the spn and the evidence data
@@ -37,36 +52,30 @@ def Moment(spn, feature_scope, evidence_scope, evidence, node_moment=_node_momen
     evidence_scope -- set() of integers, the scope of the evidence features
     evidence -- numpy 2d array of the evidence data
     """
-    if evidence_scope is None:
-        evidence_scope = set()
 
-    assert not (len(evidence_scope) > 0 and evidence is None)
+    node_moments = {Sum: sum_moment, Product: prod_moment}
 
-    assert len(feature_scope.intersection(evidence_scope)) == 0
-
-    marg_spn = marginalize(spn, keep=feature_scope | evidence_scope)
-
-    node_moments = _node_moment
-    node_moments.update({Sum: sum_moment,
-                              Product: prod_moment})
+    for node in node_moment.keys():
+        try:
+            moment = node_moment[node]
+            node_ll = node_likelihoods[node]
+        except KeyError:
+            raise AssertionError('Node type {} doe not have associated moment and likelihoods'.format(node))
+        node_moments[key] = leaf_moment(moment, node_ll)
 
     if evidence is None:
-        # fake_evidence is not used
-        fake_evidence = np.zeros((1, len(spn.scope))).reshape(1,-1)
-        moment = eval_spn_bottom_up(marg_spn, node_moments, order=order)
-        return moment
+        # fake_evidence needs to be computed
+        evidence = np.full((1, len(spn.scope)), np.nan)
 
-    # if we have evidence, we want to compute the conditional moment
-    else:
-        raise NotImplementedError('Please use a conditional SPN to calculated conditional moments')
-
-    return moment
+    moment = eval_spn_bottom_up(spn, node_moments, order=order, evidence=evidence)
+    prob = likelihood(spn, evidence)
+    
+    return moment/prob
 
 
 def get_mean(spn):
-    return Moment(spn, set(spn.scope), None, None)
+    return Moment(spn, None)
 
 
 def get_variance(spn):
-    return Moment(spn, set(spn.scope), None, None,
-                       order=2) - get_mean(spn) ** 2
+    return Moment(spn, None, order=2) - get_mean(spn) ** 2
