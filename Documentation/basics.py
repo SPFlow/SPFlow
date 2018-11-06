@@ -263,8 +263,84 @@ def visualize_tree():
     TreeVisualization.spn_visualize(spn, file_name='tree_spn.png')
 
 
+# learn a SPN having cltrees as leave
+def learn_CLTSPN():
+    import numpy as np
 
+    np.random.seed(123)
+
+    train_data = np.random.binomial(1, [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.1], size=(100,10))
+    print(np.mean(train_data, axis=0))
+
+    from spn.structure.leaves.cltree.CLTree import create_cltree_leaf
+    from spn.structure.Base import Context
+    from spn.structure.leaves.parametric.Parametric import Bernoulli
+
+    ds_context = Context(parametric_types=[Bernoulli,Bernoulli,Bernoulli,Bernoulli,
+                                           Bernoulli,Bernoulli,Bernoulli,Bernoulli,
+                                           Bernoulli,Bernoulli]).add_domains(train_data)
+
+    from spn.algorithms.LearningWrappers import learn_parametric
+
+    spn = learn_parametric(train_data, ds_context, min_instances_slice=20, min_features_slice=1, multivariate_leaf=True, leaves=create_cltree_leaf)
+
+    from spn.algorithms.Statistics import get_structure_stats
+    print(get_structure_stats(spn))
+
+    from spn.io.Text import spn_to_str_equation
+
+    print(spn_to_str_equation(spn))
+
+    from spn.algorithms.Inference import log_likelihood
+
+    ll = log_likelihood(spn, train_data)
+    print(np.mean(ll))
+
+
+def learn_CNET():
+    import numpy as np
+
+    np.random.seed(123)
+
+    train_data = np.random.binomial(1, [0.1,0.2,0.3,0.4], size=(1000,4))
+    print(np.mean(train_data, axis=0))
+
+    from spn.structure.leaves.cltree.CLTree import create_cltree_leaf
+    from spn.structure.Base import Context
+    from spn.structure.leaves.parametric.Parametric import Bernoulli
+
+    ds_context = Context(parametric_types=[Bernoulli,Bernoulli,Bernoulli,Bernoulli]).add_domains(train_data)
+
+    from spn.algorithms.LearningWrappers import learn_parametric, learn_cnet
+
+    cnet_naive_mle = learn_cnet(train_data, ds_context, cond="naive_mle", min_instances_slice=20, min_features_slice=1)
+    cnet_random = learn_cnet(train_data, ds_context, cond="random", min_instances_slice=20, min_features_slice=1)    
+
+    from spn.algorithms.Statistics import get_structure_stats
+    from spn.io.Text import spn_to_str_equation
+    from spn.algorithms.Inference import log_likelihood
+    
+    print(get_structure_stats(cnet_naive_mle))
+    print(spn_to_str_equation(cnet_naive_mle))
+    ll = log_likelihood(cnet_naive_mle, train_data)
+    print(np.mean(ll))
+    print(get_structure_stats(cnet_random))
+    print(spn_to_str_equation(cnet_random))
+    ll = log_likelihood(cnet_random, train_data)
+    print(np.mean(ll))
+
+    from spn.algorithms.MPE import mpe
+    train_data_mpe = train_data.astype(float)
+    train_data_mpe[:,0] = np.nan
+    print(mpe(cnet_random, train_data_mpe)[:30])
+
+    ll = log_likelihood(cnet_random, train_data_mpe)
+    print(np.mean(ll))
+    
+    
 if __name__ == '__main__':
+    learn_CLTSPN()
+    learn_CNET()    
     learn_PSPN()
     learn_MSPN()
     create_SPN()
