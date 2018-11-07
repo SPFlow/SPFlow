@@ -36,5 +36,5 @@ def spn_visualize(spn, context=None, unroll_dag=False, output_format='png', file
     if file_name is not None:
         tree.render(file_name)
 
-    return obj
+    return tree
 
