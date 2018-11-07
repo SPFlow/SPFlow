@@ -4,7 +4,7 @@ import matplotlib
 from spn.structure.Base import Node, Product, Sum, Leaf, Context
 
 
-def spn_to_ete(spn, context=None, unroll_dag=False):
+def spn_to_ete(spn, context=None, unroll=False):
     tree = ete3.Tree()
     tree.name = spn.name
 
@@ -12,12 +12,12 @@ def spn_to_ete(spn, context=None, unroll_dag=False):
 
     if not isinstance(spn, Leaf):
         for child in spn.children:
-            if unroll_dag:
+            if unroll:
                 if child in queue:
-                    return '-> to node id' + spn.id
+                    return '-> ' + spn.id
                 else:
                     queue.append(child)
-            tree.add_child(spn_to_ete(child, context=context, unroll_dag=unroll_dag))
+            tree.add_child(spn_to_ete(child, context=context, unroll=unroll))
     elif context is not None:
         feature_names = ', '.join([context.feature_names[i] for i in spn.scope])
         tree.name += ': ' + feature_names 
@@ -30,11 +30,8 @@ def get_newick(spn, context=None, unroll_dag=False):
     return tree.write(format=1)
 
 
-def spn_visualize(spn, context=None, unroll_dag=False, output_format='png', file_name=None):
-    tree = spn_to_ete(spn, context, unroll_dag)
+def plot_spn(spn, context=None, unroll=False, file_name=None):
+    tree = spn_to_ete(spn, context, unroll)
 
     if file_name is not None:
         tree.render(file_name)
-
-    return tree
-
