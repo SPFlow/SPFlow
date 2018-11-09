@@ -296,7 +296,37 @@ from spn.algorithms.LearningWrappers import learn_parametric
 spn = learn_parametric(train_data, ds_context, min_instances_slice=20)
 ```
 
+### Multivariate leaf
 
+We can learn a SPN with multivariate leaf. For instance SPN with Chow Liu tree as multivariate leaf can be learned with:
+```python
+import numpy as np
+np.random.seed(123)
+
+train_data = np.random.binomial(1, [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.1], size=(100,10))
+
+from spn.structure.leaves.cltree.CLTree import create_cltree_leaf
+from spn.structure.Base import Context
+from spn.structure.leaves.parametric.Parametric import Bernoulli
+from spn.algorithms.LearningWrappers import learn_parametric
+from spn.algorithms.Inference import log_likelihood
+
+ds_context = Context(parametric_types=[Bernoulli,Bernoulli,Bernoulli,Bernoulli,
+                                       Bernoulli,Bernoulli,Bernoulli,Bernoulli,
+                                       Bernoulli,Bernoulli]).add_domains(train_data)
+
+spn = learn_parametric(train_data, 
+                       ds_context, 
+                       min_instances_slice=20, 
+                       min_features_slice=1, 
+                       multivariate_leaf=True, 
+                       leaves=create_cltree_leaf)
+
+ll = log_likelihood(spn, train_data)
+print(np.mean(ll))
+```
+
+### Utilities
 
 Finally, we have some basic utilities for working with SPNs:
 
