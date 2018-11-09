@@ -346,14 +346,14 @@ ds_context = Context(parametric_types=[Bernoulli,Bernoulli,Bernoulli,Bernoulli,
                                        Bernoulli,Bernoulli,Bernoulli,Bernoulli,
                                        Bernoulli,Bernoulli]).add_domains(train_data)
 
-\# learning a CNet with a naive mle conditioning
+# learning a CNet with a naive mle conditioning
 cnet_naive_mle = learn_cnet(train_data, 
                             ds_context, 
                             cond="naive_mle", 
                             min_instances_slice=20, 
                             min_features_slice=1)
 
-\# learning a CNet with random conditioning
+# learning a CNet with random conditioning
 cnet_random = learn_cnet(train_data, 
                          ds_context, 
                          cond="random", 
@@ -366,7 +366,7 @@ print("Naive mle conditioning", np.mean(ll))
 ll = log_likelihood(cnet_random, train_data)
 print("Random conditioning", np.mean(ll))
 
-\# computing exact MPE
+# computing exact MPE
 from spn.algorithms.MPE import mpe
 train_data_mpe = train_data.astype(float)
 train_data_mpe[:,0] = np.nan
