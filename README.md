@@ -328,7 +328,7 @@ print(np.mean(ll))
 
 ### Cutset Networks (CNets)
 
-With SPflow we can learn both the structure and the parameters of CNets, a particular kind of SPNs with CLTs as leaf providing exact MPE inference, with:
+With SPFlow we can learn both the structure and the parameters of CNets, a particular kind of SPNs with CLTs as leaf providing exact MPE inference, with:
 ```python
 import numpy as np
 np.random.seed(123)
@@ -439,6 +439,13 @@ this produces the output:
 
 All other aspects of the SPN library can be extended in a similar same way.
 
+## Papers SPFlow can reproduce
+
+* Nicola Di Mauro, Antonio Vergari, Teresa M.A. Basile, Floriana Esposito. "Fast and Accurate Density Estimation with Extremely Randomized Cutset Networks". In: ECML/PKDD, 2017.
+* Nicola Di Mauro, Antonio Vergari, and Teresa M.A. Basile. "Learning Bayesian Random Cutset Forests". In ISMIS 2015, LNAI 9384, pp. 1-11, Springer, 2015.
+* Nicola Di Mauro, Antonio Vergari, and Floriana Esposito. "Learning Accurate Cutset Networks by Exploiting Decomposability". In AI*IA. 2015, LNAI 9336, 1-12, Springer, 2015.
+* Antonio Vergari, Nicola Di Mauro, and Floriana Esposito. "Simplifying, Regularizing and Strengthening Sum-Product Network Structure Learning". In ECML/PKDD, LNCS, 343-358, Springer. 2015.
+
 ## Papers implemented in SPFlow
 
 * Molina, Alejandro, Sriraam Natarajan, and Kristian Kersting. "Poisson Sum-Product Networks: A Deep Architecture for Tractable Multivariate Poisson Distributions." In AAAI, pp. 2357-2363. 2017.
@@ -466,6 +473,6 @@ This project is licensed under the Apache License, Version 2.0 - see the [LICENS
 
 ## Acknowledgments
 <img src="Documentation/acknowledgements/bmbf.png" height="100"/><img src="Documentation/acknowledgements/dfg.jpg"  height="100"/>
-* Parts of SPflow as well as its motivating research have been supported by the Germany Scienc Foundation (DFG) — AIPHES, GRK 1994, and CAML, KE 1686/3-1 as part of SPP 1999— and the Federal Ministry of Education and Research (BMBF) — InDaS, 01IS17063B.
+* Parts of SPFlow as well as its motivating research have been supported by the Germany Scienc Foundation (DFG) — AIPHES, GRK 1994, and CAML, KE 1686/3-1 as part of SPP 1999— and the Federal Ministry of Education and Research (BMBF) — InDaS, 01IS17063B.
 
 
