@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from spn.algorithms.Validity import is_valid
-from spn.algorithms.Gradient import gradient
+from spn.algorithms.Gradient import gradient_forward
 from spn.algorithms.Inference import likelihood
 from spn.structure.leaves.histogram.Histograms import Histogram
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
@@ -20,7 +20,7 @@ class TestGradient(unittest.TestCase):
                              [-0.5],
                              [-1.5]])
 
-        results = gradient(piecewise_spn, evidence)
+        results = gradient_forward(piecewise_spn, evidence)
         expected_results = np.array([[0.5], [-0.5], [-0.5], [0.5]])
 
         for i, _ in enumerate(evidence):
@@ -41,7 +41,7 @@ class TestGradient(unittest.TestCase):
                              [100, 36],
                              [-0.5, -0.5],
                              [-1.5, 0.5]])
-        results = gradient(piecewise_spn, evidence)
+        results = gradient_forward(piecewise_spn, evidence)
         expected_results = np.array([[0.25, 0.125],
                                      [0, 0],
                                      [-0.125,  0.125],
