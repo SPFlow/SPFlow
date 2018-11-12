@@ -21,26 +21,26 @@ def gradient_backward(spn, data, lls_per_node):
     node_gradients[Product] = prod_gradient_backward
     node_gradients[Gaussian] = gaussian_gradient_backward
 
-    gradient_result = {}
+    gradient_result = np.zeros_like(lls_per_node)
 
-    eval_spn_top_down(spn, node_gradients, parent_result=np.zeros((data.shape[0], 1)), gradient_result=gradient_result,
+    eval_spn_top_down(spn, node_gradients, parent_result=np.zeros((data.shape[0])), gradient_result=gradient_result,
                       lls_per_node=lls_per_node)
 
     return gradient_result
 
 
 def gaussian_gradient_backward(node, parent_result, gradient_result=None, lls_per_node=None):
-    gradients = np.zeros((parent_result.shape[0], 1))
-    gradients[:,0] = parent_result  # log_sum_exp
+    gradients = np.zeros((parent_result.shape[0]))
+    gradients[:] = parent_result  # log_sum_exp
 
-    gradient_result[node.id] = gradients
+    gradient_result[:, node.id] = gradients
 
 
 def sum_gradient_backward(node, parent_result, gradient_result=None, lls_per_node=None):
-    gradients = np.zeros((parent_result.shape[0], 1))
+    gradients = np.zeros((parent_result.shape[0]))
     gradients[:] = parent_result  # log_sum_exp
 
-    gradient_result[node.id] = gradients
+    gradient_result[:, node.id] = gradients
 
     messages_to_children = []
 
@@ -51,10 +51,10 @@ def sum_gradient_backward(node, parent_result, gradient_result=None, lls_per_nod
 
 
 def prod_gradient_backward(node, parent_result, gradient_result=None, lls_per_node=None):
-    gradients = np.zeros((parent_result.shape[0], 1))
+    gradients = np.zeros((parent_result.shape[0]))
     gradients[:] = parent_result  # log_sum_exp
 
-    gradient_result[node.id] = gradients
+    gradient_result[:, node.id] = gradients
 
     messages_to_children = []
 
@@ -80,7 +80,7 @@ def EM_optimization(spn, data, iterations=5):
         R = lls_per_node[:, 0]
 
         for sum_node in get_nodes_by_type(spn, Sum):
-            RinvGrad = (gradients[sum_node.id] - R)
+            RinvGrad = (gradients[:, sum_node.id] - R)
             for i, c in enumerate(sum_node.children):
                 new_w = RinvGrad + lls_per_node[:, c.id] + np.log(sum_node.weights[i])
                 sum_node.weights[i] = logsumexp(new_w)
