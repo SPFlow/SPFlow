@@ -11,7 +11,7 @@ from spn.algorithms.Inference import log_likelihood
 
 from spn.structure.leaves.parametric.Parametric import Gaussian
 
-from spn.structure.Base import eval_spn_top_down, Sum, Product, get_nodes_by_type, get_number_of_nodes
+from spn.structure.Base import eval_spn_top_down, Sum, Product, get_nodes_by_type, get_number_of_nodes, Leaf
 import numpy as np
 
 
@@ -68,7 +68,17 @@ def prod_gradient_backward(node, parent_result, gradient_result=None, lls_per_no
     return messages_to_children
 
 
-def EM_optimization(spn, data, iterations=5):
+
+def gaussian_em_update(node, log_likelihoods, gradients):
+    #new_mean = RinvGrad + lls_per_node[:, c.id] + np.log(node.mean)
+    #node.mean = logsumexp(new_mean)
+    pass
+
+
+_leaf_node_updates = {Gaussian: gaussian_em_update}
+
+
+def EM_optimization(spn, data, iterations=5, leaf_node_updates=_leaf_node_updates):
     for _ in range(iterations):
         lls_per_node = np.zeros((data.shape[0], get_number_of_nodes(spn)))
 
@@ -86,3 +96,9 @@ def EM_optimization(spn, data, iterations=5):
                 sum_node.weights[i] = logsumexp(new_w)
             total_weight = np.sum(sum_node.weights)
             sum_node.weights = (sum_node.weights / total_weight).tolist()
+
+        for leaf_node in get_nodes_by_type(spn, Leaf):
+            leaf_node_updates[leaf_node.__class__](leaf_node, lls_per_node[:, leaf_node.id], gradients[:, leaf_node.id])
+
+
+
