@@ -296,7 +296,84 @@ from spn.algorithms.LearningWrappers import learn_parametric
 spn = learn_parametric(train_data, ds_context, min_instances_slice=20)
 ```
 
+### Multivariate leaf
 
+We can learn a SPN with multivariate leaf. For instance SPN with Chow Liu tree (CLTs) as multivariate leaf can be learned with:
+```python
+import numpy as np
+np.random.seed(123)
+
+train_data = np.random.binomial(1, [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.1], size=(100,10))
+
+from spn.structure.leaves.cltree.CLTree import create_cltree_leaf
+from spn.structure.Base import Context
+from spn.structure.leaves.parametric.Parametric import Bernoulli
+from spn.algorithms.LearningWrappers import learn_parametric
+from spn.algorithms.Inference import log_likelihood
+
+ds_context = Context(parametric_types=[Bernoulli,Bernoulli,Bernoulli,Bernoulli,
+                                       Bernoulli,Bernoulli,Bernoulli,Bernoulli,
+                                       Bernoulli,Bernoulli]).add_domains(train_data)
+
+spn = learn_parametric(train_data, 
+                       ds_context, 
+                       min_instances_slice=20, 
+                       min_features_slice=1, 
+                       multivariate_leaf=True, 
+                       leaves=create_cltree_leaf)
+
+ll = log_likelihood(spn, train_data)
+print(np.mean(ll))
+```
+
+### Cutset Networks (CNets)
+
+With SPFlow we can learn both the structure and the parameters of CNets, a particular kind of SPNs with CLTs as leaf providing exact MPE inference, with:
+```python
+import numpy as np
+np.random.seed(123)
+
+
+from spn.structure.leaves.cltree.CLTree import create_cltree_leaf
+from spn.structure.Base import Context
+from spn.structure.leaves.parametric.Parametric import Bernoulli
+from spn.algorithms.LearningWrappers import learn_parametric, learn_cnet
+from spn.algorithms.Inference import log_likelihood
+
+train_data = np.random.binomial(1, [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.1], size=(100,10))
+
+ds_context = Context(parametric_types=[Bernoulli,Bernoulli,Bernoulli,Bernoulli,
+                                       Bernoulli,Bernoulli,Bernoulli,Bernoulli,
+                                       Bernoulli,Bernoulli]).add_domains(train_data)
+
+# learning a CNet with a naive mle conditioning
+cnet_naive_mle = learn_cnet(train_data, 
+                            ds_context, 
+                            cond="naive_mle", 
+                            min_instances_slice=20, 
+                            min_features_slice=1)
+
+# learning a CNet with random conditioning
+cnet_random = learn_cnet(train_data, 
+                         ds_context, 
+                         cond="random", 
+                         min_instances_slice=20, 
+                         min_features_slice=1)
+
+ll = log_likelihood(cnet_naive_mle, train_data)
+print("Naive mle conditioning", np.mean(ll))
+
+ll = log_likelihood(cnet_random, train_data)
+print("Random conditioning", np.mean(ll))
+
+# computing exact MPE
+from spn.algorithms.MPE import mpe
+train_data_mpe = train_data.astype(float)
+train_data_mpe[:,0] = np.nan
+print(mpe(cnet_random, train_data_mpe)) 
+```
+
+### Utilities
 
 Finally, we have some basic utilities for working with SPNs:
 
@@ -362,6 +439,13 @@ this produces the output:
 
 All other aspects of the SPN library can be extended in a similar same way.
 
+## Papers SPFlow can reproduce
+
+* Nicola Di Mauro, Antonio Vergari, Teresa M.A. Basile, Floriana Esposito. "Fast and Accurate Density Estimation with Extremely Randomized Cutset Networks". In: ECML/PKDD, 2017.
+* Nicola Di Mauro, Antonio Vergari, and Teresa M.A. Basile. "Learning Bayesian Random Cutset Forests". In ISMIS 2015, LNAI 9384, pp. 1-11, Springer, 2015.
+* Nicola Di Mauro, Antonio Vergari, and Floriana Esposito. "Learning Accurate Cutset Networks by Exploiting Decomposability". In AI*IA. 2015, LNAI 9336, 1-12, Springer, 2015.
+* Antonio Vergari, Nicola Di Mauro, and Floriana Esposito. "Simplifying, Regularizing and Strengthening Sum-Product Network Structure Learning". In ECML/PKDD, LNCS, 343-358, Springer. 2015.
+
 ## Papers implemented in SPFlow
 
 * Molina, Alejandro, Sriraam Natarajan, and Kristian Kersting. "Poisson Sum-Product Networks: A Deep Architecture for Tractable Multivariate Poisson Distributions." In AAAI, pp. 2357-2363. 2017.
@@ -389,6 +473,6 @@ This project is licensed under the Apache License, Version 2.0 - see the [LICENS
 
 ## Acknowledgments
 <img src="Documentation/acknowledgements/bmbf.png" height="100"/><img src="Documentation/acknowledgements/dfg.jpg"  height="100"/>
-* Parts of SPflow as well as its motivating research have been supported by the Germany Scienc Foundation (DFG) — AIPHES, GRK 1994, and CAML, KE 1686/3-1 as part of SPP 1999— and the Federal Ministry of Education and Research (BMBF) — InDaS, 01IS17063B.
+* Parts of SPFlow as well as its motivating research have been supported by the Germany Scienc Foundation (DFG) — AIPHES, GRK 1994, and CAML, KE 1686/3-1 as part of SPP 1999— and the Federal Ministry of Education and Research (BMBF) — InDaS, 01IS17063B.
 
 
