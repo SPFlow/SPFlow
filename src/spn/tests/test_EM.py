@@ -27,14 +27,17 @@ class TestEM(unittest.TestCase):
         spn = learn_parametric(data, ds_context)
 
         spn.weights = [0.8, 0.2]
+        spn.children[0].mean = 1
 
         py_ll = log_likelihood(spn, data)
 
         print(spn.weights)
+        print(spn.children[0].mean)
 
         EM_optimization(spn, data)
 
         print(spn.weights)
+        print(spn.children[0].mean)
 
         py_ll_opt = log_likelihood(spn, data)
 
