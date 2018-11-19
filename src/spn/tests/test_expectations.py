@@ -21,7 +21,7 @@ class TestParametric(unittest.TestCase):
         self.assertAlmostEqual(0.3 * 1.0 + 0.7 * 10.0, expectation[0, 0], 3)
 
         expectation = Expectation(spn, set([1]), None, None)
-        self.assertAlmostEqual(0.3 * 5.0 + 0.7 * 15.0, expectation[0, 0], 3)
+        self.assertAlmostEqual(0.3 * 5.0 + 0.7 * 15.0, expectation[0, 1], 3)
 
     def test_Histogram_expectations(self):
         data = np.random.randn(20000).reshape(-1, 1)
@@ -82,6 +82,7 @@ class TestParametric(unittest.TestCase):
 
         evidence = np.zeros((2, 2))
         evidence[1, 1] = 1
+        evidence[:, 0] = np.nan
         expectation = Expectation(spn, set([0]), set([1]), evidence)
 
         self.assertAlmostEqual(np.mean(adata[:, 0]), expectation[0, 0], 2)
@@ -146,18 +147,18 @@ class TestParametric(unittest.TestCase):
         # Test expectation node3
         true_value = 2.
         expectation = Expectation(node3, set([1]), None, None)
-        self.assertAlmostEqual(true_value, expectation[0, 0], 5)
+        self.assertAlmostEqual(true_value, expectation[0, 1], 5)
 
         # Test expectation node4
         true_value = 3.
         expectation = Expectation(node4, set([1]), None, None)
-        self.assertAlmostEqual(true_value, expectation[0, 0], 5)
+        self.assertAlmostEqual(true_value, expectation[0, 1], 5)
 
         # Test expectation of SPN with node1, node2, node3 and node4
         spn2 = 0.5 * (node1 * node3) + 0.5 * (node2 * node4)
         true_value = 2.5
         expectation = Expectation(spn2, set([1]), None, None)
-        self.assertAlmostEqual(true_value, expectation[0, 0], 5)
+        self.assertAlmostEqual(true_value, expectation[0, 1], 5)
 
         # Probability of both subtrees is the same due to the evidence
         # since the expectation of node3 and node3 have the same weight 
@@ -167,7 +168,7 @@ class TestParametric(unittest.TestCase):
         evidence[0, 0] = 2.  # Since node1 and node2 return 33% the true value will be the same as without evidence
         evidence[0, 1] = np.nan
         expectation = Expectation(spn2, set([1]), set([0]), evidence)
-        self.assertAlmostEqual(true_value, expectation[0, 0], 5)
+        self.assertAlmostEqual(true_value, expectation[0, 1], 5)
 
         # Probability of right subtree will be higher due to the evidence
         # since node2 has a higher probability for 1. than node1 
@@ -176,7 +177,7 @@ class TestParametric(unittest.TestCase):
         evidence[0, 0] = 1.
         evidence[0, 1] = np.nan
         expectation = Expectation(spn2, set([1]), set([0]), evidence)
-        self.assertTrue(2.5 < expectation[0, 0], 5)
+        self.assertTrue(2.5 < expectation[0, 1], 5)
 
         # Probability of left subtree will be higher due to the evidence
         # since node1 has a higher probability for 3. than node2
@@ -185,17 +186,18 @@ class TestParametric(unittest.TestCase):
         evidence[0, 0] = 3.
         evidence[0, 1] = np.nan
         expectation = Expectation(spn2, set([1]), set([0]), evidence)
-        self.assertTrue(2.5 > expectation[0, 0], 5)
+        self.assertTrue(2.5 > expectation[0, 1], 5)
 
-        with self.assertRaises(AssertionError):
-            # Test with evidence is None
-            expectation = Expectation(spn2, set([0]), set([1]), None)
-            '''
-            Above fails because the the fake evidence which is defined in 
-            spn.algorithms.stats.Expectation
-            is only of column-length 1 but we have 2 features and access the
-            second feature in the likelihood-method
-            '''
+        # this test does not conform to the expected behavior of the spn
+        # with self.assertRaises(AssertionError):
+        #     # Test with evidence is None
+        #     expectation = Expectation(spn2, set([0]), set([1]), None)
+        #     '''
+        #     Above fails because the the fake evidence which is defined in
+        #     spn.algorithms.stats.Expectation
+        #     is only of column-length 1 but we have 2 features and access the
+        #     second feature in the likelihood-method
+        #     '''
 
 
 if __name__ == '__main__':
