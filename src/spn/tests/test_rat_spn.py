@@ -12,9 +12,11 @@ class TestRatSpn(unittest.TestCase):
         np.random.seed(123)
         tf.set_random_seed(123)
 
-        rg = region_graph.RegionGraph(range(3 * 3))
-        for _ in range(0, 2):
-            rg.random_split(2, 2)
+        num_dims = 20
+
+        rg = region_graph.RegionGraph(range(num_dims))
+        for _ in range(0, 10):
+            rg.random_split(2, 3)
 
         args = RAT_SPN.SpnArgs()
         args.normalized_sums = True
@@ -22,8 +24,8 @@ class TestRatSpn(unittest.TestCase):
 
         sess = tf.Session()
         sess.run(tf.global_variables_initializer())
-        dummy_input = np.random.normal(0.0, 1.2, [10, 9])
-        input_ph = tf.placeholder(tf.float32, [10, 9])
+        dummy_input = np.random.normal(0.0, 1.2, [10, num_dims])
+        input_ph = tf.placeholder(tf.float32, [10, num_dims])
         output_tensor = spn.forward(input_ph)
         tf_output = sess.run(output_tensor, feed_dict={input_ph: dummy_input})
 
@@ -34,7 +36,7 @@ class TestRatSpn(unittest.TestCase):
         simple_output = np.stack(simple_output)
         deviation = simple_output / np.exp(tf_output)
         rel_error = np.abs(deviation - 1.0)
-        #print(rel_error)
+        # print(rel_error)
 
         self.assertTrue(np.all(rel_error < 1e-2))
 
