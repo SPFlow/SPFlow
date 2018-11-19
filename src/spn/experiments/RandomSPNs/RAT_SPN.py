@@ -7,7 +7,7 @@ from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import random_ops
 import tensorflow.contrib.distributions as dists
 
-
+import time
 
 def add_to_map(given_map, key, item):
     existing_items = given_map.get(key, [])
@@ -427,12 +427,26 @@ class RatSpn(object):
         return result
 
     def get_simple_spn(self, sess, single_root=False):
+        start_time = time.time()
+        vec_to_params = {}
+        for leaf_vector in self.vector_list[0]:
+            vec_to_params[leaf_vector] = (leaf_vector.means[0],
+                                          leaf_vector.sigma[0])
+        for layer_idx in range(1, len(self.vector_list)):
+            if layer_idx % 2 == 0:
+                for sum_vec in self.vector_list[layer_idx]:
+                    vec_to_params[sum_vec] = sum_vec.weights[0]
+
+        st = time.time()
+        vec_to_params = sess.run(vec_to_params)
+        time_tf = time.time() - st
+
         vec_to_nodes = {}
         node_id = -1
 
         for leaf_vector in self.vector_list[0]:
             vec_to_nodes[leaf_vector] = []
-            means, sigmas = sess.run([leaf_vector.means[0], leaf_vector.sigma[0]])
+            means, sigmas = vec_to_params[leaf_vector]
             stdevs = np.sqrt(sigmas) + np.zeros_like(means) # Use broadcasting to expand stdev is necessary
             for i in range(leaf_vector.size):
                 prod = base.Product()
@@ -474,7 +488,7 @@ class RatSpn(object):
                 sum_vectors = self.vector_list[layer_idx]
                 for i, sum_vector in enumerate(sum_vectors):
                     vec_to_nodes[sum_vector] = []
-                    weights = sess.run(sum_vector.weights)[0]
+                    weights = vec_to_params[sum_vector]
 
                     for j in range(sum_vector.size):
                         sum_node = base.Sum()
@@ -507,7 +521,10 @@ class RatSpn(object):
             root.weights.extend([1.0 / float(len(output_nodes))] * len(output_nodes))
             return root
 
+        print('conversion finished in {:3f}s'.format(time.time() - start_time))
+        print('time spent evaluating by Tensorflow: {:3f}s'.format(time_tf))
         return output_nodes
+
 
 def compute_performance(sess, data_x, data_labels, batch_size, spn):
     """Compute classification accuracy"""
