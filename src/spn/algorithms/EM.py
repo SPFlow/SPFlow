@@ -68,11 +68,11 @@ def prod_gradient_backward(node, parent_result, gradient_result=None, lls_per_no
     return messages_to_children
 
 
+def gaussian_em_update(node, lls, gradients, root_lls):
+    p = (gradients - root_lls) + lls
+    new_mean = p + np.log(node.mean)
+    node.mean = logsumexp(new_mean) - logsumexp(p)
 
-def gaussian_em_update(node, log_likelihoods, gradients):
-    #new_mean = RinvGrad + lls_per_node[:, c.id] + np.log(node.mean)
-    #node.mean = logsumexp(new_mean)
-    pass
 
 
 _leaf_node_updates = {Gaussian: gaussian_em_update}
@@ -98,7 +98,5 @@ def EM_optimization(spn, data, iterations=5, leaf_node_updates=_leaf_node_update
             sum_node.weights = (sum_node.weights / total_weight).tolist()
 
         for leaf_node in get_nodes_by_type(spn, Leaf):
-            leaf_node_updates[leaf_node.__class__](leaf_node, lls_per_node[:, leaf_node.id], gradients[:, leaf_node.id])
-
-
-
+            f = leaf_node_updates[leaf_node.__class__]
+            f(leaf_node, lls_per_node[:, leaf_node.id], gradients[:, leaf_node.id], R)
