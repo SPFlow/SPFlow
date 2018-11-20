@@ -199,6 +199,18 @@ def get_nodes_by_type(node, ntype=Node):
     return result
 
 
+def get_leaf_types(node):
+    result = set()
+
+    def add_node(node):
+        if isinstance(node, Leaf):
+            result.add(type(node))
+
+    bfs(node, add_node)
+
+    return result
+
+
 def assign_ids(node, ids=None):
     if ids is None:
         ids = {}

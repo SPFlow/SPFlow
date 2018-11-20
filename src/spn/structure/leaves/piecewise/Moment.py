@@ -24,7 +24,7 @@ def piecewise_moment(node, order=1):
         k = order
         integral = m / (k + 2) * (x1 ** (k + 2) - x0 ** (k + 2)) + b / (k + 1) * (x1 ** (k + 1) - x0 ** (k + 1))
         exp += integral
-    return np.array([[exp]])
+    return exp
 
 def add_piecewise_moment_support():
     add_node_moment(PiecewiseLinear, piecewise_moment)
