@@ -16,7 +16,7 @@ def prod_moment(node, children, order=1, evidence=None, dtype=np.float64):
     joined = np.zeros((1, len(node.scope)))
     joined[:] = np.nan
     for i, c in enumerate(children):
-        joined[:, node.children[i].scope] = c
+        joined[:, node.children[i].scope] = c[:, node.children[i].scope]
     return joined
 
 
@@ -62,8 +62,7 @@ def Moment(spn, feature_scope, evidence_scope, evidence,
     if feature_scope is None:
         feature_scope = set(spn.scope)
 
-    if evidence_scope.intersection(feature_scope) != set():
-        raise AssertionError("Evidence and feature scope must be disjunctive")
+    assert evidence_scope.intersection(feature_scope) == set(), "Evidence and feature scope must be disjunctive"
 
     # assert not evidence_scope.union(feature_scope)
 
@@ -100,8 +99,8 @@ def Moment(spn, feature_scope, evidence_scope, evidence,
 
 
 def get_mean(spn):
-    return Moment(spn, None)
+    return Moment(spn, None, None, None)
 
 
 def get_variance(spn):
-    return Moment(spn, None, order=2) - get_mean(spn) ** 2
+    return Moment(spn, None, None, None, order=2) - get_mean(spn) ** 2
