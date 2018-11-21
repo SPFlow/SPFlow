@@ -1,5 +1,7 @@
 import unittest
 
+import tensorflow as tf
+
 from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.LearningWrappers import learn_parametric, learn_mspn
 from spn.gpu.TensorFlow import spn_to_tf_graph, eval_tf, likelihood_loss, tf_graph_to_spn
@@ -9,7 +11,7 @@ import numpy as np
 
 
 from spn.structure.leaves.parametric.Parametric import Gaussian
-import tensorflow as tf
+
 
 
 class TestTensorflow(unittest.TestCase):
@@ -28,6 +30,7 @@ class TestTensorflow(unittest.TestCase):
         ll = log_likelihood(spn, data)
 
         tf_ll = eval_tf(spn, data)
+        tf_ll = eval_tf(spn, data, np.float64)
 
         self.assertTrue(np.all(np.isclose(ll, tf_ll)))
 
@@ -46,6 +49,7 @@ class TestTensorflow(unittest.TestCase):
         ll = log_likelihood(spn, data)
 
         tf_ll = eval_tf(spn, data)
+        tf_ll = eval_tf(spn, data, np.float64)
 
         self.assertTrue(np.all(np.isclose(ll, tf_ll)))
 

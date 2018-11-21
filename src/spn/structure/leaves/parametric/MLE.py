@@ -20,8 +20,8 @@ def update_parametric_parameters_mle(node, data):
         return
 
     if isinstance(node, Gaussian):
-        node.mean = np.mean(data)
-        node.stdev = np.std(data)
+        node.mean = np.mean(data).item()
+        node.stdev = np.std(data).item()
 
         if np.isclose(node.stdev, 0):
             node.stdev = 0.00000001
@@ -36,7 +36,7 @@ def update_parametric_parameters_mle(node, data):
 
         # zero variance? adding noise
         if np.isclose(np.std(data), 0):
-            node.alpha = np.mean(data)
+            node.alpha = np.mean(data).item()
             return
 
         alpha, loc, theta = gamma.fit(data, floc=0)
@@ -47,20 +47,20 @@ def update_parametric_parameters_mle(node, data):
 
     elif isinstance(node, LogNormal):
         lognorm_params = lognorm.fit(data, floc=0)
-        node.mean = np.log(lognorm_params[2])
+        node.mean = np.log(lognorm_params[2]).item()
         node.stdev = lognorm_params[0]
 
     elif isinstance(node, Bernoulli):
-        node.p = data.sum() / len(data)
+        node.p = data.sum().item() / len(data)
 
     elif isinstance(node, Poisson):
-        node.mean = np.mean(data)
+        node.mean = np.mean(data).item()
 
     elif isinstance(node, Exponential):
-        node.l = np.mean(data)
+        node.l = np.mean(data).item()
 
     elif isinstance(node, Geometric):
-        node.p = len(data) / data.sum()
+        node.p = len(data) / data.sum().item()
 
     elif isinstance(node, Categorical):
         psum = 0
@@ -77,7 +77,7 @@ def update_parametric_parameters_mle(node, data):
             node.p.clear()
         v, c = np.unique(data, return_counts=True)
         p = c / c.sum()
-        node.p = dict(zip(v, p))
+        node.p = dict(zip(v.tolist(), p.tolist()))
 
     else:
         raise Exception("Unknown parametric " + str(type(node)))

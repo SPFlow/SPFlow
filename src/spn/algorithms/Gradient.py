@@ -36,7 +36,7 @@ def prod_gradient_forward(node, children, input_vals, dtype=np.float64):
     return results
 
 
-def gradient(spn, evidence):
+def gradient_forward(spn, evidence):
     """
     Computes a forward propagated gradient through the spn. This function
     currently assumes a tree structured SPN!
@@ -79,5 +79,5 @@ def backprop_gradient(spn, evidence):
 def conditional_gradient(spn, conditional_evidence, gradient_evidence):
     print(conditional_evidence)
     cond_spn = condition(spn, conditional_evidence)
-    gradients = gradient(cond_spn, gradient_evidence)
+    gradients = gradient_forward(cond_spn, gradient_evidence)
     return gradients

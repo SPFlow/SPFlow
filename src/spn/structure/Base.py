@@ -254,6 +254,7 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
             node_type._eval_func = []
         node_type._eval_func.append(func)
         node_type._is_leaf = issubclass(node_type, Leaf)
+    leaf_func = eval_functions.get(Leaf, None)
 
     tmp_children_list = []
     len_tmp_children_list = 0
@@ -261,12 +262,17 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
 
         func = None
 
+        n_is_leaf = n.__class__._is_leaf
+
         try:
             func = n.__class__._eval_func[-1]
         except:
-            raise AssertionError("No lambda function associated with type: %s" % (n.__class__.__name__))
+            if n_is_leaf and leaf_func is not None:
+                func = leaf_func
+            else:
+                raise AssertionError("No lambda function associated with type: %s" % (n.__class__.__name__))
 
-        if n.__class__._is_leaf:
+        if n_is_leaf:
             result = func(n, **args)
         else:
             len_children = len(n.children)
@@ -304,10 +310,20 @@ def eval_spn_top_down(root, eval_functions, all_results=None, parent_result=None
     else:
         all_results.clear()
 
+    leaf_func = eval_functions.get(Leaf, None)
+
     queue = collections.deque([(root, parent_result)])
     while queue:
         node, parent_result = queue.popleft()
-        result = eval_functions[type(node)](node, parent_result, **args)
+
+        eval_func = eval_functions.get(type(node), None)
+        if eval_func is None:
+            if isinstance(node, Leaf) and leaf_func is not None:
+                eval_func = leaf_func
+            else:
+                raise AssertionError("No lambda function associated with type: %s" % (node.__class__.__name__))
+
+        result = eval_func(node, parent_result, **args)
         all_results[node] = result
         if result is not None and not isinstance(node, Leaf):
             assert len(result) == len(node.children), "invalid function result for node %s" % (node.id)

@@ -19,7 +19,7 @@ def gradient_backward(spn, data, lls_per_node):
     node_gradients = {}
     node_gradients[Sum] = sum_gradient_backward
     node_gradients[Product] = prod_gradient_backward
-    node_gradients[Gaussian] = gaussian_gradient_backward
+    node_gradients[Leaf] = leaf_gradient_backward
 
     gradient_result = np.zeros_like(lls_per_node)
 
@@ -29,7 +29,7 @@ def gradient_backward(spn, data, lls_per_node):
     return gradient_result
 
 
-def gaussian_gradient_backward(node, parent_result, gradient_result=None, lls_per_node=None):
+def leaf_gradient_backward(node, parent_result, gradient_result=None, lls_per_node=None):
     gradients = np.zeros((parent_result.shape[0]))
     gradients[:] = parent_result  # log_sum_exp
 
