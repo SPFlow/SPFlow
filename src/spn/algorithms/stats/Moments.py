@@ -43,25 +43,27 @@ def leaf_moment(_node_moment, _node_likelihood):
     return leaf_moment_function
 
 
-def ConditionalMoment(spn, evidence, feature_scope=None,
+def ConditionalMoment(spn, evidence, feature_scope,
                       node_moment=_node_moment,
                       node_likelihoods=_node_likelihood,
                       order=1):
     """
     Computes a conditional moment given a numpy array of evidence
-    :param spn:
-    :param feature_scope:
-    :param evidence:
-    :param node_moment:
-    :param node_likelihoods:
-    :param order:
-    :return:
+    :param spn: a valid spn
+    :param feature_scope: optional list of features on which to compute the moments
+    :param evidence: the evidence for the conditioning step
+    :param node_moment: optional list of node moment functions
+    :param node_likelihoods: optional list of node likelihood functions
+    :param order: the order of the moment to compute
+    :return: an np array of computed moments
     """
-    all_results = []
-    if feature_scope:
-        feature_scope = list(feature_scope)
-        assert np.all(np.isnan(evidence[:, feature_scope])), 'Evidence cannot be requested for features in scope'
+    assert feature_scope is not None, 'When using evidence a feature scope needs to be passed'
 
+    feature_scope = list(feature_scope)
+    assert np.all(np.isnan(evidence[:,
+                           feature_scope])), 'Evidence cannot be requested for features in scope'
+
+    all_results = []
     for line in evidence:
         cond_spn = condition(spn, line.reshape(1, -1))
         moment = Moment(cond_spn, feature_scope, node_moment, node_likelihoods,
@@ -71,7 +73,6 @@ def ConditionalMoment(spn, evidence, feature_scope=None,
         output_size = (evidence.shape[0], len(feature_scope))
     else:
         output_size = evidence.shape
-    print(np.array(all_results).reshape(output_size))
     return np.array(all_results).reshape(output_size)
 
 
@@ -79,13 +80,13 @@ def Moment(spn, feature_scope=None, node_moment=_node_moment,
            node_likelihoods=_node_likelihood,
            order=1):
     """
-
-    :param spn:
-    :param feature_scope:
-    :param node_moment:
-    :param node_likelihoods:
-    :param order:
-    :return:
+    Computes moments from an spn
+    :param spn: a valid spn
+    :param feature_scope: optional list of features on which to compute the moments
+    :param node_moment: optional list of node moment functions
+    :param node_likelihoods: optional list of node likelihood functions
+    :param order: the order of the moment to compute
+    :return: an np array of computed moments
     """
 
     if feature_scope is None:
@@ -117,8 +118,21 @@ def Moment(spn, feature_scope=None, node_moment=_node_moment,
 
 
 def get_mean(spn):
+    """
+    Small utility function to complete the full list of first order moments
+    (means) from a given SPN
+    :param spn: the spn
+    :return:
+    """
     return Moment(spn)
 
 
 def get_variance(spn):
+    """
+    Small utility function to complete the full list of second order
+    centralized moments (variances) from a given SPN
+    :param spn: the spn
+    :return:
+    """
+
     return Moment(spn, order=2) - get_mean(spn) ** 2
