@@ -2,8 +2,9 @@ import unittest
 
 import numpy as np
 
-from spn.algorithms.Validity import is_valid
 from spn.algorithms.Gradient import gradient_forward
+from spn.algorithms.Validity import is_valid
+
 from spn.algorithms.Inference import likelihood
 from spn.structure.leaves.histogram.Histograms import Histogram
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
