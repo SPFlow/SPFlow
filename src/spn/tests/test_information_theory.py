@@ -1,15 +1,18 @@
+'''
+Created on Novenber 22, 2018
+
+@author: Zhongjie Yu
+
+'''
+
 import unittest
 
-import numpy as np
-
-from spn.algorithms.InformationTheory import *
+from spn.algorithms.measures.InformationTheory import *
 from spn.structure.leaves.parametric.Parametric import Categorical
 from spn.structure.Base import Context
 from spn.structure.StatisticalTypes import MetaType
 
-
 class TestMutualInfo(unittest.TestCase):
-
 
     def test_entropy(self):
         # test if entropy is correct
@@ -49,9 +52,9 @@ class TestMutualInfo(unittest.TestCase):
                          0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))))))
         # real entropy
         p2 = 0.3
-        h_x2 = -p2 * np.log(p2) - (1-p2) * np.log(1-p2)
+        h_x2 = -p2 * np.log(p2) - (1 - p2) * np.log(1 - p2)
         self.assertAlmostEqual(h_x2, entropy(spn, ds_context, {1}))
-        h_x2x3 = -(p2 * np.log(p2) + (1-p2) * np.log(1-p2) + 0.9*np.log(0.9) + 0.1*np.log(0.1))
+        h_x2x3 = -(p2 * np.log(p2) + (1 - p2) * np.log(1 - p2) + 0.9 * np.log(0.9) + 0.1 * np.log(0.1))
         self.assertAlmostEqual(h_x2x3, entropy(spn, ds_context, {1, 2}))
         h_x1 = -(0.16 * np.log(0.16) + 0.36 * np.log(0.36) + 0.48 * np.log(0.48))
         self.assertAlmostEqual(h_x1, entropy(spn, ds_context, {0}))
@@ -91,8 +94,12 @@ class TestMutualInfo(unittest.TestCase):
         mi_x1x2 = 0
         self.assertAlmostEqual(mi_x1x2, mutual_information(spn, ds_context, {1}, {0}))
         # test symmetry
-        self.assertAlmostEqual(mutual_information(spn, ds_context, {2}, {1}), mutual_information(spn, ds_context, {1}, {2}))
-        self.assertAlmostEqual(mutual_information(spn, ds_context, {0, 2}, {1}), mutual_information(spn, ds_context, {1}, {0, 2}))
+        self.assertAlmostEqual(mutual_information(spn, ds_context, {2}, {1}),
+                               mutual_information(spn, ds_context, {1}, {2}))
+        self.assertAlmostEqual(mutual_information(spn, ds_context, {0, 2}, {1}),
+                               mutual_information(spn, ds_context, {1}, {0, 2}))
+        # rest 0
+        self.assertAlmostEqual(0, mutual_information(spn, ds_context, {2, 1}, {0}))
 
     def test_conditional_mutual_info(self):
         # test if conditional mutual info is correct
@@ -132,4 +139,3 @@ class TestMutualInfo(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

@@ -71,7 +71,11 @@ def entropy(spn, ds_context, RVset, debug=False):
     # get entropy
     from spn.algorithms.Inference import log_likelihood
     log_p = log_likelihood(spn, perm_RV)
+    log_p[np.isinf(log_p)] = 0
     h = np.exp(log_p) * log_p
+    # check, if p==0, log_p will be "-np.inf" and h will be NaN
+    # if h==NaN, setting it 0 makes entropy=0
+    h[np.isnan(h)] = 0
     H = -(h.sum())
 
     if debug:
