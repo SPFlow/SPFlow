@@ -16,19 +16,19 @@ class TestParametric(unittest.TestCase):
         spn = 0.3 * (Gaussian(1.0, 1.0, scope=[0]) * Gaussian(5.0, 1.0, scope=[1])) + \
               0.7 * (Gaussian(10.0, 1.0, scope=[0]) * Gaussian(15.0, 1.0, scope=[1]))
 
-        expectation = Expectation(spn, set([0]), None, None)
+        expectation = Expectation(spn, set([0]))
 
         self.assertAlmostEqual(0.3 * 1.0 + 0.7 * 10.0, expectation[0, 0], 3)
 
-        expectation = Expectation(spn, set([1]), None, None)
-        self.assertAlmostEqual(0.3 * 5.0 + 0.7 * 15.0, expectation[0, 1], 3)
+        expectation = Expectation(spn, set([1]))
+        self.assertAlmostEqual(0.3 * 5.0 + 0.7 * 15.0, expectation[0, 0], 3)
 
     def test_Histogram_expectations(self):
         data = np.random.randn(20000).reshape(-1, 1)
         ds_context = Context(meta_types=[MetaType.REAL])
         ds_context.add_domains(data)
         hl = create_histogram_leaf(data, ds_context, scope=[0])
-        expectation = Expectation(hl, set([0]), None, None)
+        expectation = Expectation(hl, set([0]))
 
         self.assertAlmostEqual(np.mean(data[:, 0]), expectation[0, 0], 3)
 
@@ -36,7 +36,7 @@ class TestParametric(unittest.TestCase):
         ds_context = Context(meta_types=[MetaType.DISCRETE])
         ds_context.add_domains(data)
         hl = create_histogram_leaf(data, ds_context, scope=[0])
-        expectation = Expectation(hl, set([0]), None, None)
+        expectation = Expectation(hl, set([0]))
 
         self.assertAlmostEqual(np.mean(data[:, 0]), expectation[0, 0], 3)
 
@@ -45,7 +45,7 @@ class TestParametric(unittest.TestCase):
         ds_context = Context(meta_types=[MetaType.REAL])
         ds_context.add_domains(data)
         pl = create_piecewise_leaf(data, ds_context, scope=[0], prior_weight=None)
-        expectation = Expectation(pl, set([0]), None, None)
+        expectation = Expectation(pl, set([0]))
 
         self.assertAlmostEqual(np.mean(data[:, 0]), expectation[0, 0], 2)
 
@@ -53,7 +53,7 @@ class TestParametric(unittest.TestCase):
         ds_context = Context(meta_types=[MetaType.DISCRETE])
         ds_context.add_domains(data)
         pl = create_piecewise_leaf(data, ds_context, scope=[0], prior_weight=None)
-        expectation = Expectation(pl, set([0]), None, None)
+        expectation = Expectation(pl, set([0]))
 
         self.assertAlmostEqual(np.mean(data[:, 0]), expectation[0, 0], 3)
 
@@ -83,7 +83,7 @@ class TestParametric(unittest.TestCase):
         evidence = np.zeros((2, 2))
         evidence[1, 1] = 1
         evidence[:, 0] = np.nan
-        expectation = Expectation(spn, set([0]), set([1]), evidence)
+        expectation = Expectation(spn, set([0]), evidence)
 
         self.assertAlmostEqual(np.mean(adata[:, 0]), expectation[0, 0], 2)
         self.assertAlmostEqual(np.mean(bdata[:, 0]), expectation[1, 0], 2)
@@ -109,12 +109,12 @@ class TestParametric(unittest.TestCase):
 
         # Test expectation node1
         true_value = 2.33333333
-        expectation = Expectation(node1, set([0]), None, None)
+        expectation = Expectation(node1, set([0]))
         self.assertAlmostEqual(true_value, expectation[0, 0], 5)
 
         # Test expectation node2
         true_value = 1.66666666
-        expectation = Expectation(node2, set([0]), None, None)
+        expectation = Expectation(node2, set([0]))
         self.assertAlmostEqual(true_value, expectation[0, 0], 5)
 
         # Test expectation with evidence
@@ -122,7 +122,7 @@ class TestParametric(unittest.TestCase):
         evidence = np.zeros((1, 1))
         evidence[0, 0] = 1.
         with self.assertRaises(AssertionError):
-            expectation = Expectation(node2, set([0]), set([0]), evidence)
+            expectation = Expectation(node2, set([0]), evidence)
             # self.assertAlmostEqual(true_value, expectation[0, 0], 5)
             '''
             Above fails because the evidence is ignored on features for which the expectation
@@ -132,7 +132,7 @@ class TestParametric(unittest.TestCase):
         # Test expectation of SPN with node1 and node2
         spn1 = 0.5 * node1 + 0.5 * node2
         true_value = 2.
-        expectation = Expectation(spn1, set([0]), None, None)
+        expectation = Expectation(spn1, set([0]))
         self.assertAlmostEqual(true_value, expectation[0, 0], 5)
 
         # Create more nodes
@@ -146,19 +146,19 @@ class TestParametric(unittest.TestCase):
 
         # Test expectation node3
         true_value = 2.
-        expectation = Expectation(node3, set([1]), None, None)
-        self.assertAlmostEqual(true_value, expectation[0, 1], 5)
+        expectation = Expectation(node3, set([1]))
+        self.assertAlmostEqual(true_value, expectation[0, 0], 5)
 
         # Test expectation node4
         true_value = 3.
-        expectation = Expectation(node4, set([1]), None, None)
-        self.assertAlmostEqual(true_value, expectation[0, 1], 5)
+        expectation = Expectation(node4, set([1]))
+        self.assertAlmostEqual(true_value, expectation[0, 0], 5)
 
         # Test expectation of SPN with node1, node2, node3 and node4
         spn2 = 0.5 * (node1 * node3) + 0.5 * (node2 * node4)
         true_value = 2.5
-        expectation = Expectation(spn2, set([1]), None, None)
-        self.assertAlmostEqual(true_value, expectation[0, 1], 5)
+        expectation = Expectation(spn2, set([1]))
+        self.assertAlmostEqual(true_value, expectation[0, 0], 5)
 
         # Probability of both subtrees is the same due to the evidence
         # since the expectation of node3 and node3 have the same weight 
@@ -167,8 +167,8 @@ class TestParametric(unittest.TestCase):
         evidence = np.zeros((1, 2))
         evidence[0, 0] = 2.  # Since node1 and node2 return 33% the true value will be the same as without evidence
         evidence[0, 1] = np.nan
-        expectation = Expectation(spn2, set([1]), set([0]), evidence)
-        self.assertAlmostEqual(true_value, expectation[0, 1], 5)
+        expectation = Expectation(spn2, set([1]), evidence)
+        self.assertAlmostEqual(true_value, expectation[0, 0], 5)
 
         # Probability of right subtree will be higher due to the evidence
         # since node2 has a higher probability for 1. than node1 
@@ -176,8 +176,8 @@ class TestParametric(unittest.TestCase):
         evidence = np.zeros((1, 2))
         evidence[0, 0] = 1.
         evidence[0, 1] = np.nan
-        expectation = Expectation(spn2, set([1]), set([0]), evidence)
-        self.assertTrue(2.5 < expectation[0, 1], 5)
+        expectation = Expectation(spn2, set([1]), evidence)
+        self.assertTrue(2.5 < expectation[0, 0], 5)
 
         # Probability of left subtree will be higher due to the evidence
         # since node1 has a higher probability for 3. than node2
@@ -185,8 +185,8 @@ class TestParametric(unittest.TestCase):
         evidence = np.zeros((1, 2))
         evidence[0, 0] = 3.
         evidence[0, 1] = np.nan
-        expectation = Expectation(spn2, set([1]), set([0]), evidence)
-        self.assertTrue(2.5 > expectation[0, 1], 5)
+        expectation = Expectation(spn2, set([1]), evidence)
+        self.assertTrue(2.5 > expectation[0, 0], 5)
 
         # this test does not conform to the expected behavior of the spn
         # with self.assertRaises(AssertionError):
