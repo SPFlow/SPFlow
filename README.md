@@ -373,6 +373,45 @@ train_data_mpe[:,0] = np.nan
 print(mpe(cnet_random, train_data_mpe)) 
 ```
 
+### Expectations and Moments
+SPNs allow you to compute first and higher order moments of the represented probability function by directly evaluating the tree structure. There are three main functions implemented for that.
+
+The _Expectations_ function allows you to directly compute first oder moments given an SPN and (optionally) a list of features for which you need the expectation and an array of evidence.
+
+```python
+from spn.algorithms.stats.Expectations import Expectation
+
+piecewise_spn = ((0.5 * PiecewiseLinear([0, 1, 2], [0, 1, 0], [], scope=[0]) +
+                  0.5 * PiecewiseLinear([-2, -1, 0], [0, 1, 0], [], scope=[0])) *
+                 (0.5 * PiecewiseLinear([0, 1, 2], [0, 1, 0], [], scope=[1]) +
+                  0.5 * PiecewiseLinear([-1, 0, 1], [0, 1, 0], [], scope=[1])))
+Expectation(piecewise_spn) # = [[0, 0.5]]
+```
+
+If you pass a feature scope, only the expectation for those features will be returned:
+```python
+from spn.algorithms.stats.Expectations import Expectation
+
+piecewise_spn = ((0.5 * PiecewiseLinear([0, 1, 2], [0, 1, 0], [], scope=[0]) +
+                  0.5 * PiecewiseLinear([-2, -1, 0], [0, 1, 0], [], scope=[0])) *
+                 (0.5 * PiecewiseLinear([0, 1, 2], [0, 1, 0], [], scope=[1]) +
+                  0.5 * PiecewiseLinear([-1, 0, 1], [0, 1, 0], [], scope=[1])))
+Expectation(piecewise_spn, feature_scope=[0]) # = [[0]]
+Expectation(piecewise_spn, feature_scope=[1]) # = [[0.5]]
+```
+
+Finally, you can also pass evidence to the network which computes the conditional expectation:
+```python
+from spn.algorithms.stats.Expectations import Expectation
+
+piecewise_spn = ((0.5 * PiecewiseLinear([0, 1, 2], [0, 1, 0], [], scope=[0]) +
+                  0.5 * PiecewiseLinear([-2, -1, 0], [0, 1, 0], [], scope=[0])) *
+                 (0.5 * PiecewiseLinear([0, 1, 2], [0, 1, 0], [], scope=[1]) +
+                  0.5 * PiecewiseLinear([-1, 0, 1], [0, 1, 0], [], scope=[1])))
+Expectation(piecewise_spn, feature_scope=[0], evidence=np.array([[np.nan, 0]])) # = [[0]]
+Expectation(piecewise_spn, feature_scope=[1], evidence=np.array([[0, np.nan]])) # = [[0.5]]
+
+```
 ### Utilities
 
 Finally, we have some basic utilities for working with SPNs:
@@ -466,6 +505,7 @@ See also the list of [contributors](https://github.com/alejandromolinaml/SPFlow/
 ## Contributors
 
 * **Moritz Kulessa** - *TU Darmstadt*
+* **Claas Voelcker** - *TU Darmstadt*
 
 ## License
 
