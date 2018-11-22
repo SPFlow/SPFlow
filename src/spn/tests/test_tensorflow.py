@@ -30,7 +30,6 @@ class TestTensorflow(unittest.TestCase):
         ll = log_likelihood(spn, data)
 
         tf_ll = eval_tf(spn, data)
-        tf_ll = eval_tf(spn, data, np.float64)
 
         self.assertTrue(np.all(np.isclose(ll, tf_ll)))
 
@@ -49,7 +48,6 @@ class TestTensorflow(unittest.TestCase):
         ll = log_likelihood(spn, data)
 
         tf_ll = eval_tf(spn, data)
-        tf_ll = eval_tf(spn, data, np.float64)
 
         self.assertTrue(np.all(np.isclose(ll, tf_ll)))
 

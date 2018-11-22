@@ -47,6 +47,8 @@ def sum_gradient_backward(node, parent_result, gradient_result=None, lls_per_nod
     for i, c in enumerate(node.children):
         messages_to_children.append(gradients + np.log(node.weights[i]))
 
+    assert not np.any(np.isnan(messages_to_children)), "Nans found in iteration"
+
     return messages_to_children
 
 
@@ -59,20 +61,22 @@ def prod_gradient_backward(node, parent_result, gradient_result=None, lls_per_no
     messages_to_children = []
 
     # TODO handle zeros for efficiency, darwiche 2003
-
     output_ll = lls_per_node[:, node.id]
 
     for i, c in enumerate(node.children):
         messages_to_children.append(output_ll - lls_per_node[:, c.id])
 
+    assert not np.any(np.isnan(messages_to_children)), "Nans found in iteration"
+
     return messages_to_children
 
 
-def gaussian_em_update(node, lls, gradients, root_lls):
+def gaussian_em_update(node, lls, gradients, root_lls, data):
     p = (gradients - root_lls) + lls
-    new_mean = p + np.log(node.mean)
-    node.mean = logsumexp(new_mean) - logsumexp(p)
-
+    w = np.exp(p)
+    w = w / np.sum(w)
+    node.mean = np.sum(w * node.mean)
+    print(node.mean)
 
 
 _leaf_node_updates = {Gaussian: gaussian_em_update}
@@ -99,4 +103,4 @@ def EM_optimization(spn, data, iterations=5, leaf_node_updates=_leaf_node_update
 
         for leaf_node in get_nodes_by_type(spn, Leaf):
             f = leaf_node_updates[leaf_node.__class__]
-            f(leaf_node, lls_per_node[:, leaf_node.id], gradients[:, leaf_node.id], R)
+            f(leaf_node, lls_per_node[:, leaf_node.id], gradients[:, leaf_node.id], R, data)
