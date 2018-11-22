@@ -6,24 +6,24 @@ from spn.io.plot.TreeVisualization import get_newick
 
 class TestBase(unittest.TestCase):
 
-    def __init__(self):
-        D = Leaf(scope=[0])
-        E = Leaf(scope=[0])
-        F = Leaf(scope=[0])
+    def setUp(self):
+        self.D = Leaf(scope=[0])
+        self.E = Leaf(scope=[0])
+        self.F = Leaf(scope=[0])
 
-        B = 0.5 * D + 0.5 * E
-        C = 0.5 * E + 0.5 * F
+        self.B = 0.5 * self.D + 0.5 * self.E
+        self.C = 0.5 * self.E + 0.5 * self.F
 
-        A = 0.5 * B + 0.5 * C
+        self.A = 0.5 * self.B + 0.5 * self.C
 
 
     def test_simple_newick_string(self):
 
-        newick_string = get_newick(A)
+        newick_string = get_newick(self.A)
 
         self.assertEqual(newick_string, '((LeafNode_3:1,LeafNode_4:1)SumNode_1:1,(LeafNode_4:1,LeafNode_5:1)SumNode_2:1);')
 
-        A = 0.5 * C + 0.5 * B
+        A = 0.5 * self.C + 0.5 * self.B
 
         
 
