@@ -207,6 +207,22 @@ def extend():
     print("pareto", log_likelihood(spn, np.array([1.5]).reshape(-1, 1)))
 
 
+def compute_expectations():
+    import numpy as np
+    from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
+    from spn.algorithms.stats.Expectations import Expectation
+
+    piecewise_spn = ((0.5 * PiecewiseLinear([0, 1, 2], [0, 1, 0], [], scope=[0]) +
+                      0.5 * PiecewiseLinear([-2, -1, 0], [0, 1, 0], [], scope=[0])) *
+                     (0.5 * PiecewiseLinear([0, 1, 2], [0, 1, 0], [], scope=[1]) +
+                      0.5 * PiecewiseLinear([-1, 0, 1], [0, 1, 0], [], scope=[1])))
+    print("Full Expectation: {}".format(Expectation(piecewise_spn)))
+    print("Expectation for feature scope 0: {}".format(Expectation(piecewise_spn, feature_scope=[0])))
+    print("Expectation for feature scope 1: {}".format(Expectation(piecewise_spn, feature_scope=[1])))
+    print("Expectation with evidence 0: {}".format(Expectation(piecewise_spn, feature_scope=[0], evidence=np.array([[np.nan, 0]]))))
+    print("Expectation with evidence 1: {}".format(Expectation(piecewise_spn, feature_scope=[1], evidence=np.array([[0, np.nan]]))))
+
+
 def learn_MSPN():
     import numpy as np
 
@@ -260,7 +276,7 @@ def visualize_tree():
     spn = create_SPN()
 
     from spn.io.plot import TreeVisualization
-    TreeVisualization.spn_visualize(spn, file_name='tree_spn.png')
+    TreeVisualization.plot_spn(spn, file_name='tree_spn.png')
 
 
 # learn a SPN having cltrees as leave
@@ -358,3 +374,4 @@ if __name__ == '__main__':
     # tensorflow()
 
     visualize_tree()
+    compute_expectations()
