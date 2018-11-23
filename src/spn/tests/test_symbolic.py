@@ -10,7 +10,6 @@ from spn.algorithms.Statistics import get_structure_stats
 from spn.data.datasets import get_binary_data
 
 from spn.algorithms.Inference import log_likelihood
-from spn.algorithms.LearningWrappers import learn_parametric
 from spn.io.plot.TreeVisualization import plot_spn
 
 from spn.structure.leaves.parametric.Parametric import Gaussian, Bernoulli
