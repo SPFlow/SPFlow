@@ -1,14 +1,17 @@
-from ete3 import Tree, TreeStyle, faces, AttrFace, TextFace
+from ete3 import Tree, TreeStyle, faces, AttrFace, TextFace, NodeStyle
+from spn.io.Text import spn_to_str_equation
 
-import matplotlib
-
-from spn.structure.Base import Node, Product, Sum, Leaf, Context
-
+from spn.structure.Base import Sum, Leaf, Product
 
 
 def spn_to_ete(spn, context=None, unroll=False):
     tree = Tree()
     tree.name = spn.name
+
+    if isinstance(spn, Sum):
+        tree.name = "Σ"
+    if isinstance(spn, Product):
+        tree.name = "Π"
 
     queue = []
 
@@ -23,9 +26,8 @@ def spn_to_ete(spn, context=None, unroll=False):
             if isinstance(spn, Sum):
                 c.support = spn.weights[i]
             tree.add_child(c)
-    elif context is not None:
-        feature_names = ', '.join([context.feature_names[i] for i in spn.scope])
-        tree.name += ': ' + feature_names 
+    else:
+        tree.name = spn_to_str_equation(spn, feature_names=context.feature_names)
 
     return tree
 
@@ -36,21 +38,31 @@ def get_newick(spn, context=None, unroll_dag=False):
 
 
 def plot_spn(spn, context=None, unroll=False, file_name=None):
-
     lin_style = TreeStyle()
+
     def my_layout(node):
+
+        style = NodeStyle()
+        style["size"] = 0
+        style["vt_line_color"] = "#A0A0A0"
+        style["hz_line_color"] = "#A0A0A0"
+        style["vt_line_type"] = 0  # 0 solid, 1 dashed, 2 dotted
+        style["hz_line_type"] = 0
+        node.set_style(style)
+
         if node.is_leaf():
             name_face = AttrFace("name")
         else:
-            name_face = TextFace(node.name[:3], fsize=10)
-            if node.name[:3] == 'Sum':
+            name_face = TextFace(node.name, fsize=14, ftype='Times')
+            if node.name == 'Σ':
                 for child in node.children:
-                    label = TextFace(round(child.support,3))
+                    label = TextFace(round(child.support, 3), fsize=6)
                     child.add_face(label, column=1, position="branch-bottom")
         faces.add_face_to_node(name_face, node, column=1, position="branch-right")
-        
+
     lin_style.layout_fn = my_layout
     lin_style.show_leaf_name = False
+    lin_style.show_scale = False
 
     tree = spn_to_ete(spn, context, unroll)
 
