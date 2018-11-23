@@ -106,6 +106,7 @@ def str_to_spn(text, features=None, str_to_spn_lambdas=_str_to_spn):
 
     grammar = r"""
 %import common.DECIMAL -> DECIMAL
+%import common.SIGNED_NUMBER -> NUMBERS
 %import common.WS
 %ignore WS
 %import common.WORD -> WORD
@@ -114,8 +115,6 @@ ALPHANUM: "a".."z"|"A".."Z"|DIGIT
 PARAMCHARS: ALPHANUM|"_"
 FNAME: ALPHANUM+
 PARAMNAME: PARAMCHARS+
-NUMBER: DIGIT|DECIMAL
-NUMBERS: NUMBER+
 list: "[" [NUMBERS ("," NUMBERS)*] "]"
 
 
