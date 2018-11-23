@@ -25,6 +25,9 @@ class TestText(unittest.TestCase):
         self.check_obj_and_reconstruction(Categorical(p=[0.1, 0.2, 0.7], scope=0))
 
         self.check_obj_and_reconstruction(Gaussian(mean=0, stdev=10, scope=0))
+        self.check_obj_and_reconstruction(Gaussian(mean=1.2, stdev=1.5, scope=0))
+
+        self.check_obj_and_reconstruction(Gaussian(mean=-1.2, stdev=1, scope=0))
 
         gamma = Gamma(alpha=1, beta=2, scope=0)
         lnorm = LogNormal(mean=1, stdev=2, scope=0)
