@@ -4,12 +4,10 @@ Created on April 15, 2018
 @author: Alejandro Molina
 '''
 
-import numpy as np
 
-from spn.algorithms.Inference import add_node_likelihood, add_node_mpe_likelihood, leaf_marginalized_likelihood
+from spn.algorithms.Inference import add_node_likelihood, leaf_marginalized_likelihood
 from spn.structure.leaves.parametric.Parametric import *
 from spn.structure.leaves.parametric.utils import get_scipy_obj_params
-from scipy.stats import *
 
 POS_EPS = 1e-7
 

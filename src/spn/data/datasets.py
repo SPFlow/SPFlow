@@ -83,7 +83,7 @@ def get_binary_data(name):
     features = ["V" + str(i) for i in range(F)]
 
     return (
-    name.upper(), np.asarray(features), D, train, test, np.asarray(["discrete"] * F), np.asarray(["bernoulli"] * F))
+    name.upper(), np.asarray(features), D, train, test, valid, np.asarray(["discrete"] * F), np.asarray(["bernoulli"] * F))
 
 
 def get_mnist(cachefile=path+'count/mnist.npz'):

@@ -95,11 +95,11 @@ class Leaf(Node):
 
 
 class Context:
-    def __init__(self, meta_types=None, domains=None, parametric_types=None):
+    def __init__(self, meta_types=None, domains=None, parametric_types=None, feature_names=None):
         self.meta_types = meta_types
         self.domains = domains
         self.parametric_types = parametric_types
-        self.feature_names = []
+        self.feature_names = feature_names
 
         if self.meta_types is None and parametric_types is not None:
             self.meta_types = []
@@ -133,9 +133,6 @@ class Context:
         self.domains = np.asanyarray(domain)
 
         return self
-
-    def add_feature_names(self, names):
-        self.feature_names = names
 
 
 def get_number_of_edges(node):
