@@ -11,9 +11,9 @@ with open("../README.md", "r") as fh:
 
 setuptools.setup(
     name="spflow",
-    version="0.0.8",
+    version="0.0.9",
     author="Alejandro Molina et al.",
-    author_email="alejomc@gmail.com",
+    author_email="molina@cs.tu-darmstadt.de",
     description="Sum Product Flow: An Easy and Extensible Library for Sum-Product Networks",
     long_description=long_description,
     long_description_content_type="text/markdown",

@@ -27,7 +27,16 @@ def spn_to_ete(spn, context=None, unroll=False):
                 c.support = spn.weights[i]
             tree.add_child(c)
     else:
-        tree.name = spn_to_str_equation(spn, feature_names=context.feature_names)
+        feature_names = None
+        if context is not None:
+            feature_names = context.feature_names
+
+        try:
+            tree.name = spn_to_str_equation(spn, feature_names=feature_names)
+        except:
+            if feature_names is None:
+                feature_names = []
+            tree.name += '(%s)' % ','.join(feature_names)
 
     return tree
 
@@ -51,9 +60,9 @@ def plot_spn(spn, context=None, unroll=False, file_name=None):
         node.set_style(style)
 
         if node.is_leaf():
-            name_face = AttrFace("name")
+            name_face = AttrFace("name", fsize=8, ftype='Times')
         else:
-            name_face = TextFace(node.name, fsize=14, ftype='Times')
+            name_face = TextFace(node.name, fsize=18, ftype='Times')
             if node.name == 'Σ':
                 for child in node.children:
                     label = TextFace(round(child.support, 3), fsize=6)
