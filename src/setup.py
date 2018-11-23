@@ -25,5 +25,5 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=['numpy', 'scipy', 'sklearn', 'statsmodels', 'networkx', 'joblib', 'matplotlib', 'pydot',
-                      'lark-parser', 'tqdm', 'ete3'],
+                      'lark-parser', 'tqdm', 'ete3', 'sympy'],
 )
