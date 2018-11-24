@@ -247,7 +247,7 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
         all_results.clear()
 
     for node_type, func in eval_functions.items():
-        if not hasattr(node_type, '_eval_func'):
+        if '_eval_func' not in node_type.__dict__:
             node_type._eval_func = []
         node_type._eval_func.append(func)
         node_type._is_leaf = issubclass(node_type, Leaf)
@@ -256,8 +256,6 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
     tmp_children_list = []
     len_tmp_children_list = 0
     for n in nodes:
-
-        func = None
 
         n_is_leaf = n.__class__._is_leaf
 
@@ -282,8 +280,15 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
 
         all_results[n] = result
 
+    try:
+        print('LEAF EVALS', Leaf._eval_func)
+    except:
+        pass
+
     for node_type, func in eval_functions.items():
         del node_type._eval_func[-1]
+        if len(node_type._eval_func) == 0:
+            delattr(node_type, '_eval_func')
 
     return all_results[node]
 
