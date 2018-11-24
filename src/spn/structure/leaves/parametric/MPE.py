@@ -4,8 +4,8 @@ Created on July 02, 2018
 @author: Alejandro Molina
 '''
 from spn.algorithms.MPE import get_mpe_top_down_leaf, add_node_mpe
-from spn.structure.leaves.parametric.Inference import gaussian_likelihood, gamma_likelihood, lognormal_likelihood, \
-    poisson_likelihood, bernoulli_likelihood, categorical_likelihood, geometric_likelihood, exponential_likelihood, \
+from spn.structure.leaves.parametric.Inference import continuous_likelihood, gamma_likelihood, lognormal_likelihood, \
+    discrete_likelihood, bernoulli_likelihood, categorical_likelihood, geometric_likelihood, exponential_likelihood, \
     categorical_dictionary_likelihood
 from spn.structure.leaves.parametric.Parametric import Gaussian, Gamma, LogNormal, Poisson, Bernoulli, Categorical, \
     Geometric, Exponential, CategoricalDictionary, NegativeBinomial, Hypergeometric
@@ -36,7 +36,7 @@ def add_parametric_mpe_support():
     def gaussian_mode(node):
         return node.mean
 
-    add_node_mpe(Gaussian, get_parametric_bottom_up_ll(gaussian_likelihood, gaussian_mode),
+    add_node_mpe(Gaussian, get_parametric_bottom_up_ll(continuous_likelihood, gaussian_mode),
                  get_parametric_top_down_ll(gaussian_mode))
 
     def gamma_mode(node):
@@ -54,7 +54,7 @@ def add_parametric_mpe_support():
     def poisson_mode(node):
         return np.floor(node.mean)
 
-    add_node_mpe(Poisson, get_parametric_bottom_up_ll(poisson_likelihood, poisson_mode),
+    add_node_mpe(Poisson, get_parametric_bottom_up_ll(discrete_likelihood, poisson_mode),
                  get_parametric_top_down_ll(poisson_mode))
 
     def bernoulli_mode(node):

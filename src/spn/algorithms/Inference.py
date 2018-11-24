@@ -14,8 +14,7 @@ EPSILON = 0.000000000000001
 def compute_likelihood_children(children, data, dtype):
     llchildren = np.zeros((data.shape[0], len(children)), dtype=dtype)
 
-    for i, c in enumerate(children):
-        llchildren[:, i] = c[:, 0]
+    np.concatenate(children, axis=1, out=llchildren)
 
     return llchildren
 

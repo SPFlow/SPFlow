@@ -11,7 +11,7 @@ with open("../README.md", "r") as fh:
 
 setuptools.setup(
     name="spflow",
-    version="0.0.9",
+    version="0.0.10",
     author="Alejandro Molina et al.",
     author_email="molina@cs.tu-darmstadt.de",
     description="Sum Product Flow: An Easy and Extensible Library for Sum-Product Networks",
@@ -25,5 +25,5 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=['numpy', 'scipy', 'sklearn', 'statsmodels', 'networkx', 'joblib', 'matplotlib', 'pydot',
-                      'lark-parser', 'tqdm', 'ete3', 'sympy'],
+                      'lark-parser', 'tqdm', 'ete3', 'sympy', 'PyQt5'],
 )

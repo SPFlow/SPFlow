@@ -12,15 +12,15 @@ from spn.structure.leaves.parametric.utils import get_scipy_obj_params
 POS_EPS = 1e-7
 
 
-def gaussian_likelihood(node, data=None, dtype=np.float64):
+def continuous_likelihood(node, data=None, dtype=np.float64):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
     scipy_obj, params = get_scipy_obj_params(node)
     probs[~marg_ids] = scipy_obj.pdf(observations, **params)
     return probs
 
 
-lognormal_likelihood = gaussian_likelihood
-exponential_likelihood = gaussian_likelihood
+lognormal_likelihood = continuous_likelihood
+exponential_likelihood = continuous_likelihood
 
 
 def gamma_likelihood(node, data=None, dtype=np.float64):
@@ -33,15 +33,15 @@ def gamma_likelihood(node, data=None, dtype=np.float64):
     return probs
 
 
-def poisson_likelihood(node, data=None, dtype=np.float64):
+def discrete_likelihood(node, data=None, dtype=np.float64):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
     scipy_obj, params = get_scipy_obj_params(node)
     probs[~marg_ids] = scipy_obj.pmf(observations, **params)
     return probs
 
 
-bernoulli_likelihood = poisson_likelihood
-geometric_likelihood = poisson_likelihood
+bernoulli_likelihood = discrete_likelihood
+geometric_likelihood = discrete_likelihood
 
 
 def categorical_likelihood(node, data=None, dtype=np.float64):
@@ -79,10 +79,10 @@ def uniform_likelihood(node, data=None, dtype=np.float64):
 
 
 def add_parametric_inference_support():
-    add_node_likelihood(Gaussian, gaussian_likelihood)
+    add_node_likelihood(Gaussian, continuous_likelihood)
     add_node_likelihood(Gamma, gamma_likelihood)
     add_node_likelihood(LogNormal, lognormal_likelihood)
-    add_node_likelihood(Poisson, poisson_likelihood)
+    add_node_likelihood(Poisson, discrete_likelihood)
     add_node_likelihood(Bernoulli, bernoulli_likelihood)
     add_node_likelihood(Categorical, categorical_likelihood)
     add_node_likelihood(Geometric, geometric_likelihood)
