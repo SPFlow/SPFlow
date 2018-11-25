@@ -257,13 +257,13 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
     len_tmp_children_list = 0
     for n in nodes:
 
-        n_is_leaf = n.__class__._is_leaf
-
         try:
             func = n.__class__._eval_func[-1]
+            n_is_leaf = n.__class__._is_leaf
         except:
-            if n_is_leaf and leaf_func is not None:
+            if isinstance(n, Leaf) and leaf_func is not None:
                 func = leaf_func
+                n_is_leaf = True
             else:
                 raise AssertionError("No lambda function associated with type: %s" % (n.__class__.__name__))
 
@@ -279,11 +279,6 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
             result = func(n, tmp_children_list[0:len_children], **args)
 
         all_results[n] = result
-
-    try:
-        print('LEAF EVALS', Leaf._eval_func)
-    except:
-        pass
 
     for node_type, func in eval_functions.items():
         del node_type._eval_func[-1]

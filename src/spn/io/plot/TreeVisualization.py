@@ -3,15 +3,17 @@ from spn.io.Text import spn_to_str_equation
 
 from spn.structure.Base import Sum, Leaf, Product
 
+_symbols = {Sum: "Σ", Product: "Π"}
 
-def spn_to_ete(spn, context=None, unroll=False):
+
+def set_symbol(node_type, symbol):
+    _symbols[node_type] = symbol
+
+
+def spn_to_ete(spn, context=None, unroll=False, symbols=_symbols):
     tree = Tree()
-    tree.name = spn.name
-
-    if isinstance(spn, Sum):
-        tree.name = "Σ"
-    if isinstance(spn, Product):
-        tree.name = "Π"
+    tree.node_type = type(spn)
+    tree.name = symbols.get(tree.node_type, spn.name)
 
     queue = []
 
@@ -63,7 +65,7 @@ def plot_spn(spn, context=None, unroll=False, file_name=None):
             name_face = AttrFace("name", fsize=8, ftype='Times')
         else:
             name_face = TextFace(node.name, fsize=18, ftype='Times')
-            if node.name == 'Σ':
+            if node.node_type == Sum:
                 for child in node.children:
                     label = TextFace(round(child.support, 3), fsize=6)
                     child.add_face(label, column=1, position="branch-bottom")

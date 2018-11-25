@@ -11,13 +11,6 @@ from spn.structure.Base import Product, Sum, Leaf, eval_spn_bottom_up, eval_spn_
 EPSILON = 0.000000000000001
 
 
-def compute_likelihood_children(children, data, dtype):
-    llchildren = np.zeros((data.shape[0], len(children)), dtype=dtype)
-
-    np.concatenate(children, axis=1, out=llchildren)
-
-    return llchildren
-
 def leaf_marginalized_likelihood(node, data=None, dtype=np.float64):
     assert len(node.scope) == 1, node.scope
     probs = np.ones((data.shape[0], 1), dtype=dtype)
@@ -29,19 +22,21 @@ def leaf_marginalized_likelihood(node, data=None, dtype=np.float64):
     return probs, marg_ids, observations
 
 
-
 def prod_log_likelihood(node, children, data=None, dtype=np.float64):
-    llchildren = compute_likelihood_children(children, data, dtype)
+    llchildren = np.concatenate(children, axis=1)
+    assert llchildren.dtype == dtype
     return np.sum(llchildren, axis=1).reshape(-1, 1)
 
 
 def prod_likelihood(node, children, data=None, dtype=np.float64):
-    llchildren = compute_likelihood_children(children, data, dtype)
+    llchildren = np.concatenate(children, axis=1)
+    assert llchildren.dtype == dtype
     return np.prod(llchildren, axis=1).reshape(-1, 1)
 
 
 def sum_log_likelihood(node, children, data=None, dtype=np.float64):
-    llchildren = compute_likelihood_children(children, data, dtype)
+    llchildren = np.concatenate(children, axis=1)
+    assert llchildren.dtype == dtype
 
     assert np.isclose(np.sum(node.weights), 1.0), "unnormalized weights {} for node {}".format(node.weights, node)
 
@@ -51,7 +46,8 @@ def sum_log_likelihood(node, children, data=None, dtype=np.float64):
 
 
 def sum_likelihood(node, children, data=None, dtype=np.float64):
-    llchildren = compute_likelihood_children(children, data, dtype)
+    llchildren = np.concatenate(children, axis=1)
+    assert llchildren.dtype == dtype
 
     assert np.isclose(np.sum(node.weights), 1.0), "unnormalized weights {} for node {}".format(node.weights, node)
 
@@ -70,9 +66,11 @@ def log_node_likelihood(node, **args):
         return np.log(probs)
 
 
-def add_node_likelihood(node_type, lambda_func):
+def add_node_likelihood(node_type, lambda_func, log_lambda_func=None):
     _node_likelihood[node_type] = lambda_func
-    _node_log_likelihood[node_type] = log_node_likelihood
+    if log_lambda_func is None:
+        log_lambda_func = log_node_likelihood
+    _node_log_likelihood[node_type] = log_lambda_func
 
 
 _node_mpe_likelihood = {}
@@ -83,11 +81,10 @@ def add_node_mpe_likelihood(node_type, lambda_func):
 
 
 def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, lls_matrix=None, debug=False):
-    assert len(data.shape) == 2, "data must be 2D, found: {}".format(data.shape)
-
     all_results = {}
 
     if debug:
+        assert len(data.shape) == 2, "data must be 2D, found: {}".format(data.shape)
         node_likelihood_with_validation = {}
         for k, funct in node_likelihood.items():
             def exec_funct(node, children, data=None, dtype=np.float64):

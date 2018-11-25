@@ -15,7 +15,7 @@ from spn.structure.Base import eval_spn_top_down, Sum, Product, get_nodes_by_typ
 import numpy as np
 
 
-def gradient_backward(spn, data, lls_per_node):
+def gradient_backward(spn, lls_per_node):
     node_gradients = {}
     node_gradients[Sum] = sum_gradient_backward
     node_gradients[Product] = prod_gradient_backward
@@ -23,7 +23,7 @@ def gradient_backward(spn, data, lls_per_node):
 
     gradient_result = np.zeros_like(lls_per_node)
 
-    eval_spn_top_down(spn, node_gradients, parent_result=np.zeros((data.shape[0])), gradient_result=gradient_result,
+    eval_spn_top_down(spn, node_gradients, parent_result=np.zeros((lls_per_node.shape[0])), gradient_result=gradient_result,
                       lls_per_node=lls_per_node)
 
     return gradient_result
@@ -89,7 +89,7 @@ def EM_optimization(spn, data, iterations=5, leaf_node_updates=_leaf_node_update
         # one pass bottom up evaluating the likelihoods
         log_likelihood(spn, data, dtype=data.dtype, lls_matrix=lls_per_node)
 
-        gradients = gradient_backward(spn, data, lls_per_node)
+        gradients = gradient_backward(spn, lls_per_node)
 
         R = lls_per_node[:, 0]
 
