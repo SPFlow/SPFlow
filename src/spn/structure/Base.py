@@ -181,6 +181,17 @@ def bfs(root, func):
                     seen.add(c)
                     queue.append(c)
 
+def dfs(root, func):
+    seen, stack = set(), [root]
+    while stack:
+        node = stack.pop()
+        if node in seen:
+            continue
+        seen.add(node)
+        func(node)
+        if not isinstance(node, Leaf):
+            stack.extend(reversed(node.children))
+
 
 def get_nodes_by_type(node, ntype=Node):
     assert node is not None
