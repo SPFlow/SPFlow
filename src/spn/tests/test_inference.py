@@ -40,6 +40,8 @@ class TestInference(unittest.TestCase):
         self.assertEqual(l.shape[1], 1)
         self.assertTrue(np.alltrue(np.isclose(result.reshape(-1, 1), l)))
         self.assertTrue(np.alltrue(np.isclose(np.log(l), log_likelihood(spn, data))))
+        self.assertTrue(np.alltrue(np.isclose(np.log(l), log_likelihood(spn, data, debug=True))))
+        self.assertTrue(np.alltrue(np.isclose(l, likelihood(spn, data, debug=True))))
 
     def test_type(self):
         add_node_likelihood(Leaf, identity_ll)

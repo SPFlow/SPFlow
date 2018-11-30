@@ -60,8 +60,8 @@ _node_log_likelihood = {Sum: sum_log_likelihood, Product: prod_log_likelihood}
 _node_likelihood = {Sum: sum_likelihood, Product: prod_likelihood}
 
 
-def log_node_likelihood(node, **args):
-    probs = _node_likelihood[type(node)](node, **args)
+def log_node_likelihood(node, *args, **kwargs):
+    probs = _node_likelihood[type(node)](node, *args, **kwargs)
     with np.errstate(divide='ignore'):
         return np.log(probs)
 
@@ -85,17 +85,17 @@ def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, l
 
     if debug:
         assert len(data.shape) == 2, "data must be 2D, found: {}".format(data.shape)
-        node_likelihood_with_validation = {}
-        for k, funct in node_likelihood.items():
-            def exec_funct(node, children, data=None, dtype=np.float64):
-                ll = funct(node, children, data=data, dtype=dtype)
-                assert ll.shape == (data.shape[0], 1), "node %s result has to match dimensions (N,1)" % (node.id)
-                assert not np.all(np.isnan(ll)), "ll is nan %s " % (node.id)
-                return ll
+        original_node_likelihood = node_likelihood
 
-            node_likelihood_with_validation[k] = exec_funct
+        def exec_funct(node, *args, **kwargs):
+            assert node is not None, "node is nan "
+            funct = original_node_likelihood[type(node)]
+            ll = funct(node, *args, **kwargs)
+            assert ll.shape == (data.shape[0], 1), "node %s result has to match dimensions (N,1)" % node.id
+            assert not np.any(np.isnan(ll)), "ll is nan %s " % node.id
+            return ll
 
-        node_likelihood = node_likelihood_with_validation
+        node_likelihood = {k: exec_funct for k in node_likelihood.keys()}
 
     result = eval_spn_bottom_up(node, node_likelihood, all_results=all_results, debug=debug, dtype=dtype, data=data)
 

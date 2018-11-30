@@ -11,6 +11,8 @@ def set_symbol(node_type, symbol):
 
 
 def spn_to_ete(spn, context=None, unroll=False, symbols=_symbols):
+    assert spn is not None
+
     tree = Tree()
     tree.node_type = type(spn)
     tree.name = symbols.get(tree.node_type, spn.name)
@@ -49,6 +51,8 @@ def get_newick(spn, context=None, unroll_dag=False):
 
 
 def plot_spn(spn, context=None, unroll=False, file_name=None):
+    assert spn is not None
+
     lin_style = TreeStyle()
 
     def my_layout(node):
