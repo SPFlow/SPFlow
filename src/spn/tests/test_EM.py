@@ -2,15 +2,13 @@ import unittest
 
 from spn.algorithms.EM import EM_optimization
 from spn.algorithms.Inference import log_likelihood
-from spn.algorithms.LearningWrappers import learn_parametric, learn_mspn
-from spn.gpu.TensorFlow import spn_to_tf_graph, eval_tf, likelihood_loss, tf_graph_to_spn
+from spn.algorithms.LearningWrappers import learn_parametric
 from spn.structure.Base import Context
 from spn.structure.StatisticalTypes import MetaType
 import numpy as np
 
 
 from spn.structure.leaves.parametric.Parametric import Gaussian
-import tensorflow as tf
 
 
 class TestEM(unittest.TestCase):
@@ -18,7 +16,9 @@ class TestEM(unittest.TestCase):
 
     def test_optimization(self):
         np.random.seed(17)
-        data = np.random.normal(10, 5, size=2000).tolist() + np.random.normal(30, 10, size=2000).tolist()
+        d1 = np.random.normal(10, 5, size=2000).tolist()
+        d2 = np.random.normal(30, 5, size=2000).tolist()
+        data = d1 + d2
         data = np.array(data).reshape((-1, 10))
         data = data.astype(np.float32)
 
@@ -29,19 +29,20 @@ class TestEM(unittest.TestCase):
         spn.weights = [0.8, 0.2]
         spn.children[0].children[0].mean = 3.0
 
-        py_ll = log_likelihood(spn, data)
+        py_ll = np.sum(log_likelihood(spn, data))
 
-        print(spn.weights)
-        print(spn.children[0].children[0].mean)
+        print(spn.weights, spn.children[0].children[0].mean)
 
-        EM_optimization(spn, data)
+        EM_optimization(spn, data, iterations=10)
 
-        print(spn.weights)
-        print(spn.children[0].children[0].mean)
+        print(spn.weights, spn.children[0].children[0].mean)
 
-        py_ll_opt = log_likelihood(spn, data)
+        py_ll_opt = np.sum(log_likelihood(spn, data))
 
-
+        self.assertLessEqual(py_ll, py_ll_opt)
+        self.assertAlmostEqual(spn.weights[0], 0.5)
+        self.assertAlmostEqual(spn.weights[1], 0.5)
+        self.assertAlmostEqual(spn.children[0].children[0].mean, 10.50531629127531)
 
 if __name__ == '__main__':
     unittest.main()
