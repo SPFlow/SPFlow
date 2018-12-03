@@ -20,10 +20,10 @@ from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
 from spn.structure.leaves.cltree.CLTree import create_cltree_leaf
 from spn.algorithms.splitting.Conditioning import get_split_rows_naive_mle_conditioning, get_split_rows_random_conditioning
 
-def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, cpus=-1, rand_gen=None):
+def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, **kwargs):
     spn = Sum()
     for label, count in zip(*np.unique(data[:, label_idx], return_counts=True)):
-        branch = spn_learn_wrapper(data[data[:, label_idx] == label, :], ds_context, cpus=cpus, rand_gen=rand_gen)
+        branch = spn_learn_wrapper(data[data[:, label_idx] == label, :], ds_context, **kwargs)
         spn.children.append(branch)
         spn.weights.append(count / data.shape[0])
 

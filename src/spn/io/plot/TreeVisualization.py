@@ -14,6 +14,7 @@ def spn_to_ete(spn, context=None, unroll=False, symbols=_symbols):
     assert spn is not None
 
     tree = Tree()
+    tree.id = spn.id
     tree.node_type = type(spn)
     tree.name = symbols.get(tree.node_type, spn.name)
 
@@ -50,7 +51,7 @@ def get_newick(spn, context=None, unroll_dag=False):
     return tree.write(format=1)
 
 
-def plot_spn(spn, context=None, unroll=False, file_name=None):
+def plot_spn(spn, context=None, unroll=False, file_name=None, show_ids=False):
     assert spn is not None
 
     lin_style = TreeStyle()
@@ -73,6 +74,8 @@ def plot_spn(spn, context=None, unroll=False, file_name=None):
                 for child in node.children:
                     label = TextFace(round(child.support, 3), fsize=6)
                     child.add_face(label, column=1, position="branch-bottom")
+        if show_ids:
+            node.add_face(AttrFace('id', fsize=6), column=1, position="branch-top")
         faces.add_face_to_node(name_face, node, column=1, position="branch-right")
 
     lin_style.layout_fn = my_layout

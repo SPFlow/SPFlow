@@ -5,8 +5,7 @@ Created on March 20, 2018
 '''
 import numpy as np
 import collections
-
-from spn.structure.StatisticalTypes import MetaType
+from collections import deque, OrderedDict
 
 
 class Node(object):
@@ -101,7 +100,7 @@ class Context:
         self.parametric_types = parametric_types
         self.feature_names = feature_names
 
-        if self.meta_types is None and parametric_types is not None:
+        if meta_types is None and parametric_types is not None:
             self.meta_types = []
             for p in parametric_types:
                 self.meta_types.append(p.type.meta_type)
@@ -121,7 +120,9 @@ class Context:
 
         for col in range(data.shape[1]):
             feature_meta_type = self.meta_types[col]
-            domain_values = [np.min(data[:, col]), np.max(data[:, col])]
+            min_val = np.min(data[:, col])
+            max_val = np.max(data[:, col])
+            domain_values = [min_val, max_val]
 
             if feature_meta_type == MetaType.REAL or feature_meta_type == MetaType.BINARY:
                 domain.append(domain_values)
@@ -160,14 +161,17 @@ def get_depth(node):
 
 def rebuild_scopes_bottom_up(node):
     # this function is not safe (updates in place)
-    if isinstance(node, Leaf):
-        return node.scope
 
-    new_scope = set()
-    for c in node.children:
-        new_scope.update(rebuild_scopes_bottom_up(c))
-    node.scope = list(new_scope)
-    return node.scope
+    for n in get_topological_order(node):
+        if isinstance(n, Leaf):
+            continue
+
+        new_scope = set()
+        for c in n.children:
+            new_scope.update(c.scope)
+        n.scope = list(new_scope)
+
+    return node
 
 
 def bfs(root, func):
@@ -181,16 +185,41 @@ def bfs(root, func):
                     seen.add(c)
                     queue.append(c)
 
-def dfs(root, func):
-    seen, stack = set(), [root]
-    while stack:
-        node = stack.pop()
-        if node in seen:
-            continue
-        seen.add(node)
-        func(node)
-        if not isinstance(node, Leaf):
-            stack.extend(reversed(node.children))
+
+def get_topological_order(node):
+    nodes = get_nodes_by_type(node)
+
+    children_to_parent_nodes = OrderedDict({node: []})
+    in_degree = OrderedDict()
+    for n in nodes:
+        in_degree[n] = in_degree.get(n, 0)
+        if not isinstance(n, Leaf):
+            for c in n.children:
+                c2p = children_to_parent_nodes.get(c, None)
+                if c2p is None:
+                    children_to_parent_nodes[c] = c2p = []
+                c2p.append(n)
+                in_degree[n] += 1
+
+    S = deque()  # Set of all nodes with no incoming edge
+    for u in in_degree:
+        if in_degree[u] == 0:
+            S.appendleft(u)
+
+    L = []  # Empty list that will contain the sorted elements
+
+    while S:
+        n = S.pop()  # remove a node n from S
+        L.append(n)  # add n to tail of L
+
+        for m in children_to_parent_nodes[n]:  # for each node m with an edge e from n to m do
+            in_degree_m = in_degree[m] - 1  # remove edge e from the graph
+            in_degree[m] = in_degree_m
+            if in_degree_m == 0:  # if m has no other incoming edges then
+                S.appendleft(m)  # insert m into S
+
+    assert len(L) == len(nodes), "Graph is not DAG, it has at least one cycle"
+    return L
 
 
 def get_nodes_by_type(node, ntype=Node):
@@ -245,8 +274,8 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
     :param args: free parameters that will be fed to the lambda functions.
     :return: the result of computing and propagating all the values throught the network
     """
-    # evaluating in reverse order, means that we compute all the children first then their parents
-    nodes = reversed(get_nodes_by_type(node))
+
+    nodes = get_topological_order(node)
 
     if debug:
         from tqdm import tqdm
@@ -286,7 +315,8 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
                 tmp_children_list.extend([None] * len_children)
                 len_tmp_children_list = len(tmp_children_list)
             for i in range(len_children):
-                tmp_children_list[i] = all_results[n.children[i]]
+                ci = n.children[i]
+                tmp_children_list[i] = all_results[ci]
             result = func(n, tmp_children_list[0:len_children], **args)
 
         all_results[n] = result
