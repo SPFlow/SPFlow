@@ -8,5 +8,5 @@ install:
   - pip install tensorflow
   - pip install pytest-xdist
 # command to run tests
-script: PYTHONPATH=src python3 -m pytest --boxed --cache-clear  src/spn/tests/
+script: PYTHONPATH=src python3 -m pytest --cache-clear --ignore=src/spn/tests/test_tree_viz.py src/spn/tests/
 #python3 -m unittest discover src/spn
