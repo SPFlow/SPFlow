@@ -10,7 +10,6 @@ from spn.algorithms.Statistics import get_structure_stats
 from spn.data.datasets import get_binary_data
 
 from spn.algorithms.Inference import log_likelihood
-from spn.io.plot.TreeVisualization import plot_spn
 
 from spn.structure.leaves.parametric.Parametric import Gaussian, Bernoulli
 from spn.structure.Base import Context
@@ -34,7 +33,7 @@ class TestSymbolic(unittest.TestCase):
 
         print(sympyecc)
 
-        plot_spn(spn, context=ds_context, file_name="/tmp/test_spn.png")
+        # plot_spn(spn, context=ds_context, file_name="/tmp/test_spn.png")
 
     def test_gaussian_spn_ll(self):
         root = 0.3 * (Gaussian(mean=0, stdev=1, scope=0) * Gaussian(mean=1, stdev=1, scope=1)) + 0.7 * (
