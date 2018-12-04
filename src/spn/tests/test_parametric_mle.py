@@ -18,8 +18,9 @@ class TestParametric(unittest.TestCase):
 
         domains = [[np.min(data), np.max(data)]]
 
-        mle = create_parametric_leaf(data, ds_context=Context(parametric_types=[type(expected)], domains=domains),
-                                     scope=[0])
+        mle = create_parametric_leaf(
+            data, ds_context=Context(parametric_types=[type(expected)], domains=domains), scope=[0]
+        )
 
         a = to_JSON(mle)
         b = to_JSON(expected)
@@ -56,5 +57,5 @@ class TestParametric(unittest.TestCase):
                 print("not tested", child)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -9,7 +9,6 @@ from spn.structure.leaves.parametric.Parametric import Gaussian
 
 
 class TestCPP(unittest.TestCase):
-
     def setUp(self):
         add_parametric_inference_support()
 
@@ -37,5 +36,5 @@ class TestCPP(unittest.TestCase):
         self.assertTrue(np.all(np.isclose(py_ll, c_ll)))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

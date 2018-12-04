@@ -50,7 +50,7 @@ class TestParametric(unittest.TestCase):
 
         # not comparable to mathematica
         self.assert_correct(Geometric(0.8), 1, 0.8)
-        self.assert_correct(Geometric(0.8), 2, 0.8*0.2)
+        self.assert_correct(Geometric(0.8), 2, 0.8 * 0.2)
 
         # N[PDF[EmpiricalDistribution[{1/3, 1/2, 1/6} -> {0, 1, 2}], 0], 6] = 0.333333
         self.assert_correct(Categorical([1 / 3, 1 / 2, 1 / 6]), 0, 0.333333)
@@ -60,12 +60,11 @@ class TestParametric(unittest.TestCase):
         # N[PDF[BernoulliDistribution[0.25], 0], 6] = 0.75
         self.assert_correct(Bernoulli(0.25), 0, 0.75)
 
-        #N[PDF[LogNormalDistribution[0, 0.25], 1], 6]
+        # N[PDF[LogNormalDistribution[0, 0.25], 1], 6]
         self.assert_correct(LogNormal(mean=0, stdev=0.25), 1.0, 1.59577)
 
-        #N[PDF[NegativeBinomialDistribution[2, 0.2], 5], 6]
+        # N[PDF[NegativeBinomialDistribution[2, 0.2], 5], 6]
         self.assert_correct(LogNormal(mean=0, stdev=0.25), 1.0, 1.59577)
-
 
         for child in Parametric.__subclasses__():
             if child not in self.tested:
@@ -75,5 +74,5 @@ class TestParametric(unittest.TestCase):
         pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

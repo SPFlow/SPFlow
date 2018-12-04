@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 20, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import numpy as np
 import collections
 from collections import deque, OrderedDict
@@ -47,8 +47,10 @@ class Node(object):
         assert set(node.scope) == (set(self.scope)), "children's scope are not the same"
 
         from numpy import isclose
-        assert isclose(1.0, self._tmp_weight + node._tmp_weight), \
-            "unnormalized weights, maybe trying to add many nodes at the same time?"
+
+        assert isclose(
+            1.0, self._tmp_weight + node._tmp_weight
+        ), "unnormalized weights, maybe trying to add many nodes at the same time?"
 
         result = Sum()
         result.children.append(self)
@@ -116,6 +118,7 @@ class Context:
         assert data.shape[1] == len(self.meta_types), "Data columns and metatype size doesn't match"
 
         from spn.structure.StatisticalTypes import MetaType
+
         domain = []
 
         for col in range(data.shape[1]):
@@ -279,6 +282,7 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
 
     if debug:
         from tqdm import tqdm
+
         nodes = tqdm(list(nodes))
 
     if all_results is None:
@@ -287,7 +291,7 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
         all_results.clear()
 
     for node_type, func in eval_functions.items():
-        if '_eval_func' not in node_type.__dict__:
+        if "_eval_func" not in node_type.__dict__:
             node_type._eval_func = []
         node_type._eval_func.append(func)
         node_type._is_leaf = issubclass(node_type, Leaf)
@@ -324,7 +328,7 @@ def eval_spn_bottom_up(node, eval_functions, all_results=None, debug=False, **ar
     for node_type, func in eval_functions.items():
         del node_type._eval_func[-1]
         if len(node_type._eval_func) == 0:
-            delattr(node_type, '_eval_func')
+            delattr(node_type, "_eval_func")
 
     return all_results[node]
 

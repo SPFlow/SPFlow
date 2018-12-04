@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 22, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import unittest
 
 from spn.io.Text import str_to_spn, spn_to_str_equation
@@ -12,14 +12,12 @@ from spn.structure.leaves.parametric.Parametric import *
 
 
 class TestText(unittest.TestCase):
-
     def check_obj_and_reconstruction(self, obj):
         self.assertEqual(spn_to_str_equation(obj), spn_to_str_equation(str_to_spn(spn_to_str_equation(obj))))
 
     def test_json(self):
         # TODO: add test for spn to json
         pass
-
 
     def test_spn_to_str_and_back(self):
         self.check_obj_and_reconstruction(Categorical(p=[0.1, 0.2, 0.7], scope=0))
@@ -42,12 +40,13 @@ class TestText(unittest.TestCase):
         self.check_obj_and_reconstruction(root)
 
         root = 0.3 * (Gaussian(mean=0, stdev=1, scope=0) * Gaussian(mean=1, stdev=1, scope=1)) + 0.7 * (
-                Gaussian(mean=2, stdev=1, scope=0) * Gaussian(mean=3, stdev=1, scope=1))
+            Gaussian(mean=2, stdev=1, scope=0) * Gaussian(mean=3, stdev=1, scope=1)
+        )
 
         self.check_obj_and_reconstruction(root)
 
         # TODO: add test for histograms and pwl
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

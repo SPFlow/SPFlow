@@ -1,10 +1,10 @@
-'''
+"""
 Created on Novenber 14, 2018
 
 @author: Zhongjie Yu
 @author: Alejandro Molina
 
-'''
+"""
 import numpy as np
 
 
@@ -32,7 +32,7 @@ def conditional_mutual_information(spn, ds_context, X, Y, cond_Z, debug=False):
     # by definition
     cmi = hxz + hyz - hz - hxyz
     if debug:
-        print('I(%s,%s|%s)=%s' % (X, Y, cond_Z, cmi))
+        print("I(%s,%s|%s)=%s" % (X, Y, cond_Z, cmi))
     return cmi
 
 
@@ -53,7 +53,7 @@ def mutual_information(spn, ds_context, Xset, Yset, debug=False):
     mi = hx + hy - hxy
 
     if debug:
-        print('I(%s)=%s' % (Xset | Yset, mi))
+        print("I(%s)=%s" % (Xset | Yset, mi))
 
     return mi
 
@@ -70,6 +70,7 @@ def entropy(spn, ds_context, RVset, debug=False):
     perm_RV = get_permutation(ds_context, RVset)
     # get entropy
     from spn.algorithms.Inference import log_likelihood
+
     log_p = log_likelihood(spn, perm_RV)
     log_p[np.isinf(log_p)] = 0
     h = np.exp(log_p) * log_p
@@ -79,7 +80,7 @@ def entropy(spn, ds_context, RVset, debug=False):
     H = -(h.sum())
 
     if debug:
-        print('H(%s)=%s' % (RVset, H))
+        print("H(%s)=%s" % (RVset, H))
 
     return H
 
@@ -132,13 +133,21 @@ def print_debug_info(ds_context, X, Y, cond_Z):
     y = np.array(list(Y))
     for index in c_Z:
         v4print = v4print + str(ds_context.domains[index].size) + " * "
-    print('Number of permutation in CMI: n1(', ds_context.domains[x[0]].size, '), n2(',
-          ds_context.domains[y[0]].size, '). { ', v4print[:-2], '}.')
+    print(
+        "Number of permutation in CMI: n1(",
+        ds_context.domains[x[0]].size,
+        "), n2(",
+        ds_context.domains[y[0]].size,
+        "). { ",
+        v4print[:-2],
+        "}.",
+    )
 
 
 def check_discrete(ds_context, X, Y, cond_Z):
     # make sure the variables are all discrete RVs
     u_list = list(X | Y | cond_Z)
     for i in u_list:
-        assert ds_context.meta_types[i].name == 'DISCRETE', \
-            "The function of (Conditional) Mutual Information supports DISCRETE random variables only!"
+        assert (
+            ds_context.meta_types[i].name == "DISCRETE"
+        ), "The function of (Conditional) Mutual Information supports DISCRETE random variables only!"

@@ -1,8 +1,8 @@
-'''
+"""
 Created on July 02, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import numpy as np
 
 from spn.algorithms.MPE import get_mpe_top_down_leaf, add_node_mpe

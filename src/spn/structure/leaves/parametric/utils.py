@@ -1,8 +1,8 @@
-'''
+"""
 Created on April 29, 2018
 
 @author: Alejandro Molina
-'''
+"""
 from scipy.stats import *
 
 from spn.structure.leaves.parametric.Parametric import *
@@ -31,7 +31,6 @@ def get_scipy_obj_params(node):
     elif isinstance(node, Geometric):
         assert node.p is not None
         return geom, {"p": node.p}
-
 
     elif isinstance(node, Exponential):
         assert node.l is not None

@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 26, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import glob
 import os
 import platform
@@ -22,9 +22,6 @@ np.set_printoptions(precision=50)
 import time
 
 
-
-
-
 def sum_to_tf_graph(node, children, data_placeholder, **args):
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         return tf.add_n([node.weights[i] * ctf for i, ctf in enumerate(children)])
@@ -40,14 +37,15 @@ def prod_to_tf_graph(node, children, data_placeholder, **args):
                 prod_res = tf.multiply(prod_res, c)
         return prod_res
 
+
 _node_tf_graph = {Sum: sum_to_tf_graph, Product: prod_to_tf_graph, Histogram: histogram_to_tf_graph}
 
 
 path = os.path.dirname(__file__)
 OS_name = platform.system()
 
-def run_experiment(exp, spn, test_data, test_type, exp_lambda):
 
+def run_experiment(exp, spn, test_data, test_type, exp_lambda):
 
     outprefix = path + "/spns/%s/" % (exp)
 
@@ -101,10 +99,9 @@ def run_experiment(exp, spn, test_data, test_type, exp_lambda):
     results_file.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
-
-    for exp in natsorted(map(os.path.basename, glob.glob(path + '/spns/*'))):
+    for exp in natsorted(map(os.path.basename, glob.glob(path + "/spns/*"))):
 
         outprefix = path + "/spns/%s/" % (exp)
 
@@ -120,12 +117,10 @@ if __name__ == '__main__':
         else:
             test_data = data
 
-
         test_data_fname = outprefix + "time_test_data.txt"
 
         if not os.path.isfile(test_data_fname):
             np.savetxt(test_data_fname, test_data, delimiter=";", header=";".join(words))
-
 
         def execute_tf():
             import tensorflow as tf
@@ -147,14 +142,18 @@ if __name__ == '__main__':
                     run_metadata = tf.RunMetadata()
 
                     sess.run(tf.global_variables_initializer())
-                    #start = time.perf_counter()
-                    tf_ll = sess.run(tf_graph, feed_dict={data_placeholder: test_data}, options=run_options,
-                                      run_metadata=run_metadata)
+                    # start = time.perf_counter()
+                    tf_ll = sess.run(
+                        tf_graph,
+                        feed_dict={data_placeholder: test_data},
+                        options=run_options,
+                        run_metadata=run_metadata,
+                    )
 
                     continue
-                    #end = time.perf_counter()
+                    # end = time.perf_counter()
 
-                    #e2 = end - start
+                    # e2 = end - start
 
                     ctf = timeline.Timeline(run_metadata.step_stats).generate_chrome_trace_format()
 
@@ -167,23 +166,22 @@ if __name__ == '__main__':
 
                     traceEvents = json.loads(ctf)["traceEvents"]
                     run_time = max([o["ts"] + o["dur"] for o in traceEvents if "ts" in o and "dur" in o]) - min(
-                        [o["ts"] for o in traceEvents if "ts" in o])
+                        [o["ts"] for o in traceEvents if "ts" in o]
+                    )
                     run_time *= 1000
 
                     if i > 0:
-                        #the first run is 10 times slower for whatever reason
+                        # the first run is 10 times slower for whatever reason
                         elapsed += run_time
 
-                    #if i % 20 == 0:
-                        #print(exp, i, e2, run_time)
+                    # if i % 20 == 0:
+                    # print(exp, i, e2, run_time)
             tfend = time.perf_counter()
             tfelapsed = (tfend - tfstart) * 1000000000
 
-            return np.log(tf_ll), tfelapsed / (n_repeats-1)
-
+            return np.log(tf_ll), tfelapsed / (n_repeats - 1)
 
         run_experiment(exp, spn, test_data, "tensorflow7-time", execute_tf)
-
 
         results_file = "%stime_test_%s_ll_%s.txt" % (outprefix, "tensorflow3", OS_name)
         if not os.path.isfile(results_file):
@@ -191,9 +189,7 @@ if __name__ == '__main__':
             print("mean ll", np.mean(ll))
             np.savetxt(results_file, ll, delimiter=";")
 
-
         nfile = outprefix + "spnexe_" + OS_name
-
 
         def execute_native():
 
@@ -202,25 +198,22 @@ if __name__ == '__main__':
             proc_output = subprocess.check_output(cmd, shell=True).decode("utf-8")
             print("done")
             lines = proc_output.split("\n")
-            cpp_ll = np.array(lines[0:test_data.shape[0]], dtype=np.float128)
+            cpp_ll = np.array(lines[0 : test_data.shape[0]], dtype=np.float128)
             cpp_time = float(lines[-2].split(" ")[-2])
 
             return cpp_ll, cpp_time
-
 
         run_experiment(exp, spn, test_data, "native", execute_native)
 
         nfile = outprefix + "spnexe_" + OS_name + "_fastmath"
         run_experiment(exp, spn, test_data, "native_fast", execute_native)
 
-
         def execute_python():
             start = time.perf_counter()
             py_ll = likelihood(spn, test_data)
             end = time.perf_counter()
-            elapsed = (end - start)
+            elapsed = end - start
 
             return py_ll, elapsed * 1000000000
-
 
         run_experiment(exp, spn, test_data, "python", execute_python)

@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 27, 2018
 
 @author: Alejandro Molina
-'''
+"""
 from copy import deepcopy
 
 from spn.algorithms.Validity import is_valid
@@ -75,7 +75,7 @@ def SPN_Reshape(node, max_children=2):
         new_children = []
         new_weights = []
         for i in range(0, len(n.children), max_children):
-            children = n.children[i:i + max_children]
+            children = n.children[i : i + max_children]
 
             if len(children) > 1:
                 if isinstance(n, Product):
@@ -85,7 +85,7 @@ def SPN_Reshape(node, max_children=2):
                     newChild.children.extend(children)
                     new_children.append(newChild)
                 else:  # Sum
-                    weights = n.weights[i:i + max_children]
+                    weights = n.weights[i : i + max_children]
                     branch_weight = sum(weights)
                     new_weights.append(branch_weight)
 

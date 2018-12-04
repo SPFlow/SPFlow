@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 25, 2018
 
 @author: Alejandro Molina
-'''
+"""
 from collections import Counter
 
 from spn.structure.Base import get_nodes_by_type, Sum, Product, Leaf, get_number_of_edges, get_depth, Node
@@ -15,7 +15,7 @@ def get_structure_stats_dict(node):
     edges = get_number_of_edges(node)
     layers = get_depth(node)
 
-    return {'nodes': num_nodes, 'edges': edges, 'layers': layers}.update(node_types)
+    return {"nodes": num_nodes, "edges": edges, "layers": layers}.update(node_types)
 
 
 def get_structure_stats(node):
@@ -32,4 +32,11 @@ def get_structure_stats(node):
     # prod nodes    %s
     # leaf nodes    %s
 # edges             %s
-# layers            %s""" % (num_nodes, sum_nodes, prod_nodes, leaf_nodes, edges, layers)
+# layers            %s""" % (
+        num_nodes,
+        sum_nodes,
+        prod_nodes,
+        leaf_nodes,
+        edges,
+        layers,
+    )

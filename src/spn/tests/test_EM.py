@@ -12,8 +12,6 @@ from spn.structure.leaves.parametric.Parametric import Gaussian
 
 
 class TestEM(unittest.TestCase):
-
-
     def test_optimization(self):
         np.random.seed(17)
         d1 = np.random.normal(10, 5, size=2000).tolist()
@@ -44,5 +42,6 @@ class TestEM(unittest.TestCase):
         self.assertAlmostEqual(spn.weights[1], 0.5)
         self.assertAlmostEqual(spn.children[0].children[0].mean, 10.50531629127531)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

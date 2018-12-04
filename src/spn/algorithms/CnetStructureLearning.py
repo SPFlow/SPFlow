@@ -1,8 +1,8 @@
-'''
+"""
 Created on Ocotber 27, 2018
 
 @author: Nicola Di Mauro
-'''
+"""
 
 import logging
 from collections import deque
@@ -23,8 +23,8 @@ from spn.structure.Base import Product, Sum, assign_ids
 import multiprocessing
 import os
 
-cpus = os.cpu_count() - 2 #- int(os.getloadavg()[2])
-pool = multiprocessing.Pool(processes=cpus,)
+cpus = max(1, os.cpu_count() - 2)  # - int(os.getloadavg()[2])
+pool = multiprocessing.Pool(processes=cpus)
 
 
 def get_next_operation_cnet(min_instances_slice=100, min_features_slice=1):
@@ -40,8 +40,16 @@ def get_next_operation_cnet(min_instances_slice=100, min_features_slice=1):
 
     return next_operation_cnet
 
-def learn_structure_cnet(dataset, ds_context, conditioning, create_leaf, next_operation_cnet=get_next_operation_cnet(),
-                         initial_scope=None, data_slicer=default_slicer):
+
+def learn_structure_cnet(
+    dataset,
+    ds_context,
+    conditioning,
+    create_leaf,
+    next_operation_cnet=get_next_operation_cnet(),
+    initial_scope=None,
+    data_slicer=default_slicer,
+):
     assert dataset is not None
     assert ds_context is not None
     assert create_leaf is not None
@@ -62,7 +70,7 @@ def learn_structure_cnet(dataset, ds_context, conditioning, create_leaf, next_op
 
         operation, op_params = next_operation_cnet(local_data, scope)
 
-        logging.debug('OP: {} on slice {} (remaining tasks {})'.format(operation, local_data.shape, len(tasks)))
+        logging.debug("OP: {} on slice {} (remaining tasks {})".format(operation, local_data.shape, len(tasks)))
 
         if operation == Operation.CONDITIONING:
             from spn.algorithms.splitting.Base import split_data_by_clusters
@@ -77,8 +85,7 @@ def learn_structure_cnet(dataset, ds_context, conditioning, create_leaf, next_op
 
                 continue
 
-            
-            clusters = (local_data[:,col_conditioning]==1).astype(int)
+            clusters = (local_data[:, col_conditioning] == 1).astype(int)
             data_slices = split_data_by_clusters(local_data, clusters, scope, rows=True)
 
             node = Sum()
@@ -94,23 +101,29 @@ def learn_structure_cnet(dataset, ds_context, conditioning, create_leaf, next_op
                 node.children.append(product_node)
                 node.children[-1].scope.extend(scope)
 
-                right_data_slice = np.hstack((data_slice[:,:col_conditioning],data_slice[:,(col_conditioning+1):])).reshape(data_slice.shape[0],data_slice.shape[1]-1)
+                right_data_slice = np.hstack(
+                    (data_slice[:, :col_conditioning], data_slice[:, (col_conditioning + 1) :])
+                ).reshape(data_slice.shape[0], data_slice.shape[1] - 1)
                 product_node.children.append(None)
-                tasks.append((right_data_slice, product_node, len(product_node.children) - 1,
-                              scope_slice[:col_conditioning]+scope_slice[col_conditioning+1:]))
-                
-                left_data_slice = data_slice[:,col_conditioning].reshape(data_slice.shape[0],1)
-                product_node.children.append(None)
-                tasks.append((left_data_slice, product_node, len(product_node.children) - 1,
-                              [scope_slice[col_conditioning]]))
+                tasks.append(
+                    (
+                        right_data_slice,
+                        product_node,
+                        len(product_node.children) - 1,
+                        scope_slice[:col_conditioning] + scope_slice[col_conditioning + 1 :],
+                    )
+                )
 
+                left_data_slice = data_slice[:, col_conditioning].reshape(data_slice.shape[0], 1)
+                product_node.children.append(None)
+                tasks.append(
+                    (left_data_slice, product_node, len(product_node.children) - 1, [scope_slice[col_conditioning]])
+                )
 
             conditioning_end_t = perf_counter()
-            logging.debug(
-                '\t\tconditioning  (in {:.5f} secs)'.format(conditioning_end_t - conditioning_start_t))
+            logging.debug("\t\tconditioning  (in {:.5f} secs)".format(conditioning_end_t - conditioning_start_t))
 
             continue
-
 
         elif operation == Operation.CREATE_LEAF:
             cltree_start_t = perf_counter()
@@ -118,7 +131,7 @@ def learn_structure_cnet(dataset, ds_context, conditioning, create_leaf, next_op
             parent.children[children_pos] = node
             cltree_end_t = perf_counter()
         else:
-            raise Exception('Invalid operation: ' + operation)
+            raise Exception("Invalid operation: " + operation)
 
     node = root.children[0]
     assign_ids(node)
