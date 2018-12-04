@@ -1,6 +1,5 @@
 language: python
 python:
-  - "3.4"
   - "3.5"
   - "3.6"
 # command to install dependencies
@@ -8,4 +7,4 @@ install:
   - pip install -r requirements.txt
   - pip install tensorflow
 # command to run tests
-script: python3 -m unittest discover
+script: python3 -m unittest discover src
