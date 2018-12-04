@@ -9,6 +9,9 @@ import setuptools
 with open("../README.md", "r") as fh:
     long_description = fh.read()
 
+with open("../requirements.txt", "r") as fh:
+    requirements = fh.readlines()
+
 setuptools.setup(
     name="spflow",
     version="0.0.12",
@@ -24,6 +27,5 @@ setuptools.setup(
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
-    install_requires=['numpy', 'scipy', 'sklearn', 'statsmodels', 'networkx', 'joblib', 'matplotlib', 'pydot',
-                      'lark-parser', 'tqdm', 'ete3', 'sympy', 'PyQt5'],
+    install_requires=requirements,
 )
