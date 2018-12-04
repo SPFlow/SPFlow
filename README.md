@@ -1,3 +1,7 @@
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Build Status](https://travis-ci.com/SPFlow/SPFlow.svg?branch=master)](https://travis-ci.com/SPFlow/SPFlow.svg?branch=master)
+
+
 # SPFlow: An Easy and Extensible Library for Sum-Product Networks
 
 SPFlow, an open-source Python library providing a simple interface to inference,
