@@ -6,5 +6,7 @@ python:
 install:
   - pip install -r requirements.txt
   - pip install tensorflow
+  - pip install pytest-xdist
 # command to run tests
-script: PYTHONPATH=src python3 -m unittest discover src/spn
+script: PYTHONPATH=src python3 -m pytest --boxed --cache-clear  src/spn/tests/
+#python3 -m unittest discover src/spn

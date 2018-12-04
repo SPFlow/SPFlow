@@ -1,4 +1,3 @@
-from PyQt5 import QtGui
 import unittest
 
 from spn.structure.Base import Leaf, bfs
