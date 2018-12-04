@@ -7,4 +7,4 @@ install:
   - pip install -r requirements.txt
   - pip install tensorflow
 # command to run tests
-script: python3 -m unittest discover src/spn
+script: PYTHONPATH=src python3 -m unittest discover src/spn
