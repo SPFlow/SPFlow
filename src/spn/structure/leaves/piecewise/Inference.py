@@ -1,9 +1,9 @@
-'''
+"""
 Created on May 4, 2018
 
 @author: Alejandro Molina
 @author: Antonio Vergari
-'''
+"""
 
 import numpy as np
 

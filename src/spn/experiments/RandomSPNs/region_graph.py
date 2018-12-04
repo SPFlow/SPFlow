@@ -13,7 +13,7 @@ class RegionGraph(object):
     For each region we have a list of their child partitions, held in dictionary _child_partitions.
     """
 
-    def __init__(self, items, seed = 12345):
+    def __init__(self, items, seed=12345):
 
         self._items = frozenset(items)
 
@@ -51,7 +51,7 @@ class RegionGraph(object):
         region = frozenset(region)
 
         if not region <= self._items:
-            raise ValueError('Argument region is not a sub-set of _items.')
+            raise ValueError("Argument region is not a sub-set of _items.")
 
         self._regions.add(region)
         return region
@@ -68,12 +68,12 @@ class RegionGraph(object):
         num_elems_in_subregions = 0
         for x in regions:
             if x not in self._regions:
-                raise ValueError('Trying to merge non-existing regions.')
+                raise ValueError("Trying to merge non-existing regions.")
             num_elems_in_subregions += len(x)
             super_region.update(x)
 
         if num_elems_in_subregions != len(super_region):
-            raise ValueError('Sub-regions overlapping.')
+            raise ValueError("Sub-regions overlapping.")
 
         partition = frozenset(regions)
         super_region = self.get_region(super_region)
@@ -84,7 +84,7 @@ class RegionGraph(object):
 
         return super_region
 
-    def get_random_atomic_regions(self, n, root_region = None):
+    def get_random_atomic_regions(self, n, root_region=None):
         """Split the item set into atomic regions of length n.
 
         Generate a set of regions of length n (or the number of remaining elements), and introduce them in the
@@ -95,9 +95,9 @@ class RegionGraph(object):
             rand_item_list = list(self.rand_state.permutation(list(root_region)))
         else:
             rand_item_list = list(self.rand_state.permutation(list(self._items)))
-        return [self.get_region(rand_item_list[k:k + n]) for k in range(0, len(rand_item_list), n)]
+        return [self.get_region(rand_item_list[k : k + n]) for k in range(0, len(rand_item_list), n)]
 
-    def random_binary_trees(self, m, k, n, root_region = None):
+    def random_binary_trees(self, m, k, n, root_region=None):
         """Split items into regions of size n and grow k times a random binary merge tree. Repeat m times.
 
         repeat m times:
@@ -131,7 +131,7 @@ class RegionGraph(object):
             region = self._items
 
         if region not in self._regions:
-            raise LookupError('Trying to split non-existing region.')
+            raise LookupError("Trying to split non-existing region.")
 
         if len(region) == 1:
             return None
@@ -146,7 +146,7 @@ class RegionGraph(object):
         idx = 0
         for k in range(0, num_parts):
             inc = q + 1 if k < r else q
-            sub_region = frozenset(region_list[idx:idx+inc])
+            sub_region = frozenset(region_list[idx : idx + inc])
             partition.append(sub_region)
             self._regions.add(sub_region)
             idx = idx + inc
@@ -158,7 +158,7 @@ class RegionGraph(object):
 
         if num_recursions > 1:
             for r in partition:
-                self.random_split(num_parts, num_recursions-1, r)
+                self.random_split(num_parts, num_recursions - 1, r)
 
         return partition
 
@@ -172,7 +172,7 @@ class RegionGraph(object):
             region = self._items
 
         if region not in self._regions:
-            raise LookupError('Trying to split non-existing region.')
+            raise LookupError("Trying to split non-existing region.")
 
         if len(region) == 1:
             return None
@@ -223,16 +223,19 @@ class RegionGraph(object):
 
             # the next partition layer contains all partitions which have not been visited (seen)
             # and all its child regions have been visited
-            next_partition_layer = [p for p in self._partitions if p not in seen_partitions
-                                    and all([r in seen_regions for r in p])]
+            next_partition_layer = [
+                p for p in self._partitions if p not in seen_partitions and all([r in seen_regions for r in p])
+            ]
             self._layers.append(next_partition_layer)
             seen_partitions.update(next_partition_layer)
 
             # similar as above, but now for regions
-            next_region_layer = [r for r in self._regions if r not in seen_regions
-                                 and all([p in seen_partitions for p in self._child_partitions[r]])]
+            next_region_layer = [
+                r
+                for r in self._regions
+                if r not in seen_regions and all([p in seen_partitions for p in self._child_partitions[r]])
+            ]
             self._layers.append(next_region_layer)
             seen_regions.update(next_region_layer)
 
         return self._layers
-

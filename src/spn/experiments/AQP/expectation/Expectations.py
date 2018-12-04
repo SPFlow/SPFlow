@@ -22,7 +22,6 @@ def Expectation(marg_spn, feature_scope, evidence_scope, evidence, node_expectat
     evidence -- numpy 2d array of the evidence data
     """
 
-
     if evidence_scope is None:
         evidence_scope = set()
 
@@ -30,8 +29,7 @@ def Expectation(marg_spn, feature_scope, evidence_scope, evidence, node_expectat
 
     assert len(feature_scope.intersection(evidence_scope)) == 0
 
-
-    #marg_spn = marginalize(spn, keep=feature_scope | evidence_scope)
+    # marg_spn = marginalize(spn, keep=feature_scope | evidence_scope)
 
     def leaf_expectation(node, data, dtype=np.float64, **kwargs):
         if node.scope[0] in feature_scope:
@@ -41,7 +39,7 @@ def Expectation(marg_spn, feature_scope, evidence_scope, evidence, node_expectat
                 exps[:] = node_expectation[t_node](node)
                 return exps
             else:
-                raise Exception('Node type unknown: ' + str(t_node))
+                raise Exception("Node type unknown: " + str(t_node))
 
         return likelihood(node, evidence)
 
@@ -49,12 +47,12 @@ def Expectation(marg_spn, feature_scope, evidence_scope, evidence, node_expectat
     node_expectations.update({Sum: sum_likelihood, Product: prod_likelihood})
 
     if evidence is None:
-        #fake_evidence is not used
-        fake_evidence = np.zeros((1, len(marg_spn.scope))).reshape(1,-1)
+        # fake_evidence is not used
+        fake_evidence = np.zeros((1, len(marg_spn.scope))).reshape(1, -1)
         expectation = likelihood(marg_spn, fake_evidence, node_likelihood=node_expectations)
         return expectation
 
-    #if we have evidence, we want to compute the conditional expectation
+    # if we have evidence, we want to compute the conditional expectation
     expectation = likelihood(marg_spn, evidence, node_likelihood=node_expectations)
     expectation = expectation / likelihood(marg_spn, evidence)
 

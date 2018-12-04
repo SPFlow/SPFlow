@@ -1,14 +1,23 @@
-'''
+"""
 Created on April 15, 2018
 
 @author: Alejandro Molina
-'''
+"""
 
 import numpy as np
 from scipy.stats import gamma, lognorm, bernoulli
 
-from spn.structure.leaves.parametric.Parametric import Gaussian, LogNormal, Gamma, Poisson, Exponential, Geometric, \
-    Categorical, Bernoulli, CategoricalDictionary
+from spn.structure.leaves.parametric.Parametric import (
+    Gaussian,
+    LogNormal,
+    Gamma,
+    Poisson,
+    Exponential,
+    Geometric,
+    Categorical,
+    Bernoulli,
+    CategoricalDictionary,
+)
 
 
 def update_parametric_parameters_mle(node, data):
@@ -83,7 +92,7 @@ def update_parametric_parameters_mle(node, data):
         raise Exception("Unknown parametric " + str(type(node)))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     node = Gaussian(np.inf, np.inf)
     data = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
     update_parametric_parameters_mle(node, data)

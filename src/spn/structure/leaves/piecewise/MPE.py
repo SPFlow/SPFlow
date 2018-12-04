@@ -1,9 +1,9 @@
-'''
+"""
 Created on October 24, 2018
 
 
 @author: Claas Voelcker
-'''
+"""
 import numpy as np
 
 from spn.algorithms.MPE import get_mpe_top_down_leaf, add_node_mpe
@@ -27,7 +27,6 @@ def piecewise_bottom_up_ll(node, data=None, dtype=np.float64):
 
 def piecewise_top_down(node, input_vals, lls_per_node, data=None):
     get_mpe_top_down_leaf(node, input_vals, data=data, mode=piecewise_mode(node))
-
 
 
 def add_piecewise_mpe_support():

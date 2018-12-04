@@ -1,19 +1,19 @@
-'''
+"""
 Created on April 15, 2018
 
 @author: Alejandro Molina
-'''
+"""
 
 import numpy as np
 
 from spn.algorithms.Inference import EPSILON, add_node_likelihood
 from spn.structure.leaves.histogram.Histograms import Histogram
-#from numba import jit
+
+# from numba import jit
 import bisect
 
-#@jit("float64[:](float64[:], float64[:], float64[:,:])", nopython=True)
+# @jit("float64[:](float64[:], float64[:], float64[:,:])", nopython=True)
 def histogram_ll(breaks, densities, data):
-
 
     probs = np.zeros((data.shape[0], 1))
 
@@ -45,7 +45,6 @@ def histogram_likelihood(node, data=None, dtype=np.float64):
     probs[~marg_ids] = histogram_ll(np.array(node.breaks), np.array(node.densities), nd[~marg_ids])
 
     return probs
-
 
 
 def add_histogram_inference_support():

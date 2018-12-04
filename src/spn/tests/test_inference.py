@@ -125,7 +125,8 @@ class TestInference(unittest.TestCase):
 
         # test basic computations in a hierarchy
         spn = 0.3 * (0.2 * Leaf(scope=[0, 1]) + 0.8 * Leaf(scope=[0, 1])) + 0.7 * (
-            0.4 * Leaf(scope=[0, 1]) + 0.6 * Leaf(scope=[0, 1]))
+            0.4 * Leaf(scope=[0, 1]) + 0.6 * Leaf(scope=[0, 1])
+        )
         data = np.random.rand(10, 3)
         self.assert_correct(spn, data, data[:, 0] * data[:, 1])
 
@@ -133,7 +134,8 @@ class TestInference(unittest.TestCase):
 
         # test different node contributions
         spn = 0.3 * (0.2 * Leaf(scope=[0, 1]) + 0.8 * Leaf(scope=[0, 1])) + 0.7 * (
-            0.4 * Leaf(scope=[0, 1]) + 0.6 * Leaf(scope=[0, 1]))
+            0.4 * Leaf(scope=[0, 1]) + 0.6 * Leaf(scope=[0, 1])
+        )
 
         spn.children[0].children[0].multiplier = 2
         spn.children[0].children[1].multiplier = 3
@@ -179,21 +181,25 @@ class TestInference(unittest.TestCase):
         # test different node contributions
         spn = (Leaf(scope=[0, 1]) * Leaf(scope=[2, 3])) * (Leaf(scope=[4, 5]) * Leaf(scope=[6, 7]))
         data = np.random.rand(10, 10)
-        dprod = (data[:, 0] + data[:, 1]) * (data[:, 2] + data[:, 3]) * (data[:, 4] + data[:, 5]) * (
-            data[:, 6] + data[:, 7])
+        dprod = (
+            (data[:, 0] + data[:, 1])
+            * (data[:, 2] + data[:, 3])
+            * (data[:, 4] + data[:, 5])
+            * (data[:, 6] + data[:, 7])
+        )
         self.assert_correct(spn, data, dprod)
 
     def test_handmade_multidim(self):
         add_node_likelihood(Leaf, sum_and_multiplier_ll)
 
-        spn = 0.3 * (
-            (0.9 * (leaf(0, 1) * leaf(1, 2)) + 0.1 * (leaf(0, 3) * leaf(1, 4)))
-            * leaf(2, 5)) + 0.7 * (0.6 * leaf([0, 1, 2], 6) + 0.4 * leaf([0, 1, 2], 7))
+        spn = 0.3 * ((0.9 * (leaf(0, 1) * leaf(1, 2)) + 0.1 * (leaf(0, 3) * leaf(1, 4))) * leaf(2, 5)) + 0.7 * (
+            0.6 * leaf([0, 1, 2], 6) + 0.4 * leaf([0, 1, 2], 7)
+        )
         data = np.random.rand(10, 10)
 
-        r = 0.3 * ((0.9 * (data[:, 0] * 2 * data[:, 1]) + 0.1 * (3 * data[:, 0] * 4 * data[:, 1]))
-                   * 5 * data[:, 2]) + 0.7 * (
-            0.6 * 6 * (data[:, 0] + data[:, 1] + data[:, 2]) + 0.4 * 7 * (data[:, 0] + data[:, 1] + data[:, 2]))
+        r = 0.3 * (
+            (0.9 * (data[:, 0] * 2 * data[:, 1]) + 0.1 * (3 * data[:, 0] * 4 * data[:, 1])) * 5 * data[:, 2]
+        ) + 0.7 * (0.6 * 6 * (data[:, 0] + data[:, 1] + data[:, 2]) + 0.4 * 7 * (data[:, 0] + data[:, 1] + data[:, 2]))
 
         self.assert_correct(spn, data, r)
 
@@ -264,5 +270,5 @@ def leaf(scope, multiplier):
     return l
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

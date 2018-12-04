@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 24, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import codecs
 import os
 
@@ -91,8 +91,9 @@ def run_experiment_binary(ds_file, min_instances=200, threshold=0.3):
     add_domains(data, ds_context)
 
     print("train data shape", train.shape)
-    spn = learn_mspn(train, ds_context, min_instances_slice=min_instances, threshold=threshold, linear=True,
-                     memory=memory)
+    spn = learn_mspn(
+        train, ds_context, min_instances_slice=min_instances, threshold=threshold, linear=True, memory=memory
+    )
 
     print(fpga_count_ops(spn))
 
@@ -105,19 +106,19 @@ def load(eq, words):
 
 
 def load_spn_from_file(outprefix):
-    with open(outprefix + 'eqq.txt', 'r') as myfile:
+    with open(outprefix + "eqq.txt", "r") as myfile:
         eq = myfile.read()
-    with open(outprefix + 'all_data.txt', 'r') as myfile:
+    with open(outprefix + "all_data.txt", "r") as myfile:
         words = myfile.readline().strip()
         words = words[2:]
-        words = words.split(';')
+        words = words.split(";")
 
     spn = load(eq, words)
 
     return spn, words, eq
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     for topn in [5, 10, 20, 30, 40, 50, 60, 70, 80]:
         run_experiment(get_nips_data(), topn)

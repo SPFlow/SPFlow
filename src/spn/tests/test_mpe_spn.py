@@ -32,8 +32,9 @@ class TestMPE(unittest.TestCase):
             mpe(spn, rand_gen.rand(10, 3))
 
     def test_induced_trees(self):
-        spn = 0.5 * (Gaussian(mean=10, stdev=1, scope=0) * Categorical(p=[1.0, 0], scope=1)) + \
-              0.5 * (Gaussian(mean=50, stdev=1, scope=0) * Categorical(p=[0, 1.0], scope=1))
+        spn = 0.5 * (Gaussian(mean=10, stdev=1, scope=0) * Categorical(p=[1.0, 0], scope=1)) + 0.5 * (
+            Gaussian(mean=50, stdev=1, scope=0) * Categorical(p=[0, 1.0], scope=1)
+        )
 
         data = np.zeros((2, 2))
 
@@ -51,34 +52,21 @@ class TestMPE(unittest.TestCase):
         piecewise2 = PiecewiseLinear([-2, -1, 0], [0, 1, 0], [], scope=[0])
         self.assertTrue(is_valid(piecewise1))
         self.assertTrue(is_valid(piecewise2))
-        
-        self.assertTrue(
-            np.array_equal(
-                mpe(piecewise1, np.array([[np.nan]])), 
-                np.array([[1]])), 
-                'mpe should be 1')
-        
-        self.assertTrue(
-            np.array_equal(
-                mpe(piecewise2, np.array([[np.nan]])), 
-                np.array([[-1]])), 
-                'mpe should be -1')
+
+        self.assertTrue(np.array_equal(mpe(piecewise1, np.array([[np.nan]])), np.array([[1]])), "mpe should be 1")
+
+        self.assertTrue(np.array_equal(mpe(piecewise2, np.array([[np.nan]])), np.array([[-1]])), "mpe should be -1")
 
         with self.assertRaises(AssertionError) as error:
-                mpe(piecewise1, np.array([[1]]))
-
+            mpe(piecewise1, np.array([[1]]))
 
     def test_histogram_leaf(self):
         data = np.array([1, 1, 2, 3, 3, 3]).reshape(-1, 1)
         ds_context = Context([MetaType.DISCRETE])
         ds_context.add_domains(data)
         hist = create_histogram_leaf(data, ds_context, [0], alpha=False)
-        self.assertTrue(
-            np.array_equal(
-                mpe(hist, np.array([[np.nan]])),
-                np.array([[3]])),
-                'mpe should be 3')
+        self.assertTrue(np.array_equal(mpe(hist, np.array([[np.nan]])), np.array([[3]])), "mpe should be 3")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

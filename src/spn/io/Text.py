@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 21, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import json
 from collections import OrderedDict
 from enum import Enum
@@ -61,7 +61,7 @@ def spn_to_str_ref_graph(node, feature_names=None, node_to_str=None):
         child_str = child_str.replace("\n", "\n\t")
         return "%s SumNode(%s){\n\t%s}\n" % (str(node), sumw, child_str)
 
-    raise Exception('Node type not registered: ' + str(type(node)))
+    raise Exception("Node type not registered: " + str(type(node)))
 
 
 _node_to_str = {}
@@ -81,13 +81,15 @@ def spn_to_str_equation(node, feature_names=None, node_to_str=_node_to_str):
         return "(" + " * ".join(children_strs) + ")"
 
     if isinstance(node, Sum):
-        def fmt_chld(w, c): return str(w) + "*(" + spn_to_str_equation(c, feature_names, node_to_str) + ")"
+
+        def fmt_chld(w, c):
+            return str(w) + "*(" + spn_to_str_equation(c, feature_names, node_to_str) + ")"
 
         children_strs = map(lambda i: fmt_chld(node.weights[i], node.children[i]), range(len(node.children)))
 
         return "(" + " + ".join(children_strs) + ")"
 
-    raise Exception('Node type not registered: ' + str(type(node)))
+    raise Exception("Node type not registered: " + str(type(node)))
 
 
 _str_to_spn = OrderedDict()
@@ -104,7 +106,8 @@ def str_to_spn(text, features=None, str_to_spn_lambdas=_str_to_spn):
 
     ext_grammar = "\n".join([s for _, s, _ in str_to_spn_lambdas.values()])
 
-    grammar = r"""
+    grammar = (
+        r"""
 %import common.DECIMAL -> DECIMAL
 %import common.SIGNED_NUMBER -> NUMBERS
 %import common.WS
@@ -120,14 +123,18 @@ list: "[" [NUMBERS ("," NUMBERS)*] "]"
 
 ?node: prodnode
     | sumnode
-""" + ext_name + r"""
+"""
+        + ext_name
+        + r"""
 
 prodnode: "(" [node ("*" node)*] ")"
 sumnode: "(" [NUMBERS "*" node ("+" NUMBERS "*" node)*] ")"
 
-""" + ext_grammar
+"""
+        + ext_grammar
+    )
 
-    parser = Lark(grammar, start='node')
+    parser = Lark(grammar, start="node")
     # print(grammar)
     tree = parser.parse(text)
 
@@ -154,7 +161,7 @@ sumnode: "(" [NUMBERS "*" node ("+" NUMBERS "*" node)*] ")"
         if tnode in str_to_spn_lambdas:
             return str_to_spn_lambdas[tnode][0](tree, features, str_to_spn_lambdas[tnode][2], tree_to_spn)
 
-        raise Exception('Node type not registered: ' + tnode)
+        raise Exception("Node type not registered: " + tnode)
 
     spn = tree_to_spn(tree, features)
 

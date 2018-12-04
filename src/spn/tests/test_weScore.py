@@ -1,9 +1,9 @@
-'''
+"""
 Created on Novenber 22, 2018
 
 @author: Zhongjie Yu
 
-'''
+"""
 
 import unittest
 
@@ -16,7 +16,6 @@ from spn.structure.StatisticalTypes import MetaType
 
 
 class TestRelevanceScore(unittest.TestCase):
-
     def test_we_score(self):
         # test if we_score is correct
         """
@@ -47,18 +46,29 @@ class TestRelevanceScore(unittest.TestCase):
         ds_context = Context(meta_types=[MetaType.DISCRETE] * 3)
         ds_context.add_domains(train_data)
         ds_context.parametric_type = [Categorical] * 3
-        spn = (0.64 * ((Categorical(p=[0.25, 0.75, 0.0], scope=0) *
-                        (0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2))) +
-                         0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))))) +
-               0.36 * ((Categorical(p=[0.0, 0.0, 1.0], scope=0) *
-                        (0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2))) +
-                         0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))))))
+        spn = 0.64 * (
+            (
+                Categorical(p=[0.25, 0.75, 0.0], scope=0)
+                * (
+                    0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2)))
+                    + 0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))
+                )
+            )
+        ) + 0.36 * (
+            (
+                Categorical(p=[0.0, 0.0, 1.0], scope=0)
+                * (
+                    0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2)))
+                    + 0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))
+                )
+            )
+        )
         # test
         n = 40000
         x_instance = np.array([1, 1, 0], dtype=float).reshape(1, -1)
         y_index = 0
         we = weight_of_evidence(spn, 0, x_instance, n, ds_context.domains[y_index].shape[0])
-        we_true = np.array([[np.nan,  0,  0]])
+        we_true = np.array([[np.nan, 0, 0]])
         we = we[~np.isnan(we)]
         we_true = we_true[~np.isnan(we_true)]
         self.assertTrue((we == we_true).all())
@@ -87,12 +97,23 @@ class TestRelevanceScore(unittest.TestCase):
         ds_context = Context(meta_types=[MetaType.DISCRETE] * 3)
         ds_context.add_domains(train_data)
         ds_context.parametric_type = [Categorical] * 3
-        spn = (0.64 * ((Categorical(p=[0.25, 0.75, 0.0], scope=0) *
-                        (0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2))) +
-                         0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))))) +
-               0.36 * ((Categorical(p=[0.0, 0.0, 1.0], scope=0) *
-                        (0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2))) +
-                         0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))))))
+        spn = 0.64 * (
+            (
+                Categorical(p=[0.25, 0.75, 0.0], scope=0)
+                * (
+                    0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2)))
+                    + 0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))
+                )
+            )
+        ) + 0.36 * (
+            (
+                Categorical(p=[0.0, 0.0, 1.0], scope=0)
+                * (
+                    0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2)))
+                    + 0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))
+                )
+            )
+        )
         # tests
         x_instance = np.array([1, 1, 0], dtype=float).reshape(1, -1)
         self.assertAlmostEqual(conditional_probability(spn, 2, x_instance)[0][0], 0.9)
@@ -101,5 +122,5 @@ class TestRelevanceScore(unittest.TestCase):
         self.assertAlmostEqual(conditional_probability(spn, 0, x_instance)[0][0], 0.36)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

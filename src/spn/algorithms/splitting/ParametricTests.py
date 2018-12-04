@@ -1,8 +1,8 @@
-'''
+"""
 Created on June 21, 2018
 
 @author: Alejandro Molina
-'''
+"""
 
 import numpy as np
 import numba
@@ -19,11 +19,7 @@ def count_nonzero(array):
 
 
 @numba.njit
-def g_test(feature_id_1,
-           feature_id_2,
-           local_data,
-           feature_vals,
-           g_factor):
+def g_test(feature_id_1, feature_id_2, local_data, feature_vals, g_factor):
     """
     Applying a G-test on the two features (represented by ids) on the data
     """
@@ -51,8 +47,7 @@ def g_test(feature_id_1,
     # support vectors for counting the occurrences
     feature_tot_1 = np.zeros(feature_size_1, dtype=np.uint32)
     feature_tot_2 = np.zeros(feature_size_2, dtype=np.uint32)
-    co_occ_matrix = np.zeros((feature_size_1, feature_size_2),
-                             dtype=np.uint32)
+    co_occ_matrix = np.zeros((feature_size_1, feature_size_2), dtype=np.uint32)
 
     #
     # counting for the current instances
@@ -93,10 +88,7 @@ def g_test(feature_id_1,
 
 
 @numba.jit
-def gtest_greedy_feature_split(local_data,
-                               feature_vals,
-                               g_factor,
-                               rand_gen):
+def gtest_greedy_feature_split(local_data, feature_vals, g_factor, rand_gen):
     """
     Implementing the G-test based feature splitting as in
     Gens et al. 'Learning the Structure of Sum-Product Networks' 2013
@@ -133,11 +125,13 @@ def gtest_greedy_feature_split(local_data,
             # feature_id_2 = data_slice.feature_ids[other_feature_id]
             #
             # apply a G-test
-            if not g_test(current_feature_id,  # feature_id_1,
-                          other_feature_id,  # feature_id_2,
-                          local_data,
-                          feature_vals,
-                          g_factor):
+            if not g_test(
+                current_feature_id,  # feature_id_1,
+                other_feature_id,  # feature_id_2,
+                local_data,
+                feature_vals,
+                g_factor,
+            ):
 
                 #
                 # updating 'sets'

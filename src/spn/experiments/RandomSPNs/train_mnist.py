@@ -5,17 +5,17 @@ import spn.experiments.RandomSPNs.RAT_SPN as RAT_SPN
 import spn.experiments.RandomSPNs.region_graph as region_graph
 
 import spn.algorithms.Inference as inference
-import spn.io.Graphics as graphics 
+import spn.io.Graphics as graphics
 
 
 def one_hot(vector):
-    result = np.zeros((vector.size, vector.max()+1))
+    result = np.zeros((vector.size, vector.max() + 1))
     result[np.arange(vector.size), vector] = 1
     return result
 
 
 def load_mnist():
-    (train_im, train_lab), (test_im, test_lab) = mnist('data/mnist')
+    (train_im, train_lab), (test_im, test_lab) = mnist("data/mnist")
     train_im_mean = np.mean(train_im, 0)
     train_im_std = np.std(train_im, 0)
     std_eps = 1e-7
@@ -49,10 +49,12 @@ def train_spn(spn, train_im, train_lab=None, num_epochs=50, batch_size=100, sess
     for i in range(num_epochs):
         num_correct = 0
         for j in range(batches_per_epoch):
-            im_batch = train_im[j * batch_size: (j+1) * batch_size, :]
-            label_batch = train_lab[j * batch_size: (j+1) * batch_size]
+            im_batch = train_im[j * batch_size : (j + 1) * batch_size, :]
+            label_batch = train_lab[j * batch_size : (j + 1) * batch_size]
 
-            _, cur_output, cur_loss = sess.run([train_op, spn_output, loss], feed_dict={input_ph: im_batch, label_ph: label_batch})
+            _, cur_output, cur_loss = sess.run(
+                [train_op, spn_output, loss], feed_dict={input_ph: im_batch, label_ph: label_batch}
+            )
 
             max_idx = np.argmax(cur_output, axis=1)
 
@@ -62,12 +64,14 @@ def train_spn(spn, train_im, train_lab=None, num_epochs=50, batch_size=100, sess
         acc = num_correct / (batch_size * batches_per_epoch)
         print(i, acc, cur_loss)
 
+
 def softmax(x, axis=0):
     """Compute softmax values for each sets of scores in x."""
     e_x = np.exp(x - np.max(x, axis=axis, keepdims=True))
     return e_x / e_x.sum(axis=axis, keepdims=True)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     rg = region_graph.RegionGraph(range(28 * 28))
     # rg = region_graph.RegionGraph(range(3 * 3))
     for _ in range(0, 2):
@@ -77,8 +81,8 @@ if __name__ == '__main__':
     args.normalized_sums = True
     args.num_sums = 2
     args.num_gauss = 2
-    spn = RAT_SPN.RatSpn(10, region_graph=rg, name='obj-spn', args=args)
-    print('num_params', spn.num_params())
+    spn = RAT_SPN.RatSpn(10, region_graph=rg, name="obj-spn", args=args)
+    print("num_params", spn.num_params())
 
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
@@ -105,5 +109,3 @@ if __name__ == '__main__':
     print(tf_output, simple_output)
     relative_error = np.abs(simple_output / tf_output - 1)
     print(np.average(relative_error))
-
-

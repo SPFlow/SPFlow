@@ -20,7 +20,7 @@ class TestRatSpn(unittest.TestCase):
 
         args = RAT_SPN.SpnArgs()
         args.normalized_sums = True
-        spn = RAT_SPN.RatSpn(10, region_graph=rg, name='obj-spn', args=args)
+        spn = RAT_SPN.RatSpn(10, region_graph=rg, name="obj-spn", args=args)
 
         sess = tf.Session()
         sess.run(tf.global_variables_initializer())
@@ -41,5 +41,5 @@ class TestRatSpn(unittest.TestCase):
         self.assertTrue(np.all(rel_error < 1e-2))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

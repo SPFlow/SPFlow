@@ -1,8 +1,8 @@
-'''
+"""
 Created on August 14, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy.random.mtrand import RandomState
@@ -28,12 +28,12 @@ def create_images_horizontal_lines(rows, cols):
 
 
 def plot_img(image, rows, cols):
-    plt.imshow(image.reshape(rows, cols), cmap='Greys', interpolation='nearest')
+    plt.imshow(image.reshape(rows, cols), cmap="Greys", interpolation="nearest")
 
     plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     add_conditional_inference_support()
     add_conditional_sampling_support()
 
@@ -50,10 +50,6 @@ if __name__ == '__main__':
     # format: R|L
     conditional_training_data = np.concatenate((right.reshape(px, -1), left.reshape(px, -1)), axis=1)
 
-
-
-
-
     # In left, OUT right
     file_cache_path = "/tmp/cspn.bin"
     if not os.path.isfile(file_cache_path):
@@ -65,23 +61,22 @@ if __name__ == '__main__':
         ds_context = Context(parametric_types=[Conditional_Bernoulli] * right.shape[1]).add_domains(right)
         scope = list(range(right.shape[1]))
         cspn = learn_conditional(conditional_training_data, ds_context, scope, min_instances_slice=60000000)
-        with open(file_cache_path, 'wb') as f:
+        with open(file_cache_path, "wb") as f:
             pickle.dump((cspn, spn), f, pickle.HIGHEST_PROTOCOL)
 
-    with open(file_cache_path, 'rb') as f:
+    with open(file_cache_path, "rb") as f:
         cspn, spn = pickle.load(f)
-
 
     def conditional_input_to_LR(input_images_in_rl):
         # format L|R
         images_to_lr = np.concatenate(
-            (input_images_in_rl[:, input_images_in_rl.shape[1] // 2:].reshape(input_images_in_rl.shape[0], px, -1),
-             input_images_in_rl[:, :input_images_in_rl.shape[1] // 2].reshape(input_images_in_rl.shape[0], px, -1)),
-            axis=2).reshape(
-            input_images_in_rl.shape[0], -1)
+            (
+                input_images_in_rl[:, input_images_in_rl.shape[1] // 2 :].reshape(input_images_in_rl.shape[0], px, -1),
+                input_images_in_rl[:, : input_images_in_rl.shape[1] // 2].reshape(input_images_in_rl.shape[0], px, -1),
+            ),
+            axis=2,
+        ).reshape(input_images_in_rl.shape[0], -1)
         return images_to_lr
-
-
 
     spn_input = np.zeros_like(right).reshape(px, -1) / 0
 
@@ -98,4 +93,3 @@ if __name__ == '__main__':
     sample_plot = conditional_input_to_LR(sample_images)
     for r in range(sample_plot.shape[0]):
         plot_img(sample_plot[r], px, py)
-

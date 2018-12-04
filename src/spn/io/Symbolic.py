@@ -1,8 +1,8 @@
-'''
+"""
 Created on November 23, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import operator
 from functools import reduce
 import sympy as sp
@@ -38,7 +38,7 @@ def add_node_to_sympy(node_type, lambda_func):
 
 
 def spn_to_sympy(spn, node_to_sympy=_node_to_sympy, log=False):
-    input_vars = sp.symbols('x:%s' % len(spn.scope))
+    input_vars = sp.symbols("x:%s" % len(spn.scope))
 
     sympy_ecc = eval_spn_bottom_up(spn, node_to_sympy, input_vars=input_vars, log=log)
 

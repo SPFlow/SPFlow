@@ -1,8 +1,8 @@
-'''
+"""
 Created on April 15, 2018
 
 @author: Alejandro Molina
-'''
+"""
 
 
 from spn.algorithms.Inference import add_node_likelihood, leaf_marginalized_likelihood
@@ -74,8 +74,6 @@ def uniform_likelihood(node, data=None, dtype=np.float64):
 
     probs[~marg_ids] = node.density
     return probs
-
-
 
 
 def add_parametric_inference_support():

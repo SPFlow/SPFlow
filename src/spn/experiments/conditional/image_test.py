@@ -1,11 +1,11 @@
 from spn.data.datasets import get_binary_data, get_nips_data, get_mnist
-from os.path import dirname;
+from os.path import dirname
 
 path = dirname(__file__)
 import numpy as np
-import sys;
+import sys
 
-sys.path.append('/home/shao/simple_spn/simple_spn/src')
+sys.path.append("/home/shao/simple_spn/simple_spn/src")
 
 from spn.algorithms.Inference import log_likelihood, conditional_log_likelihood
 from spn.algorithms.LearningWrappers import learn_conditional, learn_structure, learn_parametric
@@ -24,14 +24,14 @@ from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
 
 import matplotlib
 
-matplotlib.use('Agg')
+matplotlib.use("Agg")
 import scipy
 import pickle
 
 spn_file = path + "/spn_file"
 cspn_file = path + "/cspn_file"
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     images_tr, labels_tr, images_te, labels_te = get_mnist()
     print("mnist loaded")
     images = np.reshape(images_tr, (-1, 28, 28))
@@ -77,7 +77,6 @@ if __name__ == '__main__':
     #
     # 0/0
 
-
     # cspn
     dataIn = upperimage
     dataOut = bottomimage
@@ -97,9 +96,9 @@ if __name__ == '__main__':
     # spn.scope.extend(branch.scope)
 
     print(cspn)
-    plot_spn(cspn, 'basicspn.png')
+    plot_spn(cspn, "basicspn.png")
 
-    fileObject = open(cspn_file, 'wb')
+    fileObject = open(cspn_file, "wb")
     pickle.dump(cspn, fileObject)
     fileObject.close()
 

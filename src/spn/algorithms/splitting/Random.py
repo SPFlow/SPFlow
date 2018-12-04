@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 20, 2018
 
 @author: Alejandro Molina
-'''
+"""
 
 import numpy as np
 
@@ -37,9 +37,10 @@ def get_split_rows_random_partition(rand_gen, ohe=False):
 
     return split_rows_random_partitions
 
+
 def get_split_cols_random_partition(rand_gen, ohe=False):
     def split_cols_random_partitions(local_data, ds_context, scope):
-        #same as above, but transpose the data
+        # same as above, but transpose the data
         data = preproc(local_data.T, ds_context, None, ohe)
         clusters = above(make_planes(1, data.shape[1], rand_gen), data)[:, 0]
 
@@ -62,14 +63,13 @@ def get_split_cols_binary_random_partition(threshold, rand_gen, beta_a=4, beta_b
         # with a certain percentage it may fail, such that row partitioning may happen
         clusters = None
         p = rand_gen.rand()
-        #print('P', p)
+        # print('P', p)
         if p > threshold:
             #
             # draw percentage of split from  a Beta
             alloc_perc = rand_gen.beta(a=beta_a, b=beta_b)
-            clusters = rand_gen.choice(2, size=local_data.shape[1], p=[alloc_perc,
-                                                                       1 - alloc_perc])
-            #print(clusters, clusters.sum(), clusters.shape, alloc_perc)
+            clusters = rand_gen.choice(2, size=local_data.shape[1], p=[alloc_perc, 1 - alloc_perc])
+            # print(clusters, clusters.sum(), clusters.shape, alloc_perc)
         else:
             clusters = np.zeros(local_data.shape[1])
 
@@ -89,8 +89,7 @@ def get_split_rows_binary_random_partition(rand_gen, beta_a=2, beta_b=5):
 
         # draw percentage of split from  a Beta
         alloc_perc = rand_gen.beta(a=beta_a, b=beta_b)
-        clusters = rand_gen.choice(2, size=local_data.shape[0], p=[alloc_perc,
-                                                                   1 - alloc_perc])
+        clusters = rand_gen.choice(2, size=local_data.shape[0], p=[alloc_perc, 1 - alloc_perc])
 
         return split_data_by_clusters(local_data, clusters, scope, rows=True)
 

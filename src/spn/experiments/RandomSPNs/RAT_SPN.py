@@ -9,6 +9,7 @@ import tensorflow.contrib.distributions as dists
 
 import time
 
+
 def add_to_map(given_map, key, item):
     existing_items = given_map.get(key, [])
     given_map[key] = existing_items + [item]
@@ -20,15 +21,11 @@ def variable_with_weight_decay(name, shape, stddev, wd, mean=0.0, values=None):
     else:
         initializer = tf.constant_initializer(values)
     """Get a TF variable with optional l2-loss attached."""
-    var = tf.get_variable(
-        name,
-        shape,
-        initializer=initializer,
-        dtype=tf.float32)
+    var = tf.get_variable(name, shape, initializer=initializer, dtype=tf.float32)
     if wd is not None:
-        weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
-        tf.add_to_collection('losses', weight_decay)
-        tf.add_to_collection('weight_losses', weight_decay)
+        weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name="weight_loss")
+        tf.add_to_collection("losses", weight_decay)
+        tf.add_to_collection("weight_losses", weight_decay)
 
     return var
 
@@ -73,26 +70,32 @@ class GaussVector(NodeVector):
         self.scope = sorted(list(region))
         self.size = args.num_gauss
 
-        self.means = variable_with_weight_decay(name + '_means',
-                                                shape=[1, self.local_size, args.num_gauss],
-                                                stddev=1e-1,
-                                                mean=mean,
-                                                wd=args.gauss_param_l2,
-                                                values=given_means)
+        self.means = variable_with_weight_decay(
+            name + "_means",
+            shape=[1, self.local_size, args.num_gauss],
+            stddev=1e-1,
+            mean=mean,
+            wd=args.gauss_param_l2,
+            values=given_means,
+        )
 
         if args.gauss_min_var < args.gauss_max_var:
             if args.gauss_isotropic:
-                sigma_params = variable_with_weight_decay(name + '_sigma_params',
-                                                          shape=[1, 1, args.num_gauss],
-                                                          stddev=1e-1,
-                                                          wd=args.gauss_param_l2,
-                                                          values=given_stddevs)
+                sigma_params = variable_with_weight_decay(
+                    name + "_sigma_params",
+                    shape=[1, 1, args.num_gauss],
+                    stddev=1e-1,
+                    wd=args.gauss_param_l2,
+                    values=given_stddevs,
+                )
             else:
-                sigma_params = variable_with_weight_decay(name + '_sigma_params',
-                                                          shape=[1, self.local_size, args.num_gauss],
-                                                          stddev=1e-1,
-                                                          wd=args.gauss_param_l2,
-                                                          values=given_stddevs)
+                sigma_params = variable_with_weight_decay(
+                    name + "_sigma_params",
+                    shape=[1, self.local_size, args.num_gauss],
+                    stddev=1e-1,
+                    wd=args.gauss_param_l2,
+                    values=given_stddevs,
+                )
 
             self.sigma = args.gauss_min_var + (args.gauss_max_var - args.gauss_min_var) * tf.sigmoid(sigma_params)
         else:
@@ -153,7 +156,7 @@ class ProductVector(NodeVector):
     def forward(self, inputs):
         dists1 = inputs[0]
         dists2 = inputs[1]
-        with tf.variable_scope('products') as scope:
+        with tf.variable_scope("products") as scope:
             num_dist1 = int(dists1.shape[1])
             num_dist2 = int(dists2.shape[1])
 
@@ -195,11 +198,9 @@ class SumVector(NodeVector):
         self.dropout_op = dropout_op
         self.args = args
         num_inputs = sum([v.size for v in prod_vectors])
-        self.params = variable_with_weight_decay(name + '_weights',
-                                                 shape=[1, num_inputs, num_sums],
-                                                 stddev=5e-1,
-                                                 wd=None,
-                                                 values=given_weights)
+        self.params = variable_with_weight_decay(
+            name + "_weights", shape=[1, num_inputs, num_sums], stddev=5e-1, wd=None, values=given_weights
+        )
         if args.linear_sum_weights:
             if args.normalized_sums:
                 self.weights = tf.nn.softmax(self.params, 1)
@@ -211,8 +212,8 @@ class SumVector(NodeVector):
                 if args.sum_weight_l2:
                     exp_weights = tf.exp(self.weights)
                     weight_decay = tf.multiply(tf.nn.l2_loss(exp_weights), args.sum_weight_l2)
-                    tf.add_to_collection('losses', weight_decay)
-                    tf.add_to_collection('weight_losses', weight_decay)
+                    tf.add_to_collection("losses", weight_decay)
+                    tf.add_to_collection("weight_losses", weight_decay)
             else:
                 self.weights = self.params
 
@@ -264,7 +265,6 @@ class SumVector(NodeVector):
 
 
 class RatSpn(object):
-
     def __init__(self, num_classes, region_graph=None, vector_list=None, args=SpnArgs(), name=None, mean=0.0):
         if name is None:
             name = str(id(self))
@@ -291,7 +291,7 @@ class RatSpn(object):
             elif vector_list is not None:
                 self._make_spn_from_vector_list(vector_list)
             else:
-                raise ValueError('Either vector_list or region_graph must not be None')
+                raise ValueError("Either vector_list or region_graph must not be None")
 
         self.variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
         self.num_dims = len(self.output_vector.scope)
@@ -302,7 +302,7 @@ class RatSpn(object):
         node_to_vec = {}
 
         for i, leaf_vector in enumerate(vector_list[0]):
-            name = 'gauss_{}'.format(i)
+            name = "gauss_{}".format(i)
             scope = leaf_vector[0].scope
             num_gauss = len(leaf_vector)
             means = np.zeros((len(scope), num_gauss))
@@ -324,12 +324,12 @@ class RatSpn(object):
                 if type(vector[0]) == base.Product:
                     child_vec1 = node_to_vec[id(vector[0].children[0])]
                     child_vec2 = node_to_vec[id(vector[0].children[1])]
-                    name = 'prod_{}_{}'.format(layer_num, vector_num)
+                    name = "prod_{}_{}".format(layer_num, vector_num)
                     new_vector = ProductVector(child_vec1, child_vec2, name)
                 elif type(vector[0]) == base.Sum:
                     child_vecs = list(set([node_to_vec[id(child_node)] for child_node in vector[0].children]))
                     assert len(child_vecs) <= 2
-                    name = 'sum_{}_{}'.format(layer_num, vector_num)
+                    name = "sum_{}_{}".format(layer_num, vector_num)
                     num_inputs = sum([v.size for v in child_vecs])
                     weights = np.zeros((num_inputs, len(vector)))
                     for node_num, node in enumerate(vector):
@@ -354,7 +354,7 @@ class RatSpn(object):
         # make leaf layer (always Gauss currently)
         self.vector_list.append([])
         for i, leaf_region in enumerate(rg_layers[0]):
-            name = 'gauss_{}'.format(i)
+            name = "gauss_{}".format(i)
             gauss_vector = GaussVector(leaf_region, self.args, name, mean=self.default_mean)
             self.vector_list[-1].append(gauss_vector)
             self._region_distributions[leaf_region] = gauss_vector
@@ -369,7 +369,7 @@ class RatSpn(object):
                     input_regions = list(partition)
                     input1 = self._region_distributions[input_regions[0]]
                     input2 = self._region_distributions[input_regions[1]]
-                    vector_name = 'prod_{}_{}'.format(layer_idx, i)
+                    vector_name = "prod_{}_{}".format(layer_idx, i)
                     prod_vector = ProductVector(input1, input2, vector_name)
                     self.vector_list[-1].append(prod_vector)
 
@@ -381,7 +381,7 @@ class RatSpn(object):
                 regions = rg_layers[layer_idx]
                 for i, region in enumerate(regions):
                     product_vectors = self._region_products[region]
-                    vector_name = 'sum_{}_{}'.format(layer_idx, i)
+                    vector_name = "sum_{}_{}".format(layer_idx, i)
                     sum_vector = SumVector(product_vectors, cur_num_sums, self.args, name=vector_name)
                     self.vector_list[-1].append(sum_vector)
 
@@ -430,8 +430,7 @@ class RatSpn(object):
         start_time = time.time()
         vec_to_params = {}
         for leaf_vector in self.vector_list[0]:
-            vec_to_params[leaf_vector] = (leaf_vector.means[0],
-                                          leaf_vector.sigma[0])
+            vec_to_params[leaf_vector] = (leaf_vector.means[0], leaf_vector.sigma[0])
         for layer_idx in range(1, len(self.vector_list)):
             if layer_idx % 2 == 0:
                 for sum_vec in self.vector_list[layer_idx]:
@@ -447,15 +446,13 @@ class RatSpn(object):
         for leaf_vector in self.vector_list[0]:
             vec_to_nodes[leaf_vector] = []
             means, sigmas = vec_to_params[leaf_vector]
-            stdevs = np.sqrt(sigmas) + np.zeros_like(means) # Use broadcasting to expand stdev is necessary
+            stdevs = np.sqrt(sigmas) + np.zeros_like(means)  # Use broadcasting to expand stdev is necessary
             for i in range(leaf_vector.size):
                 prod = base.Product()
                 prod.id = node_id = node_id + 1
                 prod.scope.extend(leaf_vector.scope)
                 for j, r in enumerate(leaf_vector.scope):
-                    gaussian = para.Gaussian(mean=means[j, i],
-                                             stdev=stdevs[j, i],
-                                             scope=[r])
+                    gaussian = para.Gaussian(mean=means[j, i], stdev=stdevs[j, i], scope=[r])
                     gaussian.id = node_id = node_id + 1
                     prod.children.append(gaussian)
 
@@ -521,8 +518,8 @@ class RatSpn(object):
             root.weights.extend([1.0 / float(len(output_nodes))] * len(output_nodes))
             return root
 
-        print('conversion finished in {:3f}s'.format(time.time() - start_time))
-        print('time spent evaluating by Tensorflow: {:3f}s'.format(time_tf))
+        print("conversion finished in {:3f}s".format(time.time() - start_time))
+        print("time spent evaluating by Tensorflow: {:3f}s".format(time_tf))
         return output_nodes
 
 
@@ -535,8 +532,8 @@ def compute_performance(sess, data_x, data_labels, batch_size, spn):
 
     for test_k in range(0, num_batches):
         if test_k + 1 < num_batches:
-            batch_data = data_x[test_idx:test_idx + batch_size, :]
-            batch_labels = data_labels[test_idx:test_idx + batch_size]
+            batch_data = data_x[test_idx : test_idx + batch_size, :]
+            batch_labels = data_labels[test_idx : test_idx + batch_size]
 
         feed_dict = {spn.inputs: batch_data, spn.labels: batch_labels}
         if spn.dropout_input_placeholder is not None:
@@ -557,4 +554,3 @@ def compute_performance(sess, data_x, data_labels, batch_size, spn):
     accuracy = num_correct / (num_batches * batch_size)
 
     return accuracy
-

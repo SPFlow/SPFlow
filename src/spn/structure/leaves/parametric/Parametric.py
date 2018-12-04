@@ -1,7 +1,7 @@
-'''
+"""
 Created on March 20, 2018
 @author: Alejandro Molina
-'''
+"""
 
 import numpy as np
 
@@ -42,7 +42,7 @@ class Gaussian(Parametric):
 
     @property
     def params(self):
-        return {'mean': self.mean, 'stdev': self.stdev}
+        return {"mean": self.mean, "stdev": self.stdev}
 
     @property
     def precision(self):
@@ -64,7 +64,7 @@ class Uniform(Parametric):
 
     @property
     def params(self):
-        return {'density': self.density, 'start': self.start, 'end': self.end}
+        return {"density": self.density, "start": self.start, "end": self.end}
 
 
 class Gamma(Parametric):
@@ -75,6 +75,7 @@ class Gamma(Parametric):
     where \alpha(shape) is known and fixed
 
     """
+
     type = Type.POSITIVE
 
     def __init__(self, alpha=None, beta=None, scope=None):
@@ -86,7 +87,7 @@ class Gamma(Parametric):
 
     @property
     def params(self):
-        return {'alpha': self.alpha, 'beta': self.beta}
+        return {"alpha": self.alpha, "beta": self.beta}
 
 
 class LogNormal(Parametric):
@@ -96,6 +97,7 @@ class LogNormal(Parametric):
 
     where the precition \tau(shape) is known and fixed.
     """
+
     type = Type.POSITIVE
 
     def __init__(self, mean=None, stdev=None, scope=None):
@@ -107,7 +109,7 @@ class LogNormal(Parametric):
 
     @property
     def params(self):
-        return {'mean': self.mean, 'stdev': self.stdev}
+        return {"mean": self.mean, "stdev": self.stdev}
 
     @property
     def variance(self):
@@ -123,6 +125,7 @@ class Poisson(Parametric):
     Implements a univariate Poisson distribution with parameter
     \lambda (mean)
     """
+
     type = Type.COUNT
 
     def __init__(self, mean=None, scope=None):
@@ -132,7 +135,7 @@ class Poisson(Parametric):
 
     @property
     def params(self):
-        return {'mean': self.mean}
+        return {"mean": self.mean}
 
 
 class Bernoulli(Parametric):
@@ -140,6 +143,7 @@ class Bernoulli(Parametric):
     Implements a univariate Bernoulli distribution with parameter
     p (probability of a success)
     """
+
     type = Type.BINARY
 
     def __init__(self, p=None, scope=None):
@@ -149,7 +153,7 @@ class Bernoulli(Parametric):
 
     @property
     def params(self):
-        return {'p': self.p}
+        return {"p": self.p}
 
 
 class NegativeBinomial(Parametric):
@@ -159,6 +163,7 @@ class NegativeBinomial(Parametric):
 
     FIXME: mismatch from wiki to scipy
     """
+
     type = Type.COUNT
 
     def __init__(self, n=None, p=None, scope=None):
@@ -169,7 +174,7 @@ class NegativeBinomial(Parametric):
 
     @property
     def params(self):
-        return {'p': self.p, 'n': self.n}
+        return {"p": self.p, "n": self.n}
 
 
 class Hypergeometric(Parametric):
@@ -179,6 +184,7 @@ class Hypergeometric(Parametric):
 
     FIXME: mismatch in the wiki in the conjugate prior table
     """
+
     type = Type.COUNT
 
     def __init__(self, K=None, N=None, n=None, scope=None):
@@ -190,7 +196,7 @@ class Hypergeometric(Parametric):
 
     @property
     def params(self):
-        return {'N': self.N, 'K': self.K, 'n': self.n}
+        return {"N": self.N, "K": self.K, "n": self.n}
 
 
 class Geometric(Parametric):
@@ -199,6 +205,7 @@ class Geometric(Parametric):
     p,  the probability of success on each trial
 
     """
+
     type = Type.COUNT
 
     def __init__(self, p=None, scope=None):
@@ -208,7 +215,7 @@ class Geometric(Parametric):
 
     @property
     def params(self):
-        return {'p': self.p}
+        return {"p": self.p}
 
 
 class Categorical(Parametric):
@@ -222,6 +229,7 @@ class Categorical(Parametric):
 
     p(\{\pi_{k}\}) = Dir(\boldsymbol\alpha)
     """
+
     type = Type.CATEGORICAL
 
     def __init__(self, p=None, scope=None):
@@ -229,7 +237,7 @@ class Categorical(Parametric):
 
         # parameters
         if p is not None:
-            assert np.isclose(np.sum(p), 1), 'Probabilities p shall sum to 1'
+            assert np.isclose(np.sum(p), 1), "Probabilities p shall sum to 1"
         self.p = p
 
     @property
@@ -252,18 +260,18 @@ class CategoricalDictionary(Parametric):
 
     p(\{\pi_{k}\}) = Dir(\boldsymbol\alpha)
     """
+
     type = Type.CATEGORICAL
 
     def __init__(self, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
         if p is not None:
-            assert np.isclose(sum(p.values()), 1), 'Probabilities shall sum to 1'
+            assert np.isclose(sum(p.values()), 1), "Probabilities shall sum to 1"
         self.p = p
 
     @property
     def params(self):
         return {"p": self.p}
-
 
 
 class Exponential(Parametric):
@@ -272,6 +280,7 @@ class Exponential(Parametric):
     \lambda,  the rate of the distribution
 
     """
+
     type = Type.POSITIVE
 
     def __init__(self, l=None, scope=None):
@@ -281,7 +290,7 @@ class Exponential(Parametric):
 
     @property
     def params(self):
-        return {'l': self.l}
+        return {"l": self.l}
 
 
 def create_parametric_leaf(data, ds_context, scope):
@@ -292,9 +301,12 @@ def create_parametric_leaf(data, ds_context, scope):
 
     idx = scope[0]
 
-    assert ds_context.parametric_types is not None, "for parametric leaves, the ds_context.parametric_types can't be None"
-    assert len(ds_context.parametric_types) > idx, \
-        "for parametric leaves, the ds_context.parametric_types must have a parametric type at pos %s " % (idx)
+    assert (
+        ds_context.parametric_types is not None
+    ), "for parametric leaves, the ds_context.parametric_types can't be None"
+    assert (
+        len(ds_context.parametric_types) > idx
+    ), "for parametric leaves, the ds_context.parametric_types must have a parametric type at pos %s " % (idx)
 
     parametric_type = ds_context.parametric_types[idx]
 

@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 22, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import subprocess
 
 from spn.algorithms.Inference import log_likelihood
@@ -18,28 +18,28 @@ def to_cpp(node, c_data_type="double"):
     def logsumexp_sum_to_cpp(n, c_data_type="double"):
         operations = []
         for i, c in enumerate(n.children):
-            operations.append("result_node_{child_id}+{log_weight:.20}".format(log_weight=math.log(n.weights[i]),
-                                                                           child_id=c.id))
+            operations.append(
+                "result_node_{child_id}+{log_weight:.20}".format(log_weight=math.log(n.weights[i]), child_id=c.id)
+            )
 
         return "\n{vartype} result_node_{node_id} = logsumexp({num_children},{operation}); //sum node".format(
-            vartype=c_data_type,
-            node_id=n.id,
-            num_children=len(n.children),
-            operation=",".join(operations))
+            vartype=c_data_type, node_id=n.id, num_children=len(n.children), operation=",".join(operations)
+        )
 
     def log_prod_to_cpp(n, c_data_type="double"):
         operation = "+".join(["result_node_" + str(c.id) for c in n.children])
 
-        return "\n{vartype} result_node_{node_id} = {operation}; //prod node".format(vartype=c_data_type,
-                                                                                     node_id=n.id,
-                                                                                     operation=operation)
+        return "\n{vartype} result_node_{node_id} = {operation}; //prod node".format(
+            vartype=c_data_type, node_id=n.id, operation=operation
+        )
 
     def gaussian_to_cpp(n, c_data_type="double"):
         operation = " - log({stdev}) - (pow(x_{scope} - {mean}, 2.0) / (2.0 * pow({stdev}, 2.0))) - K".format(
-            mean=n.mean, stdev=n.stdev, scope=n.scope[0])
-        return "{vartype} result_node_{node_id} = {operation}; //leaf node gaussian".format(vartype=c_data_type,
-                                                                                            node_id=n.id,
-                                                                                            operation=operation)
+            mean=n.mean, stdev=n.stdev, scope=n.scope[0]
+        )
+        return "{vartype} result_node_{node_id} = {operation}; //leaf node gaussian".format(
+            vartype=c_data_type, node_id=n.id, operation=operation
+        )
 
     eval_functions[Sum] = logsumexp_sum_to_cpp
     eval_functions[Product] = log_prod_to_cpp
@@ -79,7 +79,9 @@ def to_cpp(node, c_data_type="double"):
         va_end(args);
         return ({vartype})(max_val + log(result));
     }}
-    """.format(vartype=c_data_type)
+    """.format(
+        vartype=c_data_type
+    )
 
     spn_execution_params = ",".join(["data_in[r+%s]" % s for s in range(len(node.scope))])
 
@@ -97,16 +99,22 @@ def to_cpp(node, c_data_type="double"):
         }}
     }}
         
-    """.format(vartype=c_data_type, parameters=params, spn_code=spn_code, spn_execution_params=spn_execution_params,
-               scope_len=len(node.scope))
+    """.format(
+        vartype=c_data_type,
+        parameters=params,
+        spn_code=spn_code,
+        spn_execution_params=spn_execution_params,
+        scope_len=len(node.scope),
+    )
     return header + function_code
 
 
 def get_cpp_function(node):
     c_code = to_cpp(node, c_data_type="double")
     import cppyy
+
     cppyy.cppdef(c_code)
-    #print(c_code)
+    # print(c_code)
     from cppyy.gbl import spn_many
 
     import numpy as np
@@ -128,6 +136,7 @@ def register_spn_to_cpp(leaf_type, func):
 
 def histogram_to_cpp(node, leaf_name, vartype):
     import numpy as np
+
     inps = np.arange(int(max(node.breaks))).reshape((-1, 1))
 
     leave_function = """
@@ -135,13 +144,16 @@ def histogram_to_cpp(node, leaf_name, vartype):
     inline {vartype} {leaf_name}(uint8_t v_{scope}){{
         return {leaf_name}_data[v_{scope}];
     }}
-    """.format(vartype=vartype, leaf_name=leaf_name, max_buckets=len(inps), scope=node.scope[0])
+    """.format(
+        vartype=vartype, leaf_name=leaf_name, max_buckets=len(inps), scope=node.scope[0]
+    )
 
     leave_init = ""
 
     for bucket, value in enumerate(np.exp(log_likelihood(node, inps, log_space=False))):
-        leave_init += "\t{leaf_name}_data[{bucket}] = {value};\n".format(leaf_name=leaf_name, bucket=bucket,
-                                                                         value=value)
+        leave_init += "\t{leaf_name}_data[{bucket}] = {value};\n".format(
+            leaf_name=leaf_name, bucket=bucket, value=value
+        )
     leave_init += "\n"
 
     return leave_function, leave_init
@@ -153,15 +165,17 @@ def histogram_to_cpp(node, leaf_name, vartype):
 def to_cpp2(node):
     vartype = "double"
 
-    spn_eqq = spn_to_str_equation(node,
-                                  node_to_str={Histogram: lambda node, x, y: "leaf_node_%s(data[i][%s])" % (
-                                      node.name, node.scope[0])})
+    spn_eqq = spn_to_str_equation(
+        node, node_to_str={Histogram: lambda node, x, y: "leaf_node_%s(data[i][%s])" % (node.name, node.scope[0])}
+    )
 
     spn_function = """
     {vartype} likelihood(int i, {vartype} data[][{scope_size}]){{
         return {spn_eqq};
     }}
-    """.format(vartype=vartype, scope_size=len(node.scope), spn_eqq=spn_eqq)
+    """.format(
+        vartype=vartype, scope_size=len(node.scope), spn_eqq=spn_eqq
+    )
 
     init_code = ""
     leaves_functions = ""
@@ -241,8 +255,13 @@ int main()
 
     return 0;
 }}
-    """.format(spn_function=spn_function, vartype=vartype, leaves_functions=leaves_functions,
-               scope_size=len(node.scope), init_code=init_code)
+    """.format(
+        spn_function=spn_function,
+        vartype=vartype,
+        leaves_functions=leaves_functions,
+        scope_size=len(node.scope),
+        init_code=init_code,
+    )
 
 
 def generate_native_executable(spn, cppfile="/tmp/spn.cpp", nativefile="/tmp/spnexe"):
@@ -252,10 +271,14 @@ def generate_native_executable(spn, cppfile="/tmp/spn.cpp", nativefile="/tmp/spn
     text_file.write(code)
     text_file.close()
 
-    nativefile_fast = nativefile + '_fastmath'
+    nativefile_fast = nativefile + "_fastmath"
 
-    return subprocess.check_output(['g++', '-O3', '--std=c++11', '-o', nativefile, cppfile],
-                                   stderr=subprocess.STDOUT).decode("utf-8"), \
-           subprocess.check_output(['g++', '-O3', '-ffast-math', '--std=c++11', '-o', nativefile_fast, cppfile],
-                                   stderr=subprocess.STDOUT).decode("utf-8"), \
-           code
+    return (
+        subprocess.check_output(
+            ["g++", "-O3", "--std=c++11", "-o", nativefile, cppfile], stderr=subprocess.STDOUT
+        ).decode("utf-8"),
+        subprocess.check_output(
+            ["g++", "-O3", "-ffast-math", "--std=c++11", "-o", nativefile_fast, cppfile], stderr=subprocess.STDOUT
+        ).decode("utf-8"),
+        code,
+    )

@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 20, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import logging
 from collections import deque
 from enum import Enum
@@ -28,7 +28,7 @@ if parallel:
     cpus = max(1, os.cpu_count() - 2)  # - int(os.getloadavg()[2])
 else:
     cpus = 1
-pool = multiprocessing.Pool(processes=cpus, )
+pool = multiprocessing.Pool(processes=cpus)
 
 
 class Operation(Enum):
@@ -41,9 +41,16 @@ class Operation(Enum):
 
 
 def get_next_operation(min_instances_slice=100, min_features_slice=1, multivariate_leaf=False):
-    def next_operation(data, scope, create_leaf, no_clusters=False, no_independencies=False, is_first=False,
-                       cluster_first=True,
-                       cluster_univariate=False):
+    def next_operation(
+        data,
+        scope,
+        create_leaf,
+        no_clusters=False,
+        no_independencies=False,
+        is_first=False,
+        cluster_first=True,
+        cluster_univariate=False,
+    ):
 
         minimalFeatures = len(scope) == min_features_slice
         minimalInstances = data.shape[0] <= min_instances_slice
@@ -57,7 +64,7 @@ def get_next_operation(min_instances_slice=100, min_features_slice=1, multivaria
                 else:
                     return Operation.CREATE_LEAF, None
 
-        uninformative_features_idx = np.var(data[:, 0:len(scope)], 0) == 0
+        uninformative_features_idx = np.var(data[:, 0 : len(scope)], 0) == 0
         ncols_zero_variance = np.sum(uninformative_features_idx)
         if ncols_zero_variance > 0:
             if ncols_zero_variance == data.shape[1]:
@@ -66,8 +73,10 @@ def get_next_operation(min_instances_slice=100, min_features_slice=1, multivaria
                 else:
                     return Operation.NAIVE_FACTORIZATION, None
             else:
-                return Operation.REMOVE_UNINFORMATIVE_FEATURES, np.arange(len(scope))[
-                    uninformative_features_idx].tolist()
+                return (
+                    Operation.REMOVE_UNINFORMATIVE_FEATURES,
+                    np.arange(len(scope))[uninformative_features_idx].tolist(),
+                )
 
         if minimalInstances or (no_clusters and no_independencies):
             if multivariate_leaf:
@@ -102,8 +111,16 @@ def default_slicer(data, cols, num_cond_cols=None):
         return np.concatenate((data[:, cols], data[:, -num_cond_cols:]), axis=1)
 
 
-def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, next_operation=get_next_operation(),
-                    initial_scope=None, data_slicer=default_slicer):
+def learn_structure(
+    dataset,
+    ds_context,
+    split_rows,
+    split_cols,
+    create_leaf,
+    next_operation=get_next_operation(),
+    initial_scope=None,
+    data_slicer=default_slicer,
+):
     assert dataset is not None
     assert ds_context is not None
     assert split_rows is not None
@@ -121,7 +138,7 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
         num_conditional_cols = dataset.shape[1] - len(initial_scope)
     else:
         num_conditional_cols = None
-        assert len(initial_scope) > dataset.shape[1], 'check initial scope: %s' % initial_scope
+        assert len(initial_scope) > dataset.shape[1], "check initial scope: %s" % initial_scope
 
     tasks = deque()
     tasks.append((dataset, root, 0, initial_scope, False, False))
@@ -130,11 +147,16 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
 
         local_data, parent, children_pos, scope, no_clusters, no_independencies = tasks.popleft()
 
-        operation, op_params = next_operation(local_data, scope, create_leaf, no_clusters=no_clusters,
-                                              no_independencies=no_independencies,
-                                              is_first=(parent is root))
+        operation, op_params = next_operation(
+            local_data,
+            scope,
+            create_leaf,
+            no_clusters=no_clusters,
+            no_independencies=no_independencies,
+            is_first=(parent is root),
+        )
 
-        logging.debug('OP: {} on slice {} (remaining tasks {})'.format(operation, local_data.shape, len(tasks)))
+        logging.debug("OP: {} on slice {} (remaining tasks {})".format(operation, local_data.shape, len(tasks)))
 
         if operation == Operation.REMOVE_UNINFORMATIVE_FEATURES:
             node = Product()
@@ -145,8 +167,16 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             for col in op_params:
                 rest_scope.remove(col)
                 node.children.append(None)
-                tasks.append((data_slicer(local_data, [col], num_conditional_cols), node, len(node.children) - 1,
-                              [scope[col]], True, True))
+                tasks.append(
+                    (
+                        data_slicer(local_data, [col], num_conditional_cols),
+                        node,
+                        len(node.children) - 1,
+                        [scope[col]],
+                        True,
+                        True,
+                    )
+                )
 
             next_final = False
 
@@ -161,8 +191,16 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             rest_cols = list(rest_scope)
             rest_scope = [scope[col] for col in rest_scope]
 
-            tasks.append((data_slicer(local_data, rest_cols, num_conditional_cols), node, c_pos, rest_scope, next_final,
-                          next_final))
+            tasks.append(
+                (
+                    data_slicer(local_data, rest_cols, num_conditional_cols),
+                    node,
+                    c_pos,
+                    rest_scope,
+                    next_final,
+                    next_final,
+                )
+            )
 
             continue
 
@@ -172,7 +210,8 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             data_slices = split_rows(local_data, ds_context, scope)
             split_end_t = perf_counter()
             logging.debug(
-                '\t\tfound {} row clusters (in {:.5f} secs)'.format(len(data_slices), split_end_t - split_start_t))
+                "\t\tfound {} row clusters (in {:.5f} secs)".format(len(data_slices), split_end_t - split_start_t)
+            )
 
             if len(data_slices) == 1:
                 tasks.append((local_data, parent, children_pos, scope, True, False))
@@ -196,8 +235,9 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             split_start_t = perf_counter()
             data_slices = split_cols(local_data, ds_context, scope)
             split_end_t = perf_counter()
-            logging.debug('\t\tfound {} col clusters (in {:.5f} secs)'.format(len(data_slices),
-                                                                              split_end_t - split_start_t))
+            logging.debug(
+                "\t\tfound {} col clusters (in {:.5f} secs)".format(len(data_slices), split_end_t - split_start_t)
+            )
 
             if len(data_slices) == 1:
                 tasks.append((local_data, parent, children_pos, scope, False, True))
@@ -243,7 +283,8 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             split_end_t = perf_counter()
 
             logging.debug(
-                '\t\tnaive factorization {} columns (in {:.5f} secs)'.format(len(scope), split_end_t - split_start_t))
+                "\t\tnaive factorization {} columns (in {:.5f} secs)".format(len(scope), split_end_t - split_start_t)
+            )
 
             continue
 
@@ -253,12 +294,14 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
             parent.children[children_pos] = node
             leaf_end_t = perf_counter()
 
-            logging.debug('\t\t created leaf {} for scope={} (in {:.5f} secs)'.format(node.__class__.__name__,
-                                                                                      scope,
-                                                                                      leaf_end_t - leaf_start_t))
+            logging.debug(
+                "\t\t created leaf {} for scope={} (in {:.5f} secs)".format(
+                    node.__class__.__name__, scope, leaf_end_t - leaf_start_t
+                )
+            )
 
         else:
-            raise Exception('Invalid operation: ' + operation)
+            raise Exception("Invalid operation: " + operation)
 
     node = root.children[0]
     assign_ids(node)

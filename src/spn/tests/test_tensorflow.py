@@ -13,10 +13,7 @@ import numpy as np
 from spn.structure.leaves.parametric.Parametric import Gaussian
 
 
-
 class TestTensorflow(unittest.TestCase):
-
-
     def test_eval_gaussian(self):
         np.random.seed(17)
         data = np.random.normal(10, 0.01, size=2000).tolist() + np.random.normal(30, 10, size=2000).tolist()
@@ -77,7 +74,7 @@ class TestTensorflow(unittest.TestCase):
                 session.run(output, feed_dict={data_placeholder: data})
                 # print("loss:", step, session.run(-loss, feed_dict={data_placeholder: data}))
 
-            tf_ll_opt = session.run(tf_graph, feed_dict={data_placeholder: data}).reshape(-1,1)
+            tf_ll_opt = session.run(tf_graph, feed_dict={data_placeholder: data}).reshape(-1, 1)
 
             tf_graph_to_spn(variable_dict)
 
@@ -90,5 +87,5 @@ class TestTensorflow(unittest.TestCase):
         self.assertLess(py_ll.sum(), tf_ll_opt.sum())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

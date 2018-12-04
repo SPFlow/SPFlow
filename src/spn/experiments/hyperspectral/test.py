@@ -9,14 +9,14 @@ from spn.structure.leaves.parametric.Inference import add_parametric_inference_s
 from spn.structure.leaves.parametric.Parametric import Poisson, Categorical
 from spn.structure.leaves.parametric.Text import add_parametric_text_support
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     add_parametric_inference_support()
     add_parametric_text_support()
 
     np.random.seed(42)
     data = np.random.randint(low=0, high=3, size=600).reshape(-1, 3)
 
-    #print(data)
+    # print(data)
 
     ds_context = Context(meta_types=[MetaType.DISCRETE, MetaType.DISCRETE, MetaType.DISCRETE])
     ds_context.add_domains(data)
@@ -33,9 +33,6 @@ if __name__ == '__main__':
 
     print(spn)
 
-
     print(spn_to_str_equation(spn))
 
     print(log_likelihood(spn, data))
-
-

@@ -1,11 +1,12 @@
-'''
+"""
 Created on October 22, 2018
 
 @author: Nicola Di Mauro
 @author: Antonio Vergari
-'''
+"""
 from spn.algorithms.Sampling import add_node_sampling
 from spn.structure.leaves.cltree.CLTree import CLTree
+
 
 def sample_cltree_node(node, n_samples, data, rand_gen):
 
@@ -18,7 +19,7 @@ def sample_cltree_node(node, n_samples, data, rand_gen):
     to_visit = {}
     visited.add(0)
     for i in range(1, node.n_features):
-        to_visit.add(i);
+        to_visit.add(i)
     i = 1
     while to_visit:
         for ntv in to_visit:
@@ -30,7 +31,7 @@ def sample_cltree_node(node, n_samples, data, rand_gen):
                 break
 
     for s in range(n_samples):
-            
+
         # sampling the root of the tree
         sample[0] = np.random.binomial(np.exp(log_factors[0][1][0]))
 
@@ -43,6 +44,6 @@ def sample_cltree_node(node, n_samples, data, rand_gen):
         X[s] = sample
     return X
 
+
 def add_cltree_sampling_support():
     add_node_sampling(CLTree, sample_cltree_node)
-

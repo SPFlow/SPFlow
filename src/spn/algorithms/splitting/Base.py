@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 20, 2018
 
 @author: Alejandro Molina
-'''
+"""
 
 import numpy as np
 from networkx import from_numpy_matrix, connected_components
@@ -25,7 +25,8 @@ def preproc(data, ds_context, pre_proc, ohe):
         if f is not None:
             data = np.copy(data)
             data[:, ds_context.distribution_family == "poisson"] = f(
-                data[:, ds_context.distribution_family == "poisson"])
+                data[:, ds_context.distribution_family == "poisson"]
+            )
 
     if ohe:
         data = getOHE(data, ds_context)
@@ -96,7 +97,7 @@ def split_conditional_data_by_clusters(data, clusters, scope, rows=True):
     nscope = np.asarray(scope)
 
     dataOut = data[:, local_scope]
-    dataIn = data[:, len(scope):]
+    dataIn = data[:, len(scope) :]
 
     # print(np.shape(data), np.shape(dataOut), np.shape(dataIn))
     for uc in unique_clusters:

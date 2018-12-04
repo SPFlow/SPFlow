@@ -9,6 +9,7 @@ from spn.structure.leaves.parametric.Sampling import sample_parametric_node
 from spn.structure.leaves.parametric.utils import get_scipy_obj_params
 import os
 
+
 class TestParametricSampling(unittest.TestCase):
     def setUp(self):
         add_parametric_inference_support()
@@ -20,13 +21,15 @@ class TestParametricSampling(unittest.TestCase):
 
         if plot:
             import matplotlib.pyplot as plt
+
             fig, ax = plt.subplots(1, 1)
 
             x = np.linspace(np.min(samples), np.max(samples), 1000)
-            ax.plot(x, likelihood(node, x.reshape(-1, 1)), 'r-', lw=2, alpha=0.6,
-                    label=node.__class__.__name__ + ' pdf')
-            ax.hist(samples, normed=True, histtype='stepfilled', alpha=0.7, bins=1000)
-            ax.legend(loc='best', frameon=False)
+            ax.plot(
+                x, likelihood(node, x.reshape(-1, 1)), "r-", lw=2, alpha=0.6, label=node.__class__.__name__ + " pdf"
+            )
+            ax.hist(samples, normed=True, histtype="stepfilled", alpha=0.7, bins=1000)
+            ax.legend(loc="best", frameon=False)
             plt.show()
 
         scipy_obj, params = get_scipy_obj_params(node)
@@ -88,5 +91,5 @@ class TestParametricSampling(unittest.TestCase):
         self.assert_correct_node_sampling_continuous(Exponential(l=2), exp_samples, False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

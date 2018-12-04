@@ -13,7 +13,6 @@ from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
 
 
 class TestPWL(unittest.TestCase):
-
     def test_PWL_no_variance(self):
         data = np.array([1.0, 1.0]).reshape(-1, 1)
         ds_context = Context([MetaType.REAL])
@@ -22,7 +21,7 @@ class TestPWL(unittest.TestCase):
             create_piecewise_leaf(data, ds_context, scope=[0], hist_source="kde")
 
     def test_PWL(self):
-        #data = np.array([1.0, 1.0, 2.0, 3.0]*100).reshape(-1, 1)
+        # data = np.array([1.0, 1.0, 2.0, 3.0]*100).reshape(-1, 1)
 
         data = np.r_[np.random.normal(10, 5, (300, 1)), np.random.normal(20, 10, (700, 1))]
 
@@ -34,5 +33,5 @@ class TestPWL(unittest.TestCase):
         # TODO: add more test to the PWL
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

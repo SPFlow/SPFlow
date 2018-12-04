@@ -1,10 +1,11 @@
-'''
+"""
 Created on June 21, 2018
 
 @author: Moritz
-'''
+"""
 
 from spn.structure.Base import Leaf
+
 
 class StaticNumeric(Leaf):
     def __init__(self, val, scope=None):

@@ -1,8 +1,8 @@
-'''
+"""
 Created on April 15, 2018
 
 @author: Alejandro Molina
-'''
+"""
 from enum import Enum
 
 
@@ -30,6 +30,8 @@ class Type(Enum):
         return self._meta_type
 
 
-META_TYPE_MAP = {MetaType.REAL: [Type.REAL, Type.INTERVAL, Type.POSITIVE],
-                 MetaType.BINARY: [Type.BINARY],
-                 MetaType.DISCRETE: [Type.CATEGORICAL, Type.ORDINAL, Type.COUNT]}
+META_TYPE_MAP = {
+    MetaType.REAL: [Type.REAL, Type.INTERVAL, Type.POSITIVE],
+    MetaType.BINARY: [Type.BINARY],
+    MetaType.DISCRETE: [Type.CATEGORICAL, Type.ORDINAL, Type.COUNT],
+}

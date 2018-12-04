@@ -1,9 +1,9 @@
-'''
+"""
 Created on April 15, 2018
 
 @author: Alejandro Molina
 @author: Claas Völcker
-'''
+"""
 
 import numpy as np
 
@@ -22,7 +22,7 @@ def histogram_moment(node, order=1):
         if node.meta_type == MetaType.DISCRETE:
             sum_x = a ** order
         else:
-            sum_x = (b ** (order+1) - a ** (order+1)) / (order + 1)
+            sum_x = (b ** (order + 1) - a ** (order + 1)) / (order + 1)
 
         exp += d * sum_x
     return exp

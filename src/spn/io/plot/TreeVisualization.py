@@ -24,7 +24,7 @@ def spn_to_ete(spn, context=None, unroll=False, symbols=_symbols):
         for i, child in enumerate(spn.children):
             if unroll:
                 if child in queue:
-                    return '-> ' + spn.id
+                    return "-> " + spn.id
                 else:
                     queue.append(child)
             c = spn_to_ete(child, context=context, unroll=unroll)
@@ -41,7 +41,7 @@ def spn_to_ete(spn, context=None, unroll=False, symbols=_symbols):
         except:
             if feature_names is None:
                 feature_names = []
-            tree.name += '(%s)' % ','.join(feature_names)
+            tree.name += "(%s)" % ",".join(feature_names)
 
     return tree
 
@@ -67,15 +67,15 @@ def plot_spn(spn, context=None, unroll=False, file_name=None, show_ids=False):
         node.set_style(style)
 
         if node.is_leaf():
-            name_face = AttrFace("name", fsize=8, ftype='Times')
+            name_face = AttrFace("name", fsize=8, ftype="Times")
         else:
-            name_face = TextFace(node.name, fsize=18, ftype='Times')
+            name_face = TextFace(node.name, fsize=18, ftype="Times")
             if node.node_type == Sum:
                 for child in node.children:
                     label = TextFace(round(child.support, 3), fsize=6)
                     child.add_face(label, column=1, position="branch-bottom")
         if show_ids:
-            node.add_face(AttrFace('id', fsize=6), column=1, position="branch-top")
+            node.add_face(AttrFace("id", fsize=6), column=1, position="branch-top")
         faces.add_face_to_node(name_face, node, column=1, position="branch-right")
 
     lin_style.layout_fn = my_layout

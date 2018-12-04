@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 21, 2018
 
 @author: Alejandro Molina
-'''
+"""
 from spn.io.Text import add_str_to_spn, add_node_to_str
 
 from spn.structure.leaves.histogram.Histograms import Histogram
@@ -18,9 +18,10 @@ def piecewise_to_str(node, feature_names=None, node_to_str=None):
     else:
         fname = feature_names[node.scope[0]]
 
-    x_range = np.array2string(np.array(node.x_range), precision=decimals, separator=',')
-    y_range = np.array2string(np.array(node.y_range), precision=decimals, separator=',',
-                              formatter={'float_kind': lambda x: "%.10f" % x})
+    x_range = np.array2string(np.array(node.x_range), precision=decimals, separator=",")
+    y_range = np.array2string(
+        np.array(node.y_range), precision=decimals, separator=",", formatter={"float_kind": lambda x: "%.10f" % x}
+    )
 
     return "PiecewiseLinear(%s|%s;%s)" % (fname, x_range, y_range)
 
@@ -38,6 +39,10 @@ def piecewise_tree_to_spn(tree, features, obj_type, tree_to_spn):
 def add_piecewise_text_support():
     add_node_to_str(PiecewiseLinear, piecewise_to_str)
 
-    add_str_to_spn("pwl", piecewise_tree_to_spn,
-                   """
-                   pwl: "PiecewiseLinear(" FNAME "|" list ";" list ")"  """, None)
+    add_str_to_spn(
+        "pwl",
+        piecewise_tree_to_spn,
+        """
+                   pwl: "PiecewiseLinear(" FNAME "|" list ";" list ")"  """,
+        None,
+    )

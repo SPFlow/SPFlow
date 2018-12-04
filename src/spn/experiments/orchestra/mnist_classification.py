@@ -14,22 +14,24 @@ from sklearn.datasets import fetch_mldata
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import check_random_state
 
+
 def create_leaf(data, ds_context, scope):
-    #return create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=0.01)
+    # return create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=0.01)
     return create_histogram_leaf(data, ds_context, scope, alpha=0.005)
+
 
 add_piecewise_inference_support()
 add_histogram_inference_support()
 add_parametric_inference_support()
 memory = Memory(cachedir="cache", verbose=0, compress=9)
 
-mnist = fetch_mldata('MNIST original')
-X = mnist.data.astype('float64')
+mnist = fetch_mldata("MNIST original")
+X = mnist.data.astype("float64")
 y = mnist.target
 random_state = check_random_state(0)
 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=10000, test_size=300, random_state=random_state)
 
-#normalize
+# normalize
 # scaler = StandardScaler()
 # Xtrain = scaler.fit_transform(X_train)
 # Xtest = scaler.transform(X_test)
@@ -49,7 +51,9 @@ ds_context.add_domains(data)
 
 spn = Sum()
 for label, count in zip(*np.unique(data[:, 784], return_counts=True)):
-    branch = learn_mspn(data[data[:, 784] == label, :], ds_context, min_instances_slice=2000, leaves=create_leaf, threshold=0.1)
+    branch = learn_mspn(
+        data[data[:, 784] == label, :], ds_context, min_instances_slice=2000, leaves=create_leaf, threshold=0.1
+    )
     spn.children.append(branch)
     spn.weights.append(count / data.shape[0])
 spn.scope.extend(branch.scope)

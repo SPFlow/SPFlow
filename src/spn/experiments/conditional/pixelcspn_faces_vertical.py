@@ -36,17 +36,16 @@ def one_hot(y):
     return np.array([values == v for v in y], dtype=int)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
-
-    output_path = os.path.dirname(os.path.abspath(__file__)) + '/imgs_pixelcspn_faces/'
+    output_path = os.path.dirname(os.path.abspath(__file__)) + "/imgs_pixelcspn_faces/"
 
     logging.basicConfig(level=logging.DEBUG)
     logging.captureWarnings(True)
 
     faces = fetch_olivetti_faces()
 
-    images = faces['images']
+    images = faces["images"]
     print("faces loaded", images.shape)
 
     # Split Images Vertically in 16 blocks
@@ -66,7 +65,7 @@ if __name__ == '__main__':
     mpe_query_blocks = None
     sample_query_blocks = None
     for i, ((tr_block, block_idx), conditional_blocks) in enumerate(datasets):
-        print('learning', i)
+        print("learning", i)
         conditional_features_count = (tr_block.shape[1] // len(block_idx)) * conditional_blocks
         if i == 0:
             # spn
@@ -74,20 +73,23 @@ if __name__ == '__main__':
             ds_context.add_domains(tr_block)
             ds_context.parametric_types = [Gaussian] * tr_block.shape[1]
 
-            cspn = learn_parametric(tr_block, ds_context, min_instances_slice=20, ohe=False,
-                                    memory=memory)
+            cspn = learn_parametric(tr_block, ds_context, min_instances_slice=20, ohe=False, memory=memory)
         else:
             cspn = learn_conditional(
                 tr_block,
-                Context(meta_types=[MetaType.REAL] * tr_block.shape[1],
-                        parametric_types=[Conditional_Gaussian] * tr_block.shape[1]).add_domains(tr_block),
+                Context(
+                    meta_types=[MetaType.REAL] * tr_block.shape[1],
+                    parametric_types=[Conditional_Gaussian] * tr_block.shape[1],
+                ).add_domains(tr_block),
                 scope=list(range(conditional_features_count)),
-                min_instances_slice=30, memory=memory)
+                min_instances_slice=30,
+                memory=memory,
+            )
         cspns.append(cspn)
-        print('done')
+        print("done")
 
-    #for i, ((tr_block, block_idx), conditional_blocks) in enumerate(datasets):
-    #    cspn = cspns[i]
+        # for i, ((tr_block, block_idx), conditional_blocks) in enumerate(datasets):
+        #    cspn = cspns[i]
         if i == 0:
             # first time, we only care about the structure to put nans
             mpe_query_blocks = np.zeros_like(tr_block[0:num_mpes, :].reshape(num_mpes, -1))
@@ -95,23 +97,24 @@ if __name__ == '__main__':
         else:
             # i+1 time: we set the previous mpe values as evidence
             mpe_query_blocks = np.zeros_like(np.array(tr_block[0:num_mpes, :].reshape(num_mpes, -1)))
-            mpe_query_blocks[:, -(mpe_result.shape[1]):] = mpe_result
+            mpe_query_blocks[:, -(mpe_result.shape[1]) :] = mpe_result
 
             sample_query_blocks = np.zeros_like(np.array(tr_block[0:num_samples, :].reshape(num_samples, -1)))
-            sample_query_blocks[:, -(sample_result.shape[1]):] = sample_result
-
+            sample_query_blocks[:, -(sample_result.shape[1]) :] = sample_result
 
         cspn_mpe_query = set_sub_block_nans(mpe_query_blocks, inp=block_idx, nans=block_idx[0:conditional_blocks])
         mpe_result = mpe(cspn, cspn_mpe_query)
 
-        mpe_img_blocks = stitch_imgs(mpe_result.shape[0], img_size=img_size, num_blocks=num_blocks,
-                                     blocks={tuple(block_idx): mpe_result})
+        mpe_img_blocks = stitch_imgs(
+            mpe_result.shape[0], img_size=img_size, num_blocks=num_blocks, blocks={tuple(block_idx): mpe_result}
+        )
 
         cspn_sample_query = set_sub_block_nans(sample_query_blocks, inp=block_idx, nans=block_idx[0:conditional_blocks])
         sample_result = sample_instances(cspn, cspn_sample_query, RandomState(123))
 
-        sample_img_blocks = stitch_imgs(sample_result.shape[0], img_size=img_size, num_blocks=num_blocks,
-                                        blocks={tuple(block_idx): sample_result})
+        sample_img_blocks = stitch_imgs(
+            sample_result.shape[0], img_size=img_size, num_blocks=num_blocks, blocks={tuple(block_idx): sample_result}
+        )
 
         for j in range(num_mpes):
             mpe_fname = output_path + "mpe_%s_%s.png" % ("-".join(map(str, block_idx)), j)

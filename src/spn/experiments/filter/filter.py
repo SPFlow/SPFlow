@@ -26,7 +26,7 @@ def plot_density(spn, data):
 
     nbinsx = int(x_max - x_min) / 1
     nbinsy = int(y_max - y_min) / 1
-    xi, yi = np.mgrid[x_min:x_max:nbinsx * 1j, y_min:y_max:nbinsy * 1j]
+    xi, yi = np.mgrid[x_min : x_max : nbinsx * 1j, y_min : y_max : nbinsy * 1j]
 
     spn_input = np.vstack([xi.flatten(), yi.flatten()]).T
 
@@ -39,7 +39,7 @@ def plot_density(spn, data):
     # Make the plot
     # plt.pcolormesh(xi, yi, z)
 
-    plt.imshow(z + 1, extent=(x_min, x_max, y_min, y_max), cmap=cm.hot, norm=PowerNorm(gamma=1. / 5.))
+    plt.imshow(z + 1, extent=(x_min, x_max, y_min, y_max), cmap=cm.hot, norm=PowerNorm(gamma=1.0 / 5.0))
     # plt.pcolormesh(xi, yi, z)
     plt.colorbar()
     plt.show()
@@ -49,8 +49,8 @@ def plot_density(spn, data):
     # plt.show()
 
 
-if __name__ == '__main__':
-    data = genfromtxt('20180511-for-SPN.csv', delimiter=',', skip_header=True)[:, [0, 1, 3]]
+if __name__ == "__main__":
+    data = genfromtxt("20180511-for-SPN.csv", delimiter=",", skip_header=True)[:, [0, 1, 3]]
 
     print(data)
 
@@ -58,14 +58,11 @@ if __name__ == '__main__':
     # ds_context.parametric_type = [Gaussian, Gaussian, Categorical]
     ds_context.add_domains(data)
 
-
     def create_leaf(data, ds_context, scope):
         return create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=None)
 
-
     def learn_wrapper(data, ds_context):
         return learn_mspn(data, ds_context, min_instances_slice=100, leaves=create_leaf, memory=memory)
-
 
     spn = learn_classifier(data, ds_context, learn_wrapper, 2)
 

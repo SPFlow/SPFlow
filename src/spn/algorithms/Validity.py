@@ -1,15 +1,15 @@
-'''
+"""
 Created on March 20, 2018
 
 @author: Alejandro Molina
-'''
+"""
 from spn.structure.Base import Sum, Product, get_nodes_by_type
 
 
 def is_consistent(node):
-    '''
+    """
     all children of a product node have different scope
-    '''
+    """
 
     assert node is not None
 
@@ -27,15 +27,15 @@ def is_consistent(node):
             allchildscope.update(child.scope)
 
         if allchildscope != nscope or sum_features != len(allchildscope):
-            return False, "children of (prod) node %s do not have exclusive scope" % (prod_node.id)
+            return (False, "children of (prod) node %s do not have exclusive scope" % (prod_node.id))
 
     return True, None
 
 
 def is_complete(node):
-    '''
+    """
     all children of a sum node have same scope as the parent
-    '''
+    """
 
     assert node is not None
 
@@ -47,7 +47,7 @@ def is_complete(node):
 
         for child in sum_node.children:
             if nscope != set(child.scope):
-                return False, "children of (sum) node %s do not have the same scope as parent" % (sum_node.id)
+                return (False, "children of (sum) node %s do not have the same scope as parent" % (sum_node.id))
 
     return True, None
 

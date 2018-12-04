@@ -17,7 +17,7 @@ def sum_gradient_forward(node, children, input_vals, dtype=np.float64):
     joined_c = np.stack(children)
     gradient_children = np.array([weight * tensor for weight, tensor in zip(b, joined_c)])
     results = np.sum(gradient_children, axis=0)
-    assert len(node.scope) == results.shape[1], '{} vs {}'.format(node.scope, results.shape)
+    assert len(node.scope) == results.shape[1], "{} vs {}".format(node.scope, results.shape)
     return results
 
 
@@ -32,7 +32,9 @@ def prod_gradient_forward(node, children, input_vals, dtype=np.float64):
 
     results = np.concatenate(results, axis=1)
 
-    assert len(node.scope) == results.shape[1], '{} vs {}: got {}'.format(node.scope, results.shape, [c.shape for c in children])
+    assert len(node.scope) == results.shape[1], "{} vs {}: got {}".format(
+        node.scope, results.shape, [c.shape for c in children]
+    )
     return results
 
 
@@ -70,8 +72,7 @@ def backprop_gradient(spn, evidence):
     node_gradients = _node_gradients
 
     all_gradients = {}
-    gradients_input = eval_spn_top_down(
-        spn, node_gradients, all_results=all_gradients, probs=probs)
+    gradients_input = eval_spn_top_down(spn, node_gradients, all_results=all_gradients, probs=probs)
 
     return gradients_input
 

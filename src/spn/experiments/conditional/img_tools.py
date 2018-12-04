@@ -1,8 +1,8 @@
-'''
+"""
 Created on August 29, 2018
 
 @author: Alejandro Molina
-'''
+"""
 from numpy.random.mtrand import RandomState
 from scipy.misc import imresize, imsave
 
@@ -42,8 +42,7 @@ def stitch_imgs(imgs=0, img_size=(20, 20), num_blocks=(2, 2), blocks=None):
             idx, idy = np.where(result_idx == bp)
             idx = idx[0] * block_size[0]
             idy = idy[0] * block_size[1]
-            result[:, idx:idx+block_size[0], idy:idy + block_size[1]] = bv
-
+            result[:, idx : idx + block_size[0], idy : idy + block_size[1]] = bv
 
     return result
 
@@ -58,6 +57,7 @@ def rescale(ds, original_size=(28, 28), new_size=(20, 20)):
 
 def show_img(img):
     import matplotlib.pyplot as plt
+
     plt.imshow(img)
     plt.show()
 
@@ -87,11 +87,11 @@ def set_sub_block_nans(block, inp=[1, 0], nans=[0]):
     for o in nans:
         clear_index = inp.index(o)
         rpos = clear_index * block_size
-        block[:, rpos:rpos + block_size] = np.nan
+        block[:, rpos : rpos + block_size] = np.nan
     return block
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     images_tr, labels_tr, images_te, labels_te = get_mnist()
 
     ds = images_tr[[0, 1, 2], :]
@@ -106,12 +106,15 @@ if __name__ == '__main__':
     blocks210, _ = get_blocks(imgs, num_blocks=(2, 2), blocks=[2, 1, 0])
     blocks3210, _ = get_blocks(imgs, num_blocks=(2, 2), blocks=[3, 2, 1, 0])
 
-    block_img = stitch_imgs(blocks0.shape[0], img_size=(20, 40), num_blocks=(2, 2),
-                            blocks={(3, 2, 1, 0): set_sub_block_nans(blocks3210, inp=[3, 2, 1, 0], nans=[0])}
-                            # blocks={(0): blocks0,
-                            #        (1): get_sub_blocks(blocks10, inp=[1, 0], output=[1]),
-                            #        (2): get_sub_blocks(blocks210, inp=[2, 1, 0], output=[2]),
-                            #        (3): get_sub_blocks(blocks3210, inp=[3, 2, 1, 0], output=[3])}
-                            )
+    block_img = stitch_imgs(
+        blocks0.shape[0],
+        img_size=(20, 40),
+        num_blocks=(2, 2),
+        blocks={(3, 2, 1, 0): set_sub_block_nans(blocks3210, inp=[3, 2, 1, 0], nans=[0])}
+        # blocks={(0): blocks0,
+        #        (1): get_sub_blocks(blocks10, inp=[1, 0], output=[1]),
+        #        (2): get_sub_blocks(blocks210, inp=[2, 1, 0], output=[2]),
+        #        (3): get_sub_blocks(blocks3210, inp=[3, 2, 1, 0], output=[3])}
+    )
 
     show_img(block_img[0])

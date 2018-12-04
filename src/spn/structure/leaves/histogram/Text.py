@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 21, 2018
 
 @author: Alejandro Molina
-'''
+"""
 from spn.io.Text import spn_to_str_equation
 from spn.io.Text import add_str_to_spn, add_node_to_str
 from collections import OrderedDict
@@ -19,9 +19,10 @@ def histogram_to_str(node, feature_names=None, node_to_str=None):
     else:
         fname = feature_names[node.scope[0]]
 
-    breaks = np.array2string(np.array(node.breaks), precision=decimals, separator=',')
-    densities = np.array2string(np.array(node.densities), precision=decimals, separator=',',
-                                formatter={'float_kind': lambda x: "%.10f" % x})
+    breaks = np.array2string(np.array(node.breaks), precision=decimals, separator=",")
+    densities = np.array2string(
+        np.array(node.densities), precision=decimals, separator=",", formatter={"float_kind": lambda x: "%.10f" % x}
+    )
 
     return "Histogram(%s|%s;%s)" % (fname, breaks, densities)
 
@@ -39,6 +40,10 @@ def histogram_tree_to_spn(tree, features, obj_type, tree_to_spn):
 def add_histogram_text_support():
     add_node_to_str(Histogram, histogram_to_str)
 
-    add_str_to_spn("histogram", histogram_tree_to_spn,
-                   """
-                   histogram: "Histogram(" FNAME "|" list ";" list ")"  """, None)
+    add_str_to_spn(
+        "histogram",
+        histogram_tree_to_spn,
+        """
+                   histogram: "Histogram(" FNAME "|" list ";" list ")"  """,
+        None,
+    )
