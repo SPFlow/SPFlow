@@ -54,7 +54,9 @@ def to_cpp(node, c_data_type="double"):
 
     header = """
     #include <stdarg.h>
-    #include <math.h>
+    
+    using namespace std;
+    
     const {vartype} K = 0.91893853320467274178032973640561763986139747363778341281;
 
     {vartype} logsumexp(size_t count, ...){{
