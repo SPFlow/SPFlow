@@ -43,10 +43,9 @@ def leaf_moment(_node_moment, _node_likelihood):
     return leaf_moment_function
 
 
-def ConditionalMoment(spn, evidence, feature_scope,
-                      node_moment=_node_moment,
-                      node_likelihoods=_node_likelihood,
-                      order=1):
+def ConditionalMoment(
+    spn, evidence, feature_scope, node_moment=_node_moment, node_likelihoods=_node_likelihood, order=1
+):
     """
     Computes a conditional moment given a numpy array of evidence
     :param spn: a valid spn
@@ -57,17 +56,15 @@ def ConditionalMoment(spn, evidence, feature_scope,
     :param order: the order of the moment to compute
     :return: an np array of computed moments
     """
-    assert feature_scope is not None, 'When using evidence a feature scope needs to be passed'
+    assert feature_scope is not None, "When using evidence a feature scope needs to be passed"
 
     feature_scope = list(feature_scope)
-    assert np.all(np.isnan(evidence[:,
-                           feature_scope])), 'Evidence cannot be requested for features in scope'
+    assert np.all(np.isnan(evidence[:, feature_scope])), "Evidence cannot be requested for features in scope"
 
     all_results = []
     for line in evidence:
         cond_spn = condition(spn, line.reshape(1, -1))
-        moment = Moment(cond_spn, feature_scope, node_moment, node_likelihoods,
-                        order=order)
+        moment = Moment(cond_spn, feature_scope, node_moment, node_likelihoods, order=order)
         all_results.append(moment)
     if feature_scope:
         output_size = (evidence.shape[0], len(feature_scope))
@@ -76,9 +73,7 @@ def ConditionalMoment(spn, evidence, feature_scope,
     return np.array(all_results).reshape(output_size)
 
 
-def Moment(spn, feature_scope=None, node_moment=_node_moment,
-           node_likelihoods=_node_likelihood,
-           order=1):
+def Moment(spn, feature_scope=None, node_moment=_node_moment, node_likelihoods=_node_likelihood, order=1):
     """
     Computes moments from an spn
     :param spn: a valid spn
@@ -93,8 +88,7 @@ def Moment(spn, feature_scope=None, node_moment=_node_moment,
         feature_scope = spn.scope
     feature_scope = list(feature_scope)
 
-    assert len(feature_scope) == len(list(feature_scope)), \
-        'Found double entries in feature list'
+    assert len(feature_scope) == len(list(feature_scope)), "Found double entries in feature list"
 
     marg_spn = marginalize(spn, feature_scope)
 
@@ -105,15 +99,12 @@ def Moment(spn, feature_scope=None, node_moment=_node_moment,
             moment = node_moment[node]
             node_ll = node_likelihoods[node]
         except KeyError:
-            raise AssertionError(
-                'Node type {} doe not have associated moment and likelihoods'.format(
-                    node))
+            raise AssertionError("Node type {} doe not have associated moment and likelihoods".format(node))
         node_moments[node] = leaf_moment(moment, node_ll)
 
     results = np.full((1, max(spn.scope) + 1), np.nan)
 
-    moment = eval_spn_bottom_up(marg_spn, node_moments, order=order,
-                                result_array=results)
+    moment = eval_spn_bottom_up(marg_spn, node_moments, order=order, result_array=results)
     return moment[:, feature_scope]
 
 

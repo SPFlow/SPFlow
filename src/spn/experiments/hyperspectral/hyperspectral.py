@@ -24,12 +24,13 @@ def train_spn(window_size=3, min_instances_slice=10000, features=None, number_of
     add_parametric_inference_support()
     add_parametric_text_support()
 
-    data = get_data_in_window(window_size=window_size, features=features, three_classes=number_of_classes==3)
+    data = get_data_in_window(window_size=window_size, features=features, three_classes=number_of_classes == 3)
 
     sss = sk.model_selection.StratifiedShuffleSplit(test_size=0.2, train_size=0.8, random_state=42)
-    for train_index, test_index in sss.split(data[:, 0:window_size * window_size * len(features)],
-                                             data[:, (window_size * window_size * len(features)) + (
-                                                     int(window_size * window_size / 2))]):
+    for train_index, test_index in sss.split(
+        data[:, 0 : window_size * window_size * len(features)],
+        data[:, (window_size * window_size * len(features)) + (int(window_size * window_size / 2))],
+    ):
         X_train, X_test = data[train_index], data[test_index]
 
     context_list = list()
@@ -186,7 +187,7 @@ def find_good_features():
     return res
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # _, acc = train_spn()
     # print("Accuracy: {}".format(acc))
     plot_experiments()

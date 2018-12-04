@@ -6,7 +6,7 @@ import os
 
 
 # padding_mode = {'reflect', 'mean'}
-def get_data_in_window(window_size=3, features=None, padding_mode='reflect', three_classes=True):
+def get_data_in_window(window_size=3, features=None, padding_mode="reflect", three_classes=True):
     if window_size % 2 == 0:
         raise ValueError("Window size must be odd number but was {}!".format(window_size))
     if features is None:
@@ -25,8 +25,8 @@ def get_data_in_window(window_size=3, features=None, padding_mode='reflect', thr
     data = np.ndarray((data_size, num_classes + len(features) * num_classes))
 
     counter_index = 0
-    for i, row in enumerate(Y_padded[offset:Y_padded.shape[0] - offset], start=offset):
-        for j, column in enumerate(row[offset:Y_padded.shape[1] - offset], start=offset):
+    for i, row in enumerate(Y_padded[offset : Y_padded.shape[0] - offset], start=offset):
+        for j, column in enumerate(row[offset : Y_padded.shape[1] - offset], start=offset):
             img_data = list()
             class_data = list()
             # slinding window
@@ -53,7 +53,7 @@ def get_data(size=300, values=None):
     if values is None:
         values = [20, 120]
 
-    vocab = {1.0: 'healthy', 2.0: 'diseased', 3.0: 'stem'}
+    vocab = {1.0: "healthy", 2.0: "diseased", 3.0: "stem"}
     X, Y = read_img()
     counter_healthy = 0
     counter_disease = 0
@@ -62,17 +62,17 @@ def get_data(size=300, values=None):
     data = np.ndarray((3 * size, len(values) + 1))
     for i, row in enumerate(Y):
         for j, col in enumerate(row):
-            if vocab[col] == 'healthy' and counter_healthy < size:
+            if vocab[col] == "healthy" and counter_healthy < size:
                 hyp_value = np.array(X[i, j][values])
                 data[counter_data] = np.append(hyp_value, [int(col - 1)])
                 counter_data += 1
                 counter_healthy += 1
-            elif vocab[col] == 'diseased' and counter_disease < size:
+            elif vocab[col] == "diseased" and counter_disease < size:
                 hyp_value = np.array(X[i, j][values])
                 data[counter_data] = np.append(hyp_value, [int(col - 1)])
                 counter_data += 1
                 counter_disease += 1
-            elif vocab[col] == 'stem' and counter_stem < size:
+            elif vocab[col] == "stem" and counter_stem < size:
                 hyp_value = np.array(X[i, j][values])
                 data[counter_data] = np.append(hyp_value, [int(col - 1)])
                 counter_data += 1
@@ -107,28 +107,37 @@ def read_img(src="cerc15dai175.mat"):
 def save_spn(spn, window_size, feature_list, min_instances_slice, number_of_classes, directory="/trainedSPNs"):
     if not os.path.exists(os.getcwd() + directory):
         os.makedirs(directory)
-    path = os.getcwd()+directory
+    path = os.getcwd() + directory
     time = datetime.datetime.now()
     spn_name = "spn_{}".format(time)
-    dic = {"spn_name": spn_name, "window_size":window_size, "feature_list": feature_list,
-           "min_instances_slice": min_instances_slice, "number_of_classes": number_of_classes}
+    dic = {
+        "spn_name": spn_name,
+        "window_size": window_size,
+        "feature_list": feature_list,
+        "min_instances_slice": min_instances_slice,
+        "number_of_classes": number_of_classes,
+    }
     pickle.dump(spn, open("{}/{}.p".format(path, spn_name), "wb"))
     pickle.dump(dic, open("{}/dic_{}.p".format(path, time), "wb"))
     print("New trained SPN was saved!")
 
 
 def load_spn(window_size, feature_list, min_instances_slice, number_of_classes, directory="/trainedSPNs"):
-    path = os.getcwd()+ directory
+    path = os.getcwd() + directory
     if not os.path.exists(path):
         return
     for file in os.listdir(path):
         if file.startswith("dic"):
-            dic = pickle.load(open(path+"/"+file, "rb"))
-            if dic["window_size"] == window_size and dic["feature_list"] == feature_list and \
-                    dic["min_instances_slice"] == min_instances_slice and dic["number_of_classes"] == number_of_classes:
+            dic = pickle.load(open(path + "/" + file, "rb"))
+            if (
+                dic["window_size"] == window_size
+                and dic["feature_list"] == feature_list
+                and dic["min_instances_slice"] == min_instances_slice
+                and dic["number_of_classes"] == number_of_classes
+            ):
                 print("Pretrained SPN was loaded!")
                 try:
-                    return pickle.load(open(path+"/"+dic["spn_name"]+".p", "rb"))
+                    return pickle.load(open(path + "/" + dic["spn_name"] + ".p", "rb"))
                 except FileNotFoundError as e:
                     print("SPN not found!")
                     print(e)
@@ -136,6 +145,6 @@ def load_spn(window_size, feature_list, min_instances_slice, number_of_classes, 
     print("No pretrained SPN was found!")
 
 
-if __name__ == '__main__':
-    #save_spn(4,3,[1,2,3,5,6], 1000, 3)
-    print(load_spn(3,[1,2,3,5,6], 1000, 3))
+if __name__ == "__main__":
+    # save_spn(4,3,[1,2,3,5,6], 1000, 3)
+    print(load_spn(3, [1, 2, 3, 5, 6], 1000, 3))

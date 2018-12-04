@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 25, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import numpy as np
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.metrics import pairwise
@@ -21,9 +21,10 @@ def init_rpy():
     from rpy2 import robjects
     from rpy2.robjects import numpy2ri
     import os
+
     path = os.path.dirname(__file__)
     with open(path + "/mixedClustering.R", "r") as rfile:
-        code = ''.join(rfile.readlines())
+        code = "".join(rfile.readlines())
         robjects.r(code)
 
     numpy2ri.activate()
@@ -41,9 +42,10 @@ def get_split_rows_KMeans(n_clusters=2, pre_proc=None, ohe=False, seed=17):
 
 
 def get_split_rows_TSNE(n_clusters=2, pre_proc=None, ohe=False, seed=17, verbose=10, n_jobs=-1):
-    #https://github.com/DmitryUlyanov/Multicore-TSNE
+    # https://github.com/DmitryUlyanov/Multicore-TSNE
     from MulticoreTSNE import MulticoreTSNE as TSNE
     import os
+
     ncpus = n_jobs
     if n_jobs < 1:
         ncpus = max(os.cpu_count() - 1, 1)
@@ -71,6 +73,7 @@ def get_split_rows_DBScan(eps=2, min_samples=10, pre_proc=None, ohe=False):
 
 def get_split_rows_Gower(n_clusters=2, pre_proc=None, seed=17):
     from rpy2 import robjects
+
     init_rpy()
 
     def split_rows_Gower(local_data, ds_context, scope):

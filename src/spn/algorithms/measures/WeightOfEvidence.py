@@ -1,10 +1,10 @@
-'''
+"""
 Created on Novenber 14, 2018
 
 @author: Zhongjie Yu
 @author: Alejandro Molina
 
-'''
+"""
 import numpy as np
 
 from spn.algorithms.Inference import likelihood

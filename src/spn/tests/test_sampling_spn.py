@@ -35,8 +35,9 @@ class TestSampling(unittest.TestCase):
             sample_instances(spn, rand_gen.rand(10, 3), rand_gen)
 
     def test_induced_trees(self):
-        spn = 0.5 * (Gaussian(mean=10, stdev=0.000000001, scope=0) * Categorical(p=[1.0, 0], scope=1)) + \
-              0.5 * (Gaussian(mean=50, stdev=0.000000001, scope=0) * Categorical(p=[0, 1.0], scope=1))
+        spn = 0.5 * (Gaussian(mean=10, stdev=0.000000001, scope=0) * Categorical(p=[1.0, 0], scope=1)) + 0.5 * (
+            Gaussian(mean=50, stdev=0.000000001, scope=0) * Categorical(p=[0, 1.0], scope=1)
+        )
 
         rand_gen = np.random.RandomState(17)
 
@@ -52,5 +53,5 @@ class TestSampling(unittest.TestCase):
         self.assertAlmostEqual(samples[1, 0], 50)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

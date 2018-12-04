@@ -1,14 +1,21 @@
-'''
+"""
 Created on March 21, 2018
 
 @author: Alejandro Molina
-'''
+"""
 
 import tensorflow as tf
 
 from spn.gpu.TensorFlow import add_node_to_tf_graph, add_tf_graph_to_node
-from spn.structure.leaves.parametric.Parametric import Gaussian, Categorical, LogNormal, Exponential, Gamma, Poisson, \
-    Bernoulli
+from spn.structure.leaves.parametric.Parametric import (
+    Gaussian,
+    Categorical,
+    LogNormal,
+    Exponential,
+    Gamma,
+    Poisson,
+    Bernoulli,
+)
 import numpy as np
 
 
@@ -36,6 +43,7 @@ def exponential_to_tf_graph(node, data_placeholder=None, log_space=True, variabl
 
         return dist.prob(data_placeholder[:, node.scope[0]])
 
+
 def poisson_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         mean = tf.maximum(tf.get_variable("lambda", initializer=node.mean, dtype=dtype), 0.001)
@@ -45,6 +53,7 @@ def poisson_to_tf_graph(node, data_placeholder=None, log_space=True, variable_di
             return dist.log_prob(data_placeholder[:, node.scope[0]])
 
         return dist.prob(data_placeholder[:, node.scope[0]])
+
 
 def bernoulli_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
@@ -75,9 +84,11 @@ def lognormal_to_tf_graph(node, data_placeholder=None, log_space=True, variable_
         stdev = tf.get_variable("stdev", initializer=node.stdev, dtype=dtype)
         variable_dict[node] = (mean, stdev)
         stdev = tf.maximum(stdev, 0.001)
-        dist = tf.distributions.TransformedDistribution(distribution=tf.distributions.Normal(loc=mean, scale=stdev),
-                                                        bijector=tf.distributions.bijectors.Exp(),
-                                                        name="LogNormalDistribution")
+        dist = tf.distributions.TransformedDistribution(
+            distribution=tf.distributions.Normal(loc=mean, scale=stdev),
+            bijector=tf.distributions.bijectors.Exp(),
+            name="LogNormalDistribution",
+        )
         if log_space:
             return dist.log_prob(data_placeholder[:, node.scope[0]])
 
@@ -89,7 +100,7 @@ def categorical_to_tf_graph(node, data_placeholder=None, log_space=True, variabl
         p = np.array(node.p, dtype=dtype)
         softmaxInverse = np.log(p / np.max(p)).astype(dtype)
         probs = tf.nn.softmax(tf.get_variable("p", initializer=tf.constant(softmaxInverse)))
-        variable_dict[node] = (probs)
+        variable_dict[node] = probs
         if log_space:
             return tf.distributions.Categorical(probs=probs).log_prob(data_placeholder[:, node.scope[0]])
 
@@ -113,8 +124,10 @@ def tf_graph_to_categorical(node, tfvar):
 def tf_graph_to_exponential(node, tfvar):
     node.l = tfvar.eval()
 
+
 def tf_graph_to_poisson(node, tfvar):
     node.mean = tfvar.eval()
+
 
 def tf_graph_to_bernoulli(node, tfvar):
     node.p = tfvar.eval()

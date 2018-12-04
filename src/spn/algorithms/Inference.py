@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 21, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import numpy as np
 from scipy.special import logsumexp
 
@@ -62,7 +62,7 @@ _node_likelihood = {Sum: sum_likelihood, Product: prod_likelihood}
 
 def log_node_likelihood(node, *args, **kwargs):
     probs = _node_likelihood[type(node)](node, *args, **kwargs)
-    with np.errstate(divide='ignore'):
+    with np.errstate(divide="ignore"):
         return np.log(probs)
 
 
@@ -106,8 +106,9 @@ def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, l
     return result
 
 
-def log_likelihood(node, data, dtype=np.float64, node_log_likelihood=_node_log_likelihood, lls_matrix=None,
-                   debug=False):
+def log_likelihood(
+    node, data, dtype=np.float64, node_log_likelihood=_node_log_likelihood, lls_matrix=None, debug=False
+):
     return likelihood(node, data, dtype=dtype, node_likelihood=node_log_likelihood, lls_matrix=lls_matrix, debug=debug)
 
 

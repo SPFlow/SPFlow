@@ -4,7 +4,6 @@ from spn.structure.Base import Leaf, bfs, get_topological_order
 
 
 class TestBase(unittest.TestCase):
-
     def test_bfs(self):
         D = Leaf(scope=[0])
         E = Leaf(scope=[0])
@@ -40,12 +39,12 @@ class TestBase(unittest.TestCase):
         C = 0.5 * E + 0.5 * F
 
         A = 0.5 * B + 0.5 * C
-        A.aname = 'A'
-        B.aname = 'B'
-        C.aname = 'C'
-        D.aname = 'D'
-        E.aname = 'E'
-        F.aname = 'F'
+        A.aname = "A"
+        B.aname = "B"
+        C.aname = "C"
+        D.aname = "D"
+        E.aname = "E"
+        F.aname = "F"
 
         result = get_topological_order(A)
 
@@ -71,16 +70,16 @@ class TestBase(unittest.TestCase):
         G = 0.5 * H + 0.5 * I
         A = 0.5 * B + 0.5 * C
         Z = 0.5 * A + 0.5 * G
-        Z.aname = 'Z'
-        A.aname = 'A'
-        B.aname = 'B'
-        C.aname = 'C'
-        D.aname = 'D'
-        E.aname = 'E'
-        F.aname = 'F'
-        G.aname = 'G'
-        H.aname = 'H'
-        I.aname = 'I'
+        Z.aname = "Z"
+        A.aname = "A"
+        B.aname = "B"
+        C.aname = "C"
+        D.aname = "D"
+        E.aname = "E"
+        F.aname = "F"
+        G.aname = "G"
+        H.aname = "H"
+        I.aname = "I"
 
         result = get_topological_order(Z)
 
@@ -97,5 +96,5 @@ class TestBase(unittest.TestCase):
         self.assertEqual(len(result), 10)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

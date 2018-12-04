@@ -1,8 +1,8 @@
-'''
+"""
 Created on June 10, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import time
 from numba import cuda
 
@@ -98,7 +98,7 @@ def GaussianLeaf_cuda(LL, params, node_ids, obs):
     # k = 1/2 log(2*pi)
     k = 0.91893853320467274178032973640561763986139747363778341281
 
-    LL[instance_pos, node_id] = - math.log(stdev) - ((x - mean) ** 2 / (2.0 * stdev ** 2)) - k
+    LL[instance_pos, node_id] = -math.log(stdev) - ((x - mean) ** 2 / (2.0 * stdev ** 2)) - k
 
 
 @cuda.jit
@@ -141,7 +141,7 @@ def Sum_cuda(LL, params, node_ids):
     LL[instance_pos, node_id] = xstar + math.log(math.exp(xleft - xstar) + math.exp(xright - xstar))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     add_parametric_inference_support()
 
     start = time.perf_counter()
@@ -154,8 +154,9 @@ if __name__ == '__main__':
     print("random graph built in  ", (time.perf_counter() - start))
 
     start = time.perf_counter()
-    vector_list, root = Make_SPN_from_RegionGraph(rg_layers, np.random.RandomState(100),
-                                                  num_classes=1, num_gauss=20, num_sums=20)
+    vector_list, root = Make_SPN_from_RegionGraph(
+        rg_layers, np.random.RandomState(100), num_classes=1, num_gauss=20, num_sums=20
+    )
     print("Make_SPN_from_RegionGraph in  ", (time.perf_counter() - start))
 
     start = time.perf_counter()
@@ -187,7 +188,7 @@ if __name__ == '__main__':
     print(max_id)
 
     children_sizes = list(map(lambda n: len(n.children), get_nodes_by_type(root, Sum)))
-    print('cs ', np.unique(children_sizes, return_counts=True))
+    print("cs ", np.unique(children_sizes, return_counts=True))
     params = sum(children_sizes)
     params += 2 * len(get_nodes_by_type(root, Leaf))
 

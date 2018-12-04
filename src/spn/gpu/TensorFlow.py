@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 27, 2018
 
 @author: Alejandro Molina
-'''
+"""
 
 import numpy as np
 import tensorflow as tf
@@ -69,12 +69,18 @@ def add_tf_graph_to_node(node_type, lambda_func):
 def spn_to_tf_graph(node, data, batch_size=None, node_tf_graph=_node_log_tf_graph, log_space=True, dtype=None):
     tf.reset_default_graph()
     if not dtype:
-        dtype=data.dtype
+        dtype = data.dtype
     # data is a placeholder, with shape same as numpy data
     data_placeholder = tf.placeholder(data.dtype, (batch_size, data.shape[1]))
     variable_dict = {}
-    tf_graph = eval_spn_bottom_up(node, node_tf_graph, data_placeholder=data_placeholder, log_space=log_space,
-                                  variable_dict=variable_dict, dtype=dtype)
+    tf_graph = eval_spn_bottom_up(
+        node,
+        node_tf_graph,
+        data_placeholder=data_placeholder,
+        log_space=log_space,
+        variable_dict=variable_dict,
+        dtype=dtype,
+    )
     return tf_graph, data_placeholder, variable_dict
 
 
@@ -91,7 +97,9 @@ def likelihood_loss(tf_graph):
 def optimize_tf(spn, data, epochs=1000, batch_size=None, optimizer=None):
     spn_copy = Copy(spn)
     tf_graph, data_placeholder, variable_dict = spn_to_tf_graph(spn_copy, data, batch_size)
-    optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=epochs, batch_size=batch_size, optimizer=optimizer)
+    optimize_tf_graph(
+        tf_graph, variable_dict, data_placeholder, data, epochs=epochs, batch_size=batch_size, optimizer=optimizer
+    )
     return spn_copy
 
 
@@ -108,7 +116,7 @@ def optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=10
 
         for i in range(epochs):
             for j in range(batches_per_epoch):
-                data_batch = data[j * batch_size: (j+1) * batch_size, :]
+                data_batch = data[j * batch_size : (j + 1) * batch_size, :]
                 _, cur_loss = sess.run([opt_op, loss], feed_dict={data_placeholder: data_batch})
             print("epoch: {}, loss: {}".format(i, cur_loss))
         tf_graph_to_spn(variable_dict)
@@ -133,6 +141,7 @@ def eval_tf_graph(tf_graph, data_placeholder, data, save_graph_path=None):
 def eval_tf_trace(spn, data, log_space=True, save_graph_path=None):
     data_placeholder = tf.placeholder(data.dtype, data.shape)
     import time
+
     tf_graph = spn_to_tf_graph(spn, data_placeholder, log_space)
     run_metadata = None
     with tf.Session() as sess:
@@ -141,8 +150,7 @@ def eval_tf_trace(spn, data, log_space=True, save_graph_path=None):
         sess.run(tf.global_variables_initializer())
 
         start = time.perf_counter()
-        result = sess.run(tf_graph, feed_dict={data_placeholder: data}, options=run_options,
-                          run_metadata=run_metadata)
+        result = sess.run(tf_graph, feed_dict={data_placeholder: data}, options=run_options, run_metadata=run_metadata)
         end = time.perf_counter()
 
         e2 = end - start
@@ -153,9 +161,11 @@ def eval_tf_trace(spn, data, log_space=True, save_graph_path=None):
         ctf = tl.generate_chrome_trace_format()
 
         import json
+
         traceEvents = json.loads(ctf)["traceEvents"]
         elapsed = max([o["ts"] + o["dur"] for o in traceEvents if "ts" in o and "dur" in o]) - min(
-            [o["ts"] for o in traceEvents if "ts" in o])
+            [o["ts"] for o in traceEvents if "ts" in o]
+        )
         return result, elapsed
 
         if save_graph_path is not None:

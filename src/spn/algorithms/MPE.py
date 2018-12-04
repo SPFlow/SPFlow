@@ -1,8 +1,8 @@
-'''
+"""
 Created on July 02, 2018
 
 @author: Alejandro Molina
-'''
+"""
 from spn.algorithms.Inference import log_likelihood, sum_log_likelihood, prod_log_likelihood
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, get_nodes_by_type, eval_spn_top_down
@@ -11,7 +11,7 @@ import numpy as np
 
 def mpe_prod(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
     if len(parent_result) == 0:
-        return None    
+        return None
     return [parent_result] * len(node.children)
 
 
@@ -62,8 +62,8 @@ def mpe(node, input_data, node_top_down_mpe=_node_top_down_mpe, node_bottom_up_m
     assert valid, err
 
     assert np.all(
-        np.any(np.isnan(input_data),
-               axis=1)), "each row must have at least a nan value where the samples will be substituted"
+        np.any(np.isnan(input_data), axis=1)
+    ), "each row must have at least a nan value where the samples will be substituted"
 
     if in_place:
         data = input_data

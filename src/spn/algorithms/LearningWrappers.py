@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 30, 2018
 
 @author: Alejandro Molina
-'''
+"""
 
 import numpy as np
 
@@ -18,7 +18,11 @@ from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf
 from spn.structure.leaves.cltree.CLTree import create_cltree_leaf
-from spn.algorithms.splitting.Conditioning import get_split_rows_naive_mle_conditioning, get_split_rows_random_conditioning
+from spn.algorithms.splitting.Conditioning import (
+    get_split_rows_naive_mle_conditioning,
+    get_split_rows_random_conditioning,
+)
+
 
 def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, **kwargs):
     spn = Sum()
@@ -36,8 +40,20 @@ def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, **kwargs):
     return spn
 
 
-def learn_mspn_with_missing(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3,
-                            linear=False, ohe=False, leaves=None, memory=None, rand_gen=None, cpus=-1):
+def learn_mspn_with_missing(
+    data,
+    ds_context,
+    cols="rdc",
+    rows="kmeans",
+    min_instances_slice=200,
+    threshold=0.3,
+    linear=False,
+    ohe=False,
+    leaves=None,
+    memory=None,
+    rand_gen=None,
+    cpus=-1,
+):
     if leaves is None:
         # leaves = create_histogram_leaf
         leaves = create_piecewise_leaf
@@ -66,8 +82,19 @@ def learn_mspn_with_missing(data, ds_context, cols="rdc", rows="kmeans", min_ins
     return l_mspn_missing(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe)
 
 
-def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, threshold=0.3, ohe=False,
-               leaves=None, memory=None, rand_gen=None, cpus=-1):
+def learn_mspn(
+    data,
+    ds_context,
+    cols="rdc",
+    rows="kmeans",
+    min_instances_slice=200,
+    threshold=0.3,
+    ohe=False,
+    leaves=None,
+    memory=None,
+    rand_gen=None,
+    cpus=-1,
+):
     if leaves is None:
         leaves = create_histogram_leaf
 
@@ -92,8 +119,21 @@ def learn_mspn(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=
     return l_mspn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
 
-def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_slice=200, min_features_slice=1, multivariate_leaf=False, threshold=0.3, ohe=False,
-                     leaves=None, memory=None, rand_gen=None, cpus=-1):
+def learn_parametric(
+    data,
+    ds_context,
+    cols="rdc",
+    rows="kmeans",
+    min_instances_slice=200,
+    min_features_slice=1,
+    multivariate_leaf=False,
+    threshold=0.3,
+    ohe=False,
+    leaves=None,
+    memory=None,
+    rand_gen=None,
+    cpus=-1,
+):
     if leaves is None:
         leaves = create_parametric_leaf
 
@@ -118,7 +158,16 @@ def learn_parametric(data, ds_context, cols="rdc", rows="kmeans", min_instances_
     return learn_param(data, ds_context, cols, rows, min_instances_slice, threshold, ohe)
 
 
-def learn_cnet(data, ds_context, cond="naive_mle", min_instances_slice=200, min_features_slice=1, memory=None, rand_gen=None, cpus=-1):
+def learn_cnet(
+    data,
+    ds_context,
+    cond="naive_mle",
+    min_instances_slice=200,
+    min_features_slice=1,
+    memory=None,
+    rand_gen=None,
+    cpus=-1,
+):
 
     leaves = create_cltree_leaf
 

@@ -1,15 +1,23 @@
-'''
+"""
 Created on April 10, 2018
 
 @author: Antonio Vergari
 @author: Alejandro Molina
 
-'''
+"""
 import numpy as np
 import scipy
 
-from spn.structure.leaves.parametric.Parametric import Gaussian, Gamma, LogNormal, Poisson, Categorical, Bernoulli, \
-    Geometric, Exponential
+from spn.structure.leaves.parametric.Parametric import (
+    Gaussian,
+    Gamma,
+    LogNormal,
+    Poisson,
+    Categorical,
+    Bernoulli,
+    Geometric,
+    Exponential,
+)
 from spn.structure.leaves.parametric.Sampling import sample_parametric_node
 
 
@@ -44,14 +52,16 @@ class PriorBeta:
         self.b_0 = b_0
 
 
-PARAM_PRIOR_MAP = {Gaussian: PriorNormalInverseGamma,
-                   Gamma: PriorGamma,
-                   LogNormal: PriorNormal,
-                   Poisson: PriorGamma,
-                   Categorical: PriorDirichlet,
-                   Bernoulli: PriorBeta,
-                   Geometric: PriorBeta,
-                   Exponential: PriorGamma}
+PARAM_PRIOR_MAP = {
+    Gaussian: PriorNormalInverseGamma,
+    Gamma: PriorGamma,
+    LogNormal: PriorNormal,
+    Poisson: PriorGamma,
+    Categorical: PriorDirichlet,
+    Bernoulli: PriorBeta,
+    Geometric: PriorBeta,
+    Exponential: PriorGamma,
+}
 
 
 def update_parametric_parameters_posterior(node, X, rand_gen, prior):
@@ -76,7 +86,7 @@ def update_parametric_parameters_posterior(node, X, rand_gen, prior):
     elif isinstance(node, Exponential):
         update_params_ExponentialNode(node, x, rand_gen, prior)
     else:
-        raise Exception('Node type unknown: ' + str(type(node)))
+        raise Exception("Node type unknown: " + str(type(node)))
 
     return
 
@@ -154,7 +164,7 @@ def update_params_GaussianNode(node, X, rand_gen, nig_prior):
 
     # eq (197)
     inv_V_0 = 1.0 / nig_prior.V_0
-    inv_V_n = (inv_V_0 + N)
+    inv_V_n = inv_V_0 + N
     V_n = 1 / inv_V_n
 
     # eq (198), just switching from avg to sum to prevent nans in numpy
@@ -174,17 +184,22 @@ def update_params_GaussianNode(node, X, rand_gen, nig_prior):
     #                   np.dot(x, x) - m_n * m_n * inv_V_n
     #                   # (x * x - mu_n_hat).sum()
     #                   ) / 2
-    b_n = nig_prior.b_0 + (np.dot(X - avg_x, X - avg_x) +
-                           (N * inv_V_0 * (avg_x - nig_prior.m_0) * (avg_x - nig_prior.m_0)) * V_n) / 2
+    b_n = (
+        nig_prior.b_0
+        + (np.dot(X - avg_x, X - avg_x) + (N * inv_V_0 * (avg_x - nig_prior.m_0) * (avg_x - nig_prior.m_0)) * V_n) / 2
+    )
 
     #
     # sampling
     # first sample the variance from IG, then the mean from a N
     # see eq (191) and
     # TODO, optimize it with numba
-    sigma2_sam = scipy.stats.invgamma.rvs(a=a_n, size=1,
-                                          # scale=1.0 / b_n,
-                                          random_state=rand_gen)
+    sigma2_sam = scipy.stats.invgamma.rvs(
+        a=a_n,
+        size=1,
+        # scale=1.0 / b_n,
+        random_state=rand_gen,
+    )
     sigma2_sam = sigma2_sam * b_n
     std_n = np.sqrt(sigma2_sam * V_n)
     mu_sam = sample_parametric_node(Gaussian(m_n, std_n), 1, None, rand_gen)
@@ -238,7 +253,7 @@ def update_params_GammaFixAlphaNode(node, X, rand_gen, gamma_prior):
     #
     # sampling
     # TODO, optimize it with numba
-    rate_sam = sample_parametric_node(Gamma(a_n, b_n), 1,  None, rand_gen)
+    rate_sam = sample_parametric_node(Gamma(a_n, b_n), 1, None, rand_gen)
 
     #
     # updating params (only scale)
@@ -286,7 +301,7 @@ def update_params_LogNormalFixVarNode(node, X, rand_gen, normal_prior):
     std_n = 1.0 / np.sqrt(tau_n)
     # print('STDN', std_n, tau_n, mu_n, log_sum_x)
 
-    mu_sam = sample_parametric_node(Gaussian(mu_n, std_n), 1,  None, rand_gen)
+    mu_sam = sample_parametric_node(Gaussian(mu_n, std_n), 1, None, rand_gen)
     # print('STDN', std_n, tau_n, mu_n, sum_x, np.log(mu_sam), mu_sam)
     #
     # updating params (only mean)
@@ -327,7 +342,7 @@ def update_params_PoissonNode(node, X, rand_gen, gamma_prior):
     #
     # sampling
     # TODO, optimize it with numba
-    lambda_sam = sample_parametric_node(Gamma(a_n, b_n), 1,  None, rand_gen)
+    lambda_sam = sample_parametric_node(Gamma(a_n, b_n), 1, None, rand_gen)
     lambda_sam = lambda_sam  # / b_n
 
     #
@@ -468,7 +483,7 @@ def update_params_ExponentialNode(node, X, rand_gen, gamma_prior):
 
     #
     # sampling
-    lambda_sam = sample_parametric_node(Gamma(a_n, b_n), 1,  None, rand_gen)
+    lambda_sam = sample_parametric_node(Gamma(a_n, b_n), 1, None, rand_gen)
     lambda_sam = lambda_sam  # / b_n
 
     #
@@ -505,7 +520,7 @@ def posterior_predictive_GaussianNode(node, x_n_id, X, rand_gen, nig_prior):
     x = X[node.row_ids, node.scope]
     miss_vals = np.isnan(x)
     if miss_vals.sum() > 0:
-        raise ValueError('Posterior Predictive for Gaussian cannot deal with missing values')
+        raise ValueError("Posterior Predictive for Gaussian cannot deal with missing values")
 
     assert isinstance(nig_prior, PriorNormalInverseGamma)
 
@@ -517,7 +532,7 @@ def posterior_predictive_GaussianNode(node, x_n_id, X, rand_gen, nig_prior):
 
     # eq (197)
     inv_V_0 = 1.0 / nig_prior.V_0
-    inv_V_n = (inv_V_0 + N)
+    inv_V_n = inv_V_0 + N
     V_n = 1 / inv_V_n
 
     #
@@ -541,8 +556,10 @@ def posterior_predictive_GaussianNode(node, x_n_id, X, rand_gen, nig_prior):
     #                   np.dot(x, x) - m_n * m_n * inv_V_n
     #                   # (x * x - mu_n_hat).sum()
     #                   ) / 2
-    b_n = nig_prior.b_0 + (np.dot(x - avg_x, x - avg_x) +
-                           (N * inv_V_0 * (avg_x - nig_prior.m_0) * (avg_x - nig_prior.m_0)) * V_n) / 2
+    b_n = (
+        nig_prior.b_0
+        + (np.dot(x - avg_x, x - avg_x) + (N * inv_V_0 * (avg_x - nig_prior.m_0) * (avg_x - nig_prior.m_0)) * V_n) / 2
+    )
     sigma_2n = b_n * (1 + V_n) / a_n
 
     return scipy.stats.t(df=2 * a_n, loc=m_n, scale=np.sqrt(sigma_2n)).pdf(x_n)

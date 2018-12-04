@@ -1,8 +1,8 @@
-'''
+"""
 Created on June 11, 2018
 
 @author: Alejandro Molina
-'''
+"""
 
 import unittest
 
@@ -24,5 +24,5 @@ class TestTransformation(unittest.TestCase):
         print(spn)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

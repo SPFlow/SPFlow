@@ -2,8 +2,7 @@
 @author Alejandro Molina
 @author Claas Völcker
 """
-from spn.algorithms.stats.Moments import Moment, ConditionalMoment, \
-    _node_moment
+from spn.algorithms.stats.Moments import Moment, ConditionalMoment, _node_moment
 
 
 def Expectation(spn, feature_scope=None, evidence=None):

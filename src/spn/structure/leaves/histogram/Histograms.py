@@ -1,8 +1,8 @@
-'''
+"""
 Created on March 20, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import numpy as np
 
 from spn.structure.Base import Leaf
@@ -18,9 +18,10 @@ def init_rpy():
     from rpy2 import robjects
     from rpy2.robjects import numpy2ri
     import os
+
     path = os.path.dirname(__file__)
     with open(path + "/Histogram.R", "r") as rfile:
-        code = ''.join(rfile.readlines())
+        code = "".join(rfile.readlines())
         robjects.r(code)
 
     numpy2ri.activate()
@@ -49,7 +50,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy
     meta_type = ds_context.meta_types[idx]
     domain = ds_context.domains[idx]
 
-    assert not np.isclose(np.max(domain), np.min(domain)), 'invalid domain, min and max are the same'
+    assert not np.isclose(np.max(domain), np.min(domain)), "invalid domain, min and max are the same"
 
     if data.shape[0] == 0:
         # no data or all were nans
@@ -81,13 +82,13 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy
         counts = densities * n_samples
         densities = (counts + alpha) / (n_samples + n_bins * alpha)
 
-    assert (len(densities) == len(breaks) - 1)
+    assert len(densities) == len(breaks) - 1
 
     return Histogram(breaks.tolist(), densities.tolist(), repr_points.tolist(), scope=idx, meta_type=meta_type)
 
 
 def getHistogramVals(data, meta_type, domain, source="numpy"):
-    #check this: https://github.com/theodoregoetz/histogram
+    # check this: https://github.com/theodoregoetz/histogram
 
     if meta_type == MetaType.DISCRETE:
         # for discrete, we just have to count
@@ -98,6 +99,7 @@ def getHistogramVals(data, meta_type, domain, source="numpy"):
 
     if source == "R":
         from rpy2 import robjects
+
         init_rpy()
 
         result = robjects.r["getHistogram"](data)
@@ -109,6 +111,7 @@ def getHistogramVals(data, meta_type, domain, source="numpy"):
 
     if source == "kde":
         import statsmodels.api as sm
+
         kde = sm.nonparametric.KDEMultivariate(data, var_type="c", bw="cv_ls")
         bins = int((domain[1] - domain[0]) / kde.bw)
         bins = min(30, bins)
@@ -126,14 +129,15 @@ def getHistogramVals(data, meta_type, domain, source="numpy"):
         return breaks, densities, mids
 
     if source == "numpy":
-        densities, breaks = np.histogram(data, bins='auto', density=True)
+        densities, breaks = np.histogram(data, bins="auto", density=True)
         mids = ((breaks + np.roll(breaks, -1)) / 2.0)[:-1]
         return breaks, densities, mids
 
     if source == "astropy":
         from astropy.stats import histogram
-        densities, breaks = histogram(data, bins='blocks', density=True)
+
+        densities, breaks = histogram(data, bins="blocks", density=True)
         mids = ((breaks + np.roll(breaks, -1)) / 2.0)[:-1]
         return breaks, densities, mids
 
-    assert False, 'unkown histogram method ' + source
+    assert False, "unkown histogram method " + source

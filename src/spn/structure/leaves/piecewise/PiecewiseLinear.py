@@ -1,9 +1,9 @@
-'''
+"""
 Created on May 4, 2018
 
 @author: Alejandro Molina
 @author: Antonio Vergari
-'''
+"""
 import numpy as np
 
 from spn.structure.Base import Leaf
@@ -39,7 +39,7 @@ class PiecewiseLinear(Leaf):
         # Use the histogram values to compute the mean
         y_range_norm = self.y_range / np.sum(self.y_range)
 
-        mean = 0.
+        mean = 0.0
         for k, x in enumerate(self.x_range):
             mean += x * y_range_norm[k]
 
@@ -62,9 +62,9 @@ def isotonic_unimodal_regression_R(x, y):
     # n_instances = x.shape[0]
     # assert y.shape[0] == n_instances
 
-    importr('Iso')
-    z = robjects.r["ufit"](y, x=x, type='b')
-    iso_x, iso_y = np.array(z.rx2('x')), np.array(z.rx2('y'))
+    importr("Iso")
+    z = robjects.r["ufit"](y, x=x, type="b")
+    iso_x, iso_y = np.array(z.rx2("x")), np.array(z.rx2("y"))
 
     return iso_x, iso_y
 
@@ -84,6 +84,7 @@ def create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=
     if meta_type == MetaType.REAL:
         EPS = 1e-8
         if len(densities) > 1:
+
             def pairwise(iterable):
                 "s -> (s0,s1), (s1,s2), (s2, s3), ..."
                 a, b = itertools.tee(iterable)
@@ -101,11 +102,11 @@ def create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=
         x = [x[0] - tail_width] + x + [x[-1] + tail_width]
 
     else:
-        raise Exception('Invalid statistical type: ' + meta_type)
+        raise Exception("Invalid statistical type: " + meta_type)
 
     y = [0.0] + [d for d in densities] + [0.0]
 
-    assert (len(densities) == len(bins) - 1)
+    assert len(densities) == len(bins) - 1
     assert len(x) == len(y), (len(x), len(y))
     x, y = np.array(x), np.array(y)
 

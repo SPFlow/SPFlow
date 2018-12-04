@@ -1,8 +1,8 @@
-'''
+"""
 Created on April 5, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import logging
 
 import numpy as np
@@ -26,8 +26,7 @@ def sample_sum(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
     for i, c in enumerate(node.children):
         w_children_log_probs[:, i] = lls_per_node[input_vals, c.id] + np.log(node.weights[i])
 
-    z_gumbels = rand_gen.gumbel(loc=0, scale=1,
-                                size=(w_children_log_probs.shape[0], w_children_log_probs.shape[1]))
+    z_gumbels = rand_gen.gumbel(loc=0, scale=1, size=(w_children_log_probs.shape[0], w_children_log_probs.shape[1]))
     g_children_log_probs = w_children_log_probs + z_gumbels
     rand_child_branches = np.argmax(g_children_log_probs, axis=1)
 
@@ -51,9 +50,9 @@ def sample_leaf(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
     if n_samples == 0:
         return None
 
-    data[input_vals[data_nans], node.scope] = _leaf_sampling[type(node)](node, n_samples=n_samples,
-                                                                         data=data[input_vals[data_nans], :],
-                                                                         rand_gen=rand_gen)
+    data[input_vals[data_nans], node.scope] = _leaf_sampling[type(node)](
+        node, n_samples=n_samples, data=data[input_vals[data_nans], :], rand_gen=rand_gen
+    )
 
 
 _node_sampling = {Product: sample_prod, Sum: sample_sum}
@@ -65,7 +64,7 @@ def add_node_sampling(node_type, lambda_func):
     _node_sampling[node_type] = sample_leaf
 
 
-def sample_instances(node, input_data, rand_gen , node_sampling=_node_sampling, in_place=False):
+def sample_instances(node, input_data, rand_gen, node_sampling=_node_sampling, in_place=False):
     """
     Implementing hierarchical sampling
 
@@ -83,7 +82,8 @@ def sample_instances(node, input_data, rand_gen , node_sampling=_node_sampling, 
     assert valid, err
 
     assert np.all(
-        np.any(np.isnan(data), axis=1)), "each row must have at least a nan value where the samples will be substituted"
+        np.any(np.isnan(data), axis=1)
+    ), "each row must have at least a nan value where the samples will be substituted"
 
     nodes = get_nodes_by_type(node)
 
@@ -93,7 +93,8 @@ def sample_instances(node, input_data, rand_gen , node_sampling=_node_sampling, 
 
     instance_ids = np.arange(data.shape[0])
 
-    eval_spn_top_down(node, node_sampling, parent_result=instance_ids, data=data, lls_per_node=lls_per_node,
-                      rand_gen=rand_gen)
+    eval_spn_top_down(
+        node, node_sampling, parent_result=instance_ids, data=data, lls_per_node=lls_per_node, rand_gen=rand_gen
+    )
 
     return data

@@ -1,10 +1,10 @@
 # import unittest
 import numpy as np
-import sys;
+import sys
 
 from spn.structure.leaves.conditional.MPE import add_conditional_mpe_support
 
-sys.path.append('/home/shao/simple_spn/simple_spn/src')
+sys.path.append("/home/shao/simple_spn/simple_spn/src")
 
 from spn.algorithms.Inference import log_likelihood, conditional_log_likelihood
 from spn.algorithms.LearningWrappers import learn_conditional
@@ -15,15 +15,15 @@ from spn.structure.leaves.conditional.Inference import add_conditional_inference
 from spn.structure.leaves.conditional.Conditional import Conditional_Poisson, Conditional_Bernoulli
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     add_conditional_inference_support()
 
     np.random.seed(42)
     dataIn = np.random.randint(low=0, high=3, size=600).reshape(-1, 2)
     dataOut = np.random.randint(low=0, high=3, size=1200).reshape(-1, 4)
     data = np.concatenate((dataOut, dataIn), axis=1)
-    assert data.shape[1] == dataIn.shape[1] + dataOut.shape[1], 'invalid column size'
-    assert data.shape[0] == dataIn.shape[0] == dataOut.shape[0], 'invalid row size'
+    assert data.shape[1] == dataIn.shape[1] + dataOut.shape[1], "invalid column size"
+    assert data.shape[0] == dataIn.shape[0] == dataOut.shape[0], "invalid row size"
 
     ds_context = Context(meta_types=[MetaType.DISCRETE, MetaType.DISCRETE, MetaType.DISCRETE, MetaType.DISCRETE])
     ds_context.add_domains(dataOut)
@@ -48,12 +48,10 @@ if __name__ == '__main__':
     mpe_test[:, 0] = np.nan
 
     from spn.algorithms.MPE import mpe
+
     add_conditional_mpe_support()
 
     print(mpe(spn, mpe_test)[:, 0])
-
-
-
 
     # class TestBase(unittest.TestCase):
 #

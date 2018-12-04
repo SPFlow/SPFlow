@@ -33,8 +33,8 @@ def sum_condition(node, children, input_vals=None, scope=None):
             new_weights.append(node.weights[i] * np.exp(c[1]))
         else:
             probs.append(node.weights[i] * np.exp(c[1]))
-    new_node.weights = [w/sum(new_weights) for w in new_weights]
-    assert np.all(np.logical_not(np.isnan(new_node.weights))), 'Found nan weights'
+    new_node.weights = [w / sum(new_weights) for w in new_weights]
+    assert np.all(np.logical_not(np.isnan(new_node.weights))), "Found nan weights"
     if not new_node.scope:
         return None, np.log(sum(probs))
     return new_node, np.log(sum(new_weights))
@@ -51,8 +51,7 @@ def leaf_condition(node, input_vals=None, scope=None):
 def condition(spn, evidence):
     scope = set([i for i in range(len(spn.scope)) if not np.isnan(evidence)[0][i]])
     node_conditions = {type(leaf): leaf_condition for leaf in get_nodes_by_type(spn, Leaf)}
-    node_conditions.update({Sum: sum_condition,
-                            Product: prod_condition})
+    node_conditions.update({Sum: sum_condition, Product: prod_condition})
 
     new_root, val = eval_spn_bottom_up(spn, node_conditions, input_vals=evidence, scope=scope)
     assign_ids(new_root)

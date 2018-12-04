@@ -1,9 +1,9 @@
-'''
+"""
 Created on Novenber 22, 2018
 
 @author: Zhongjie Yu
 
-'''
+"""
 
 import unittest
 
@@ -12,8 +12,8 @@ from spn.structure.leaves.parametric.Parametric import Categorical
 from spn.structure.Base import Context
 from spn.structure.StatisticalTypes import MetaType
 
-class TestMutualInfo(unittest.TestCase):
 
+class TestMutualInfo(unittest.TestCase):
     def test_entropy(self):
         # test if entropy is correct
         """
@@ -44,12 +44,23 @@ class TestMutualInfo(unittest.TestCase):
         ds_context = Context(meta_types=[MetaType.DISCRETE] * 3)
         ds_context.add_domains(train_data)
         ds_context.parametric_type = [Categorical] * 3
-        spn = (0.64 * ((Categorical(p=[0.25, 0.75, 0.0], scope=0) *
-                        (0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2))) +
-                         0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))))) +
-               0.36 * ((Categorical(p=[0.0, 0.0, 1.0], scope=0) *
-                        (0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2))) +
-                         0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))))))
+        spn = 0.64 * (
+            (
+                Categorical(p=[0.25, 0.75, 0.0], scope=0)
+                * (
+                    0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2)))
+                    + 0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))
+                )
+            )
+        ) + 0.36 * (
+            (
+                Categorical(p=[0.0, 0.0, 1.0], scope=0)
+                * (
+                    0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2)))
+                    + 0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))
+                )
+            )
+        )
         # real entropy
         p2 = 0.3
         h_x2 = -p2 * np.log(p2) - (1 - p2) * np.log(1 - p2)
@@ -77,12 +88,23 @@ class TestMutualInfo(unittest.TestCase):
         ds_context = Context(meta_types=[MetaType.DISCRETE] * 3)
         ds_context.add_domains(train_data)
         ds_context.parametric_type = [Categorical] * 3
-        spn = (0.64 * ((Categorical(p=[0.25, 0.75, 0.0], scope=0) *
-                        (0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2))) +
-                         0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))))) +
-               0.36 * ((Categorical(p=[0.0, 0.0, 1.0], scope=0) *
-                        (0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2))) +
-                         0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))))))
+        spn = 0.64 * (
+            (
+                Categorical(p=[0.25, 0.75, 0.0], scope=0)
+                * (
+                    0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2)))
+                    + 0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))
+                )
+            )
+        ) + 0.36 * (
+            (
+                Categorical(p=[0.0, 0.0, 1.0], scope=0)
+                * (
+                    0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2)))
+                    + 0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))
+                )
+            )
+        )
         # real mutual info
         p2 = 0.3
         p3 = 0.66
@@ -94,10 +116,12 @@ class TestMutualInfo(unittest.TestCase):
         mi_x1x2 = 0
         self.assertAlmostEqual(mi_x1x2, mutual_information(spn, ds_context, {1}, {0}))
         # test symmetry
-        self.assertAlmostEqual(mutual_information(spn, ds_context, {2}, {1}),
-                               mutual_information(spn, ds_context, {1}, {2}))
-        self.assertAlmostEqual(mutual_information(spn, ds_context, {0, 2}, {1}),
-                               mutual_information(spn, ds_context, {1}, {0, 2}))
+        self.assertAlmostEqual(
+            mutual_information(spn, ds_context, {2}, {1}), mutual_information(spn, ds_context, {1}, {2})
+        )
+        self.assertAlmostEqual(
+            mutual_information(spn, ds_context, {0, 2}, {1}), mutual_information(spn, ds_context, {1}, {0, 2})
+        )
         # rest 0
         self.assertAlmostEqual(0, mutual_information(spn, ds_context, {2, 1}, {0}))
 
@@ -110,12 +134,23 @@ class TestMutualInfo(unittest.TestCase):
         ds_context = Context(meta_types=[MetaType.DISCRETE] * 3)
         ds_context.add_domains(train_data)
         ds_context.parametric_type = [Categorical] * 3
-        spn = (0.64 * ((Categorical(p=[0.25, 0.75, 0.0], scope=0) *
-                        (0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2))) +
-                         0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))))) +
-               0.36 * ((Categorical(p=[0.0, 0.0, 1.0], scope=0) *
-                        (0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2))) +
-                         0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))))))
+        spn = 0.64 * (
+            (
+                Categorical(p=[0.25, 0.75, 0.0], scope=0)
+                * (
+                    0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2)))
+                    + 0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))
+                )
+            )
+        ) + 0.36 * (
+            (
+                Categorical(p=[0.0, 0.0, 1.0], scope=0)
+                * (
+                    0.34 * ((Categorical(p=[7 / 34, 27 / 34], scope=1) * Categorical(p=[1.0, 0.0], scope=2)))
+                    + 0.66 * ((Categorical(p=[21 / 22, 1 / 22], scope=1) * Categorical(p=[0.0, 1.0], scope=2)))
+                )
+            )
+        )
         # real mutual info
         p2 = 0.3
         p3 = 0.66
@@ -137,5 +172,5 @@ class TestMutualInfo(unittest.TestCase):
         self.assertAlmostEqual(cmi_x1x3_x2, conditional_mutual_information(spn, ds_context, {2}, {0}, {1}))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

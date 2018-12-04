@@ -1,8 +1,8 @@
-'''
+"""
 Created on September 04, 2018
 
 @author: Alejandro Molina
-'''
+"""
 import logging
 
 from joblib import Memory
@@ -28,8 +28,8 @@ add_conditional_inference_support()
 add_conditional_sampling_support()
 add_conditional_mpe_support()
 
-if __name__ == '__main__':
-    train_input, train_labels, test_input, test_labels = get_categorical_data('yeast')
+if __name__ == "__main__":
+    train_input, train_labels, test_input, test_labels = get_categorical_data("yeast")
 
     print(train_input.shape)
     print(train_labels.shape)
@@ -43,8 +43,15 @@ if __name__ == '__main__':
 
     train_data = np.concatenate((train_labels, train_input), axis=1)
 
-    cspn = learn_conditional(train_data, ds_context, scope=list(range(num_labels)),rows='tsne',
-                             min_instances_slice=500, threshold=0.5, memory=memory)
+    cspn = learn_conditional(
+        train_data,
+        ds_context,
+        scope=list(range(num_labels)),
+        rows="tsne",
+        min_instances_slice=500,
+        threshold=0.5,
+        memory=memory,
+    )
 
     test_data = np.zeros_like(test_labels, dtype=np.float32)
     test_data[:] = np.nan
@@ -57,4 +64,4 @@ if __name__ == '__main__':
     binary_pred_labels[binary_pred_labels < 0] = 0
     print("hamming_loss", hamming_loss(test_labels, binary_pred_labels))
     print("zero_one_loss", zero_one_loss(test_labels, binary_pred_labels))
-    print("precision_score", precision_score(test_labels, binary_pred_labels, average='micro'))
+    print("precision_score", precision_score(test_labels, binary_pred_labels, average="micro"))

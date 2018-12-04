@@ -31,7 +31,7 @@ class TestParametric(unittest.TestCase):
         ds_context = Context([MetaType.DISCRETE])
         ds_context.add_domains(data)
         hist = create_histogram_leaf(data, ds_context, [0], alpha=True)
-        #print(np.var(data.shape[0]))
+        # print(np.var(data.shape[0]))
         prob = np.exp(log_likelihood(hist, data))
         self.assertAlmostEqual(float(prob[0]), 3 / 9)
         self.assertAlmostEqual(float(prob[1]), 3 / 9)
@@ -50,11 +50,12 @@ class TestParametric(unittest.TestCase):
         x = np.linspace(0, 60, 1000).tolist() + data[:, 0].tolist()
         x = np.sort(x)
         from scipy.stats import norm
+
         y = 0.5 * norm.pdf(x, 10, 0.01) + 0.5 * norm.pdf(x, 30, 10)
         ye = likelihood(hist, x.reshape((-1, 1)))
         error = np.sum(np.abs(ye[:, 0] - y))
         self.assertLessEqual(error, 900)
-        #print(error)
+        # print(error)
 
         # import matplotlib.pyplot as plt
         # fig, ax = plt.subplots()
@@ -73,23 +74,23 @@ class TestParametric(unittest.TestCase):
         x = np.linspace(0, 60, 1000).tolist() + data[:, 0].tolist()
         x = np.sort(x)
         from scipy.stats import norm
+
         y = 0.5 * norm.pdf(x, 10, 1) + 0.5 * norm.pdf(x, 30, 1)
         ye = likelihood(hist, x.reshape((-1, 1)))
         error = np.sum(np.abs(ye[:, 0] - y))
         # print(error)
         self.assertLessEqual(error, 7)
-    
-    
+
     def test_valid_histogram(self):
         np.random.seed(17)
-        data = [1] + [5]*20 + [7] + [10]*50 + [20] + [30]*10
+        data = [1] + [5] * 20 + [7] + [10] * 50 + [20] + [30] * 10
         data = np.array(data).reshape((-1, 1))
         ds_context = Context([MetaType.REAL])
         ds_context.add_domains(data)
-        
+
         hist = create_histogram_leaf(data, ds_context, [0], alpha=False, hist_source="kde")
         self.assertGreater(len(hist.bin_repr_points), 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

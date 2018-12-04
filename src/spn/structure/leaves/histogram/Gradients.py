@@ -9,7 +9,7 @@ from spn.algorithms.Gradient import add_node_gradients
 
 def histogramm_gradient(node, input_vals=None, dtype=np.float64):
     if input_vals is None:
-        raise ValueError('Input to piecewise_gradient cannot be None')
+        raise ValueError("Input to piecewise_gradient cannot be None")
     data = input_vals
 
     breaks = node.breaks
