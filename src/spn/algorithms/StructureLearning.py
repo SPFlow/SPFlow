@@ -7,7 +7,6 @@ import logging
 from collections import deque
 from enum import Enum
 
-
 try:
     from time import perf_counter
 except:
@@ -26,10 +25,11 @@ import os
 parallel = True
 
 if parallel:
-    cpus = os.cpu_count() - 2  # - int(os.getloadavg()[2])
+    cpus = max(1, os.cpu_count() - 2)  # - int(os.getloadavg()[2])
 else:
     cpus = 1
-pool = multiprocessing.Pool(processes=cpus,)
+pool = multiprocessing.Pool(processes=cpus, )
+
 
 class Operation(Enum):
     CREATE_LEAF = 1
@@ -39,8 +39,10 @@ class Operation(Enum):
     REMOVE_UNINFORMATIVE_FEATURES = 5
     CONDITIONING = 6
 
+
 def get_next_operation(min_instances_slice=100, min_features_slice=1, multivariate_leaf=False):
-    def next_operation(data, scope, create_leaf, no_clusters=False, no_independencies=False, is_first=False, cluster_first=True,
+    def next_operation(data, scope, create_leaf, no_clusters=False, no_independencies=False, is_first=False,
+                       cluster_first=True,
                        cluster_univariate=False):
 
         minimalFeatures = len(scope) == min_features_slice
@@ -86,8 +88,8 @@ def get_next_operation(min_instances_slice=100, min_features_slice=1, multivaria
                 return Operation.SPLIT_COLUMNS, None
 
         return Operation.SPLIT_COLUMNS, None
-    return next_operation
 
+    return next_operation
 
 
 def default_slicer(data, cols, num_cond_cols=None):
@@ -231,16 +233,17 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
                 local_children_params.append((child_data_slice, ds_context, [scope[col]]))
 
             result_nodes = pool.starmap(create_leaf, local_children_params)
-            #result_nodes = []
-            #for l in tqdm(local_children_params):
+            # result_nodes = []
+            # for l in tqdm(local_children_params):
             #    result_nodes.append(create_leaf(*l))
-            #result_nodes = [create_leaf(*l) for l in local_children_params]
+            # result_nodes = [create_leaf(*l) for l in local_children_params]
             for child_pos, child in zip(local_tasks, result_nodes):
                 node.children[child_pos] = child
 
             split_end_t = perf_counter()
 
-            logging.debug('\t\tnaive factorization {} columns (in {:.5f} secs)'.format(len(scope), split_end_t - split_start_t))
+            logging.debug(
+                '\t\tnaive factorization {} columns (in {:.5f} secs)'.format(len(scope), split_end_t - split_start_t))
 
             continue
 
@@ -266,4 +269,3 @@ def learn_structure(dataset, ds_context, split_rows, split_cols, create_leaf, ne
     assert valid, "invalid spn: " + err
 
     return node
-
