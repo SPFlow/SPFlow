@@ -17,6 +17,10 @@ class Node(object):
     def name(self):
         return "%sNode_%s" % (self.__class__.__name__, self.id)
 
+    @property
+    def parameters(self):
+        raise Exception("Not Implemented")
+
     def __repr__(self):
         return self.name
 
@@ -74,6 +78,12 @@ class Sum(Node):
             children = []
         self.children = children
 
+    @property
+    def parameters(self):
+        sorted_children = sorted(self.children, key=lambda c: c.id)
+        params = [(n.id, self.weights[i]) for i, n in enumerate(sorted_children)]
+        return tuple(params)
+
 
 class Product(Node):
     def __init__(self, children=None):
@@ -81,6 +91,10 @@ class Product(Node):
         if children is None:
             children = []
         self.children = children
+
+    @property
+    def parameters(self):
+        return tuple(map(lambda n: n.id, sorted(self.children, key=lambda c: c.id)))
 
 
 class Leaf(Node):
@@ -147,6 +161,21 @@ def get_number_of_nodes(spn, node_type=Node):
     return len(get_nodes_by_type(spn, node_type))
 
 
+def get_parents(node, includ_pos=True):
+    parents = OrderedDict({node: []})
+    for n in get_nodes_by_type(node):
+        if not isinstance(n, Leaf):
+            for i, c in enumerate(n.children):
+                parent_list = parents.get(c, None)
+                if parent_list is None:
+                    parents[c] = parent_list = []
+                if includ_pos:
+                    parent_list.append((n, i))
+                else:
+                    parent_list.append(n)
+    return parents
+
+
 def get_depth(node):
     node_depth = {}
 
@@ -192,16 +221,16 @@ def bfs(root, func):
 def get_topological_order(node):
     nodes = get_nodes_by_type(node)
 
-    children_to_parent_nodes = OrderedDict({node: []})
+    parents = OrderedDict({node: []})
     in_degree = OrderedDict()
     for n in nodes:
         in_degree[n] = in_degree.get(n, 0)
         if not isinstance(n, Leaf):
             for c in n.children:
-                c2p = children_to_parent_nodes.get(c, None)
-                if c2p is None:
-                    children_to_parent_nodes[c] = c2p = []
-                c2p.append(n)
+                parent_list = parents.get(c, None)
+                if parent_list is None:
+                    parents[c] = parent_list = []
+                parent_list.append(n)
                 in_degree[n] += 1
 
     S = deque()  # Set of all nodes with no incoming edge
@@ -215,7 +244,7 @@ def get_topological_order(node):
         n = S.pop()  # remove a node n from S
         L.append(n)  # add n to tail of L
 
-        for m in children_to_parent_nodes[n]:  # for each node m with an edge e from n to m do
+        for m in parents[n]:  # for each node m with an edge e from n to m do
             in_degree_m = in_degree[m] - 1  # remove edge e from the graph
             in_degree[m] = in_degree_m
             if in_degree_m == 0:  # if m has no other incoming edges then
@@ -239,11 +268,13 @@ def get_nodes_by_type(node, ntype=Node):
     return result
 
 
-def get_leaf_types(node):
+def get_node_types(node, ntype=Node):
+    assert node is not None
+
     result = set()
 
     def add_node(node):
-        if isinstance(node, Leaf):
+        if isinstance(node, ntype):
             result.add(type(node))
 
     bfs(node, add_node)

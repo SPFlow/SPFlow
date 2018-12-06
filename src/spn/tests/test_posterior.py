@@ -14,7 +14,7 @@ class TestPosterior(unittest.TestCase):
             ll_node.scope = [0]
             X = sample_parametric_node(generator, n, None, RandomState(1234)).reshape(-1, 1)
             update_parametric_parameters_posterior(ll_node, X, RandomState(1234), prior)
-            print("expected", generator.params, "found", ll_node.params)
+            print("expected", generator.parameters, "found", ll_node.parameters)
             return generator, ll_node
 
         generator, node = update_params(

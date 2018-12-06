@@ -4,6 +4,8 @@ Created on May 4, 2018
 @author: Alejandro Molina
 @author: Antonio Vergari
 """
+from collections import namedtuple
+
 import numpy as np
 
 from spn.structure.Base import Leaf
@@ -13,8 +15,8 @@ import itertools
 
 
 class PiecewiseLinear(Leaf):
-
     type = Type.REAL
+    property_type = namedtuple("PiecewiseLinear", "x_range y_range bin_repr_points")
 
     def __init__(self, x_range, y_range, bin_repr_points, scope=None):
         Leaf.__init__(self, scope=scope)
@@ -23,6 +25,10 @@ class PiecewiseLinear(Leaf):
         self.y_range = y_range
 
         self.bin_repr_points = bin_repr_points
+
+    @property
+    def parameters(self):
+        return __class__.property_type(x_range=self.x_range, y_range=self.y_range, bin_repr_points=self.bin_repr_points)
 
     @property
     def mode(self):
