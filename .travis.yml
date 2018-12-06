@@ -6,6 +6,7 @@ python:
 install:
   - pip install -r requirements.txt
   - pip install tensorflow
+  - pip install cppyy
   - pip install pytest-xdist
 # command to run tests
 script: PYTHONPATH=src python3 -m pytest --cache-clear --ignore=src/spn/tests/test_tree_viz.py src/spn/tests/
