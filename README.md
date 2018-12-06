@@ -1,3 +1,4 @@
+[![pypi](https://img.shields.io/pypi/v/spflow.svg)](https://pypi.org/project/spflow/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Build Status](https://travis-ci.com/SPFlow/SPFlow.svg?branch=master)](https://travis-ci.com/SPFlow/SPFlow.svg?branch=master)
 
