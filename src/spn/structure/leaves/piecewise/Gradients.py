@@ -2,6 +2,7 @@ import numpy as np
 
 
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
+from spn.algorithms.Gradient import add_node_gradient
 
 
 def expand(array, left, right):
@@ -15,7 +16,7 @@ def piecewise_gradient(node, input_vals=None, dtype=np.float64):
         raise ValueError("Input to piecewise_gradient cannot be None")
     data = input_vals
     obs = data[:, node.scope[0]]
-    marg_ids = np.isnan(obs)
+    gradient = np.full(input_vals.shape, np.nan)
 
     x_range = expand(np.array(node.x_range), -np.infty, np.infty)
     y_range = expand(np.array(node.y_range), 0, 0)
@@ -24,11 +25,10 @@ def piecewise_gradient(node, input_vals=None, dtype=np.float64):
     upper = y_range[loc]
     lower = y_range[loc - 1]
 
-    gradient = (upper - lower) / (x_range[loc] - x_range[loc - 1])
-    gradient[marg_ids] = np.nan
+    gradient[:, node.scope] = ((upper - lower) / (x_range[loc] - x_range[loc - 1])).reshape(-1, 1)
 
-    return gradient.reshape((-1, 1))
+    return gradient
 
 
 def add_piecewise_linear_gradient_support():
-    add_node_gradients(PiecewiseLinear, piecewise_gradient)
+    add_node_gradient(PiecewiseLinear, piecewise_gradient)
