@@ -3,6 +3,8 @@ Created on March 20, 2018
 
 @author: Alejandro Molina
 """
+from collections import namedtuple
+
 import numpy as np
 
 from spn.structure.Base import Leaf
@@ -30,6 +32,7 @@ def init_rpy():
 class Histogram(Leaf):
 
     type = Type.CATEGORICAL
+    property_type = namedtuple("Histogram", "breaks densities bin_repr_points")
 
     def __init__(self, breaks, densities, bin_repr_points, scope=None, type_=None, meta_type=MetaType.DISCRETE):
         Leaf.__init__(self, scope=scope)
@@ -38,6 +41,12 @@ class Histogram(Leaf):
         self.breaks = breaks
         self.densities = densities
         self.bin_repr_points = bin_repr_points
+
+    @property
+    def parameters(self):
+        return __class__.property_type(
+            breaks=self.breaks, densities=self.densities, bin_repr_points=self.bin_repr_points
+        )
 
 
 def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy"):

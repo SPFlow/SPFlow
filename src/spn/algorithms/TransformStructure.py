@@ -6,7 +6,27 @@ Created on March 27, 2018
 from copy import deepcopy
 
 from spn.algorithms.Validity import is_valid
-from spn.structure.Base import Leaf, Sum, Product, assign_ids, get_nodes_by_type
+from spn.structure.Base import Leaf, Sum, Product, assign_ids, get_nodes_by_type, get_parents, get_topological_order
+
+
+def Compress(node):
+    all_parents = get_parents(node)
+
+    cache = {}
+
+    for n in get_topological_order(node):
+
+        params = (n.parameters, tuple(sorted(n.scope)))
+
+        cached_node = cache.get(params, None)
+        if cached_node is None:
+            cache[params] = n
+        else:
+            for parent, pos in all_parents[n]:
+                parent.children[pos] = cached_node
+
+    assign_ids(node)
+    return node
 
 
 def Prune(node):

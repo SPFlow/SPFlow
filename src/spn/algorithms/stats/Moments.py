@@ -1,9 +1,9 @@
 import numpy as np
 
 from spn.algorithms.Condition import condition
-from spn.algorithms.Inference import likelihood, _node_likelihood
+from spn.algorithms.Inference import _node_likelihood
 from spn.algorithms.Marginalization import marginalize
-from spn.structure.Base import Sum, Product, eval_spn_bottom_up, get_leaf_types
+from spn.structure.Base import Sum, Product, eval_spn_bottom_up, Leaf, get_node_types
 
 _node_moment = {}
 
@@ -94,7 +94,7 @@ def Moment(spn, feature_scope=None, node_moment=_node_moment, node_likelihoods=_
 
     node_moments = {Sum: sum_moment, Product: prod_moment}
 
-    for node in get_leaf_types(marg_spn):
+    for node in get_node_types(marg_spn, Leaf):
         try:
             moment = node_moment[node]
             node_ll = node_likelihoods[node]

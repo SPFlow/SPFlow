@@ -1,6 +1,5 @@
 import numpy as np
 
-from spn.algorithms.Gradient import add_node_gradients
 
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 

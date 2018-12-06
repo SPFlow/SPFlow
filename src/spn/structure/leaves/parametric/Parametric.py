@@ -2,6 +2,7 @@
 Created on March 20, 2018
 @author: Alejandro Molina
 """
+from collections import namedtuple
 
 import numpy as np
 
@@ -18,10 +19,6 @@ class Parametric(Leaf):
     def type(self):
         return self._type
 
-    @property
-    def params(self):
-        raise Exception("Not Implemented")
-
 
 class Gaussian(Parametric):
     """
@@ -32,6 +29,7 @@ class Gaussian(Parametric):
     """
 
     type = Type.REAL
+    property_type = namedtuple("Gaussian", "mean stdev")
 
     def __init__(self, mean=None, stdev=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
@@ -41,8 +39,8 @@ class Gaussian(Parametric):
         self.stdev = stdev
 
     @property
-    def params(self):
-        return {"mean": self.mean, "stdev": self.stdev}
+    def parameters(self):
+        return __class__.property_type(mean=self.mean, stdev=self.stdev)
 
     @property
     def precision(self):
@@ -54,6 +52,8 @@ class Gaussian(Parametric):
 
 
 class Uniform(Parametric):
+    property_type = namedtuple("Uniform", "density start end")
+
     def __init__(self, density=None, start=None, end=None, type=None, scope=None):
         Parametric.__init__(self, type, scope=scope)
 
@@ -63,8 +63,8 @@ class Uniform(Parametric):
         self.end = end
 
     @property
-    def params(self):
-        return {"density": self.density, "start": self.start, "end": self.end}
+    def parameters(self):
+        return __class__.property_type(density=self.density, start=self.start, end=self.end)
 
 
 class Gamma(Parametric):
@@ -77,6 +77,7 @@ class Gamma(Parametric):
     """
 
     type = Type.POSITIVE
+    property_type = namedtuple("Gamma", "alpha beta")
 
     def __init__(self, alpha=None, beta=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
@@ -86,8 +87,8 @@ class Gamma(Parametric):
         self.beta = beta
 
     @property
-    def params(self):
-        return {"alpha": self.alpha, "beta": self.beta}
+    def parameters(self):
+        return __class__.property_type(alpha=self.alpha, beta=self.beta)
 
 
 class LogNormal(Parametric):
@@ -99,6 +100,7 @@ class LogNormal(Parametric):
     """
 
     type = Type.POSITIVE
+    property_type = namedtuple("LogNormal", "mean stdev")
 
     def __init__(self, mean=None, stdev=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
@@ -108,8 +110,8 @@ class LogNormal(Parametric):
         self.stdev = stdev
 
     @property
-    def params(self):
-        return {"mean": self.mean, "stdev": self.stdev}
+    def parameters(self):
+        return __class__.property_type(mean=self.mean, stdev=self.stdev)
 
     @property
     def variance(self):
@@ -127,6 +129,7 @@ class Poisson(Parametric):
     """
 
     type = Type.COUNT
+    property_type = namedtuple("Poisson", "mean")
 
     def __init__(self, mean=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
@@ -137,6 +140,10 @@ class Poisson(Parametric):
     def params(self):
         return {"mean": self.mean}
 
+    @property
+    def parameters(self):
+        return __class__.property_type(mean=self.mean)
+
 
 class Bernoulli(Parametric):
     """
@@ -145,6 +152,7 @@ class Bernoulli(Parametric):
     """
 
     type = Type.BINARY
+    property_type = namedtuple("Bernoulli", "p")
 
     def __init__(self, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
@@ -152,8 +160,8 @@ class Bernoulli(Parametric):
         self.p = p
 
     @property
-    def params(self):
-        return {"p": self.p}
+    def parameters(self):
+        return __class__.property_type(p=self.p)
 
 
 class NegativeBinomial(Parametric):
@@ -165,6 +173,7 @@ class NegativeBinomial(Parametric):
     """
 
     type = Type.COUNT
+    property_type = namedtuple("NegativeBinomial", "p n")
 
     def __init__(self, n=None, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
@@ -173,8 +182,8 @@ class NegativeBinomial(Parametric):
         self.p = p
 
     @property
-    def params(self):
-        return {"p": self.p, "n": self.n}
+    def parameters(self):
+        return __class__.property_type(p=self.p, n=self.n)
 
 
 class Hypergeometric(Parametric):
@@ -186,6 +195,7 @@ class Hypergeometric(Parametric):
     """
 
     type = Type.COUNT
+    property_type = namedtuple("Hypergeometric", "K N n")
 
     def __init__(self, K=None, N=None, n=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
@@ -198,6 +208,10 @@ class Hypergeometric(Parametric):
     def params(self):
         return {"N": self.N, "K": self.K, "n": self.n}
 
+    @property
+    def parameters(self):
+        return __class__.property_type(K=self.K, N=self.N, n=self.n)
+
 
 class Geometric(Parametric):
     """
@@ -207,6 +221,7 @@ class Geometric(Parametric):
     """
 
     type = Type.COUNT
+    property_type = namedtuple("Geometric", "p")
 
     def __init__(self, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
@@ -214,8 +229,8 @@ class Geometric(Parametric):
         self.p = p
 
     @property
-    def params(self):
-        return {"p": self.p}
+    def parameters(self):
+        return __class__.property_type(p=self.p)
 
 
 class Categorical(Parametric):
@@ -231,6 +246,7 @@ class Categorical(Parametric):
     """
 
     type = Type.CATEGORICAL
+    property_type = namedtuple("Categorical", "p")
 
     def __init__(self, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
@@ -241,8 +257,8 @@ class Categorical(Parametric):
         self.p = p
 
     @property
-    def params(self):
-        return {"p": self.p}
+    def parameters(self):
+        return __class__.property_type(p=self.p)
 
     @property
     def k(self):
@@ -262,6 +278,7 @@ class CategoricalDictionary(Parametric):
     """
 
     type = Type.CATEGORICAL
+    property_type = namedtuple("CategoricalDictionary", "p")
 
     def __init__(self, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
@@ -270,8 +287,8 @@ class CategoricalDictionary(Parametric):
         self.p = p
 
     @property
-    def params(self):
-        return {"p": self.p}
+    def parameters(self):
+        return __class__.property_type(p=tuple(sorted(self.p.items(), key=lambda t: t[0])))
 
 
 class Exponential(Parametric):
@@ -282,6 +299,7 @@ class Exponential(Parametric):
     """
 
     type = Type.POSITIVE
+    property_type = namedtuple("Exponential", "l")
 
     def __init__(self, l=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
@@ -289,8 +307,8 @@ class Exponential(Parametric):
         self.l = l
 
     @property
-    def params(self):
-        return {"l": self.l}
+    def parameters(self):
+        return __class__.property_type(l=self.l)
 
 
 def create_parametric_leaf(data, ds_context, scope):
