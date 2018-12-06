@@ -26,6 +26,8 @@ def Compress(node):
                 parent.children[pos] = cached_node
 
     assign_ids(node)
+    val, msg = is_valid(node)
+    assert val, msg
     return node
 
 
