@@ -1,7 +1,7 @@
 set -e
 
 echo "Testing"
-PYTHONPATH=.  python3 -m unittest discover
+PYTHONPATH=. python3 -m pytest --cache-clear spn/tests/
 
 echo "Creating package"
 rm -rf dist

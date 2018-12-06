@@ -1,84 +1,63 @@
+from spn.structure.Base import eval_spn_top_down, Sum, Product, Leaf
 import numpy as np
 
-from spn.algorithms.Inference import likelihood
-from spn.algorithms.Condition import condition
-from spn.structure.Base import Sum, Product, eval_spn_bottom_up, eval_spn_top_down
 
+def gradient_backward(spn, lls_per_node):
+    node_gradients = {}
+    node_gradients[Sum] = sum_gradient_backward
+    node_gradients[Product] = prod_gradient_backward
+    node_gradients[Leaf] = leaf_gradient_backward
 
-_node_gradients = {}
+    gradient_result = np.zeros_like(lls_per_node)
 
-
-def add_node_gradients(node_type, lambda_func):
-    _node_gradients[node_type] = lambda_func
-
-
-def sum_gradient_forward(node, children, input_vals, dtype=np.float64):
-    b = np.array(node.weights, dtype=dtype)
-    joined_c = np.stack(children)
-    gradient_children = np.array([weight * tensor for weight, tensor in zip(b, joined_c)])
-    results = np.sum(gradient_children, axis=0)
-    assert len(node.scope) == results.shape[1], "{} vs {}".format(node.scope, results.shape)
-    return results
-
-
-def prod_gradient_forward(node, children, input_vals, dtype=np.float64):
-    probs = [likelihood(c, input_vals) for c in node.children]
-
-    results = []
-
-    for index, c in enumerate(children):
-        array = np.prod([l for i, l in enumerate(probs) if i != index], axis=0)
-        results.append(array * c)
-
-    results = np.concatenate(results, axis=1)
-
-    assert len(node.scope) == results.shape[1], "{} vs {}: got {}".format(
-        node.scope, results.shape, [c.shape for c in children]
+    eval_spn_top_down(
+        spn,
+        node_gradients,
+        parent_result=np.zeros((lls_per_node.shape[0])),
+        gradient_result=gradient_result,
+        lls_per_node=lls_per_node,
     )
-    return results
+
+    return gradient_result
 
 
-def gradient_forward(spn, evidence):
-    """
-    Computes a forward propagated gradient through the spn. This function
-    currently assumes a tree structured SPN!
+def leaf_gradient_backward(node, parent_result, gradient_result=None, lls_per_node=None):
+    gradients = np.zeros((parent_result.shape[0]))
+    gradients[:] = parent_result  # log_sum_exp
 
-    :param spn:
-    :param evidence:
-    :return:
-    """
-    _node_gradients[Sum] = sum_gradient_forward
-    _node_gradients[Product] = prod_gradient_forward
-
-    node_gradients = _node_gradients
-
-    gradients = eval_spn_bottom_up(spn, node_gradients, input_vals=evidence)
-    return gradients
+    gradient_result[:, node.id] = gradients
 
 
-def sum_gradient_backward():
-    pass
+def sum_gradient_backward(node, parent_result, gradient_result=None, lls_per_node=None):
+    gradients = np.zeros((parent_result.shape[0]))
+    gradients[:] = parent_result  # log_sum_exp
+
+    gradient_result[:, node.id] = gradients
+
+    messages_to_children = []
+
+    for i, c in enumerate(node.children):
+        messages_to_children.append(gradients + np.log(node.weights[i]))
+
+    assert not np.any(np.isnan(messages_to_children)), "Nans found in iteration"
+
+    return messages_to_children
 
 
-def prod_gradient_backward():
-    pass
+def prod_gradient_backward(node, parent_result, gradient_result=None, lls_per_node=None):
+    gradients = np.zeros((parent_result.shape[0]))
+    gradients[:] = parent_result  # log_sum_exp
 
+    gradient_result[:, node.id] = gradients
 
-def backprop_gradient(spn, evidence):
-    probs = likelihood(spn, evidence)
-    _node_gradients[Sum] = sum_gradient_backward
-    _node_gradients[Product] = prod_gradient_backward
+    messages_to_children = []
 
-    node_gradients = _node_gradients
+    # TODO handle zeros for efficiency, darwiche 2003
+    output_ll = lls_per_node[:, node.id]
 
-    all_gradients = {}
-    gradients_input = eval_spn_top_down(spn, node_gradients, all_results=all_gradients, probs=probs)
+    for i, c in enumerate(node.children):
+        messages_to_children.append(output_ll - lls_per_node[:, c.id])
 
-    return gradients_input
+    assert not np.any(np.isnan(messages_to_children)), "Nans found in iteration"
 
-
-def conditional_gradient(spn, conditional_evidence, gradient_evidence):
-    print(conditional_evidence)
-    cond_spn = condition(spn, conditional_evidence)
-    gradients = gradient_forward(cond_spn, gradient_evidence)
-    return gradients
+    return messages_to_children
