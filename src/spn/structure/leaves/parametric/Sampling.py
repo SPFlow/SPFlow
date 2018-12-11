@@ -4,7 +4,7 @@ Created on April 15, 2018
 @author: Alejandro Molina
 @author: Antonio Vergari
 """
-from spn.algorithms.Sampling import add_node_sampling
+from spn.algorithms.Sampling import add_leaf_sampling
 from spn.structure.leaves.parametric.Parametric import (
     Parametric,
     Gaussian,
@@ -51,11 +51,11 @@ def sample_parametric_node(node, n_samples, data, rand_gen):
 
 
 def add_parametric_sampling_support():
-    add_node_sampling(Gaussian, sample_parametric_node)
-    add_node_sampling(Gamma, sample_parametric_node)
-    add_node_sampling(LogNormal, sample_parametric_node)
-    add_node_sampling(Poisson, sample_parametric_node)
-    add_node_sampling(Geometric, sample_parametric_node)
-    add_node_sampling(Exponential, sample_parametric_node)
-    add_node_sampling(Bernoulli, sample_parametric_node)
-    add_node_sampling(Categorical, sample_parametric_node)
+    add_leaf_sampling(Gaussian, sample_parametric_node)
+    add_leaf_sampling(Gamma, sample_parametric_node)
+    add_leaf_sampling(LogNormal, sample_parametric_node)
+    add_leaf_sampling(Poisson, sample_parametric_node)
+    add_leaf_sampling(Geometric, sample_parametric_node)
+    add_leaf_sampling(Exponential, sample_parametric_node)
+    add_leaf_sampling(Bernoulli, sample_parametric_node)
+    add_leaf_sampling(Categorical, sample_parametric_node)
