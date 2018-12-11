@@ -59,9 +59,13 @@ _node_sampling = {Product: sample_prod, Sum: sample_sum}
 _leaf_sampling = {}
 
 
-def add_node_sampling(node_type, lambda_func):
+def add_leaf_sampling(node_type, lambda_func):
     _leaf_sampling[node_type] = lambda_func
     _node_sampling[node_type] = sample_leaf
+
+
+def add_node_sampling(node_type, lambda_func):
+    _node_sampling[node_type] = lambda_func
 
 
 def sample_instances(node, input_data, rand_gen, node_sampling=_node_sampling, in_place=False):
