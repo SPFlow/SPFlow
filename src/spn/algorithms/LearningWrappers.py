@@ -9,10 +9,8 @@ import numpy as np
 from spn.algorithms.StructureLearning import get_next_operation, learn_structure
 from spn.algorithms.CnetStructureLearning import get_next_operation_cnet, learn_structure_cnet
 from spn.algorithms.Validity import is_valid
-from spn.algorithms.splitting.Clustering import get_split_rows_KMeans, get_split_rows_TSNE
-from spn.algorithms.splitting.RDC import get_split_cols_RDC_py, get_split_rows_RDC_py
 
-from spn.structure.Base import Sum, assign_ids, Context, Leaf
+from spn.structure.Base import Sum, assign_ids
 
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf
@@ -40,6 +38,35 @@ def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, **kwargs):
     return spn
 
 
+def get_splitting_functions(cols, rows, ohe, threshold, rand_gen, n_jobs):
+    from spn.algorithms.splitting.Clustering import get_split_rows_KMeans, get_split_rows_TSNE
+    from spn.algorithms.splitting.PoissonStabilityTest import get_split_cols_poisson_py
+    from spn.algorithms.splitting.RDC import get_split_cols_RDC_py, get_split_rows_RDC_py
+
+    if isinstance(cols, str):
+        if cols == "rdc":
+            split_cols = get_split_cols_RDC_py(threshold, rand_gen=rand_gen, ohe=ohe, n_jobs=n_jobs)
+        elif cols == "poisson":
+            split_cols = get_split_cols_poisson_py(threshold, n_jobs=n_jobs)
+        else:
+            raise AssertionError("unknown columns splitting strategy type %s" % str(cols))
+    else:
+        split_cols = cols
+
+    if isinstance(rows, str):
+        if rows == "rdc":
+            split_rows = get_split_rows_RDC_py(rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
+        elif rows == "kmeans":
+            split_rows = get_split_rows_KMeans()
+        elif rows == "tsne":
+            split_rows = get_split_rows_TSNE()
+        else:
+            raise AssertionError("unknown rows splitting strategy type %s" % str(rows))
+    else:
+        split_rows = rows
+    return split_cols, split_rows
+
+
 def learn_mspn_with_missing(
     data,
     ds_context,
@@ -62,12 +89,7 @@ def learn_mspn_with_missing(
         rand_gen = np.random.RandomState(17)
 
     def l_mspn_missing(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe):
-        if cols == "rdc":
-            split_cols = get_split_cols_RDC_py(threshold, rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
-        if rows == "rdc":
-            split_rows = get_split_rows_RDC_py(rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
-        elif rows == "kmeans":
-            split_rows = get_split_rows_KMeans()
+        split_cols, split_rows = get_splitting_functions(cols, rows, ohe, threshold, rand_gen, cpus)
 
         if leaves is None:
             leaves = create_histogram_leaf
@@ -102,12 +124,7 @@ def learn_mspn(
         rand_gen = np.random.RandomState(17)
 
     def l_mspn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
-        if cols == "rdc":
-            split_cols = get_split_cols_RDC_py(threshold, rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
-        if rows == "rdc":
-            split_rows = get_split_rows_RDC_py(rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
-        elif rows == "kmeans":
-            split_rows = get_split_rows_KMeans()
+        split_cols, split_rows = get_splitting_functions(cols, rows, ohe, threshold, rand_gen, cpus)
 
         nextop = get_next_operation(min_instances_slice)
 
@@ -141,12 +158,7 @@ def learn_parametric(
         rand_gen = np.random.RandomState(17)
 
     def learn_param(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
-        if cols == "rdc":
-            split_cols = get_split_cols_RDC_py(threshold, rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
-        if rows == "rdc":
-            split_rows = get_split_rows_RDC_py(rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
-        elif rows == "kmeans":
-            split_rows = get_split_rows_KMeans()
+        split_cols, split_rows = get_splitting_functions(cols, rows, ohe, threshold, rand_gen, cpus)
 
         nextop = get_next_operation(min_instances_slice, min_features_slice, multivariate_leaf)
 
@@ -168,7 +180,6 @@ def learn_cnet(
     rand_gen=None,
     cpus=-1,
 ):
-
     leaves = create_cltree_leaf
 
     if cond == "naive_mle":
