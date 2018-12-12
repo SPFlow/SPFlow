@@ -127,6 +127,9 @@ class Context:
     def get_domains_by_scope(self, scopes):
         return [self.domains[s] for s in scopes]
 
+    def get_parametric_types_by_scope(self, scopes):
+        return [self.parametric_types[s] for s in scopes]
+
     def add_domains(self, data):
         assert len(data.shape) == 2, "data is not 2D?"
         assert data.shape[1] == len(self.meta_types), "Data columns and metatype size doesn't match"
