@@ -13,7 +13,7 @@ def add_node_moment(node_type, lambda_func):
 
 
 def prod_moment(node, children, order=1, result_array=None, dtype=np.float64):
-    joined = np.zeros((1, len(node.scope)))
+    joined = np.zeros(result_array.shape)
     joined[:] = np.nan
     for i, c in enumerate(children):
         joined[:, node.children[i].scope] = c[:, node.children[i].scope]
