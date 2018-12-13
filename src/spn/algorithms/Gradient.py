@@ -103,31 +103,3 @@ def feature_gradient(node, data, node_gradient_functions=_node_gradient, gradien
     node_gradients = np.array(node_gradients)
 
     return np.nansum(node_gradients, axis=0)
-
-
-def conditional_gradient(node, data, evidence_scope, node_gradient_functions=_node_gradient):
-    '''
-    Calculates the conditional gradient with reagrd to the evidence features. This can also be calculated
-    by using a conditioned spn
-    :param node:
-    :param data:
-    :param evidence_scope:
-    :param node_gradient_functions:
-    :return:
-    '''
-
-    marg_evidence = marginalize(node, evidence_scope)
-
-    lls_evidence = np.full((data.shape[0], get_number_of_nodes(marg_evidence)), np.nan)
-
-    gradients_evidence = feature_gradient(marg_evidence, data, node_gradient_functions=node_gradient_functions, lls_per_node=lls_evidence)
-
-    lls_full = np.full((data.shape[0], get_number_of_nodes(node)), np.nan)
-
-    gradients_full = feature_gradient(node, data, node_gradient_functions=node_gradient_functions, lls_per_node=lls_full)
-
-    ll_evidence = lls_evidence[:, 0:1]
-
-    ll_full = lls_full[:, 0:1]
-
-    return (gradients_full * ll_evidence + gradients_evidence * ll_full) / (ll_evidence ** 2)
