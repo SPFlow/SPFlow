@@ -12,6 +12,9 @@ import arff
 from scipy.io.arff import loadarff
 import pandas as pd
 import xml.etree.ElementTree as ET
+import logging
+
+logger = logging.getLogger(__name__)
 
 path = dirname(__file__) + "/"
 

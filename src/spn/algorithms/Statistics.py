@@ -7,6 +7,9 @@ from collections import Counter
 
 from spn.structure.Base import get_nodes_by_type, Sum, Product, Leaf, get_number_of_edges, get_depth, Node
 from spn.structure.leaves.parametric.Parametric import Parametric
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_structure_stats_dict(node):

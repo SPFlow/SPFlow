@@ -3,10 +3,13 @@ Created on March 21, 2018
 
 @author: Alejandro Molina
 """
+import logging
 import numpy as np
 from scipy.special import logsumexp
 
-from spn.structure.Base import Product, Sum, Leaf, eval_spn_bottom_up, eval_spn_top_down
+from spn.structure.Base import Product, Sum, eval_spn_bottom_up
+
+logger = logging.getLogger(__name__)
 
 EPSILON = 0.000000000000001
 
