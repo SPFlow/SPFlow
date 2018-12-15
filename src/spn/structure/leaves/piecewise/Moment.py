@@ -8,6 +8,9 @@ import numpy as np
 
 from spn.algorithms.stats.Moments import add_node_moment
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def piecewise_moment(node, order=1):

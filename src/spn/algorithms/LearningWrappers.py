@@ -20,6 +20,9 @@ from spn.algorithms.splitting.Conditioning import (
     get_split_rows_naive_mle_conditioning,
     get_split_rows_random_conditioning,
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, **kwargs):

@@ -8,6 +8,9 @@ from spn.algorithms.Inference import add_node_likelihood
 from spn.structure.leaves.cltree.CLTree import CLTree
 
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def cltree_likelihood(node, data=None, dtype=np.float64):

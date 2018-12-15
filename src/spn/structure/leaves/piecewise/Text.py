@@ -7,6 +7,9 @@ from spn.io.Text import add_str_to_spn, add_node_to_str
 
 from spn.structure.leaves.histogram.Histograms import Histogram
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def piecewise_to_str(node, feature_names=None, node_to_str=None):

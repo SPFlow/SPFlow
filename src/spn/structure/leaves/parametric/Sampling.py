@@ -20,6 +20,9 @@ from spn.structure.leaves.parametric.Parametric import (
 import numpy as np
 
 from spn.structure.leaves.parametric.utils import get_scipy_obj_params
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def sample_parametric_node(node, n_samples, data, rand_gen):

@@ -3,6 +3,9 @@
 @author Claas Völcker
 """
 from spn.algorithms.stats.Moments import Moment, ConditionalMoment, _node_moment
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def Expectation(spn, feature_scope=None, evidence=None):

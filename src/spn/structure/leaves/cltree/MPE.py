@@ -8,6 +8,9 @@ from spn.structure.leaves.cltree.Inference import cltree_likelihood
 from spn.structure.leaves.cltree.CLTree import CLTree
 
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def cltree_bottom_up_ll(node, data, dtype=np.float64):
