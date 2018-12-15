@@ -4,6 +4,9 @@ Created on March 22, 2018
 @author: Alejandro Molina
 """
 import dill as pickle
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def dump_python_evaluator(node, leaf_ll):

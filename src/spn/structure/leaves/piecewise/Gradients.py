@@ -2,6 +2,9 @@ import numpy as np
 
 
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def expand(array, left, right):

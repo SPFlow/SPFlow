@@ -1,5 +1,8 @@
 from spn.structure.Base import eval_spn_top_down, Sum, Product, Leaf
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def gradient_backward(spn, lls_per_node):

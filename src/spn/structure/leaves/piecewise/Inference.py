@@ -9,6 +9,9 @@ import numpy as np
 
 from spn.algorithms.Inference import EPSILON, add_node_likelihood, add_node_mpe_likelihood, leaf_marginalized_likelihood
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
+import logging
+
+logger = logging.getLogger(__name__)
 
 LOG_ZERO = -300
 

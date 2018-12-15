@@ -10,6 +10,9 @@ import inspect
 import numpy as np
 
 from spn.structure.leaves.cltree.CLTree import CLTree
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def cltree_to_str(node, feature_names=None, node_to_str=None):

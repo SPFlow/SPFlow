@@ -8,6 +8,9 @@ from functools import reduce
 import sympy as sp
 
 from spn.structure.Base import Sum, Product, eval_spn_bottom_up
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def prod_to_sympy(node, children, input_vars=None, log=False):

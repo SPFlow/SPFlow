@@ -10,6 +10,9 @@ import numpy as np
 from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, get_nodes_by_type, eval_spn_top_down
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def sample_prod(node, input_vals, data=None, lls_per_node=None, rand_gen=None):

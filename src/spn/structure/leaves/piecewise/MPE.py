@@ -9,6 +9,9 @@ import numpy as np
 from spn.algorithms.MPE import get_mpe_top_down_leaf, add_node_mpe
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 from spn.structure.leaves.piecewise.Inference import piecewise_likelihood
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def piecewise_mode(node):

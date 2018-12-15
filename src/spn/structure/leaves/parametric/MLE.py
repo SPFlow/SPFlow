@@ -18,6 +18,9 @@ from spn.structure.leaves.parametric.Parametric import (
     Bernoulli,
     CategoricalDictionary,
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def update_parametric_parameters_mle(node, data):

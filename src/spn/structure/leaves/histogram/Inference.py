@@ -11,6 +11,9 @@ from spn.structure.leaves.histogram.Histograms import Histogram
 
 # from numba import jit
 import bisect
+import logging
+
+logger = logging.getLogger(__name__)
 
 # @jit("float64[:](float64[:], float64[:], float64[:,:])", nopython=True)
 def histogram_ll(breaks, densities, data):

@@ -19,6 +19,9 @@ from spn.structure.leaves.parametric.Parametric import (
     Exponential,
 )
 from spn.structure.leaves.parametric.Sampling import sample_parametric_node
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PriorNormalInverseGamma:
@@ -203,7 +206,7 @@ def update_params_GaussianNode(node, X, rand_gen, nig_prior):
     sigma2_sam = sigma2_sam * b_n
     std_n = np.sqrt(sigma2_sam * V_n)
     mu_sam = sample_parametric_node(Gaussian(m_n, std_n), 1, None, rand_gen)
-    # print('sigm', sigma2_sam, 'std_n', std_n, 'v_n', V_n, mu_sam, m_n)
+    # logger.info('sigm', sigma2_sam, 'std_n', std_n, 'v_n', V_n, mu_sam, m_n)
 
     #
     # updating params
@@ -243,7 +246,7 @@ def update_params_GammaFixAlphaNode(node, X, rand_gen, gamma_prior):
     # if N is 0, then it would be like sampling from the prior
     # a_n = a_0 + N * alpha
     a_n = gamma_prior.a_0 + N * node.alpha
-    # print(a_n, gamma_prior.a_0, N, node.alpha)
+    # logger.info(a_n, gamma_prior.a_0, N, node.alpha)
 
     #
     # x = X[node.row_ids, node.scope]
@@ -299,10 +302,10 @@ def update_params_LogNormalFixVarNode(node, X, rand_gen, normal_prior):
     # sampling
     # TODO, optimize it with numba
     std_n = 1.0 / np.sqrt(tau_n)
-    # print('STDN', std_n, tau_n, mu_n, log_sum_x)
+    # logger.info('STDN', std_n, tau_n, mu_n, log_sum_x)
 
     mu_sam = sample_parametric_node(Gaussian(mu_n, std_n), 1, None, rand_gen)
-    # print('STDN', std_n, tau_n, mu_n, sum_x, np.log(mu_sam), mu_sam)
+    # logger.info('STDN', std_n, tau_n, mu_n, sum_x, np.log(mu_sam), mu_sam)
     #
     # updating params (only mean)
     node.mean = mu_sam[0]
