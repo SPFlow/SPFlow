@@ -295,7 +295,7 @@ def getIndependentRDCGroups_py(
     #
     # thresholding
     rdc_adjacency_matrix[rdc_adjacency_matrix < threshold] = 0
-    # logger.info("thresholding", rdc_adjacency_matrix)
+    # logger.info("thresholding %s", rdc_adjacency_matrix)
 
     #
     # getting connected components
