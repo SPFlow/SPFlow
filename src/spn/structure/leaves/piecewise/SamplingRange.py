@@ -10,6 +10,9 @@ import numpy as np
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 
 from spn.experiments.AQP.Ranges import NumericRange
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def sample_piecewise_node(node, n_samples, rand_gen, ranges=None):

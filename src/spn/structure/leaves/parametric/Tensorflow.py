@@ -17,6 +17,9 @@ from spn.structure.leaves.parametric.Parametric import (
     Bernoulli,
 )
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def gaussian_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):

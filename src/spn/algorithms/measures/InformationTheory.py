@@ -6,6 +6,9 @@ Created on Novenber 14, 2018
 
 """
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def conditional_mutual_information(spn, ds_context, X, Y, cond_Z, debug=False):
@@ -31,8 +34,7 @@ def conditional_mutual_information(spn, ds_context, X, Y, cond_Z, debug=False):
     hxyz = entropy(spn, ds_context, X | Y | cond_Z, debug)
     # by definition
     cmi = hxz + hyz - hz - hxyz
-    if debug:
-        print("I(%s,%s|%s)=%s" % (X, Y, cond_Z, cmi))
+    logger.debug("I(%s,%s|%s)=%s" % (X, Y, cond_Z, cmi))
     return cmi
 
 
@@ -52,8 +54,7 @@ def mutual_information(spn, ds_context, Xset, Yset, debug=False):
     hxy = entropy(spn, ds_context, Xset | Yset, debug)
     mi = hx + hy - hxy
 
-    if debug:
-        print("I(%s)=%s" % (Xset | Yset, mi))
+    logger.debug("I(%s)=%s" % (Xset | Yset, mi))
 
     return mi
 
@@ -79,8 +80,7 @@ def entropy(spn, ds_context, RVset, debug=False):
     h[np.isnan(h)] = 0
     H = -(h.sum())
 
-    if debug:
-        print("H(%s)=%s" % (RVset, H))
+    logger.debug("H(%s)=%s" % (RVset, H))
 
     return H
 
@@ -133,7 +133,7 @@ def print_debug_info(ds_context, X, Y, cond_Z):
     y = np.array(list(Y))
     for index in c_Z:
         v4print = v4print + str(ds_context.domains[index].size) + " * "
-    print(
+    logger.info(
         "Number of permutation in CMI: n1(",
         ds_context.domains[x[0]].size,
         "), n2(",

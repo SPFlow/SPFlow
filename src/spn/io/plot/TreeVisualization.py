@@ -4,6 +4,9 @@ from spn.io.Text import spn_to_str_equation
 from spn.structure.Base import Sum, Leaf, Product
 
 _symbols = {Sum: "Σ", Product: "Π"}
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def set_symbol(node_type, symbol):

@@ -4,6 +4,9 @@ from spn.structure.Base import Sum, Product, Leaf, get_nodes_by_type, eval_spn_b
 
 from spn.algorithms.TransformStructure import Copy, Prune
 from spn.algorithms.Inference import log_likelihood
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def prod_condition(node, children, input_vals=None, scope=None):

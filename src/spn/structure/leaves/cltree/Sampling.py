@@ -6,6 +6,9 @@ Created on October 22, 2018
 """
 from spn.algorithms.Sampling import add_leaf_sampling
 from spn.structure.leaves.cltree.CLTree import CLTree
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def sample_cltree_node(node, n_samples, data, rand_gen):

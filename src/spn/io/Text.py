@@ -10,6 +10,9 @@ from enum import Enum
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, rebuild_scopes_bottom_up, assign_ids, Leaf
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def json_default(obj):
@@ -135,7 +138,7 @@ sumnode: "(" [NUMBERS "*" node ("+" NUMBERS "*" node)*] ")"
     )
 
     parser = Lark(grammar, start="node")
-    # print(grammar)
+    # logger.info(grammar)
     tree = parser.parse(text)
 
     def tree_to_spn(tree, features):

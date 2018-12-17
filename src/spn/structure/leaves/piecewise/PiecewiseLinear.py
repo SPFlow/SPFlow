@@ -12,6 +12,9 @@ from spn.structure.Base import Leaf
 from spn.structure.StatisticalTypes import MetaType, Type
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 import itertools
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PiecewiseLinear(Leaf):
