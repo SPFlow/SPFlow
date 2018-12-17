@@ -6,6 +6,9 @@ Created on April 29, 2018
 from scipy.stats import *
 
 from spn.structure.leaves.parametric.Parametric import *
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_scipy_obj(param_type):

@@ -6,6 +6,9 @@ Created on April 15, 2018
 from spn.algorithms.stats.Moments import add_node_moment
 from spn.structure.leaves.parametric.Parametric import *
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def parametric_moment(node, order=1):

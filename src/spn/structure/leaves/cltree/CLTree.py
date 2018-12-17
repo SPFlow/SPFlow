@@ -5,6 +5,9 @@ Created on Ocotber 19, 2018
 
 from spn.structure.Base import Leaf
 from spn.structure.StatisticalTypes import Type
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CLTree(Leaf):

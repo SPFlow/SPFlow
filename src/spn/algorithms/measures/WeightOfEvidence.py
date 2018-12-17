@@ -8,6 +8,9 @@ Created on Novenber 14, 2018
 import numpy as np
 
 from spn.algorithms.Inference import likelihood
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def weight_of_evidence(spn, y_index, x_instance, n, k):

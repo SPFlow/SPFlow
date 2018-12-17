@@ -13,6 +13,9 @@ from spn.structure.Base import Product, Sum, eval_spn_bottom_up
 from spn.structure.leaves.histogram.Histograms import Histogram
 from spn.structure.leaves.histogram.Inference import histogram_likelihood
 from spn.structure.leaves.parametric.Parametric import Gaussian
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def log_sum_to_tf_graph(node, children, data_placeholder=None, variable_dict=None, log_space=True, dtype=np.float32):
@@ -118,7 +121,7 @@ def optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=10
             for j in range(batches_per_epoch):
                 data_batch = data[j * batch_size : (j + 1) * batch_size, :]
                 _, cur_loss = sess.run([opt_op, loss], feed_dict={data_placeholder: data_batch})
-            print("epoch: {}, loss: {}".format(i, cur_loss))
+            logger.info("epoch: {}, loss: {}".format(i, cur_loss))
         tf_graph_to_spn(variable_dict)
 
 
@@ -155,7 +158,7 @@ def eval_tf_trace(spn, data, log_space=True, save_graph_path=None):
 
         e2 = end - start
 
-        print(e2)
+        logger.info(e2)
 
         tl = timeline.Timeline(run_metadata.step_stats)
         ctf = tl.generate_chrome_trace_format()

@@ -7,6 +7,9 @@ Created on October 26, 2018
 import numpy as np
 
 from spn.algorithms.splitting.Base import split_data_by_clusters
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_split_rows_random_conditioning():
