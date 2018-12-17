@@ -8,6 +8,9 @@ from copy import deepcopy
 from spn.algorithms.TransformStructure import Prune
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Sum, Leaf, assign_ids
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def marginalize(node, keep):

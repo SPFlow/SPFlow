@@ -19,7 +19,9 @@ from scipy.stats._continuous_distns import chi2
 
 from spn.algorithms.splitting.Base import split_data_by_clusters
 from spn.structure.leaves.parametric.Parametric import Poisson
+import logging
 
+logger = logging.getLogger(__name__)
 beta = numpy.asarray(
     [
         -0.0648467,
@@ -3028,7 +3030,7 @@ beta = numpy.asarray(
 
 def chi2cdf(x, k):
     x, k = mpmath.mpf(x), mpmath.mpf(k)
-    # print(x,k)
+    # logger.info(x,k)
     return mpmath.gammainc(k / 2.0, 0.0, x / 2.0, regularized=True)
 
 
@@ -3036,7 +3038,7 @@ def logchi2sf(x, k):
     res = chi2.logsf(x, k)
     for ix in numpy.where(res == NINF)[0]:
         res[ix] = float(mpmath.log(1.0 - chi2cdf(x[ix], k[ix])))
-    # print(res)
+    # logger.info(res)
     # if res == NINF:
     #    res = float(mpmath.log(1.0-chi2cdf(x,k)))
 
@@ -3044,7 +3046,7 @@ def logchi2sf(x, k):
 
 
 def supLM(x, k, lambda_):
-    # print(x, k, lambda_)
+    # logger.info(x, k, lambda_)
     nb = beta.shape[1] - 1
 
     tau = lambda_
@@ -3059,7 +3061,7 @@ def supLM(x, k, lambda_):
 
     # pp = chi2.logsf(dummy, beta_[:,nb])
     pp = logchi2sf(dummy, beta_[:, nb])
-    # print(pp)
+    # logger.info(pp)
 
     if tau == 0.5:
         p = numpy.log(1 - chi2.cdf(x, k))
@@ -3103,7 +3105,7 @@ def computeEstabilityTest(df, yv):
 
     process = J12 * process
 
-    # print(sum(abs(process)))
+    # logger.info(sum(abs(process)))
 
     from_ = numpy.ceil(n * 0.1)
     from_ = int(max(from_, 10))
@@ -3137,11 +3139,11 @@ def computeEstabilityTest(df, yv):
         xx = xx[from_ - 1 : to]
         stati = numpy.max(xx / ttt)
 
-        # print(stati, k, lambda_)
+        # logger.info(stati, k, lambda_)
         pvals[zv] = supLM(stati, k, lambda_)
-        # print(pvals[zv])
+        # logger.info(pvals[zv])
 
-    # print(pvals)
+    # logger.info(pvals)
 
     return numpy.exp(pvals)
 

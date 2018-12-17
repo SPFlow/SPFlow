@@ -9,6 +9,9 @@ from spn.structure.leaves.cltree.CLTree import CLTree
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.sparse.csgraph import depth_first_order
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def compute_cooccurences(data, C, NZ, r, c):

@@ -10,6 +10,9 @@ import inspect
 import numpy as np
 
 from spn.structure.leaves.histogram.Histograms import Histogram
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def histogram_to_str(node, feature_names=None, node_to_str=None):
