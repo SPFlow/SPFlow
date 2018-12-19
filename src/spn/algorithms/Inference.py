@@ -73,13 +73,6 @@ def add_node_likelihood(node_type, lambda_func, log_lambda_func=None):
     _node_log_likelihood[node_type] = log_lambda_func
 
 
-_node_mpe_likelihood = {}
-
-
-def add_node_mpe_likelihood(node_type, lambda_func):
-    _node_mpe_likelihood[node_type] = lambda_func
-
-
 def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, lls_matrix=None, debug=False):
     all_results = {}
 

@@ -20,7 +20,8 @@ def piecewise_mode(node):
 def piecewise_bottom_up_ll(node, data=None, dtype=np.float64):
     probs = piecewise_likelihood(node, data=data, dtype=dtype)
     mpe_ids = np.isnan(data[:, node.scope[0]])
-    probs[mpe_ids] = piecewise_mode(node)
+    mode_data = np.ones((1, data.shape[1])) * piecewise_mode(node)
+    probs[mpe_ids] = piecewise_likelihood(node, data=mode_data, dtype=dtype)
 
     return probs
 
