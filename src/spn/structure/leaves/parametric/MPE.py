@@ -5,12 +5,12 @@ Created on July 02, 2018
 """
 from spn.algorithms.MPE import get_mpe_top_down_leaf, add_node_mpe
 from spn.structure.leaves.parametric.Inference import (
-    continuous_likelihood,
+    continuous_log_likelihood,
     gamma_likelihood,
     lognormal_likelihood,
     discrete_likelihood,
     bernoulli_likelihood,
-    categorical_likelihood,
+    categorical_log_likelihood,
     geometric_likelihood,
     exponential_likelihood,
     categorical_dictionary_likelihood,
@@ -57,7 +57,7 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         Gaussian,
-        get_parametric_bottom_up_ll(continuous_likelihood, gaussian_mode),
+        get_parametric_bottom_up_ll(continuous_log_likelihood, gaussian_mode),
         get_parametric_top_down_ll(gaussian_mode),
     )
 
@@ -103,7 +103,7 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         Categorical,
-        get_parametric_bottom_up_ll(categorical_likelihood, categorical_mode),
+        get_parametric_bottom_up_ll(categorical_log_likelihood, categorical_mode),
         get_parametric_top_down_ll(categorical_mode),
     )
 

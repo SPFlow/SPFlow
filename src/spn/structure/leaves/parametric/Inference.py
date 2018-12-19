@@ -18,6 +18,12 @@ def continuous_likelihood(node, data=None, dtype=np.float64):
     probs[~marg_ids] = scipy_obj.pdf(observations, **params)
     return probs
 
+def continuous_log_likelihood(node, data=None, dtype=np.float64):
+    probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
+    scipy_obj, params = get_scipy_obj_params(node)
+    probs[~marg_ids] = scipy_obj.logpdf(observations, **params)
+    return probs
+
 
 lognormal_likelihood = continuous_likelihood
 exponential_likelihood = continuous_likelihood
@@ -60,6 +66,11 @@ def categorical_likelihood(node, data=None, dtype=np.float64):
     probs[idx_in] = np.array(node.p)[cat_data[~out_domain_ids]]
     return probs
 
+def categorical_log_likelihood(node, data=None, dtype=np.float64):
+    probs = categorical_likelihood(node, data, dtype)
+    with np.errstate(divide="ignore"):
+        return np.log(probs)
+
 
 def categorical_dictionary_likelihood(node, data=None, dtype=np.float64):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
@@ -77,12 +88,12 @@ def uniform_likelihood(node, data=None, dtype=np.float64):
 
 
 def add_parametric_inference_support():
-    add_node_likelihood(Gaussian, continuous_likelihood)
+    add_node_likelihood(Gaussian, continuous_likelihood, continuous_log_likelihood)
     add_node_likelihood(Gamma, gamma_likelihood)
     add_node_likelihood(LogNormal, lognormal_likelihood)
     add_node_likelihood(Poisson, discrete_likelihood)
     add_node_likelihood(Bernoulli, bernoulli_likelihood)
-    add_node_likelihood(Categorical, categorical_likelihood)
+    add_node_likelihood(Categorical, categorical_likelihood, categorical_log_likelihood)
     add_node_likelihood(Geometric, geometric_likelihood)
     add_node_likelihood(Exponential, exponential_likelihood)
     add_node_likelihood(Uniform, uniform_likelihood)
