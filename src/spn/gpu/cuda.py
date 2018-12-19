@@ -18,6 +18,9 @@ from spn.structure.Base import Sum, get_nodes_by_type, Leaf, Product
 from spn.structure.leaves.parametric.Inference import add_parametric_inference_support
 from spn.structure.leaves.parametric.Parametric import Gaussian
 import math
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_execution_layers(spn):
@@ -151,64 +154,64 @@ if __name__ == "__main__":
         rg.random_split(2, 2)
 
     rg_layers = rg.make_layers()
-    print("random graph built in  ", (time.perf_counter() - start))
+    logger.info("random graph built in %s", (time.perf_counter() - start))
 
     start = time.perf_counter()
     vector_list, root = Make_SPN_from_RegionGraph(
         rg_layers, np.random.RandomState(100), num_classes=1, num_gauss=20, num_sums=20
     )
-    print("Make_SPN_from_RegionGraph in  ", (time.perf_counter() - start))
+    logger.info("Make_SPN_from_RegionGraph in  %s", (time.perf_counter() - start))
 
     start = time.perf_counter()
-    print(get_structure_stats(root))
-    print("get_structure_stats in  ", (time.perf_counter() - start))
+    logger.info(get_structure_stats(root))
+    logger.info("get_structure_stats in  %s", (time.perf_counter() - start))
 
     old_root = Copy(root)
 
     start = time.perf_counter()
     root = Prune(root)
-    print("Prune in  ", (time.perf_counter() - start))
+    logger.info("Prune in  %s", (time.perf_counter() - start))
 
     start = time.perf_counter()
     root = SPN_Reshape(root, 2)
-    print("SPN_Reshape in  ", (time.perf_counter() - start))
+    logger.info("SPN_Reshape in  %s", (time.perf_counter() - start))
 
     start = time.perf_counter()
-    print(get_structure_stats(root))
-    print("get_structure_stats in  ", (time.perf_counter() - start))
+    logger.info(get_structure_stats(root))
+    logger.info("get_structure_stats in  %s", (time.perf_counter() - start))
 
     start = time.perf_counter()
     layers, layer_types = get_execution_layers(root)
-    print("get_execution_layers in  ", (time.perf_counter() - start))
+    logger.info("get_execution_layers in  %s", (time.perf_counter() - start))
 
     for i, lt in enumerate(layer_types):
-        print(lt, len(layers[i]))
+        logger.info(lt, len(layers[i]))
 
     max_id = max(map(lambda n: n.id, get_nodes_by_type(root)))
-    print(max_id)
+    logger.info(max_id)
 
     children_sizes = list(map(lambda n: len(n.children), get_nodes_by_type(root, Sum)))
-    print("cs ", np.unique(children_sizes, return_counts=True))
+    logger.info("cs %s", np.unique(children_sizes, return_counts=True))
     params = sum(children_sizes)
     params += 2 * len(get_nodes_by_type(root, Leaf))
 
     start = time.perf_counter()
     params = get_parameters(root)
-    print("get_parameters in  ", (time.perf_counter() - start))
+    logger.info("get_parameters in  %s", (time.perf_counter() - start))
 
-    print(params)
+    logger.info(params)
     LL = np.zeros((100, params.shape[1]))
     X = np.random.randn(LL.shape[0] * LL.shape[1]).reshape((LL.shape[0], -1))
 
     lls_matrix = np.zeros_like(LL)
 
-    print("LL size", lls_matrix.shape)
+    logger.info("LL size %s", lls_matrix.shape)
 
-    print(" number of nodes ", len(get_nodes_by_type(root)))
+    logger.info(" number of nodes %s", len(get_nodes_by_type(root)))
 
     start = time.perf_counter()
     log_likelihood(root, X, lls_matrix=lls_matrix)
-    print("it took in python ", (time.perf_counter() - start))
+    logger.info("it took in python %s", (time.perf_counter() - start))
 
     start = time.perf_counter()
 
@@ -217,9 +220,9 @@ if __name__ == "__main__":
     d_X = cuda.to_device(X)
 
     for i, lt in enumerate(layer_types):
-        # print(lt, len(layers[i]))
+        # logger.info(lt, len(layers[i]))
         node_ids = layers[i]
-        # print(node_ids)
+        # logger.info(node_ids)
 
         # instance_pos, node_pos
         threadsperblock = (32, 32)
@@ -234,14 +237,14 @@ if __name__ == "__main__":
         else:
             Sum_cuda[blockspergrid, threadsperblock](d_LL, d_params, node_ids)
 
-        # print(np.isclose(LL[:, node_ids], lls_matrix[:, node_ids]).all())
-        # print("LL")
-        # print(LL[:, node_ids])
-        # print("pll")
-        # print(lls_matrix[:, node_ids])
+        # logger.info(np.isclose(LL[:, node_ids], lls_matrix[:, node_ids]).all())
+        # logger.info("LL")
+        # logger.info(LL[:, node_ids])
+        # logger.info("pll")
+        # logger.info(lls_matrix[:, node_ids])
     d_LL.copy_to_host(LL)
     d_params.copy_to_host(params)
 
     end = time.perf_counter()
-    print(np.isclose(LL, lls_matrix).all())
-    print("it took in cuda ", (end - start))
+    logger.info(np.isclose(LL, lls_matrix).all())
+    logger.info("it took in cuda %s", (end - start))

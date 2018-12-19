@@ -7,6 +7,9 @@ from spn.algorithms.Inference import log_likelihood, sum_log_likelihood, prod_lo
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, get_nodes_by_type, eval_spn_top_down
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def mpe_prod(node, parent_result, data=None, lls_per_node=None, rand_gen=None):

@@ -7,7 +7,9 @@ Created on Ocotber 27, 2018
 import logging
 from collections import deque
 from spn.algorithms.StructureLearning import Operation, default_slicer
+import logging
 
+logger = logging.getLogger(__name__)
 try:
     from time import perf_counter
 except:
