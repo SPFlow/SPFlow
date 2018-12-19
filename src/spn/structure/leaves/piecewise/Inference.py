@@ -7,7 +7,7 @@ Created on May 4, 2018
 
 import numpy as np
 
-from spn.algorithms.Inference import EPSILON, add_node_likelihood, add_node_mpe_likelihood, leaf_marginalized_likelihood
+from spn.algorithms.Inference import EPSILON, add_node_likelihood, leaf_marginalized_likelihood
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 
 LOG_ZERO = -300
