@@ -8,7 +8,9 @@ from sklearn.cluster import KMeans, DBSCAN
 from sklearn.metrics import pairwise
 
 from spn.algorithms.splitting.Base import split_data_by_clusters, preproc
+import logging
 
+logger = logging.getLogger(__name__)
 _rpy_initialized = False
 
 
@@ -85,7 +87,7 @@ def get_split_rows_Gower(n_clusters=2, pre_proc=None, seed=17):
             clusters = np.asarray(clusters)
         except Exception as e:
             np.savetxt("/tmp/errordata.txt", local_data)
-            print(e)
+            logger.info(e)
             raise e
 
         return split_data_by_clusters(local_data, clusters, scope, rows=True)

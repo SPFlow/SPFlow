@@ -9,6 +9,9 @@ import numpy as np
 
 from spn.structure.Base import Product, Sum, Leaf, get_nodes_by_type
 from spn.algorithms.Inference import _node_likelihood
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def validate_ids(node):
@@ -173,10 +176,10 @@ if __name__ == "__main__":
     samples = SamplingRange.sample_instances(
         root_node, 2, 30, rand_gen, ranges=ranges, node_sample=node_sample, node_likelihood=inference_support_ranges
     )  # , return_Zs, return_partition, dtype)
-    print("Samples: " + str(samples))
+    logger.info("Samples: " + str(samples))
 
     ranges = [NominalRange([0]), NumericRange([[3.0, 3.1], [3.5, 4.0]])]
     samples = SamplingRange.sample_instances(
         root_node, 2, 30, rand_gen, ranges=ranges, node_sample=node_sample, node_likelihood=inference_support_ranges
     )  # , return_Zs, return_partition, dtype)
-    print("Samples: " + str(samples))
+    logger.info("Samples: " + str(samples))

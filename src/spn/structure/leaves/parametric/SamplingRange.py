@@ -8,6 +8,9 @@ import numpy as np
 
 from spn.experiments.AQP.Ranges import NominalRange
 from spn.structure.leaves.parametric.Parametric import Categorical
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def sample_categorical_node(node, n_samples, rand_gen, ranges=None):

@@ -5,6 +5,9 @@ Created on October 18, 2018
 """
 from spn.algorithms.stats.Moments import add_node_moment
 from spn.structure.leaves.cltree.CLTree import *
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def cltree_expectation(node, order=1):

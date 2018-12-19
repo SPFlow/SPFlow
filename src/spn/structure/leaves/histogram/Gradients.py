@@ -4,6 +4,9 @@ import numpy as np
 
 from spn.structure.leaves.histogram.Histograms import Histogram
 from spn.structure.leaves.histogram.Inference import histogram_ll
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def histogramm_gradient(node, input_vals=None, dtype=np.float64):
