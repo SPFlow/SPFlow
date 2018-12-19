@@ -8,6 +8,9 @@ from collections import OrderedDict
 import inspect
 
 from spn.structure.leaves.parametric.Parametric import Parametric, Categorical
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def parametric_to_str(node, feature_names=None, node_to_str=None):

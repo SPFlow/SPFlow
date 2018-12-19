@@ -29,6 +29,9 @@ from spn.structure.leaves.parametric.Parametric import (
     Hypergeometric,
 )
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_parametric_bottom_up_ll(ll_func, mode_func):

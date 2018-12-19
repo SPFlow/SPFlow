@@ -4,7 +4,9 @@ from spn.algorithms.Condition import condition
 from spn.algorithms.Inference import _node_likelihood
 from spn.algorithms.Marginalization import marginalize
 from spn.structure.Base import Sum, Product, eval_spn_bottom_up, Leaf, get_node_types
+import logging
 
+logger = logging.getLogger(__name__)
 _node_moment = {}
 
 
