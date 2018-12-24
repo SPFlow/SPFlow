@@ -136,7 +136,7 @@ class LayerwiseSPN(torch.nn.module):
             connections = self.var(torch.from_numpy(connections), require_grad=False)
         weights = self.parameter(torch.from_numpy(weights, require_grad=True))
 
-        edges = Edges.SumEdges(lower_level, upper_level, weights, connections)
+        edges = Edges.SumEdges(lower_level, upper_level, connections, weights)
         upper_level.child_edges.append(edges)
         lower_level.child_edges.append(edges)
         parameters.add_param(weights)
