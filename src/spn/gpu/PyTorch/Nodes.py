@@ -93,7 +93,6 @@ class GaussianNodes(Nodes):
     def feed_marginalize_connections(self, connections):
         self.marginalize_connections = self.var(torch.from_numpy(connections.astype('float32')))
 
-
     def forward(self):
         if isinstance(self.input, np.ndarray):
             self.input = torch.from_numpy(self.input.astype('float32'))
@@ -105,4 +104,18 @@ class GaussianNodes(Nodes):
 
         self.val = (1 - self.marginalize_mask) * ( - (x_mean) * 
             (x_mean) / 2.0 / var - self.logstd - 0.91893853320467267)
+        return self.val
+
+
+class BinaryNodes(Nodes):
+    def __init__(self, is_cuda, num):
+        self.is_cuda = is_cuda
+        self.num = num
+        self.parent_edges = []
+
+    def feed_val(self, x_onehot=None, x_id=None):
+        self.val = self.var(torch.from_numpy(x_onehot.astype('float32').reshape(1, -1)))
+        self.val = torch.log(self.val)
+
+    def forward(self):
         return self.val
