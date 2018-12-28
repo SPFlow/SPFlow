@@ -7,8 +7,11 @@ import torch
 import numpy as np
 
 from torch.autograd import Variable as Variable
+from spn.gpu.PyTorch import Nodes
+from spn.gpu.PyTorch import Edges
+from torch import Tensor
 
-class LayerwiseSPN(torch.nn.module):
+class LayerwiseSPN(torch.nn.Module):
     '''
     A LayerwiseSPN is a network that holds all of the information
     regarding a layerwise SPN. To make full utilization of the fast
@@ -18,6 +21,7 @@ class LayerwiseSPN(torch.nn.module):
     significantly more feasible.
     '''
     def __init__(self, is_cuda=False):
+        super(LayerwiseSPN, self).__init__()
         self.leaflist = []
         self.edgelist = []
         self.nodelist = []
@@ -30,7 +34,9 @@ class LayerwiseSPN(torch.nn.module):
         for layer in self.nodelist:
             val = layer()
 
-    def tensor_to_var(self, tensor, require_grad=False):
+        return val
+
+    def tensor_to_var(self, tensor, requires_grad=False):
         '''
         Takes in a tensor and returns a PyTorch Variable
         :param tensor: the tensor that the variable will be wrapped around
@@ -39,9 +45,9 @@ class LayerwiseSPN(torch.nn.module):
         '''
         if self.is_cuda:
             tensor = tensor.cuda()
-        return Variable(tensor, require_grad=require_grad)
+        return Variable(tensor, requires_grad=requires_grad)
 
-    def tensor_to_param(self, tensor, require_grad):
+    def tensor_to_param(self, tensor, requires_grad):
         '''
         Takes in a tensor and returns a PyTorch parameter (will be used in param
         to keep track of the global parameter state of the spn)
@@ -51,11 +57,10 @@ class LayerwiseSPN(torch.nn.module):
         '''
         if self.is_cuda:
             tensor = tensor.cuda()
-        return torch.nn.Parameter(tensor, require_grad=require_grad)
+        return torch.nn.Parameter(tensor, requires_grad=requires_grad)
 
-    def feed(self, variable_to_value, marginal_to_value):
+    def feed(self, variable_to_value={}, marginal_to_value={}):
         '''
-        
         '''
         for k in variable_to_value:
             k.feed_val(variable_to_value[k])
@@ -76,8 +81,8 @@ class LayerwiseSPN(torch.nn.module):
 
         # Create a torch parameter from the parameters (that will require gradient, 
         # since they are learnable parameters)
-        mean_param = self.parameter(torch.from_numpy(mean), require_grad=True)
-        logstd_param = self.parameter(torch.from_numpy(np.log(std)), require_grad=True)
+        mean_param = self.tensor_to_param(torch.from_numpy(mean), requires_grad=True)
+        logstd_param = self.tensor_to_param(torch.from_numpy(np.log(std)), requires_grad=True)
         
         # Create the Gaussian Nodes
         nodes = Nodes.GaussianNodes(is_cuda=self.is_cuda, mean=mean, logstd=logstd)
@@ -106,7 +111,7 @@ class LayerwiseSPN(torch.nn.module):
 
     def add_sum_node_weights(self, weights, parameters=None):
         assert(parameters != None)
-        weights = self.parameter(torch.from_numpy(weights), require_grad=True)
+        weights = self.tensor_to_param(torch.from_numpy(weights), requires_grad=True)
         parameters.add_param(weights)
 
     def add_product_edges(self, lower_level, upper_level, connections=None):
@@ -114,36 +119,36 @@ class LayerwiseSPN(torch.nn.module):
         '''
         assert(lower_level != None)
         assert(upper_level != None)
-        if connections == None:
-            connections = self.var(torch.ones((lower_level.num, upper_level.num)))
+        if connections is None:
+            connections = self.tensor_to_var(torch.ones((lower_level.num, upper_level.num)))
         else:
-            connections = self.var(torch.from_numpy(connections.astype('float32')))
+            connections = self.tensor_to_var(torch.from_numpy(connections.astype('float32')))
             
         edges = Edges.ProductEdges(lower_level, upper_level, connections)
         upper_level.child_edges.append(edges)
-        lower_level.child_edges.append(edges)
+        lower_level.parent_edges.append(edges)
         return edges
 
-    def add_sum_edges(self, weights, lower_level, upper_level, connections=None):
+    def add_sum_edges(self, weights, lower_level, upper_level, connections=None, parameters=None):
         '''
 
         '''
         assert(lower_level != None)
         assert(upper_level != None)
         if connections == None:
-            connections = self.var(torch.from_numpy(np.ones(weights.shape).astype('float32'))).detach()
+            connections = self.tensor_to_var(torch.from_numpy(np.ones(weights.shape).astype('float32'))).detach()
         else:
-            connections = self.var(torch.from_numpy(connections), require_grad=False)
-        weights = self.parameter(torch.from_numpy(weights, require_grad=True))
+            connections = self.tensor_to_var(torch.from_numpy(connections), requires_grad=False)
+        weights = self.tensor_to_param(torch.from_numpy(weights), requires_grad=True)
 
         edges = Edges.SumEdges(lower_level, upper_level, connections, weights)
         upper_level.child_edges.append(edges)
-        lower_level.child_edges.append(edges)
+        lower_level.parent_edges.append(edges)
         parameters.add_param(weights)
 
         return edges, weights
 
-    def compute_unnormalized(self, variable_to_value=None, marginal_variables=None):
+    def compute_unnormalized(self, variable_to_value=None, marginal_variables={}):
         self.feed(variable_to_value, marginal_variables)
         return np.exp(self().data.cpu().numpy())
 

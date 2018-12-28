@@ -7,7 +7,7 @@ import numpy as np
 from torch.autograd import Variable as Variable
 
 
-class Nodes(torch.nn.module):
+class Nodes(torch.nn.Module):
 
     def __init__(self, is_cuda):
         super(Nodes, self).__init__()
@@ -18,6 +18,7 @@ class Nodes(torch.nn.module):
             tensor = tensor.cuda()
 
         return Variable(tensor, requires_grad)
+
 
 class SumNodes(Nodes):
 
@@ -31,7 +32,6 @@ class SumNodes(Nodes):
     def forward(self):
         batch = self.child_edges[0].child.val.size()[0]
         self.val = self.var(torch.zeros(batch, self.num))
-        maxval = 0
         log_error_const = torch.exp(torch.FloatTensor([-75]))[0]
         if self.is_cuda:
             log_error_const = log_error_const.cuda()
@@ -47,28 +47,30 @@ class SumNodes(Nodes):
         for e in self.child_edges:
             temp = e.child.val - maxval
             temp = torch.exp(temp)
-            true_weights = e.weights * e.mask
+            true_weights = e.weights * e.connections
             self.val += torch.mm(temp, true_weights)
-
 
         self.val += log_error_const
         self.val = torch.log(self.val)
         self.val += maxval
         return self.val
 
+
 class ProductNodes(Nodes):
     def __init__(self, is_cuda, num=1):
         Nodes.__init__(self, is_cuda).__init__()
         self.num = num
         self.is_cuda = is_cuda
-        self.child_edges = child_edges
-        self.parent_edges = parent_edges
+        self.child_edges = []
+        self.parent_edges = []
+        self.val = None
 
     def forward(self):
         batch = self.child_edges[0].child.val.size()[0]
-        self.val = self.var(torch.zeros(batch, self.num))
+        self.val = self.var(torch.zeros((batch, self.num)))
         for e in self.child_edges:
-            self.val += torch.mm(e.child_val, e.mask)
+            self.val += torch.mm(e.child.val, e.connections)
+
         return self.val
 
 
@@ -87,11 +89,14 @@ class GaussianNodes(Nodes):
         batch = x.shape[0]
 
         if marginalize_connections is None:
-            marginalize_connections = np.zeros((batch, self.num), dtype='float32')
-        self.marginalize_connections = self.var(torch.from_numpy(marginalize_connections.astype('float32')))
+            marginalize_connections = np.zeros(
+                (batch, self.num), dtype='float32')
+        self.marginalize_connections = self.var(
+            torch.from_numpy(marginalize_connections.astype('float32')))
 
     def feed_marginalize_connections(self, connections):
-        self.marginalize_connections = self.var(torch.from_numpy(connections.astype('float32')))
+        self.marginalize_connections = self.var(
+            torch.from_numpy(connections.astype('float32')))
 
     def forward(self):
         if isinstance(self.input, np.ndarray):
@@ -102,20 +107,25 @@ class GaussianNodes(Nodes):
         std = torch.exp(self.logstd)
         var = std*std
 
-        self.val = (1 - self.marginalize_mask) * ( - (x_mean) * 
-            (x_mean) / 2.0 / var - self.logstd - 0.91893853320467267)
+        self.val = (1 - self.marginalize_mask) * (- (x_mean) *
+                                                  (x_mean) / 2.0 / var - self.logstd - 0.91893853320467267)
         return self.val
 
 
 class BinaryNodes(Nodes):
+
     def __init__(self, is_cuda, num):
+        Nodes.__init__(self, is_cuda).__init__()
         self.is_cuda = is_cuda
         self.num = num
         self.parent_edges = []
+        self.val = None
 
     def feed_val(self, x_onehot=None, x_id=None):
-        self.val = self.var(torch.from_numpy(x_onehot.astype('float32').reshape(1, -1)))
+        self.val = self.var(torch.from_numpy(
+            x_onehot.astype('float32').reshape(1, -1)))
         self.val = torch.log(self.val)
+        pass
 
     def forward(self):
         return self.val

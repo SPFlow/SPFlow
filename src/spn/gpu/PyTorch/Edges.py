@@ -12,7 +12,7 @@ class ProductEdges(object):
 
 class SumEdges(object):
 
-    def __init__(self, child, parents, connections, weights):
+    def __init__(self, child, parent, connections, weights):
         self.parent = parent
         self.child = child
         self.connections = connections
