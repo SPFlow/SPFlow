@@ -57,7 +57,7 @@ _node_bottom_up_mpe_log = {Sum: sum_log_likelihood, Product: prod_log_likelihood
 
 
 def log_node_bottom_up_mpe(node, *args, **kwargs):
-    probs = _node_bottom_up_mpe[type(node)](node, *args, **kwargs)
+    probs = _node_bottom_up_mpe[type(node)](node, *np.exp(args), **kwargs)
     with np.errstate(divide="ignore"):
         return np.log(probs)
 
