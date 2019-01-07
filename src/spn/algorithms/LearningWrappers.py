@@ -58,7 +58,7 @@ def get_splitting_functions(cols, rows, ohe, threshold, rand_gen, n_jobs):
 
     if isinstance(rows, str):
         if rows == "rdc":
-            split_rows = get_split_rows_RDC_py(rand_gen=rand_gen, ohe=ohe, n_jobs=cpus)
+            split_rows = get_split_rows_RDC_py(rand_gen=rand_gen, ohe=ohe, n_jobs=n_jobs)
         elif rows == "kmeans":
             split_rows = get_split_rows_KMeans()
         elif rows == "tsne":
