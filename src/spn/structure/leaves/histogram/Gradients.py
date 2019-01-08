@@ -4,9 +4,7 @@ import numpy as np
 
 from spn.structure.leaves.histogram.Histograms import Histogram
 from spn.structure.leaves.histogram.Inference import histogram_ll
-import logging
-
-logger = logging.getLogger(__name__)
+from spn.algorithms.Gradient import add_node_feature_gradient
 
 
 def histogramm_gradient(node, input_vals=None, dtype=np.float64):
@@ -15,9 +13,9 @@ def histogramm_gradient(node, input_vals=None, dtype=np.float64):
     data = input_vals
 
     breaks = node.breaks
+    gradient = np.full(input_vals.shape, np.nan)
 
     nd = data[:, node.scope[0]]
-    marg_ids = np.isnan(nd)
 
     locs = np.searchsorted(breaks, nd)
 
@@ -25,11 +23,10 @@ def histogramm_gradient(node, input_vals=None, dtype=np.float64):
     probs_center = histogram_ll(node.breaks, np.array(node.densities), locs)
     probs_right = histogram_ll(node.breaks, np.array(node.densities), locs + 1)
 
-    gradients = ((probs_center - probs_left) + probs_right - probs_center) / 2
-    gradients[marg_ids] = np.nan
+    gradient[:, node.scope] = (((probs_center - probs_left) + probs_right - probs_center) / 2).reshape(-1, 1)
 
-    return gradients.reshape((-1, 1))
+    return gradient
 
 
 def add_histogram_gradient_support():
-    add_node_gradients(Histogram, histogramm_gradient)
+    add_node_feature_gradient(Histogram, histogramm_gradient)

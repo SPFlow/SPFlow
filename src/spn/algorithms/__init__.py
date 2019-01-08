@@ -29,10 +29,12 @@ add_piecewise_inference_support()
 add_parametric_mpe_support()
 add_piecewise_moment_support()
 add_piecewise_mpe_support()
+add_piecewise_linear_gradient_support()
 
 add_histogram_inference_support()
 add_histogram_moment_support()
 add_histogram_mpe_support()
+add_histogram_gradient_support()
 
 add_cltree_sampling_support()
 add_cltree_inference_support()
