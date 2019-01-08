@@ -15,7 +15,7 @@ from spn.structure.leaves.parametric.Parametric import (
     Geometric,
     Exponential,
     Bernoulli,
-    CategoricalDictionary
+    CategoricalDictionary,
 )
 
 import numpy as np
@@ -32,13 +32,13 @@ def sample_parametric_node(node, n_samples, data, rand_gen):
 
     X = None
     if (
-            isinstance(node, Gaussian)
-            or isinstance(node, Gamma)
-            or isinstance(node, LogNormal)
-            or isinstance(node, Poisson)
-            or isinstance(node, Geometric)
-            or isinstance(node, Exponential)
-            or isinstance(node, Bernoulli)
+        isinstance(node, Gaussian)
+        or isinstance(node, Gamma)
+        or isinstance(node, LogNormal)
+        or isinstance(node, Poisson)
+        or isinstance(node, Geometric)
+        or isinstance(node, Exponential)
+        or isinstance(node, Bernoulli)
     ):
 
         scipy_obj, params = get_scipy_obj_params(node)
