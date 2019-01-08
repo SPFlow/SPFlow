@@ -5,6 +5,7 @@ from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 from spn.algorithms.Gradient import add_node_gradient
 
 
+
 def expand(array, left, right):
     expanded = np.append(array, right)
     expanded = np.append(left, expanded)

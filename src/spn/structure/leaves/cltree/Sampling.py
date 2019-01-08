@@ -4,8 +4,11 @@ Created on October 22, 2018
 @author: Nicola Di Mauro
 @author: Antonio Vergari
 """
-from spn.algorithms.Sampling import add_node_sampling
+from spn.algorithms.Sampling import add_leaf_sampling
 from spn.structure.leaves.cltree.CLTree import CLTree
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def sample_cltree_node(node, n_samples, data, rand_gen):
@@ -46,4 +49,4 @@ def sample_cltree_node(node, n_samples, data, rand_gen):
 
 
 def add_cltree_sampling_support():
-    add_node_sampling(CLTree, sample_cltree_node)
+    add_leaf_sampling(CLTree, sample_cltree_node)

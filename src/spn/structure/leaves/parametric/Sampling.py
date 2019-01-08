@@ -4,7 +4,7 @@ Created on April 15, 2018
 @author: Alejandro Molina
 @author: Antonio Vergari
 """
-from spn.algorithms.Sampling import add_node_sampling
+from spn.algorithms.Sampling import add_leaf_sampling
 from spn.structure.leaves.parametric.Parametric import (
     Parametric,
     Gaussian,
@@ -15,11 +15,15 @@ from spn.structure.leaves.parametric.Parametric import (
     Geometric,
     Exponential,
     Bernoulli,
+    CategoricalDictionary,
 )
 
 import numpy as np
 
 from spn.structure.leaves.parametric.utils import get_scipy_obj_params
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def sample_parametric_node(node, n_samples, data, rand_gen):
@@ -44,6 +48,14 @@ def sample_parametric_node(node, n_samples, data, rand_gen):
     elif isinstance(node, Categorical):
         X = rand_gen.choice(np.arange(node.k), p=node.p, size=n_samples)
 
+    elif isinstance(node, CategoricalDictionary):
+        vals = []
+        ps = []
+        for v, p in node.p.items():
+            vals.append(v)
+            ps.append(p)
+        X = rand_gen.choice(vals, p=ps, size=n_samples)
+
     else:
         raise Exception("Node type unknown: " + str(type(node)))
 
@@ -51,11 +63,12 @@ def sample_parametric_node(node, n_samples, data, rand_gen):
 
 
 def add_parametric_sampling_support():
-    add_node_sampling(Gaussian, sample_parametric_node)
-    add_node_sampling(Gamma, sample_parametric_node)
-    add_node_sampling(LogNormal, sample_parametric_node)
-    add_node_sampling(Poisson, sample_parametric_node)
-    add_node_sampling(Geometric, sample_parametric_node)
-    add_node_sampling(Exponential, sample_parametric_node)
-    add_node_sampling(Bernoulli, sample_parametric_node)
-    add_node_sampling(Categorical, sample_parametric_node)
+    add_leaf_sampling(Gaussian, sample_parametric_node)
+    add_leaf_sampling(Gamma, sample_parametric_node)
+    add_leaf_sampling(LogNormal, sample_parametric_node)
+    add_leaf_sampling(Poisson, sample_parametric_node)
+    add_leaf_sampling(Geometric, sample_parametric_node)
+    add_leaf_sampling(Exponential, sample_parametric_node)
+    add_leaf_sampling(Bernoulli, sample_parametric_node)
+    add_leaf_sampling(Categorical, sample_parametric_node)
+    add_leaf_sampling(CategoricalDictionary, sample_parametric_node)

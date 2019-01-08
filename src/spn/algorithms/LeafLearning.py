@@ -5,6 +5,9 @@ from spn.structure.Base import Leaf
 from spn.structure.leaves.histogram.Histograms import create_histogram_leaf, Histogram
 from spn.structure.leaves.parametric.Parametric import create_parametric_leaf, Parametric
 from spn.structure.leaves.piecewise.PiecewiseLinear import create_piecewise_leaf, PiecewiseLinear
+import logging
+
+logger = logging.getLogger(__name__)
 
 # from spn.structure.leaves.conditional.Conditional import create_conditional_leaf, Conditional
 

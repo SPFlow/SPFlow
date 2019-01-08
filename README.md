@@ -1,6 +1,6 @@
 [![pypi](https://img.shields.io/pypi/v/spflow.svg)](https://pypi.org/project/spflow/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Build Status](https://travis-ci.com/SPFlow/SPFlow.svg?branch=master)](https://travis-ci.com/SPFlow/SPFlow.svg?branch=master)
+[![Build Status](https://travis-ci.com/SPFlow/SPFlow.svg?branch=master)](https://travis-ci.com/SPFlow/SPFlow)
 
 
 # SPFlow: An Easy and Extensible Library for Sum-Product Networks
@@ -511,6 +511,7 @@ See also the list of [contributors](https://github.com/alejandromolinaml/SPFlow/
 
 * **Moritz Kulessa** - *TU Darmstadt*
 * **Claas Voelcker** - *TU Darmstadt*
+* **Simon Roesler** - *Karlsruhe Institute of Technology*
 
 ## License
 

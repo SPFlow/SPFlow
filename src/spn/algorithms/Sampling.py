@@ -10,6 +10,9 @@ import numpy as np
 from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, get_nodes_by_type, eval_spn_top_down
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def sample_prod(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
@@ -59,9 +62,13 @@ _node_sampling = {Product: sample_prod, Sum: sample_sum}
 _leaf_sampling = {}
 
 
-def add_node_sampling(node_type, lambda_func):
+def add_leaf_sampling(node_type, lambda_func):
     _leaf_sampling[node_type] = lambda_func
     _node_sampling[node_type] = sample_leaf
+
+
+def add_node_sampling(node_type, lambda_func):
+    _node_sampling[node_type] = lambda_func
 
 
 def sample_instances(node, input_data, rand_gen, node_sampling=_node_sampling, in_place=False):

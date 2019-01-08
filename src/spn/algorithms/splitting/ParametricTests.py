@@ -10,6 +10,9 @@ import numba
 from collections import deque
 
 from spn.algorithms.splitting.Base import split_data_by_clusters
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @numba.njit
@@ -23,7 +26,7 @@ def g_test(feature_id_1, feature_id_2, local_data, feature_vals, g_factor):
     """
     Applying a G-test on the two features (represented by ids) on the data
     """
-    # print(feature_id_1, feature_id_2, instance_ids)
+    # logger.info(feature_id_1, feature_id_2, instance_ids)
 
     #
     # swap to preserve order, is this needed?
@@ -35,7 +38,7 @@ def g_test(feature_id_1, feature_id_2, local_data, feature_vals, g_factor):
         feature_id_1 = feature_id_2
         feature_id_2 = tmp
 
-    # print(feature_id_1, feature_id_2, instance_ids)
+    # logger.info(feature_id_1, feature_id_2, instance_ids)
 
     # n_instances = len(instance_ids)
     n_instances = len(local_data)
@@ -54,7 +57,7 @@ def g_test(feature_id_1, feature_id_2, local_data, feature_vals, g_factor):
     for i in range(n_instances):
         co_occ_matrix[local_data[i, feature_id_1], local_data[i, feature_id_2]] += 1
 
-    # print('Co occurrences', co_occ_matrix)
+    # logger.info('Co occurrences', co_occ_matrix)
     #
     # getting the sum for each feature
     for i in range(feature_size_1):
@@ -63,7 +66,7 @@ def g_test(feature_id_1, feature_id_2, local_data, feature_vals, g_factor):
             feature_tot_1[i] += count
             feature_tot_2[j] += count
 
-    # print('Feature tots', feature_tot_1, feature_tot_2)
+    # logger.info('Feature tots', feature_tot_1, feature_tot_2)
 
     #
     # counputing the number of zero total co-occurrences for the degree of
@@ -121,7 +124,7 @@ def gtest_greedy_feature_split(local_data, feature_vals, g_factor, rand_gen):
         for other_feature_id in feature_ids_mask.nonzero()[0]:
 
             #
-            # print('considering other features', other_feature_id)
+            # logger.info('considering other features', other_feature_id)
             # feature_id_2 = data_slice.feature_ids[other_feature_id]
             #
             # apply a G-test

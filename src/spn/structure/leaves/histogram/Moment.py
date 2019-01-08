@@ -10,6 +10,9 @@ import numpy as np
 from spn.algorithms.stats.Moments import add_node_moment
 from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.histogram.Histograms import Histogram
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def histogram_moment(node, order=1):

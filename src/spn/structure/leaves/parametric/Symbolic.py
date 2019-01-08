@@ -8,6 +8,9 @@ import sympy as sp
 from spn.structure.leaves.parametric.Parametric import *
 
 from spn.io.Symbolic import add_node_to_sympy
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_density(dist, node, input_vars):

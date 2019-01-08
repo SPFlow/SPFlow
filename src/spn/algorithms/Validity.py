@@ -4,6 +4,9 @@ Created on March 20, 2018
 @author: Alejandro Molina
 """
 from spn.structure.Base import Sum, Product, get_nodes_by_type
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def is_consistent(node):

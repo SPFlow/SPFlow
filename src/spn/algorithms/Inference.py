@@ -3,10 +3,13 @@ Created on March 21, 2018
 
 @author: Alejandro Molina
 """
+import logging
 import numpy as np
 from scipy.special import logsumexp
 
-from spn.structure.Base import Product, Sum, Leaf, eval_spn_bottom_up, eval_spn_top_down
+from spn.structure.Base import Product, Sum, eval_spn_bottom_up
+
+logger = logging.getLogger(__name__)
 
 EPSILON = 0.000000000000001
 
@@ -71,13 +74,6 @@ def add_node_likelihood(node_type, lambda_func, log_lambda_func=None):
     if log_lambda_func is None:
         log_lambda_func = log_node_likelihood
     _node_log_likelihood[node_type] = log_lambda_func
-
-
-_node_mpe_likelihood = {}
-
-
-def add_node_mpe_likelihood(node_type, lambda_func):
-    _node_mpe_likelihood[node_type] = lambda_func
 
 
 def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, lls_matrix=None, debug=False):

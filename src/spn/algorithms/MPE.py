@@ -7,6 +7,9 @@ from spn.algorithms.Inference import log_likelihood, sum_log_likelihood, prod_lo
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, get_nodes_by_type, eval_spn_top_down
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def mpe_prod(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
@@ -49,15 +52,33 @@ def get_mpe_top_down_leaf(node, input_vals, data=None, mode=0):
 
 
 _node_top_down_mpe = {Product: mpe_prod, Sum: mpe_sum}
-_node_bottom_up_mpe = {Sum: sum_log_likelihood, Product: prod_log_likelihood}
+_node_bottom_up_mpe = {}
+_node_bottom_up_mpe_log = {Sum: sum_log_likelihood, Product: prod_log_likelihood}
 
 
-def add_node_mpe(node_type, bottom_up_lambda, top_down_lambda):
+def log_node_bottom_up_mpe(node, *args, **kwargs):
+    probs = _node_bottom_up_mpe[type(node)](node, *args, **kwargs)
+    with np.errstate(divide="ignore"):
+        return np.log(probs)
+
+
+def add_node_mpe(node_type, bottom_up_lambda, top_down_lambda, bottom_up_lambda_is_log=False):
     _node_top_down_mpe[node_type] = top_down_lambda
-    _node_bottom_up_mpe[node_type] = bottom_up_lambda
+
+    if bottom_up_lambda_is_log:
+        _node_bottom_up_mpe_log[node_type] = bottom_up_lambda
+    else:
+        _node_bottom_up_mpe[node_type] = bottom_up_lambda
+        _node_bottom_up_mpe_log[node_type] = log_node_bottom_up_mpe
 
 
-def mpe(node, input_data, node_top_down_mpe=_node_top_down_mpe, node_bottom_up_mpe=_node_bottom_up_mpe, in_place=False):
+def mpe(
+    node,
+    input_data,
+    node_top_down_mpe=_node_top_down_mpe,
+    node_bottom_up_mpe_log=_node_bottom_up_mpe_log,
+    in_place=False,
+):
     valid, err = is_valid(node)
     assert valid, err
 
@@ -75,7 +96,7 @@ def mpe(node, input_data, node_top_down_mpe=_node_top_down_mpe, node_bottom_up_m
     lls_per_node = np.zeros((data.shape[0], len(nodes)))
 
     # one pass bottom up evaluating the likelihoods
-    log_likelihood(node, data, dtype=data.dtype, node_log_likelihood=node_bottom_up_mpe, lls_matrix=lls_per_node)
+    log_likelihood(node, data, dtype=data.dtype, node_log_likelihood=node_bottom_up_mpe_log, lls_matrix=lls_per_node)
 
     instance_ids = np.arange(data.shape[0])
 
