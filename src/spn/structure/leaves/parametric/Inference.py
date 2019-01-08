@@ -8,6 +8,9 @@ Created on April 15, 2018
 from spn.algorithms.Inference import add_node_likelihood, leaf_marginalized_likelihood
 from spn.structure.leaves.parametric.Parametric import *
 from spn.structure.leaves.parametric.utils import get_scipy_obj_params
+import logging
+
+logger = logging.getLogger(__name__)
 
 POS_EPS = 1e-7
 

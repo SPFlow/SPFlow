@@ -8,6 +8,9 @@ from networkx.drawing.nx_agraph import graphviz_layout
 
 # import matplotlib
 # matplotlib.use('Agg')
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_networkx_obj(spn):
@@ -16,7 +19,7 @@ def get_networkx_obj(spn):
     import numpy as np
 
     all_nodes = get_nodes_by_type(spn)
-    print(all_nodes)
+    logger.info(all_nodes)
 
     g = nx.Graph()
 
