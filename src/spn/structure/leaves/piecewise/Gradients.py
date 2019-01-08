@@ -2,8 +2,7 @@ import numpy as np
 
 
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
-from spn.algorithms.Gradient import add_node_gradient
-
+from spn.algorithms.Gradient import add_node_feature_gradient
 
 
 def expand(array, left, right):
@@ -32,4 +31,4 @@ def piecewise_gradient(node, input_vals=None, dtype=np.float64):
 
 
 def add_piecewise_linear_gradient_support():
-    add_node_gradient(PiecewiseLinear, piecewise_gradient)
+    add_node_feature_gradient(PiecewiseLinear, piecewise_gradient)
