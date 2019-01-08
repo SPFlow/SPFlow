@@ -73,10 +73,12 @@ def add_node_gradient(node_type, lambda_func):
     _node_gradient[node_type] = lambda_func
 
 
-def feature_gradient(node, data, node_gradient_functions=_node_gradient, gradient_result=None, lls_per_node=None):
+def feature_gradient(node, data, node_gradient_functions=_node_gradient, lls_per_node=None):
     '''
     Feature gradients are computed for the input query and each feature using
-    the backwards automatic differentiation.
+    the backwards automatic differentiation. In mathematicl terms, it computes the
+    partial derivatives \partial P(X) / \partial X_i
+ 
 
     :param node: Node for the gradient calculation
     :param data: data for the computation. NaN values are implicitely marginalized out
