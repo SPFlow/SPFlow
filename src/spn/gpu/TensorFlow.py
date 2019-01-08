@@ -7,12 +7,16 @@ Created on March 27, 2018
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.client import timeline
+from typing import Union, Tuple, List
 
 from spn.algorithms.TransformStructure import Copy
-from spn.structure.Base import Product, Sum, eval_spn_bottom_up
+from spn.structure.Base import Product, Sum, eval_spn_bottom_up, Node
 from spn.structure.leaves.histogram.Histograms import Histogram
 from spn.structure.leaves.histogram.Inference import histogram_likelihood
 from spn.structure.leaves.parametric.Parametric import Gaussian
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def log_sum_to_tf_graph(node, children, data_placeholder=None, variable_dict=None, log_space=True, dtype=np.float32):
@@ -94,32 +98,81 @@ def likelihood_loss(tf_graph):
     return -tf.reduce_sum(tf_graph)
 
 
-def optimize_tf(spn, data, epochs=1000, batch_size=None, optimizer=None):
+def optimize_tf(
+    spn: Node,
+    data: np.ndarray,
+    epochs=1000,
+    batch_size: int = None,
+    optimizer: tf.train.Optimizer = None,
+    return_loss=False,
+) -> Union[Tuple[Node, List[float]], Node]:
+    """
+    Optimize weights of an SPN with a tensorflow stochastic gradient descent optimizer, maximizing the likelihood
+    function.
+    :param spn: SPN which is to be optimized
+    :param data: Input data
+    :param epochs: Number of epochs
+    :param batch_size: Size of each minibatch for SGD
+    :param optimizer: Optimizer procedure
+    :param return_loss: Whether to also return the list of losses for each epoch or not
+    :return: If `return_loss` is true, a copy of the optimized SPN and the list of the losses for each epoch is
+    returned, else only a copy of the optimized SPN is returned
+    """
+    # Make sure, that the passed SPN is not modified
     spn_copy = Copy(spn)
+
+    # Compile the SPN to a static tensorflow graph
     tf_graph, data_placeholder, variable_dict = spn_to_tf_graph(spn_copy, data, batch_size)
-    optimize_tf_graph(
+
+    # Optimize the tensorflow graph
+    loss_list = optimize_tf_graph(
         tf_graph, variable_dict, data_placeholder, data, epochs=epochs, batch_size=batch_size, optimizer=optimizer
     )
+
+    # Return loss as well if flag is set
+    if return_loss:
+        return spn_copy, loss_list
+
     return spn_copy
 
 
-def optimize_tf_graph(tf_graph, variable_dict, data_placeholder, data, epochs=1000, batch_size=None, optimizer=None):
+def optimize_tf_graph(
+    tf_graph, variable_dict, data_placeholder, data, epochs=1000, batch_size=None, optimizer=None
+) -> List[float]:
     if optimizer is None:
         optimizer = tf.train.GradientDescentOptimizer(0.001)
     loss = -tf.reduce_sum(tf_graph)
     opt_op = optimizer.minimize(loss)
+
+    # Collect loss
+    loss_list = []
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         if not batch_size:
             batch_size = data.shape[0]
         batches_per_epoch = data.shape[0] // batch_size
 
+        # Iterate over epochs
         for i in range(epochs):
+
+            # Collect loss over batches for one epoch
+            epoch_loss = 0.0
+
+            # Iterate over batches
             for j in range(batches_per_epoch):
                 data_batch = data[j * batch_size : (j + 1) * batch_size, :]
-                _, cur_loss = sess.run([opt_op, loss], feed_dict={data_placeholder: data_batch})
-            print("epoch: {}, loss: {}".format(i, cur_loss))
+                _, batch_loss = sess.run([opt_op, loss], feed_dict={data_placeholder: data_batch})
+                epoch_loss += batch_loss
+
+            # Build mean
+            epoch_loss /= data.shape[0]
+
+            logger.debug("Epoch: %s, Loss: %s", i, epoch_loss)
+            loss_list.append(epoch_loss)
+
         tf_graph_to_spn(variable_dict)
+
+    return loss_list
 
 
 def eval_tf(spn, data, save_graph_path=None, dtype=np.float32):
@@ -155,7 +208,7 @@ def eval_tf_trace(spn, data, log_space=True, save_graph_path=None):
 
         e2 = end - start
 
-        print(e2)
+        logger.info(e2)
 
         tl = timeline.Timeline(run_metadata.step_stats)
         ctf = tl.generate_chrome_trace_format()

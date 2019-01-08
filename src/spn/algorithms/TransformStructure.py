@@ -7,6 +7,9 @@ from copy import deepcopy
 
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Leaf, Sum, Product, assign_ids, get_nodes_by_type, get_parents, get_topological_order
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def Compress(node):
@@ -26,6 +29,8 @@ def Compress(node):
                 parent.children[pos] = cached_node
 
     assign_ids(node)
+    val, msg = is_valid(node)
+    assert val, msg
     return node
 
 

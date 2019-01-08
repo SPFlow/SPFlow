@@ -8,6 +8,9 @@ import numpy as np
 from spn.algorithms.MPE import get_mpe_top_down_leaf, add_node_mpe
 from spn.structure.leaves.histogram.Histograms import Histogram
 from spn.structure.leaves.histogram.Inference import histogram_likelihood
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def histogram_mode(node):
@@ -19,9 +22,9 @@ def histogram_mode(node):
 
 def histogram_bottom_up_ll(node, data=None, dtype=np.float64):
     probs = histogram_likelihood(node, data=data, dtype=dtype)
-
     mpe_ids = np.isnan(data[:, node.scope[0]])
-    probs[mpe_ids] = histogram_mode(node)
+    mode_data = np.ones((1, data.shape[1])) * histogram_mode(node)
+    probs[mpe_ids] = histogram_likelihood(node, data=mode_data, dtype=dtype)
 
     return probs
 

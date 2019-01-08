@@ -8,6 +8,9 @@ import numpy as np
 
 from spn.algorithms.Inference import add_node_likelihood
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def piecewise_likelihood_range(node, ranges, dtype=np.float64, **kwargs):

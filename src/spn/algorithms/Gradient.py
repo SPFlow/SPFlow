@@ -8,6 +8,7 @@ import collections
 _node_gradient = {}
 
 
+
 def gradient_backward(spn, lls_per_node):
     node_gradients = {}
     node_gradients[Sum] = sum_gradient_backward

@@ -6,6 +6,9 @@ Created on March 20, 2018
 import numpy as np
 import collections
 from collections import deque, OrderedDict
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Node(object):
@@ -126,6 +129,9 @@ class Context:
 
     def get_domains_by_scope(self, scopes):
         return [self.domains[s] for s in scopes]
+
+    def get_parametric_types_by_scope(self, scopes):
+        return [self.parametric_types[s] for s in scopes]
 
     def add_domains(self, data):
         assert len(data.shape) == 2, "data is not 2D?"

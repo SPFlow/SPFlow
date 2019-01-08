@@ -14,6 +14,9 @@ from spn.structure.leaves.parametric.Parametric import Gaussian
 
 from spn.structure.Base import Sum, get_nodes_by_type, get_number_of_nodes
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def gaussian_em_update(

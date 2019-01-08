@@ -8,7 +8,9 @@ import numpy as np
 from sklearn.cluster import KMeans
 
 from spn.algorithms.splitting.Base import split_data_by_clusters, clusters_by_adjacency_matrix
+import logging
 
+logger = logging.getLogger(__name__)
 _rpy_initialized = False
 
 
@@ -48,7 +50,7 @@ def get_RDC_transform(data, meta_types, ohe=False, k=10, s=1 / 6):
         out = np.asarray(out)
     except Exception as e:
         np.savetxt("/tmp/errordata.txt", data)
-        print(e)
+        logger.info(e)
         raise e
 
     return out
@@ -69,7 +71,7 @@ def get_RDC_adjacency_matrix(data, meta_types, ohe=False, linear=True):
         out = np.asarray(out)
     except Exception as e:
         np.savetxt("/tmp/errordata.txt", data)
-        print(e)
+        logger.info(e)
         raise e
 
     return out
@@ -174,7 +176,7 @@ def rdc_transformer(
     ohe=True,
     rand_gen=None,
 ):
-    # print('rdc transformer', k, s, non_linearity)
+    # logger.info('rdc transformer', k, s, non_linearity)
     """
     Given a data_slice,
     return a transformation of the features data in it according to the rdc
@@ -245,7 +247,7 @@ def rdc_cca(indexes):
     cca = CCA(n_components=1, max_iter=CCA_MAX_ITER)
     X_cca, Y_cca = cca.fit_transform(rdc_features[i], rdc_features[j])
     rdc = np.corrcoef(X_cca.T, Y_cca.T)[0, 1]
-    # print(i, j, rdc)
+    # logger.info(i, j, rdc)
     return rdc
 
 
@@ -293,7 +295,7 @@ def getIndependentRDCGroups_py(
     #
     # thresholding
     rdc_adjacency_matrix[rdc_adjacency_matrix < threshold] = 0
-    # print("thresholding", rdc_adjacency_matrix)
+    # logger.info("thresholding %s", rdc_adjacency_matrix)
 
     #
     # getting connected components
