@@ -45,7 +45,9 @@ class TestGradient(unittest.TestCase):
 
         self.assertTrue(
             np.all(np.isclose(results, expected_results, atol=0.000001)),
-            "Expected result was {}, but computed result was {}".format(expected_results, results))
+            "Expected result was {}, but computed result was {}".format(expected_results, results),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
