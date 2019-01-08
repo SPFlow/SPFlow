@@ -92,7 +92,7 @@ class TestParametricSampling(unittest.TestCase):
 
     def test_sample_categorical_dict(self):
         rand_gen = np.random.RandomState(1234)
-        node = CategoricalDictionary(p={3:0.3, 5:0.7}, scope=0)
+        node = CategoricalDictionary(p={3: 0.3, 5: 0.7}, scope=0)
         samples_gen = sample_parametric_node(node, 10, None, rand_gen)
         print(samples_gen)
 
