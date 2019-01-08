@@ -11,7 +11,8 @@ APIDOCCMD 	  = sphinx-apidoc
 APIDOCOPTS    = -f --separate
 APIDOCOUT     = api
 APIDOCSRC     = ../src/spn
-APIDOCEXC     = ../src/spn/tests
+APIDOCEXC1    = ../src/spn/tests
+APIDOCEXC2    = ../src/spn/experiments
 
 # Put it first so that "make" without argument is like "make help".
 help:
@@ -22,5 +23,6 @@ help:
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
-	@$(APIDOCCMD) -o "$(APIDOCOUT)" "$(APIDOCSRC)" "$(APIDOCEXC)" $(APIDOCOPTS)
+	$(APIDOCCMD) -o "$(APIDOCOUT)" "$(APIDOCSRC)" "$(APIDOCEXC1)" "$(APIDOCEXC2)" $(APIDOCOPTS)
+
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
