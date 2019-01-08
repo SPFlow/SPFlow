@@ -95,14 +95,22 @@ def get_split_rows_Gower(n_clusters=2, pre_proc=None, seed=17):
 
     return split_rows_Gower
 
-def get_split_rows_GMM(n_clusters=2, pre_proc=None, ohe=False, seed=17, max_iter=100, n_init=2, covariance_type='full'):
+
+def get_split_rows_GMM(n_clusters=2, pre_proc=None, ohe=False, seed=17, max_iter=100, n_init=2, covariance_type="full"):
     """
     covariance_type can be one of 'spherical', 'diag', 'tied', 'full'
     """
+
     def split_rows_GMM(local_data, ds_context, scope):
         data = preproc(local_data, ds_context, pre_proc, ohe)
 
-        estimator = GaussianMixture(n_components=n_clusters, covariance_type=covariance_type, max_iter=max_iter, n_init=n_init, random_state=seed)
+        estimator = GaussianMixture(
+            n_components=n_clusters,
+            covariance_type=covariance_type,
+            max_iter=max_iter,
+            n_init=n_init,
+            random_state=seed,
+        )
 
         clusters = estimator.fit(data).predict(data)
 
