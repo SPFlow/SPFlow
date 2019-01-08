@@ -96,9 +96,6 @@ def learn_mspn_with_missing(
     def l_mspn_missing(data, ds_context, cols, rows, min_instances_slice, threshold, linear, ohe):
         split_cols, split_rows = get_splitting_functions(cols, rows, ohe, threshold, rand_gen, cpus)
 
-        if leaves is None:
-            leaves = create_histogram_leaf
-
         nextop = get_next_operation(min_instances_slice)
 
         return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop)
