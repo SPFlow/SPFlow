@@ -1,4 +1,4 @@
-from spn.structure.Base import eval_spn_top_down, Sum, Product, Leaf, bfs, get_number_of_nodes
+from spn.structure.Base import eval_spn_top_down, Sum, Product, Leaf, get_number_of_nodes, get_nodes_by_type
 from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.Marginalization import marginalize
 import numpy as np
@@ -84,21 +84,20 @@ def feature_gradient(node, data, node_gradient_functions=_node_gradient, gradien
     :param lls_per_node: optional for storing the intermediate results
     '''
 
-    q = collections.deque()
-    bfs(node, lambda x: q.append(x))
+    all_leaves = get_nodes_by_type(node, Leaf)
 
     if not lls_per_node:
-        lls_per_node = np.full((data.shape[0], len(q)), np.nan)
+        lls_per_node = np.full((data.shape[0], get_number_of_nodes(node)), np.nan)
     lls = log_likelihood(node, data, lls_matrix=lls_per_node)
 
     gradients = np.exp(gradient_backward(node, lls_per_node))
 
     node_gradients = []
 
-    for i, spn_node in enumerate(q):
-        if isinstance(spn_node, Leaf):
-            result = node_gradient_functions[type(spn_node)](spn_node, data)
-            node_gradients.append(result * gradients[:, i].reshape(-1,1))
+    for spn_node in all_leaves:
+        i = spn_node.id
+        result = node_gradient_functions[type(spn_node)](spn_node, data)
+        node_gradients.append(result * gradients[:, i].reshape(-1,1))
 
     node_gradients = np.array(node_gradients)
 
