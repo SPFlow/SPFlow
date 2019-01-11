@@ -155,20 +155,16 @@ def print_debug_info(ds_context, X, Y, cond_Z):
     )
 
 
-def check_set(X, Y=set(), Z=set()):
+def check_set(*args):
     # make sure the variables are all sets
-    assert (type(X).__name__ == 'set'
-            ), "The input X should be type of set!"
-    assert (type(Y).__name__ == 'set'
-            ), "The input Y should be type of set!"
-    assert (type(Z).__name__ == 'set'
-            ), "The input cond_Z should be type of set!"
+    for i, a in enumerate(args):
+        assert isinstance(a, set), "The input %s should be type of set!" % (i+1)
 
 
-def check_discrete(ds_context, X, Y=set(), cond_Z=set()):
+def check_discrete(ds_context, *args):
     # make sure the variables are all discrete RVs
-    u_list = list(X | Y | cond_Z)
-    for i in u_list:
-        assert (
-            ds_context.meta_types[i].name == "DISCRETE"
-        ), "The function of (Conditional) Mutual Information supports DISCRETE random variables only!"
+    for a in args:
+        for i in a:
+            assert (
+                ds_context.meta_types[i].name == "DISCRETE"
+            ), "The function of (Conditional) Mutual Information supports DISCRETE random variables only!"
