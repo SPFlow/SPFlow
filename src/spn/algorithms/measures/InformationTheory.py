@@ -158,7 +158,7 @@ def print_debug_info(ds_context, X, Y, cond_Z):
 def check_set(*args):
     # make sure the variables are all sets
     for i, a in enumerate(args):
-        assert isinstance(a, set), "The input %s should be type of set!" % (i+1)
+        assert isinstance(a, set), "The input %s should be type of set!" % (i + 1)
 
 
 def check_discrete(ds_context, *args):
