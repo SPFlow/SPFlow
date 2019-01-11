@@ -15,6 +15,7 @@ from spn.structure.leaves.parametric.Parametric import (
     Geometric,
     Exponential,
     Bernoulli,
+    CategoricalDictionary,
 )
 
 import numpy as np
@@ -47,6 +48,14 @@ def sample_parametric_node(node, n_samples, data, rand_gen):
     elif isinstance(node, Categorical):
         X = rand_gen.choice(np.arange(node.k), p=node.p, size=n_samples)
 
+    elif isinstance(node, CategoricalDictionary):
+        vals = []
+        ps = []
+        for v, p in node.p.items():
+            vals.append(v)
+            ps.append(p)
+        X = rand_gen.choice(vals, p=ps, size=n_samples)
+
     else:
         raise Exception("Node type unknown: " + str(type(node)))
 
@@ -62,3 +71,4 @@ def add_parametric_sampling_support():
     add_leaf_sampling(Exponential, sample_parametric_node)
     add_leaf_sampling(Bernoulli, sample_parametric_node)
     add_leaf_sampling(Categorical, sample_parametric_node)
+    add_leaf_sampling(CategoricalDictionary, sample_parametric_node)

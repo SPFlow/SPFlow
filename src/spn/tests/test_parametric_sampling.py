@@ -64,7 +64,7 @@ class TestParametricSampling(unittest.TestCase):
         # we pass the test if they come from the dist, pass if p >= 0.05
         self.assertGreaterEqual(test_generated_samples.pvalue, 0.05)
 
-    def test_Parametrics(self):
+    def atest_Parametrics(self):
         # this test loads datasets generated in R
         # then does a quick and dirty goodness of fit test to see if that data came from the given distribution
         # and then generates data and applies the same goodness of fit test, checking that it came from the same given distribution
@@ -89,6 +89,12 @@ class TestParametricSampling(unittest.TestCase):
 
         exp_samples = np.loadtxt(fpath + "parametric_samples/exp_rate_2.csv", skiprows=1)
         self.assert_correct_node_sampling_continuous(Exponential(l=2), exp_samples, False)
+
+    def test_sample_categorical_dict(self):
+        rand_gen = np.random.RandomState(1234)
+        node = CategoricalDictionary(p={3: 0.3, 5: 0.7}, scope=0)
+        samples_gen = sample_parametric_node(node, 10, None, rand_gen)
+        print(samples_gen)
 
 
 if __name__ == "__main__":

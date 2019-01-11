@@ -3,7 +3,7 @@ import unittest
 import tensorflow as tf
 
 from spn.algorithms.Inference import log_likelihood
-from spn.algorithms.LearningWrappers import learn_parametric, learn_mspn
+from spn.algorithms.LearningWrappers import learn_parametric, learn_mspn, learn_mspn_with_missing
 from spn.gpu.TensorFlow import spn_to_tf_graph, eval_tf, likelihood_loss, tf_graph_to_spn
 from spn.structure.Base import Context
 from spn.structure.StatisticalTypes import MetaType
@@ -41,6 +41,7 @@ class TestTensorflow(unittest.TestCase):
         ds_context.add_domains(data)
 
         spn = learn_mspn(data, ds_context)
+        learn_mspn_with_missing(data, ds_context)
 
         ll = log_likelihood(spn, data)
 
