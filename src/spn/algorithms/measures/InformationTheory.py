@@ -22,7 +22,9 @@ def conditional_mutual_information(spn, ds_context, X, Y, cond_Z, debug=False):
     :param cond_Z:       set of scope integers representing RVs which are given
     :return:             conditional mutual information
     """
-    # first check if the RVs are all DISCRETE
+    # first check if input X, Y and cond_Z are all sets
+    check_set(X, Y, cond_Z)
+    # then check if the RVs are all DISCRETE
     check_discrete(ds_context, X, Y, cond_Z)
     # print the range of each RV for debug, works when X and Y are scalars
     if debug:
@@ -40,13 +42,18 @@ def conditional_mutual_information(spn, ds_context, X, Y, cond_Z, debug=False):
 
 def mutual_information(spn, ds_context, Xset, Yset, debug=False):
     """
+    calculate mutual information
     I(X,Y) = H(X) + H(Y) - H(X,Y)
-    :param spn:
+    :param spn:         SPN
     :param ds_context:
     :param Xset:        set of scope integers representing RVs X
     :param Yset:        set of scope integers representing RVs Y
-    :return:
+    :return:            mutual information
     """
+    # first check if input Xset, Yset are all sets
+    check_set(Xset, Yset)
+    # then check if the RVs are all DISCRETE
+    check_discrete(ds_context, Xset, Yset)
     # by definition, MI(x,y) = h(x) + h(y) - h(xy)
     # where h is the entropy
     hx = entropy(spn, ds_context, Xset, debug)
@@ -67,6 +74,10 @@ def entropy(spn, ds_context, RVset, debug=False):
     :param RVset:     set of scope integers representing RVs
     :return:          entropy of RVs
     """
+    # first check if input RVset is type of set
+    check_set(RVset)
+    # then check if the RVs are all DISCRETE
+    check_discrete(ds_context, RVset)
     # get permutation of RVset
     perm_RV = get_permutation(ds_context, RVset)
     # get entropy
@@ -144,10 +155,16 @@ def print_debug_info(ds_context, X, Y, cond_Z):
     )
 
 
-def check_discrete(ds_context, X, Y, cond_Z):
+def check_set(*args):
+    # make sure the variables are all sets
+    for i, a in enumerate(args):
+        assert isinstance(a, set), "The input %s should be type of set!" % (i+1)
+
+
+def check_discrete(ds_context, *args):
     # make sure the variables are all discrete RVs
-    u_list = list(X | Y | cond_Z)
-    for i in u_list:
-        assert (
-            ds_context.meta_types[i].name == "DISCRETE"
-        ), "The function of (Conditional) Mutual Information supports DISCRETE random variables only!"
+    for a in args:
+        for i in a:
+            assert (
+                ds_context.meta_types[i].name == "DISCRETE"
+            ), "The function of (Conditional) Mutual Information supports DISCRETE random variables only!"
