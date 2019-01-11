@@ -62,10 +62,14 @@ def log_node_bottom_up_mpe(node, *args, **kwargs):
         return np.log(probs)
 
 
-def add_node_mpe(node_type, bottom_up_lambda, top_down_lambda):
+def add_node_mpe(node_type, bottom_up_lambda, top_down_lambda, bottom_up_lambda_is_log=False):
     _node_top_down_mpe[node_type] = top_down_lambda
-    _node_bottom_up_mpe[node_type] = bottom_up_lambda
-    _node_bottom_up_mpe_log[node_type] = log_node_bottom_up_mpe
+
+    if bottom_up_lambda_is_log:
+        _node_bottom_up_mpe_log[node_type] = bottom_up_lambda
+    else:
+        _node_bottom_up_mpe[node_type] = bottom_up_lambda
+        _node_bottom_up_mpe_log[node_type] = log_node_bottom_up_mpe
 
 
 def mpe(
