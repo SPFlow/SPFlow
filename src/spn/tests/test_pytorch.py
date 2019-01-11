@@ -39,8 +39,6 @@ class TestPytorch(unittest.TestCase):
         p = net.compute_unnormalized({leaves: np.array([[0, 1], [1, 0]],
                                                        dtype='float32')})
         z = net.compute_unnormalized({leaves: np.ones((2, 2)).astype('float32')})
-        print(p)
-        print(z)
         self.assertTrue(np.isclose(p, 34.8))
         self.assertTrue(np.isclose(z, 100.00001))
 
