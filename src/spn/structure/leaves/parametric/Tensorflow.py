@@ -142,7 +142,7 @@ def add_parametric_tensorflow_support():
     add_node_to_tf_graph(Gamma, gamma_to_tf_graph)
     add_node_to_tf_graph(LogNormal, lognormal_to_tf_graph)
     add_node_to_tf_graph(Poisson, poisson_to_tf_graph)
-    add_node_to_tf_graph(Bernoulli, poisson_to_tf_graph)
+    add_node_to_tf_graph(Bernoulli, bernoulli_to_tf_graph)
     add_node_to_tf_graph(Categorical, categorical_to_tf_graph)
 
     add_tf_graph_to_node(Gaussian, tf_graph_to_gaussian)
