@@ -6,7 +6,6 @@ Created on March 20, 2018
 import logging
 from collections import deque
 from enum import Enum
-import logging
 
 logger = logging.getLogger(__name__)
 
