@@ -10,13 +10,28 @@ from scipy.special import logsumexp
 from spn.algorithms.Gradient import gradient_backward
 from spn.algorithms.Inference import log_likelihood
 
-from spn.structure.leaves.parametric.Parametric import Gaussian
+from spn.structure.leaves.parametric.Parametric import Gaussian, Bernoulli
 
 from spn.structure.Base import Sum, get_nodes_by_type, get_number_of_nodes
 import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def bernoulli_em_update(
+    node, node_lls=None, node_gradients=None, root_lls=None, data=None, update_p=True, **kwargs
+):
+    
+    p = (node_gradients - root_lls) + node_lls
+    lse = logsumexp(p)
+    w = np.exp(p - lse)
+    X = data[:, node.scope[0]]
+
+    bernoulli_p = np.sum(w * X)
+
+    if update_p:
+        node.p = bernoulli_p
 
 
 def gaussian_em_update(
@@ -46,7 +61,7 @@ def sum_em_update(node, node_gradients=None, root_lls=None, all_lls=None, **kwar
     node.weights = (node.weights / total_weight).tolist()
 
 
-_node_updates = {Gaussian: gaussian_em_update, Sum: sum_em_update}
+_node_updates = {Gaussian: gaussian_em_update, Sum: sum_em_update, Bernoulli: bernoulli_em_update}
 
 
 def EM_optimization(spn, data, iterations=5, node_updates=_node_updates, **kwargs):
