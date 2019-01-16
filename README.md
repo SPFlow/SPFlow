@@ -496,6 +496,17 @@ All other aspects of the SPN library can be extended in a similar same way.
 
 * Molina, Alejandro, Antonio Vergari, Nicola Di Mauro, Sriraam Natarajan, Floriana Esposito, and Kristian Kersting. "Mixed sum-product networks: A deep architecture for hybrid domains." In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI). 2018.
 
+## Citation
+If you find SPFlow useful please cite us in your work:
+```
+@misc{Molina2019SPFlow,
+  Author = {Alejandro Molina and Antonio Vergari and Karl Stelzner and Robert Peharz and Pranav Subramani and Nicola Di Mauro and Pascal Poupart and Kristian Kersting},
+  Title = {SPFlow: An Easy and Extensible Library for Deep Probabilistic Learning using Sum-Product Networks},
+  Year = {2019},
+  Eprint = {arXiv:1901.03704},
+}
+```
+
 ## Authors
 
 * **Alejandro Molina** - *TU Darmstadt*
