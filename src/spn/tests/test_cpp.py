@@ -33,7 +33,8 @@ class TestCPP(unittest.TestCase):
 
         c_ll = spn_cc_eval_func(data)
 
-        self.assertTrue(np.all(np.isclose(py_ll, c_ll)))
+        for i in range(py_ll.shape[0]):
+            self.assertAlmostEqual(py_ll[i, 0], c_ll[i, 0])
 
 
 if __name__ == "__main__":

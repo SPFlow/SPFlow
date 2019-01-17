@@ -11,7 +11,8 @@ from spn.structure.Base import Product, Sum, eval_spn_bottom_up
 
 logger = logging.getLogger(__name__)
 
-EPSILON = 0.000000000000001
+EPSILON = np.finfo(float).eps
+FMIN = np.finfo(float).min
 
 
 def leaf_marginalized_likelihood(node, data=None, dtype=np.float64):
@@ -66,7 +67,11 @@ _node_likelihood = {Sum: sum_likelihood, Product: prod_likelihood}
 def log_node_likelihood(node, *args, **kwargs):
     probs = _node_likelihood[type(node)](node, *args, **kwargs)
     with np.errstate(divide="ignore"):
-        return np.log(probs)
+        nll = np.log(probs)
+
+        nll[np.isinf(nll)] = FMIN
+
+        return nll
 
 
 def add_node_likelihood(node_type, lambda_func, log_lambda_func=None):
