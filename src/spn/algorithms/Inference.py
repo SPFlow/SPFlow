@@ -12,8 +12,6 @@ from spn.structure.Base import Product, Sum, eval_spn_bottom_up
 logger = logging.getLogger(__name__)
 
 EPSILON = np.finfo(float).eps
-FMIN = np.finfo(float).min
-
 
 def leaf_marginalized_likelihood(node, data=None, dtype=np.float64):
     assert len(node.scope) == 1, node.scope
@@ -30,7 +28,8 @@ def prod_log_likelihood(node, children, data=None, dtype=np.float64):
     llchildren = np.concatenate(children, axis=1)
     assert llchildren.dtype == dtype
     pll = np.sum(llchildren, axis=1).reshape(-1, 1)
-    pll[np.isinf(pll)] = FMIN
+    pll[np.isinf(pll)] = np.finfo(pll.dtype).min
+
     return pll
 
 
@@ -48,7 +47,10 @@ def sum_log_likelihood(node, children, data=None, dtype=np.float64):
 
     b = np.array(node.weights, dtype=dtype)
 
-    return logsumexp(llchildren, b=b, axis=1).reshape(-1, 1)
+    sll = logsumexp(llchildren, b=b, axis=1).reshape(-1, 1)
+
+    return sll
+
 
 
 def sum_likelihood(node, children, data=None, dtype=np.float64):
@@ -70,9 +72,8 @@ def log_node_likelihood(node, *args, **kwargs):
     probs = _node_likelihood[type(node)](node, *args, **kwargs)
     with np.errstate(divide="ignore"):
         nll = np.log(probs)
-
-        nll[np.isinf(nll)] = FMIN
-
+        nll[np.isinf(nll)] = np.finfo(nll.dtype).min
+        assert not np.any(np.isnan(nll))
         return nll
 
 
