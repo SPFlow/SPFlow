@@ -13,14 +13,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-POS_EPS = sys.float_info.epsilon
+POS_EPS = np.finfo(float).eps
 
 
 def continuous_likelihood(node, data=None, dtype=np.float64):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
     scipy_obj, params = get_scipy_obj_params(node)
     probs[~marg_ids] = scipy_obj.pdf(observations, **params)
-    probs[probs == 0.0] = POS_EPS
     return probs
 
 
