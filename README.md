@@ -523,6 +523,7 @@ See also the list of [contributors](https://github.com/alejandromolinaml/SPFlow/
 * **Moritz Kulessa** - *TU Darmstadt*
 * **Claas Voelcker** - *TU Darmstadt*
 * **Simon Roesler** - *Karlsruhe Institute of Technology*
+* **Steven Lang** - *TU Darmstadt*
 
 ## License
 

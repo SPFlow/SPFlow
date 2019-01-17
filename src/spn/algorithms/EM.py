@@ -19,10 +19,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def bernoulli_em_update(
-    node, node_lls=None, node_gradients=None, root_lls=None, data=None, update_p=True, **kwargs
-):
-    
+def bernoulli_em_update(node, node_lls=None, node_gradients=None, root_lls=None, data=None, update_p=True, **kwargs):
+
     p = (node_gradients - root_lls) + node_lls
     lse = logsumexp(p)
     w = np.exp(p - lse)
