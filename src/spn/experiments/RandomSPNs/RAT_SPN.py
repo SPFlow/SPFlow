@@ -29,6 +29,7 @@ def variable_with_weight_decay(name, shape, stddev, wd, mean=0.0, values=None):
 
     return var
 
+
 def bernoulli_variable_with_weight_decay(name, shape, wd, p=-0.7, values=None):
     if values is None:
         initializer = tf.constant_initializer([p])
@@ -42,6 +43,7 @@ def bernoulli_variable_with_weight_decay(name, shape, wd, p=-0.7, values=None):
         tf.add_to_collection("weight_losses", weight_decay)
 
     return var
+
 
 def print_if_nan(tensor, msg):
     is_nan = tf.reduce_any(tf.is_nan(tensor))
@@ -73,7 +75,7 @@ class SpnArgs(object):
         self.num_sums = 20
 
         self.drop_connect = False
-        self.leaf = "gaussian" # NOTE maybe we can use something more elegant here, eg. SPFlow classes
+        self.leaf = "gaussian"  # NOTE maybe we can use something more elegant here, eg. SPFlow classes
 
 
 class GaussVector(NodeVector):
@@ -152,14 +154,15 @@ class GaussVector(NodeVector):
             result += self.sigma.shape.num_elements()
         return result
 
+
 class BernoulliVector(NodeVector):
-    def __init__(self, region, args, name, given_params=None, p=-0.7): 
+    def __init__(self, region, args, name, given_params=None, p=-0.7):
         super().__init__(name)
         self.local_size = len(region)
         self.args = args
         self.scope = sorted(list(region))
         self.size = args.num_univ_distros
-        
+
         self.probs = bernoulli_variable_with_weight_decay(
             name + "_bernoulli_params",
             shape=[1, self.local_size, self.size],
@@ -167,19 +170,18 @@ class BernoulliVector(NodeVector):
             p=p,
             values=given_params,
         )
-        
-        self.dist = dists.Bernoulli(logits=self.probs)
 
+        self.dist = dists.Bernoulli(logits=self.probs)
 
     def forward(self, inputs, marginalized=None, classes=False):
         local_inputs = tf.gather(inputs, self.scope, axis=1)
         bernoulli_log_pdf_single = self.dist.log_prob(tf.expand_dims(local_inputs, axis=-1))
 
         if marginalized is not None:
-            #marginalized = tf.clip_by_value(marginalized, 0.0, 1.0)
+            # marginalized = tf.clip_by_value(marginalized, 0.0, 1.0)
             marginalized = tf.clip_by_value(marginalized, 0, 1)
             local_marginalized = tf.expand_dims(tf.gather(marginalized, self.scope, axis=1), axis=-1)
-            #bernoulli_log_pdf_single = bernoulli_log_pdf_single * (1 - local_marginalized)
+            # bernoulli_log_pdf_single = bernoulli_log_pdf_single * (1 - local_marginalized)
             bernoulli_log_pdf_single = bernoulli_log_pdf_single * (1 - tf.cast(local_marginalized, dtype=tf.float32))
 
         if classes:
@@ -199,9 +201,10 @@ class BernoulliVector(NodeVector):
 
     def num_params(self):
         result = self.probs.shape.num_elements()
-        #if isinstance(self.sigma, tf.Tensor):
+        # if isinstance(self.sigma, tf.Tensor):
         #    result += self.sigma.shape.num_elements()
         return result
+
 
 class ProductVector(NodeVector):
     def __init__(self, vector1, vector2, name):
@@ -329,7 +332,9 @@ class SumVector(NodeVector):
 
 
 class RatSpn(object):
-    def __init__(self, num_classes, region_graph=None, vector_list=None, args=SpnArgs(), name=None, mean=0.0, p=-0.7, sess=None):
+    def __init__(
+        self, num_classes, region_graph=None, vector_list=None, args=SpnArgs(), name=None, mean=0.0, p=-0.7, sess=None
+    ):
         if name is None:
             name = str(id(self))
         self.name = name
@@ -370,22 +375,30 @@ class RatSpn(object):
             for j, prod_node in enumerate(leaf_vector):
                 for k, a_node in enumerate(prod_node.children):
                     num_univ_distros = a_node.size
-                    if self.args.leaf == 'bernoulli':
-                        name = 'bernoulli_{}_{}'.format(i,k)
-                        bernoulli_vector = BernoulliVector(scope, self.args, name, given_params=a_node.probs.eval(session=sess))
-                        init_new_vars_op = tf.initializers.variables([bernoulli_vector.probs], name='init')
+                    if self.args.leaf == "bernoulli":
+                        name = "bernoulli_{}_{}".format(i, k)
+                        bernoulli_vector = BernoulliVector(
+                            scope, self.args, name, given_params=a_node.probs.eval(session=sess)
+                        )
+                        init_new_vars_op = tf.initializers.variables([bernoulli_vector.probs], name="init")
                         sess.run(init_new_vars_op)
                         self.vector_list[0].append(bernoulli_vector)
                         node_to_vec[id(a_node)] = bernoulli_vector
                     else:
-                        name = 'gauss_{}_{}'.format(i,k)
-                        gauss_vector = GaussVector(scope, self.args, name, given_means=a_node.means.eval(session=sess), given_stddevs=a_node.sigma_params.eval(session=sess))
-                        init_new_vars_op = tf.initializers.variables([gauss_vector.means, gauss_vector.sigma_params], name='init')
+                        name = "gauss_{}_{}".format(i, k)
+                        gauss_vector = GaussVector(
+                            scope,
+                            self.args,
+                            name,
+                            given_means=a_node.means.eval(session=sess),
+                            given_stddevs=a_node.sigma_params.eval(session=sess),
+                        )
+                        init_new_vars_op = tf.initializers.variables(
+                            [gauss_vector.means, gauss_vector.sigma_params], name="init"
+                        )
                         sess.run(init_new_vars_op)
                         self.vector_list[0].append(gauss_vector)
                         node_to_vec[id(a_node)] = gauss_vector
-
-
 
         for layer_num, layer in enumerate(vector_list[1:]):
             self.vector_list.append([])
@@ -423,8 +436,8 @@ class RatSpn(object):
         # make leaf layer (always Gauss currently)
         self.vector_list.append([])
         for i, leaf_region in enumerate(rg_layers[0]):
-            if self.args.leaf == 'bernoulli':
-                name = 'bernoulli_{}_'.format(i)
+            if self.args.leaf == "bernoulli":
+                name = "bernoulli_{}_".format(i)
                 bernoulli_vector = BernoulliVector(leaf_region, self.args, name, p=self.default_param)
                 self.vector_list[-1].append(bernoulli_vector)
                 self._region_distributions[leaf_region] = bernoulli_vector
@@ -506,8 +519,7 @@ class RatSpn(object):
         vec_to_params = {}
         for leaf_vector in self.vector_list[0]:
             if type(leaf_vector) == GaussVector:
-                vec_to_params[leaf_vector] = (leaf_vector.means[0],
-                                              leaf_vector.sigma[0])
+                vec_to_params[leaf_vector] = (leaf_vector.means[0], leaf_vector.sigma[0])
             else:
                 vec_to_params[leaf_vector] = leaf_vector.probs[0]
         for layer_idx in range(1, len(self.vector_list)):
