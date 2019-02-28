@@ -407,7 +407,7 @@ def get_cpp_mpe_function(node):
 
     def python_mpe_func(data):
         results = np.zeros((data.shape[0], data.shape[1]))
-        spn_mpe_many(data, results, data.shape[1]. data.shape[0])
+        spn_mpe_many(data, results, data.shape[1], data.shape[0])
         return results
 
     return python_mpe_func
