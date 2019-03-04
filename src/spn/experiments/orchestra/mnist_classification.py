@@ -30,7 +30,9 @@ if __name__ == "__main__":
     X = mnist.data.astype("float64")
     y = mnist.target
     random_state = check_random_state(0)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=10000, test_size=300, random_state=random_state)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, train_size=10000, test_size=300, random_state=random_state
+    )
 
     # normalize
     # scaler = StandardScaler()
