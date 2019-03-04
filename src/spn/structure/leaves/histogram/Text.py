@@ -26,13 +26,13 @@ def histogram_to_str(node, feature_names=None, node_to_str=None):
 
     breaks = np.array2string(np.array(node.breaks), precision=decimals, separator=",")
     densities = np.array2string(
-        np.array(node.densities), precision=decimals, separator=",", formatter={"float_kind": lambda x: "%.10f" % x}
+        np.array(node.densities), precision=decimals, separator=","  # formatter={"float_kind": lambda x: "%.10f" % x}
     )
     bin_repr_points = np.array2string(
         np.array(node.bin_repr_points),
         precision=decimals,
         separator=",",
-        formatter={"float_kind": lambda x: "%.10f" % x},
+        # formatter={"float_kind": lambda x: "%.10f" % x},
     )
 
     return "Histogram(%s|%s;%s;%s)" % (fname, breaks, densities, bin_repr_points)
