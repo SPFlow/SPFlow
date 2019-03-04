@@ -32,7 +32,6 @@ if __name__ == "__main__":
     add_parametric_inference_support()
     memory = Memory(cachedir="cache", verbose=0, compress=9)
 
-
     data = []
     for x in range(10):
         for y in range(10):
@@ -59,14 +58,12 @@ if __name__ == "__main__":
 
     spn.scope.extend(branch.scope)
 
-
     print("learned")
 
     prediction = []
 
     cls_data = np.zeros((num_classes, 4))
     cls_data[:, 3] = np.arange(num_classes)
-
 
     for i, x in enumerate(data):
         cls_data[:, 0:3] = x[0:3]
