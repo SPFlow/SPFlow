@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 
 class SPNClassifier(BaseEstimator, ClassifierMixin):
     """
-    SPNClassifier wraps the SPN structure learning, tensorflow weight optimization and MPE procedures into a single 
-    class that follows the sklearn estimator interace. Therefore, SPNClassifier is usable in the sklearn framework as 
-    estimator in cross_val_score, GridSearchCV and more.
+    :class:`SPNClassifier` wraps the SPN structure learning, tensorflow weight optimization and MPE procedures into a single 
+    class that follows the sklearn estimator interace. Therefore, :class:`SPNClassifier` is usable in the sklearn framework as 
+    estimator in :meth:`sklearn.model_selection.cross_val_score`, :meth:`sklearn.model_selection.GridSearchCV` and more.
     """
 
     def __init__(
@@ -35,16 +35,25 @@ class SPNClassifier(BaseEstimator, ClassifierMixin):
         tf_post_optimization_hook=None,
     ):
         """
-        Create an SPNClassifier.
+        Create an :class:`SPNClassifier`.
 
-        :param parametric_types: Parametric types of leaf nodes. If None, all are assumed to be Gaussian
-        :param n_jobs: Number of parallel jobs for learning the SPN structure
-        :param tf_optimize_weights: Optimize weights in tensorflow
-        :param tf_n_epochs: Number of tensorflow optimization epochs
-        :param tf_batch_size: Batch size for tensorflow optimization
-        :param tf_optimizer: Tensorflow optimizer to use for optimization
-        :param tf_pre_optimization_hook: Hook that takes an SPN and returns an SPN before the optimization step
-        :param tf_post_optimization_hook: Hook that takes an SPN and returns an SPN after the optimization step
+        Parameters:
+        parametric_types : List
+            Parametric types of leaf nodes. If None, all are assumed to be Gaussian
+        n_jobs : int
+            Number of parallel jobs for learning the SPN structure
+        tf_optimize_weights : bool
+            Optimize weights in tensorflow
+        tf_n_epochs : int
+            Number of tensorflow optimization epochs
+        tf_batch_size : int
+            Batch size for tensorflow optimization
+        tf_optimizer
+            Tensorflow optimizer to use for optimization
+        tf_pre_optimization_hook
+            Hook that takes an SPN and returns an SPN before the optimization step
+        tf_post_optimization_hook
+            Hook that takes an SPN and returns an SPN after the optimization step
         """
         self.n_jobs = n_jobs
         self.tf_optimize_weights = tf_optimize_weights
@@ -56,6 +65,21 @@ class SPNClassifier(BaseEstimator, ClassifierMixin):
         self.tf_post_optimization_hook = tf_post_optimization_hook
 
     def fit(self, X, y):
+        """
+        Fit the :class:`SPNClassifier` object.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Training variables
+        y : np.ndarray
+            Training labels
+
+        Returns
+        -------
+        SPNClassifier
+            Fitted classifier
+        """
         # Check that X and y have correct shape
         X, y = check_X_y(X, y, multi_output=True)
 
@@ -103,6 +127,19 @@ class SPNClassifier(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X):
+        """
+        Make a prediction of the given data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Test data
+
+        Returns
+        -------
+        np.ndarray
+            Label predictions for the given test data
+        """
         # Check is fit had been called
         check_is_fitted(self, ["X_", "y_"])
 
