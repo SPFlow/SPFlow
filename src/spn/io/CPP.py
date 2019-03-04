@@ -14,6 +14,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def histogram_to_cpp(node, leaf_name, vartype):
     import numpy as np
 
@@ -37,6 +38,7 @@ def histogram_to_cpp(node, leaf_name, vartype):
     leave_init += "\n"
 
     return leave_function, leave_init
+
 
 def get_header(num_inputs, num_nodes, c_data_type="double", header_guard=False):
     header = """
@@ -70,39 +72,42 @@ def get_header(num_inputs, num_nodes, c_data_type="double", header_guard=False):
     void spn_many({c_data_type}* data_in, {c_data_type}* data_out, size_t rows);
 
     """.format(
-        c_data_type = c_data_type,
-        num_inputs = num_inputs,
-        num_nodes = num_nodes
+        c_data_type=c_data_type, num_inputs=num_inputs, num_nodes=num_nodes
     )
 
     if header_guard:
-        header = """
+        header = (
+            """
     #ifndef __SPN_H
     #define __SPN_H
-        """ + header + """
+        """
+            + header
+            + """
     #endif
         """
+        )
     return header
+
 
 def mpe_to_cpp(root, c_data_type="double"):
     eval_functions = {}
+
     def mpe_prod_to_cpp(node, c_data_type="dobule"):
         ## If I have been selected
         operation = "if (selected[{my_id}]) {{".format(my_id=n.id)
-        ## Select all my children. 
+        ## Select all my children.
         for c in node.children:
             operation += """
             selected[{child_id}] = true; 
             max_llh[ {my_id} ] = ll_result[ {my_id} ]; 
             """.format(
-                my_id = node.id, 
-                child_id = c.id
-                )
-        # No double when no format? 
+                my_id=node.id, child_id=c.id
+            )
+        # No double when no format?
         operation += "}\n"
         return operation
 
-    def mpe_sum_to_cpp(node, c_data_type="double"): 
+    def mpe_sum_to_cpp(node, c_data_type="double"):
         ## If I have been selected before (root is always selected)
         operation = "if (selected[{my_id}]) {{".format(my_id=n.id)
         for i, c in enumerate(node.children):
@@ -111,32 +116,34 @@ def mpe_to_cpp(root, c_data_type="double"):
                 winning_nodes[ {my_id} ] = {child_id}; 
                 max_llh[ {my_id} ] = ll_result[{child_id}] + {node_weight:.20} ; 
             }} 
-            """.format( 
-                my_id=node.id, 
-                child_id = c.id, 
-                node_weight=math.log(node.weights[i]) 
+            """.format(
+                my_id=node.id, child_id=c.id, node_weight=math.log(node.weights[i])
             )
         operation += """
             selected[winning_nodes[{my_id}]] = true; // now select the node that won. 
         """.format(
-            my_id = node.id
+            my_id=node.id
         )
         # No double when no format
-        operation += "}\n" # Close if selected. 
+        operation += "}\n"  # Close if selected.
         return operation
 
     def mpe_gaussian_to_cpp(node, c_data_type="double"):
         return """if (selected[{my_id}]) {{
                 completion[{input_map}] = {mean};
             }}
-        """.format( my_id = node.id, input_map = node.scope[0], mean = node.mean )
+        """.format(
+            my_id=node.id, input_map=node.scope[0], mean=node.mean
+        )
 
     def mpe_bernoulli_to_cpp(node, c_data_type="double"):
-        completion_val = float( int(node.p > 0.5 ) )
+        completion_val = float(int(node.p > 0.5))
         return """if (selected[{my_id}] && isnan(completion[{input_map}]) ) {{
                 completion[{input_map}] = {completion_val}; 
             }}
-        """.format( my_id = node.id, input_map = node.scope[0], completion_val=completion_val )
+        """.format(
+            my_id=node.id, input_map=node.scope[0], completion_val=completion_val
+        )
 
     eval_functions[Product] = mpe_prod_to_cpp
     eval_functions[Sum] = mpe_sum_to_cpp
@@ -151,7 +158,7 @@ def mpe_to_cpp(root, c_data_type="double"):
         # top_down_code += """
         #     for (size_t n_idx = 0; n_idx < {num_nodes}; n_idx++)
         #     {{
-        #         printf(\"%d\", selected[n_idx] ? 1 : 0); 
+        #         printf(\"%d\", selected[n_idx] ? 1 : 0);
         #     }}
         #     printf(\"\\n\");
         # """.format(num_nodes = len(all_nodes))
@@ -216,11 +223,10 @@ def mpe_to_cpp(root, c_data_type="double"):
             }}
         }}        
     """.format(
-        top_down_code=top_down_code, 
-        num_nodes = len(all_nodes),
-        c_data_type = c_data_type
+        top_down_code=top_down_code, num_nodes=len(all_nodes), c_data_type=c_data_type
     )
     return function_code
+
 
 def eval_to_cpp(node, c_data_type="double"):
     eval_functions = {}
@@ -229,17 +235,11 @@ def eval_to_cpp(node, c_data_type="double"):
         operations = []
         for i, c in enumerate(n.children):
             operations.append(
-                "result_node[{child_id}]+{log_weight:.40}".format(
-                    log_weight=math.log(n.weights[i]), child_id=c.id
-                )
+                "result_node[{child_id}]+{log_weight:.40}".format(log_weight=math.log(n.weights[i]), child_id=c.id)
             )
         return "result_node[{node_id}] = logsumexp({num_children},{operation}); // sum node".format(
-            vartype=c_data_type, 
-            node_id=n.id, 
-            num_children=len(n.children), 
-            operation=",".join(operations)
+            vartype=c_data_type, node_id=n.id, num_children=len(n.children), operation=",".join(operations)
         )
-
 
     def log_prod_eval_to_cpp(n, c_data_type="double"):
         operation = "+".join(["result_node[" + str(c.id) + "]" for c in n.children])
@@ -255,9 +255,9 @@ def eval_to_cpp(node, c_data_type="double"):
         return """result_node[{node_id}] = {operation};""".format(
             vartype=c_data_type, node_id=n.id, operation=operation
         )
-    
+
     def bernoulli_eval_to_cpp(n, c_data_type="double"):
-        # If isnan, return 1, if not, return proper probability. 
+        # If isnan, return 1, if not, return proper probability.
         return "result_node[{node_id}] = isnan(x[{scope}]) ? 20.0 : ( x[{scope}] > 0.5 ? log({p_true}) : log(1 - {p_true}) ); //leaf node bernoulli".format(
             vartype=c_data_type, node_id=n.id, scope=n.scope[0], p_true=n.p
         )
@@ -275,7 +275,7 @@ def eval_to_cpp(node, c_data_type="double"):
         spn_code += "\n\t\t"
 
     # header = get_header(c_data_type=c_data_type)
-    
+
     function_code = """
     const {c_data_type} K = 0.91893853320467274178032973640561763986139747363778341281;
 
@@ -336,27 +336,25 @@ def eval_to_cpp(node, c_data_type="double"):
         }}
     }}
     """.format(
-        c_data_type=c_data_type, 
-        num_nodes=num_nodes,
-        vartype=c_data_type,
-        spn_code=spn_code,
-        num_input=len(node.scope)
+        c_data_type=c_data_type, num_nodes=num_nodes, vartype=c_data_type, spn_code=spn_code, num_input=len(node.scope)
     )
     return function_code
 
-def generate_cpp_code(node, c_data_type="double", outfile=None): 
+
+def generate_cpp_code(node, c_data_type="double", outfile=None):
 
     num_input = len(node.scope)
     num_nodes = len(get_nodes_by_type(node))
 
-    code = get_header(num_input, num_nodes, c_data_type) \
-        + eval_to_cpp(node, c_data_type) \
-        + mpe_to_cpp(node, c_data_type)
-    if outfile: 
-        f = open(outfile, 'w')
+    code = (
+        get_header(num_input, num_nodes, c_data_type) + eval_to_cpp(node, c_data_type) + mpe_to_cpp(node, c_data_type)
+    )
+    if outfile:
+        f = open(outfile, "w")
         f.write(code)
         f.close()
     return code
+
 
 def generate_cpp_code_with_header(node, c_data_type="double", filename="spn"):
 
@@ -367,13 +365,16 @@ def generate_cpp_code_with_header(node, c_data_type="double", filename="spn"):
 
     code = """
     #include \"{header_file_name}\"
-    """.format(header_file_name = filename + ".h")     
-    code += eval_to_cpp(node, c_data_type=c_data_type) 
+    """.format(
+        header_file_name=filename + ".h"
+    )
+    code += eval_to_cpp(node, c_data_type=c_data_type)
     code += mpe_to_cpp(node, c_data_type=c_data_type)
 
-    with open(filename + ".h", 'w') as f_header, open(filename + ".cpp", 'w') as f_code: 
+    with open(filename + ".h", "w") as f_header, open(filename + ".cpp", "w") as f_code:
         f_header.write(header)
         f_code.write(code)
+
 
 def setup_cpp_bridge(node):
     c_code = generate_cpp_code(node, c_data_type="double")
@@ -382,6 +383,7 @@ def setup_cpp_bridge(node):
     cppyy.cppdef(c_code)
     # logger.info(c_code)
 
+
 def get_cpp_function(node):
     from cppyy.gbl import spn_many
 
@@ -389,16 +391,17 @@ def get_cpp_function(node):
 
     def python_eval_func(data):
         num_nodes = len(get_nodes_by_type(node))
-        # It has to be this way - otherwise the data doesn't appear contiguous in CPP. 
-        # np.ascontiguousarray doesn't seem to work either. 
+        # It has to be this way - otherwise the data doesn't appear contiguous in CPP.
+        # np.ascontiguousarray doesn't seem to work either.
         results = []
         for _ in range(num_nodes):
-            results += np.zeros( shape= (data.shape[0]), dtype='float32').tolist()
-        results = np.array(results).reshape( (data.shape[0], num_nodes) )
+            results += np.zeros(shape=(data.shape[0]), dtype="float32").tolist()
+        results = np.array(results).reshape((data.shape[0], num_nodes))
         spn_many(data, results, results.shape[0])
         return results
 
     return python_eval_func
+
 
 def get_cpp_mpe_function(node):
     from cppyy.gbl import spn_mpe_many
@@ -411,6 +414,7 @@ def get_cpp_mpe_function(node):
         return results
 
     return python_mpe_func
+
 
 def generate_native_executable(spn, cppfile="/tmp/spn.cpp", nativefile="/tmp/spn.o"):
     code = generate_cpp_code(spn, cppfile)
@@ -427,10 +431,13 @@ def generate_native_executable(spn, cppfile="/tmp/spn.cpp", nativefile="/tmp/spn
         code,
     )
 
+
 _leaf_to_cpp = {}
+
 
 def register_spn_to_cpp(leaf_type, func):
     _leaf_to_cpp[leaf_type] = func
+
 
 def to_cpp2(node):
     vartype = "double"
