@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 def bernoulli_em_update(node, node_lls=None, node_gradients=None, root_lls=None, data=None, update_p=True, **kwargs):
+    if not update_p:
+        return
 
     p = (node_gradients - root_lls) + node_lls
     lse = logsumexp(p)
@@ -28,8 +30,7 @@ def bernoulli_em_update(node, node_lls=None, node_gradients=None, root_lls=None,
 
     bernoulli_p = np.sum(w * X)
 
-    if update_p:
-        node.p = bernoulli_p
+    node.p = bernoulli_p
 
 
 def gaussian_em_update(
@@ -55,8 +56,9 @@ def sum_em_update(node, node_gradients=None, root_lls=None, all_lls=None, **kwar
     for i, c in enumerate(node.children):
         new_w = RinvGrad + all_lls[:, c.id] + np.log(node.weights[i])
         node.weights[i] = logsumexp(new_w)
-    total_weight = np.sum(node.weights)
-    node.weights = (node.weights / total_weight).tolist()
+    node.weights = np.exp(node.weights)
+    node.weights = node.weights / np.sum(node.weights)
+    node.weights = node.weights.tolist()
 
 
 _node_updates = {Gaussian: gaussian_em_update, Sum: sum_em_update, Bernoulli: bernoulli_em_update}
