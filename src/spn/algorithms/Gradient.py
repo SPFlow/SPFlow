@@ -39,7 +39,7 @@ def prod_gradient_backward(node, parent_result, gradient_result=None, lls_per_no
     output_ll = lls_per_node[:, node.id]
 
     for i, c in enumerate(node.children):
-        messages_to_children.append(output_ll - lls_per_node[:, c.id])
+        messages_to_children.append(gradients + output_ll - lls_per_node[:, c.id])
 
     assert not np.any(np.isnan(messages_to_children)), "Nans found in iteration"
 
