@@ -63,10 +63,12 @@ def plot_spn(spn, context=None, unroll=False, file_name=None, show_ids=False):
 
         style = NodeStyle()
         style["size"] = 0
-        style["vt_line_color"] = "#A0A0A0"
-        style["hz_line_color"] = "#A0A0A0"
-        style["vt_line_type"] = 0  # 0 solid, 1 dashed, 2 dotted
-        style["hz_line_type"] = 0
+        style["vt_line_color"] = "#AAAAAA"
+        style["hz_line_color"] = "#AAAAAA"
+        style["vt_line_type"] = 1  # 0 solid, 1 dashed, 2 dotted
+        style["hz_line_type"] = 1
+        style["vt_line_width"] = 1
+        style["hz_line_width"] = 1
         node.set_style(style)
 
         if node.is_leaf():
