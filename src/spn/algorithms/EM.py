@@ -9,6 +9,7 @@ from scipy.special import logsumexp
 
 from spn.algorithms.Gradient import gradient_backward
 from spn.algorithms.Inference import log_likelihood
+from spn.algorithms.Validity import is_valid
 
 from spn.structure.leaves.parametric.Parametric import Gaussian, Bernoulli
 
@@ -64,10 +65,14 @@ def sum_em_update(node, node_gradients=None, root_lls=None, all_lls=None, **kwar
 _node_updates = {Gaussian: gaussian_em_update, Sum: sum_em_update, Bernoulli: bernoulli_em_update}
 
 
-def EM_optimization(spn, data, iterations=5, node_updates=_node_updates, **kwargs):
-    for _ in range(iterations):
-        lls_per_node = np.zeros((data.shape[0], get_number_of_nodes(spn)))
+def EM_optimization(spn, data, iterations=5, node_updates=_node_updates, skip_validation=False, **kwargs):
+    if not skip_validation:
+        valid, err = is_valid(spn)
+        assert valid, "invalid spn: " + err
 
+    lls_per_node = np.zeros((data.shape[0], get_number_of_nodes(spn)))
+
+    for _ in range(iterations):
         # one pass bottom up evaluating the likelihoods
         log_likelihood(spn, data, dtype=data.dtype, lls_matrix=lls_per_node)
 
