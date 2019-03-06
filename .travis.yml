@@ -7,6 +7,21 @@ install:
   - pip install -q -r requirements.txt
   - pip install -q tensorflow
   - pip install -q pytest-xdist
+  - pip install -q torch
+  - pip install -q torchvision
 # command to run tests
 script: PYTHONPATH=src python3 -m pytest --cache-clear --ignore=src/spn/tests/test_tree_viz.py --ignore=src/spn/tests/test_cpp.py src/spn/tests/
 #python3 -m unittest discover src/spn
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+      env:
+         - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+before_install:
+    - eval "${MATRIX_EVAL}"
