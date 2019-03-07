@@ -19,5 +19,5 @@ install:
   - pip install -q torchvision
   - pip install -q cppyy
 # command to run tests
-script: PYTHONPATH=src python3 -m pytest --cache-clear --ignore=src/spn/tests/test_tree_viz.py --ignore=src/spn/tests/test_cpp.py src/spn/tests/
+script: PYTHONPATH=src python3 -m pytest --cache-clear --ignore=src/spn/tests/test_tree_viz.py src/spn/tests/
 #python3 -m unittest discover src/spn
