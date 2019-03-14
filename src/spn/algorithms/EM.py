@@ -20,12 +20,24 @@ logger = logging.getLogger(__name__)
 
 def sum_em_update(node, node_gradients=None, root_lls=None, all_lls=None, **kwargs):
     RinvGrad = node_gradients - root_lls
+
     for i, c in enumerate(node.children):
-        new_w = RinvGrad + all_lls[:, c.id] + np.log(node.weights[i])
+        new_w = RinvGrad + (all_lls[:, c.id] + np.log(node.weights[i]))
         node.weights[i] = logsumexp(new_w)
-    node.weights = np.exp(node.weights)
-    node.weights = node.weights / np.sum(node.weights)
-    node.weights = node.weights.tolist()
+
+    assert not np.any(np.isnan(node.weights))
+
+    node.weights = np.exp(node.weights - logsumexp(node.weights)) + np.exp(-100)
+
+    node.weights = node.weights / node.weights.sum()
+
+    if node.weights.sum() > 1:
+        node.weights[np.argmax(node.weights)] -= node.weights.sum() - 1
+
+    assert not np.any(np.isnan(node.weights))
+    assert np.isclose(np.sum(node.weights), 1)
+    assert not np.any(node.weights < 0)
+    assert node.weights.sum() <= 1, "sum: {}, node weights: {}".format(node.weights.sum(), node.weights)
 
 
 _node_updates = {Sum: sum_em_update}
