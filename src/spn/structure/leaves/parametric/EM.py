@@ -15,16 +15,18 @@ def bernoulli_em_update(node, node_lls=None, node_gradients=None, root_lls=None,
     if not update_p:
         return
 
-    p = (node_gradients - root_lls) + node_lls
-    lse = logsumexp(p)
-    w = np.exp(p - lse)
     X = data[:, node.scope[0]]
 
-    bernoulli_p = np.sum(w * X)
+    p = (node_gradients - root_lls) + node_lls
 
-    bernoulli_p = max(0, min(1, bernoulli_p))
+    lse = logsumexp(p)
 
-    node.p = bernoulli_p
+    wl = p - lse
+    paramlse = np.exp(logsumexp(wl, b=X))
+
+    assert not np.isnan(paramlse)
+
+    node.p = min(max(paramlse, 0), 1)
 
 
 def gaussian_em_update(
@@ -32,17 +34,17 @@ def gaussian_em_update(
 ):
     p = (node_gradients - root_lls) + node_lls
     lse = logsumexp(p)
-    w = np.exp(p - lse)
+    w = p - lse
     X = data[:, node.scope[0]]
 
-    mean = np.sum(w * X)
+    mean = np.exp(logsumexp(w, b=X))
 
     if update_mean:
         node.mean = mean
 
     if update_std:
         dev = np.power(X - mean, 2)
-        node.std = np.sqrt(np.sum(w * dev))
+        node.std = np.sqrt(np.exp(logsumexp(w, b=dev)))
 
 
 def add_parametric_EM_support():
