@@ -143,8 +143,8 @@ class Context:
 
         for col in range(data.shape[1]):
             feature_meta_type = self.meta_types[col]
-            min_val = np.min(data[:, col])
-            max_val = np.max(data[:, col])
+            min_val = np.nanmin(data[:, col])
+            max_val = np.nanmax(data[:, col])
             domain_values = [min_val, max_val]
 
             if feature_meta_type == MetaType.REAL or feature_meta_type == MetaType.BINARY:
