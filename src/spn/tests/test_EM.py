@@ -1,11 +1,10 @@
 import unittest
 
-from build.lib.spn.algorithms.Validity import is_valid
-from build.lib.spn.structure.Base import get_nodes_by_type
+from spn.structure.Base import get_nodes_by_type
 from spn.algorithms.EM import EM_optimization
 from spn.algorithms.Inference import log_likelihood
 from spn.algorithms.LearningWrappers import learn_parametric
-from spn.structure.Base import Context, Sum, Product, assign_ids, rebuild_scopes_bottom_up
+from spn.structure.Base import Context
 from spn.structure.StatisticalTypes import MetaType
 import numpy as np
 from sklearn.datasets.samples_generator import make_blobs
