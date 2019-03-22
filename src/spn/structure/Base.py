@@ -417,8 +417,6 @@ def eval_spn_top_down(root, eval_functions, all_results=None, parent_result=None
     """
     evaluates an spn top to down
 
-    #TODO:only for trees, fix for not trees
-    #TODO: fix documentation
 
     :param root: spnt root
     :param eval_functions: is a dictionary that contains k:Class of the node, v:lambda function that receives as parameters (node, [parent_results], args**) and returns {child : intermediate_result}. This intermediate_result will be passed to child as parent_result. If intermediate_result is None, no further propagation occurs
