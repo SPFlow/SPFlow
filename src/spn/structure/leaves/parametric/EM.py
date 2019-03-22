@@ -34,17 +34,17 @@ def gaussian_em_update(
 ):
     p = (node_gradients - root_lls) + node_lls
     lse = logsumexp(p)
-    w = p - lse
+    w = np.exp(p - lse)
     X = data[:, node.scope[0]]
 
-    mean = np.exp(logsumexp(w, b=X))
+    mean = np.sum(w * X) #can't be done with logsumexp, as it might be negative
 
     if update_mean:
         node.mean = mean
 
     if update_std:
         dev = np.power(X - mean, 2)
-        node.std = np.sqrt(np.exp(logsumexp(w, b=dev)))
+        node.stdev = np.sqrt(np.sum(w * dev))
 
 
 def add_parametric_EM_support():
