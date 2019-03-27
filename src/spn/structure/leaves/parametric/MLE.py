@@ -17,6 +17,7 @@ from spn.structure.leaves.parametric.Parametric import (
     Categorical,
     Bernoulli,
     CategoricalDictionary,
+    MultivariateGaussian,
 )
 import logging
 
@@ -24,12 +25,17 @@ logger = logging.getLogger(__name__)
 
 
 def update_parametric_parameters_mle(node, data):
+    if data.shape[0] == 0:
+        return
+
+    if isinstance(node, MultivariateGaussian):
+        node.mean = np.mean(data, axis=0).tolist()
+        node.sigma = np.cov(data, rowvar=0).tolist()
+        return
+
     assert data.shape[1] == 1
 
     data = data[~np.isnan(data)]
-
-    if data.shape[0] == 0:
-        return
 
     if isinstance(node, Gaussian):
         node.mean = np.mean(data).item()
@@ -96,6 +102,12 @@ def update_parametric_parameters_mle(node, data):
 
 
 if __name__ == "__main__":
+    node = MultivariateGaussian(np.inf, np.inf)
+    data = np.array([1, 2, 3, 4, 5, 1, 2, 3, 4, 1, 3, 3, 6, 2]).reshape(-1, 2)
+    update_parametric_parameters_mle(node, data)
+    assert np.all(np.isclose(node.mean, np.mean(data, axis=0)))
+    assert np.all(np.isclose(node.sigma, np.cov(data, rowvar=0)))
+
     node = Gaussian(np.inf, np.inf)
     data = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
     update_parametric_parameters_mle(node, data)

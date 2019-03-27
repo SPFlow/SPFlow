@@ -13,15 +13,16 @@ class TestParametric(unittest.TestCase):
     def assert_correct(self, node, x, result):
         self.tested.add(type(node))
 
-        data = np.array([x], dtype=np.float).reshape(-1, 1)
-        node.scope = [0]
+        data = np.array([x], dtype=np.float).reshape(1, -1)
+        node.scope = list(range(data.shape[1]))
         l = likelihood(node, data)
         self.assertAlmostEqual(result, l[0, 0], 5)
         self.assertTrue(np.alltrue(np.isclose(np.log(l), log_likelihood(node, data))))
 
-        data = np.random.rand(10, 10)
-        data[:, 5] = x
-        node.scope = [5]
+        new_scope = (np.array(node.scope) + 5).tolist()
+        data = np.random.rand(10, max(new_scope) + 2)
+        data[:, new_scope] = x
+        node.scope = new_scope
         l = likelihood(node, data)
         self.assertEqual(l.shape[0], data.shape[0])
         self.assertEqual(l.shape[1], 1)
@@ -30,6 +31,11 @@ class TestParametric(unittest.TestCase):
         self.assertTrue(np.alltrue(np.isclose(np.log(l), log_likelihood(node, data))))
 
     def test_Parametric_inference(self):
+
+        self.assert_correct(
+            MultivariateGaussian(mean=[0.5, -0.2], sigma=[[2.0, 0.3], [0.3, 0.5]]), [1.2, 2.2], 0.00045230162573520086
+        )
+
         # N[PDF[NormalDistribution[4, 1], 5], 6] = 0.241971
         self.assert_correct(Gaussian(mean=4, stdev=1), 5, 0.241971)
         # N[PDF[NormalDistribution[10, 0.5], 9], 6] = 0.107982
