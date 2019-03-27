@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    = -j 4
-SPHINXBUILD   = sphinx-build
+SPHINXBUILD   = python3.6 -c "import sys,sphinx;sys.exit(sphinx.main(sys.argv))"
 SOURCEDIR     = ./
 BUILDDIR      = _build
 
