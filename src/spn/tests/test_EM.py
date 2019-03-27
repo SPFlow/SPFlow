@@ -75,5 +75,6 @@ class TestEM(unittest.TestCase):
         for n in get_nodes_by_type(spn, Gaussian):
             self.assertAlmostEqual(n.stdev, center_stdev, 2)
 
+
 if __name__ == "__main__":
     unittest.main()

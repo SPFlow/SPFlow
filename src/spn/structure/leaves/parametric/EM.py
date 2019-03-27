@@ -37,7 +37,7 @@ def gaussian_em_update(
     w = np.exp(p - lse)
     X = data[:, node.scope[0]]
 
-    mean = np.sum(w * X) #can't be done with logsumexp, as it might be negative
+    mean = np.sum(w * X)  # can't be done with logsumexp, as it might be negative
 
     if update_mean:
         node.mean = mean
