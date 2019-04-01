@@ -140,7 +140,7 @@ def learn_structure(
         num_conditional_cols = dataset.shape[1] - len(initial_scope)
     else:
         num_conditional_cols = None
-        assert len(initial_scope) > dataset.shape[1], "check initial scope: %s" % initial_scope
+        assert len(initial_scope) >= dataset.shape[1], "check initial scope: %s" % initial_scope
 
     tasks = deque()
     tasks.append((dataset, root, 0, initial_scope, False, False))
