@@ -113,15 +113,15 @@ class Leaf(Node):
 
 
 class Max(Node):
-    def __init__(self, dec_values=None, children=None, var_name = None):
+    def __init__(self, dec_values=None, children=None, feature_name = None):
         Node.__init__(self)
         if dec_values is None:
             dec_values = []
         self.dec_values = dec_values
-        
-        if  var_name is None:
-            var_name = " "
-        self.var_name = var_name
+
+        if  feature_name is None:
+            feature_name = "Decision_Node"
+        self.feature_name = feature_name
 
         if children is None:
             children = []
