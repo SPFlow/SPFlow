@@ -111,6 +111,23 @@ class Leaf(Node):
             else:
                 raise Exception("invalid scope type %s " % (type(scope)))
 
+
+class Max(Node):
+    def __init__(self, dec_values=None, children=None, var_name = None):
+        Node.__init__(self)
+        if dec_values is None:
+            dec_values = []
+        self.dec_values = dec_values
+        
+        if  var_name is None:
+            var_name = " "
+        self.var_name = var_name
+
+        if children is None:
+            children = []
+        self.children = children
+
+
 class Context:
     def __init__(self, meta_types=None, domains=None, parametric_types=None, scope=None, feature_names=None):
         self.meta_types = meta_types
