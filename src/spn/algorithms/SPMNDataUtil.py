@@ -40,14 +40,14 @@ def cooper_tranformation(train_data, col_ind):
     return bin_data
 
 
-def convert_utility_to_probability(train_data, col_ind):
+def convert_utility_to_probability(train_dataa, col_ind):
     """
     computes prob = (val-min)/(max-m in); cooper transformation
     :param train_data:
     :param col_ind:
     :return: train_data with values of column changed into probabilities
     """
-
+    train_data = train_dataa.copy()
     cost_vals = np.unique(train_data[:, col_ind])
     # print('cost_vals', cost_vals)
     range = np.ptp(cost_vals)  # (max-min)
