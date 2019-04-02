@@ -37,7 +37,7 @@ def meu_max(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
     ## decision values at each node
 
     decision_values = {}
-    decision_values[node.var_name] = np.column_stack((parent_result, max_child_branches))
+    decision_values[node.feature_name] = np.column_stack((parent_result, max_child_branches))
 
     # print("w_children_log_probs",w_children_log_probs)
     return children_row_ids, decision_values

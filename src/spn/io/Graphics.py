@@ -31,7 +31,7 @@ def get_networkx_obj(spn, feature_labels=None):
         elif isinstance(n, Product):
             label = "x"
         elif isinstance(n, Max):
-            label = n.var_name
+            label = n.feature_name
         else:
             if feature_labels is not None:
                 label = feature_labels[n.scope[0]]
@@ -54,7 +54,7 @@ def get_networkx_obj(spn, feature_labels=None):
 
     return g, labels
 
-#added var_labels
+#added feature_labels
 def plot_spn(spn, fname="plot.pdf", feature_labels = None):
 
     import networkx as nx
