@@ -480,6 +480,9 @@ this produces the output:
 ```python
 [[-0.52324814]]
 ```
+### Using SPMN module
+
+See [SPMN](https://github.com/c0derzer0/SPMN) for sample datasets and instructions for using SPMN module
 
 All other aspects of the SPN library can be extended in a similar same way.
 
