@@ -112,17 +112,47 @@ class Leaf(Node):
                 raise Exception("invalid scope type %s " % (type(scope)))
 
 
+class Max(Node):
+    def __init__(self, dec_values=None, children=None, feature_name = None):
+        Node.__init__(self)
+        if dec_values is None:
+            dec_values = []
+        self.dec_values = dec_values
+
+        if  feature_name is None:
+            feature_name = "Decision_Node"
+        self.feature_name = feature_name
+
+        if children is None:
+            children = []
+        self.children = children
+
+
 class Context:
-    def __init__(self, meta_types=None, domains=None, parametric_types=None, feature_names=None):
+    def __init__(self, meta_types=None, domains=None, parametric_types=None, scope=None, feature_names=None):
         self.meta_types = meta_types
         self.domains = domains
         self.parametric_types = parametric_types
         self.feature_names = feature_names
 
+        if scope is None and parametric_types is not None:
+            self.scope = range(0,len(parametric_types))
+        elif scope is None and meta_types is not None:
+            self.scope = range(0, len(meta_types))
+        else:
+            self.scope = scope
+
+        if  feature_names is not None:
+            self.feature_names = dict(zip(self.scope, feature_names ))
+
         if meta_types is None and parametric_types is not None:
             self.meta_types = []
             for p in parametric_types:
                 self.meta_types.append(p.type.meta_type)
+            self.parametric_types = dict(zip(self.scope, self.parametric_types))
+            
+        self.meta_types = dict(zip(self.scope, self.meta_types ))
+        
 
     def get_meta_types_by_scope(self, scopes):
         return [self.meta_types[s] for s in scopes]
@@ -141,11 +171,13 @@ class Context:
 
         domain = []
 
-        for col in range(data.shape[1]):
-            feature_meta_type = self.meta_types[col]
+        for col, meta_type in enumerate(self.meta_types.values()):
+
+            feature_meta_type = meta_type
             min_val = np.nanmin(data[:, col])
             max_val = np.nanmax(data[:, col])
             domain_values = [min_val, max_val]
+
 
             if feature_meta_type == MetaType.REAL or feature_meta_type == MetaType.BINARY:
                 domain.append(domain_values)
@@ -155,6 +187,7 @@ class Context:
                 raise Exception("Unkown MetaType " + str(feature_meta_type))
 
         self.domains = np.asanyarray(domain)
+        self.domains = dict(zip(self.scope, self.domains))
 
         return self
 

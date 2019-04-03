@@ -61,9 +61,12 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy
     meta_type = ds_context.meta_types[idx]
     domain = ds_context.domains[idx]
 
-    assert not np.isclose(np.max(domain), np.min(domain)), "invalid domain, min and max are the same"
+    #assert not np.isclose(np.max(domain), np.min(domain)), "invalid domain, min and max are the same"
 
-    if data.shape[0] == 0:
+    if np.isclose(np.max(domain), np.min(domain)):
+        breaks, densities, repr_points = getHistogramVals(data, meta_type, domain, source=hist_source)
+
+    elif data.shape[0] == 0:
         # no data or all were nans
         maxx = np.max(domain)
         minx = np.min(domain)
@@ -75,6 +78,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy
 
     elif np.var(data) == 0 and meta_type == MetaType.REAL:
         # one data point
+
         maxx = np.max(domain)
         minx = np.min(domain)
         breaks = np.array([minx, maxx])

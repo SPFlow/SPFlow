@@ -13,9 +13,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_networkx_obj(spn):
+def get_networkx_obj(spn, feature_labels=None):
     import networkx as nx
-    from spn.structure.Base import Sum, Product, Leaf, get_nodes_by_type
+    from spn.structure.Base import Sum, Product, Leaf, get_nodes_by_type, Max
     import numpy as np
 
     all_nodes = get_nodes_by_type(spn)
@@ -30,8 +30,13 @@ def get_networkx_obj(spn):
             label = "+"
         elif isinstance(n, Product):
             label = "x"
+        elif isinstance(n, Max):
+            label = n.feature_name
         else:
-            label = "V" + str(n.scope[0])
+            if feature_labels is not None:
+                label = feature_labels[n.scope[0]]
+            else:
+                label = "V"  + str(n.scope[0]) 
         g.add_node(n.id)
         labels[n.id] = label
 
@@ -43,10 +48,14 @@ def get_networkx_obj(spn):
                 edge_label = np.round(n.weights[i], 2)
             g.add_edge(c.id, n.id, weight=edge_label)
 
+            if isinstance(n, Max):
+                edge_label = np.round(n.dec_values[i], 2)
+            g.add_edge(c.id, n.id, weight=edge_label)
+
     return g, labels
 
-
-def plot_spn(spn, fname="plot.pdf"):
+#added feature_labels
+def plot_spn(spn, fname="plot.pdf", feature_labels = None):
 
     import networkx as nx
     from networkx.drawing.nx_pydot import graphviz_layout
@@ -55,7 +64,7 @@ def plot_spn(spn, fname="plot.pdf"):
 
     plt.clf()
 
-    g, labels = get_networkx_obj(spn)
+    g, labels = get_networkx_obj(spn, feature_labels)
 
     pos = graphviz_layout(g, prog="dot")
     # plt.figure(figsize=(18, 12))
@@ -71,13 +80,13 @@ def plot_spn(spn, fname="plot.pdf"):
         node_color="#DDDDDD",
         edge_color="#888888",
         width=1,
-        node_size=1250,
+        node_size=100,
         labels=labels,
-        font_size=16,
+        font_size=4,
     )
     ax.collections[0].set_edgecolor("#333333")
     edge_labels = nx.draw_networkx_edge_labels(
-        g, pos=pos, edge_labels=nx.get_edge_attributes(g, "weight"), font_size=16, clip_on=False, alpha=0.6
+        g, pos=pos, edge_labels=nx.get_edge_attributes(g, "weight"), font_size=5, clip_on=False, alpha=0.6
     )
 
     xpos = list(map(lambda p: p[0], pos.values()))
@@ -89,7 +98,7 @@ def plot_spn(spn, fname="plot.pdf"):
     plt.margins(0, 0)
     plt.gca().xaxis.set_major_locator(NullLocator())
     plt.gca().yaxis.set_major_locator(NullLocator())
-    plt.savefig(fname, bbox_inches="tight", pad_inches=0)
+    plt.savefig(fname, bbox_inches="tight", pad_inches=0, pdi=1000)
 
 
 def plot_spn2(spn, fname="plot.pdf"):

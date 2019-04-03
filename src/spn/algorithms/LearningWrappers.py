@@ -113,6 +113,7 @@ def learn_mspn(
     rows="kmeans",
     min_instances_slice=200,
     threshold=0.3,
+    initial_scope=None,
     ohe=False,
     leaves=None,
     memory=None,
@@ -130,7 +131,7 @@ def learn_mspn(
 
         nextop = get_next_operation(min_instances_slice)
 
-        return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop)
+        return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop, initial_scope=initial_scope)
 
     if memory:
         l_mspn = memory.cache(l_mspn)
@@ -147,6 +148,7 @@ def learn_parametric(
     min_features_slice=1,
     multivariate_leaf=False,
     threshold=0.3,
+    initial_scope=None,
     ohe=False,
     leaves=None,
     memory=None,
@@ -164,7 +166,7 @@ def learn_parametric(
 
         nextop = get_next_operation(min_instances_slice, min_features_slice, multivariate_leaf)
 
-        return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop)
+        return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop, initial_scope=initial_scope)
 
     if memory:
         learn_param = memory.cache(learn_param)
