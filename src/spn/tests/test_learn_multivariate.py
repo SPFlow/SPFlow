@@ -35,9 +35,9 @@ class TestBase(unittest.TestCase):
             multivariate_leaf=True,
         )
 
-        from spn.io.Graphics import plot_spn
+        # from spn.io.Graphics import plot_spn
 
-        plot_spn(spn_classification, "basicspn.png")
+        # plot_spn(spn_classification, "basicspn.png")
 
 
 if __name__ == "__main__":
