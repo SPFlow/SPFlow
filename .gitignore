@@ -218,3 +218,9 @@ src/spn/experiments/hyperspectral/trainedSPNs/
 
 # deep notebook image files
 src/deep_notebooks/images/*
+
+# Documentation
+docs/api
+docs/_build
+docs/log.txt
+docs/cache
