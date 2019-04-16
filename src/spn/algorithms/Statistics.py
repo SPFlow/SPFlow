@@ -13,18 +13,20 @@ logger = logging.getLogger(__name__)
 
 
 def get_structure_stats_dict(node):
-    node_types = dict(Counter([type(n) for n in get_nodes_by_type(node)]))
-    num_nodes = len(get_nodes_by_type(node, Node))
+    nodes = get_nodes_by_type(node, Node)
+    num_nodes = len(nodes)
+
+    node_types = dict(Counter([type(n) for n in nodes]))
+
     edges = get_number_of_edges(node)
     layers = get_depth(node)
 
     params = 0
-    sum_nodes = get_nodes_by_type(node, Sum)
-    leaf_nodes = get_nodes_by_type(node, Leaf)
-    for s in sum_nodes:
-        params += len(s.children)
-    for l in leaf_nodes:
-        params += len(l.parameters)
+    for n in nodes:
+        if isinstance(n, Sum):
+            params += len(n.children)
+        if isinstance(n, Leaf):
+            params += len(n.parameters)
 
     result = {"nodes": num_nodes, "params": params, "edges": edges, "layers": layers, "count_per_type": node_types}
     return result
