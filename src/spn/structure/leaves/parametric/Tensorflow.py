@@ -40,7 +40,7 @@ def exponential_to_tf_graph(node, data_placeholder=None, log_space=True, variabl
         l = tf.get_variable("rate", initializer=node.l, dtype=dtype)
         variable_dict[node] = l
         l = tf.maximum(l, 0.001)
-        dist = tf.distributions.Exponential(l=l)
+        dist = tf.distributions.Exponential(rate=l)
         if log_space:
             return dist.log_prob(data_placeholder[:, node.scope[0]])
 
@@ -51,7 +51,7 @@ def poisson_to_tf_graph(node, data_placeholder=None, log_space=True, variable_di
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         mean = tf.maximum(tf.get_variable("lambda", initializer=node.mean, dtype=dtype), 0.001)
         variable_dict[node] = mean
-        dist = tf.distributions.Poisson(rate=mean)
+        dist = tf.contrib.distributions.Poisson(rate=mean)
         if log_space:
             return dist.log_prob(data_placeholder[:, node.scope[0]])
 
@@ -87,9 +87,9 @@ def lognormal_to_tf_graph(node, data_placeholder=None, log_space=True, variable_
         stdev = tf.get_variable("stdev", initializer=node.stdev, dtype=dtype)
         variable_dict[node] = (mean, stdev)
         stdev = tf.maximum(stdev, 0.001)
-        dist = tf.distributions.TransformedDistribution(
+        dist = tf.contrib.distributions.TransformedDistribution(
             distribution=tf.distributions.Normal(loc=mean, scale=stdev),
-            bijector=tf.distributions.bijectors.Exp(),
+            bijector=tf.contrib.distributions.bijectors.Exp(),
             name="LogNormalDistribution",
         )
         if log_space:
@@ -111,29 +111,29 @@ def categorical_to_tf_graph(node, data_placeholder=None, log_space=True, variabl
 
 
 def tf_graph_to_gaussian(node, tfvar):
-    node.mean = tfvar[0].eval()
-    node.stdev = tfvar[1].eval()
+    node.mean = tfvar[0]
+    node.stdev = tfvar[1]
 
 
 def tf_graph_to_gamma(node, tfvar):
-    node.alpha = tfvar[0].eval()
-    node.beta = tfvar[1].eval()
+    node.alpha = tfvar[0]
+    node.beta = tfvar[1]
 
 
 def tf_graph_to_categorical(node, tfvar):
-    node.p = tfvar.eval().tolist()
+    node.p = list(tfvar)
 
 
 def tf_graph_to_exponential(node, tfvar):
-    node.l = tfvar.eval()
+    node.l = tfvar
 
 
 def tf_graph_to_poisson(node, tfvar):
-    node.mean = tfvar.eval()
+    node.mean = tfvar
 
 
 def tf_graph_to_bernoulli(node, tfvar):
-    node.p = tfvar.eval()
+    node.p = tfvar
 
 
 def add_parametric_tensorflow_support():
