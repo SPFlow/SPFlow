@@ -30,7 +30,7 @@ def log_sum_to_tf_graph(node, children, data_placeholder=None, variable_dict=Non
 
 
 def tf_graph_to_sum(node, tfvar):
-    node.weights = tfvar.eval().tolist()
+    node.weights = tfvar.tolist()
 
 
 def log_prod_to_tf_graph(node, children, data_placeholder=None, variable_dict=None, log_space=True, dtype=np.float32):
@@ -89,8 +89,15 @@ def spn_to_tf_graph(node, data, batch_size=None, node_tf_graph=_node_log_tf_grap
 
 
 def tf_graph_to_spn(variable_dict, tf_graph_to_node=_tf_graph_to_node):
+    tensors = []
+
     for n, tfvars in variable_dict.items():
-        tf_graph_to_node[type(n)](n, tfvars)
+        tensors.append(tfvars)
+
+    variable_list = tf.get_default_session().run(tensors)
+
+    for i, (n, tfvars) in enumerate(variable_dict.items()):
+        tf_graph_to_node[type(n)](n, variable_list[i])
 
 
 def likelihood_loss(tf_graph):

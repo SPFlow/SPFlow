@@ -70,7 +70,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy
         breaks = np.array([minx, maxx])
         densities = np.array([1 / (maxx - minx)])
         repr_points = np.array([minx + (maxx - minx) / 2])
-        if meta_type == MetaType.DISCRETE:
+        if meta_type == MetaType.DISCRETE or meta_type == MetaType.BINARY:
             repr_points = repr_points.astype(int)
 
     elif np.var(data) == 0 and meta_type == MetaType.REAL:
@@ -80,7 +80,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy
         breaks = np.array([minx, maxx])
         densities = np.array([1 / (maxx - minx)])
         repr_points = np.array([minx + (maxx - minx) / 2])
-        if meta_type == MetaType.DISCRETE:
+        if meta_type == MetaType.DISCRETE or meta_type == MetaType.BINARY:
             repr_points = repr_points.astype(int)
 
     else:
@@ -101,7 +101,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy
 def getHistogramVals(data, meta_type, domain, source="numpy"):
     # check this: https://github.com/theodoregoetz/histogram
 
-    if meta_type == MetaType.DISCRETE:
+    if meta_type == MetaType.DISCRETE or meta_type == MetaType.BINARY:
         # for discrete, we just have to count
         breaks = np.array([d for d in domain] + [domain[-1] + 1])
         densities, breaks = np.histogram(data, bins=breaks, density=True)

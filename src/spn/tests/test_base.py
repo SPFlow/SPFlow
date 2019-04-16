@@ -1,6 +1,6 @@
 import unittest
 
-from spn.structure.Base import Leaf, bfs, get_topological_order
+from spn.structure.Base import Leaf, bfs, get_topological_order, get_topological_order_layers
 
 
 class TestBase(unittest.TestCase):
@@ -94,6 +94,12 @@ class TestBase(unittest.TestCase):
         self.assertEqual(result[8], A)
         self.assertEqual(result[9], Z)
         self.assertEqual(len(result), 10)
+
+        layers = get_topological_order_layers(Z)
+        self.assertEqual(set(layers[0]), set([D, E, F]))
+        self.assertEqual(set(layers[1]), set([I, H, B, C]))
+        self.assertEqual(set(layers[2]), set([G, A]))
+        self.assertEqual(set(layers[3]), set([Z]))
 
 
 if __name__ == "__main__":

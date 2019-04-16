@@ -54,10 +54,9 @@ class TestParametricSymbolic(unittest.TestCase):
         self.assert_correct(Geometric(0.8), 1, 0.8)
         self.assert_correct(Geometric(0.8), 2, 0.8 * 0.2)
 
-        # N[PDF[EmpiricalDistribution[{1/3, 1/2, 1/6} -> {0, 1, 2}], 0], 6] = 0.333333
-        self.assert_correct(Categorical([1 / 3, 1 / 2, 1 / 6]), 0, 0.333333)
-        self.assert_correct(Categorical([1 / 3, 1 / 2, 1 / 6]), 1, 0.5)
-        self.assert_correct(Categorical([1 / 3, 1 / 2, 1 / 6]), 2, 0.166667)
+        self.assert_correct(Categorical([2 / 6, 1 / 6, 3 / 6]), 0, 2 / 6)
+        self.assert_correct(Categorical([2 / 6, 1 / 6, 3 / 6]), 1, 1 / 6)
+        self.assert_correct(Categorical([2 / 6, 1 / 6, 3 / 6]), 2, 3 / 6)
 
         # N[PDF[BernoulliDistribution[0.25], 0], 6] = 0.75
         self.assert_correct(Bernoulli(0.25), 0, 0.75)

@@ -143,8 +143,8 @@ class Context:
 
         for col in range(data.shape[1]):
             feature_meta_type = self.meta_types[col]
-            min_val = np.min(data[:, col])
-            max_val = np.max(data[:, col])
+            min_val = np.nanmin(data[:, col])
+            max_val = np.nanmax(data[:, col])
             domain_values = [min_val, max_val]
 
             if feature_meta_type == MetaType.REAL or feature_meta_type == MetaType.BINARY:
@@ -257,6 +257,49 @@ def get_topological_order(node):
                 S.appendleft(m)  # insert m into S
 
     assert len(L) == len(nodes), "Graph is not DAG, it has at least one cycle"
+    return L
+
+
+def get_topological_order_layers(node):
+    nodes = get_nodes_by_type(node)
+
+    parents = OrderedDict({node: []})
+    in_degree = OrderedDict()
+    for n in nodes:
+        in_degree[n] = in_degree.get(n, 0)
+        if not isinstance(n, Leaf):
+            for c in n.children:
+                parent_list = parents.get(c, None)
+                if parent_list is None:
+                    parents[c] = parent_list = []
+                parent_list.append(n)
+                in_degree[n] += 1
+
+    layer = []  # Set of all nodes with no incoming edge
+    for u in in_degree:
+        if in_degree[u] == 0:
+            layer.append(u)
+
+    L = [layer]  # add first layer
+
+    added_nodes = len(layer)
+    while True:
+        layer = []
+
+        for n in L[-1]:
+            for m in parents[n]:  # for each node m with an edge e from n to m do
+                in_degree_m = in_degree[m] - 1  # remove edge e from the graph
+                in_degree[m] = in_degree_m
+                if in_degree_m == 0:  # if m has no other incoming edges then
+                    layer.append(m)  # insert m into layer
+
+        if len(layer) == 0:
+            break
+
+        added_nodes += len(layer)
+        L.append(layer)
+
+    assert added_nodes == len(nodes), "Graph is not DAG, it has at least one cycle"
     return L
 
 
@@ -374,11 +417,9 @@ def eval_spn_top_down(root, eval_functions, all_results=None, parent_result=None
     """
     evaluates an spn top to down
 
-    #TODO:only for trees, fix for not trees
-    #TODO: fix documentation
 
     :param root: spnt root
-    :param eval_functions: is a dictionary that contains k:Class of the node, v:lambda function that receives as parameters (node, parent_results, args**) and returns [node, intermediate_result]. This intermediate_result will be passed to node as parent_result. If intermediate_result is None, no further propagation occurs
+    :param eval_functions: is a dictionary that contains k:Class of the node, v:lambda function that receives as parameters (node, [parent_results], args**) and returns {child : intermediate_result}. This intermediate_result will be passed to child as parent_result. If intermediate_result is None, no further propagation occurs
     :param all_results: is a dictionary that contains k:Class of the node, v:result of the evaluation of the lambda function for that node.
     :param parent_result: initial input to the root node
     :param args: free parameters that will be fed to the lambda functions.
@@ -389,24 +430,31 @@ def eval_spn_top_down(root, eval_functions, all_results=None, parent_result=None
     else:
         all_results.clear()
 
-    leaf_func = eval_functions.get(Leaf, None)
+    for node_type, func in eval_functions.items():
+        if "_eval_func" not in node_type.__dict__:
+            node_type._eval_func = []
+        node_type._eval_func.append(func)
 
-    queue = collections.deque([(root, parent_result)])
-    while queue:
-        node, parent_result = queue.popleft()
+    all_results[root] = [parent_result]
 
-        eval_func = eval_functions.get(type(node), None)
-        if eval_func is None:
-            if isinstance(node, Leaf) and leaf_func is not None:
-                eval_func = leaf_func
-            else:
-                raise AssertionError("No lambda function associated with type: %s" % (node.__class__.__name__))
+    for layer in reversed(get_topological_order_layers(root)):
+        for n in layer:
+            func = n.__class__._eval_func[-1]
 
-        result = eval_func(node, parent_result, **args)
-        all_results[node] = result
-        if result is not None and not isinstance(node, Leaf):
-            assert len(result) == len(node.children), "invalid function result for node %s" % (node.id)
-            for i, node in enumerate(node.children):
-                queue.append((node, result[i]))
+            param = all_results[n]
+            result = func(n, param, **args)
+
+            if result is not None and not isinstance(n, Leaf):
+                assert isinstance(result, dict)
+
+                for child, param in result.items():
+                    if child not in all_results:
+                        all_results[child] = []
+                    all_results[child].append(param)
+
+    for node_type, func in eval_functions.items():
+        del node_type._eval_func[-1]
+        if len(node_type._eval_func) == 0:
+            delattr(node_type, "_eval_func")
 
     return all_results[root]

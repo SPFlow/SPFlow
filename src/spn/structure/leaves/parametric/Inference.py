@@ -23,6 +23,15 @@ def continuous_likelihood(node, data=None, dtype=np.float64):
     return probs
 
 
+def continuous_multivariate_likelihood(node, data=None, dtype=np.float64):
+    probs = np.ones((data.shape[0], 1), dtype=dtype)
+    observations = data[:, node.scope]
+    assert not np.any(np.isnan(data))
+    scipy_obj, params = get_scipy_obj_params(node)
+    probs[:, 0] = scipy_obj.pdf(observations, **params)
+    return probs
+
+
 lognormal_likelihood = continuous_likelihood
 exponential_likelihood = continuous_likelihood
 
@@ -83,6 +92,7 @@ def uniform_likelihood(node, data=None, dtype=np.float64):
 
 
 def add_parametric_inference_support():
+    add_node_likelihood(MultivariateGaussian, continuous_multivariate_likelihood)
     add_node_likelihood(Gaussian, continuous_likelihood)
     add_node_likelihood(Gamma, gamma_likelihood)
     add_node_likelihood(LogNormal, lognormal_likelihood)

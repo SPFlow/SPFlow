@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 EPSILON = np.finfo(float).eps
 
+
 def leaf_marginalized_likelihood(node, data=None, dtype=np.float64):
     assert len(node.scope) == 1, node.scope
     probs = np.ones((data.shape[0], 1), dtype=dtype)
@@ -50,7 +51,6 @@ def sum_log_likelihood(node, children, data=None, dtype=np.float64):
     sll = logsumexp(llchildren, b=b, axis=1).reshape(-1, 1)
 
     return sll
-
 
 
 def sum_likelihood(node, children, data=None, dtype=np.float64):
