@@ -23,6 +23,28 @@ class Parametric(Leaf):
         return self._type
 
 
+class MultivariateGaussian(Parametric):
+    """
+    Implements a univariate gaussian distribution with parameters
+    \mu(mean)
+    \sigma (covariance)
+    """
+
+    type = Type.REAL
+    property_type = namedtuple("MultivariateGaussian", "mean sigma")
+
+    def __init__(self, mean=None, sigma=None, scope=None):
+        Parametric.__init__(self, type(self).type, scope=scope)
+
+        # parameters
+        self.mean = mean
+        self.sigma = sigma
+
+    @property
+    def parameters(self):
+        return __class__.property_type(mean=self.mean, sigma=self.sigma)
+
+
 class Gaussian(Parametric):
     """
     Implements a univariate gaussian distribution with parameters
@@ -317,8 +339,8 @@ class Exponential(Parametric):
 def create_parametric_leaf(data, ds_context, scope):
     from spn.structure.leaves.parametric.MLE import update_parametric_parameters_mle
 
-    assert len(scope) == 1, "scope of univariate parametric for more than one variable?"
-    assert data.shape[1] == 1, "data has more than one feature?"
+    # assert len(scope) == 1, "scope of univariate parametric for more than one variable?"
+    # assert data.shape[1] == 1, "data has more than one feature?"
 
     idx = scope[0]
 
@@ -338,7 +360,7 @@ def create_parametric_leaf(data, ds_context, scope):
         k = int(np.max(ds_context.domains[idx]) + 1)
         node = Categorical(p=(np.ones(k) / k).tolist())
 
-    node.scope.append(idx)
+    node.scope.extend(scope)
 
     update_parametric_parameters_mle(node, data)
 
