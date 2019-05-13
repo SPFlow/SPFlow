@@ -52,6 +52,27 @@ class TestSampling(unittest.TestCase):
         self.assertAlmostEqual(samples[0, 0], 10)
         self.assertAlmostEqual(samples[1, 0], 50)
 
+    def test_dag_spns(self):
+        D = Gaussian(mean=0.0, stdev=1.0, scope=[0])
+        E = Gaussian(mean=10.0, stdev=1.0, scope=[0])
+        F = Gaussian(mean=20.0, stdev=1.0, scope=[0])
+
+        B = 0.5 * D + 0.5 * E
+        C = 0.5 * E + 0.5 * F
+
+        H = 0.5 * D + 0.5 * E
+        I = 0.5 * D + 0.5 * E
+
+        G = 0.5 * H + 0.5 * I
+        A = 0.5 * B + 0.5 * C
+        Z = 0.5 * A + 0.5 * G
+
+        data = np.zeros((2000, 1))
+
+        data[:, 0] = np.nan
+
+        samples = sample_instances(Z, data, np.random.RandomState(17))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,15 +12,29 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def merge_input_vals(l):
+    return np.concatenate(l)
+
+
 def mpe_prod(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
-    if len(parent_result) == 0:
+    if parent_result is None:
         return None
-    return [parent_result] * len(node.children)
+
+    parent_result = merge_input_vals(parent_result)
+
+    children_row_ids = {}
+
+    for i, c in enumerate(node.children):
+        children_row_ids[c] = parent_result
+
+    return children_row_ids
 
 
 def mpe_sum(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
-    if len(parent_result) == 0:
+    if parent_result is None:
         return None
+
+    parent_result = merge_input_vals(parent_result)
 
     w_children_log_probs = np.zeros((len(parent_result), len(node.weights)))
     for i, c in enumerate(node.children):
@@ -28,17 +42,19 @@ def mpe_sum(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
 
     max_child_branches = np.argmax(w_children_log_probs, axis=1)
 
-    children_row_ids = []
+    children_row_ids = {}
 
     for i, c in enumerate(node.children):
-        children_row_ids.append(parent_result[max_child_branches == i])
+        children_row_ids[c] = parent_result[max_child_branches == i]
 
     return children_row_ids
 
 
 def get_mpe_top_down_leaf(node, input_vals, data=None, mode=0):
-    if len(input_vals) == 0:
+    if input_vals is None:
         return None
+
+    input_vals = merge_input_vals(input_vals)
 
     # we need to find the cells where we need to replace nans with mpes
     data_nans = np.isnan(data[input_vals, node.scope])

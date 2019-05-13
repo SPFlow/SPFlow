@@ -5,21 +5,40 @@ Created on March 22, 2018
 """
 import unittest
 
+from spn.structure.StatisticalTypes import MetaType
+
 from spn.io.Text import str_to_spn, spn_to_str_equation
-from spn.structure.Base import Sum, assign_ids, rebuild_scopes_bottom_up
+from spn.structure.Base import Sum, assign_ids, rebuild_scopes_bottom_up, Context
+from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 
 from spn.structure.leaves.parametric.Parametric import *
 
 
 class TestText(unittest.TestCase):
     def check_obj_and_reconstruction(self, obj):
-        self.assertEqual(spn_to_str_equation(obj), spn_to_str_equation(str_to_spn(spn_to_str_equation(obj))))
+
+        str_val = spn_to_str_equation(obj)
+
+        obj_val = str_to_spn(str_val)
+
+        self.assertEqual(str_val, spn_to_str_equation(obj_val))
 
     def test_json(self):
         # TODO: add test for spn to json
         pass
 
+    def test_histogram_to_str_and_back(self):
+
+        data = np.array([1, 1, 2, 3, 3, 3]).reshape(-1, 1)
+        ds_context = Context([MetaType.DISCRETE])
+        ds_context.add_domains(data)
+        hist = create_histogram_leaf(data, ds_context, [0], alpha=False)
+
+        self.check_obj_and_reconstruction(hist)
+
     def test_spn_to_str_and_back(self):
+        self.check_obj_and_reconstruction(Gaussian(mean=0, stdev=10, scope=0))
+
         self.check_obj_and_reconstruction(Categorical(p=[0.1, 0.2, 0.7], scope=0))
 
         self.check_obj_and_reconstruction(Gaussian(mean=0, stdev=10, scope=0))

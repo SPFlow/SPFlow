@@ -18,7 +18,7 @@ def get_structure_stats_dict(node):
     edges = get_number_of_edges(node)
     layers = get_depth(node)
 
-    result = {"nodes": num_nodes, "edges": edges, "layers": layers, 'count_per_type': node_types}
+    result = {"nodes": num_nodes, "edges": edges, "layers": layers, "count_per_type": node_types}
     return result
 
 

@@ -90,9 +90,12 @@ def Moment(spn, feature_scope=None, node_moment=_node_moment, node_likelihoods=_
         feature_scope = spn.scope
     feature_scope = list(feature_scope)
 
-    assert len(feature_scope) == len(list(feature_scope)), "Found double entries in feature list"
+    assert len(feature_scope) == len(set(feature_scope)), "Found double entries in feature list"
+    assert set(feature_scope) <= set(spn.scope), "Found double entries in feature list"
 
-    marg_spn = marginalize(spn, feature_scope)
+    marg_spn = spn
+    if len(feature_scope) < len(spn.scope):
+        marg_spn = marginalize(spn, feature_scope)
 
     node_moments = {Sum: sum_moment, Product: prod_moment}
 

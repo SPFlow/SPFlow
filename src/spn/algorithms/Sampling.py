@@ -15,15 +15,29 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def merge_input_vals(l):
+    return np.concatenate(l)
+
+
 def sample_prod(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
-    if len(input_vals) == 0:
+    if input_vals is None:
         return None
-    return [input_vals] * len(node.children)
+
+    input_vals = merge_input_vals(input_vals)
+
+    children_row_ids = {}
+
+    for i, c in enumerate(node.children):
+        children_row_ids[c] = input_vals
+
+    return children_row_ids
 
 
 def sample_sum(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
-    if len(input_vals) == 0:
+    if input_vals is None:
         return None
+
+    input_vals = merge_input_vals(input_vals)
 
     w_children_log_probs = np.zeros((len(input_vals), len(node.weights)))
     for i, c in enumerate(node.children):
@@ -33,17 +47,19 @@ def sample_sum(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
     g_children_log_probs = w_children_log_probs + z_gumbels
     rand_child_branches = np.argmax(g_children_log_probs, axis=1)
 
-    children_row_ids = []
+    children_row_ids = {}
 
     for i, c in enumerate(node.children):
-        children_row_ids.append(input_vals[rand_child_branches == i])
+        children_row_ids[c] = input_vals[rand_child_branches == i]
 
     return children_row_ids
 
 
 def sample_leaf(node, input_vals, data=None, lls_per_node=None, rand_gen=None):
-    if len(input_vals) == 0:
+    if input_vals is None:
         return None
+
+    input_vals = merge_input_vals(input_vals)
 
     # we need to find the cells where we need to replace nans with samples
     data_nans = np.isnan(data[input_vals, node.scope])

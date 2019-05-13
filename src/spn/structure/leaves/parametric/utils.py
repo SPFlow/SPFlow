@@ -15,6 +15,9 @@ def get_scipy_obj(param_type):
     if param_type == Gaussian:
         return norm
 
+    elif param_type == MultivariateGaussian:
+        return multivariate_normal
+
     elif param_type == Gamma:
         return gamma
 
@@ -44,6 +47,11 @@ def get_scipy_obj_params(node):
         assert node.mean is not None
         assert node.stdev is not None
         params = {"loc": node.mean, "scale": node.stdev}
+
+    elif isinstance(node, MultivariateGaussian):
+        assert node.mean is not None
+        assert node.sigma is not None
+        params = {"mean": node.mean, "cov": node.sigma}
 
     elif isinstance(node, Gamma):
         assert node.alpha is not None
