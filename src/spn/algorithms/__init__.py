@@ -38,6 +38,7 @@ add_histogram_inference_support()
 add_histogram_moment_support()
 add_histogram_mpe_support()
 add_histogram_gradient_support()
+add_histogram_sampling_support()
 
 add_cltree_sampling_support()
 add_cltree_inference_support()
