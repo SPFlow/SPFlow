@@ -4,6 +4,7 @@ from spn.structure.leaves.histogram.Moment import add_histogram_moment_support
 from spn.structure.leaves.histogram.Inference import add_histogram_inference_support
 from spn.structure.leaves.histogram.MPE import add_histogram_mpe_support
 from spn.structure.leaves.histogram.Gradients import add_histogram_gradient_support
+from spn.structure.leaves.histogram.Sampling import add_histogram_sampling_support
 from spn.structure.leaves.parametric.EM import add_parametric_EM_support
 
 from spn.structure.leaves.parametric.Moment import add_parametric_moment_support
