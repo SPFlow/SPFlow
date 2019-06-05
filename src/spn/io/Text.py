@@ -20,7 +20,7 @@ def json_default(obj):
         return str(obj)
 
     if isinstance(obj, np.number):
-        return str(obj)
+        return obj.item()
 
     if isinstance(obj, Enum):
         return obj.name
