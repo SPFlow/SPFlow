@@ -19,6 +19,9 @@ def json_default(obj):
     if isinstance(obj, np.ndarray):
         return str(obj)
 
+    if isinstance(obj, np.number):
+        return str(obj)
+
     if isinstance(obj, Enum):
         return obj.name
 
