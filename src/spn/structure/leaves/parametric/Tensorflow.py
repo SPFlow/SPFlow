@@ -5,6 +5,7 @@ Created on March 21, 2018
 """
 
 import tensorflow as tf
+#import tensorflow_probability as tfp
 
 from spn.gpu.TensorFlow import add_node_to_tf_graph, add_tf_graph_to_node
 from spn.structure.leaves.parametric.Parametric import (
@@ -15,6 +16,7 @@ from spn.structure.leaves.parametric.Parametric import (
     Gamma,
     Poisson,
     Bernoulli,
+    MultivariateGaussian,
 )
 import numpy as np
 import logging
@@ -109,10 +111,29 @@ def categorical_to_tf_graph(node, data_placeholder=None, log_space=True, variabl
 
         return tf.distributions.Categorical(probs=probs).prob(data_placeholder[:, node.scope[0]])
 
+def mvg_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
+    with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
+        mean = tf.get_variable("mean", initializer=node.mean, dtype=dtype)
+        temp = np.linalg.cholesky(node.sigma.astype(np.float32))
+        sigma = tf.get_variable("sigma", initializer=temp, dtype=dtype)
+        variable_dict[node] = (mean, sigma)
+        #Put some line here that checks diagonal entries of cov and raises them
+        dist = tf.contrib.distributions.MultivariateNormalTriL(loc=mean, scale_tril=sigma)
+        scope = tf.convert_to_tensor(node.scope, dtype=tf.int32)
+        if log_space:
+            return dist.log_prob(tf.gather(data_placeholder,scope,axis=1))
+
+    return dist.prob(tf.gather(data_placeholder,scope,axis=1))
+
 
 def tf_graph_to_gaussian(node, tfvar):
     node.mean = tfvar[0]
     node.stdev = tfvar[1]
+
+def tf_graph_to_mvg(node,tfvar):
+    node.mean = tfvar[0]
+    node.sigma = tfvar[1]
+    node.sigma = np.matmul(node.sigma,np.transpose(node.sigma))
 
 
 def tf_graph_to_gamma(node, tfvar):
@@ -144,6 +165,7 @@ def add_parametric_tensorflow_support():
     add_node_to_tf_graph(Poisson, poisson_to_tf_graph)
     add_node_to_tf_graph(Bernoulli, bernoulli_to_tf_graph)
     add_node_to_tf_graph(Categorical, categorical_to_tf_graph)
+    add_node_to_tf_graph(MultivariateGaussian, mvg_to_tf_graph)
 
     add_tf_graph_to_node(Gaussian, tf_graph_to_gaussian)
     add_tf_graph_to_node(Exponential, tf_graph_to_exponential)
@@ -152,3 +174,4 @@ def add_parametric_tensorflow_support():
     add_tf_graph_to_node(Poisson, tf_graph_to_poisson)
     add_tf_graph_to_node(Bernoulli, tf_graph_to_bernoulli)
     add_tf_graph_to_node(Categorical, tf_graph_to_categorical)
+    add_tf_graph_to_node(MultivariateGaussian, tf_graph_to_mvg)

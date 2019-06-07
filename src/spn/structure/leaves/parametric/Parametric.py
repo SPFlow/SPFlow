@@ -25,7 +25,7 @@ class Parametric(Leaf):
 
 class MultivariateGaussian(Parametric):
     """
-    Implements a univariate gaussian distribution with parameters
+    Implements a multivariate gaussian distribution with parameters
     \mu(mean)
     \sigma (covariance)
     """
