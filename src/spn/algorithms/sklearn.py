@@ -3,6 +3,7 @@ from typing import List
 
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils import check_X_y
 from sklearn.utils.validation import check_array, check_is_fitted
@@ -206,6 +207,6 @@ def classification_categorical_to_tf_graph(
         probs = tf.nn.softmax(tf.constant(softmaxInverse))
         variable_dict[node] = probs
         if log_space:
-            return tf.distributions.Categorical(probs=probs).log_prob(data_placeholder[:, node.scope[0]])
+            return tfp.distributions.Categorical(probs=probs).log_prob(data_placeholder[:, node.scope[0]])
 
-        return tf.distributions.Categorical(probs=probs).prob(data_placeholder[:, node.scope[0]])
+        return tfp.distributions.Categorical(probs=probs).prob(data_placeholder[:, node.scope[0]])
