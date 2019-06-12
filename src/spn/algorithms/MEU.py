@@ -17,6 +17,25 @@ import collections
 def merge_input_vals(l):
     return np.concatenate(l)
 
+def meu_sum(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
+    if parent_result is None:
+        return None
+
+    parent_result = merge_input_vals(parent_result)
+
+    w_children_log_probs = np.zeros((len(parent_result), len(node.weights)))
+    for i, c in enumerate(node.children):
+        w_children_log_probs[:, i] = np.log(lls_per_node[parent_result, c.id]) + np.log(node.weights[i])
+
+    max_child_branches = np.argmax(w_children_log_probs, axis=1)
+
+    children_row_ids = {}
+
+    for i, c in enumerate(node.children):
+        children_row_ids[c] = parent_result[max_child_branches == i]
+
+    return children_row_ids
+
 def meu_max(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
     if len(parent_result) == 0:
         return None
