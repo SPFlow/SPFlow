@@ -28,6 +28,7 @@ def meu_max(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
         w_children_log_probs[:, i] = lls_per_node[parent_result, c.id]
 
     max_child_branches = np.argmax(w_children_log_probs, axis=1)
+    dec_value = node.dec_values[max_child_branches]
 
     children_row_ids = {}
 
@@ -37,7 +38,7 @@ def meu_max(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
     ## decision values at each node
 
     decision_values = {}
-    decision_values[node.feature_name] = np.column_stack((parent_result, max_child_branches))
+    decision_values[node.feature_name] = np.column_stack((parent_result, dec_value))
 
     # print("w_children_log_probs",w_children_log_probs)
     return children_row_ids, decision_values
@@ -47,7 +48,7 @@ def meu_max(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
 node_functions =  get_node_funtions()
 _node_top_down_meu= node_functions[0].copy()
 _node_bottom_up_meu = node_functions[1].copy()
-_node_top_down_meu.update({Max:meu_max})
+_node_top_down_meu.update({Max:meu_max, Sum:meu_sum})
 _node_bottom_up_meu.update({Sum: sum_likelihood, Product: prod_likelihood, Max:max_likelihood})
 
 
