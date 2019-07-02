@@ -105,7 +105,7 @@ def getHistogramVals(data, meta_type, domain, source="numpy"):
         # for discrete, we just have to count
         breaks = np.array([d for d in domain] + [domain[-1] + 1])
         densities, breaks = np.histogram(data, bins=breaks, density=True)
-        repr_points = domain
+        repr_points = np.asarray(domain)
         return breaks, densities, repr_points
 
     if source == "R":

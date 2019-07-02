@@ -7,7 +7,7 @@ import itertools
 
 import time
 
-from observations import mnist
+# from observations import mnist
 from sklearn.preprocessing import StandardScaler
 
 from spn.algorithms.Inference import log_likelihood
