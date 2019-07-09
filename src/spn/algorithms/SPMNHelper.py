@@ -20,7 +20,7 @@ def get_ds_context_prod(curr_train_data, scope, index, scope_index, params):
     scope_var = params.feature_names[scope_index:scope_index+n]
     context = []
 
-    # if parametric, all variables are meta type -- categorical
+    # if parametric, all variables are type -- categorical
     if params.util_to_bin:
         context = [Categorical]*n
         ds_context = Context(parametric_types=context, scope=scope, feature_names=scope_var).add_domains(curr_train_data)
@@ -29,7 +29,7 @@ def get_ds_context_prod(curr_train_data, scope, index, scope_index, params):
     else:
         if params.utility_node[0] in scope_var:
             context = [MetaType.DISCRETE] * (n-1)
-            context.append(MetaType.REAL)
+            context.append(MetaType.UTILITY)
         else:
             context = [MetaType.DISCRETE] * (n)
 

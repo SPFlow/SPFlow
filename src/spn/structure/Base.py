@@ -179,7 +179,7 @@ class Context:
             domain_values = [min_val, max_val]
 
 
-            if feature_meta_type == MetaType.REAL or feature_meta_type == MetaType.BINARY:
+            if feature_meta_type == MetaType.REAL or feature_meta_type == MetaType.BINARY or feature_meta_type == MetaType.UTILITY:
                 domain.append(domain_values)
             elif feature_meta_type == MetaType.DISCRETE:
                 domain.append(np.arange(domain_values[0], domain_values[1] + 1, 1))

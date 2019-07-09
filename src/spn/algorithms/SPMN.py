@@ -8,7 +8,7 @@ from spn.structure.Base import Sum, Product, Max
 from spn.structure.Base import assign_ids, rebuild_scopes_bottom_up
 from spn.algorithms.splitting.RDC import get_split_cols_RDC_py
 from spn.algorithms.splitting.Clustering import get_split_rows_KMeans
-from spn.algorithms.LearningWrappers import learn_mspn, learn_parametric
+from spn.algorithms.LearningWrappers import learn_mspn, learn_parametric, learn_mspn_for_spmn
 from spn.algorithms.SPMNHelper import *
 
 
@@ -64,7 +64,7 @@ def learn_spmn_structure(train_data, index, scope_index, params):
 
             else:
 
-                spn0 = learn_mspn(curr_train_data_prod, ds_context_prod, min_instances_slice=20,
+                spn0 = learn_mspn_for_spmn(curr_train_data_prod, ds_context_prod, min_instances_slice=20,
                                     initial_scope=scope_prod)
 
             index = index + 1

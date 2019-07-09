@@ -57,10 +57,16 @@ def meu_max(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
     ## decision values at each node
 
     decision_values = {}
+    max_nodes = {}
     decision_values[node.feature_name] = np.column_stack((parent_result, dec_value))
+    if len(dec_value) != 0:
+        node_name = [node.name]*len(dec_value)
+        max_nodes[node.feature_name] = np.column_stack((parent_result, node_name))
+    else:
+        max_nodes[node.feature_name] = np.column_stack((parent_result, []))
 
     # print("w_children_log_probs",w_children_log_probs)
-    return children_row_ids, decision_values
+    return children_row_ids, decision_values, max_nodes
 
 
 
@@ -71,8 +77,6 @@ _node_top_down_meu.update({Max:meu_max, Sum:meu_sum})
 _node_bottom_up_meu.update({Sum: sum_likelihood, Product: prod_likelihood, Max:max_likelihood})
 
 
-
-
 def meu(node, input_data, node_top_down_meu=_node_top_down_meu, node_bottom_up_meu=_node_bottom_up_meu, in_place=False):
     valid, err = is_valid(node)
     assert valid, err
@@ -80,6 +84,10 @@ def meu(node, input_data, node_top_down_meu=_node_top_down_meu, node_bottom_up_m
         data = input_data
     else:
         data = np.array(input_data)
+
+    # assumes utility is only one and is at the last
+    # print("input data:", input_data[:, -1])
+    assert np.isnan(data[:, -1]), "Please specify utility variable as NaN"
 
     nodes = get_nodes_by_type(node)
 
@@ -94,12 +102,13 @@ def meu(node, input_data, node_top_down_meu=_node_top_down_meu, node_bottom_up_m
     instance_ids = np.arange(data.shape[0])
 
     # one pass top down to decide on the max branch until it reaches a leaf; returns  all_result, decisions at each max node for each instance.
-    all_result, all_decisions = eval_spn_top_down_meu(node, node_top_down_meu, parent_result=instance_ids, data=data,
+    all_result, all_decisions, all_max_nodes = eval_spn_top_down_meu(node, node_top_down_meu, parent_result=instance_ids, data=data,
                                                       lls_per_node=lls_per_node)
 
     decisions = merge_rows_for_decisions(all_decisions)
+    max_nodes = merge_rows_for_decisions(all_max_nodes)
 
-    return meu_val, decisions
+    return meu_val, decisions, max_nodes
 
 
 
@@ -111,6 +120,7 @@ def merge_rows_for_decisions(all_decisions=None):
     """
 
     decisions = defaultdict(list)
+   # max_nodes = defaultdict(list)
 
     for dict_decisions in all_decisions:
         for decision_node, decision in dict_decisions.items():
@@ -147,6 +157,7 @@ def eval_spn_top_down_meu(root, eval_functions, all_results=None, parent_result=
         all_results.clear()
 
     all_decisions = []
+    all_max_nodes = []
     for node_type, func in eval_functions.items():
         if "_eval_func" not in node_type.__dict__:
             node_type._eval_func = []
@@ -162,8 +173,10 @@ def eval_spn_top_down_meu(root, eval_functions, all_results=None, parent_result=
             if type(n) != Max:
                 result = func(n, param, **args)
             else:
-                result, decision_values = func(n, param, **args)
+                result, decision_values, max_nodes = func(n, param, **args)
                 all_decisions.append(decision_values)
+                all_max_nodes.append(max_nodes)
+
 
 
             if result is not None and not isinstance(n, Leaf):
@@ -179,4 +192,4 @@ def eval_spn_top_down_meu(root, eval_functions, all_results=None, parent_result=
         if len(node_type._eval_func) == 0:
             delattr(node_type, "_eval_func")
 
-    return all_results[root], all_decisions
+    return all_results[root], all_decisions, all_max_nodes
