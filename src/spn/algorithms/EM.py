@@ -58,7 +58,7 @@ def EM_optimization(spn, data, iterations=5, node_updates=_node_updates, skip_va
         # one pass bottom up evaluating the likelihoods
         log_likelihood(spn, data, dtype=data.dtype, lls_matrix=lls_per_node)
 
-        gradients = gradient_backward(spn, lls_per_node)
+        gradients = gradient_backward(spn, lls_per_node, data=data)
 
         R = lls_per_node[:, 0]
 

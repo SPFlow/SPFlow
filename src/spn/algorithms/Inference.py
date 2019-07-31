@@ -30,7 +30,6 @@ def prod_log_likelihood(node, children, data=None, dtype=np.float64):
     assert llchildren.dtype == dtype
     pll = np.sum(llchildren, axis=1).reshape(-1, 1)
     pll[np.isinf(pll)] = np.finfo(pll.dtype).min
-
     return pll
 
 
@@ -44,7 +43,13 @@ def max_log_likelihood(node, children, data=None, dtype=np.float64):
     llchildren = np.concatenate(children, axis=1)
     assert llchildren.dtype == dtype
     #print("node and llchildren", (node, llchildren))
-    mll = np.max(llchildren, axis=1).reshape(-1, 1)
+    assert data is not None
+    decision_value_given = data[:,node.dec_idx]
+    max_value = np.argmax(llchildren, axis=1)
+    #if data contains a decision value use that otherwise use max
+    child_idx = np.select(  [np.isnan(decision_value_given), True],
+                            [max_value, decision_value_given]   ).astype(int)
+    mll = llchildren[np.arange(llchildren.shape[0]),child_idx].reshape(-1, 1)
     return mll
 
 #added
@@ -52,8 +57,13 @@ def max_likelihood(node, children, data=None, dtype=np.float64):
     llchildren = np.concatenate(children, axis=1)
     assert llchildren.dtype == dtype
     #print("node and llchildren", (node,llchildren))
-    return np.max(llchildren, axis=1).reshape(-1, 1)
-
+    assert data is not None
+    decision_value_given = data[:,node.dec_idx]
+    max_value = np.argmax(llchildren, axis=1)
+    #if data contains a decision value use that otherwise use max
+    child_idx = np.select(  [np.isnan(decision_value_given), True],
+                            [max_value, decision_value_given]   ).astype(int)
+    return llchildren[np.arange(llchildren.shape[0]),child_idx].reshape(-1, 1)
 
 def sum_log_likelihood(node, children, data=None, dtype=np.float64):
     llchildren = np.concatenate(children, axis=1)
