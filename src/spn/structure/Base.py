@@ -113,7 +113,7 @@ class Leaf(Node):
 
 
 class Max(Node):
-    def __init__(self, dec_idx, dec_values=None, children=None, feature_name = None):
+    def __init__(self, dec_idx=None, dec_values=None, children=None, feature_name = None):
         Node.__init__(self)
 
         self.dec_idx = dec_idx

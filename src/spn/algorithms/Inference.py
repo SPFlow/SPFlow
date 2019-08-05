@@ -42,8 +42,9 @@ def prod_likelihood(node, children, data=None, dtype=np.float64):
 def max_log_likelihood(node, children, data=None, dtype=np.float64):
     llchildren = np.concatenate(children, axis=1)
     assert llchildren.dtype == dtype
-    #print("node and llchildren", (node, llchildren))
-    assert data is not None
+    if llchildren.shape[1] == 1:    #if only one child, then it is max.
+        return llchildren
+    assert data is not None, "data must be passed through to max nodes for proper evaluation."
     decision_value_given = data[:,node.dec_idx]
     max_value = np.argmax(llchildren, axis=1)
     #if data contains a decision value use that otherwise use max
@@ -57,7 +58,7 @@ def max_likelihood(node, children, data=None, dtype=np.float64):
     llchildren = np.concatenate(children, axis=1)
     assert llchildren.dtype == dtype
     #print("node and llchildren", (node,llchildren))
-    assert data is not None
+    assert data is not None, "data must be passed through to max nodes for proper evaluation."
     decision_value_given = data[:,node.dec_idx]
     max_value = np.argmax(llchildren, axis=1)
     #if data contains a decision value use that otherwise use max

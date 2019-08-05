@@ -120,11 +120,6 @@ def get_scope_prod(curr_train_data_prod, scope_index, scope_vars):
     :return: returns scope of set of variables of current information set based on its index value in scope_variables
     """
     length = curr_train_data_prod.shape[1]
-    assert scope_index + length <= len(scope_vars), "range of scope exceeds lenth of scope variables"
+    #assert scope_index + length <= len(scope_vars), "range of scope exceeds lenth of scope variables"
     scope = list(range(scope_index, scope_index + length))
     return scope
-
-
-
-
-

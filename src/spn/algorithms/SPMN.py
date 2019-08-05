@@ -12,11 +12,12 @@ from spn.algorithms.LearningWrappers import learn_mspn, learn_parametric, learn_
 from spn.algorithms.SPMNHelper import *
 
 
-def learn_spmn_structure(train_data, index, scope_index, params):
+def learn_spmn_structure(train_data, index, params):
 
 
     train_data = train_data
     curr_var_set = params.partial_order[index]
+    scope_index = sum([len(x) for x in params.partial_order[:index]])
 
     if params.partial_order[index][0] in  params.decision_nodes:
 
@@ -30,11 +31,11 @@ def learn_spmn_structure(train_data, index, scope_index, params):
 
             if index < len(params.partial_order):
 
-                spn0.append(learn_spmn_structure(c, index, scope_index, params))
-                spn = Max(dec_values=dec_vals, children=spn0, feature_name=decision_node)
+                spn0.append(learn_spmn_structure(c, index, params))
+                spn = Max(dec_idx=scope_index, dec_values=dec_vals, children=spn0, feature_name=decision_node)
 
             else:
-                spn = Max(dec_values=dec_vals, children=None, feature_name=decision_node)
+                spn = Max(dec_idx=scope_index, dec_values=dec_vals, children=None, feature_name=decision_node)
 
         assign_ids(spn)
         rebuild_scopes_bottom_up(spn)
@@ -68,11 +69,10 @@ def learn_spmn_structure(train_data, index, scope_index, params):
                                     initial_scope=scope_prod)
 
             index = index + 1
-            scope_index = scope_index +curr_train_data_prod.shape[1]
 
             if index < len(params.partial_order):
 
-                spn1 = learn_spmn_structure(curr_train_data, index, scope_index, params)
+                spn1 = learn_spmn_structure(curr_train_data, index, params)
                 spn = Product(children=[spn0, spn1])
 
                 assign_ids(spn)
@@ -100,7 +100,7 @@ def learn_spmn_structure(train_data, index, scope_index, params):
                 for cl, scop, weight in data_slices_sum:
 
                     set_next_operation("Prod")
-                    spn0.append(learn_spmn_structure(cl, index, scope_index, params))
+                    spn0.append(learn_spmn_structure(cl, index, params))
                     weights.append(weight)
 
                 spn = Sum(weights=weights, children=spn0)
@@ -124,7 +124,7 @@ def learn_spmn(train_data , partial_order , decision_nodes, utility_node, featur
     set_next_operation("None")
     params = SPMN_Params(partial_order, decision_nodes, utility_node, feature_names, util_to_bin )
 
-    spmn = learn_spmn_structure(train_data, index, scope_index, params)
+    spmn = learn_spmn_structure(train_data, index, params)
 
     return spmn
 
@@ -138,30 +138,3 @@ class SPMN_Params():
         self.utility_node = utility_node
         self.feature_names = feature_names
         self.util_to_bin = util_to_bin
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
