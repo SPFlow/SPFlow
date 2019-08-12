@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 
 LOWER_BOUND = torch.tensor(1e-1)
+DEFAULT_DEVICE = torch.device("cpu")
 
 
 class DistributionClipper(object):
@@ -9,14 +10,34 @@ class DistributionClipper(object):
     Clip distribution parameters.
     """
 
-    def __init__(self, device, lower_bound=1e-5):
+    def __init__(self, device=DEFAULT_DEVICE, lower_bound=1e-5):
         """
         Args:
-            device: Torch device.
+            device (torch.device): Torch target device (defaults to CPU).
+            lower_bound (float): Lower bound for distribution parameters with a condition of ">= 0".
         """
         self.lower_bound = torch.tensor(lower_bound).to(device)
 
+    def to(self, device) -> "DistributionClipper":
+        """
+        Move the clipper to the specified device.
+        Returns a copy of the current object.
+
+        Args:
+            device (torch.device): Target device to which the clipper should be moved.
+
+        Returns:
+            DistributionClipper: Copy of this distribution clipper on the target device.
+        """
+        return DistributionClipper(device=device, lower_bound=self.lower_bound)
+
     def __call__(self, module):
+        """
+        Clip the distribution parameters of the given leaf module.
+
+        Args:
+            module (Leaf): Module to clip.
+        """
         if hasattr(module, "stds"):
             param = module.stds.data
             param.clamp_(self.lower_bound)
