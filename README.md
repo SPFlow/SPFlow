@@ -437,6 +437,9 @@ from spn.algorithms.Statistics import get_structure_stats
 print(get_structure_stats(spn))
 ```
 
+### Layerwise SPN in PyTorch
+A layerwise implementation of leaf, sum and product nodes in PyTorch is available in the `spn.algorithms.layerwise` module. For more information, check out the [Layerwise SPN README](./src/spn/algorithms/layerwise/README.rst).
+
 ### Extending the library
 
 Using the SPN is as we have seen, relatively easy. However, we might need to extend it if we want to work with new distributions.
