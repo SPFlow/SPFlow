@@ -1,18 +1,8 @@
-============================================================
-torchspn - A PyTorch Layerwise Sum-Product Network Framework
-============================================================
+======================================================
+A PyTorch Layerwise Sum-Product Network Implementation
+======================================================
 
-:code:`torchspn` provides an efficient PyTorch layerwise implementation of Sum-Product Networks.
-
-Installation
-------------
-torchspn is available on PyPi and can be installed via
-
-.. code:: bash
-
-    $ pip install torchspn
-
-:Latest version: :code:`0.1.0`
+This module provides an efficient PyTorch layerwise implementation of Sum-Product Networks.
 
 Quick Start
 -----------
