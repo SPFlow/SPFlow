@@ -251,7 +251,7 @@ class IndependentNormal(Leaf):
 
     def forward(self, x):
         x = self.gauss(x)
-        x = torch.where(~torch.isnan(x), x, torch.Tensor([0]))
+        x = torch.where(~torch.isnan(x), x, torch.zeros(1).to(x.device))
         x = self.prod(x)
         return x
 
