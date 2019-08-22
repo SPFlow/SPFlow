@@ -25,9 +25,7 @@ class Sum(nn.Module):
         self.in_features = in_features
         self.out_channels = out_channels
         self.dropout = dropout
-        assert out_channels > 0, (
-            "Number of output channels must be at least 1, but was %s." % out_channels
-        )
+        assert out_channels > 0, "Number of output channels must be at least 1, but was %s." % out_channels
         in_features = int(in_features)
         # Weights, such that each sumnode has its own weights
         ws = torch.randn(in_features, in_channels, out_channels)
@@ -63,11 +61,7 @@ class Sum(nn.Module):
 
     def __repr__(self):
         return "Sum(in_channels={}, in_features={}, out_channels={}, dropout={}, out_shape={})".format(
-            self.in_channels,
-            self.in_features,
-            self.out_channels,
-            self.dropout,
-            self.out_shape,
+            self.in_channels, self.in_features, self.out_channels, self.dropout, self.out_shape
         )
 
 
@@ -89,6 +83,11 @@ class Product(nn.Module):
         self.in_features = in_features
         self.cardinality = int(cardinality)
 
+        # Implement product as convolution
+        self._conv_weights = nn.Parameter(torch.ones(1, 1, cardinality, 1), requires_grad=False)
+        self._pad = self.in_features % self.cardinality
+
+        # Store shape information
         in_features = int(in_features)
         self._out_features = np.ceil(in_features / cardinality).astype(int)
         self.out_shape = f"(N, {self._out_features}, C_in)"
@@ -107,23 +106,22 @@ class Product(nn.Module):
         if self.cardinality == x.shape[1]:
             return x.sum(1)
 
-        x_split = list(torch.split(x, self.cardinality, dim=1))
+        # Pad if in_features % cardinality != 0
+        if self._pad > 0:
+            x = F.pad(x, pad=(0, 0, 0, self._pad), value=0)
 
-        # Check if splits have the same shape (If split cannot be made even, the last chunk will be smaller)
-        if x_split[-1].shape != x_split[0].shape:
-            # How much is the last chunk smaller
-            diff = x_split[0].shape[1] - x_split[-1].shape[1]
+        # Use convolution with weights of 1 and stride/kernel size of #children
+        # Simulate a single feature map, therefore [n, d, c] -> [n, c'=1, d, c], that is 
+        # - The convolution channel input and output size will be 1
+        # - The feature dimension (d) will be the height dimension
+        # - The channel dimension (c) will be the width dimension
+        # Convolution is then applied along the width with stride/ksize #children and along
+        # the height with stride/ksize 1
+        x = x.unsqueeze(1)
+        result = F.conv2d(x, weight=self._conv_weights, stride=(self.cardinality, 1))
 
-            # Pad the last chunk by the difference with zeros (=maginalized nodes)
-            x_split[-1] = F.pad(
-                x_split[-1], pad=[0, 0, 0, diff], mode="constant", value=0.0
-            )
-
-        # Stack along new split axis
-        x_split_stack = torch.stack(x_split, dim=2)
-
-        # Sum over feature axis
-        result = torch.sum(x_split_stack, dim=1)
+        # Remove simulated channel
+        result = result.squeeze(1)
         return result
 
     def __repr__(self):
