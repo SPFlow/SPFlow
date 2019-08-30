@@ -12,12 +12,12 @@ from spn.algorithms.LearningWrappers import learn_mspn, learn_parametric, learn_
 from spn.algorithms.SPMNHelper import *
 
 
-def learn_spmn_structure(train_data, index, params):
-
+def learn_spmn_structure(train_data, index, curr_scope, params):
 
     train_data = train_data
     curr_var_set = params.partial_order[index]
     scope_index = sum([len(x) for x in params.partial_order[:index]])
+    next_scope_index = sum([len(x) for x in params.partial_order[:index+1]])
 
     if params.partial_order[index][0] in  params.decision_nodes:
 
@@ -25,13 +25,17 @@ def learn_spmn_structure(train_data, index, params):
         cl, dec_vals= split_on_decision_node(train_data, curr_var_set)
         spn0 = []
         index= index+1
+        curr_scope = np.array(range(
+                        next_scope_index,
+                        next_scope_index+len(params.partial_order[index])
+                    ))
         set_next_operation("None")
 
         for c in cl:
 
             if index < len(params.partial_order):
 
-                spn0.append(learn_spmn_structure(c, index, params))
+                spn0.append(learn_spmn_structure(c, index, curr_scope, params))
                 spn = Max(dec_idx=scope_index, dec_values=dec_vals, children=spn0, feature_name=decision_node)
 
             else:
@@ -48,9 +52,9 @@ def learn_spmn_structure(train_data, index, params):
         curr_train_data_prod, curr_train_data = get_curr_train_data_prod(train_data, curr_var_set)
 
         split_cols = get_split_cols_RDC_py()
-        scope_prod = get_scope_prod(curr_train_data_prod, scope_index, params.feature_names)
+        scope_prod, scope_rest = get_scope_prod(curr_scope, None)
 
-        ds_context_prod = get_ds_context_prod(curr_train_data_prod, scope_prod, index, scope_index, params)
+        ds_context_prod = get_ds_context_prod(curr_train_data_prod, scope_prod, params)
 
         data_slices_prod = split_cols(curr_train_data_prod, ds_context_prod, scope_prod)
         curr_op = get_next_operation()
@@ -71,8 +75,11 @@ def learn_spmn_structure(train_data, index, params):
             index = index + 1
 
             if index < len(params.partial_order):
-
-                spn1 = learn_spmn_structure(curr_train_data, index, params)
+                curr_scope = np.array(range(
+                            next_scope_index,
+                            next_scope_index+len(params.partial_order[index])
+                        ))
+                spn1 = learn_spmn_structure(curr_train_data, index, curr_scope, params)
                 spn = Product(children=[spn0, spn1])
 
                 assign_ids(spn)
@@ -88,7 +95,7 @@ def learn_spmn_structure(train_data, index, params):
             split_rows = get_split_rows_KMeans()
             scope_sum = list(range(train_data.shape[1]))
 
-            ds_context_sum = get_ds_context_sum(train_data, scope_sum, index, scope_index, params)
+            ds_context_sum = get_ds_context_sum(train_data, scope_sum, index, params)
             data_slices_sum = split_rows(train_data, ds_context_sum, scope_sum)
 
             spn0 = []
@@ -100,7 +107,7 @@ def learn_spmn_structure(train_data, index, params):
                 for cl, scop, weight in data_slices_sum:
 
                     set_next_operation("Prod")
-                    spn0.append(learn_spmn_structure(cl, index, params))
+                    spn0.append(learn_spmn_structure(cl, index, curr_scope, params))
                     weights.append(weight)
 
                 spn = Sum(weights=weights, children=spn0)
@@ -121,10 +128,11 @@ def learn_spmn(train_data , partial_order , decision_nodes, utility_node, featur
 
     index = 0
     scope_index = 0
+    curr_scope = np.array(range(len(partial_order[0])))
     set_next_operation("None")
     params = SPMN_Params(partial_order, decision_nodes, utility_node, feature_names, util_to_bin )
 
-    spmn = learn_spmn_structure(train_data, index, params)
+    spmn = learn_spmn_structure(train_data, index, curr_scope, params)
 
     return spmn
 
