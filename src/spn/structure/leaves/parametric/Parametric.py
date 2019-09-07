@@ -79,7 +79,13 @@ class Gaussian(Parametric):
 class Uniform(Parametric):
     property_type = namedtuple("Uniform", "density start end")
 
-    def __init__(self, density=None, start=None, end=None, type=None, scope=None):
+    def __init__(
+            self,
+            density=None,
+            start=None,
+            end=None,
+            type=None,
+            scope=None):
         Parametric.__init__(self, type, scope=scope)
 
         # parameters
@@ -89,7 +95,8 @@ class Uniform(Parametric):
 
     @property
     def parameters(self):
-        return __class__.property_type(density=self.density, start=self.start, end=self.end)
+        return __class__.property_type(
+            density=self.density, start=self.start, end=self.end)
 
 
 class Gamma(Parametric):
@@ -296,12 +303,17 @@ class CategoricalDictionary(Parametric):
     def __init__(self, p=None, scope=None):
         Parametric.__init__(self, type(self).type, scope=scope)
         if p is not None:
-            assert np.isclose(sum(p.values()), 1), "Probabilities shall sum to 1"
+            assert np.isclose(
+                sum(p.values()), 1), "Probabilities shall sum to 1"
         self.p = p
 
     @property
     def parameters(self):
-        return __class__.property_type(p=tuple(sorted(self.p.items(), key=lambda t: t[0])))
+        return __class__.property_type(
+            p=tuple(
+                sorted(
+                    self.p.items(),
+                    key=lambda t: t[0])))
 
 
 class Exponential(Parametric):

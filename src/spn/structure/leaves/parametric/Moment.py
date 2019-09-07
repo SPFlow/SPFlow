@@ -14,7 +14,13 @@ def parametric_moment(node, order=1):
     if order > 1:
         return NotImplementedError("Higher moments are not implemented yet")
 
-    if isinstance(node, Gaussian) or isinstance(node, Poisson) or isinstance(node,MultivariateGaussian):
+    if isinstance(
+            node,
+            Gaussian) or isinstance(
+            node,
+            Poisson) or isinstance(
+                node,
+            MultivariateGaussian):
         return node.mean
 
     elif isinstance(node, Uniform):

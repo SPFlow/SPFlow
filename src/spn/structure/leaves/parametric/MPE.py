@@ -51,7 +51,11 @@ def get_parametric_bottom_up_ll(ll_func, mode_func):
 
 def get_parametric_top_down_ll(mode_func):
     def param_td_fn(node, input_vals, data=None, lls_per_node=None):
-        get_mpe_top_down_leaf(node, input_vals, data=data, mode=mode_func(node))
+        get_mpe_top_down_leaf(
+            node,
+            input_vals,
+            data=data,
+            mode=mode_func(node))
 
     return param_td_fn
 
@@ -70,8 +74,11 @@ def add_parametric_mpe_support():
         return (node.alpha - 1) / node.beta
 
     add_node_mpe(
-        Gamma, get_parametric_bottom_up_ll(gamma_likelihood, gamma_mode), get_parametric_top_down_ll(gamma_mode)
-    )
+        Gamma,
+        get_parametric_bottom_up_ll(
+            gamma_likelihood,
+            gamma_mode),
+        get_parametric_top_down_ll(gamma_mode))
 
     def lognormal_mode(node):
         return np.exp(node.mean - node.variance)
@@ -129,7 +136,9 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         NegativeBinomial,
-        get_parametric_bottom_up_ll(geometric_likelihood, negative_binomial_mode),
+        get_parametric_bottom_up_ll(
+            geometric_likelihood,
+            negative_binomial_mode),
         get_parametric_top_down_ll(negative_binomial_mode),
     )
 
@@ -147,7 +156,9 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         Hypergeometric,
-        get_parametric_bottom_up_ll(exponential_likelihood, hypergeometric_mode),
+        get_parametric_bottom_up_ll(
+            exponential_likelihood,
+            hypergeometric_mode),
         get_parametric_top_down_ll(hypergeometric_mode),
     )
 
@@ -156,93 +167,108 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         CategoricalDictionary,
-        get_parametric_bottom_up_ll(categorical_dictionary_likelihood, categoricaldict_mode),
+        get_parametric_bottom_up_ll(
+            categorical_dictionary_likelihood,
+            categoricaldict_mode),
         get_parametric_top_down_ll(categoricaldict_mode),
     )
-    def makeconditional(mean,cov):
+
+    def makeconditional(mean, cov):
         def conditionalmodemvg(vec):
             activeset = np.isnan(vec)
             totalnans = np.sum(activeset)
-            #print(activeset)
-            if(totalnans==0):
+            # print(activeset)
+            if(totalnans == 0):
                 return mn.pdf(vec, mean, cov)
-            if(totalnans==(len(mean))):
+            if(totalnans == (len(mean))):
                 return mn.pdf(mean, mean, cov)
-            cov1 = cov[activeset,:]
-            cov2 = cov[~activeset,:]
-            cov11,cov12 = cov1[:,activeset],cov1[:,~activeset]
-            cov21,cov22 = cov2[:,activeset],cov2[:,~activeset]
-            #print(cov11,cov12,cov21,cov22)
-            temp = np.matmul(cov12,np.linalg.inv(cov22))
-            #print(temp)
+            cov1 = cov[activeset, :]
+            cov2 = cov[~activeset, :]
+            cov11, cov12 = cov1[:, activeset], cov1[:, ~activeset]
+            cov21, cov22 = cov2[:, activeset], cov2[:, ~activeset]
+            # print(cov11,cov12,cov21,cov22)
+            temp = np.matmul(cov12, np.linalg.inv(cov22))
+            # print(temp)
             schur = cov11 - np.matmul(temp, cov21)
-            #print(schur)
-            #print((2*3.14*np.linalg.det(schur)))
+            # print(schur)
+            # print((2*3.14*np.linalg.det(schur)))
             #print (1./(np.sqrt(2*3.14*np.linalg.det(schur))))
-            return 1./(np.sqrt(2*3.14*np.linalg.det(schur)))
+            return 1. / (np.sqrt(2 * 3.14 * np.linalg.det(schur)))
         return conditionalmodemvg
 
-    def conditionalmean(mean,cov):
+    def conditionalmean(mean, cov):
         def infercondnl(dvec):
-            for i in range(0,len(dvec)):
+            for i in range(0, len(dvec)):
                 activeset = np.isnan(dvec[i])
-                #print(activeset)
+                # print(activeset)
                 totalnans = np.sum(activeset)
-                #print(totalnans)
-                if(totalnans==0):
+                # print(totalnans)
+                if(totalnans == 0):
                     continue
-                if(totalnans==(len(mean))):
+                if(totalnans == (len(mean))):
                     dvec[i] = mean
                 else:
-                    cov1 = cov[activeset,:]
-                    cov2 = cov[~activeset,:]
-                    cov11,cov12 = cov1[:,activeset],cov1[:,~activeset]
-                    cov21,cov22 = cov2[:,activeset],cov2[:,~activeset]
-                    #print(cov11,cov12,cov21,cov22)
-                    mat =  np.matmul(cov12,np.linalg.inv(cov22))
+                    cov1 = cov[activeset, :]
+                    cov2 = cov[~activeset, :]
+                    cov11, cov12 = cov1[:, activeset], cov1[:, ~activeset]
+                    cov21, cov22 = cov2[:, activeset], cov2[:, ~activeset]
+                    # print(cov11,cov12,cov21,cov22)
+                    mat = np.matmul(cov12, np.linalg.inv(cov22))
                     arr = dvec[i]
-                    arr[activeset] = mean[activeset] + np.matmul(mat,(arr[~activeset]-mean[~activeset]))
-                    #print(arr[activeset])
-                    #print(dvec)
+                    arr[activeset] = mean[activeset] + \
+                        np.matmul(mat, (arr[~activeset] - mean[~activeset]))
+                    # print(arr[activeset])
+                    # print(dvec)
             return dvec
         return infercondnl
 
     def mvg_bu_ll(node, data, dtype=np.float64):
-        probs = np.ones((data.shape[0],1))
-        effdat = data[:,node.scope]
-        for i in range(0,len(effdat)):
-            #print("lol")
-            lambdacond = makeconditional(np.asarray(node.mean),np.asarray(node.sigma))
+        probs = np.ones((data.shape[0], 1))
+        effdat = data[:, node.scope]
+        for i in range(0, len(effdat)):
+            # print("lol")
+            lambdacond = makeconditional(
+                np.asarray(
+                    node.mean), np.asarray(
+                    node.sigma))
             probs[i] = lambdacond(effdat[i])
-            #print(probs[i])
-        #print(probs)
+            # print(probs[i])
+        # print(probs)
         return probs
 
-    def mvg_td(node, input_vals, data=None, lls_per_node=None, dtype=np.float64):
-        #print("test")
-        #print(input_vals)
-        #print(np.shape(input_vals))
+    def mvg_td(
+            node,
+            input_vals,
+            data=None,
+            lls_per_node=None,
+            dtype=np.float64):
+        # print("test")
+        # print(input_vals)
+        # print(np.shape(input_vals))
         input_vals = input_vals[0]
-        #print(input_vals)
+        # print(input_vals)
         if len(input_vals) == 0:
             return None
-        
-        #print(np.shape(data))
-        temp = data[input_vals,:]
-        #print(temp)
-        #print(np.shape(temp))
-        checksum = np.sum(temp[:,node.scope],axis=-1)
-        #print(checksum)
-        indices = np.isnan(checksum)
-        #print(indices)
-        
-        createcondmean = conditionalmean(np.asarray(node.mean),np.asarray(node.sigma))
 
-        temp = data[input_vals[indices],:]
-        #print(temp)
-        temp[:,node.scope] = createcondmean(temp[:,node.scope])
-        #print(temp)
-        data[input_vals[indices],:] = temp 
+        # print(np.shape(data))
+        temp = data[input_vals, :]
+        # print(temp)
+        # print(np.shape(temp))
+        checksum = np.sum(temp[:, node.scope], axis=-1)
+        # print(checksum)
+        indices = np.isnan(checksum)
+        # print(indices)
+
+        createcondmean = conditionalmean(
+            np.asarray(
+                node.mean), np.asarray(
+                node.sigma))
+
+        temp = data[input_vals[indices], :]
+        # print(temp)
+        temp[:, node.scope] = createcondmean(temp[:, node.scope])
+        # print(temp)
+        data[input_vals[indices], :] = temp
 
         return
 

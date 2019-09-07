@@ -13,16 +13,17 @@ node = MultivariateGaussian(np.inf, np.inf)
 data = np.array([1, 2, 3, 4, 5, 1, 2, 3, 4, 1, 3, 3, 6, 2]).reshape(-1, 2)
 update_parametric_parameters_mle(node, data)
 
-print(node.mean,node.sigma)
+print(node.mean, node.sigma)
 
 print(node.scope)
 
-dummydata = np.asarray([[1,2,4,8],[2.1,4.1,8.1,16.1],[4.1,8.1,16.1,32.1],[8.8,16.5,32.3,64.2]])
-dummyscope = list([0,1,2,3])
+dummydata = np.asarray([[1, 2, 4, 8], [2.1, 4.1, 8.1, 16.1], [
+                       4.1, 8.1, 16.1, 32.1], [8.8, 16.5, 32.3, 64.2]])
+dummyscope = list([0, 1, 2, 3])
 
-spn = MultivariateGaussian(np.inf,np.inf)
+spn = MultivariateGaussian(np.inf, np.inf)
 
-update_parametric_parameters_mle(spn,dummydata)
+update_parametric_parameters_mle(spn, dummydata)
 
 print(spn.mean)
 print(spn.sigma)
@@ -33,7 +34,8 @@ spn.scope = dummyscope
 
 print(spn.scope)
 
-dummydata = np.asarray([[np.nan,2.0,np.nan,np.nan],[np.nan,np.nan,np.nan,64.3]])
+dummydata = np.asarray([[np.nan, 2.0, np.nan, np.nan],
+                        [np.nan, np.nan, np.nan, 64.3]])
 
 print(np.shape(dummydata))
 print(np.shape(np.asarray(spn.mean)))
@@ -51,7 +53,7 @@ print(recreate.mean)
 print(recreate.sigma)
 
 arr = np.load('./test.npy')
-teststruct = prometheus(arr,1,itermult=0,leafsize=4,maxsize=6)
+teststruct = prometheus(arr, 1, itermult=0, leafsize=4, maxsize=6)
 
 testspn = str_to_spn(teststruct)
 
@@ -60,5 +62,3 @@ recreate = spn_to_str_equation(testspn)
 file = open('./ca.txt', 'w')
 file.write(teststruct)
 file.close()
-
-

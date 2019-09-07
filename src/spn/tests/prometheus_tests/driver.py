@@ -9,9 +9,9 @@ import numpy as np
 sys.setrecursionlimit(15000)
 
 with open('./ca.txt', 'r') as myfile:
-    data=myfile.read().replace('\n', '')
+    data = myfile.read().replace('\n', '')
 
-thespn = str_to_spn(data) 
+thespn = str_to_spn(data)
 
 testdata = np.load('./test.npy')
 
@@ -29,7 +29,11 @@ print(testdata.dtype)
 ll = log_likelihood(thespn, testdata)
 print(ll, np.exp(ll))
 
-optimized_spn = optimize_tf(thespn, testdata,epochs=100,optimizer=tf.train.RMSPropOptimizer(1e-4))
+optimized_spn = optimize_tf(
+    thespn,
+    testdata,
+    epochs=100,
+    optimizer=tf.train.RMSPropOptimizer(1e-4))
 lloptimized = log_likelihood(optimized_spn, testdata)
 print(lloptimized, np.exp(lloptimized))
 print(np.mean(lloptimized))

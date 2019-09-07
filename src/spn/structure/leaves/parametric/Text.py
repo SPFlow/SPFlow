@@ -27,7 +27,8 @@ def parametric_to_str(node, feature_names=None, node_to_str=None):
             continue
         args[arg] = getattr(node, arg)
 
-    return "%s(%s|%s)" % (node.__class__.__name__, fname, ";".join(["%s=%s" % (k, v) for k, v in args.items()]))
+    return "%s(%s|%s)" % (node.__class__.__name__, fname,
+                          ";".join(["%s=%s" % (k, v) for k, v in args.items()]))
 
 
 def parametric_tree_to_spn(tree, features, obj_type, tree_to_spn):
@@ -38,7 +39,7 @@ def parametric_tree_to_spn(tree, features, obj_type, tree_to_spn):
         val = v
         try:
             val = int(v)
-        except:
+        except BaseException:
             val = float(v)
         init_params[str(p)] = val
     node = obj_type(**init_params)
@@ -61,10 +62,10 @@ def categorical_tree_to_spn(tree, features, obj_type, tree_to_spn):
         val = v
         try:
             val = int(v)
-        except:
+        except BaseException:
             try:
                 val = float(v)
-            except:
+            except BaseException:
                 val = list(map(float, v.children))
         init_params[str(p)] = val
     node = obj_type(**init_params)
@@ -78,6 +79,7 @@ def categorical_tree_to_spn(tree, features, obj_type, tree_to_spn):
 
     return node
 
+
 def mvg_to_str(node, feature_names=None, node_to_str=None):
 
     #print("this runs")
@@ -85,19 +87,25 @@ def mvg_to_str(node, feature_names=None, node_to_str=None):
 
     if feature_names is None:
         fname = "V" + str(node.scope[0])
-        for i in range(1,len(node.scope)):
+        for i in range(1, len(node.scope)):
             fname += "V" + str(node.scope[i])
     else:
         fname = feature_names[node.scope[0]]
 
     sigma = np.asarray(node.sigma).flatten()
-    params = np.hstack((np.asarray(node.mean),sigma))
+    params = np.hstack((np.asarray(node.mean), sigma))
 
-    params = np.array2string(params, separator=',', precision=decimals).replace('\n', '')
+    params = np.array2string(
+        params,
+        separator=',',
+        precision=decimals).replace(
+        '\n',
+        '')
 
     #print("MultivariateGaussian(%s|prmset=%s)" % (fname,params))
 
-    return "MultivariateGaussian(%s|prmset=%s)" % (fname,params)
+    return "MultivariateGaussian(%s|prmset=%s)" % (fname, params)
+
 
 def MVG_tree_to_spn(tree, features, obj_type, tree_to_spn):
 
@@ -109,10 +117,10 @@ def MVG_tree_to_spn(tree, features, obj_type, tree_to_spn):
         val = v
         try:
             val = int(v)
-        except:
+        except BaseException:
             try:
                 val = float(v)
-            except:
+            except BaseException:
                 val = list(map(float, v.children))
         init_params[str(p)] = val
 
@@ -120,48 +128,55 @@ def MVG_tree_to_spn(tree, features, obj_type, tree_to_spn):
 
     feature = str(tree.children[0])
 
-    #print(feature)
+    # print(feature)
 
     feature = re.sub("V", ",", feature)
 
-    #print(feature)
-    #print(feature[1:])
+    # print(feature)
+    # print(feature[1:])
 
     arr = np.fromstring(feature[1:], dtype=int, sep=',')
-    #print(list(arr))
+    # print(list(arr))
 
     scope = (list(arr))
     mean = params[:len(scope)]
     covflat = params[len(scope):]
-    cov = np.reshape(covflat,(len(scope),len(scope)))
-    node = MultivariateGaussian(mean,cov,scope)
+    cov = np.reshape(covflat, (len(scope), len(scope)))
+    node = MultivariateGaussian(mean, cov, scope)
 
     return node
 
 
 def add_parametric_text_support():
     for c in Parametric.__subclasses__():
-        if(c.__name__=='MultivariateGaussian'):
+        if(c.__name__ == 'MultivariateGaussian'):
             add_node_to_str(MultivariateGaussian, mvg_to_str)
         else:
             add_node_to_str(c, parametric_to_str)
 
     for c in Parametric.__subclasses__():
-        if(c.__name__=='MultivariateGaussian'):
+        if(c.__name__ == 'MultivariateGaussian'):
             name = c.__name__
             add_str_to_spn(
-            "parametric_" + name.lower(),
-            MVG_tree_to_spn,
-            """%s: "%s(" FNAME "|" [ PARAMNAME "=" list ] ")" """ % ("parametric_" + name.lower(), name),
-            c,
+                "parametric_" +
+                name.lower(),
+                MVG_tree_to_spn,
+                """%s: "%s(" FNAME "|" [ PARAMNAME "=" list ] ")" """ %
+                ("parametric_" +
+                 name.lower(),
+                    name),
+                c,
             )
         else:
             name = c.__name__
             add_str_to_spn(
-                "parametric_" + name.lower(),
+                "parametric_" +
+                name.lower(),
                 parametric_tree_to_spn,
-                """%s: "%s(" FNAME "|"  [PARAMNAME "=" NUMBERS (";" PARAMNAME "=" NUMBERS )*] ")" """
-                % ("parametric_" + name.lower(), name),
+                """%s: "%s(" FNAME "|"  [PARAMNAME "=" NUMBERS (";" PARAMNAME "=" NUMBERS )*] ")" """ %
+                ("parametric_" +
+                 name.lower(),
+                    name),
                 c,
             )
 
