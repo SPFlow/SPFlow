@@ -1,6 +1,5 @@
 """
 Created on April 15, 2018
-
 @author: Alejandro Molina
 """
 
@@ -29,8 +28,8 @@ def update_parametric_parameters_mle(node, data):
         return
 
     if isinstance(node, MultivariateGaussian):
-        node.mean = np.mean(data, axis=0).tolist()
-        node.sigma = np.cov(data, rowvar=0).tolist()
+        node.mean = np.mean(data, axis=0)
+        node.sigma = np.cov(data, rowvar=0)
         return
 
     assert data.shape[1] == 1

@@ -1,13 +1,14 @@
 """
 Created on March 21, 2018
-
 @author: Alejandro Molina
 """
 from spn.io.Text import add_str_to_spn, add_node_to_str
 from collections import OrderedDict
 import inspect
+import re
+import numpy as np
 
-from spn.structure.leaves.parametric.Parametric import Parametric, Categorical
+from spn.structure.leaves.parametric.Parametric import Parametric, Categorical, MultivariateGaussian
 import logging
 
 logger = logging.getLogger(__name__)
@@ -77,20 +78,92 @@ def categorical_tree_to_spn(tree, features, obj_type, tree_to_spn):
 
     return node
 
+def mvg_to_str(node, feature_names=None, node_to_str=None):
+
+    #print("this runs")
+    decimals = 3
+
+    if feature_names is None:
+        fname = "V" + str(node.scope[0])
+        for i in range(1,len(node.scope)):
+            fname += "V" + str(node.scope[i])
+    else:
+        fname = feature_names[node.scope[0]]
+
+    sigma = np.asarray(node.sigma).flatten()
+    params = np.hstack((np.asarray(node.mean),sigma))
+
+    params = np.array2string(params, separator=',', precision=decimals).replace('\n', '')
+
+    #print("MultivariateGaussian(%s|prmset=%s)" % (fname,params))
+
+    return "MultivariateGaussian(%s|prmset=%s)" % (fname,params)
+
+def MVG_tree_to_spn(tree, features, obj_type, tree_to_spn):
+
+    #print("this also ran")
+    params = tree.children[1:]
+
+    init_params = OrderedDict()
+    for p, v in zip(params[::2], params[1::2]):
+        val = v
+        try:
+            val = int(v)
+        except:
+            try:
+                val = float(v)
+            except:
+                val = list(map(float, v.children))
+        init_params[str(p)] = val
+
+    params = (init_params[p])
+
+    feature = str(tree.children[0])
+
+    #print(feature)
+
+    feature = re.sub("V", ",", feature)
+
+    #print(feature)
+    #print(feature[1:])
+
+    arr = np.fromstring(feature[1:], dtype=int, sep=',')
+    #print(list(arr))
+
+    scope = (list(arr))
+    mean = params[:len(scope)]
+    covflat = params[len(scope):]
+    cov = np.reshape(covflat,(len(scope),len(scope)))
+    node = MultivariateGaussian(mean,cov,scope)
+
+    return node
+
 
 def add_parametric_text_support():
     for c in Parametric.__subclasses__():
-        add_node_to_str(c, parametric_to_str)
+        if(c.__name__=='MultivariateGaussian'):
+            add_node_to_str(MultivariateGaussian, mvg_to_str)
+        else:
+            add_node_to_str(c, parametric_to_str)
 
     for c in Parametric.__subclasses__():
-        name = c.__name__
-        add_str_to_spn(
+        if(c.__name__=='MultivariateGaussian'):
+            name = c.__name__
+            add_str_to_spn(
             "parametric_" + name.lower(),
-            parametric_tree_to_spn,
-            """%s: "%s(" FNAME "|"  [PARAMNAME "=" NUMBERS (";" PARAMNAME "=" NUMBERS )*] ")" """
-            % ("parametric_" + name.lower(), name),
+            MVG_tree_to_spn,
+            """%s: "%s(" FNAME "|" [ PARAMNAME "=" list ] ")" """ % ("parametric_" + name.lower(), name),
             c,
-        )
+            )
+        else:
+            name = c.__name__
+            add_str_to_spn(
+                "parametric_" + name.lower(),
+                parametric_tree_to_spn,
+                """%s: "%s(" FNAME "|"  [PARAMNAME "=" NUMBERS (";" PARAMNAME "=" NUMBERS )*] ")" """
+                % ("parametric_" + name.lower(), name),
+                c,
+            )
 
     add_str_to_spn(
         "categorical",

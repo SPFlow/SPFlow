@@ -1,6 +1,5 @@
 """
 Created on April 15, 2018
-
 @author: Alejandro Molina
 """
 from spn.algorithms.stats.Moments import add_node_moment
@@ -15,7 +14,7 @@ def parametric_moment(node, order=1):
     if order > 1:
         return NotImplementedError("Higher moments are not implemented yet")
 
-    if isinstance(node, Gaussian) or isinstance(node, Poisson):
+    if isinstance(node, Gaussian) or isinstance(node, Poisson) or isinstance(node,MultivariateGaussian):
         return node.mean
 
     elif isinstance(node, Uniform):
@@ -60,3 +59,4 @@ def add_parametric_moment_support():
     add_node_moment(Geometric, parametric_moment)
     add_node_moment(Exponential, parametric_moment)
     add_node_moment(Uniform, parametric_moment)
+    add_node_moment(MultivariateGaussian, parametric_moment)

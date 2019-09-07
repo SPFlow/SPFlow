@@ -1,6 +1,5 @@
 """
 Created on April 15, 2018
-
 @author: Alejandro Molina
 @author: Antonio Vergari
 """
@@ -16,6 +15,7 @@ from spn.structure.leaves.parametric.Parametric import (
     Exponential,
     Bernoulli,
     CategoricalDictionary,
+    MultivariateGaussian
 )
 
 import numpy as np
