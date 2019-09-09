@@ -59,14 +59,9 @@ class RegionSpn(nn.Module):
 
         ### LEAF ###
         # Cardinality is the size of the region in the last partitions
-        cardinality = np.ceil(
-            self.in_features / (self.num_parts ** self.num_recursions)
-        ).astype(int)
+        cardinality = np.ceil(self.in_features / (self.num_parts ** self.num_recursions)).astype(int)
         self._leaf = IndependentNormal(
-            multiplicity=self.I,
-            in_features=self.in_features,
-            cardinality=cardinality,
-            dropout=self.dropout,
+            multiplicity=self.I, in_features=self.in_features, cardinality=cardinality, dropout=self.dropout
         )
         self._inner_layers = nn.Sequential()
 
@@ -87,11 +82,7 @@ class RegionSpn(nn.Module):
             in_features = self.num_parts ** i
 
             # Sum layer
-            sumlayer = Sum(
-                in_features=in_features,
-                in_channels=sum_in_channels,
-                out_channels=self.S,
-            )
+            sumlayer = Sum(in_features=in_features, in_channels=sum_in_channels, out_channels=self.S)
 
             # Product layer
             prod = RatProduct(in_features=in_features)
@@ -144,9 +135,7 @@ class RatSpnConstructor:
             num_recursions (int, optional): Number of split repetitions. Defaults to 1.
         """
 
-        spn = RegionSpn(
-            self.S, self.I, self.dropout, num_parts, num_recursions, self.in_features
-        )
+        spn = RegionSpn(self.S, self.I, self.dropout, num_parts, num_recursions, self.in_features)
 
         self._region_spns.append(spn)
 
@@ -179,14 +168,7 @@ class RatNormal(Leaf):
     Gaussian layer. Maps each input feature to its gaussian log likelihood."""
 
     def __init__(
-        self,
-        multiplicity,
-        in_features,
-        dropout=0.0,
-        min_sigma=0.1,
-        max_sigma=1.0,
-        min_mean=None,
-        max_mean=None,
+        self, multiplicity, in_features, dropout=0.0, min_sigma=0.1, max_sigma=1.0, min_mean=None, max_mean=None
     ):
         """Creat a gaussian layer.
 
@@ -237,9 +219,7 @@ class IndependentNormal(Leaf):
             droptout: Dropout probabilities.
         """
         super(IndependentNormal, self).__init__(multiplicity, in_features, dropout)
-        self.gauss = RatNormal(
-            multiplicity=multiplicity, in_features=in_features, dropout=dropout
-        )
+        self.gauss = RatNormal(multiplicity=multiplicity, in_features=in_features, dropout=dropout)
         self.prod = Product(in_features=in_features, cardinality=cardinality)
 
         self.cardinality = cardinality
@@ -348,9 +328,7 @@ class RatProduct(nn.Module):
         return result
 
     def __repr__(self):
-        return "RatProduct(in_features={}, out_shape={})".format(
-            self.in_features, self.out_shape
-        )
+        return "RatProduct(in_features={}, out_shape={})".format(self.in_features, self.out_shape)
 
 
 class RatSpn(nn.Module):
@@ -373,9 +351,7 @@ class RatSpn(nn.Module):
         """
         super().__init__()
         self.C = C
-        self._priors = nn.Parameter(
-            torch.log(torch.tensor(1 / self.C)), requires_grad=False
-        )
+        self._priors = nn.Parameter(torch.log(torch.tensor(1 / self.C)), requires_grad=False)
         self.region_spns = nn.ModuleList(region_spns)
 
         # Root
@@ -400,7 +376,7 @@ class RatSpn(nn.Module):
                 continue
 
     def forward(self, x):
-        """Computes the posterior probabilities P(X | C) for each class."""
+        """Computes the class conditional distributions P(X | C) for each class."""
         # Go over all regions
         split_results = []
         for spn in self.region_spns:
@@ -429,9 +405,8 @@ def truncated_normal_(tensor, mean=0, std=0.1):
     tensor.data.mul_(std).add_(mean)
 
 
-
-
 if __name__ == "__main__":
+
     def make_rat(num_features, classes, leaves=10, sums=10, num_splits=10, dropout=0.0):
         rg = RatSpnConstructor(num_features, classes, sums, leaves, dropout=dropout)
         for i in range(2):
