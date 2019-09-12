@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def cltree_likelihood(node, data=None, dtype=np.float64):
+def cltree_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs = np.zeros(data.shape[0], dtype=dtype)
     log_factors = np.array(node.log_factors)
 
