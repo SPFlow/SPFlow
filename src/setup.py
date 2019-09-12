@@ -14,7 +14,7 @@ with open("../requirements.txt", "r") as fh:
 
 setuptools.setup(
     name="spflow",
-    version="0.0.37",
+    version="0.0.38",
     author="Alejandro Molina et al.",
     author_email="molina@cs.tu-darmstadt.de",
     description="Sum Product Flow: An Easy and Extensible Library for Sum-Product Networks",
@@ -22,7 +22,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/alejandromolinaml/SPFlow",
     packages=setuptools.find_packages(),
-    package_data={"spn.algorithms.splitting": "*.R"},
+    package_data={"spn.algorithms.splitting": ["*.R"]},
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",

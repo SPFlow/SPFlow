@@ -92,5 +92,39 @@ class TestParametric(unittest.TestCase):
         self.assertGreater(len(hist.bin_repr_points), 1)
 
 
+    def test_histogram_samples(self):
+        import numpy as np
+        from numpy.random.mtrand import RandomState
+        from spn.algorithms.Sampling import sample_instances
+        from spn.structure.Base import Context
+        from spn.structure.StatisticalTypes import MetaType
+        from spn.algorithms.LearningWrappers import learn_mspn
+
+        np.random.seed(123)
+        a = np.random.randint(2, size=10000).reshape(-1, 1)
+        b = np.random.randint(3, size=10000).reshape(-1, 1)
+        c = np.r_[np.random.normal(10, 5, (3000, 1)), np.random.normal(20, 10, (7000, 1))]
+        d = 5 * a + 3 * b + c
+        train_data = np.c_[a, b, c, d]
+
+        ds_context = Context(
+            meta_types=[MetaType.DISCRETE, MetaType.DISCRETE, MetaType.REAL, MetaType.REAL]).add_domains(train_data)
+        mspn = learn_mspn(train_data, ds_context, min_instances_slice=200)
+
+        samples = sample_instances(mspn, np.array([np.nan, np.nan, np.nan, np.nan] * 100).reshape(-1, 4), RandomState(123))
+        print(np.max(samples, axis=0), np.min(samples, axis=0))
+        print(ds_context.domains)
+
+        # import matplotlib.pyplot as plt
+        # n_bins = 200
+        # fig, axs = plt.subplots(1, 2, sharey=True, tight_layout=True)
+        #
+        # idx = 2
+        # # We can set the number of bins with the `bins` kwarg
+        # axs[0].hist(train_data[:,idx], bins=n_bins, density=True)
+        # axs[1].hist(samples[:,idx], bins=n_bins, density=True)
+        # plt.show()
+        # print(1)
+
 if __name__ == "__main__":
     unittest.main()
