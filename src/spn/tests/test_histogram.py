@@ -126,5 +126,23 @@ class TestParametric(unittest.TestCase):
         # plt.show()
         # print(1)
 
+    def test_singular_domain(self):
+        import numpy as np
+        np.random.seed(123)
+
+        b = np.random.randint(3, size=1000).reshape(-1, 1)
+        d = np.random.randint(2, size=1000).reshape(-1, 1)
+        train_data = np.c_[b, d]
+
+        from spn.structure.Base import Context
+        from spn.structure.StatisticalTypes import MetaType
+
+        ds_context = Context(meta_types=[MetaType.DISCRETE, MetaType.BINARY])
+        ds_context.add_domains(train_data)
+
+        from spn.algorithms.LearningWrappers import learn_mspn
+
+        mspn = learn_mspn(train_data, ds_context, min_instances_slice=20)
+
 if __name__ == "__main__":
     unittest.main()
