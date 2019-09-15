@@ -4,127 +4,95 @@ Created on March 28, 2019
 
 """
 
-
 import numpy as np
 from spn.structure.Base import Context
 from spn.structure.StatisticalTypes import MetaType
 from spn.structure.leaves.parametric.Parametric import Categorical
+import logging
+
 
 # below functions are used by learn_spmn_structure
+def get_ds_context(data, scope, params):
+    """
+    :param data: numpy array of data for Context object
+    :param scope: scope of data
+    :param params: params of SPMN
+    :return: Context object of SPFlow
+    """
 
-def get_ds_context_prod(curr_train_data, scope, params):
-    """
-    returns the Context object of spflow to use with split_cols, learn_mspn or learn_parametric methods of spflow while creating product node for spmn
-    """
-    n = curr_train_data.shape[1]
+    num_of_variables = data.shape[1]
     scope_var = np.array(params.feature_names)[scope].tolist()
-    context = []
-
     # if parametric, all variables are type -- categorical
     if params.util_to_bin:
-        context = [Categorical]*n
-        ds_context = Context(parametric_types=context, scope=scope, feature_names=scope_var).add_domains(curr_train_data)
+        context = [Categorical] * num_of_variables
+        ds_context = Context(parametric_types=context, scope=scope, feature_names=scope_var).add_domains(data)
 
-    # if mixed, utilty is meta type -- real
+    # if mixed, utility is meta type -- UTILITY
     else:
         if params.utility_node[0] in scope_var:
-            context = [MetaType.DISCRETE] * (n-1)
+            context = [MetaType.DISCRETE] * (num_of_variables - 1)
             context.append(MetaType.UTILITY)
         else:
-            context = [MetaType.DISCRETE] * (n)
+            context = [MetaType.DISCRETE] * num_of_variables
 
         scope = scope
-        ds_context = Context(meta_types=context, scope=scope, feature_names=scope_var).add_domains(curr_train_data)
+        ds_context = Context(meta_types=context, scope=scope, feature_names=scope_var).add_domains(data)
     return ds_context
 
 
-def get_ds_context_sum(curr_train_data, scope, index, params):
+def cluster(data, dec_vals):
     """
-    returns the Context object of spflow to use with split_rows method while creating sum node for spmn
-
-    """
-    n = curr_train_data.shape[1]
-    curr_var_set_sum = params.partial_order[index: len(params.partial_order) + 1]
-    del curr_var_set_sum[0]
-    curr_var_set_sum = [scope] + curr_var_set_sum
-    curr_var_set_sum1 = [var for curr_var_set in curr_var_set_sum for var in curr_var_set]
-
-    if params.util_to_bin:
-        context = [Categorical]*n
-        ds_context = Context(parametric_types=context, scope=scope, feature_names=curr_var_set_sum1).add_domains(curr_train_data)
-
-    # utilty is meta type -- real
-    else:
-
-        if params.utility_node[0] in curr_var_set_sum1:
-            context = [MetaType.DISCRETE] * (n-1)
-            context.append(MetaType.REAL)
-        else:
-            context = [MetaType.DISCRETE] * (n)
-        scope = scope
-        ds_context = Context(meta_types=context, scope=scope, feature_names=curr_var_set_sum1).add_domains(curr_train_data)
-
-    return ds_context
-
-def cluster(train_data, dec_vals):
+    :param data: numpy array of data containing variable at 0th column on whose values cluster is needed
+    :param dec_vals: values of variable at that 0th column
+    :return: clusters of data (excluding the variable at 0th column) grouped together based on values of the variable
     """
 
-    :param dec_vals: values of variable
-    :return: clusters of train_data grouped together based on values of the variables
-    """
-    cl=[]
+    logging.debug(f'in cluster function of SPMNHelper')
+    clusters_on_remaining_columns = []
     for i in range(0, len(dec_vals)):
-        train_data1 = train_data[[train_data[:, 0] == dec_vals[i]]]
-        train_data2 = np.delete(train_data1, 0, 1)
-        cl.append(train_data2)
+        clustered_data_for_dec_val = data[[data[:, 0] == dec_vals[i]]]
+        # exclude the 0th column, which belongs to decision node
+        clustered_data_on_remaining_columns = np.delete(clustered_data_for_dec_val, 0, 1)
+        # logging.debug(f'clustered data on remaining columns is {clustered_data_on_remaining_columns}')
 
-    return cl
+        clusters_on_remaining_columns.append(clustered_data_on_remaining_columns)
 
-def split_on_decision_node(train_data, decision_node=None) :
+    logging.debug(f'{len(clusters_on_remaining_columns)} clusters formed on remaining columns based on decision values')
+    return clusters_on_remaining_columns
+
+
+def split_on_decision_node(data):
     """
-
-    :param train_data: current train data with decision node at 0th column
-    :param decision_node:
+    :param data: numpy array of data with decision node at 0th column
     :return: clusters split on values of decision node
     """
 
-    train_data = train_data
-    dec_vals = np.unique(train_data[:, 0])   #since 0th column of current train data is decision node
-    cl = cluster(train_data, dec_vals)
-    return cl, dec_vals
+    logging.debug(f'in split_on_decision_node function of SPMNHelper')
+    # logging.debug(f'data at decision node is {data}')
+    dec_vals = np.unique(data[:, 0])   # since 0th column of current train data is decision node
+    logging.debug(f'dec_vals are {dec_vals}')
+    # cluster remaining data based on decision values
+    clusters_on_remaining_columns = cluster(data, dec_vals)
+    return clusters_on_remaining_columns, dec_vals
 
-def get_curr_train_data_prod(train_data, curr_var_set):
+
+def column_slice_data_by_scope(data, data_scope, slice_scope):
     """
-    :param train_data: all train_data from current index to end
-    :param curr_var_set: current information set
-    :return: split of train_data into two sets, one with current information set and the other is rest of the data
+    :param data:  numpy array of data, columns ordered in data_scope order
+    :param data_scope: scope of variables of the given data
+    :param slice_scope: scope of the variables whose data slice is required
+    :return: numpy array of data that corresponds to the variables of the given scope
     """
 
-    slice = len(curr_var_set)
-    curr_train_data_prod = train_data[:, :slice]
-    rest_train_data = train_data[:, slice:]
-    #print(curr_train_data_prod)
-    return curr_train_data_prod, rest_train_data
+    # assumption, data columns are ordered in data_scope order
+    logging.debug(f'in column_slice_data_by_scope function of SPMNHelper')
+    data_indices_of_slice_scope = [ind for ind, scope in enumerate(data_scope) if scope in slice_scope]
+    logging.debug(f'data_indices_of_slice_scope are {data_indices_of_slice_scope}')
+
+    data = data[:, data_indices_of_slice_scope]
+
+    return data
 
 
-def set_next_operation(op="None"):
-    global next_op
-    next_op = op
 
-def get_next_operation():
-     return next_op
 
-def get_scope_prod(curr_scope, independent_vars=None):
-    """
-    :param curr_scope: np array of indices of variables in current scope
-    :param independent_vars: boolean array of whether each variable has passed independence testing
-    :return: returns scope of set of variables of current information set based on its index value in scope_variables
-    """
-    if independent_vars:
-        scope_prod = curr_scope[independent_vars].tolist()
-        indices = np.array(range(curr_scope.shape[0]))[independent_vars]
-        scope_rest = np.delete(curr_scope, indices).tolist()
-    else:
-        scope_prod = curr_scope.tolist()
-        scope_rest = None
-    return scope_prod, scope_rest
