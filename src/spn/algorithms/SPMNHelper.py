@@ -12,6 +12,9 @@ import logging
 
 
 # below functions are used by learn_spmn_structure
+
+
+
 def get_ds_context(data, scope, params):
     """
     :param data: numpy array of data for Context object
@@ -86,13 +89,33 @@ def column_slice_data_by_scope(data, data_scope, slice_scope):
 
     # assumption, data columns are ordered in data_scope order
     logging.debug(f'in column_slice_data_by_scope function of SPMNHelper')
-    data_indices_of_slice_scope = [ind for ind, scope in enumerate(data_scope) if scope in slice_scope]
-    logging.debug(f'data_indices_of_slice_scope are {data_indices_of_slice_scope}')
+    logging.debug(f'given scope of slice {slice_scope}')
+    column_indices_of_slice_scope = [ind for ind, scope in enumerate(data_scope) if scope in slice_scope]
+    logging.debug(f'column_indices_of_slice_scope are {column_indices_of_slice_scope}')
 
-    data = data[:, data_indices_of_slice_scope]
+    data = data[:, column_indices_of_slice_scope]
 
     return data
 
 
+def get_split_rows_KMeans(n_clusters=2, pre_proc=None, ohe=False, seed=17):
+
+    from spn.algorithms.splitting.Base import preproc, split_data_by_clusters
+
+    def split_rows_KMeans(local_data, ds_context, scope):
+        data = preproc(local_data, ds_context, pre_proc, ohe)
+
+        from sklearn.cluster import KMeans
+        km_model = KMeans(n_clusters=n_clusters, random_state=seed)
+        clusters = km_model.fit_predict(data)
+        return split_data_by_clusters(local_data, clusters, scope, rows=True), km_model
+
+    return split_rows_KMeans
 
 
+def get_row_indices_of_cluster(labels_array, cluster_num):
+    return np.where(labels_array == cluster_num)[0]
+
+
+def row_slice_data_by_indices(data, indices):
+    return data[indices, :]

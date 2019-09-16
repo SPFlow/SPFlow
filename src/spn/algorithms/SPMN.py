@@ -6,9 +6,10 @@ Created on March 28, 2019
 from spn.structure.Base import Sum, Product, Max
 from spn.structure.Base import assign_ids, rebuild_scopes_bottom_up
 from spn.algorithms.splitting.RDC import get_split_cols_RDC_py
-from spn.algorithms.splitting.Clustering import get_split_rows_KMeans
 from spn.algorithms.LearningWrappers import learn_mspn, learn_parametric, learn_mspn_for_spmn
-from spn.algorithms.SPMNHelper import *
+from spn.algorithms.SPMNHelper import get_ds_context, column_slice_data_by_scope, \
+                                      split_on_decision_node, get_split_rows_KMeans, \
+                                      get_row_indices_of_cluster, row_slice_data_by_indices
 import logging
 import numpy as np
 
@@ -47,7 +48,7 @@ class SPMN:
         next_scope_index = sum([len(x) for x in self.params.partial_order[:index + 1]])
 
         if remaining_vars_scope == curr_information_set_scope:
-            # this is last information set in partial order
+            # this is last information set in partial order. Base case of recursion
 
             # test if current information set is a decision node
             if self.params.partial_order[index][0] in self.params.decision_nodes:
@@ -98,7 +99,7 @@ class SPMN:
             next_remaining_vars_scope = rest_set_scope
             self.set_next_operation('Any')
 
-            logging.info(f'clustering on Decision Node values done: {dec_vals}')
+            logging.info(f'split clusters based on decision node values')
             for cluster_on_next_remaining_vars in clusters_on_next_remaining_vars:
 
                 decision_node_children_spns.append(self.__learn_spmn_structure(cluster_on_next_remaining_vars,
@@ -118,7 +119,7 @@ class SPMN:
         else:
 
             curr_op = self.get_curr_operation()
-            logging.debug(f'curr_op at prod test: {curr_op}')
+            logging.debug(f'curr_op at prod node (independence test): {curr_op}')
 
             if curr_op != 'Sum':    # fails if correlated variable set found in previous recursive call.
                                     # Without this condition code keeps looping at this stage
@@ -192,10 +193,13 @@ class SPMN:
 
                 self.set_next_operation('Sum')
 
-                logging.info(f'independence test done')
                 next_remaining_vars_data = column_slice_data_by_scope(remaining_vars_data,
                                                                       remaining_vars_scope,
                                                                       next_remaining_vars_scope)
+
+                logging.info(
+                    f'independence test completed for current information set {curr_information_set_scope} '
+                    f'and rest set {rest_set_scope} ')
 
                 remaining_vars_prod_child = self.__learn_spmn_structure(next_remaining_vars_data,
                                                                         next_remaining_vars_scope,
@@ -215,26 +219,43 @@ class SPMN:
             else:
 
                 curr_op = self.get_curr_operation()
-                logging.debug(f'curr_op at sum node cluster test: {curr_op}')
+                logging.debug(f'curr_op at sum node (cluster test): {curr_op}')
 
-                split_rows = get_split_rows_KMeans()
+                split_rows = get_split_rows_KMeans()    # from SPMNHelper.py
 
-                ds_context_sum = get_ds_context(remaining_vars_data, remaining_vars_scope, self.params)
-                data_slices_sum = split_rows(remaining_vars_data, ds_context_sum, remaining_vars_scope)
+                curr_information_set_data = column_slice_data_by_scope(remaining_vars_data,
+                                                                       remaining_vars_scope,
+                                                                       curr_information_set_scope)
+
+                ds_context_sum = get_ds_context(curr_information_set_data, curr_information_set_scope, self.params)
+                data_slices_sum, km_model = split_rows(curr_information_set_data, ds_context_sum,
+                                                       curr_information_set_scope)
 
                 sum_node_children = []
                 weights = []
                 index = index
                 logging.debug(f'{len(data_slices_sum)} clusters found at data_slices_sum')
 
-                logging.info(f'performed clustering on: {remaining_vars_scope}')
+                logging.info(f'split clusters based on current information set {curr_information_set_scope}')
 
-                for cluster_on_remaining_vars, scope, weight in data_slices_sum:
+                cluster_num = 0
+                labels_array = km_model.labels_
+                logging.debug(f'cluster labels of rows: {labels_array} used to cluster data on '
+                              f'total remaining variables {remaining_vars_scope}')
+
+                for cluster_on_current_information_set, scope, weight in data_slices_sum:
 
                     self.set_next_operation("Prod")
+
+                    # cluster whole remaining variables based on clusters formed on current information set
+
+                    cluster_indices = get_row_indices_of_cluster(labels_array, cluster_num)
+                    cluster_on_remaining_vars = row_slice_data_by_indices(remaining_vars_data, cluster_indices)
+
                     sum_node_children.append(
                         self.__learn_spmn_structure(cluster_on_remaining_vars, remaining_vars_scope,
                                                     curr_information_set_scope, index))
+
                     weights.append(weight)
 
                     sum_node = Sum(weights=weights, children=sum_node_children)
