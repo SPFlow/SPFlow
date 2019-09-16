@@ -221,6 +221,7 @@ class IndependentNormal(Leaf):
         super(IndependentNormal, self).__init__(multiplicity, in_features, dropout)
         self.gauss = RatNormal(multiplicity=multiplicity, in_features=in_features, dropout=dropout)
         self.prod = Product(in_features=in_features, cardinality=cardinality)
+        self._pad = cardinality - self.in_features % cardinality
 
         self.cardinality = cardinality
         self.out_shape = f"(N, {self.prod._out_features}, {multiplicity})"
@@ -232,6 +233,11 @@ class IndependentNormal(Leaf):
     def forward(self, x):
         x = self.gauss(x)
         x = torch.where(~torch.isnan(x), x, torch.zeros(1).to(x.device))
+
+        if self._pad:
+            # Pad marginalized node
+            x = F.pad(x, pad=[0, 0, 0, self._pad], mode="constant", value=0.0)
+
         x = self.prod(x)
         return x
 
