@@ -19,10 +19,11 @@ from spn.algorithms.TransformStructure import Prune
 class SPMN:
 
     def __init__(self, partial_order, decision_nodes, utility_node, feature_names,
-                 util_to_bin=False):
+                 cluster_by_curr_information_set=False, util_to_bin=False):
 
         self.params = SPMNParams(partial_order, decision_nodes, utility_node, feature_names, util_to_bin)
         self.op = 'Any'
+        self.cluster_by_curr_information_set = cluster_by_curr_information_set
         self.spmn = None
 
     def set_next_operation(self, next_op):
@@ -223,34 +224,48 @@ class SPMN:
 
                 split_rows = get_split_rows_KMeans()    # from SPMNHelper.py
 
-                curr_information_set_data = column_slice_data_by_scope(remaining_vars_data,
-                                                                       remaining_vars_scope,
-                                                                       curr_information_set_scope)
+                if self.cluster_by_curr_information_set:
 
-                ds_context_sum = get_ds_context(curr_information_set_data, curr_information_set_scope, self.params)
-                data_slices_sum, km_model = split_rows(curr_information_set_data, ds_context_sum,
-                                                       curr_information_set_scope)
+                    curr_information_set_data = column_slice_data_by_scope(remaining_vars_data,
+                                                                           remaining_vars_scope,
+                                                                           curr_information_set_scope)
+
+                    ds_context_sum = get_ds_context(curr_information_set_data, curr_information_set_scope, self.params)
+                    data_slices_sum, km_model = split_rows(curr_information_set_data, ds_context_sum,
+                                                           curr_information_set_scope)
+
+                    logging.info(f'split clusters based on current information set {curr_information_set_scope}')
+
+                else:
+                    # cluster on whole remaining variables
+                    ds_context_sum = get_ds_context(remaining_vars_data, remaining_vars_scope, self.params)
+                    data_slices_sum, km_model = split_rows(remaining_vars_data, ds_context_sum, remaining_vars_scope)
+
+                    logging.info(f'split clusters based on whole remaining variables {remaining_vars_scope}')
 
                 sum_node_children = []
                 weights = []
                 index = index
                 logging.debug(f'{len(data_slices_sum)} clusters found at data_slices_sum')
 
-                logging.info(f'split clusters based on current information set {curr_information_set_scope}')
+
 
                 cluster_num = 0
                 labels_array = km_model.labels_
                 logging.debug(f'cluster labels of rows: {labels_array} used to cluster data on '
                               f'total remaining variables {remaining_vars_scope}')
 
-                for cluster_on_current_information_set, scope, weight in data_slices_sum:
+                for cluster, scope, weight in data_slices_sum:
 
                     self.set_next_operation("Prod")
 
-                    # cluster whole remaining variables based on clusters formed on current information set
+                    # cluster whole remaining variables based on clusters formed.
+                    # below methods are useful if clusters were formed on just the current information set
 
                     cluster_indices = get_row_indices_of_cluster(labels_array, cluster_num)
                     cluster_on_remaining_vars = row_slice_data_by_indices(remaining_vars_data, cluster_indices)
+
+                    # logging.debug(np.array_equal(cluster_on_remaining_vars, cluster ))
 
                     sum_node_children.append(
                         self.__learn_spmn_structure(cluster_on_remaining_vars, remaining_vars_scope,
@@ -258,7 +273,9 @@ class SPMN:
 
                     weights.append(weight)
 
-                    sum_node = Sum(weights=weights, children=sum_node_children)
+                    cluster_num += 1
+
+                sum_node = Sum(weights=weights, children=sum_node_children)
 
                 assign_ids(sum_node)
                 rebuild_scopes_bottom_up(sum_node)
