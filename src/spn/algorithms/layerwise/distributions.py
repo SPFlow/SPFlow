@@ -8,6 +8,7 @@ import numpy as np
 from torch import nn
 from torch import distributions as dist
 from torch.nn import functional as F
+from spn.algorithms.layerwise.clipper import DistributionClipper
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,27 @@ class Normal(Leaf):
         x = super().forward(x)
         return x
 
+class Bernoulli(Leaf):
+    """Gaussian layer. Maps each input feature to its gaussian log likelihood."""
+
+    def __init__(self, multiplicity, in_features, dropout=0.0):
+        """Creat a gaussian layer.
+
+        Args:
+            multiplicity: Number of parallel representations for each input feature.
+            in_features: Number of input features.
+
+        """
+        super().__init__(multiplicity, in_features, dropout)
+
+        # Create bernoulli parameters
+        self.probs = nn.Parameter(torch.rand(1, in_features, multiplicity))
+        self.bernoulli = dist.Bernoulli(probs=self.probs)
+
+    def forward(self, x):
+        x = dist_forward(self.bernoulli, x)
+        x = super().forward(x)
+        return x
 
 class MultivariateNormal(Leaf):
     """Multivariate Gaussian layer."""
@@ -384,10 +406,45 @@ class Poisson(Leaf):
 if __name__ == "__main__":
     # Define the problem size
     batch_size = 10
-    n_features = 6
+    n_features = 3
 
     # How many different representations of that distribution
-    multiplicity = 5
+    multiplicity = 1
+
+    # Target probs to be learned
+    probs = torch.tensor([0.1, 0.3, 0.5])
+    bern = dist.Bernoulli(probs)
+
+    # Bernoulli layer
+    layer = Bernoulli(multiplicity, n_features)
+
+    # Clipper to keep probs in [0, 1]
+    clipper = DistributionClipper()
+
+    # Use SGD
+    optimizer = torch.optim.Adam(layer.parameters(), lr=0.001)
+    for i in range(10000):
+        x = bern.sample([batch_size])
+        # Reset gradients
+        optimizer.zero_grad()
+
+        # Inference
+        output = layer(x)
+
+        # Comput loss
+        loss = -1 * output.mean()
+
+        # Backprop
+        loss.backward(retain_graph=True)
+        optimizer.step()
+        layer.apply(clipper)
+        
+        print(loss)
+        print(layer.probs)
+
+
+    exit()
+
 
     # Create MV distribution to sample from
     loc1 = torch.rand(n_features // 2)
