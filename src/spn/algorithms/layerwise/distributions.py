@@ -111,10 +111,10 @@ class Bernoulli(Leaf):
 
         # Create bernoulli parameters
         self.probs = nn.Parameter(torch.rand(1, in_features, multiplicity))
-        self.bernoulli = dist.Bernoulli(probs=self.probs)
 
     def forward(self, x):
-        x = dist_forward(self.bernoulli, x)
+        bernoulli = dist.Bernoulli(probs=self.probs)
+        x = dist_forward(bernoulli, x)
         x = super().forward(x)
         return x
 
