@@ -39,7 +39,7 @@ def histogram_ll(breaks, densities, data):
     return probs
 
 
-def histogram_likelihood(node, data=None, dtype=np.float64):
+def histogram_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs = np.ones((data.shape[0], 1), dtype=dtype)
 
     nd = data[:, node.scope[0]]
