@@ -24,7 +24,7 @@ class SPMN:
         self.params = SPMNParams(partial_order, decision_nodes, utility_node, feature_names, util_to_bin)
         self.op = 'Any'
         self.cluster_by_curr_information_set = cluster_by_curr_information_set
-        self.spmn = None
+        self.spmn_structure = None
 
     def set_next_operation(self, next_op):
         self.op = next_op
@@ -295,10 +295,10 @@ class SPMN:
         remaining_vars_scope = np.array(range(len(self.params.feature_names))).tolist()
         self.set_next_operation('Any')
 
-        self.spmn = self.__learn_spmn_structure(data, remaining_vars_scope, curr_information_set_scope, index)
+        self.spmn_structure = self.__learn_spmn_structure(data, remaining_vars_scope, curr_information_set_scope, index)
 
-        # Prune(self.spmn)
-        return self.spmn
+        # Prune(self.spmn_structure)
+        return self.spmn_structure
 
 
 class SPMNParams:
