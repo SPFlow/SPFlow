@@ -297,7 +297,7 @@ class SPMN:
 
         self.spmn = self.__learn_spmn_structure(data, remaining_vars_scope, curr_information_set_scope, index)
 
-        Prune(self.spmn)
+        # Prune(self.spmn)
         return self.spmn
 
 
