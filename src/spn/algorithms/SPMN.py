@@ -108,8 +108,8 @@ class SPMN:
                                                                                next_information_set_scope, index
                                                                                ))
 
-                decision_node_spn_branch = Max(dec_idx=scope_index, dec_values=dec_vals,
-                                               children=decision_node_children_spns, feature_name=decision_node)
+            decision_node_spn_branch = Max(dec_idx=scope_index, dec_values=dec_vals,
+                                           children=decision_node_children_spns, feature_name=decision_node)
 
             assign_ids(decision_node_spn_branch)
             rebuild_scopes_bottom_up(decision_node_spn_branch)
@@ -167,12 +167,12 @@ class SPMN:
                         independent_vars_scope.extend(correlated_var_set_scope)
                         prod_children.append(independent_var_set_prod_child)
 
+                logging.info(f'correlated variables over entire remaining variables '
+                             f'at prod, passed for next recursion: '
+                             f'{next_remaining_vars_scope}')
+
                 # check if all variables in current information set are consumed
                 if all(var_scope in independent_vars_scope for var_scope in curr_information_set_scope):
-
-                    logging.info(f'correlated variables over entire remaining variables '
-                                 f'at prod, passed for next recursion: '
-                                 f'{next_remaining_vars_scope}')
 
                     index += 1
                     next_information_set_scope = np.array(range(next_scope_index, next_scope_index +
@@ -191,6 +191,8 @@ class SPMN:
                     # convert unordered sets of scope to sorted lists to keep in sync with partial order
                     next_information_set_scope = sorted(list(next_information_set_scope))
                     next_remaining_vars_scope = sorted(list(next_remaining_vars_scope))
+
+
 
                 self.set_next_operation('Sum')
 

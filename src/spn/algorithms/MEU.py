@@ -17,6 +17,7 @@ import collections
 def merge_input_vals(l):
     return np.concatenate(l)
 
+
 def meu_sum(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
     if parent_result is None:
         return None
@@ -36,6 +37,7 @@ def meu_sum(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
 
     return children_row_ids
 
+
 def meu_max(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
     if len(parent_result) == 0:
         return None
@@ -53,8 +55,8 @@ def meu_max(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
 
     for i, c in enumerate(node.children):
         children_row_ids[c] = parent_result[max_child_branches == i]
-    # print("node and max_child_branches", (node.var_name, max_child_branches))
-    ## decision values at each node
+    # print("node and max_child_branches", (node.id, node.feature_name, max_child_branches))
+    # decision values at each node
 
     decision_values = {}
     max_nodes = {}
@@ -65,21 +67,20 @@ def meu_max(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
     else:
         max_nodes[node.feature_name] = np.column_stack((parent_result, []))
 
-    # print("w_children_log_probs",w_children_log_probs)
+    # print("w_children_log_probs", w_children_log_probs)
     return children_row_ids, decision_values, max_nodes
 
 
-
-node_functions =  get_node_funtions()
-_node_top_down_meu= node_functions[0].copy()
+node_functions = get_node_funtions()
+_node_top_down_meu = node_functions[0].copy()
 _node_bottom_up_meu = node_functions[1].copy()
-_node_top_down_meu.update({Max:meu_max, Sum:meu_sum})
-_node_bottom_up_meu.update({Sum: sum_likelihood, Product: prod_likelihood, Max:max_likelihood})
+_node_top_down_meu.update({Max: meu_max, Sum: meu_sum})
+_node_bottom_up_meu.update({Sum: sum_likelihood, Product: prod_likelihood, Max: max_likelihood})
 
 
 def meu(node, input_data, node_top_down_meu=_node_top_down_meu, node_bottom_up_meu=_node_bottom_up_meu, in_place=False):
-    valid, err = is_valid(node)
-    assert valid, err
+    # valid, err = is_valid(node)
+    # assert valid, err
     if in_place:
         data = input_data
     else:
@@ -101,7 +102,8 @@ def meu(node, input_data, node_top_down_meu=_node_top_down_meu, node_bottom_up_m
 
     instance_ids = np.arange(data.shape[0])
 
-    # one pass top down to decide on the max branch until it reaches a leaf; returns  all_result, decisions at each max node for each instance.
+    # one pass top down to decide on the max branch until it reaches a leaf;
+    # returns  all_result, decisions at each max node for each instance.
     all_result, all_decisions, all_max_nodes = eval_spn_top_down_meu(node, node_top_down_meu, parent_result=instance_ids, data=data,
                                                       lls_per_node=lls_per_node)
 
@@ -120,7 +122,7 @@ def merge_rows_for_decisions(all_decisions=None):
     """
 
     decisions = defaultdict(list)
-   # max_nodes = defaultdict(list)
+    # max_nodes = defaultdict(list)
 
     for dict_decisions in all_decisions:
         for decision_node, decision in dict_decisions.items():
@@ -176,8 +178,6 @@ def eval_spn_top_down_meu(root, eval_functions, all_results=None, parent_result=
                 result, decision_values, max_nodes = func(n, param, **args)
                 all_decisions.append(decision_values)
                 all_max_nodes.append(max_nodes)
-
-
 
             if result is not None and not isinstance(n, Leaf):
                 assert isinstance(result, dict)
