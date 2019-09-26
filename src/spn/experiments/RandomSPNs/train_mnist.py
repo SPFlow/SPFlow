@@ -80,7 +80,7 @@ if __name__ == "__main__":
     args = RAT_SPN.SpnArgs()
     args.normalized_sums = True
     args.num_sums = 2
-    args.num_gauss = 2
+    args.num_univ_distros = 2
     spn = RAT_SPN.RatSpn(10, region_graph=rg, name="obj-spn", args=args)
     print("num_params", spn.num_params())
 
