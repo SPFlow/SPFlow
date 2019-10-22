@@ -34,7 +34,7 @@ def Compress(node):
     return node
 
 
-def Prune(node):
+def Prune(node, contract_single_parents=True):
     v, err = is_valid(node)
     assert v, err
     nodes = get_nodes_by_type(node, (Product, Sum))
@@ -50,7 +50,7 @@ def Prune(node):
             c = n.children[i]
 
             # if my children has only one node, we can get rid of it and link directly to that grandchildren
-            if not isinstance(c, Leaf) and len(c.children) == 1:
+            if contract_single_parents and not isinstance(c, Leaf) and len(c.children) == 1:
                 n.children[i] = c.children[0]
                 continue
 
@@ -69,7 +69,7 @@ def Prune(node):
         if is_sum and i > 0:
             n.weights[0] = 1.0 - sum(n.weights[1:])
 
-    if isinstance(node, (Product, Sum)) and len(node.children) == 1:
+    if contract_single_parents and isinstance(node, (Product, Sum)) and len(node.children) == 1:
         node = node.children[0]
 
     assign_ids(node)
