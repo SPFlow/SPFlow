@@ -80,7 +80,7 @@ if __name__ == "__main__":
     args = RAT_SPN.SpnArgs()
     args.normalized_sums = True
     args.num_sums = 2
-    args.num_gauss = 2
+    args.num_univ_distros = 2
     spn = RAT_SPN.RatSpn(10, region_graph=rg, name="obj-spn", args=args)
     print("num_params", spn.num_params())
 
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     # dummy_input = np.random.normal(0.0, 1.2, [10, 9])
     dummy_input = train_im[:5]
-    input_ph = tf.placeholder(tf.float32, dummy_input.shape)
+    input_ph = tf.placeholder(tf.float32, [None] + list(dummy_input.shape[1:]))
     output_tensor = spn.forward(input_ph)
     tf_output = sess.run(output_tensor, feed_dict={input_ph: dummy_input})
 
