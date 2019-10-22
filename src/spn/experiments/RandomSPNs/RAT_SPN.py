@@ -234,7 +234,7 @@ class ProductVector(NodeVector):
             # product == sum in log-domain
             prod = dists1_expand + dists2_expand
             # flatten out the outer product
-            prod = tf.reshape(prod, [dists1.shape[0], num_dist1 * num_dist2])
+            prod = tf.reshape(prod, [tf.shape(dists1)[0], num_dist1 * num_dist2])
 
         return prod
 

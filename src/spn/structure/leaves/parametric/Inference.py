@@ -16,14 +16,14 @@ logger = logging.getLogger(__name__)
 POS_EPS = np.finfo(float).eps
 
 
-def continuous_likelihood(node, data=None, dtype=np.float64):
+def continuous_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
     scipy_obj, params = get_scipy_obj_params(node)
     probs[~marg_ids] = scipy_obj.pdf(observations, **params)
     return probs
 
 
-def continuous_multivariate_likelihood(node, data=None, dtype=np.float64):
+def continuous_multivariate_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs = np.ones((data.shape[0], 1), dtype=dtype)
     observations = data[:, node.scope]
     assert not np.any(np.isnan(data))
@@ -36,7 +36,7 @@ lognormal_likelihood = continuous_likelihood
 exponential_likelihood = continuous_likelihood
 
 
-def gamma_likelihood(node, data=None, dtype=np.float64):
+def gamma_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
 
     observations[observations == 0] += POS_EPS
@@ -46,7 +46,7 @@ def gamma_likelihood(node, data=None, dtype=np.float64):
     return probs
 
 
-def discrete_likelihood(node, data=None, dtype=np.float64):
+def discrete_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
     scipy_obj, params = get_scipy_obj_params(node)
     probs[~marg_ids] = scipy_obj.pmf(observations, **params)
@@ -59,7 +59,7 @@ bernoulli_likelihood = discrete_likelihood
 geometric_likelihood = discrete_likelihood
 
 
-def categorical_likelihood(node, data=None, dtype=np.float64):
+def categorical_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
 
     cat_data = observations.astype(np.int64)
@@ -76,7 +76,7 @@ def categorical_likelihood(node, data=None, dtype=np.float64):
     return probs
 
 
-def categorical_dictionary_likelihood(node, data=None, dtype=np.float64):
+def categorical_dictionary_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
 
     dict_probs = [node.p.get(val, 0.0) for val in observations]
@@ -84,7 +84,7 @@ def categorical_dictionary_likelihood(node, data=None, dtype=np.float64):
     return probs
 
 
-def uniform_likelihood(node, data=None, dtype=np.float64):
+def uniform_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
 
     probs[~marg_ids] = node.density
