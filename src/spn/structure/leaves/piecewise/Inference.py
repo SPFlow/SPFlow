@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 LOG_ZERO = -300
 
 
-def piecewise_likelihood(node, data=None, dtype=np.float64):
+def piecewise_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
     probs[~marg_ids] = piecewise_complete_cases_likelihood(node, observations, dtype=dtype)
     return probs
