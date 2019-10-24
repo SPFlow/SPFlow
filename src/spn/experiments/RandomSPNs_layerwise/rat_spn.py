@@ -221,7 +221,7 @@ class IndependentNormal(Leaf):
         super(IndependentNormal, self).__init__(multiplicity, in_features, dropout)
         self.gauss = RatNormal(multiplicity=multiplicity, in_features=in_features, dropout=dropout)
         self.prod = Product(in_features=in_features, cardinality=cardinality)
-        self._pad = cardinality - self.in_features % cardinality
+        self._pad = (cardinality - self.in_features % cardinality) % cardinality
 
         self.cardinality = cardinality
         self.out_shape = f"(N, {self.prod._out_features}, {multiplicity})"
