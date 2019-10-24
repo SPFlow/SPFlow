@@ -85,7 +85,7 @@ class Product(nn.Module):
 
         # Implement product as convolution
         self._conv_weights = nn.Parameter(torch.ones(1, 1, cardinality, 1), requires_grad=False)
-        self._pad = self.cardinality - self.in_features % self.cardinality
+        self._pad = (self.cardinality - self.in_features % self.cardinality) % self.cardinality
 
         # Store shape information
         in_features = int(in_features)
