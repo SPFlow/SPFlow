@@ -221,6 +221,7 @@ class IndependentNormal(Leaf):
         super(IndependentNormal, self).__init__(multiplicity, in_features, dropout)
         self.gauss = RatNormal(multiplicity=multiplicity, in_features=in_features, dropout=dropout)
         self.prod = Product(in_features=in_features, cardinality=cardinality)
+        self._pad = (cardinality - self.in_features % cardinality) % cardinality
 
         self.cardinality = cardinality
         self.out_shape = f"(N, {self.prod._out_features}, {multiplicity})"
@@ -232,6 +233,11 @@ class IndependentNormal(Leaf):
     def forward(self, x):
         x = self.gauss(x)
         x = torch.where(~torch.isnan(x), x, torch.zeros(1).to(x.device))
+
+        if self._pad:
+            # Pad marginalized node
+            x = F.pad(x, pad=[0, 0, 0, self._pad], mode="constant", value=0.0)
+
         x = self.prod(x)
         return x
 
@@ -265,11 +271,8 @@ class RatProduct(nn.Module):
         cardinality = 2
         self.in_features = in_features
         self.cardinality = cardinality
-
         in_features = int(in_features)
         self._cardinality = cardinality
-        # Check if forward pass needs padding
-        self._pad = in_features % cardinality != 0
         self._out_features = np.ceil(in_features / cardinality).astype(int)
 
         # Collect scopes for each product child
@@ -303,10 +306,13 @@ class RatProduct(nn.Module):
         Returns:
             torch.Tensor: Output of shape [batch, ceil(in_features/2), channel * channel].
         """
+        # Check if padding to next power of 2 is necessary
+        if self.in_features != x.shape[1]:
+            # Compute necessary padding to the next power of 2
+            pad = 2 ** np.ceil(np.log2(x.shape[1])).astype(np.int) - x.shape[1]
 
-        if self._pad:
             # Pad marginalized node
-            x = F.pad(x, pad=[0, 0, 0, 1], mode="constant", value=0.0)
+            x = F.pad(x, pad=[0, 0, 0, pad], mode="constant", value=0.0)
 
         # Create zero tensor and sum up afterwards
         batch = x.shape[0]
