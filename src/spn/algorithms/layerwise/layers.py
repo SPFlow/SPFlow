@@ -85,7 +85,7 @@ class Product(nn.Module):
 
         # Implement product as convolution
         self._conv_weights = nn.Parameter(torch.ones(1, 1, cardinality, 1), requires_grad=False)
-        self._pad = self.in_features % self.cardinality
+        self._pad = (self.cardinality - self.in_features % self.cardinality) % self.cardinality
 
         # Store shape information
         in_features = int(in_features)
@@ -111,7 +111,7 @@ class Product(nn.Module):
             x = F.pad(x, pad=(0, 0, 0, self._pad), value=0)
 
         # Use convolution with weights of 1 and stride/kernel size of #children
-        # Simulate a single feature map, therefore [n, d, c] -> [n, c'=1, d, c], that is 
+        # Simulate a single feature map, therefore [n, d, c] -> [n, c'=1, d, c], that is
         # - The convolution channel input and output size will be 1
         # - The feature dimension (d) will be the height dimension
         # - The channel dimension (c) will be the width dimension
