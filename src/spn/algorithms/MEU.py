@@ -8,140 +8,107 @@ from spn.algorithms.MPE import get_node_funtions
 from spn.algorithms.Inference import  likelihood, max_likelihood, log_likelihood, sum_likelihood, prod_likelihood
 from spn.algorithms.Validity import is_valid
 from spn.structure.Base import get_nodes_by_type, Max, Leaf, Sum, Product, get_topological_order_layers
-
+from spn.structure.leaves.histogram.Inference import histogram_likelihood
+from spn.structure.leaves.spmnLeaves.SPMNLeaf import Utility
 import numpy as np
-from collections import defaultdict
-import collections
 
 
-def merge_input_vals(l):
-    return np.concatenate(l)
+def meu_sum(node, meu_per_node, data=None, lls_per_node=None, rand_gen=None):
+    meu_children = meu_per_node[:,[child.id for child in node.children]]
+    likelihood_children = lls_per_node[:,[child.id for child in node.children]]
+    weighted_likelihood = np.array(node.weights)*likelihood_children
+    norm = np.sum(weighted_likelihood, axis=1)
+    normalized_weighted_likelihood = weighted_likelihood / norm.reshape(-1,1)
+    meu_per_node[:,node.id] = np.sum(meu_children * normalized_weighted_likelihood, axis=1)
+
+def meu_prod(node, meu_per_node, data=None, lls_per_node=None, rand_gen=None):
+    # product node just passes up the utils of whichever child contains util nodes
+    meu_children = meu_per_node[:,[child.id for child in node.children]]
+    # the line below works because product nodes should have only one child containing the utility node.
+    # if more than one utility column is allowed this will have to change.
+    meu_per_node[:,node.id] = meu_children[~np.isnan(meu_children)]
+
+def meu_max(node, meu_per_node, data=None, lls_per_node=None, rand_gen=None):
+    meu_children = meu_per_node[:, [child.id for child in node.children]]
+    decision_value_given = data[:, node.dec_idx]
+    max_value = np.argmax(meu_children, axis=1)
+    # if data contains a decision value use that otherwise use max
+    child_idx = np.select([np.isnan(decision_value_given), True],
+                          [max_value, decision_value_given]).astype(int)
+    child_idx_to_id = lambda idx: node.children[idx].id
+    child_idx_to_id = np.vectorize(child_idx_to_id)
+    child_id = child_idx_to_id(child_idx)
+    meu_per_node[:,node.id] = meu_per_node[np.arange(meu_per_node.shape[0]),child_id]
+
+def meu_util(node, meu_per_node, data=None, lls_per_node=None, rand_gen=None):
+    #returns average value of the utility node
+    util_value = 0
+    for i in range(len(node.bin_repr_points)):
+        util_value += node.bin_repr_points[i] * node.densities[i]
+    utils = np.empty((data.shape[0]))
+    utils[:] = util_value
+    meu_per_node[:,node.id] = utils * lls_per_node[:,node.id]
 
 
-def meu_sum(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
-    if parent_result is None:
-        return None
+_node_bottom_up_meu = {Sum: meu_sum, Product: meu_prod, Max: meu_max, Utility: meu_util}
 
-    parent_result = merge_input_vals(parent_result)
-
-    w_children_log_probs = np.zeros((len(parent_result), len(node.weights)))
-    for i, c in enumerate(node.children):
-        w_children_log_probs[:, i] = np.log(lls_per_node[parent_result, c.id]) + np.log(node.weights[i])
-
-    max_child_branches = np.argmax(w_children_log_probs, axis=1)
-
-    children_row_ids = {}
-
-    for i, c in enumerate(node.children):
-        children_row_ids[c] = parent_result[max_child_branches == i]
-
-    return children_row_ids
-
-
-def meu_max(node, parent_result, data=None, lls_per_node=None, rand_gen=None):
-    if len(parent_result) == 0:
-        return None
-
-    parent_result = merge_input_vals(parent_result)
-
-    w_children_log_probs = np.zeros((len(parent_result), len(node.dec_values)))
-    for i, c in enumerate(node.children):
-        w_children_log_probs[:, i] = lls_per_node[parent_result, c.id]
-
-    max_child_branches = np.argmax(w_children_log_probs, axis=1)
-    dec_value = node.dec_values[max_child_branches]
-
-    children_row_ids = {}
-
-    for i, c in enumerate(node.children):
-        children_row_ids[c] = parent_result[max_child_branches == i]
-    # print("node and max_child_branches", (node.id, node.feature_name, max_child_branches))
-    # decision values at each node
-
-    decision_values = {}
-    max_nodes = {}
-    decision_values[node.feature_name] = np.column_stack((parent_result, dec_value))
-    if len(dec_value) != 0:
-        node_name = [node.name]*len(dec_value)
-        max_nodes[node.feature_name] = np.column_stack((parent_result, node_name))
-    else:
-        max_nodes[node.feature_name] = np.column_stack((parent_result, []))
-
-    # print("w_children_log_probs", w_children_log_probs)
-    return children_row_ids, decision_values, max_nodes
-
-
-node_functions = get_node_funtions()
-_node_top_down_meu = node_functions[0].copy()
-_node_bottom_up_meu = node_functions[1].copy()
-_node_top_down_meu.update({Max: meu_max, Sum: meu_sum})
-_node_bottom_up_meu.update({Sum: sum_likelihood, Product: prod_likelihood, Max: max_likelihood})
-
-
-def meu(node, input_data, node_top_down_meu=_node_top_down_meu, node_bottom_up_meu=_node_bottom_up_meu, in_place=False):
+def meu(node, input_data,
+        node_bottom_up_meu=_node_bottom_up_meu,
+        in_place=False):
     # valid, err = is_valid(node)
     # assert valid, err
     if in_place:
         data = input_data
     else:
         data = np.array(input_data)
-
     # assumes utility is only one and is at the last
     # print("input data:", input_data[:, -1])
     assert np.isnan(data[:, -1]), "Please specify utility variable as NaN"
-
     nodes = get_nodes_by_type(node)
-
-    lls_per_node = np.zeros((data.shape[0], len(nodes)))
-
+    likelihood_per_node = np.zeros((data.shape[0], len(nodes)))
+    meu_per_node = np.zeros((data.shape[0], len(nodes)))
+    meu_per_node.fill(np.nan)
     # one pass bottom up evaluating the likelihoods
-    # log_likelihood(node, data, dtype=data.dtype, node_log_likelihood=node_bottom_up_meu, lls_matrix=lls_per_node)
-    likelihood(node, data, dtype=data.dtype, node_likelihood=node_bottom_up_meu, lls_matrix=lls_per_node)
-
-    meu_val = lls_per_node[:, 0]
-
-    instance_ids = np.arange(data.shape[0])
-
-    # one pass top down to decide on the max branch until it reaches a leaf;
-    # returns  all_result, decisions at each max node for each instance.
-    all_result, all_decisions, all_max_nodes = eval_spn_top_down_meu(node, node_top_down_meu, parent_result=instance_ids, data=data,
-                                                      lls_per_node=lls_per_node)
-
-    decisions = merge_rows_for_decisions(all_decisions)
-    max_nodes = merge_rows_for_decisions(all_max_nodes)
-
-    return meu_val, decisions, max_nodes
+    likelihood(node, data, dtype=data.dtype, lls_matrix=likelihood_per_node)
+    eval_spmn_bottom_up_meu(
+            node,
+            _node_bottom_up_meu,
+            meu_per_node=meu_per_node,
+            data=data,
+            lls_per_node=likelihood_per_node
+        )
+    result = meu_per_node[:,node.id]
+    return result
 
 
-
-def merge_rows_for_decisions(all_decisions=None):
+def eval_spmn_bottom_up_meu(root, eval_functions, meu_per_node=None, data=None, lls_per_node=None):
     """
-    merges different values of same key into one key:value pair
-    :param all_decisions: takes the dictionary of decisions with key as max_node name and values as numpy array with first column as row number of instance, second column as decision.
-    :return: merged values of same key and sorted on rowNum, key:value pairs(max_naode:[[rowNum, decision]]
-    """
-
-    decisions = defaultdict(list)
-    # max_nodes = defaultdict(list)
-
-    for dict_decisions in all_decisions:
-        for decision_node, decision in dict_decisions.items():
-            decisions[decision_node].append(decision)
-
-    # print(decisions)
-
-    for decision_node, decision in decisions.items():
-        decisions[decision_node] = np.concatenate(tuple(decision))
-
-    # print(decisions)
-
-    for decision_node, decision in decisions.items():
-        decisions[decision_node] = decision[decision[:, 0].argsort()]
-
-    return decisions
+      evaluates an spn top to down
+      :param root: spnt root
+      :param eval_functions: is a dictionary that contains k:Class of the node, v:lambda function that receives as parameters (node, [parent_results], args**) and returns {child : intermediate_result}. This intermediate_result will be passed to child as parent_result. If intermediate_result is None, no further propagation occurs
+      :param all_results: is a dictionary that contains k:Class of the node, v:result of the evaluation of the lambda function for that node.
+      :param parent_result: initial input to the root node
+      :param args: free parameters that will be fed to the lambda functions.
+      :return: the result of computing and propagating all the values throught the network, decisions at each max node for the instances reaching that max node.
+      """
+    for node_type, func in eval_functions.items():
+        if "_eval_func" not in node_type.__dict__:
+            node_type._eval_func = []
+        node_type._eval_func.append(func)
+    for layer in get_topological_order_layers(root):
+        for n in layer:
+            if type(n)==Max or type(n)==Sum or type(n)==Product or type(n)==Utility:
+                func = n.__class__._eval_func[-1]
+                func(n, meu_per_node, data=data, lls_per_node=lls_per_node)
+    for node_type, func in eval_functions.items():
+        del node_type._eval_func[-1]
+        if len(node_type._eval_func) == 0:
+            delattr(node_type, "_eval_func")
 
 
-def eval_spn_top_down_meu(root, eval_functions, all_results=None, parent_result=None, **args):
+def eval_spmn_top_down_meu(root, eval_functions,
+        all_results=None, parent_result=None, data=None,
+        lls_per_node=None, likelihood_per_node=None):
     """
       evaluates an spn top to down
 
@@ -172,12 +139,19 @@ def eval_spn_top_down_meu(root, eval_functions, all_results=None, parent_result=
             func = n.__class__._eval_func[-1]
 
             param = all_results[n]
-            if type(n) != Max:
-                result = func(n, param, **args)
-            else:
-                result, decision_values, max_nodes = func(n, param, **args)
+            if type(n) == Max:
+                result, decision_values, max_nodes = func(n, param,
+                                    data=data, lls_per_node=lls_per_node)
                 all_decisions.append(decision_values)
                 all_max_nodes.append(max_nodes)
+            elif type(n) == Sum:
+                result = func(n, param,
+                        likelihood_per_node=likelihood_per_node,
+                        data=data,
+                        lls_per_node=lls_per_node
+                    )
+            else:
+                result = func(n, param, data=data, lls_per_node=lls_per_node)
 
             if result is not None and not isinstance(n, Leaf):
                 assert isinstance(result, dict)
