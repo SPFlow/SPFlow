@@ -4,7 +4,6 @@ Created on October 22, 2018
 @author: Nicola DI Mauro
 """
 from spn.algorithms.MPE import get_mpe_top_down_leaf, add_node_mpe
-from spn.structure.leaves.cltree.Inference import cltree_likelihood
 from spn.structure.leaves.cltree.CLTree import CLTree
 
 import numpy as np
@@ -13,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def cltree_bottom_up_ll(node, data, dtype=np.float64):
+def cltree_bottom_up_log_ll(node, data, dtype=np.float64):
     probs = np.ones((data.shape[0], 1))
     cltree_mpe(node, data, probs)
     return probs
@@ -24,10 +23,10 @@ def cltree_top_down(node, input_vals, data, lls_per_node=None, dtype=np.float64)
 
 
 def add_cltree_mpe_support():
-    add_node_mpe(CLTree, cltree_bottom_up_ll, cltree_top_down)
+    add_node_mpe(CLTree, cltree_bottom_up_log_ll, cltree_top_down)
 
 
-def cltree_mpe(node, data, probs):
+def cltree_mpe(node, data, logprobs):
 
     log_factors = np.array(node.log_factors)
 
@@ -93,4 +92,4 @@ def cltree_mpe(node, data, probs):
                     data[r, node.scope[i]] = MAP[i]
                 logprob += log_factors[i, int(MAP[i]), int(MAP[node.tree[i]])]
 
-        probs[r] = np.exp(logprob)
+        logprobs[r] = logprob

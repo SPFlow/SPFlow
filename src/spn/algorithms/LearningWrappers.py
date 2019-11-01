@@ -146,6 +146,7 @@ def learn_parametric(
     min_instances_slice=200,
     min_features_slice=1,
     multivariate_leaf=False,
+    cluster_univariate=False,
     threshold=0.3,
     ohe=False,
     leaves=None,
@@ -162,7 +163,7 @@ def learn_parametric(
     def learn_param(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
         split_cols, split_rows = get_splitting_functions(cols, rows, ohe, threshold, rand_gen, cpus)
 
-        nextop = get_next_operation(min_instances_slice, min_features_slice, multivariate_leaf)
+        nextop = get_next_operation(min_instances_slice, min_features_slice, multivariate_leaf, cluster_univariate)
 
         return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop)
 
