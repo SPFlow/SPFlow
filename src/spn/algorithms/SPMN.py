@@ -19,9 +19,16 @@ from spn.algorithms.TransformStructure import Prune
 class SPMN:
 
     def __init__(self, partial_order, decision_nodes, utility_node, feature_names,
-                 cluster_by_curr_information_set=False, util_to_bin=False):
+            meta_types, cluster_by_curr_information_set=False, util_to_bin=False):
 
-        self.params = SPMNParams(partial_order, decision_nodes, utility_node, feature_names, util_to_bin)
+        self.params = SPMNParams(
+                partial_order,
+                decision_nodes,
+                utility_node,
+                feature_names,
+                meta_types,
+                util_to_bin
+            )
         self.op = 'Any'
         self.cluster_by_curr_information_set = cluster_by_curr_information_set
         self.spmn_structure = None
@@ -303,9 +310,10 @@ class SPMN:
 
 class SPMNParams:
 
-    def __init__(self, partial_order, decision_nodes, utility_node, feature_names, util_to_bin):
+    def __init__(self, partial_order, decision_nodes, utility_node, feature_names, meta_types, util_to_bin):
         self.partial_order = partial_order
         self.decision_nodes = decision_nodes
         self.utility_node = utility_node
         self.feature_names = feature_names
+        self.meta_types = meta_types
         self.util_to_bin = util_to_bin
