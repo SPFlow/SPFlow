@@ -61,8 +61,8 @@ This architecture can be implemented with the following code
 .. code:: python
 
 
-  from torchspn.distributions import Normal
-  from torchspn.layers import Sum, Product
+  from spn.algorithms.layerwise.distributions import Normal
+  from spn.algorithms.layerwise.layers import Sum, Product
   import torch
   from torch import nn
 
