@@ -6,13 +6,14 @@ Created on March 27, 2018
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.client import timeline
 from typing import Union, Tuple, List
+
+from tensorflow.python.client import timeline
 
 from spn.algorithms.TransformStructure import Copy
 from spn.structure.Base import Product, Sum, eval_spn_bottom_up, Node
 from spn.structure.leaves.histogram.Histograms import Histogram
-from spn.structure.leaves.histogram.Inference import histogram_likelihood
+from spn.structure.leaves.histogram.Inference import histogram_log_likelihood
 from spn.structure.leaves.parametric.Parametric import Gaussian
 import logging
 
@@ -44,10 +45,10 @@ def histogram_to_tf_graph(node, data_placeholder=None, log_space=True, variable_
         inps = np.arange(int(max(node.breaks))).reshape((-1, 1))
         tmpscope = node.scope[0]
         node.scope[0] = 0
-        hll = histogram_likelihood(node, inps)
+        hll = histogram_log_likelihood(node, inps)
         node.scope[0] = tmpscope
-        if log_space:
-            hll = np.log(hll)
+        if not log_space:
+            hll = np.exp(hll)
 
         lls = tf.constant(hll.astype(dtype))
 

@@ -42,7 +42,7 @@ class Operation(Enum):
     CONDITIONING = 6
 
 
-def get_next_operation(min_instances_slice=100, min_features_slice=1, multivariate_leaf=False):
+def get_next_operation(min_instances_slice=100, min_features_slice=1, multivariate_leaf=False, cluster_univariate=False):
     def next_operation(
         data,
         scope,
@@ -51,7 +51,6 @@ def get_next_operation(min_instances_slice=100, min_features_slice=1, multivaria
         no_independencies=False,
         is_first=False,
         cluster_first=True,
-        cluster_univariate=False,
     ):
 
         minimalFeatures = len(scope) == min_features_slice

@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def piecewise_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
+def piecewise_log_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
     """
     Returns the probability for the given ranges.
     
@@ -47,7 +47,7 @@ def piecewise_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
         # Compute the sum of the probability of all possible values
         probs[i] = sum([_compute_probability_for_range(node, interval) for interval in rang.get_ranges()])
 
-    return probs
+    return np.log(probs)
 
 
 def _compute_probability_for_range(node, interval):
@@ -76,4 +76,4 @@ def _compute_probability_for_range(node, interval):
 
 
 def add_piecewise_inference_range_support():
-    add_node_likelihood(PiecewiseLinear, piecewise_likelihood_range)
+    add_node_likelihood(PiecewiseLinear, log_lambda_func=piecewise_log_likelihood_range)

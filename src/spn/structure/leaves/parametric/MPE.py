@@ -4,17 +4,9 @@ Created on July 02, 2018
 @author: Alejandro Molina
 """
 from spn.algorithms.MPE import get_mpe_top_down_leaf, add_node_mpe
-from spn.structure.leaves.parametric.Inference import (
-    continuous_likelihood,
-    gamma_likelihood,
-    lognormal_likelihood,
-    discrete_likelihood,
-    bernoulli_likelihood,
-    categorical_likelihood,
-    geometric_likelihood,
-    exponential_likelihood,
-    categorical_dictionary_likelihood,
-)
+from spn.structure.leaves.parametric.Inference import continuous_log_likelihood, gamma_log_likelihood, \
+    discrete_log_likelihood, categorical_log_likelihood, categorical_dictionary_log_likelihood
+
 from spn.structure.leaves.parametric.Parametric import (
     Gaussian,
     Gamma,
@@ -34,7 +26,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_parametric_bottom_up_ll(ll_func, mode_func):
+def get_parametric_bottom_up_log_ll(ll_func, mode_func):
     def param_bu_fn(node, data=None, dtype=np.float64):
         probs = ll_func(node, data=data, dtype=dtype)
 
@@ -60,7 +52,7 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         Gaussian,
-        get_parametric_bottom_up_ll(continuous_likelihood, gaussian_mode),
+        get_parametric_bottom_up_log_ll(continuous_log_likelihood, gaussian_mode),
         get_parametric_top_down_ll(gaussian_mode),
     )
 
@@ -68,7 +60,7 @@ def add_parametric_mpe_support():
         return (node.alpha - 1) / node.beta
 
     add_node_mpe(
-        Gamma, get_parametric_bottom_up_ll(gamma_likelihood, gamma_mode), get_parametric_top_down_ll(gamma_mode)
+        Gamma, get_parametric_bottom_up_log_ll(gamma_log_likelihood, gamma_mode), get_parametric_top_down_ll(gamma_mode)
     )
 
     def lognormal_mode(node):
@@ -76,7 +68,7 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         LogNormal,
-        get_parametric_bottom_up_ll(lognormal_likelihood, lognormal_mode),
+        get_parametric_bottom_up_log_ll(continuous_log_likelihood, lognormal_mode),
         get_parametric_top_down_ll(lognormal_mode),
     )
 
@@ -85,7 +77,7 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         Poisson,
-        get_parametric_bottom_up_ll(discrete_likelihood, poisson_mode),
+        get_parametric_bottom_up_log_ll(discrete_log_likelihood, poisson_mode),
         get_parametric_top_down_ll(poisson_mode),
     )
 
@@ -97,7 +89,7 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         Bernoulli,
-        get_parametric_bottom_up_ll(bernoulli_likelihood, bernoulli_mode),
+        get_parametric_bottom_up_log_ll(discrete_log_likelihood, bernoulli_mode),
         get_parametric_top_down_ll(bernoulli_mode),
     )
 
@@ -106,7 +98,7 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         Categorical,
-        get_parametric_bottom_up_ll(categorical_likelihood, categorical_mode),
+        get_parametric_bottom_up_log_ll(categorical_log_likelihood, categorical_mode),
         get_parametric_top_down_ll(categorical_mode),
     )
 
@@ -115,7 +107,7 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         Geometric,
-        get_parametric_bottom_up_ll(geometric_likelihood, geometric_mode),
+        get_parametric_bottom_up_log_ll(discrete_log_likelihood, geometric_mode),
         get_parametric_top_down_ll(geometric_mode),
     )
 
@@ -127,7 +119,7 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         NegativeBinomial,
-        get_parametric_bottom_up_ll(geometric_likelihood, negative_binomial_mode),
+        get_parametric_bottom_up_log_ll(discrete_log_likelihood, negative_binomial_mode),
         get_parametric_top_down_ll(negative_binomial_mode),
     )
 
@@ -136,7 +128,7 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         Exponential,
-        get_parametric_bottom_up_ll(exponential_likelihood, exponential_mode),
+        get_parametric_bottom_up_log_ll(continuous_log_likelihood, exponential_mode),
         get_parametric_top_down_ll(exponential_mode),
     )
 
@@ -145,7 +137,7 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         Hypergeometric,
-        get_parametric_bottom_up_ll(exponential_likelihood, hypergeometric_mode),
+        get_parametric_bottom_up_log_ll(continuous_log_likelihood, hypergeometric_mode),
         get_parametric_top_down_ll(hypergeometric_mode),
     )
 
@@ -154,6 +146,6 @@ def add_parametric_mpe_support():
 
     add_node_mpe(
         CategoricalDictionary,
-        get_parametric_bottom_up_ll(categorical_dictionary_likelihood, categoricaldict_mode),
+        get_parametric_bottom_up_log_ll(categorical_dictionary_log_likelihood, categoricaldict_mode),
         get_parametric_top_down_ll(categoricaldict_mode),
     )
