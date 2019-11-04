@@ -326,7 +326,7 @@ def create_parametric_leaf(data, ds_context, scope):
         ds_context.parametric_types is not None
     ), "for parametric leaves, the ds_context.parametric_types can't be None"
     assert (
-        idx in ds_context.parametric_types.keys() #len(ds_context.parametric_types) > idx
+        idx in ds_context.parametric_types.keys()
     ), "for parametric leaves, the ds_context.parametric_types must have a parametric type at pos %s " % (idx)
 
     parametric_type = ds_context.parametric_types[idx]

@@ -21,6 +21,9 @@ from spn.structure.leaves.cltree.Inference import add_cltree_inference_support
 from spn.structure.leaves.cltree.MPE import add_cltree_mpe_support
 from spn.structure.leaves.cltree.Sampling import add_cltree_sampling_support
 
+from spn.structure.leaves.spmnLeaves.Inference import add_utility_inference_support
+from spn.structure.leaves.spmnLeaves.MEU import add_utility_mpe_support
+
 add_parametric_sampling_support()
 add_parametric_inference_support()
 add_parametric_moment_support()
@@ -42,3 +45,6 @@ add_cltree_sampling_support()
 add_cltree_inference_support()
 add_cltree_expectation_support()
 add_cltree_mpe_support()
+
+add_utility_inference_support()
+add_utility_mpe_support()
