@@ -156,7 +156,6 @@ class Context:
 
         self.meta_types = dict(zip(self.scope, self.meta_types ))
 
-
     def get_meta_types_by_scope(self, scopes):
         return [self.meta_types[s] for s in scopes]
 
@@ -181,8 +180,9 @@ class Context:
             max_val = np.nanmax(data[:, col])
             domain_values = [min_val, max_val]
 
+            if feature_meta_type == MetaType.REAL or feature_meta_type == MetaType.BINARY or \
+                    feature_meta_type == MetaType.UTILITY:
 
-            if feature_meta_type == MetaType.REAL or feature_meta_type == MetaType.BINARY or feature_meta_type == MetaType.UTILITY:
                 domain.append(domain_values)
             elif feature_meta_type == MetaType.DISCRETE:
                 domain.append(np.arange(domain_values[0], domain_values[1] + 1, 1))

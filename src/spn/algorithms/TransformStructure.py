@@ -6,7 +6,8 @@ Created on March 27, 2018
 from copy import deepcopy
 
 from spn.algorithms.Validity import is_valid
-from spn.structure.Base import Leaf, Sum, Product, assign_ids, get_nodes_by_type, get_parents, get_topological_order
+from spn.structure.Base import Leaf, Sum, Product, assign_ids, \
+    get_nodes_by_type, get_parents, get_topological_order, Max
 import logging
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ def Compress(node):
 def Prune(node):
     v, err = is_valid(node)
     assert v, err
-    nodes = get_nodes_by_type(node, (Product, Sum))
+    nodes = get_nodes_by_type(node, (Product, Sum, Max))
 
     while len(nodes) > 0:
         n = nodes.pop()
@@ -49,8 +50,11 @@ def Prune(node):
         while i < len(n.children):
             c = n.children[i]
 
-            # if my children has only one node, we can get rid of it and link directly to that grandchildren
-            if not isinstance(c, Leaf) and len(c.children) == 1:
+            # if my children has only one node, we can get rid of it
+            # and link directly to that grandchildren
+            if not (isinstance(c, Leaf) or isinstance(c, Max)) and \
+                    len(c.children) == 1:
+
                 n.children[i] = c.children[0]
                 continue
 
