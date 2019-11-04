@@ -25,21 +25,12 @@ def get_ds_context(data, scope, params):
 
     num_of_variables = data.shape[1]
     scope_var = np.array(params.feature_names)[scope].tolist()
-    # if parametric, all variables are type -- categorical
-    if params.util_to_bin:
-        context = [Categorical] * num_of_variables
-        ds_context = Context(parametric_types=context, scope=scope, feature_names=scope_var).add_domains(data)
-
-    # if mixed, utility is meta type -- UTILITY
-    else:
-        if params.utility_node[0] in scope_var:
-            context = [MetaType.DISCRETE] * (num_of_variables - 1)
-            context.append(MetaType.UTILITY)
-        else:
-            context = [MetaType.DISCRETE] * num_of_variables
-
-        scope = scope
-        ds_context = Context(meta_types=context, scope=scope, feature_names=scope_var).add_domains(data)
+    ds_context = Context(
+            meta_types=[params.meta_types[i] for i in scope],
+            scope=scope,
+            feature_names=scope_var
+        )
+    ds_context.add_domains(data)
     return ds_context
 
 
