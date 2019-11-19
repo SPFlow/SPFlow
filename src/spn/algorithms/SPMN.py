@@ -304,7 +304,7 @@ class SPMN:
 
         self.spmn_structure = self.__learn_spmn_structure(data, remaining_vars_scope, curr_information_set_scope, index)
 
-        # Prune(self.spmn_structure)
+        Prune(self.spmn_structure)
         return self.spmn_structure
 
 

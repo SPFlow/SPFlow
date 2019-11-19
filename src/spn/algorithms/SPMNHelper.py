@@ -44,7 +44,7 @@ def cluster(data, dec_vals):
     logging.debug(f'in cluster function of SPMNHelper')
     clusters_on_remaining_columns = []
     for i in range(0, len(dec_vals)):
-        clustered_data_for_dec_val = data[[data[:, 0] == dec_vals[i]]]
+        clustered_data_for_dec_val = data[data[:, 0] == dec_vals[i]]
         # exclude the 0th column, which belongs to decision node
         clustered_data_on_remaining_columns = np.delete(clustered_data_for_dec_val, 0, 1)
         # logging.debug(f'clustered data on remaining columns is {clustered_data_on_remaining_columns}')
