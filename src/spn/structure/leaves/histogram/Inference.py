@@ -15,9 +15,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 # @jit("float64[:](float64[:], float64[:], float64[:,:])", nopython=True)
 def histogram_ll(breaks, densities, data):
-
     probs = np.zeros((data.shape[0], 1))
 
     for i, x in enumerate(data):
@@ -39,7 +39,7 @@ def histogram_ll(breaks, densities, data):
     return probs
 
 
-def histogram_likelihood(node, data=None, dtype=np.float64):
+def histogram_log_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs = np.ones((data.shape[0], 1), dtype=dtype)
 
     nd = data[:, node.scope[0]]
@@ -47,8 +47,8 @@ def histogram_likelihood(node, data=None, dtype=np.float64):
 
     probs[~marg_ids] = histogram_ll(np.array(node.breaks), np.array(node.densities), nd[~marg_ids])
 
-    return probs
+    return np.log(probs)
 
 
 def add_histogram_inference_support():
-    add_node_likelihood(Histogram, histogram_likelihood)
+    add_node_likelihood(Histogram, log_lambda_func=histogram_log_likelihood)

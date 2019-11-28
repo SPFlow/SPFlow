@@ -7,7 +7,7 @@ Created on May 4, 2018
 
 import numpy as np
 
-from spn.algorithms.Inference import EPSILON, add_node_likelihood, leaf_marginalized_likelihood
+from spn.algorithms.Inference import EPSILON, add_node_likelihood, leaf_marginalized_log_likelihood
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 import logging
 
@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 LOG_ZERO = -300
 
 
-def piecewise_likelihood(node, data=None, dtype=np.float64):
-    probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
-    probs[~marg_ids] = piecewise_complete_cases_likelihood(node, observations, dtype=dtype)
+def piecewise_log_likelihood(node, data=None, dtype=np.float64, **kwargs):
+    probs, marg_ids, observations = leaf_marginalized_log_likelihood(node, data, dtype)
+    probs[~marg_ids] = piecewise_complete_cases_log_likelihood(node, observations, dtype=dtype)
     return probs
 
 
@@ -40,15 +40,15 @@ def _compute_probability_for_range(node, interval):
     return np.trapz(y_tmp, x_tmp)
 
 
-def piecewise_complete_cases_likelihood(node, obs, dtype=np.float64):
+def piecewise_complete_cases_log_likelihood(node, obs, dtype=np.float64):
     probs = np.ones((obs.shape[0]), dtype=dtype)  # + EPSILON
     ivalues = np.interp(x=obs, xp=node.x_range, fp=node.y_range)
     probs[:] = ivalues
     # ividx = ivalues > 0
     # probs[ividx, 0] = ivalues[ividx]
     assert np.all(probs >= 0.0)
-    return probs
+    return np.log(probs)
 
 
 def add_piecewise_inference_support():
-    add_node_likelihood(PiecewiseLinear, piecewise_likelihood)
+    add_node_likelihood(PiecewiseLinear, log_lambda_func=piecewise_log_likelihood)

@@ -13,8 +13,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def cltree_likelihood(node, data=None, dtype=np.float64):
-    probs = np.zeros(data.shape[0], dtype=dtype)
+def cltree_log_likelihood(node, data=None, dtype=np.float64, **kwargs):
+    log_probs = np.zeros(data.shape[0], dtype=dtype)
     log_factors = np.array(node.log_factors)
 
     if np.isnan(np.sum(data)):
@@ -52,19 +52,19 @@ def cltree_likelihood(node, data=None, dtype=np.float64):
                             np.exp(log_factors[i, 0, 0] + messages[0, 0])
                             + np.exp(log_factors[i, 1, 0] + messages[0, 1])
                         )
-            probs[r] = logprob
+            log_probs[r] = logprob
 
     else:
 
         for feature in range(0, node.n_features):
             parent = node.tree[feature]
             if parent == -1:
-                probs = probs + log_factors[feature, data[:, node.scope[feature]], 0]
+                log_probs = log_probs + log_factors[feature, data[:, node.scope[feature]], 0]
             else:
-                probs = probs + log_factors[feature, data[:, node.scope[feature]], data[:, node.scope[parent]]]
+                log_probs = log_probs + log_factors[feature, data[:, node.scope[feature]], data[:, node.scope[parent]]]
 
-    return np.exp(probs.reshape(data.shape[0], 1))
+    return log_probs.reshape(data.shape[0], 1)
 
 
 def add_cltree_inference_support():
-    add_node_likelihood(CLTree, cltree_likelihood)
+    add_node_likelihood(CLTree, log_lambda_func=cltree_log_likelihood)
