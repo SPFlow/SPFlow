@@ -6,12 +6,18 @@ from spn.gpu.TensorFlow import optimize_tf
 import sys
 import numpy as np
 
+#Increase recursion limit as otherwise conversion will fail
+
 sys.setrecursionlimit(15000)
+
+#Load string, convert to SPN
 
 with open('./ca.txt', 'r') as myfile:
     data = myfile.read().replace('\n', '')
 
 thespn = str_to_spn(data)
+
+#Load data
 
 testdata = np.load('./test.npy')
 
@@ -39,7 +45,11 @@ print(lloptimized, np.exp(lloptimized))
 print(np.mean(lloptimized))
 print(np.mean(ll))
 
+#If done right, first value will be better. As expected, since we optimized !
+
 txt = spn_to_str_equation(optimized_spn)
+
+#Uncomment if you wish to save optimized structure
 
 '''
 text_file = open("./optca.txt", "w")
