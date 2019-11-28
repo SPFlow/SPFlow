@@ -12,8 +12,7 @@ from scipy.cluster.vq import vq, kmeans, whiten
 from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.cluster import KMeans
 
-# Make the affinity matrix
-
+# Make an affinity matrix. For the datasets of interest, vectorization usually offers speedups that are ~ .1s, so while subpar, this is still fine.
 
 def infmat(mat, nvar):
     retmat = np.zeros((nvar, nvar))
@@ -26,7 +25,7 @@ def infmat(mat, nvar):
                 retmat[i][j] = abs(temp[0][1])
     return retmat
 
-# Get boolean leaves
+# This function makes boolean leaves ( simply, counters ) with a smoothing term. That is, we learn a pdf over all possible binary strings of length nvar
 
 
 def createpdf(mat, nsam, nvar, smooth=0.05):
@@ -38,6 +37,8 @@ def createpdf(mat, nsam, nvar, smooth=0.05):
     for i in range(0, length):
         pdf[i] += float(smooth / float(length))
     return pdf
+
+#decomp takes a graph G. It creates a MST over G, and begins cutting off edges. Now, at every step, there is a check to see if the maximum size CC is below a threshold maxsize, if so, this partition is added to the list of valid partitions. There will be <= maxcount such partitions created as candidate children of sumnodes.
 
 
 def decomp(G, maxsize, maxcount):
@@ -71,6 +72,7 @@ def decomp(G, maxsize, maxcount):
     s.setwts(effwts)
     return s, Dec
 
+#discmaker is a wrapper that creates a discrete leaf. `Discrete' is a confusing term here, we do not tackle non-binary data.
 
 def discmaker(tempdat, sub):
     l = discNode()
@@ -79,6 +81,8 @@ def discmaker(tempdat, sub):
     l.create(pdf)
     return l
 
+
+#makenodes is a general wrapper that attempts clustering of the dataset, but the clustering is valid only when the smallest cluster is above some parameter cutoff. We then create recursive calls to either discinduce or continduce, which are as the names suggest called based on the flag passed. The parameters metacutoff determine whether the dataset is big enough to cluster, tempdat is the dataset, scope is the scope, maxsize is the max size of a CC, and if the dataset has scope size falling below indsize ( induce size ) - we pass calls to make leaves.
 
 def makenodes(
         tempdat,
@@ -136,6 +140,8 @@ def makenodes(
     s.setwts(arr)
     return s
 
+#This function is the discrete(binary) equivalent to continduce below. Both of them share the function makenodes, which is called when their datasets are large enough to cluster ( i.e. above the parameter metacutoff ). Parameters align with makenodes description above. However, flag is different - flag being 0 signifies attempting a clustering, whereas for makenodes flag determines which one of continduce or discinduce called it.
+
 
 def discinduce(
         tempdat,
@@ -191,6 +197,7 @@ def discinduce(
 
     return s
 
+#Makes a continuous leaf. Counterpart to discmaker.
 
 def contmaker(empmean, effcov, sub, j):
     l = leafNode()
@@ -200,6 +207,8 @@ def contmaker(empmean, effcov, sub, j):
     l.create(tempmean, tempcov)
     return l
 
+
+#Wrapper to induce if the data is continuous. This interacts with makenodes if the size of the dataset exceeds the parameter metacutoff, which basically means the dataset is large enough to warrant clustering. Makenodes is shared with discinduce above, and parameters here are as above except flag which when 0 means a calls to makenodes ( which has a different usage for its own flag )
 
 def continduce(
         tempdat,
@@ -255,7 +264,7 @@ def continduce(
 
     return s
 
-# Call to decrease.
+# Call to decrease. This is invoked on the maxsize parameter that governs maximum size of a valid CC after a step.
 # Note : It is possible to set this in a way that causes the program to bug out. For instance, suppose your maxsize is 9 and you decrement by 4 with a leafsize of 1. This is fine, and will never bug out, since it'll always hit maxsize = 1 after two decrements. But, suppose this was done with decrements of six - it is possible to hit 3 and then -3 which will cause bugouts. For this reason, set the decrement operator to something like a halving ( for univariate leaves ) that always passes through leafsize.
 # If the above condition is not followed strictly, it is possible to get
 # segfaults running CCCP. Heavily recommended to stick to this
@@ -270,6 +279,8 @@ def decrease(value):
     # return(value-4) # this is used for CA and SD, our two large continuous
     # datasets. For smaller ones, value-2 runs fast enough
 
+
+#Code to convert the string we get from Prometheus to a format readable by SPFLOW's txt-to-spn features.
 
 def dumpspnflow(node, flag):
     if(node.kind == 2):
@@ -304,6 +315,8 @@ def dumpspnflow(node, flag):
                 child, flag), node.children)
         return "(" + " * ".join(children_strs) + ")"
 
+
+#The main function. We have dset, the dataset, cflag which is 1 for continuous 0 for binary(discrete). Leafsize is the maximum #vars in a leaf. Maxsize indicates the initial upper bound on size of CCs. Maxprods shows how many products at most are created as children of a node. A basic EM step using the scipy objects is run for itermult*#instances over the dataset to return parameters that are not totally meaningless at initialization.
 
 def prometheus(dset, cflag, leafsize=1, maxsize=16, maxprods=8, itermult=1):
     if(cflag == 0):

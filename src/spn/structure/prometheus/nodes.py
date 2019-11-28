@@ -2,8 +2,11 @@ import numpy as np
 from spn.structure.prometheus.data import *
 from scipy.stats import multivariate_normal as mn
 
+#Ignore this, only useful if you wish to train parameters via scipy
+
 globalarr = []
 
+#Type of node
 
 def convert(tag):
     holder = ['PRD', 'SUM', 'BINNODE']
@@ -28,6 +31,8 @@ def bintodec(arr):
         wt = wt // 2
     return int(np.rint(cnt))
 
+
+#The entirety of the Node code + the ones that inherit from the class, are basically slightly modified versions of Agastya Kalra's OSLRAU implementation. Since each node is a separate object, beware #of memorysinks ( should not be an issue if running on servers )
 
 class Node:
     def __init__(self):

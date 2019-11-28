@@ -82,7 +82,7 @@ def categorical_tree_to_spn(tree, features, obj_type, tree_to_spn):
 
 def mvg_to_str(node, feature_names=None, node_to_str=None):
 
-    #print("this runs")
+
     decimals = 3
 
     if feature_names is None:
@@ -102,14 +102,11 @@ def mvg_to_str(node, feature_names=None, node_to_str=None):
         '\n',
         '')
 
-    #print("MultivariateGaussian(%s|prmset=%s)" % (fname,params))
-
     return "MultivariateGaussian(%s|prmset=%s)" % (fname, params)
 
 
 def MVG_tree_to_spn(tree, features, obj_type, tree_to_spn):
 
-    #print("this also ran")
     params = tree.children[1:]
 
     init_params = OrderedDict()
@@ -128,15 +125,9 @@ def MVG_tree_to_spn(tree, features, obj_type, tree_to_spn):
 
     feature = str(tree.children[0])
 
-    # print(feature)
-
     feature = re.sub("V", ",", feature)
 
-    # print(feature)
-    # print(feature[1:])
-
     arr = np.fromstring(feature[1:], dtype=int, sep=',')
-    # print(list(arr))
 
     scope = (list(arr))
     mean = params[:len(scope)]
