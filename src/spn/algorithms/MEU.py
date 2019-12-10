@@ -35,7 +35,7 @@ def meu_max(node, meu_per_node, data=None, lls_per_node=None, rand_gen=None):
     # if data contains a decision value use that otherwise use max
     dec_value = np.select([np.isnan(decision_value_given), True],
                           [max_value, decision_value_given]).astype(int)
-    dec_value_to_child_id = lambda idx: node.children[node.dec_values.index(idx)].id
+    dec_value_to_child_id = lambda val: node.children[list(node.dec_values).index(val)].id
     dec_value_to_child_id = np.vectorize(dec_value_to_child_id)
     child_id = dec_value_to_child_id(dec_value)
     meu_per_node[:,node.id] = meu_per_node[np.arange(meu_per_node.shape[0]),child_id]
@@ -52,7 +52,7 @@ def meu_util(node, meu_per_node, data=None, lls_per_node=None, rand_gen=None):
 
 _node_bottom_up_meu = {Sum: meu_sum, Product: meu_prod, Max: meu_max, Utility: meu_util}
 
-def meu(node, input_data,
+def meu(root, input_data,
         node_bottom_up_meu=_node_bottom_up_meu,
         in_place=False):
     # valid, err = is_valid(node)
@@ -61,23 +61,26 @@ def meu(node, input_data,
         data = input_data
     else:
         data = np.copy(input_data)
-    # assumes utility is only one and is at the last
-    # print("input data:", input_data[:, -1])
-    assert np.isnan(data[:, -1]), "Please specify utility variable as NaN"
-    nodes = get_nodes_by_type(node)
+    nodes = get_nodes_by_type(root)
+    utility_scope = set()
+    for node in nodes:
+        if type(node) is Utility:
+            utility_scope.add(node.scope[0])
+    print(utility_scope)
+    assert np.all(np.isnan(data[:, list(utility_scope)])), "Please specify all utility values as np.nan"
     likelihood_per_node = np.zeros((data.shape[0], len(nodes)))
     meu_per_node = np.zeros((data.shape[0], len(nodes)))
     meu_per_node.fill(np.nan)
     # one pass bottom up evaluating the likelihoods
-    likelihood(node, data, dtype=data.dtype, lls_matrix=likelihood_per_node)
+    likelihood(root, data, dtype=data.dtype, lls_matrix=likelihood_per_node)
     eval_spmn_bottom_up_meu(
-            node,
+            root,
             _node_bottom_up_meu,
             meu_per_node=meu_per_node,
             data=data,
             lls_per_node=likelihood_per_node
         )
-    result = meu_per_node[:,node.id]
+    result = meu_per_node[:,root.id]
     return result
 
 
