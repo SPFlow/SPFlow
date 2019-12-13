@@ -8,7 +8,7 @@ from collections import OrderedDict
 from enum import Enum
 
 from spn.algorithms.Validity import is_valid
-from spn.structure.Base import Product, Sum, rebuild_scopes_bottom_up, assign_ids, Leaf
+from spn.structure.Base import Product, Sum, rebuild_scopes_bottom_up, assign_ids, Leaf, get_topological_order
 import numpy as np
 import logging
 
@@ -40,7 +40,10 @@ def json_default(obj):
         return {obj.__class__.__name__: values}
 
 
-def to_JSON(node):
+def to_JSON(node, scope_as_str=True):
+    if scope_as_str:
+        convert_scopes_to_str(node)
+
     return json.dumps(node, sort_keys=True, default=json_default)
 
 
@@ -177,3 +180,14 @@ sumnode: "(" [NUMBERS "*" node ("+" NUMBERS "*" node)*] ")"
     assert valid, err
     assign_ids(spn)
     return spn
+
+
+def convert_scopes_to_str(node):
+    # By default the scope of a node may be a list with mixed element-types (int and/or string)
+    # This function will convert all scopes beneath (including) the given node to list of string
+    # Note: This function is not safe (updates in place)
+    for n in get_topological_order(node):
+        # Replace current scope
+        n.scope = [str(e) for e in n.scope]
+
+    return node
