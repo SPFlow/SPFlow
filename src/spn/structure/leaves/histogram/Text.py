@@ -35,7 +35,9 @@ def histogram_to_str(node, feature_names=None, node_to_str=None):
         # formatter={"float_kind": lambda x: "%.10f" % x},
     )
 
-    return "Histogram(%s|%s;%s;%s)" % (fname, breaks, densities, bin_repr_points)
+    return "Histogram(%s|%s;%s)" % (fname, breaks, densities)
+    # ToDo: Revert ASAP -- Output of 'bin_repr_points' has been suppressed to be supported by SPNC. (2019-DEC-10)
+    # return "Histogram(%s|%s;%s;%s)" % (fname, breaks, densities, bin_repr_points)
 
 
 def histogram_tree_to_spn(tree, features, obj_type, tree_to_spn):
