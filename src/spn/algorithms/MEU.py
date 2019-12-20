@@ -22,16 +22,16 @@ def meu_sum(node, meu_per_node, data=None, lls_per_node=None, rand_gen=None):
     meu_per_node[:,node.id] = np.sum(meu_children * normalized_weighted_likelihood, axis=1)
 
 def meu_prod(node, meu_per_node, data=None, lls_per_node=None, rand_gen=None):
-    # product node just passes up the utils of whichever child contains util nodes
+    # product node adds together the utilities of its children
+    # if there is only one utility node then only one child of each product node
+    # will have a utility value
     meu_children = meu_per_node[:,[child.id for child in node.children]]
-    # the line below works because product nodes should have only one child containing the utility node.
-    # if more than one utility column is allowed this will have to change.
-    meu_per_node[:,node.id] = meu_children[~np.isnan(meu_children)]
+    meu_per_node[:,node.id] = np.nansum(meu_children,axis=1)
 
 def meu_max(node, meu_per_node, data=None, lls_per_node=None, rand_gen=None):
     meu_children = meu_per_node[:, [child.id for child in node.children]]
     decision_value_given = data[:, node.dec_idx]
-    max_value = np.argmax(meu_children, axis=1)
+    max_value = node.dec_values[np.argmax(meu_children, axis=1)]
     # if data contains a decision value use that otherwise use max
     dec_value = np.select([np.isnan(decision_value_given), True],
                           [max_value, decision_value_given]).astype(int)
@@ -66,7 +66,6 @@ def meu(root, input_data,
     for node in nodes:
         if type(node) is Utility:
             utility_scope.add(node.scope[0])
-    print(utility_scope)
     assert np.all(np.isnan(data[:, list(utility_scope)])), "Please specify all utility values as np.nan"
     likelihood_per_node = np.zeros((data.shape[0], len(nodes)))
     meu_per_node = np.zeros((data.shape[0], len(nodes)))
