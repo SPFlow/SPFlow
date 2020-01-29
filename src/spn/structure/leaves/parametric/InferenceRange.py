@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def categorical_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
+def categorical_log_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
     """
     Returns the probability for the given ranges.
     
@@ -48,8 +48,8 @@ def categorical_likelihood_range(node, ranges, dtype=np.float64, **kwargs):
         # Compute the sum of the probability of all possible values
         probs[i] = sum([node.p[possible_val] for possible_val in rang.get_ranges()])
 
-    return probs
+    return np.log(probs)
 
 
 def add_parametric_inference_range_support():
-    add_node_likelihood(Categorical, categorical_likelihood_range)
+    add_node_likelihood(Categorical, log_lambda_func=categorical_log_likelihood_range)
