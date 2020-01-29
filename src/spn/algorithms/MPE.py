@@ -68,32 +68,20 @@ def get_mpe_top_down_leaf(node, input_vals, data=None, mode=0):
 
 
 _node_top_down_mpe = {Product: mpe_prod, Sum: mpe_sum}
-_node_bottom_up_mpe = {}
 _node_bottom_up_mpe_log = {Sum: sum_log_likelihood, Product: prod_log_likelihood}
 
 
-def log_node_bottom_up_mpe(node, *args, **kwargs):
-    probs = _node_bottom_up_mpe[type(node)](node, *args, **kwargs)
-    with np.errstate(divide="ignore"):
-        return np.log(probs)
-
-
-def add_node_mpe(node_type, bottom_up_lambda, top_down_lambda, bottom_up_lambda_is_log=False):
+def add_node_mpe(node_type, log_bottom_up_lambda, top_down_lambda):
     _node_top_down_mpe[node_type] = top_down_lambda
-
-    if bottom_up_lambda_is_log:
-        _node_bottom_up_mpe_log[node_type] = bottom_up_lambda
-    else:
-        _node_bottom_up_mpe[node_type] = bottom_up_lambda
-        _node_bottom_up_mpe_log[node_type] = log_node_bottom_up_mpe
+    _node_bottom_up_mpe_log[node_type] = log_bottom_up_lambda
 
 
 def mpe(
-    node,
-    input_data,
-    node_top_down_mpe=_node_top_down_mpe,
-    node_bottom_up_mpe_log=_node_bottom_up_mpe_log,
-    in_place=False,
+        node,
+        input_data,
+        node_top_down_mpe=_node_top_down_mpe,
+        node_bottom_up_mpe_log=_node_bottom_up_mpe_log,
+        in_place=False,
 ):
     valid, err = is_valid(node)
     assert valid, err
