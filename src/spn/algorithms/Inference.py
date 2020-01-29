@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 EPSILON = np.finfo(float).eps
 
 
-def leaf_marginalized_likelihood(node, data=None, dtype=np.float64, **kwargs):
+def leaf_marginalized_log_likelihood(node, data=None, dtype=np.float64, **kwargs):
     assert len(node.scope) == 1, node.scope
-    probs = np.ones((data.shape[0], 1), dtype=dtype)
+    probs = np.zeros((data.shape[0], 1), dtype=dtype)
     assert data.shape[1] >= 1
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -68,19 +68,33 @@ _node_log_likelihood = {Sum: sum_log_likelihood, Product: prod_log_likelihood}
 _node_likelihood = {Sum: sum_likelihood, Product: prod_likelihood}
 
 
-def log_node_likelihood(node, *args, **kwargs):
-    probs = _node_likelihood[type(node)](node, *args, **kwargs)
-    with np.errstate(divide="ignore"):
-        nll = np.log(probs)
-        nll[np.isinf(nll)] = np.finfo(nll.dtype).min
-        assert not np.any(np.isnan(nll))
-        return nll
+def _get_exp_likelihood(f_log):
+    def f_exp(node, *args, **kwargs):
+        return np.exp(f_log(node, *args, **kwargs))
+
+    return f_exp
 
 
-def add_node_likelihood(node_type, lambda_func, log_lambda_func=None):
+def _get_log_likelihood(f_exp):
+    def f_log(node, *args, **kwargs):
+        with np.errstate(divide="ignore"):
+            nll = np.log(f_exp(node, *args, **kwargs))
+            nll[np.isinf(nll)] = np.finfo(nll.dtype).min
+            assert not np.any(np.isnan(nll))
+            return nll
+
+    return f_log
+
+
+def add_node_likelihood(node_type, lambda_func=None, log_lambda_func=None):
+    assert not (lambda_func is None and log_lambda_func is None)
+
+    if lambda_func is None:
+        lambda_func = _get_exp_likelihood(log_lambda_func)
     _node_likelihood[node_type] = lambda_func
+
     if log_lambda_func is None:
-        log_lambda_func = log_node_likelihood
+        log_lambda_func = _get_log_likelihood(lambda_func)
     _node_log_likelihood[node_type] = log_lambda_func
 
 
@@ -101,7 +115,8 @@ def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, l
 
         node_likelihood = {k: exec_funct for k in node_likelihood.keys()}
 
-    result = eval_spn_bottom_up(node, node_likelihood, all_results=all_results, debug=debug, dtype=dtype, data=data, **kwargs)
+    result = eval_spn_bottom_up(node, node_likelihood, all_results=all_results, debug=debug, dtype=dtype, data=data,
+                                **kwargs)
 
     if lls_matrix is not None:
         for n, ll in all_results.items():
@@ -111,8 +126,9 @@ def likelihood(node, data, dtype=np.float64, node_likelihood=_node_likelihood, l
 
 
 def log_likelihood(
-    node, data, dtype=np.float64, node_log_likelihood=_node_log_likelihood, lls_matrix=None, debug=False, **kwargs):
-    return likelihood(node, data, dtype=dtype, node_likelihood=node_log_likelihood, lls_matrix=lls_matrix, debug=debug, **kwargs)
+        node, data, dtype=np.float64, node_log_likelihood=_node_log_likelihood, lls_matrix=None, debug=False, **kwargs):
+    return likelihood(node, data, dtype=dtype, node_likelihood=node_log_likelihood, lls_matrix=lls_matrix, debug=debug,
+                      **kwargs)
 
 
 def conditional_log_likelihood(node_joint, node_marginal, data, log_space=True, dtype=np.float64):
