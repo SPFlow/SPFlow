@@ -1,4 +1,19 @@
 import sys
+
+import os
+
+#from spn.experiments.layers.Vectorized import to_layers, eval_layers, get_torch_spn
+from glob import glob
+
+from spn.experiments.layers.Vectorized import to_layers, get_torch_spn
+from spn.experiments.layers.speedtest import eval_layers2, to_sparse
+
+os.environ["OMP_NUM_THREADS"] = "1" # export OMP_NUM_THREADS=4
+os.environ["OPENBLAS_NUM_THREADS"] = "1" # export OPENBLAS_NUM_THREADS=4
+os.environ["MKL_NUM_THREADS"] = "1" # export MKL_NUM_THREADS=6
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1" # export VECLIB_MAXIMUM_THREADS=4
+os.environ["NUMEXPR_NUM_THREADS"] = "1" # export NUMEXPR_NUM_THREADS=6
+
 from time import time
 
 import matplotlib.pyplot as plt
@@ -102,6 +117,44 @@ def run_spflow(spflow_spn, n_feats, batch_size, repetitions):
     spflow_time = t / repetitions
     return spflow_time
 
+def run_spflow_layers(layers, n_feats, batch_size, repetitions):
+    print("Running SPFlow layers with: nfeat=%s, batch=%s" % (n_feats, batch_size))
+    x = np.random.rand(batch_size, n_feats).astype(np.float32)
+
+    # warmup
+    for i in range(10):
+        ll = eval_layers2(layers, x)
+
+    # Run SPFlow spn
+    t = 0.0
+    for i in tqdm(range(repetitions), desc="Repetition loop"):
+        x = np.random.rand(batch_size, n_feats).astype(np.float32)
+        t0 = time()
+        ll = eval_layers2(layers, x)
+        t += time() - t0
+
+    spflow_time = t / repetitions
+    return spflow_time
+
+def run_spflow_layers_torch(spn, n_feats, batch_size, repetitions):
+    print("Running SPFlow layers torch with: nfeat=%s, batch=%s" % (n_feats, batch_size))
+    device = "cuda"
+    x = torch.rand(batch_size, n_feats, 1).to(device)
+
+    # warmup
+    for i in range(10):
+        ll = spn(x)
+
+    # Run SPFlow spn
+    t = 0.0
+    for i in tqdm(range(repetitions), desc="Repetition loop"):
+        x = torch.rand(batch_size, n_feats, 1).to(device)
+        t0 = time()
+        ll = spn(x)
+        t += time() - t0
+
+    spflow_time = t / repetitions
+    return spflow_time
 
 def run_tf(spflow_spn, n_feats, batch_size, repetitions):
     print("Running TF with: nfeat=%s, batch=%s" % (n_feats, batch_size))
@@ -131,6 +184,16 @@ def get_times(lib, n_feats, batch_size, repetitions):
     elif lib == "spflow":
         spflow_spn = create_spflow_spn(n_feats)
         return run_spflow(spflow_spn, n_feats, batch_size, repetitions)
+    elif lib == "spflow-layer":
+        spflow_spn = create_spflow_spn(n_feats)
+        layers = to_layers(spflow_spn)
+        to_sparse(layers)
+        return run_spflow_layers(layers, n_feats, batch_size, repetitions)
+    elif lib == "spflow-layer-pytorch":
+        spflow_spn = create_spflow_spn(n_feats)
+        layers = to_layers(spflow_spn)
+        spn = get_torch_spn(layers).to('cuda')
+        return run_spflow_layers_torch(spn, n_feats, batch_size, repetitions)
     elif lib == "spflow-tf":
         spflow_spn = create_spflow_spn(n_feats)
         return run_tf(spflow_spn, n_feats, batch_size, repetitions)
@@ -144,9 +207,7 @@ def visualize():
         nfeat = np.loadtxt("results-nfeat-%s.csv" % lib, delimiter=",")
         return batch, nfeat
 
-    pytorch_batch, pytorch_nfeat = load("pytorch")
-    spflow_batch, spflow_nfeat = load("spflow")
-    tf_batch, tf_nfeat = load("spflow-tf")
+
 
     fig, axes = plt.subplots(nrows=2, ncols=2)
     sns.despine()
@@ -154,14 +215,27 @@ def visualize():
     fig.set_figheight(6)
     fig.set_figwidth(9)
 
-    # Plot absolute values
-    axes[0, 0].plot(spflow_batch[:, 0], spflow_batch[:, 1], label="SPFlow")
-    axes[0, 0].plot(tf_batch[:, 0], tf_batch[:, 1], label="SPFlow-TF")
-    axes[0, 0].plot(pytorch_batch[:, 0], pytorch_batch[:, 1], label="Layerwise PyTorch")
+    names = [f[f.index('size-') + 5:-4] for f in glob('*size*.csv')]
 
-    axes[0, 1].plot(spflow_nfeat[:, 0], spflow_nfeat[:, 1], label="SPFlow")
-    axes[0, 1].plot(tf_nfeat[:, 0], tf_nfeat[:, 1], label="SPFlow-TF")
-    axes[0, 1].plot(pytorch_nfeat[:, 0], pytorch_nfeat[:, 1], label="Layerwise PyTorch")
+    for name in names:
+        batch_res, nfeat_res = load(name)
+        axes[0, 0].plot(batch_res[:, 0], batch_res[:, 1], label=name)
+        axes[0, 1].plot(nfeat_res[:, 0], nfeat_res[:, 1], label=name)
+    # pytorch_batch, pytorch_nfeat = load("pytorch")
+    # spflow_batch, spflow_nfeat = load("spflow")
+    # tf_batch, tf_nfeat = load("spflow-tf")
+    # spflow_layers_batch, spflow_layers_nfeat = load("spflow-layer")
+
+    # Plot absolute values
+    #axes[0, 0].plot(spflow_batch[:, 0], spflow_batch[:, 1], label="SPFlow")
+    #axes[0, 0].plot(tf_batch[:, 0], tf_batch[:, 1], label="SPFlow-TF")
+    #axes[0, 0].plot(pytorch_batch[:, 0], pytorch_batch[:, 1], label="Layerwise PyTorch")
+    #axes[0, 0].plot(spflow_layers_batch[:, 0], spflow_layers_batch[:, 1], label="SPFlow Layers")
+
+    #axes[0, 1].plot(spflow_nfeat[:, 0], spflow_nfeat[:, 1], label="SPFlow")
+    #axes[0, 1].plot(tf_nfeat[:, 0], tf_nfeat[:, 1], label="SPFlow-TF")
+    #axes[0, 1].plot(pytorch_nfeat[:, 0], pytorch_nfeat[:, 1], label="Layerwise PyTorch")
+    #axes[0, 1].plot(spflow_layers_nfeat[:, 0], spflow_layers_nfeat[:, 1], label="SPFlow Layers")
 
     fontP = FontProperties()
     fontP.set_size("small")
@@ -173,26 +247,26 @@ def visualize():
     axes[0, 1].set_yscale("log", basey=10)
 
     # Plot relative improvements
-    axes[1, 0].plot(
-        spflow_batch[:, 0],
-        spflow_batch[:, 1] / pytorch_batch[:, 1],
-        label="SPFlow/Layerwise PyTorch",
-    )
-    axes[1, 0].plot(
-        tf_batch[:, 0],
-        tf_batch[:, 1] / pytorch_batch[:, 1],
-        label="SPFlow-TF/Layerwise PyTorch",
-    )
-    axes[1, 1].plot(
-        spflow_nfeat[:, 0],
-        spflow_nfeat[:, 1] / pytorch_nfeat[:, 1],
-        label="SPFlow/Layerwise PyTorch",
-    )
-    axes[1, 1].plot(
-        tf_nfeat[:, 0],
-        tf_nfeat[:, 1] / pytorch_nfeat[:, 1],
-        label="SPFlow-TF/Layerwise PyTorch",
-    )
+    # axes[1, 0].plot(
+    #     spflow_batch[:, 0],
+    #     spflow_batch[:, 1] / pytorch_batch[:, 1],
+    #     label="SPFlow/Layerwise PyTorch",
+    # )
+    # axes[1, 0].plot(
+    #     tf_batch[:, 0],
+    #     tf_batch[:, 1] / pytorch_batch[:, 1],
+    #     label="SPFlow-TF/Layerwise PyTorch",
+    # )
+    # axes[1, 1].plot(
+    #     spflow_nfeat[:, 0],
+    #     spflow_nfeat[:, 1] / pytorch_nfeat[:, 1],
+    #     label="SPFlow/Layerwise PyTorch",
+    # )
+    # axes[1, 1].plot(
+    #     tf_nfeat[:, 0],
+    #     tf_nfeat[:, 1] / pytorch_nfeat[:, 1],
+    #     label="SPFlow-TF/Layerwise PyTorch",
+    # )
 
     axes[1, 0].set_xscale("log", basex=2)
     # axes[1, 0].set_yscale("log", basey=10)
@@ -209,7 +283,7 @@ def visualize():
     axes[1, 1].legend(loc="upper left", fancybox=True, framealpha=0.5, prop=fontP)
 
     # Titles
-    title = "SPFlow vs SPFlow-TF vs PyTorch: SPN Forward Pass"
+    title = "vs".join(names) + " SPN Forward" #"SPFlow vs SPFlow-TF vs PyTorch: SPN Forward Pass"
     fig.suptitle(title)
     plt.savefig("benchmark.png", dpi=300)  # , bbox_inches="tight")
 
@@ -225,26 +299,33 @@ def benchmark(lib, max_i_batch, max_i_feat):
     default_batchsize = 1024
 
     list_n_feats = [2 ** i for i in range(2, max_i_feat)]
+
+    tmp_n_feats = []
     for n_feats in tqdm(list_n_feats, desc="%s, Features" % lib):
         results.append(get_times(lib, n_feats, default_batchsize, repetitions))
+        tmp_n_feats.append(n_feats)
 
-    res_nfeats = np.c_[list_n_feats, np.array(results)]
-    np.savetxt("results-nfeat-%s.csv" % lib, res_nfeats, delimiter=",")
+        res_nfeats = np.c_[tmp_n_feats, np.array(results)]
+        np.savetxt("results-nfeat-%s.csv" % lib, res_nfeats, delimiter=",")
 
     results = []
     list_batch_size = [2 ** i for i in range(2, max_i_batch)]
+    tmp_batch_size = []
     for batch_size in tqdm(list_batch_size, desc="%s, Batch Size" % lib):
         results.append(get_times(lib, default_nfeat, batch_size, repetitions))
+        tmp_batch_size.append(batch_size)
 
-    res_batch = np.c_[list_batch_size, np.array(results)]
-    np.savetxt("results-batch-size-%s.csv" % lib, res_batch, delimiter=",")
+        res_batch = np.c_[tmp_batch_size, np.array(results)]
+        np.savetxt("results-batch-size-%s.csv" % lib, res_batch, delimiter=",")
 
 
 if __name__ == "__main__":
-    if sys.argv[1] == "benchmark":
-        lib = 'spflow'  # sys.argv[2]
-        max_i_batch = 19  # int(sys.argv[3])
+    #if sys.argv[1] == "benchmark":
+        #lib = 'spflow-layer'  # sys.argv[2]
+        #lib = 'spflow-layer-pytorch'
+        lib = 'pytorch'
+        max_i_batch = 10  # int(sys.argv[3])
         max_i_feat = 15  # int(sys.argv[4])
         benchmark(lib, max_i_batch, max_i_feat)
-    elif sys.argv[1] == "visualize":
+    #elif sys.argv[1] == "visualize":
         visualize()

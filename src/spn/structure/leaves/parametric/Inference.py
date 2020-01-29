@@ -17,11 +17,13 @@ POS_EPS = np.finfo(float).eps
 
 
 def continuous_likelihood(node, data=None, dtype=np.float64, **kwargs):
+    return np.exp(continuous_log_likelihood(node, data=data, dtype=dtype))
+
+def continuous_log_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype)
     scipy_obj, params = get_scipy_obj_params(node)
-    probs[~marg_ids] = scipy_obj.pdf(observations, **params)
+    probs[~marg_ids] = scipy_obj.logpdf(observations, **params)
     return probs
-
 
 def continuous_multivariate_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs = np.ones((data.shape[0], 1), dtype=dtype)
@@ -93,7 +95,7 @@ def uniform_likelihood(node, data=None, dtype=np.float64, **kwargs):
 
 def add_parametric_inference_support():
     add_node_likelihood(MultivariateGaussian, continuous_multivariate_likelihood)
-    add_node_likelihood(Gaussian, continuous_likelihood)
+    add_node_likelihood(Gaussian, continuous_likelihood, continuous_log_likelihood)
     add_node_likelihood(Gamma, gamma_likelihood)
     add_node_likelihood(LogNormal, lognormal_likelihood)
     add_node_likelihood(Poisson, discrete_likelihood)
