@@ -189,6 +189,8 @@ class RatNormal(Leaf):
         self.max_mean = max_mean
 
     def forward(self, x):
+        x = super().forward(x)
+
         if self.min_sigma < self.max_sigma:
             sigma_ratio = torch.sigmoid(self.stds)
             sigma = self.min_sigma + (self.max_sigma - self.min_sigma) * sigma_ratio
@@ -203,7 +205,6 @@ class RatNormal(Leaf):
 
         gauss = dist.Normal(means, torch.sqrt(sigma))
         x = dist_forward(gauss, x)
-        x = super().forward(x)
         return x
 
 
@@ -232,7 +233,6 @@ class IndependentNormal(Leaf):
 
     def forward(self, x):
         x = self.gauss(x)
-        x = torch.where(~torch.isnan(x), x, torch.zeros(1).to(x.device))
 
         if self._pad:
             # Pad marginalized node
