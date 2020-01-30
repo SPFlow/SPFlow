@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 
 from spn.experiments.layers.layers import SumLayer, ProductLayer, SumProductLayer
+from spn.experiments.layers.pytorch_parametric import MyBernoulli
 from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
 import numpy as np
 from tqdm import tqdm
@@ -13,6 +14,8 @@ _default_dist_lambdas = {
         logits=torch.log(torch.clamp(params, 0.000000001, 0.999999999))),
     "Gaussian": lambda params: torch.distributions.normal.Normal(params[:, 0], torch.max(params[:, 1], torch.tensor(
         0.00001, device=params.device))),
+    # "Bernoulli": lambda params: torch.distributions.bernoulli.Bernoulli(params[:, 0]),
+    "Bernoulli": lambda params: MyBernoulli(params[:, 0]),
 }
 
 
@@ -60,11 +63,11 @@ class TorchLeavesLayer(nn.Module):
             nan_idx = torch.isnan(val)
             val[nan_idx] = 0  # assume value at pos 0 for nans
 
-            lldist = dist.log_prob(val).float()
+            lldist = dist.log_prob(val)  # .float()
             lldist[nan_idx] = 0  # marginalize
             lls[:, idx] = lldist
 
-        # torch.clamp(lls, -400, -0.0000000000001)
+        # torch.clamp(lls, torch.finfo(lls.dtype).min, 0.0)
         # lls[lls == 0.0] = -0.0000000000001
         # lls[torch.isinf(lls)] = torch.finfo(lls.dtype).min
 
@@ -116,7 +119,7 @@ class TorchSumProdLayer(nn.Module):
 
         for (i, weights_idx, sparse_scopes_idx) in self.params:
             weights = self.weights[weights_idx]
-            weights.data = torch.log(torch.nn.functional.softmax(weights.data, dim=0))
+            # weights.data = torch.log(torch.nn.functional.softmax(weights.data, dim=0))
 
             sparse_scope = self.sparse_scopes[sparse_scopes_idx]
 
@@ -143,7 +146,7 @@ class TorchSumLayer(nn.Module):
         lls = torch.empty((x.shape[0], self.n_nodes), device=x.device)
         # return lls
         for i in range(self.n_nodes):
-            self.weights.data = torch.log(torch.nn.functional.softmax(self.weights.data, dim=0))
+            self.weights[i].data = torch.log(torch.nn.functional.softmax(self.weights[i].data, dim=0))
             y = x[:, self.idxs[i]] + self.weights[i]
             lls[:, i] = torch.logsumexp(y, dim=-1).squeeze(-1)
         return lls
