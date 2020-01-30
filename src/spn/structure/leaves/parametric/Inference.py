@@ -22,6 +22,12 @@ def continuous_log_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs[~marg_ids] = scipy_obj.logpdf(observations, **params)
     return probs
 
+def continuous_likelihood(node, data=None, dtype=np.float64, **kwargs):
+    probs, marg_ids, observations = leaf_marginalized_log_likelihood(node, data, dtype)
+    scipy_obj, params = get_scipy_obj_params(node)
+    probs[~marg_ids] = scipy_obj.pdf(observations, **params)
+    return probs
+
 
 def continuous_multivariate_log_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs = np.ones((data.shape[0], 1), dtype=dtype)
@@ -46,8 +52,18 @@ def discrete_log_likelihood(node, data=None, dtype=np.float64, **kwargs):
     probs, marg_ids, observations = leaf_marginalized_log_likelihood(node, data, dtype)
     scipy_obj, params = get_scipy_obj_params(node)
     probs[~marg_ids] = scipy_obj.logpmf(observations, **params)
-    # probs[probs == 1.0] = 0.999999999
+    #probs[probs == 1.0] = 0.999999999
+    #probs[np.isinf(probs)] = 0.000000001
     probs[np.isinf(probs)] = MIN_NEG  # 0.000000001
+    return probs
+
+def discrete_likelihood(node, data=None, dtype=np.float64, **kwargs):
+    probs, marg_ids, observations = leaf_marginalized_log_likelihood(node, data, dtype)
+    scipy_obj, params = get_scipy_obj_params(node)
+    probs[~marg_ids] = scipy_obj.pmf(observations, **params)
+    probs[probs == 1.0] = 0.999999999
+    probs[np.isinf(probs)] = 0.000000001
+    #probs[np.isinf(probs)] = MIN_NEG  # 0.000000001
     return probs
 
 
@@ -85,12 +101,12 @@ def uniform_log_likelihood(node, data=None, dtype=np.float64, **kwargs):
 
 def add_parametric_inference_support():
     add_node_likelihood(MultivariateGaussian, log_lambda_func=continuous_multivariate_log_likelihood)
-    add_node_likelihood(Gaussian, log_lambda_func=continuous_log_likelihood)
+    add_node_likelihood(Gaussian, lambda_func=continuous_likelihood, log_lambda_func=continuous_log_likelihood)
     add_node_likelihood(Hypergeometric, log_lambda_func=continuous_log_likelihood)
     add_node_likelihood(Gamma, log_lambda_func=gamma_log_likelihood)
     add_node_likelihood(LogNormal, log_lambda_func=continuous_log_likelihood)
     add_node_likelihood(Poisson, log_lambda_func=discrete_log_likelihood)
-    add_node_likelihood(Bernoulli, log_lambda_func=discrete_log_likelihood)
+    add_node_likelihood(Bernoulli, lambda_func=discrete_likelihood, log_lambda_func=discrete_log_likelihood)
     add_node_likelihood(Categorical, log_lambda_func=categorical_log_likelihood)
     add_node_likelihood(Geometric, log_lambda_func=discrete_log_likelihood)
     add_node_likelihood(Exponential, log_lambda_func=continuous_log_likelihood)
