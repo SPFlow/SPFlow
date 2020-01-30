@@ -14,9 +14,11 @@ logger = logging.getLogger(__name__)
 EPSILON = np.finfo(float).eps
 
 
-def leaf_marginalized_log_likelihood(node, data=None, dtype=np.float64, **kwargs):
+def leaf_marginalized_likelihood(node, data=None, dtype=np.float64, log_space=False, **kwargs):
     assert len(node.scope) == 1, node.scope
-    probs = np.zeros((data.shape[0], 1), dtype=dtype)
+    probs = np.ones((data.shape[0], 1), dtype=dtype)
+    if log_space:
+        probs[:] = 0
     assert data.shape[1] >= 1
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
