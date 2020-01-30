@@ -7,7 +7,7 @@ Created on May 4, 2018
 
 import numpy as np
 
-from spn.algorithms.Inference import EPSILON, add_node_likelihood, leaf_marginalized_log_likelihood
+from spn.algorithms.Inference import EPSILON, add_node_likelihood, leaf_marginalized_likelihood
 from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 import logging
 
@@ -17,7 +17,7 @@ LOG_ZERO = -300
 
 
 def piecewise_log_likelihood(node, data=None, dtype=np.float64, **kwargs):
-    probs, marg_ids, observations = leaf_marginalized_log_likelihood(node, data, dtype)
+    probs, marg_ids, observations = leaf_marginalized_likelihood(node, data, dtype, log_space=True)
     probs[~marg_ids] = piecewise_complete_cases_log_likelihood(node, observations, dtype=dtype)
     return probs
 
