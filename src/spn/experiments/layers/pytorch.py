@@ -45,6 +45,9 @@ class TorchLeavesLayer(nn.Module):
             dist = self.dist_lambdas[ntype](params)
             self.dists.append([ntype, dist, node_params[1], node_params[2]])
 
+    def copy_params_back(self, spn_layer):
+        pass
+
     def __init_dists(self):
         for i in range(len(self.dists)):
             ntype = self.dists[i][0]
@@ -112,6 +115,11 @@ class TorchSumProdLayer(nn.Module):
         self.scopes_out = torch.LongTensor(self.scopes_out)
         self.scopes_in = torch.LongTensor(self.scopes_in)
 
+    def copy_params_back(self, spn_layer):
+        for i, weights in enumerate(self.weights):
+            w = torch.nn.functional.softmax(weights, dim=0)
+            spn_layer.nodes[i].weights = w.detach().cpu().numpy().tolist()
+
     def forward(self, x):
         lls = torch.empty((x.shape[0], self.n_nodes), device=x.device)
 
@@ -142,12 +150,17 @@ class TorchSumLayer(nn.Module):
             self.weights.append(nn.Parameter(torch.log(torch.tensor(layer.nodes[i].weights))))
             self.idxs.append(torch.tensor(idx.tocsr().indices).long())
 
+    def copy_params_back(self, spn_layer):
+        for i, weights in enumerate(self.weights):
+            w = torch.nn.functional.softmax(weights, dim=0)
+            spn_layer.nodes[i].weights = w.detach().cpu().numpy().tolist()
+
     def forward(self, x):
         lls = torch.empty((x.shape[0], self.n_nodes), device=x.device)
         # return lls
         for i in range(self.n_nodes):
             weights = self.weights[i]
-            weights = torch.log(torch.nn.functional.softmax(self.weights[i], dim=0))
+            weights = torch.log(torch.nn.functional.softmax(weights, dim=0))
             y = x[:, self.idxs[i]] + weights
             lls[:, i] = torch.logsumexp(y, dim=-1).squeeze(-1)
         return lls
@@ -165,6 +178,9 @@ class TorchProductLayer(nn.Module):
                                                 torch.Size(coo.shape))
 
         self.scope_matrix = nn.Parameter(sparse_scope, requires_grad=False)
+
+    def copy_params_back(self, spn_layer):
+        return
 
     def forward(self, x):
         # return torch.matmul(x, self.scope_matrix)
@@ -191,3 +207,8 @@ def get_torch_spn(layers):
     # print(torchlayers)
     spn = nn.Sequential(*torchlayers)
     return spn
+
+
+def copy_parameters_back_from_torch_layers(torch_layers, original_spn_layers):
+    for i in range(len(torch_layers)):
+        torch_layers[i].copy_params_back(original_spn_layers[i])
