@@ -8,7 +8,7 @@ from spn.algorithms.LearningWrappers import learn_parametric, learn_classifier
 from spn.algorithms.TransformStructure import Copy
 from spn.experiments.layers.layers import SumLayer, ProductLayer, LeafLayer, to_layers, elapsed_timer, \
     to_compressed_layers, SumProductLayer
-from spn.experiments.layers.pytorch import get_torch_spn
+from spn.experiments.layers.pytorch import get_torch_spn, copy_parameters_back_from_torch_layers
 from spn.structure.Base import Context, Product, Sum, assign_ids, rebuild_scopes_bottom_up
 from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian, Bernoulli
 # from numba import njit, prange
@@ -161,8 +161,9 @@ if __name__ == '__main__':
     cspn = get_torch_spn(clayers).to(device)
     #cspn(v)
 
-
-    spn = get_torch_spn(to_layers(spn_classification)).to(device)
+    spn_layers = to_layers(spn_classification)
+    spn = get_torch_spn(spn_layers).to(device)
+    copy_parameters_back_from_torch_layers(spn, spn_layers)
 
     layers = to_layers(spn_classification, sparse=True)
 
