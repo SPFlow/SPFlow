@@ -119,7 +119,7 @@ class TorchSumProdLayer(nn.Module):
 
         for (i, weights_idx, sparse_scopes_idx) in self.params:
             weights = self.weights[weights_idx]
-            # weights.data = torch.log(torch.nn.functional.softmax(weights.data, dim=0))
+            weights = torch.log(torch.nn.functional.softmax(weights, dim=0))
 
             sparse_scope = self.sparse_scopes[sparse_scopes_idx]
 
@@ -146,8 +146,9 @@ class TorchSumLayer(nn.Module):
         lls = torch.empty((x.shape[0], self.n_nodes), device=x.device)
         # return lls
         for i in range(self.n_nodes):
-            self.weights[i].data = torch.log(torch.nn.functional.softmax(self.weights[i].data, dim=0))
-            y = x[:, self.idxs[i]] + self.weights[i]
+            weights = self.weights[i]
+            weights = torch.log(torch.nn.functional.softmax(self.weights[i], dim=0))
+            y = x[:, self.idxs[i]] + weights
             lls[:, i] = torch.logsumexp(y, dim=-1).squeeze(-1)
         return lls
 
