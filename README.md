@@ -26,6 +26,12 @@ To install the latest released version of SPFlow using pip
 pip3 install spflow
 ```
 
+An AUR package is available for Arch Linux. The PKGBUILD should automatically apply a patch for SPFlow to work with Tensorflow 2.
+
+```sh
+yay -S python-spflow
+```
+
 ## Examples
 
 We start by creating an SPN. Using a Domain-Specific Language (DSL), we can quickly create an SPN of categorical
