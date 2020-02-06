@@ -5,7 +5,12 @@ Created on March 21, 2018
 """
 
 import tensorflow as tf
-
+try:
+    import tensorflow_probability as tfp
+    distributions = tfp.distributions
+except:
+    distributions = tf.distributions
+    
 from spn.gpu.TensorFlow import add_node_to_tf_graph, add_tf_graph_to_node
 from spn.structure.leaves.parametric.Parametric import (
     Gaussian,
@@ -28,7 +33,7 @@ def gaussian_to_tf_graph(node, data_placeholder=None, log_space=True, variable_d
         stdev = tf.get_variable("stdev", initializer=node.stdev, dtype=dtype)
         variable_dict[node] = (mean, stdev)
         stdev = tf.maximum(stdev, 0.001)
-        dist = tf.distributions.Normal(loc=mean, scale=stdev)
+        dist = distributions.Normal(loc=mean, scale=stdev)
         if log_space:
             return dist.log_prob(data_placeholder[:, node.scope[0]])
 
@@ -40,7 +45,7 @@ def exponential_to_tf_graph(node, data_placeholder=None, log_space=True, variabl
         l = tf.get_variable("rate", initializer=node.l, dtype=dtype)
         variable_dict[node] = l
         l = tf.maximum(l, 0.001)
-        dist = tf.distributions.Exponential(rate=l)
+        dist = distributions.Exponential(rate=l)
         if log_space:
             return dist.log_prob(data_placeholder[:, node.scope[0]])
 
@@ -62,7 +67,7 @@ def bernoulli_to_tf_graph(node, data_placeholder=None, log_space=True, variable_
     with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         p = tf.minimum(tf.maximum(tf.get_variable("p", initializer=node.p, dtype=dtype), 0.00000001), 0.9999999)
         variable_dict[node] = p
-        dist = tf.distributions.Bernoulli(probs=p)
+        dist = distributions.Bernoulli(probs=p)
         if log_space:
             return dist.log_prob(data_placeholder[:, node.scope[0]])
 
@@ -74,7 +79,7 @@ def gamma_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict
         alpha = tf.maximum(tf.get_variable("alpha", initializer=node.alpha, dtype=dtype), 0.001)
         beta = tf.maximum(tf.get_variable("beta", initializer=node.beta, dtype=dtype), 0.001)
         variable_dict[node] = (alpha, beta)
-        dist = tf.distributions.Gamma(concentration=alpha, rate=beta)
+        dist = distributions.Gamma(concentration=alpha, rate=beta)
         if log_space:
             return dist.log_prob(data_placeholder[:, node.scope[0]])
 
@@ -88,7 +93,7 @@ def lognormal_to_tf_graph(node, data_placeholder=None, log_space=True, variable_
         variable_dict[node] = (mean, stdev)
         stdev = tf.maximum(stdev, 0.001)
         dist = tf.contrib.distributions.TransformedDistribution(
-            distribution=tf.distributions.Normal(loc=mean, scale=stdev),
+            distribution=distributions.Normal(loc=mean, scale=stdev),
             bijector=tf.contrib.distributions.bijectors.Exp(),
             name="LogNormalDistribution",
         )
@@ -105,9 +110,9 @@ def categorical_to_tf_graph(node, data_placeholder=None, log_space=True, variabl
         probs = tf.nn.softmax(tf.get_variable("p", initializer=tf.constant(softmaxInverse)))
         variable_dict[node] = probs
         if log_space:
-            return tf.distributions.Categorical(probs=probs).log_prob(data_placeholder[:, node.scope[0]])
+            return distributions.Categorical(probs=probs).log_prob(data_placeholder[:, node.scope[0]])
 
-        return tf.distributions.Categorical(probs=probs).prob(data_placeholder[:, node.scope[0]])
+        return distributions.Categorical(probs=probs).prob(data_placeholder[:, node.scope[0]])
 
 
 def tf_graph_to_gaussian(node, tfvar):

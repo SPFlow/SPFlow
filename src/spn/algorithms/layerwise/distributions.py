@@ -42,6 +42,8 @@ class Leaf(nn.Module, ABC):
     representation, e.g. Gaussians.
 
     Implementing layers shall be valid distributions.
+
+    If the input at a specific position is NaN, the variable will be marginalized.
     """
 
     def __init__(self, multiplicity, in_features, dropout=0.0):
@@ -62,7 +64,12 @@ class Leaf(nn.Module, ABC):
         self.out_shape = (-1, in_features, multiplicity)
         self.out_shape = f"(N, {in_features}, {multiplicity})"
 
+        # Marginalization constant
+        self.marginalization_constant = nn.Parameter(torch.zeros(1), requires_grad=False)
+
     def forward(self, x):
+        x = torch.where(~torch.isnan(x), x, self.marginalization_constant)
+
         # Apply dropout sampled from a bernoulli
         if self.dropout > 0.0:
             bernoulli_dist = dist.Bernoulli(probs=self.dropout)
@@ -113,9 +120,10 @@ class Bernoulli(Leaf):
         self.probs = nn.Parameter(torch.rand(1, in_features, multiplicity))
 
     def forward(self, x):
+        # Apply dropout defined in super class
+        x = super().forward(x)
         bernoulli = dist.Bernoulli(probs=self.probs)
         x = dist_forward(bernoulli, x)
-        x = super().forward(x)
         return x
 
 class MultivariateNormal(Leaf):
@@ -155,6 +163,9 @@ class MultivariateNormal(Leaf):
         self.out_shape = f"(N, {self._out_features}, {self.multiplicity})"
 
     def forward(self, x):
+        # Apply dropout defined in super class
+        x = super().forward(x)
+
         # Pad dummy variable via reflection
         if self._pad_value != 0:
             x = F.pad(x, pad=[0, 0, 0, self._pad_value], mode="reflect")
@@ -172,8 +183,6 @@ class MultivariateNormal(Leaf):
         # Output shape: [n, d / cardinality, multiplicity]
         x = x.view(batch_size, self._n_dists, self.multiplicity)
 
-        # Apply dropout defined in super class
-        x = super().forward(x)
 
         return x
 
@@ -199,8 +208,8 @@ class Beta(Leaf):
         )
 
     def forward(self, x):
-        x = dist_forward(self.beta, x)
         x = super().forward(x)
+        x = dist_forward(self.beta, x)
         return x
 
 
@@ -222,8 +231,8 @@ class Cauchy(Leaf):
         self.cauchy = dist.Cauchy(loc=self.means, scale=self.stds)
 
     def forward(self, x):
-        x = dist_forward(self.cauchy, x)
         x = super().forward(x)
+        x = dist_forward(self.cauchy, x)
         return x
 
 
@@ -243,8 +252,8 @@ class Chi2(Leaf):
         self.chi2 = dist.Chi2(df=self.df)
 
     def forward(self, x):
-        x = dist_forward(self.chi2, x)
         x = super().forward(x)
+        x = dist_forward(self.chi2, x)
         return x
 
 
@@ -265,8 +274,8 @@ class Gamma(Leaf):
         self.gamma = dist.Gamma(concentration=self.concentration, rate=self.rate)
 
     def forward(self, x):
-        x = dist_forward(self.gamma, x)
         x = super().forward(x)
+        x = dist_forward(self.gamma, x)
         return x
 
 
@@ -332,10 +341,11 @@ class IsotropicMultivariateNormal(Leaf):
             loc=self.means, cov_factor=self.cov_factors, cov_diag=self.stds
         )
 
-        # Fix LowRankMultivariateNormal elements
-        # self.gauss.cov_diag.data.set_(self.std)
 
     def forward(self, x):
+        # Apply dropout and marginalization defined in super class
+        x = super().forward(x)
+
         # Pad dummy variable via reflection
         if self._pad_value != 0:
             # Do unsqueeze and squeeze due to padding not being allowed on 2D tensors
@@ -355,8 +365,6 @@ class IsotropicMultivariateNormal(Leaf):
         # Output shape: [n, d / cardinality, multiplicity]
         x = x.permute((0, 2, 1))
 
-        # Apply dropout defined in super class
-        x = super().forward(x)
         return x
 
 
@@ -404,6 +412,22 @@ class Poisson(Leaf):
 
 
 if __name__ == "__main__":
+    # Test marginalization
+    mask = torch.randn(784) < -100.0
+    mask[[0, 1, 2]] = 1
+    layer = Normal(1, 784)
+    x = torch.randn(1, 784)
+    x[:, mask] = float("nan")
+    res = layer(x)
+    assert res[0, 0, 0] == 0, "was " + str(res[0, 0, 0])
+    assert res[0, 1, 0] == 0, "was " + str(res[0, 1, 0])
+    assert res[0, 2, 0] == 0, "was " + str(res[0, 2, 0])
+    assert res[0, 3, 0] != 0, "was " + str(res[0, 3, 0])
+    exit()
+
+
+
+
     # Define the problem size
     batch_size = 10
     n_features = 3
