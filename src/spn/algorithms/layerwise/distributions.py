@@ -1,7 +1,7 @@
 """
 Module that contains a set of distributions with learnable parameters.
 """
-from abc import ABC
+from abc import ABC, abstractmethod
 import logging
 import torch
 import numpy as np
@@ -9,6 +9,7 @@ from torch import nn
 from torch import distributions as dist
 from torch.nn import functional as F
 from spn.algorithms.layerwise.clipper import DistributionClipper
+from spn.algorithms.layerwise.type_checks import check_valid
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,33 @@ def dist_forward(distribution, x):
     return x
 
 
+def dist_sample(distribution: dist.Distribution, parent_idxs: torch.Tensor) -> torch.Tensor:
+    """
+    Sample n samples from a given distribution.
+
+    Args:
+        distribution (dists.Distribution): Base distribution to sample from.
+        parent_idxs (torch.Tensor): Tensor of indexes that point to specific representations of single features/scopes.
+    """
+
+    # Sample from the specified distribution
+    samples = distribution.sample()
+
+    assert (
+        samples.shape[0] == 1
+    ), "Something went wrong. First sample size dimension should be size 1 due to the distribution parameter dimensions. Please report this issue."
+
+    # If parent idx into multiplicity are given
+    if parent_idxs is not None:
+        # Choose only specific samples for each feature/scope
+        samples = samples[:, range(samples.shape[1]), parent_idxs]
+
+    # Squeeze first dimension which should be of size 1
+    samples.squeeze_(0)
+
+    return samples
+
+
 class Leaf(nn.Module, ABC):
     """
     Abstract layer that maps each input feature into a specified
@@ -56,25 +84,55 @@ class Leaf(nn.Module, ABC):
             droptout: Dropout probabilities.
         """
         super(Leaf, self).__init__()
-        assert multiplicity > 0, "Multiplicity must be > 0 but was %s." % multiplicity
-        self.multiplicity = multiplicity
-        self.in_features = in_features
+        self.multiplicity = check_valid(multiplicity, int, 1)
+        self.in_features = check_valid(in_features, int, 1)
+        dropout = check_valid(dropout, float, 0.0, 1.0)
         self.dropout = nn.Parameter(torch.tensor(dropout), requires_grad=False)
 
-        self.out_shape = (-1, in_features, multiplicity)
         self.out_shape = f"(N, {in_features}, {multiplicity})"
 
         # Marginalization constant
         self.marginalization_constant = nn.Parameter(torch.zeros(1), requires_grad=False)
 
-    def forward(self, x):
-        x = torch.where(~torch.isnan(x), x, self.marginalization_constant)
+        # Dropout bernoulli
+        self._bernoulli_dist = torch.distributions.Bernoulli(probs=self.dropout)
 
-        # Apply dropout sampled from a bernoulli
-        if self.dropout > 0.0:
-            bernoulli_dist = dist.Bernoulli(probs=self.dropout)
-            x = x * bernoulli_dist.sample(x.shape)
+    def _apply_dropout(self, x: torch.Tensor) -> torch.Tensor:
+        # Apply dropout sampled from a bernoulli during training (model.train() has been called)
+        if self.dropout > 0.0 and self.training:
+            dropout_idxs = self._bernoulli_dist.sample(x.shape).bool()
+            x[dropout_idxs] = 0.0
         return x
+
+    def _marginalize_input(self, x: torch.Tensor) -> torch.Tensor:
+        # Marginalize nans set by user
+        x = torch.where(~torch.isnan(x), x, self.marginalization_constant)
+        return x
+
+
+    def forward(self, x):
+        # Forward through base distribution
+        d = self._get_base_distribution()
+        x = dist_forward(d, x)
+
+        x = self._marginalize_input(x)
+        x = self._apply_dropout(x)
+
+        return x
+
+    @abstractmethod
+    def _get_base_distribution(self) -> dist.Distribution:
+        """Get the underlying torch distribution."""
+        pass
+
+    def sample(self, idxs: torch.Tensor = None, n: int = None) -> torch.Tensor:
+        """
+        Perform sampling, given indices from the parent layer that indicate which of the multiple representations
+        for each input shall be used.
+        """
+        d = self._get_base_distribution()
+        samples = dist_sample(d, idxs)
+        return samples
 
     def __repr__(self):
         return f"{self.__class__.__name__}(in_features={self.in_features}, multiplicity={self.multiplicity}, dropout={self.dropout}, out_shape={self.out_shape})"
@@ -98,13 +156,12 @@ class Normal(Leaf):
         self.stds = nn.Parameter(torch.rand(1, in_features, multiplicity))
         self.gauss = dist.Normal(loc=self.means, scale=self.stds)
 
-    def forward(self, x):
-        x = dist_forward(self.gauss, x)
-        x = super().forward(x)
-        return x
+    def _get_base_distribution(self):
+        return self.gauss
+
 
 class Bernoulli(Leaf):
-    """Gaussian layer. Maps each input feature to its gaussian log likelihood."""
+    """Bernoulli layer. Maps each input feature to its gaussian log likelihood."""
 
     def __init__(self, multiplicity, in_features, dropout=0.0):
         """Creat a gaussian layer.
@@ -117,14 +174,13 @@ class Bernoulli(Leaf):
         super().__init__(multiplicity, in_features, dropout)
 
         # Create bernoulli parameters
-        self.probs = nn.Parameter(torch.rand(1, in_features, multiplicity))
+        self.probs = nn.Parameter(torch.randn(1, in_features, multiplicity))
 
-    def forward(self, x):
-        # Apply dropout defined in super class
-        x = super().forward(x)
-        bernoulli = dist.Bernoulli(probs=self.probs)
-        x = dist_forward(bernoulli, x)
-        return x
+    def _get_base_distribution(self):
+        # Use sigmoid to ensure, that probs are in valid range
+        probs_ratio = torch.sigmoid(self.probs)
+        return dist.Bernoulli(probs=probs_ratio)
+
 
 class MultivariateNormal(Leaf):
     """Multivariate Gaussian layer."""
@@ -139,15 +195,13 @@ class MultivariateNormal(Leaf):
 
         """
         super().__init__(multiplicity, in_features, dropout)
-        self.cardinality = cardinality
+        self.cardinality = check_valid(cardinality, int, 2, in_features + 1)
         self._pad_value = in_features % cardinality
         self._out_features = np.ceil(in_features / cardinality).astype(int)
         self._n_dists = np.ceil(in_features / cardinality).astype(int)
 
         # Create gaussian means and covs
-        self.means = nn.Parameter(
-            torch.randn(multiplicity * self._n_dists, cardinality)
-        )
+        self.means = nn.Parameter(torch.randn(multiplicity * self._n_dists, cardinality))
 
         # Generate covariance matrix via the cholesky decomposition: s = A'A where A is a triangular matrix
         # Further ensure, that diag(a) > 0 everywhere, such that A has full rank
@@ -183,8 +237,14 @@ class MultivariateNormal(Leaf):
         # Output shape: [n, d / cardinality, multiplicity]
         x = x.view(batch_size, self._n_dists, self.multiplicity)
 
-
         return x
+
+    def sample(self, idxs=None, n=None):
+        """TODO: Multivariate need special treatment."""
+        raise Exception("Not yet implemented")
+
+    def _get_base_distribution(self):
+        return self._mv
 
 
 class Beta(Leaf):
@@ -203,14 +263,10 @@ class Beta(Leaf):
         # Create beta parameters
         self.concentration0 = nn.Parameter(torch.rand(1, in_features, multiplicity))
         self.concentration1 = nn.Parameter(torch.rand(1, in_features, multiplicity))
-        self.beta = dist.Beta(
-            concentration0=self.concentration0, concentration1=self.concentration1
-        )
+        self.beta = dist.Beta(concentration0=self.concentration0, concentration1=self.concentration1)
 
-    def forward(self, x):
-        x = super().forward(x)
-        x = dist_forward(self.beta, x)
-        return x
+    def _get_base_distribution(self):
+        return self.beta
 
 
 class Cauchy(Leaf):
@@ -230,10 +286,8 @@ class Cauchy(Leaf):
         self.stds = nn.Parameter(torch.rand(1, in_features, multiplicity))
         self.cauchy = dist.Cauchy(loc=self.means, scale=self.stds)
 
-    def forward(self, x):
-        x = super().forward(x)
-        x = dist_forward(self.cauchy, x)
-        return x
+    def _get_base_distribution(self):
+        return self.cauchy
 
 
 class Chi2(Leaf):
@@ -251,10 +305,8 @@ class Chi2(Leaf):
         self.df = nn.Parameter(torch.rand(1, in_features, multiplicity))
         self.chi2 = dist.Chi2(df=self.df)
 
-    def forward(self, x):
-        x = super().forward(x)
-        x = dist_forward(self.chi2, x)
-        return x
+    def _get_base_distribution(self):
+        return self.chi2
 
 
 class Gamma(Leaf):
@@ -273,10 +325,8 @@ class Gamma(Leaf):
         self.rate = nn.Parameter(1, in_features, multiplicity)
         self.gamma = dist.Gamma(concentration=self.concentration, rate=self.rate)
 
-    def forward(self, x):
-        x = super().forward(x)
-        x = dist_forward(self.gamma, x)
-        return x
+    def _get_base_distribution(self):
+        return self.gamma
 
 
 class Representations(Leaf):
@@ -299,6 +349,10 @@ class Representations(Leaf):
         # Stack along output channel dimension
         x = torch.cat(results, dim=1)
         return x
+
+    def sample(self, idxs=None, n=None):
+        """TODO: Needs special treatment"""
+        raise Exception("Not yet implemented")
 
 
 class IsotropicMultivariateNormal(Leaf):
@@ -333,18 +387,10 @@ class IsotropicMultivariateNormal(Leaf):
         # Create gaussian means and stds
         self.means = nn.Parameter(torch.randn(multiplicity, self._n_dists, cardinality))
         self.stds = nn.Parameter(torch.rand(multiplicity, self._n_dists, cardinality))
-        self.cov_factors = nn.Parameter(
-            torch.zeros(multiplicity, self._n_dists, cardinality, 1),
-            requires_grad=False,
-        )
-        self.gauss = dist.LowRankMultivariateNormal(
-            loc=self.means, cov_factor=self.cov_factors, cov_diag=self.stds
-        )
-
+        self.cov_factors = nn.Parameter(torch.zeros(multiplicity, self._n_dists, cardinality, 1), requires_grad=False)
+        self.gauss = dist.LowRankMultivariateNormal(loc=self.means, cov_factor=self.cov_factors, cov_diag=self.stds)
 
     def forward(self, x):
-        # Apply dropout and marginalization defined in super class
-        x = super().forward(x)
 
         # Pad dummy variable via reflection
         if self._pad_value != 0:
@@ -365,7 +411,17 @@ class IsotropicMultivariateNormal(Leaf):
         # Output shape: [n, d / cardinality, multiplicity]
         x = x.permute((0, 2, 1))
 
+        x = self._marginalize_input(x)
+        x = self._apply_dropout(x)
+
         return x
+
+    def sample(self, idxs=None, n=None):
+        """TODO: Multivariate need special treatment."""
+        raise Exception("Not yet implemented")
+
+    def _get_base_distribution(self):
+        return self.gauss
 
 
 class Gamma(Leaf):
@@ -384,10 +440,8 @@ class Gamma(Leaf):
         self.rate = nn.Parameter(torch.rand(1, in_features, multiplicity))
         self.gamma = dist.Gamma(concentration=self.concentration, rate=self.rate)
 
-    def forward(self, x):
-        x = dist_forward(self.gamma, x)
-        x = super().forward(x)
-        return x
+    def _get_base_distribution(self):
+        return self.gamma
 
 
 class Poisson(Leaf):
@@ -405,10 +459,8 @@ class Poisson(Leaf):
         self.rate = nn.Parameter(torch.rand(1, in_features, multiplicity))
         self.poisson = dist.Poisson(rate=self.rate)
 
-    def forward(self, x):
-        x = dist_forward(self.poisson, x)
-        x = super().forward(x)
-        return x
+    def _get_base_distribution(self):
+        return self.poisson
 
 
 if __name__ == "__main__":
@@ -424,9 +476,6 @@ if __name__ == "__main__":
     assert res[0, 2, 0] == 0, "was " + str(res[0, 2, 0])
     assert res[0, 3, 0] != 0, "was " + str(res[0, 3, 0])
     exit()
-
-
-
 
     # Define the problem size
     batch_size = 10
@@ -462,13 +511,11 @@ if __name__ == "__main__":
         loss.backward(retain_graph=True)
         optimizer.step()
         layer.apply(clipper)
-        
+
         print(loss)
         print(layer.probs)
 
-
     exit()
-
 
     # Create MV distribution to sample from
     loc1 = torch.rand(n_features // 2)
@@ -481,9 +528,7 @@ if __name__ == "__main__":
     mv2 = dist.MultivariateNormal(loc=loc2, scale_tril=triang2)
 
     # Multivariate normal layer for SPNs
-    model = MultivariateNormal(
-        multiplicity=multiplicity, in_features=n_features, cardinality=n_features // 2
-    )
+    model = MultivariateNormal(multiplicity=multiplicity, in_features=n_features, cardinality=n_features // 2)
 
     # Use SGD
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
@@ -491,18 +536,12 @@ if __name__ == "__main__":
     def print_true_error(i):
         print(
             f"Squared error on means [{i}] :",
-            torch.pow(
-                model.means.view(multiplicity, model._n_dists, -1)[:, i, :] - locs[i], 2
-            )
-            .sum()
-            .item(),
+            torch.pow(model.means.view(multiplicity, model._n_dists, -1)[:, i, :] - locs[i], 2).sum().item(),
         )
         print(
             f"Squared error on tril [{i}] : ",
             torch.pow(
-                model.triangular.view(multiplicity, model._n_dists, 3, 3)[:, i, :, :]
-                - triangs[i].view(1, 3, 3),
-                2,
+                model.triangular.view(multiplicity, model._n_dists, 3, 3)[:, i, :, :] - triangs[i].view(1, 3, 3), 2
             )
             .sum()
             .item(),
@@ -535,11 +574,7 @@ if __name__ == "__main__":
             if batch_idx % 100 == 0:
                 print(
                     "Train Epoch: {} [{: >5}/{: <5} ({:.0f}%)]\tLoss: {:.6f}".format(
-                        epoch,
-                        batch_idx * len(data),
-                        100 * 1000,
-                        100.0 * batch_idx / 1000,
-                        loss.item() / 100,
+                        epoch, batch_idx * len(data), 100 * 1000, 100.0 * batch_idx / 1000, loss.item() / 100
                     )
                 )
                 print_true_error(0)
