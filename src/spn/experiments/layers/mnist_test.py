@@ -133,7 +133,7 @@ if __name__ == '__main__':
     spftime = 0
     with elapsed_timer() as e:
         # with torch.no_grad():
-        for img in tqdm(torch.split(testds, 1024)):
+        for img in tqdm(torch.split(testds, 10)):
             #pred_prob_per_class(spn, img)
 
             start = default_timer()

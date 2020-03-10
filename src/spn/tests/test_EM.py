@@ -41,7 +41,7 @@ class TestEM(unittest.TestCase):
         self.assertLessEqual(py_ll, py_ll_opt)
         self.assertAlmostEqual(spn.weights[0], 0.5, 6)
         self.assertAlmostEqual(spn.weights[1], 0.5, 6)
-        self.assertAlmostEqual(spn.children[0].children[0].mean, 10.50531, 4)
+        self.assertAlmostEqual(spn.children[1].children[0].mean, 10.50531, 4)
 
     def test_clustering(self):
         np.random.seed(0)

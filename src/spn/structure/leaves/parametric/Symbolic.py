@@ -5,6 +5,9 @@ Created on November 23, 2018
 """
 import sympy.stats as st
 import sympy as sp
+from sympy import Pow, exp, factorial, Eq, Piecewise
+from sympy.codegen.cfunctions import Sqrt
+
 from spn.structure.leaves.parametric.Parametric import *
 
 from spn.io.Symbolic import add_node_to_sympy
@@ -17,8 +20,14 @@ def get_density(dist, node, input_vars):
     return st.density(dist)(input_vars[node.scope[0]])
 
 
+def get_var(node, input_vars):
+    return input_vars[node.scope[0]]
+
+
 def gaussian_to_sympy(node, input_vars=None, log=False):
-    result = get_density(st.Normal("Node%s" % node.id, node.mean, node.stdev), node, input_vars)
+    x = input_vars[node.scope[0]]
+    result = (1.0 / (node.stdev * np.sqrt(2 * np.pi))) * exp(- Pow(x - node.mean, 2) / (2.0 * node.stdev * node.stdev))
+    #result = get_density(st.Normal("Node%s" % node.id, node.mean, node.stdev), node, input_vars)
     if log:
         result = sp.log(result)
     return result
@@ -41,22 +50,26 @@ def lognormal_to_sympy(node, input_vars=None, log=False):
 
 
 def poisson_to_sympy(node, input_vars=None, log=False):
-    result = get_density(st.Poisson("Node%s" % node.id, node.mean), node, input_vars)
+    x = get_var(node, input_vars)
+    result = Pow(node.mean, x) * exp(-node.mean) / factorial(x)
+    # result = get_density(st.Poisson("Node%s" % node.id, node.mean), node, input_vars)
     if log:
         result = sp.log(result)
     return result
 
 
 def bernoulli_to_sympy(node, input_vars=None, log=False):
-    result = get_density(st.Bernoulli("Node%s" % node.id, node.p), node, input_vars)
+    x = get_var(node, input_vars)
+    result = x * node.p + (1 - x) * (1 - node.p)
     if log:
         result = sp.log(result)
     return result
 
 
 def categorical_to_sympy(node, input_vars=None, log=False):
-    cat_param = {i: p for i, p in enumerate(node.p)}
-    result = get_density(st.FiniteRV("Node%s" % node.id, cat_param), node, input_vars)
+    x = get_var(node, input_vars)
+    result = Piecewise(*[(p, Eq(x, i)) for i, p in enumerate(node.p)])
+    #result = get_density(st.FiniteRV("Node%s" % node.id, cat_param), node, input_vars)
     if log:
         result = sp.log(result)
     return result

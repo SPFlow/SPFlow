@@ -26,6 +26,12 @@ To install the latest released version of SPFlow using pip
 pip3 install spflow
 ```
 
+An AUR package is available for Arch Linux. The PKGBUILD should automatically apply a patch for SPFlow to work with Tensorflow 2.
+
+```sh
+yay -S python-spflow
+```
+
 ## Examples
 
 We start by creating an SPN. Using a Domain-Specific Language (DSL), we can quickly create an SPN of categorical
@@ -39,7 +45,7 @@ spn = 0.4 * (Categorical(p=[0.2, 0.8], scope=0) *
              (0.3 * (Categorical(p=[0.3, 0.7], scope=1) *
                      Categorical(p=[0.4, 0.6], scope=2))
             + 0.7 * (Categorical(p=[0.5, 0.5], scope=1) *
-                     Categorical(p=[0.6, 0.4], scope=2))))
+                     Categorical(p=[0.6, 0.4], scope=2)))) \
     + 0.6 * (Categorical(p=[0.2, 0.8], scope=0) *
              Categorical(p=[0.3, 0.7], scope=1) *
              Categorical(p=[0.4, 0.6], scope=2))
@@ -65,8 +71,6 @@ spn = Sum(weights=[0.4, 0.6], children=[p2, p4])
 
 assign_ids(spn)
 rebuild_scopes_bottom_up(spn)
-
-return spn
 ```
 
 The p parameter indicates the probabilities, and the scope indicates the variable we are modeling.
@@ -385,6 +389,7 @@ The _Expectations_ function allows you to directly compute first oder moments gi
 
 ```python
 from spn.algorithms.stats.Expectations import Expectation
+from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 
 piecewise_spn = ((0.5 * PiecewiseLinear([0, 1, 2], [0, 1, 0], [], scope=[0]) +
                   0.5 * PiecewiseLinear([-2, -1, 0], [0, 1, 0], [], scope=[0])) *
