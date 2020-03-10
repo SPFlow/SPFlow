@@ -8,29 +8,36 @@ from spn.algorithms.LearningWrappers import learn_parametric, learn_classifier
 from spn.algorithms.TransformStructure import Copy
 from spn.experiments.layers.layers import SumLayer, ProductLayer, LeafLayer, to_layers, elapsed_timer, \
     to_compressed_layers, SumProductLayer
-from spn.experiments.layers.pytorch import get_torch_spn
+from spn.experiments.layers.pytorch import get_torch_spn, copy_parameters_back_from_torch_layers
 from spn.structure.Base import Context, Product, Sum, assign_ids, rebuild_scopes_bottom_up
-from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian
+from spn.structure.leaves.parametric.Parametric import Categorical, Gaussian, Bernoulli
 # from numba import njit, prange
 from timeit import timeit
 
 np.random.seed(17)
 
 
-def create_spflow_spn(n_feats):
-    gaussians1 = []
-    gaussians2 = []
+def create_spflow_spn(n_feats, ctype=Gaussian):
+    children1 = []
+    children2 = []
     for i in range(n_feats):
-        g1 = Gaussian(np.random.randn(), np.random.rand(), scope=i)
-        g2 = Gaussian(np.random.randn(), np.random.rand(), scope=i)
-        gaussians1.append(g1)
-        gaussians2.append(g2)
+        if ctype == Gaussian:
+            c1 = Gaussian(np.random.randn(), np.random.rand(), scope=i)
+            c2 = Gaussian(np.random.randn(), np.random.rand(), scope=i)
+        else:
+            #c1 = Bernoulli(p=1.0, scope=i)
+            #c2 = Bernoulli(p=1.0, scope=i)
+            c1 = Bernoulli(p=np.random.rand(), scope=i)
+            c2 = Bernoulli(p=np.random.rand(), scope=i)
+
+        children1.append(c1)
+        children2.append(c2)
 
     prods1 = []
     prods2 = []
     for i in range(0, n_feats, 2):
-        p1 = Product([gaussians1[i], gaussians1[i + 1]])
-        p2 = Product([gaussians2[i], gaussians2[i + 1]])
+        p1 = Product([children1[i], children1[i + 1]])
+        p2 = Product([children2[i], children2[i + 1]])
         prods1.append(p1)
         prods2.append(p2)
 
@@ -43,6 +50,7 @@ def create_spflow_spn(n_feats):
     assign_ids(spflow_spn)
     rebuild_scopes_bottom_up(spflow_spn)
     return spflow_spn
+
 
 
 def sum_prod_layer(layer, x):
@@ -129,17 +137,33 @@ def eval_layers(layers, x):
 if __name__ == '__main__':
     device = 'cpu'
 
+    ctype = Bernoulli
+
     nf = 1024*1
-    spn_classification = create_spflow_spn(nf)
+    spn_classification = create_spflow_spn(nf, ctype=ctype)
+
+
+    #spn_classification = Product()
+    #for i in range(nf):
+    #    spn_classification.children.append(Bernoulli(p=1.0, scope=i))
+    #assign_ids(spn_classification)
+    #rebuild_scopes_bottom_up(spn_classification)
+
     train_data = np.random.rand(256, nf).astype(np.float32)
+
+    if ctype == ctype:
+        train_data = np.round(train_data)
+        #train_data = np.ones_like(train_data)
+
     v = torch.from_numpy(train_data).to(device)
 
     clayers = to_compressed_layers(spn_classification)
     cspn = get_torch_spn(clayers).to(device)
     #cspn(v)
 
-
-    spn = get_torch_spn(to_layers(spn_classification)).to(device)
+    spn_layers = to_layers(spn_classification)
+    spn = get_torch_spn(spn_layers).to(device)
+    copy_parameters_back_from_torch_layers(spn, spn_layers)
 
     layers = to_layers(spn_classification, sparse=True)
 
@@ -164,3 +188,5 @@ if __name__ == '__main__':
     print("isclose new compressed", np.all(np.isclose(a, b2)), np.sum(b2))
     print("isclose torch", np.all(np.isclose(a, c)), np.sum(c))
     print("isclose torch compressed", np.all(np.isclose(a, c2)), np.sum(c2))
+
+    #now binary
