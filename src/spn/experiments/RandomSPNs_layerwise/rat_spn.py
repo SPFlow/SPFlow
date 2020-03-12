@@ -7,6 +7,7 @@ from torch import nn
 from torch import distributions as dist
 
 from spn.algorithms.layerwise.layers import CrossProduct, Sum
+from spn.algorithms.layerwise.distributions import Leaf
 from spn.algorithms.layerwise.type_checks import check_valid
 from spn.experiments.RandomSPNs_layerwise.distributions import IndependentMultivariate, RatNormal, truncated_normal_
 
@@ -48,8 +49,6 @@ class RegionSpn(nn.Module):
         self.num_recursions = check_valid(num_recursions, int, 1, np.log2(in_features))
         self.in_features = check_valid(in_features, int, 1)
         self._leaf_output_features = num_parts ** num_recursions
-
-        assert isinstance(leaf_base_cls, type)
         self.leaf_base_cls = leaf_base_cls
 
         # Build SPN
@@ -167,7 +166,7 @@ class RatSpnConstructor:
         self.S = check_valid(S, int, 1)
         self.I = check_valid(I, int, 1)
         self.dropout = check_valid(dropout, float, 0.0, 1.0)
-        assert isinstance(leaf_base_cls, type)
+        assert isinstance(leaf_base_cls, type) and issubclass(leaf_base_cls, Leaf), f"Parameter leaf_base_cls must be a subclass type of Leaf but was {leaf_base_cls}."
         self.leaf_base_cls = leaf_base_cls
 
         # Collect SPNs. Each random_split(...) call adds one SPN
@@ -362,7 +361,6 @@ class RatSpn(nn.Module):
 
 
 if __name__ == "__main__":
-
     def make_rat(num_features, classes, leaves=3, sums=4, num_splits=1, num_recursions=4, dropout=0.0):
         from spn.algorithms.layerwise import distributions as spn_dists
         rg = RatSpnConstructor(num_features, classes, sums, leaves, dropout=dropout, leaf_base_cls=spn_dists.Bernoulli)
