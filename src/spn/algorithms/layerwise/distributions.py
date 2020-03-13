@@ -217,9 +217,6 @@ class MultivariateNormal(Leaf):
         self.out_shape = f"(N, {self._out_features}, {self.multiplicity})"
 
     def forward(self, x):
-        # Apply dropout defined in super class
-        x = super().forward(x)
-
         # Pad dummy variable via reflection
         if self._pad_value != 0:
             x = F.pad(x, pad=[0, 0, 0, self._pad_value], mode="reflect")
@@ -236,6 +233,10 @@ class MultivariateNormal(Leaf):
 
         # Output shape: [n, d / cardinality, multiplicity]
         x = x.view(batch_size, self._n_dists, self.multiplicity)
+
+        # Marginalize and apply dropout
+        x = self._marginalize_input(x)
+        x = self._apply_dropout(x)
 
         return x
 
