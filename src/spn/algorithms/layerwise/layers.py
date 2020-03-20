@@ -5,15 +5,16 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
-from typing import Any
+from typing import Any, Union
 from spn.algorithms.layerwise.type_checks import check_valid
+from spn.algorithms.layerwise.distributions import Leaf
 
 
 logger = logging.getLogger(__name__)
 
 
 class Sum(nn.Module):
-    def __init__(self, in_channels: int, in_features: int, out_channels: int, dropout: float=0.0):
+    def __init__(self, in_channels: int, in_features: int, out_channels: int, dropout: float = 0.0):
         """
         Create a Sum layer.
 
@@ -25,12 +26,11 @@ class Sum(nn.Module):
         """
         super(Sum, self).__init__()
 
-
         self.in_channels = check_valid(in_channels, int, 1)
         self.in_features = check_valid(in_features, int, 1)
         self.out_channels = check_valid(out_channels, int, 1)
         self.dropout = nn.Parameter(torch.tensor(check_valid(dropout, float, 0.0, 1.0)), requires_grad=False)
-         
+
         # Weights, such that each sumnode has its own weights
         ws = torch.randn(self.in_features, self.in_channels, self.out_channels)
         self.sum_weights = nn.Parameter(ws)
@@ -118,7 +118,7 @@ class Product(nn.Module):
     Product Node Layer that chooses k scopes as children for a product node.
     """
 
-    def __init__(self, in_features: int, cardinality: int ):
+    def __init__(self, in_features: int, cardinality: int):
         """
         Create a product node layer.
 
@@ -201,6 +201,7 @@ class Product(nn.Module):
         return "Product(in_features={}, cardinality={}, out_shape={})".format(
             self.in_features, self.cardinality, self.out_shape
         )
+
 
 class CrossProduct(nn.Module):
     """
@@ -320,6 +321,49 @@ class CrossProduct(nn.Module):
 
     def __repr__(self):
         return "CrossProduct(in_features={}, out_shape={})".format(self.in_features, self.out_shape)
+
+
+class StackedSPN(nn.Module):
+    """A class that encapsulates the hierarchy of an SPN using the layerwise implementation."""
+
+    def __init__(self):
+        super().__init__()
+        self._leaf = None
+        self._layers = nn.ModuleList()
+
+    @property
+    def leaf(self):
+        return self._leaf
+
+    @leaf.setter
+    def leaf(self, layer: Leaf):
+        assert isinstance(layer, Leaf)
+        self._leaf = leaf
+
+    def add_layer(self, layer: Union[Sum, Product, CrossProduct, Leaf]):
+        assert isinstance(layer, (Sum, Product, CrossProduct))
+
+        self._layers.append(layer)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Forward to leaf
+        x = self._leaf(x)
+
+        # Forward to inner product and sum layers
+        for l in self._layers:
+            x = l(x)
+
+        return x
+
+    def sample(self, idxs: torch.Tensor, n: int = 1):
+        # Sample inner modules
+        for l in reversed(self._layers):
+            idxs = l.sample(idxs, n)
+
+        # Sample leaf
+        samples = self._leaf.sample(idxs, n)
+
+        return samples
 
 
 if __name__ == "__main__":
