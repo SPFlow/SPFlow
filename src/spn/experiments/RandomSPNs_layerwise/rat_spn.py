@@ -6,7 +6,7 @@ import torch
 from torch import nn
 from torch import distributions as dist
 
-from spn.algorithms.layerwise.layers import CrossProduct, Sum
+from spn.algorithms.layerwise.layers import CrossProduct, Sum, StackedSPN
 from spn.algorithms.layerwise.distributions import Leaf
 from spn.algorithms.layerwise.type_checks import check_valid
 from spn.experiments.RandomSPNs_layerwise.distributions import IndependentMultivariate, RatNormal, truncated_normal_
@@ -77,13 +77,15 @@ class RegionSpn(nn.Module):
         # Internal Region:  Create S sum nodes
         # Partition:        Cross products of all child-regions
 
+        # Collect layers in a linear stacked spn
+        self._spn = StackedSPN()
+
         ### LEAF ###
-        self._leaf = self._build_input_distribution()
+        self._spn.leaf = self._build_input_distribution()
 
         # First product layer on top of leaf layer
         prod = CrossProduct(in_features=self.num_parts ** self.num_recursions, in_channels=self.I)
-        self._inner_layers = nn.ModuleList()
-        self._inner_layers.append(prod)
+        self._spn.add_layer(prod)
 
         # Sum and product layers
         for i in np.arange(start=self.num_recursions - 1, stop=0, step=-1):
@@ -104,29 +106,21 @@ class RegionSpn(nn.Module):
             prod = CrossProduct(in_features=in_features, in_channels=self.S)
 
             # Collect
-            self._inner_layers.append(sumlayer)
-            self._inner_layers.append(prod)
+            self._spn.add_layer(sumlayer)
+            self._spn.add_layer(prod)
 
     def forward(self, x: torch.Tensor):
         # Random permutation
         x = x[:, self.rand_idxs]
 
-        # Apply leaf distributions
-        x = self._leaf(x)
-
         # Forward to inner product and sum layers
-        for l in self._inner_layers:
-            x = l(x)
+        x = self._spn(x)
 
         return x
 
     def sample(self, idxs: torch.Tensor, n: int = 1):
-        # Sample inner modules
-        for l in reversed(self._inner_layers):
-            idxs = l.sample(idxs, n)
-
-        # Sample leaf
-        samples = self._leaf.sample(idxs, n)
+        # Sample from inner spn
+        samples = self._spn.sample(idxs, n)
 
         # Invert permutation
         inv_rand_idxs = invert_permutation(self.rand_idxs)

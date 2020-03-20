@@ -117,8 +117,8 @@ def run_torch(n_epochs=100, batch_size=256):
     model.train()
     print(model)
     print(f"Layer 0: {count_params(model.region_spns[0]._leaf) * n_splits}")
-    for i in range(1, len(model.region_spns[0]._inner_layers) + 1):
-        print(f"Layer {i}: {count_params(model.region_spns[0]._inner_layers[i - 1]) * n_splits}")
+    for i in range(1, len(model.region_spns[0]._spn._layers) + 1):
+        print(f"Layer {i}: {count_params(model.region_spns[0]._spn._layers[i - 1]) * n_splits}")
     print("Number of pytorch parameters: ", count_params(model))
 
     # Define optimizer
