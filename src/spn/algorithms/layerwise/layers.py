@@ -1,19 +1,36 @@
 import logging
-import time
+from abc import ABC, abstractmethod
 
 import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
-from typing import Any, Union
-from spn.algorithms.layerwise.type_checks import check_valid
-from spn.algorithms.layerwise.distributions import Leaf
 
+from spn.algorithms.layerwise.type_checks import check_valid
+from spn.algorithms.layerwise.utils import provide_evidence
 
 logger = logging.getLogger(__name__)
 
 
-class Sum(nn.Module):
+class AbstractLayer(nn.Module, ABC):
+    def __init__(self):
+        super().__init__()
+
+    @abstractmethod
+    def sample(self, n: int = 1, indices: torch.Tensor = None) -> torch.Tensor:
+        """
+        Sample from this layer.
+        Args:
+            n: Number of samples.
+            indices: Parent indices.
+
+        Returns:
+            torch.Tensor: Generated samples.
+        """
+        pass
+
+
+class Sum(AbstractLayer):
     def __init__(self, in_channels: int, in_features: int, out_channels: int, dropout: float = 0.0):
         """
         Create a Sum layer.
@@ -38,6 +55,19 @@ class Sum(nn.Module):
 
         self.out_shape = f"(N, {self.in_features}, {self.out_channels})"
 
+        # Necessary for sampling with evidence: Save input during forward pass.
+        self._is_sampling_input_cache_enabled = False
+        self._sampling_input_cache = None
+
+    def _enable_sampling_input_cache(self):
+        """Enables the input cache. This will store the input in forward passes into `self.__input_cache`."""
+        self._is_sampling_input_cache_enabled = True
+
+    def _disable_sampling_input_cache(self):
+        """Disables and clears the input cache."""
+        self._is_sampling_input_cache_enabled = False
+        self._sampling_input_cache = None
+
     def forward(self, x: torch.Tensor):
         """
         Sum layer foward pass.
@@ -48,42 +78,46 @@ class Sum(nn.Module):
         Returns:
             torch.Tensor: Output of shape [batch, in_features, out_channels]
         """
+        # Save input if input cache is enabled
+        if self._is_sampling_input_cache_enabled:
+            self._sampling_input_cache = x.clone()
+
         # Apply dropout: Set random sum node children to 0 (-inf in log domain)
         if self.dropout > 0.0 and self.training:
-            dropout_idxs = self._bernoulli_dist.sample(x.shape).bool()
-            x[dropout_idxs] = np.NINF
+            dropout_indices = self._bernoulli_dist.sample(x.shape).bool()
+            x[dropout_indices] = np.NINF
 
-        # Multiply x with weights in logspace
-        # Resuts in shape: [n, d, ic, oc]
+        # Multiply x with weights in log-space
+        # Results in shape: [n, d, ic, oc]
         x = x.unsqueeze(3) + F.log_softmax(self.sum_weights, dim=1)
 
         # Compute sum via logsumexp along dimension "ic" (in_channels)
-        # Resuts in shape: [n, d, oc]
+        # Results in shape: [n, d, oc]
         x = torch.logsumexp(x, dim=2)
 
         return x
 
-    def sample(self, idxs: torch.Tensor = None, n: int = 1) -> torch.Tensor:
+    def sample(self, n: int = 1, indices: torch.Tensor = None) -> torch.Tensor:
         """Method to sample from this layer, based on the parents output.
 
         Output is always a vector of indices into the channels.
 
         Args:
-            idxs (torch.Tensor): Parent sampling output.
+            indices (torch.Tensor): Parent sampling output.
             n (int): Number of samples.
         Returns:
             torch.Tensor: Index into tensor which paths should be followed.
         """
 
         # Sum weights are of shape: in_features x in_channels x out_channels
-        # We now want to use `idxs` to acces one channel for each in_feature x out_channels block
-        # idx is of size in_feature
+        # We now want to use `indices` to acces one channel for each in_feature x out_channels block
+        # index is of size in_feature
 
-        sum_weights = self.sum_weights
+        sum_weights = self.sum_weights.data
 
         # If this is not the root node, use the paths (out channels), specified by the parent layer
-        if idxs is not None:
-            sum_weights = sum_weights[range(self.in_features), :, idxs]
+        if indices is not None:
+            sum_weights = sum_weights[range(self.in_features), :, indices]
 
             # Apply log_softmax to ensure they are proper probabilities
             sum_weights = F.log_softmax(sum_weights, dim=2)
@@ -97,10 +131,9 @@ class Sum(nn.Module):
             # Move sample dimension to the first axis: [feat, channels, batch] -> [batch, feat, channels]
             sum_weights = sum_weights.permute(2, 0, 1)
 
-        # Permute sum weights such that dim0: in_features, dim1: out_channels, dim2: in_channels
-        # since Categorial uses the last channel as axis for the probabilities and we want to
-        # sample from the input channels and use their weights as probabilities
-        # sum_weights_permuted = sum_weights_softmaxed.permute(0, 2, 1)
+        # If evidence is given, adjust the weights with the likelihoods of the observed paths
+        if self._sampling_input_cache is not None:
+            sum_weights.mul_(self._sampling_input_cache)
 
         # Create categorical distribution and use weights as logits
         dist = torch.distributions.Categorical(logits=sum_weights)
@@ -113,7 +146,7 @@ class Sum(nn.Module):
         )
 
 
-class Product(nn.Module):
+class Product(AbstractLayer):
     """
     Product Node Layer that chooses k scopes as children for a product node.
     """
@@ -171,31 +204,32 @@ class Product(nn.Module):
         result = result.squeeze(1)
         return result
 
-    def sample(self, idxs: torch.Tensor = None, n: int = None) -> torch.Tensor:
+    def sample(self, n: int = 1, indices: torch.Tensor = None) -> torch.Tensor:
         """Method to sample from this layer, based on the parents output.
 
         Args:
-            x (torch.Tensor): Parent sampling output
+            n (int): Number of instances to sample.
+            indices (torch.Tensor): Parent sampling output.
         Returns:
             torch.Tensor: Index into tensor which paths should be followed.
                           Output should be of size: in_features, out_channels.
         """
 
         # If this is a root node
-        if idxs is None:
+        if indices is None:
             # TODO: check if this is correct?
             return torch.zeros(n, 1)
 
         # Repeat the parent indices, e.g. [0, 2, 3] -> [0, 0, 2, 2, 3, 3]
         # depending on the cardinality
-        sample_idxs = torch.repeat_interleave(idxs, repeats=self.cardinality)
-        sample_idxs = sample_idxs.view(idxs.shape[0], -1)
+        sample_indices = torch.repeat_interleave(indices, repeats=self.cardinality)
+        sample_indices = sample_indices.view(indices.shape[0], -1)
 
         # Remove padding
         if self._pad:  # TODO: test if padding works along broadcasting
-            sample_idxs = sample_idxs[:, : -self._pad]
+            sample_indices = sample_indices[:, : -self._pad]
 
-        return sample_idxs
+        return sample_indices
 
     def __repr__(self):
         return "Product(in_features={}, cardinality={}, out_shape={})".format(
@@ -203,7 +237,7 @@ class Product(nn.Module):
         )
 
 
-class CrossProduct(nn.Module):
+class CrossProduct(AbstractLayer):
     """
     Layerwise implementation of a RAT Product node.
 
@@ -225,9 +259,9 @@ class CrossProduct(nn.Module):
         """
 
         super().__init__()
-        cardinality = 2  # Fixed to binary graphs for now
         self.in_features = check_valid(in_features, int, 1)
         self.in_channels = check_valid(in_channels, int, 1)
+        cardinality = 2  # Fixed to binary graphs for now
         self.cardinality = check_valid(cardinality, int, 2, in_features + 1)
         self._out_features = np.ceil(self.in_features / self.cardinality).astype(int)
         self._pad = 0
@@ -253,9 +287,9 @@ class CrossProduct(nn.Module):
         self._scopes = np.array(self._scopes)
 
         # Create index map from flattened to coordinates (only needed in sampling)
-        self.unraveled_channel_indices = torch.tensor(
+        self.unraveled_channel_indices = nn.Parameter(torch.tensor(
             [(i, j) for i in range(self.in_channels) for j in range(self.in_channels)]
-        )
+        ), requires_grad=False)
 
         self.out_shape = f"(N, {self._out_features}, {self.in_channels ** 2})"
 
@@ -293,81 +327,32 @@ class CrossProduct(nn.Module):
         result = result.view(N, D2, C * C)
         return result
 
-    def sample(self, idxs: torch.Tensor = None, n: int = None) -> torch.Tensor:
+    def sample(self, n: int = 1, indices: torch.Tensor = None) -> torch.Tensor:
         """Method to sample from this layer, based on the parents output.
 
         Args:
-            x (torch.Tensor): Parent sampling output
+            n: Number of samples.
+            indices (torch.Tensor): Parent sampling output
         Returns:
             torch.Tensor: Index into tensor which paths should be followed.
                           Output should be of size: in_features, out_channels.
         """
 
         # If this is a root node
-        if idxs is None:
+        if indices is None:
             # TODO: check if this is correct?
             return torch.zeros(n, 1)
 
         # Map flattened indexes back to coordinates to obtain the chosen input_channel for each feature
-        # idxs_old = idxs
-        idxs = self.unraveled_channel_indices[idxs]
-        idxs = idxs.view(idxs.shape[0], -1)
+        indices = self.unraveled_channel_indices[indices]
+        indices = indices.view(indices.shape[0], -1)
 
         # Remove padding
         if self._pad:  # TODO: test if padding works along broadcasting
-            idxs = idxs[:, : -self._pad]
+            indices = indices[:, : -self._pad]
 
-        return idxs
+        return indices
 
     def __repr__(self):
         return "CrossProduct(in_features={}, out_shape={})".format(self.in_features, self.out_shape)
 
-
-class StackedSPN(nn.Module):
-    """A class that encapsulates the hierarchy of an SPN using the layerwise implementation."""
-
-    def __init__(self):
-        super().__init__()
-        self._leaf = None
-        self._layers = nn.ModuleList()
-
-    @property
-    def leaf(self):
-        return self._leaf
-
-    @leaf.setter
-    def leaf(self, layer: Leaf):
-        assert isinstance(layer, Leaf)
-        self._leaf = leaf
-
-    def add_layer(self, layer: Union[Sum, Product, CrossProduct, Leaf]):
-        assert isinstance(layer, (Sum, Product, CrossProduct))
-
-        self._layers.append(layer)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Forward to leaf
-        x = self._leaf(x)
-
-        # Forward to inner product and sum layers
-        for l in self._layers:
-            x = l(x)
-
-        return x
-
-    def sample(self, idxs: torch.Tensor, n: int = 1):
-        # Sample inner modules
-        for l in reversed(self._layers):
-            idxs = l.sample(idxs, n)
-
-        # Sample leaf
-        samples = self._leaf.sample(idxs, n)
-
-        return samples
-
-
-if __name__ == "__main__":
-    root_sum = Sum(in_channels=3, in_features=4, out_channels=1)
-    x = torch.randn(10, 3)
-
-    root_sum.sample()
