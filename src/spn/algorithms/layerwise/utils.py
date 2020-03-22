@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import torch
 from torch import nn
 
-from spn.algorithms.layerwise.layers import Sum
+from spn.algorithms.layerwise import layers
 
 
 @contextmanager
@@ -20,7 +20,7 @@ def provide_evidence(spn: nn.Module, evidence: torch.Tensor):
     with torch.no_grad():
         # Enter
         for module in spn.modules():
-            if isinstance(module, Sum):
+            if isinstance(module, layers.Sum):
                 module._enable_sampling_input_cache()
 
         if evidence is not None:
@@ -31,5 +31,5 @@ def provide_evidence(spn: nn.Module, evidence: torch.Tensor):
 
         # Exit
         for module in spn.modules():
-            if isinstance(module, Sum):
+            if isinstance(module, layers.Sum):
                 module._disable_sampling_input_cache()
