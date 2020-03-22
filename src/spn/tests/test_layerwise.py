@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 
-import unittest
-import numpy as np
 import random
+import unittest
 
+import numpy as np
 import torch
 from torch import nn
-from spn.algorithms.layerwise import layers, distributions
-from spn.algorithms.layerwise.type_checks import check_valid, OutOfBoundsException, InvalidTypeException
+from torch.distributions import Normal as TorchNormal
 from torch.nn import functional as F
 
-from torch.distributions import Normal as TorchNormal
+from spn.algorithms.layerwise import layers, distributions
+from spn.algorithms.layerwise.type_checks import (
+    check_valid,
+    OutOfBoundsException,
+    InvalidTypeException,
+    InvalidStackedSpnConfigurationException,
+)
 
 
 class TestLayerwiseImplementation(unittest.TestCase):
@@ -81,7 +86,7 @@ class TestLayerwiseImplementation(unittest.TestCase):
         self.assertTrue(result.shape[0] == batch_size)
         self.assertTrue(result.shape[1] == in_features)
         self.assertTrue(result.shape[2] == out_channels)
-        self.assertTrue(((result - expected_result).abs() < 1e-7).all())
+        self.assertTrue(((result - expected_result).abs() < 1e-6).all())
 
     def test_product_layer(self):
         """Test the product layer forward pass."""
@@ -115,7 +120,7 @@ class TestLayerwiseImplementation(unittest.TestCase):
         self.assertTrue(result.shape[0] == batch_size)
         self.assertTrue(result.shape[1] == in_features // 2)
         self.assertTrue(result.shape[2] == in_channels)
-        self.assertTrue(((result - expected_result).abs() < 1e-7).all())
+        self.assertTrue(((result - expected_result).abs() < 1e-6).all())
 
     def test_normal_leaf_layer(self):
         """Test the normal leaf layer."""
@@ -163,7 +168,7 @@ class TestLayerwiseImplementation(unittest.TestCase):
         self.assertEqual(result.shape[0], batch_size)
         self.assertEqual(result.shape[1], in_features)
         self.assertEqual(result.shape[2], multiplicity)
-        self.assertTrue(((result - expected_result).abs() < 1e-7).all())
+        self.assertTrue(((result - expected_result).abs() < 1e-6).all())
 
 
 class TestLayerwiseSampling(unittest.TestCase):
@@ -192,7 +197,7 @@ class TestLayerwiseSampling(unittest.TestCase):
         in_channels = 50
         out_channels = 50
         n = 2
-        parent_idxs = torch.randint(out_channels, size=(n, in_features))
+        parent_indices = torch.randint(out_channels, size=(n, in_features))
 
         # Create sum layer
         sum_layer = layers.Sum(in_features=in_features, in_channels=in_channels, out_channels=out_channels)
@@ -207,10 +212,10 @@ class TestLayerwiseSampling(unittest.TestCase):
         sum_layer.sum_weights = nn.Parameter(torch.log(weights))
 
         # Perform sampling
-        sample_idxs = sum_layer.sample(parent_idxs)
+        sample_indices = sum_layer.sample(indices=parent_indices)
 
         # Assert that the sample indexes are those where the weights were set to 1.0
-        self.assertTrue((rand_indxs == sample_idxs).all())
+        self.assertTrue((rand_indxs == sample_indices).all())
 
     def test_prod_as_intermediate_node(self):
         # Product layer values
@@ -220,30 +225,30 @@ class TestLayerwiseSampling(unittest.TestCase):
             prod_layer = layers.Product(in_features=in_features, cardinality=cardinality)
 
             # Example parent indexes
-            parent_idxs = torch.randint(high=5, size=(num_samples, in_features))
+            parent_indices = torch.randint(high=5, size=(num_samples, in_features))
 
             # Create expected indexes: each index is repeated #cardinality times
             pad = (cardinality - in_features % cardinality) % cardinality
-            expected_sample_idxs = []
+            expected_sample_indices = []
             for j in range(num_samples):
 
-                sample_i_idxs = []
-                for i in parent_idxs[j, :]:
-                    sample_i_idxs += [i] * cardinality
+                sample_i_indices = []
+                for i in parent_indices[j, :]:
+                    sample_i_indices += [i] * cardinality
 
                 # Remove padding
                 if pad > 0:
-                    sample_i_idxs = sample_i_idxs[:-pad]
+                    sample_i_indices = sample_i_indices[:-pad]
 
                 # Add current sample
-                expected_sample_idxs.append(sample_i_idxs)
+                expected_sample_indices.append(sample_i_indices)
 
             # As tensor
-            expected_sample_idxs = torch.tensor(expected_sample_idxs)
+            expected_sample_indices = torch.tensor(expected_sample_indices)
 
             # Sample
-            sample_idxs = prod_layer.sample(parent_idxs)
-            self.assertTrue((expected_sample_idxs == sample_idxs).all())
+            sample_indices = prod_layer.sample(indices=parent_indices)
+            self.assertTrue((expected_sample_indices == sample_indices).all())
 
     def test_normal_leaf(self):
         # Setup leaf layer
@@ -257,16 +262,16 @@ class TestLayerwiseSampling(unittest.TestCase):
         leaf.stds.data = torch.zeros(size=(1, in_features, multiplicity)).float()
 
         # Create some random indices into the multiplicity axis
-        parent_idxs = torch.randint(high=multiplicity, size=(in_features,))
+        parent_indices = torch.randint(high=multiplicity, size=(1, in_features,))
 
         # Perform sampling
-        result = leaf.sample(parent_idxs)
+        result = leaf.sample(indices=parent_indices)
 
         # Expected sampling
-        expected_result = leaf.means.data[:, range(in_features), parent_idxs]
+        expected_result = leaf.means.data[:, range(in_features), parent_indices]
 
         # Run assertions
-        self.assertTrue(((result - expected_result).abs() < 1e-7).all())
+        self.assertTrue(((result - expected_result).abs() < 1e-6).all())
 
     def test_spn_sampling(self):
 
@@ -294,13 +299,13 @@ class TestLayerwiseSampling(unittest.TestCase):
 
         # Sampling pass
         x = sum_4.sample(n=1000)
-        x = prd_3.sample(x)
-        x = sum_3.sample(x)
-        x = prd_2.sample(x)
-        x = sum_2.sample(x)
-        x = prd_1.sample(x)
-        x = sum_1.sample(x)
-        x = leaf.sample(x)
+        x = prd_3.sample(indices=x)
+        x = sum_3.sample(indices=x)
+        x = prd_2.sample(indices=x)
+        x = sum_2.sample(indices=x)
+        x = prd_1.sample(indices=x)
+        x = sum_1.sample(indices=x)
+        x = leaf.sample(indices=x)
 
 
 class TestTypeChecks(unittest.TestCase):
