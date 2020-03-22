@@ -397,7 +397,17 @@ class RatSpn(nn.Module):
                     all_samples[evidence_index[i]] = samples[i]
 
             all_samples = torch.stack(all_samples)
-            return all_samples
+
+            if evidence is not None:
+                # Update NaN entries in evidence with the sampled values
+                nan_indices = torch.isnan(evidence)
+
+                # First make a copy such that the original object is not changed
+                evidence = evidence.clone()
+                evidence[nan_indices] = all_samples[nan_indices]
+                return evidence
+            else:
+                return all_samples
 
 
 if __name__ == "__main__":
