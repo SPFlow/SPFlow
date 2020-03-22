@@ -69,7 +69,7 @@ class IndependentMultivariate(Leaf):
         in_features: int,
         cardinality: int,
         dropout: float = 0.0,
-        leaf_base_cls: Leaf = RatNormal,
+        leaf_base_class: Leaf = RatNormal,
     ):
         """
         Create multivariate distribution that only has non zero values in the covariance matrix on the diagonal.
@@ -79,11 +79,11 @@ class IndependentMultivariate(Leaf):
             cardinality: Number of variables per gauss.
             in_features: Number of input features.
             dropout: Dropout probabilities.
-            leaf_base_cls (Leaf): The encapsulating base leaf layer class.
+            leaf_base_class (Leaf): The encapsulating base leaf layer class.
         
         """
         super(IndependentMultivariate, self).__init__(multiplicity, in_features, dropout)
-        self.base_leaf = leaf_base_cls(multiplicity=multiplicity, in_features=in_features, dropout=dropout)
+        self.base_leaf = leaf_base_class(multiplicity=multiplicity, in_features=in_features, dropout=dropout)
         self.prod = Product(in_features=in_features, cardinality=cardinality)
         self._pad = (cardinality - self.in_features % cardinality) % cardinality
 
@@ -107,10 +107,10 @@ class IndependentMultivariate(Leaf):
     def _get_base_distribution(self):
         raise Exception("IndependentMultivariate does not have an explicit PyTorch base distribution.")
 
-    def sample(self, idxs: torch.Tensor = None, n: int = None) -> torch.Tensor:
+    def sample(self, indices: torch.Tensor = None, evidence: torch.Tensor=None, n: int = None) -> torch.Tensor:
         # TODO: maybe check padding?
-        idxs = self.prod.sample(idxs, n)
-        samples = self.base_leaf.sample(idxs, n)
+        indices = self.prod.sample(indices=indices, n=n)
+        samples = self.base_leaf.sample(indices=indices, n=n)
         return samples
 
     def __repr__(self):

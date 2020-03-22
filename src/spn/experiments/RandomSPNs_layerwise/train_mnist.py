@@ -138,7 +138,7 @@ def run_torch(n_epochs=100, batch_size=256):
         running_loss = 0.0
         running_loss_ce = 0.0
         running_loss_nll = 0.0
-        for batch_idx, (data, target) in enumerate(train_loader):
+        for batch_index, (data, target) in enumerate(train_loader):
             # Send data to correct device
             data, target = data.to(device), target.to(device)
             data = data.view(data.shape[0], -1)
@@ -164,14 +164,14 @@ def run_torch(n_epochs=100, batch_size=256):
             running_loss += loss.item()
             running_loss_ce += loss_ce.item()
             running_loss_nll += loss_nll.item()
-            if batch_idx % log_interval == (log_interval - 1):
+            if batch_index % log_interval == (log_interval - 1):
                 pred = output.argmax(1).eq(target).sum().cpu().numpy() / data.shape[0] * 100
                 print(
                     "Train Epoch: {} [{: >5}/{: <5} ({:.0f}%)]\tLoss_ce: {:.6f}\tLoss_nll: {:.6f}\tAccuracy: {:.0f}%".format(
                         epoch,
-                        batch_idx * len(data),
+                        batch_index * len(data),
                         60000,
-                        100.0 * batch_idx / len(train_loader),
+                        100.0 * batch_index / len(train_loader),
                         running_loss_ce / log_interval,
                         running_loss_nll / log_interval,
                         pred,
@@ -185,7 +185,7 @@ def run_torch(n_epochs=100, batch_size=256):
         with torch.no_grad():
             set_seed(0)
             # samples = model.sample(n=25)
-            samples = model.sample(cls_idx=list(range(10)) * 5)
+            samples = model.sample(class_index=list(range(10)) * 5)
             save_samples(samples, iteration=epoch)
 
         t_delta = time_delta_now(t_start)

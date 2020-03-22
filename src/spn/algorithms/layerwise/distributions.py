@@ -1,14 +1,17 @@
 """
 Module that contains a set of distributions with learnable parameters.
 """
-from abc import ABC, abstractmethod
 import logging
-import torch
+from abc import abstractmethod
+
 import numpy as np
-from torch import nn
+import torch
 from torch import distributions as dist
+from torch import nn
 from torch.nn import functional as F
+
 from spn.algorithms.layerwise.clipper import DistributionClipper
+from spn.algorithms.layerwise.layers import AbstractLayer
 from spn.algorithms.layerwise.type_checks import check_valid
 
 logger = logging.getLogger(__name__)
@@ -37,34 +40,32 @@ def dist_forward(distribution, x):
     return x
 
 
-def dist_sample(distribution: dist.Distribution, parent_idxs: torch.Tensor) -> torch.Tensor:
+def dist_sample(distribution: dist.Distribution, parent_indices: torch.Tensor) -> torch.Tensor:
     """
     Sample n samples from a given distribution.
 
     Args:
         distribution (dists.Distribution): Base distribution to sample from.
-        parent_idxs (torch.Tensor): Tensor of indexes that point to specific representations of single features/scopes.
+        parent_indices (torch.Tensor): Tensor of indexes that point to specific representations of single features/scopes.
     """
 
     # Sample from the specified distribution
-    samples = distribution.sample()
+    samples = distribution.sample(sample_shape=(parent_indices.shape[0],))
 
     assert (
-        samples.shape[0] == 1
+        samples.shape[1] == 1
     ), "Something went wrong. First sample size dimension should be size 1 due to the distribution parameter dimensions. Please report this issue."
+    samples.squeeze_(1)
 
-    # If parent idx into multiplicity are given
-    if parent_idxs is not None:
+    # If parent index into multiplicity are given
+    if parent_indices is not None:
         # Choose only specific samples for each feature/scope
-        samples = samples[:, range(samples.shape[1]), parent_idxs]
-
-    # Squeeze first dimension which should be of size 1
-    samples.squeeze_(0)
+        samples = torch.gather(samples, dim=2, index=parent_indices.unsqueeze(-1)).squeeze(-1)
 
     return samples
 
 
-class Leaf(nn.Module, ABC):
+class Leaf(AbstractLayer):
     """
     Abstract layer that maps each input feature into a specified
     representation, e.g. Gaussians.
@@ -83,7 +84,7 @@ class Leaf(nn.Module, ABC):
             in_features: Number of input features.
             droptout: Dropout probabilities.
         """
-        super(Leaf, self).__init__()
+        super().__init__()
         self.multiplicity = check_valid(multiplicity, int, 1)
         self.in_features = check_valid(in_features, int, 1)
         dropout = check_valid(dropout, float, 0.0, 1.0)
@@ -100,15 +101,14 @@ class Leaf(nn.Module, ABC):
     def _apply_dropout(self, x: torch.Tensor) -> torch.Tensor:
         # Apply dropout sampled from a bernoulli during training (model.train() has been called)
         if self.dropout > 0.0 and self.training:
-            dropout_idxs = self._bernoulli_dist.sample(x.shape).bool()
-            x[dropout_idxs] = 0.0
+            dropout_indices = self._bernoulli_dist.sample(x.shape).bool()
+            x[dropout_indices] = 0.0
         return x
 
     def _marginalize_input(self, x: torch.Tensor) -> torch.Tensor:
         # Marginalize nans set by user
         x = torch.where(~torch.isnan(x), x, self.marginalization_constant)
         return x
-
 
     def forward(self, x):
         # Forward through base distribution
@@ -125,13 +125,13 @@ class Leaf(nn.Module, ABC):
         """Get the underlying torch distribution."""
         pass
 
-    def sample(self, idxs: torch.Tensor = None, n: int = None) -> torch.Tensor:
+    def sample(self, n: int = 1, indices: torch.Tensor = None) -> torch.Tensor:
         """
         Perform sampling, given indices from the parent layer that indicate which of the multiple representations
         for each input shall be used.
         """
         d = self._get_base_distribution()
-        samples = dist_sample(d, idxs)
+        samples = dist_sample(d, indices)
         return samples
 
     def __repr__(self):
@@ -240,7 +240,7 @@ class MultivariateNormal(Leaf):
 
         return x
 
-    def sample(self, idxs=None, n=None):
+    def sample(self, n: int = 1, indices=None) -> torch.Tensor:
         """TODO: Multivariate need special treatment."""
         raise Exception("Not yet implemented")
 
@@ -310,26 +310,6 @@ class Chi2(Leaf):
         return self.chi2
 
 
-class Gamma(Leaf):
-    """Gamma distribution layer."""
-
-    def __init__(self, multiplicity, in_features, dropout=0.0):
-        """Creat a chi square layer.
-
-        Args:
-            multiplicity: Number of parallel representations for each input feature.
-            in_features: Number of input features.
-
-        """
-        super().__init__(multiplicity, in_features, dropout)
-        self.concentration = nn.Parameter(torch.rand(1, in_features, multiplicity))
-        self.rate = nn.Parameter(1, in_features, multiplicity)
-        self.gamma = dist.Gamma(concentration=self.concentration, rate=self.rate)
-
-    def _get_base_distribution(self):
-        return self.gamma
-
-
 class Representations(Leaf):
     def __init__(self, distributions, multiplicity, in_features, dropout=0.0):
         """
@@ -351,7 +331,7 @@ class Representations(Leaf):
         x = torch.cat(results, dim=1)
         return x
 
-    def sample(self, idxs=None, n=None):
+    def sample(self, n:int=1, indices:torch.Tensor=None) -> torch.Tensor:
         """TODO: Needs special treatment"""
         raise Exception("Not yet implemented")
 
@@ -417,7 +397,7 @@ class IsotropicMultivariateNormal(Leaf):
 
         return x
 
-    def sample(self, idxs=None, n=None):
+    def sample(self, n=None, indices=None) -> torch.Tensor:
         """TODO: Multivariate need special treatment."""
         raise Exception("Not yet implemented")
 
@@ -552,7 +532,7 @@ if __name__ == "__main__":
     for epoch in range(100):
 
         loss_fn = nn.NLLLoss()
-        for batch_idx in range(1000):
+        for batch_index in range(1000):
             # Send data to correct device
             data1, data2 = mv1.sample([batch_size]), mv2.sample([batch_size])
 
@@ -572,10 +552,10 @@ if __name__ == "__main__":
             optimizer.step()
 
             # Log stuff
-            if batch_idx % 100 == 0:
+            if batch_index % 100 == 0:
                 print(
                     "Train Epoch: {} [{: >5}/{: <5} ({:.0f}%)]\tLoss: {:.6f}".format(
-                        epoch, batch_idx * len(data), 100 * 1000, 100.0 * batch_idx / 1000, loss.item() / 100
+                        epoch, batch_index * len(data), 100 * 1000, 100.0 * batch_index / 1000, loss.item() / 100
                     )
                 )
                 print_true_error(0)

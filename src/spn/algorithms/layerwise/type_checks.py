@@ -16,6 +16,10 @@ class InvalidTypeException(Exception):
             f"Value {value} was of type {type(value)} but expected to be of type {expected_type} (or a subclass of this type) ."
         )
 
+class InvalidStackedSpnConfigurationException(Exception):
+    def __init__(self, expected, observed, parameter_name):
+        super().__init__(f"The StackedSpn has received an invalid configuration: Expected {parameter_name}={expected} but got {parameter_name}={observed}.")
+
 
 def _check_bounds(value: Any, expected_type, lower_bound=None, upper_bound=None):
     # Check lower bound

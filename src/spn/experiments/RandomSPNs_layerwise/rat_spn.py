@@ -4,10 +4,10 @@ from typing import List, Union
 import numpy as np
 import torch
 from torch import nn
-from torch import distributions as dist
 
-from spn.algorithms.layerwise.layers import CrossProduct, Sum, StackedSPN
 from spn.algorithms.layerwise.distributions import Leaf
+from spn.algorithms.layerwise.layers import CrossProduct, Sum
+from spn.algorithms.layerwise.utils import provide_evidence
 from spn.algorithms.layerwise.type_checks import check_valid
 from spn.experiments.RandomSPNs_layerwise.distributions import IndependentMultivariate, RatNormal, truncated_normal_
 
@@ -25,7 +25,7 @@ class RegionSpn(nn.Module):
         num_parts: int,
         num_recursions: int,
         in_features: int,
-        leaf_base_cls: type = RatNormal,
+        leaf_base_class: type = RatNormal,
     ):
         """
         Init a Region SPN split.
@@ -36,7 +36,7 @@ class RegionSpn(nn.Module):
             dropout (float): Dropout probability.
             num_parts (int): Number of partitions.
             num_recursions (int): Number of split repetitions.
-            leaf_base_cls (Leaf): 
+            leaf_base_class (Leaf): 
 
         """
         super().__init__()
@@ -49,13 +49,13 @@ class RegionSpn(nn.Module):
         self.num_recursions = check_valid(num_recursions, int, 1, np.log2(in_features))
         self.in_features = check_valid(in_features, int, 1)
         self._leaf_output_features = num_parts ** num_recursions
-        self.leaf_base_cls = leaf_base_cls
+        self.leaf_base_class = leaf_base_class
 
         # Build SPN
         self._build()
 
         # Randomize features
-        self.rand_idxs = torch.tensor(np.random.permutation(in_features))
+        self.rand_indices = torch.tensor(np.random.permutation(in_features))
 
     def _build_input_distribution(self):
         # Cardinality is the size of the region in the last partitions
@@ -65,7 +65,7 @@ class RegionSpn(nn.Module):
             in_features=self.in_features,
             cardinality=cardinality,
             dropout=self.dropout,
-            leaf_base_cls=self.leaf_base_cls,
+            leaf_base_class=self.leaf_base_class,
         )
 
     def _build(self):
@@ -77,15 +77,13 @@ class RegionSpn(nn.Module):
         # Internal Region:  Create S sum nodes
         # Partition:        Cross products of all child-regions
 
-        # Collect layers in a linear stacked spn
-        self._spn = StackedSPN()
-
         ### LEAF ###
-        self._spn.leaf = self._build_input_distribution()
+        self._leaf = self._build_input_distribution()
 
         # First product layer on top of leaf layer
         prod = CrossProduct(in_features=self.num_parts ** self.num_recursions, in_channels=self.I)
-        self._spn.add_layer(prod)
+        self._inner_layers = nn.ModuleList()
+        self._inner_layers.append(prod)
 
         # Sum and product layers
         for i in np.arange(start=self.num_recursions - 1, stop=0, step=-1):
@@ -100,33 +98,50 @@ class RegionSpn(nn.Module):
             in_features = self.num_parts ** i
 
             # Sum layer
-            sumlayer = Sum(in_features=in_features, in_channels=sum_in_channels, out_channels=self.S, dropout=self.dropout)
+            sumlayer = Sum(
+                in_features=in_features, in_channels=sum_in_channels, out_channels=self.S, dropout=self.dropout
+            )
 
             # Product layer
             prod = CrossProduct(in_features=in_features, in_channels=self.S)
 
             # Collect
-            self._spn.add_layer(sumlayer)
-            self._spn.add_layer(prod)
+            self._inner_layers.append(sumlayer)
+            self._inner_layers.append(prod)
 
     def forward(self, x: torch.Tensor):
         # Random permutation
-        x = x[:, self.rand_idxs]
+        x = x[:, self.rand_indices]
+
+        # Apply leaf distributions
+        x = self._leaf(x)
 
         # Forward to inner product and sum layers
-        x = self._spn(x)
+        for l in self._inner_layers:
+            x = l(x)
 
         return x
 
-    def sample(self, idxs: torch.Tensor, n: int = 1):
-        # Sample from inner spn
-        samples = self._spn.sample(idxs, n)
+    def sample(self, n: int = 1, indices: torch.Tensor = None):
+        # Sample inner modules
+        for l in reversed(self._inner_layers):
+            indices = l.sample(n=n, indices=indices)
+
+        # Sample leaf
+        samples = self._leaf.sample(n=n, indices=indices)
 
         # Invert permutation
-        inv_rand_idxs = invert_permutation(self.rand_idxs)
-        samples = samples[:, inv_rand_idxs]
+        inv_rand_indices = invert_permutation(self.rand_indices)
+        samples = samples[:, inv_rand_indices]
 
         return samples
+
+    def _filter_sampling_evidence(self, indices):
+        for module in self.modules():
+            if isinstance(module, Sum):
+                s: Sum = module
+                if s._is_sampling_input_cache_enabled:
+                    s._sampling_input_cache = s._sampling_input_cache[indices]
 
 
 def invert_permutation(p: torch.Tensor):
@@ -135,13 +150,13 @@ def invert_permutation(p: torch.Tensor):
     Returns an array s, where s[i] gives the index of i in p.
     Taken from: https://stackoverflow.com/a/25535723, adapted to PyTorch.
     """
-    s = torch.empty(p.shape[0], dtype=p.dtype)
+    s = torch.empty(p.shape[0], dtype=p.dtype, device=p.device)
     s[p] = torch.arange(p.shape[0])
     return s
 
 
 class RatSpnConstructor:
-    def __init__(self, in_features: int, C: int, S: int, I: int, dropout: float = 0.0, leaf_base_cls: type = RatNormal):
+    def __init__(self, in_features: int, C: int, S: int, I: int, dropout: float = 0.0, leaf_base_class: type = RatNormal):
         """
         RAT SPN class.
 
@@ -153,15 +168,17 @@ class RatSpnConstructor:
             S (int): Number of sum nodes.
             I (int): Number of distributions for each leaf node.
             dropout (float): Dropout probability.
-            leaf_base_cls (type): Base class for the leaf input distribution.
+            leaf_base_class (type): Base class for the leaf input distribution.
         """
         self.in_features = check_valid(in_features, int, 1)
         self.C = check_valid(C, int, 1)
         self.S = check_valid(S, int, 1)
         self.I = check_valid(I, int, 1)
         self.dropout = check_valid(dropout, float, 0.0, 1.0)
-        assert isinstance(leaf_base_cls, type) and issubclass(leaf_base_cls, Leaf), f"Parameter leaf_base_cls must be a subclass type of Leaf but was {leaf_base_cls}."
-        self.leaf_base_cls = leaf_base_cls
+        assert isinstance(leaf_base_class, type) and issubclass(
+            leaf_base_class, Leaf
+        ), f"Parameter leaf_base_class must be a subclass type of Leaf but was {leaf_base_class}."
+        self.leaf_base_class = leaf_base_class
 
         # Collect SPNs. Each random_split(...) call adds one SPN
         self._region_spns = []
@@ -173,7 +190,7 @@ class RatSpnConstructor:
             num_parts (int): Number of partitions.
             num_recursions (int, optional): Number of split repetitions. Defaults to 1.
         """
-        spn = RegionSpn(self.S, self.I, self.dropout, num_parts, num_recursions, self.in_features, self.leaf_base_cls)
+        spn = RegionSpn(self.S, self.I, self.dropout, num_parts, num_recursions, self.in_features, self.leaf_base_class)
         self._region_spns.append(spn)
 
     def random_split(self, num_parts: int, num_recursions: int = 1):
@@ -250,6 +267,10 @@ class RatSpn(nn.Module):
 
         self.init_weights()
 
+    def __device(self):
+        """Small hack to obtain the current device."""
+        return self._sampling_root.sum_weights.device 
+
     def init_weights(self):
         for module in self.modules():
             if hasattr(module, "_init_weights"):
@@ -277,87 +298,114 @@ class RatSpn(nn.Module):
         x = x.squeeze(1)
         return x
 
-    def sample(self, n: int = None, cls_idx: Union[int, List[int]] = None) -> torch.Tensor:
+    def sample(
+        self, n: int = None, class_index: Union[int, List[int]] = None, evidence: torch.Tensor = None
+    ) -> torch.Tensor:
         """
         Sample from the RAT-SPN.
 
+        Number of samples is either determined by `n`, number of indices in `class_index` or number of samples in the
+        evidence tensor `evidence.shape[0]`.
+
         Args:
-            n (int): Number of samples to generate. 
-            cls_idx (Union[int, List[int]]): Sample from a specific class index. Can be either an int, specifying the
+            n (int): Number of samples to generate.
+            class_index (Union[int, List[int]]): Sample from a specific class index. Can be either an int, specifying the
                            class, or a list of class indices in which case for each element, a sample of that class will
                            be generated. If not given, sample from root nodes according to uniformly distributed class
                            priors.
+            evidence: Sampling evidence.
 
         Returns:
             torch.Tensor: Samples according to the input.
             
         """
-        # If class is given, use it as base index
-        if cls_idx:
-            if isinstance(cls_idx, list):
-                assert n is None, "Cannot pass both, a list of class indices and an integer for the number of samples."
-                idxs = torch.tensor(cls_idx).view(-1, 1)
-                n = idxs.shape[0]
+        assert class_index is None or evidence is None, "Cannot provide both, evidence and class indices."
+        assert n is None or evidence is None, "Cannot provide both, number of samples to generate (n) and evidence."
+
+        # Check if evidence contains nans
+        if evidence is not None:
+            assert (evidence != evidence).any(), "Evidence has no NaN values."
+
+            # Set n to the number of samples in the evidence
+            n = evidence.shape[0]
+
+        with provide_evidence(self, evidence):  # May be None but that's ok
+            # If class is given, use it as base index
+            if class_index:
+                if isinstance(class_index, list):
+                    indices = torch.tensor(class_index, device=self.__device()).view(-1, 1)
+                    n = indices.shape[0]
+                else:
+                    indices = torch.empty(size=(n, 1), device=self.__device())
+                    indices.fill_(class_index)
             else:
-                idxs = torch.empty(size=(n, 1))
-                idxs.fill_(cls_idx)
-        else:
-            # Sample root node (choose one of the classes) TODO: check what happens if C=1
-            idxs = self._sampling_root.sample(n=n)
+                # Sample root node (choose one of the classes) TODO: check what happens if C=1
+                indices = self._sampling_root.sample(n=n)
 
-        # Sample which region graphs to use
-        idxs = self.root.sample(idxs)
+            # Sample which region graphs to use
+            indices = self.root.sample(indices=indices)
 
-        # Indexes will now point to the stacked channels of all RegionSPN output channels (S*S (if num_recursion > 1)
-        # or I*I (else) per SPN). Therefore, we need to bisect the indices
+            # Indexes will now point to the stacked channels of all RegionSPN output channels (S*S (if num_recursion > 1)
+            # or I*I (else) per SPN). Therefore, we need to bisect the indices
 
-        # Obtain bin assignments
-        bin_idxs = np.digitize(idxs.cpu().numpy(), self._channels_to_region_spns_intervals, right=True)
-        bin_idxs -= 1  # Offset by -1 since first bins starts with index 1
+            # Obtain bin assignments
+            bin_indices = np.digitize(indices.cpu().numpy(), self._channels_to_region_spns_intervals, right=True)
+            bin_indices -= 1  # Offset by -1 since first bins starts with index 1
 
-        # Collect indices for each region spn
-        coll = [[] for _ in range(len(self.region_spns))]
+            # Collect indices for each region spn
+            coll = [[] for _ in range(len(self.region_spns))]
+            # Collect sample index for each region spn
+            evidence_indices = [[] for _ in range(len(self.region_spns))]
 
-        # For each sample
-        for i in range(n):
-            for ii, b in enumerate(bin_idxs[i, :]):
-                # Adjust index according to position in bin
-                # Example, bins: [-1, 3, 8]
-                # Mapping: 0->0, 1->1, 2->2, 3->3,
-                #          4->0, 5->1, 6->2, 7->3
-                # That is, find the lower bound of the current bin, add 1, subtract from actual index to obtain index in that bin
-                # Note: We cannot simply use modulo since bins are not guaranteed to be of the same size!
-                idx_adj = idxs[i, ii] - (self._channels_to_region_spns_intervals[b] + 1)
+            # For each sample
+            for i in range(n):
+                for ii, b in enumerate(bin_indices[i, :]):
+                    # Adjust index according to position in bin
+                    # Example, bins: [-1, 3, 8]
+                    # Mapping: 0->0, 1->1, 2->2, 3->3,
+                    #          4->0, 5->1, 6->2, 7->3
+                    # That is, find the lower bound of the current bin, add 1, subtract from actual index to obtain index in that bin
+                    # Note: We cannot simply use modulo since bins are not guaranteed to be of the same size!
+                    index_adj = indices[i, ii] - (self._channels_to_region_spns_intervals[b] + 1)
 
-                # Add the adjusted index into the collection for RegionSpn at index 'b'
-                coll[b].append(idx_adj)
+                    # Add the adjusted index into the collection for RegionSpn at index 'b'
+                    coll[b].append(index_adj)
 
-        # Collect all samples
-        all_samples = []
+                    # Save which sample belongs to which region SPN (necessary for sampling with evidence)
+                    evidence_indices[b].append(i)
 
-        # Fore each RegionSpn
-        for b, indices in enumerate(coll):
+            # Collect all samples
+            all_samples = [None for _ in range(n)]
 
-            # Check if some samples were in this bin, else skip
-            if len(indices) == 0:
-                continue
+            # Fore each RegionSpn
+            for b, (indices, evidence_index) in enumerate(zip(coll, evidence_indices)):
 
-            # Convert to torch tensor
-            indices = torch.tensor(indices).view(-1, 1)
+                # Check if some samples were in this bin, else skip
+                if len(indices) == 0:
+                    continue
 
-            # Sample b-th RegionSpn with the collected indices
-            samples = self.region_spns[b].sample(indices)
-            all_samples.append(samples)
+                # Convert to torch tensor
+                indices = torch.tensor(indices, device=self.__device()).view(-1, 1)
 
-        # Concat all samples along batch axis
-        all_samples = torch.cat(all_samples, dim=0)
-        return all_samples
+                # Sample b-th RegionSpn with the collected indices
+                if evidence is not None:
+                    self.region_spns[b]._filter_sampling_evidence(indices=evidence_index)
+                samples = self.region_spns[b].sample(indices=indices)
+
+                # Put samples back into correct place
+                for i in range(samples.shape[0]):
+                    all_samples[evidence_index[i]] = samples[i]
+
+            all_samples = torch.stack(all_samples)
+            return all_samples
 
 
 if __name__ == "__main__":
+
     def make_rat(num_features, classes, leaves=3, sums=4, num_splits=1, num_recursions=4, dropout=0.0):
         from spn.algorithms.layerwise import distributions as spn_dists
-        rg = RatSpnConstructor(num_features, classes, sums, leaves, dropout=dropout, leaf_base_cls=spn_dists.Bernoulli)
+
+        rg = RatSpnConstructor(num_features, classes, sums, leaves, dropout=dropout, leaf_base_class=spn_dists.Bernoulli)
         for i in range(num_splits):
             rg.random_split(2, num_recursions)
         rat = rg.build()
