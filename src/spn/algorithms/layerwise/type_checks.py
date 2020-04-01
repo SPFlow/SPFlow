@@ -87,6 +87,8 @@ def check_valid(value: Any, expected_type, lower_bound=None, upper_bound=None, a
     """
     if allow_none and value is None:
         return value
+    if not allow_none and value is None:
+        raise Exception(f"Invalid input: Got None, but expected type {expected_type}.")
     # First check if the type is valid
     _check_type(value, expected_type)
 
