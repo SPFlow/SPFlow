@@ -12,7 +12,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from spn.algorithms.layerwise.clipper import DistributionClipper
-from spn.algorithms.layerwise.layers import AbstractLayer
+from spn.algorithms.layerwise.layers import AbstractLayer, Sum
 from spn.algorithms.layerwise.type_checks import check_valid
 
 logger = logging.getLogger(__name__)
@@ -43,18 +43,19 @@ def dist_forward(distribution, x):
 
 
 def dist_sample(
-    distribution: dist.Distribution, parent_indices: torch.Tensor, repetition_indices: List[int]
+    distribution: dist.Distribution, parent_indices: torch.Tensor, repetition_indices: torch.Tensor
 ) -> torch.Tensor:
     """
     Sample n samples from a given distribution.
 
     Args:
+        repetition_indices: Indices into the repetition axis.
         distribution (dists.Distribution): Base distribution to sample from.
         parent_indices (torch.Tensor): Tensor of indexes that point to specific representations of single features/scopes.
     """
 
     # Sample from the specified distribution
-    samples = distribution.sample(sample_shape=(parent_indices.shape[0],))
+    samples = distribution.sample(sample_shape=(repetition_indices.shape[0],))
 
     assert (
         samples.shape[1] == 1
@@ -63,7 +64,7 @@ def dist_sample(
     n, d, c, r = samples.shape
 
     # Filter each sample by its specific repetition
-    tmp = torch.zeros(n, d, c, device=parent_indices.device)
+    tmp = torch.zeros(n, d, c, device=repetition_indices.device)
     for i in range(n):
         tmp[i, :, :] = samples[i, :, :, repetition_indices[i]]
     samples = tmp
@@ -329,7 +330,7 @@ class Chi2(Leaf):
         return self.chi2
 
 
-class Representations(Leaf):
+class Mixture(Leaf):
     def __init__(self, distributions, in_features: int, out_channels, num_repetitions, dropout=0.0):
         """
         Create a layer that stack multiple representations of a feature along the scope dimension.
@@ -340,19 +341,50 @@ class Representations(Leaf):
             in_features: Number of input features.
         """
         super().__init__(in_features, out_channels, num_repetitions, dropout)
+        # Build different layers for each distribution specified
         reprs = [distr(in_features, out_channels, num_repetitions, dropout) for distr in distributions]
         self.representations = nn.ModuleList(reprs)
+
+        # Build sum layer as mixture of distributions
+        self.sumlayer = Sum(
+            in_features=in_features,
+            in_channels=len(distributions) * out_channels,
+            out_channels=out_channels,
+            num_repetitions=num_repetitions,
+        )
+
+    def _get_base_distribution(self):
+        raise Exception("Not implemented")
 
     def forward(self, x):
         results = [d(x) for d in self.representations]
 
         # Stack along output channel dimension
-        x = torch.cat(results, dim=1)
+        x = torch.cat(results, dim=2)
+
+        # Build mixture of different leafs per in_feature
+        x = self.sumlayer(x)
         return x
 
-    def sample(self, n: int = 1, indices: torch.Tensor = None) -> torch.Tensor:
-        """TODO: Needs special treatment"""
-        raise Exception("Not yet implemented")
+    def sample(self, n: int = 1, indices: torch.Tensor = None, repetition_indices: torch.Tensor = None) -> torch.Tensor:
+        # Sample from sum mixture layer
+        indices = self.sumlayer.sample(indices=indices, repetition_indices=repetition_indices)
+
+        # Collect samples from different distribution layers
+        samples = []
+        for d in self.representations:
+            sample_d = d.sample(n=n, indices=None, repetition_indices=repetition_indices)
+            samples.append(sample_d)
+
+        # Stack along channel dimension
+        samples = torch.cat(samples, dim=2)
+
+        # If parent index into out_channels are given
+        if indices is not None:
+            # Choose only specific samples for each feature/scope
+            samples = torch.gather(samples, dim=2, index=indices.unsqueeze(-1)).squeeze(-1)
+
+        return samples
 
 
 class IsotropicMultivariateNormal(Leaf):
@@ -464,3 +496,40 @@ class Poisson(Leaf):
 
     def _get_base_distribution(self):
         return self.poisson
+
+if __name__ == "__main__":
+    from spn.algorithms.layerwise.layers import Product, Sum
+
+    # Setup
+    I = 3
+    in_features = 2
+    num_repetitions = 1
+    batch_size = 1
+
+    # Leaf layer: DistributionsMixture
+    dists = [Gamma, Beta, Chi2, Cauchy]
+    leaf = Mixture(distributions=dists, in_features=in_features, out_channels=I, num_repetitions=num_repetitions)
+    # Add further layers
+    pro1 = Product(in_features=in_features, cardinality=in_features, num_repetitions=num_repetitions)
+    sum1 = Sum(in_features=1, in_channels=I, out_channels=1, num_repetitions=1)
+
+    # Random input
+    x = torch.randn(batch_size, in_features)
+
+    # Pass through leaf mixture layer
+    x = leaf(x)
+
+    # Check dimensions
+    n, d, c, r = x.shape
+    assert n == batch_size
+    assert d == in_features
+    assert c == I
+    assert r == num_repetitions
+
+    # Sample
+    rep = torch.zeros(5, dtype=int)
+    idxs = sum1.sample(n=5)
+    idxs = pro1.sample(indices=idxs)
+    samples = leaf.sample(indices=idxs, repetition_indices=rep)
+    assert (n, in_features) == samples.shape
+    print(samples.shape)
