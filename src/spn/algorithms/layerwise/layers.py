@@ -1,5 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
+from typing import List
 
 import numpy as np
 import torch
@@ -7,14 +8,15 @@ from torch import nn
 from torch.nn import functional as F
 
 from spn.algorithms.layerwise.type_checks import check_valid
-from spn.algorithms.layerwise.utils import provide_evidence
 
 logger = logging.getLogger(__name__)
 
 
 class AbstractLayer(nn.Module, ABC):
-    def __init__(self):
+    def __init__(self, in_features: int, num_repetitions: int):
         super().__init__()
+        self.in_features = check_valid(in_features, int, 1)
+        self.num_repetitions = check_valid(num_repetitions, int, 1)
 
     @abstractmethod
     def sample(self, n: int = 1, indices: torch.Tensor = None) -> torch.Tensor:
@@ -31,29 +33,32 @@ class AbstractLayer(nn.Module, ABC):
 
 
 class Sum(AbstractLayer):
-    def __init__(self, in_channels: int, in_features: int, out_channels: int, dropout: float = 0.0):
+    def __init__(self, in_channels: int, in_features: int, out_channels: int, num_repetitions, dropout: float = 0.0):
         """
         Create a Sum layer.
+
+        Input is expected to be of shape [n, d, ic, r].
+        Output will be of shape [n, d, oc, r].
 
         Args:
             in_channels (int): Number of output channels from the previous layer.
             in_features (int): Number of input features.
             out_channels (int): Multiplicity of a sum node for a given scope set.
+            num_repetitions(int): Number of layer repetitions in parallel.
             dropout (float, optional): Dropout percentage.
         """
-        super(Sum, self).__init__()
+        super().__init__(in_features, num_repetitions)
 
         self.in_channels = check_valid(in_channels, int, 1)
-        self.in_features = check_valid(in_features, int, 1)
         self.out_channels = check_valid(out_channels, int, 1)
         self.dropout = nn.Parameter(torch.tensor(check_valid(dropout, float, 0.0, 1.0)), requires_grad=False)
 
         # Weights, such that each sumnode has its own weights
-        ws = torch.randn(self.in_features, self.in_channels, self.out_channels)
-        self.sum_weights = nn.Parameter(ws)
+        ws = torch.randn(self.in_features, self.in_channels, self.out_channels, self.num_repetitions)
+        self.weights = nn.Parameter(ws)
         self._bernoulli_dist = torch.distributions.Bernoulli(probs=self.dropout)
 
-        self.out_shape = f"(N, {self.in_features}, {self.out_channels})"
+        self.out_shape = f"(N, {self.in_features}, {self.out_channels}, {self.num_repetitions})"
 
         # Necessary for sampling with evidence: Save input during forward pass.
         self._is_sampling_input_cache_enabled = False
@@ -87,57 +92,80 @@ class Sum(AbstractLayer):
             dropout_indices = self._bernoulli_dist.sample(x.shape).bool()
             x[dropout_indices] = np.NINF
 
-        # Multiply x with weights in log-space
-        # Results in shape: [n, d, ic, oc]
-        x = x.unsqueeze(3) + F.log_softmax(self.sum_weights, dim=1)
+        # Dimensions
+        n, d, ic, r = x.size()
+        oc = self.weights.size(2)
 
-        # Compute sum via logsumexp along dimension "ic" (in_channels)
-        # Results in shape: [n, d, oc]
-        x = torch.logsumexp(x, dim=2)
+        x = x.unsqueeze(3)  # Shape: [n, d, ic, 1, r]
+
+        # Normalize weights in log-space along in_channel dimension
+        # Weights is of shape [d, ic, oc, r]
+        logweights = F.log_softmax(self.weights, dim=1)
+
+        # Multiply (add in log-space) input features and weights
+        x = x + logweights  # Shape: [n, d, ic, oc, r]
+
+        # Compute sum via logsumexp along in_channels dimension
+        x = torch.logsumexp(x, dim=2)  # Shape: [n, d, oc, r]
+
+        # Assert correct dimensions
+        assert x.size() == (n, d, oc, r)
 
         return x
 
-    def sample(self, n: int = 1, indices: torch.Tensor = None) -> torch.Tensor:
+    def sample(self, n: int = 1, indices: torch.Tensor = None, repetition_indices: List[int] = None) -> torch.Tensor:
         """Method to sample from this layer, based on the parents output.
 
         Output is always a vector of indices into the channels.
 
         Args:
+            repetition_indices (List[int]): An index into the repetition axis for each sample.
             indices (torch.Tensor): Parent sampling output.
             n (int): Number of samples.
         Returns:
             torch.Tensor: Index into tensor which paths should be followed.
         """
 
-        # Sum weights are of shape: in_features x in_channels x out_channels
-        # We now want to use `indices` to acces one channel for each in_feature x out_channels block
+        # Sum weights are of shape: [D, IC, OC, R]
+        # We now want to use `indices` to access one in_channel for each in_feature x out_channels block
         # index is of size in_feature
-
-        sum_weights = self.sum_weights.data
+        weights = self.weights.data
+        d, ic, oc, r = weights.shape
 
         # If this is not the root node, use the paths (out channels), specified by the parent layer
         if indices is not None:
-            sum_weights = sum_weights[range(self.in_features), :, indices]
-
-            # Apply log_softmax to ensure they are proper probabilities
-            sum_weights = F.log_softmax(sum_weights, dim=2)
+            assert repetition_indices.shape[0] == indices.shape[0]
+            n = indices.shape[0]
+            tmp = torch.zeros(n, d, ic, device=weights.device)
+            for i in range(n):
+                tmp[i, :, :] = weights[range(self.in_features), :, indices[i], repetition_indices[i]]
+            weights = tmp
         else:
-            assert sum_weights.shape[2] == 1, "Cannot start sampling from non-root layer"
-            sum_weights = sum_weights[:, :, [0] * n]
-
-            # Apply log_softmax to ensure they are proper probabilities
-            sum_weights = F.log_softmax(sum_weights, dim=1)
+            assert oc == 1 and r == 1, "Cannot start sampling from non-root layer"
+            assert (
+                repetition_indices is None
+            ), "Root layer should not be passed repetition indices as there should only be one repetition."
+            repetition_indices = torch.zeros(n, dtype=int, device=weights.device)
+            weights = weights[:, :, [0] * n, 0]  # Shape: [D, IC, N]
 
             # Move sample dimension to the first axis: [feat, channels, batch] -> [batch, feat, channels]
-            sum_weights = sum_weights.permute(2, 0, 1)
+            weights = weights.permute(2, 0, 1)  # Shape: [N, D, IC]
+
+        # Check dimensions
+        assert weights.shape == (n, d, ic)
+        # Apply softmax to ensure they are proper probabilities
+        log_weights = F.log_softmax(weights, dim=2)
 
         # If evidence is given, adjust the weights with the likelihoods of the observed paths
-        if self._sampling_input_cache is not None:
-            sum_weights.mul_(self._sampling_input_cache)
+        if self._is_sampling_input_cache_enabled and self._sampling_input_cache is not None:
+            for i in range(n):
+                # Reweight the i-th samples weights by its likelihood values at the correct repetition
+                log_weights[i, :, :] += self._sampling_input_cache[i, :, :, repetition_indices[i]]
 
         # Create categorical distribution and use weights as logits
-        dist = torch.distributions.Categorical(logits=sum_weights)
+        dist = torch.distributions.Categorical(logits=log_weights)
         indices = dist.sample()
+
         return indices
 
     def __repr__(self):
@@ -151,7 +179,7 @@ class Product(AbstractLayer):
     Product Node Layer that chooses k scopes as children for a product node.
     """
 
-    def __init__(self, in_features: int, cardinality: int):
+    def __init__(self, in_features: int, num_repetitions: int, cardinality: int):
         """
         Create a product node layer.
 
@@ -160,17 +188,16 @@ class Product(AbstractLayer):
             cardinality (int): Number of random children for each product node.
         """
 
-        super(Product, self).__init__()
+        super().__init__(in_features, num_repetitions)
 
-        self.in_features = check_valid(in_features, int, 1)
         self.cardinality = check_valid(cardinality, int, 2, in_features + 1)
 
         # Implement product as convolution
-        self._conv_weights = nn.Parameter(torch.ones(1, 1, cardinality, 1), requires_grad=False)
+        self._conv_weights = nn.Parameter(torch.ones(1, 1, cardinality, 1, 1), requires_grad=False)
         self._pad = (self.cardinality - self.in_features % self.cardinality) % self.cardinality
 
         self._out_features = np.ceil(self.in_features / self.cardinality).astype(int)
-        self.out_shape = f"(N, {self._out_features}, C_in)"
+        self.out_shape = f"(N, {self._out_features}, in_channels, {self.num_repetitions})"
 
     def forward(self, x: torch.Tensor):
         """
@@ -188,20 +215,20 @@ class Product(AbstractLayer):
 
         # Pad if in_features % cardinality != 0
         if self._pad > 0:
-            x = F.pad(x, pad=(0, 0, 0, self._pad), value=0)
+            x = F.pad(x, pad=(0, 0, 0, 0, 0, self._pad), value=0)
 
-        # Use convolution with weights of 1 and stride/kernel size of #children
-        # Simulate a single feature map, therefore [n, d, c] -> [n, c'=1, d, c], that is
-        # - The convolution channel input and output size will be 1
-        # - The feature dimension (d) will be the height dimension
-        # - The channel dimension (c) will be the width dimension
-        # Convolution is then applied along the width with stride/ksize #children and along
-        # the height with stride/ksize 1
-        x = x.unsqueeze(1)
-        result = F.conv2d(x, weight=self._conv_weights, stride=(self.cardinality, 1))
+        # Dimensions
+        n, d, c, r = x.size()
+        d_out = d // self.cardinality
+
+        # Use convolution with 3D weight tensor filled with ones to simulate the product node
+        x = x.unsqueeze(1)  # Shape: [n, 1, d, c, r]
+        result = F.conv3d(x, weight=self._conv_weights, stride=(self.cardinality, 1, 1))
 
         # Remove simulated channel
         result = result.squeeze(1)
+
+        assert result.size() == (n, d_out, c, r)
         return result
 
     def sample(self, n: int = 1, indices: torch.Tensor = None) -> torch.Tensor:
@@ -217,16 +244,13 @@ class Product(AbstractLayer):
 
         # If this is a root node
         if indices is None:
-            # TODO: check if this is correct?
             return torch.zeros(n, 1)
 
-        # Repeat the parent indices, e.g. [0, 2, 3] -> [0, 0, 2, 2, 3, 3]
-        # depending on the cardinality
-        sample_indices = torch.repeat_interleave(indices, repeats=self.cardinality)
-        sample_indices = sample_indices.view(indices.shape[0], -1)
+        # Repeat the parent indices, e.g. [0, 2, 3] -> [0, 0, 2, 2, 3, 3] depending on the cardinality
+        sample_indices = torch.repeat_interleave(indices, repeats=self.cardinality, dim=1)
 
         # Remove padding
-        if self._pad:  # TODO: test if padding works along broadcasting
+        if self._pad:
             sample_indices = sample_indices[:, : -self._pad]
 
         return sample_indices
@@ -249,7 +273,7 @@ class CrossProduct(AbstractLayer):
     TODO: Generalize to k regions (cardinality = k).
     """
 
-    def __init__(self, in_features: int, in_channels: int):
+    def __init__(self, in_features: int, in_channels: int, num_repetitions: int):
         """
         Create a rat product node layer.
 
@@ -258,8 +282,7 @@ class CrossProduct(AbstractLayer):
             in_channels (int): Number of input channels. This is only needed for the sampling pass.
         """
 
-        super().__init__()
-        self.in_features = check_valid(in_features, int, 1)
+        super().__init__(in_features, num_repetitions)
         self.in_channels = check_valid(in_channels, int, 1)
         cardinality = 2  # Fixed to binary graphs for now
         self.cardinality = check_valid(cardinality, int, 2, in_features + 1)
@@ -287,11 +310,12 @@ class CrossProduct(AbstractLayer):
         self._scopes = np.array(self._scopes)
 
         # Create index map from flattened to coordinates (only needed in sampling)
-        self.unraveled_channel_indices = nn.Parameter(torch.tensor(
-            [(i, j) for i in range(self.in_channels) for j in range(self.in_channels)]
-        ), requires_grad=False)
+        self.unraveled_channel_indices = nn.Parameter(
+            torch.tensor([(i, j) for i in range(self.in_channels) for j in range(self.in_channels)]),
+            requires_grad=False,
+        )
 
-        self.out_shape = f"(N, {self._out_features}, {self.in_channels ** 2})"
+        self.out_shape = f"(N, {self._out_features}, {self.in_channels ** 2}, {self.num_repetitions})"
 
     def forward(self, x: torch.Tensor):
         """
@@ -309,22 +333,27 @@ class CrossProduct(AbstractLayer):
             self._pad = 2 ** np.ceil(np.log2(x.shape[1])).astype(np.int) - x.shape[1]
 
             # Pad marginalized node
-            x = F.pad(x, pad=[0, 0, 0, self._pad], mode="constant", value=0.0)
+            x = F.pad(x, pad=[0, 0, 0, 0, 0, self._pad], mode="constant", value=0.0)
+
+        # Dimensions
+        n, d, c, r = x.size()
+        d_out = d // self.cardinality
 
         # Build outer sum, using broadcasting, this can be done with
         # modifying the tensor dimensions:
-        # left: [n, d/2, c] -> [n, d/2, c, 1]
-        # right: [n, d/2, c] -> [n, d/2, 1, c]
-        # left + right with broadcasting: [n, d/2, c, 1] + [n, d/2, 1, c] -> [n, d/2, c, c]
-        left = x[:, self._scopes[0, :], :].unsqueeze(3)
-        right = x[:, self._scopes[1, :], :].unsqueeze(2)
+        # left: [n, d/2, c, r] -> [n, d/2, c, 1, r]
+        # right: [n, d/2, c, r] -> [n, d/2, 1, c, r]
+        left = x[:, self._scopes[0, :], :, :].unsqueeze(3)
+        right = x[:, self._scopes[1, :], :, :].unsqueeze(2)
+
+        # left + right with broadcasting: [n, d/2, c, 1, r] + [n, d/2, 1, c, r] -> [n, d/2, c, c, r]
         result = left + right
 
         # Put the two channel dimensions from the outer sum into one single dimension:
-        # [n, d/2, c, c] -> [n, d/2, c * c]
-        N, D2, C, C = result.shape
-        # result = result.view(*result.shape[:-2], result.shape[-1] ** 2)
-        result = result.view(N, D2, C * C)
+        # [n, d/2, c, c, r] -> [n, d/2, c * c, r]
+        result = result.view(n, d_out, c * c, r)
+
+        assert result.size() == (n, d_out, c * c, r)
         return result
 
     def sample(self, n: int = 1, indices: torch.Tensor = None) -> torch.Tensor:
@@ -340,7 +369,6 @@ class CrossProduct(AbstractLayer):
 
         # If this is a root node
         if indices is None:
-            # TODO: check if this is correct?
             return torch.zeros(n, 1)
 
         # Map flattened indexes back to coordinates to obtain the chosen input_channel for each feature
@@ -348,11 +376,10 @@ class CrossProduct(AbstractLayer):
         indices = indices.view(indices.shape[0], -1)
 
         # Remove padding
-        if self._pad:  # TODO: test if padding works along broadcasting
+        if self._pad:
             indices = indices[:, : -self._pad]
 
         return indices
 
     def __repr__(self):
         return "CrossProduct(in_features={}, out_shape={})".format(self.in_features, self.out_shape)
-
