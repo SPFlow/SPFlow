@@ -79,6 +79,12 @@ class RatSpnConfig:
         if 2 ** self.D > self.F:
             raise Exception(f"The tree depth D={self.D} must be <= {np.floor(np.log2(self.F))} (log2(in_features).")
 
+    def __setattr__(self, key, value):
+        if hasattr(self, key):
+            super().__setattr__(key, value)
+        else:
+            raise AttributeError(f"RatSpnConfig object has no attribute {key}")
+
 
 class RatSpn(nn.Module):
     """
