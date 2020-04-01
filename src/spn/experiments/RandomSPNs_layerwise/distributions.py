@@ -1,11 +1,12 @@
 import logging
+from typing import Dict
 
 import torch
 from torch import distributions as dist
 from torch import nn
 from torch.nn import functional as F
 
-from spn.algorithms.layerwise.distributions import Leaf, dist_forward
+from spn.algorithms.layerwise.distributions import Leaf
 from spn.algorithms.layerwise.layers import Product
 from spn.algorithms.layerwise.type_checks import check_valid
 
@@ -19,8 +20,9 @@ class RatNormal(Leaf):
 
     def __init__(
         self,
-        multiplicity: int,
         in_features: int,
+        out_channels: int,
+        num_repetitions: int,
         dropout: float = 0.0,
         min_sigma: float = 0.1,
         max_sigma: float = 1.0,
@@ -30,15 +32,15 @@ class RatNormal(Leaf):
         """Creat a gaussian layer.
 
         Args:
-            multiplicity: Number of parallel representations for each input feature.
+            out_channels: Number of parallel representations for each input feature.
             in_features: Number of input features.
 
         """
-        super().__init__(multiplicity, in_features, dropout)
+        super().__init__(in_features, out_channels, num_repetitions, dropout)
 
         # Create gaussian means and stds
-        self.means = nn.Parameter(torch.randn(1, in_features, multiplicity))
-        self.stds = nn.Parameter(torch.rand(1, in_features, multiplicity))
+        self.means = nn.Parameter(torch.randn(1, in_features, out_channels, num_repetitions))
+        self.stds = nn.Parameter(torch.rand(1, in_features, out_channels, num_repetitions))
 
         self.min_sigma = check_valid(min_sigma, float, 0.0, max_sigma)
         self.max_sigma = check_valid(max_sigma, float, min_sigma)
@@ -65,56 +67,70 @@ class RatNormal(Leaf):
 class IndependentMultivariate(Leaf):
     def __init__(
         self,
-        multiplicity: int,
         in_features: int,
+        out_channels: int,
+        num_repetitions: int,
         cardinality: int,
         dropout: float = 0.0,
         leaf_base_class: Leaf = RatNormal,
+        leaf_base_kwargs: Dict = None,
     ):
         """
         Create multivariate distribution that only has non zero values in the covariance matrix on the diagonal.
 
         Args:
-            multiplicity: Number of parallel representations for each input feature.
+            out_channels: Number of parallel representations for each input feature.
             cardinality: Number of variables per gauss.
             in_features: Number of input features.
             dropout: Dropout probabilities.
             leaf_base_class (Leaf): The encapsulating base leaf layer class.
         
         """
-        super(IndependentMultivariate, self).__init__(multiplicity, in_features, dropout)
-        self.base_leaf = leaf_base_class(multiplicity=multiplicity, in_features=in_features, dropout=dropout)
-        self.prod = Product(in_features=in_features, cardinality=cardinality)
+        super(IndependentMultivariate, self).__init__(in_features, out_channels, num_repetitions, dropout)
+        if leaf_base_kwargs is None:
+            leaf_base_kwargs = {}
+
+        self.base_leaf = leaf_base_class(
+            out_channels=out_channels,
+            in_features=in_features,
+            dropout=dropout,
+            num_repetitions=num_repetitions,
+            **leaf_base_kwargs,
+        )
+        self.prod = Product(in_features=in_features, cardinality=cardinality, num_repetitions=num_repetitions)
         self._pad = (cardinality - self.in_features % cardinality) % cardinality
 
         self.cardinality = check_valid(cardinality, int, 2, in_features + 1)
-        self.out_shape = f"(N, {self.prod._out_features}, {multiplicity})"
+        self.out_shape = f"(N, {self.prod._out_features}, {out_channels}, {self.num_repetitions})"
 
     def _init_weights(self):
         if isinstance(self.base_leaf, RatNormal):
             truncated_normal_(self.base_leaf.stds, std=0.5)
 
     def forward(self, x: torch.Tensor):
+        # Pass through base leaf
         x = self.base_leaf(x)
 
         if self._pad:
             # Pad marginalized node
-            x = F.pad(x, pad=[0, 0, 0, self._pad], mode="constant", value=0.0)
+            x = F.pad(x, pad=[0, 0, 0, 0, 0, self._pad], mode="constant", value=0.0)
 
+        # Pass through product layer
         x = self.prod(x)
         return x
 
     def _get_base_distribution(self):
         raise Exception("IndependentMultivariate does not have an explicit PyTorch base distribution.")
 
-    def sample(self, indices: torch.Tensor = None, evidence: torch.Tensor=None, n: int = None) -> torch.Tensor:
-        # TODO: maybe check padding?
+    def sample(
+        self, n: int = None, indices: torch.Tensor = None, repetition_indices: torch.Tensor = None
+    ) -> torch.Tensor:
         indices = self.prod.sample(indices=indices, n=n)
-        samples = self.base_leaf.sample(indices=indices, n=n)
+        samples = self.base_leaf.sample(indices=indices, n=n, repetition_indices=repetition_indices)
         return samples
 
     def __repr__(self):
-        return f"IndependentMultivariate(in_features={self.in_features}, multiplicity={self.multiplicity}, dropout={self.dropout}, cardinality={self.cardinality}, out_shape={self.out_shape})"
+        return f"IndependentMultivariate(in_features={self.in_features}, out_channels={self.out_channels}, dropout={self.dropout}, cardinality={self.cardinality}, out_shape={self.out_shape})"
 
 
 def truncated_normal_(tensor, mean=0, std=0.1):
