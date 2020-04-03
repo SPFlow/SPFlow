@@ -1,12 +1,12 @@
-======================================================
-A PyTorch Layerwise Sum-Product Network Implementation
-======================================================
+=======================================================
+A PyTorch Layer-wise Sum-Product Network Implementation
+=======================================================
 
-This module provides an efficient PyTorch layerwise implementation of Sum-Product Networks.
+This module provides an efficient PyTorch layer-wise implementation of Sum-Product Networks.
 
 Quick Start
 -----------
-The following is a short example on how to build the example layerwise SPN:
+The following is a short example on how to build the example layer-wise SPN:
 
 .. image:: ./res/spn.png
     :alt: Example Sum-Product Network
@@ -90,13 +90,23 @@ This architecture can be implemented with the following code
 API
 ===
 
-- Input distributions can be found in `distributions.py <./torchspn/distributions.py>`_.
-- Sum and Product layers can be found in `layers.py <./torchspn/layers.py>`_.
+- Input distributions can be found in `distributions.py <./src/spn/algorithms/layerwise/distributions.py>`_.
+- Sum and Product layers can be found in `layers.py <./src/spn/algorithms/layerwise/layers.py>`_.
+- A RatSpn implementation based on the layer-wise Sum and Product nodes can be found in `rat_spn.py <./src/spn/experiments/RandomSPNs_layerwise/rat_spn.py>`_.
 
-Layerwise Principle
-===================
 
-The idea of the layerwise implementation is that each layer can be represented by a single tensor operation that acts on a certain axis of the tensor.
+Minimal Working Example
+_______________________
+
+The following is a minimal working exam to use the layer-wise SPN
+implementation: https://gist.github.com/steven-lang/ceb899a64630cb1473e84986b0bfb3b5
+
+
+
+Layer-wise Principle
+====================
+
+The idea of the layer-wise implementation is that each layer can be represented by a single tensor operation that acts on a certain axis of the tensor.
 
 Lets say we start with a data matrix of shape :code:`N x D` where :code:`N` is the batch size and :code:`D` is the number of features in the dataset:
 
@@ -178,6 +188,3 @@ The comparison is against a node-wise implementation of SPNs in `SPFlow <https:/
 
 Issues
 ======
-- Dropout for Leaf and Sum layers does not work on the GPU. The bernoulli distribution object is not properly sent to the cuda devices. TODO: Switch to own implementation of dropout.
-- Dropout should only be enabled during training.
-- Leaf layers except for Gaussians are not properly tested yet.
