@@ -16,6 +16,7 @@ from spn.algorithms.layerwise.type_checks import (
     InvalidTypeException,
     InvalidStackedSpnConfigurationException,
 )
+from spn.algorithms.layerwise.utils import SamplingContext
 
 
 class TestLayerwiseImplementation(unittest.TestCase):
@@ -151,16 +152,16 @@ class TestLayerwiseSampling(unittest.TestCase):
                 sum_layer = layers.Sum(
                     in_channels=in_channels, out_channels=1, in_features=in_features, num_repetitions=num_repetitions
                 )
-                samples = sum_layer.sample(n=n)
-                self.assertTrue(samples.shape[0] == n)
-                self.assertTrue(samples.shape[1] == in_features)
+                ctx = sum_layer.sample(n=n)
+                self.assertTrue(ctx.parent_indices.shape[0] == n)
+                self.assertTrue(ctx.parent_indices.shape[1] == in_features)
 
     def test_product_shape_as_root_node(self):
         """Check that the product node has the correct sampling shape when used as root."""
-        prod_layer = layers.Product(in_features=10, cardinality=2, num_repetitions=5)
-        samples = prod_layer.sample(n=5)
-        self.assertTrue(samples.shape[0] == 5)
-        self.assertTrue(samples.shape[1] == 1)
+        prod_layer = layers.Product(in_features=10, cardinality=2, num_repetitions=1)
+        ctx = prod_layer.sample(n=5)
+        self.assertTrue(ctx.parent_indices.shape[0] == 5)
+        self.assertTrue(ctx.parent_indices.shape[1] == 1)
 
     def test_sum_as_intermediate_node(self):
         """Check that sum node returns the correct sample indices when used as indermediate node."""
@@ -189,11 +190,12 @@ class TestLayerwiseSampling(unittest.TestCase):
         sum_layer.weights = nn.Parameter(torch.log(weights))
 
         # Perform sampling
-        sample_indices = sum_layer.sample(indices=parent_indices, repetition_indices=rep_idxs)
+        ctx = SamplingContext(n=n, parent_indices=parent_indices, repetition_indices=rep_idxs)
+        sum_layer.sample(context=ctx)
 
         # Assert that the sample indexes are those where the weights were set to 1.0
         for i in range(n):
-            self.assertTrue((rand_indxs[:, rep_idxs[i]] == sample_indices[i, :]).all())
+            self.assertTrue((rand_indxs[:, rep_idxs[i]] == ctx.parent_indices[i, :]).all())
 
     def test_prod_as_intermediate_node(self):
         # Product layer values
@@ -228,8 +230,9 @@ class TestLayerwiseSampling(unittest.TestCase):
             expected_sample_indices = torch.tensor(expected_sample_indices)
 
             # Sample
-            sample_indices = prod_layer.sample(indices=parent_indices)
-            self.assertTrue((expected_sample_indices == sample_indices).all())
+            ctx = SamplingContext(n=num_samples, parent_indices=parent_indices)
+            prod_layer.sample(context=ctx)
+            self.assertTrue((expected_sample_indices == ctx.parent_indices).all())
 
     def test_normal_leaf(self):
         # Setup leaf layer
@@ -250,7 +253,8 @@ class TestLayerwiseSampling(unittest.TestCase):
         repetition_indices = torch.randint(high=num_repetitions, size=(1,))
 
         # Perform sampling
-        result = leaf.sample(indices=parent_indices, repetition_indices=repetition_indices)
+        ctx = SamplingContext(n=1, parent_indices=parent_indices, repetition_indices=repetition_indices)
+        result = leaf.sample(context=ctx)
 
         # Expected sampling
         expected_result = leaf.means.data[:, range(in_features), parent_indices, repetition_indices[0]]
@@ -283,15 +287,14 @@ class TestLayerwiseSampling(unittest.TestCase):
         res = sum_4(x_test)
 
         # Sampling pass
-        rep_idxs = torch.zeros(1000, dtype=int)
-        x = sum_4.sample(n=1000)
-        x = prd_3.sample(indices=x)
-        x = sum_3.sample(indices=x, repetition_indices=rep_idxs)
-        x = prd_2.sample(indices=x)
-        x = sum_2.sample(indices=x, repetition_indices=rep_idxs)
-        x = prd_1.sample(indices=x)
-        x = sum_1.sample(indices=x, repetition_indices=rep_idxs)
-        x = leaf.sample(indices=x, repetition_indices=rep_idxs)
+        ctx = sum_4.sample(n=1000)
+        prd_3.sample(context=ctx)
+        sum_3.sample(context=ctx)
+        prd_2.sample(context=ctx)
+        sum_2.sample(context=ctx)
+        prd_1.sample(context=ctx)
+        sum_1.sample(context=ctx)
+        samples = leaf.sample(context=ctx)
 
 
 class TestTypeChecks(unittest.TestCase):

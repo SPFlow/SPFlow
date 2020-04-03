@@ -11,6 +11,7 @@ from torch import distributions as dist
 from torch import nn
 from torch.nn import functional as F
 
+from spn.algorithms.layerwise.utils import SamplingContext
 from spn.algorithms.layerwise.clipper import DistributionClipper
 from spn.algorithms.layerwise.layers import AbstractLayer, Sum
 from spn.algorithms.layerwise.type_checks import check_valid
@@ -43,7 +44,7 @@ def dist_forward(distribution, x):
 
 
 def dist_sample(
-    distribution: dist.Distribution, parent_indices: torch.Tensor, repetition_indices: torch.Tensor
+    distribution: dist.Distribution, context: SamplingContext = None
 ) -> torch.Tensor:
     """
     Sample n samples from a given distribution.
@@ -55,7 +56,7 @@ def dist_sample(
     """
 
     # Sample from the specified distribution
-    samples = distribution.sample(sample_shape=(repetition_indices.shape[0],))
+    samples = distribution.sample(sample_shape=(context.n,))
 
     assert (
         samples.shape[1] == 1
@@ -64,15 +65,15 @@ def dist_sample(
     n, d, c, r = samples.shape
 
     # Filter each sample by its specific repetition
-    tmp = torch.zeros(n, d, c, device=repetition_indices.device)
+    tmp = torch.zeros(n, d, c, device=context.repetition_indices.device)
     for i in range(n):
-        tmp[i, :, :] = samples[i, :, :, repetition_indices[i]]
+        tmp[i, :, :] = samples[i, :, :, context.repetition_indices[i]]
     samples = tmp
 
     # If parent index into out_channels are given
-    if parent_indices is not None:
+    if context.parent_indices is not None:
         # Choose only specific samples for each feature/scope
-        samples = torch.gather(samples, dim=2, index=parent_indices.unsqueeze(-1)).squeeze(-1)
+        samples = torch.gather(samples, dim=2, index=context.parent_indices.unsqueeze(-1)).squeeze(-1)
 
     return samples
 
@@ -87,7 +88,7 @@ class Leaf(AbstractLayer):
     If the input at a specific position is NaN, the variable will be marginalized.
     """
 
-    def __init__(self, in_features: int, out_channels: int, num_repetitions: int, dropout=0.0):
+    def __init__(self, in_features: int, out_channels: int, num_repetitions: int = 1, dropout=0.0):
         """
         Create the leaf layer.
 
@@ -139,13 +140,13 @@ class Leaf(AbstractLayer):
         """Get the underlying torch distribution."""
         pass
 
-    def sample(self, n: int = 1, indices: torch.Tensor = None, repetition_indices: torch.Tensor = None) -> torch.Tensor:
+    def sample(self, n: int = None, context: SamplingContext = None) -> torch.Tensor:
         """
         Perform sampling, given indices from the parent layer that indicate which of the multiple representations
         for each input shall be used.
         """
         d = self._get_base_distribution()
-        samples = dist_sample(distribution=d, parent_indices=indices, repetition_indices=repetition_indices)
+        samples = dist_sample(distribution=d, context=context)
         return samples
 
     def __repr__(self):
@@ -155,7 +156,7 @@ class Leaf(AbstractLayer):
 class Normal(Leaf):
     """Gaussian layer. Maps each input feature to its gaussian log likelihood."""
 
-    def __init__(self, in_features: int, out_channels: int, num_repetitions: int, dropout=0.0):
+    def __init__(self, in_features: int, out_channels: int, num_repetitions: int = 1, dropout=0.0):
         """Creat a gaussian layer.
 
         Args:
@@ -178,7 +179,7 @@ class Normal(Leaf):
 class Bernoulli(Leaf):
     """Bernoulli layer. Maps each input feature to its gaussian log likelihood."""
 
-    def __init__(self, in_features: int, out_channels: int, num_repetitions: int, dropout=0.0):
+    def __init__(self, in_features: int, out_channels: int, num_repetitions: int = 1, dropout=0.0):
         """Creat a gaussian layer.
 
         Args:
@@ -201,7 +202,7 @@ class Bernoulli(Leaf):
 class MultivariateNormal(Leaf):
     """Multivariate Gaussian layer."""
 
-    def __init__(self, in_features: int, out_channels: int, num_repetitions: int, cardinality: int, dropout=0.0):
+    def __init__(self, in_features: int, out_channels: int, cardinality: int, num_repetitions: int = 1, dropout=0.0):
         """Creat a gaussian layer.
 
         Args:
@@ -258,7 +259,7 @@ class MultivariateNormal(Leaf):
 
         return x
 
-    def sample(self, n: int = 1, indices=None) -> torch.Tensor:
+    def sample(self, n: int = None, context: SamplingContext = None) -> torch.Tensor:
         """TODO: Multivariate need special treatment."""
         raise Exception("Not yet implemented")
 
@@ -269,7 +270,7 @@ class MultivariateNormal(Leaf):
 class Beta(Leaf):
     """Beta layer. Maps each input feature to its beta log likelihood."""
 
-    def __init__(self, in_features: int, out_channels: int, num_repetitions: int, dropout=0.0):
+    def __init__(self, in_features: int, out_channels: int, num_repetitions: int = 1, dropout=0.0):
         """Creat a beta layer.
 
         Args:
@@ -292,7 +293,7 @@ class Beta(Leaf):
 class Cauchy(Leaf):
     """Cauchy layer. Maps each input feature to cauchy beta log likelihood."""
 
-    def __init__(self, in_features: int, out_channels: int, num_repetitions: int, dropout=0.0):
+    def __init__(self, in_features: int, out_channels: int, num_repetitions: int = 1, dropout=0.0):
         """Creat a cauchy layer.
 
         Args:
@@ -313,7 +314,7 @@ class Cauchy(Leaf):
 class Chi2(Leaf):
     """Chi square distribution layer"""
 
-    def __init__(self, in_features: int, out_channels: int, num_repetitions: int, dropout=0.0):
+    def __init__(self, in_features: int, out_channels: int, num_repetitions: int = 1, dropout=0.0):
         """Creat a chi square layer.
 
         Args:
@@ -366,23 +367,23 @@ class Mixture(Leaf):
         x = self.sumlayer(x)
         return x
 
-    def sample(self, n: int = 1, indices: torch.Tensor = None, repetition_indices: torch.Tensor = None) -> torch.Tensor:
+    def sample(self, n: int = None, context: SamplingContext = None) -> torch.Tensor:
         # Sample from sum mixture layer
-        indices = self.sumlayer.sample(indices=indices, repetition_indices=repetition_indices)
+        context = self.sumlayer.sample(context=context)
 
         # Collect samples from different distribution layers
         samples = []
         for d in self.representations:
-            sample_d = d.sample(n=n, indices=None, repetition_indices=repetition_indices)
+            sample_d = d.sample(context=context)
             samples.append(sample_d)
 
         # Stack along channel dimension
         samples = torch.cat(samples, dim=2)
 
         # If parent index into out_channels are given
-        if indices is not None:
+        if context.parent_indices is not None:
             # Choose only specific samples for each feature/scope
-            samples = torch.gather(samples, dim=2, index=indices.unsqueeze(-1)).squeeze(-1)
+            samples = torch.gather(samples, dim=2, index=context.parent_indices.unsqueeze(-1)).squeeze(-1)
 
         return samples
 
@@ -451,7 +452,7 @@ class IsotropicMultivariateNormal(Leaf):
 
         return x
 
-    def sample(self, n=None, indices=None) -> torch.Tensor:
+    def sample(self, n=None, context: SamplingContext = None) -> torch.Tensor:
         """TODO: Multivariate need special treatment."""
         raise Exception("Not yet implemented")
 
@@ -462,7 +463,7 @@ class IsotropicMultivariateNormal(Leaf):
 class Gamma(Leaf):
     """Gamma distribution layer."""
 
-    def __init__(self, in_features: int, out_channels: int, num_repetitions: int, dropout=0.0):
+    def __init__(self, in_features: int, out_channels: int, num_repetitions: int = 1, dropout=0.0):
         """Creat a gamma layer.
 
         Args:
@@ -482,7 +483,7 @@ class Gamma(Leaf):
 class Poisson(Leaf):
     """Poisson distribution layer."""
 
-    def __init__(self, in_features: int, out_channels: int, num_repetitions: int, dropout=0.0):
+    def __init__(self, in_features: int, out_channels: int, num_repetitions: int = 1, dropout=0.0):
         """Creat a poisson layer.
 
         Args:
@@ -496,6 +497,7 @@ class Poisson(Leaf):
 
     def _get_base_distribution(self):
         return self.poisson
+
 
 if __name__ == "__main__":
     from spn.algorithms.layerwise.layers import Product, Sum

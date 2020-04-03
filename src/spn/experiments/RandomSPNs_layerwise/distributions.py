@@ -9,6 +9,7 @@ from torch.nn import functional as F
 from spn.algorithms.layerwise.distributions import Leaf
 from spn.algorithms.layerwise.layers import Product
 from spn.algorithms.layerwise.type_checks import check_valid
+from spn.algorithms.layerwise.utils import SamplingContext
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class RatNormal(Leaf):
         self,
         in_features: int,
         out_channels: int,
-        num_repetitions: int,
+        num_repetitions: int = 1,
         dropout: float = 0.0,
         min_sigma: float = 0.1,
         max_sigma: float = 1.0,
@@ -40,7 +41,13 @@ class RatNormal(Leaf):
 
         # Create gaussian means and stds
         self.means = nn.Parameter(torch.randn(1, in_features, out_channels, num_repetitions))
-        self.stds = nn.Parameter(torch.rand(1, in_features, out_channels, num_repetitions))
+
+        if min_sigma is not None and max_sigma is not None:
+            # Init from normal
+            self.stds = nn.Parameter(torch.randn(1, in_features, out_channels, num_repetitions))
+        else:
+            # Init uniform between 0 and 1
+            self.stds = nn.Parameter(torch.rand(1, in_features, out_channels, num_repetitions))
 
         self.min_sigma = check_valid(min_sigma, float, 0.0, max_sigma)
         self.max_sigma = check_valid(max_sigma, float, min_sigma)
@@ -69,8 +76,8 @@ class IndependentMultivariate(Leaf):
         self,
         in_features: int,
         out_channels: int,
-        num_repetitions: int,
         cardinality: int,
+        num_repetitions: int = 1,
         dropout: float = 0.0,
         leaf_base_class: Leaf = RatNormal,
         leaf_base_kwargs: Dict = None,
@@ -122,11 +129,9 @@ class IndependentMultivariate(Leaf):
     def _get_base_distribution(self):
         raise Exception("IndependentMultivariate does not have an explicit PyTorch base distribution.")
 
-    def sample(
-        self, n: int = None, indices: torch.Tensor = None, repetition_indices: torch.Tensor = None
-    ) -> torch.Tensor:
-        indices = self.prod.sample(indices=indices, n=n)
-        samples = self.base_leaf.sample(indices=indices, n=n, repetition_indices=repetition_indices)
+    def sample(self, n: int = None, context: SamplingContext = None) -> torch.Tensor:
+        context = self.prod.sample(context=context)
+        samples = self.base_leaf.sample(context=context)
         return samples
 
     def __repr__(self):

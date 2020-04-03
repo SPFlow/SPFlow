@@ -9,7 +9,7 @@ from torch import nn
 from spn.algorithms.layerwise.distributions import Leaf
 from spn.algorithms.layerwise.layers import CrossProduct, Sum
 from spn.algorithms.layerwise.type_checks import check_valid
-from spn.algorithms.layerwise.utils import provide_evidence
+from spn.algorithms.layerwise.utils import provide_evidence, SamplingContext
 from spn.experiments.RandomSPNs_layerwise.distributions import IndependentMultivariate, RatNormal, truncated_normal_
 
 logger = logging.getLogger(__name__)
@@ -325,21 +325,24 @@ class RatSpn(nn.Module):
                 else:
                     indices = torch.empty(size=(n, 1), device=self.__device)
                     indices.fill_(class_index)
+
+                # Create new sampling context
+                ctx = SamplingContext(n=n, parent_indices=indices, repetition_indices=None)
             else:
                 # Start sampling one of the C root nodes TODO: check what happens if C=1
-                indices = self._sampling_root.sample(n=n)
+                ctx = self._sampling_root.sample(n=n)
 
             # Sample from RatSpn root layer: Results are indices into the stacked output channels of all repetitions
-            repetition_indices_root = torch.zeros(n, dtype=int, device=self.__device)
-            indices = self.root.sample(indices=indices, repetition_indices=repetition_indices_root)
+            ctx.repetition_indices = torch.zeros(n, dtype=int, device=self.__device)
+            ctx = self.root.sample(context=ctx)
 
             # Indexes will now point to the stacked channels of all repetitions (R * S^2 (if D > 1)
             # or R * I^2 (else)).
             root_in_channels = self.root.in_channels // self.config.R
             # Obtain repetition indices
-            repetition_indices = (indices // root_in_channels).squeeze()
+            ctx.repetition_indices = (ctx.parent_indices // root_in_channels).squeeze()
             # Shift indices
-            indices = indices % root_in_channels
+            ctx.parent_indices = ctx.parent_indices % root_in_channels
 
             # Now each sample in `indices` belongs to one repetition, index in `repetition_indices`
 
@@ -347,18 +350,18 @@ class RatSpn(nn.Module):
             # Sample inner modules
             for layer in reversed(self._inner_layers):
                 if isinstance(layer, Sum):
-                    indices = layer.sample(n=n, indices=indices, repetition_indices=repetition_indices)
+                    ctx = layer.sample(context=ctx)
                 elif isinstance(layer, CrossProduct):
-                    indices = layer.sample(n=n, indices=indices)
+                    ctx = layer.sample(context=ctx)
                 else:
                     raise Exception("Only Sum or CrossProduct is allowed as intermediate layer.")
 
             # Sample leaf
-            samples = self._leaf.sample(n=n, indices=indices, repetition_indices=repetition_indices)
+            samples = self._leaf.sample(context=ctx)
 
             # Invert permutation
             for i in range(n):
-                rep_index = repetition_indices[i]
+                rep_index = ctx.repetition_indices[i]
                 inv_rand_indices = invert_permutation(self.rand_indices[:, rep_index])
                 samples[i, :] = samples[i, inv_rand_indices]
 
