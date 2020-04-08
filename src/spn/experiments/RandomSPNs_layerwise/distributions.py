@@ -107,7 +107,7 @@ class IndependentMultivariate(Leaf):
         self.prod = Product(in_features=in_features, cardinality=cardinality, num_repetitions=num_repetitions)
         self._pad = (cardinality - self.in_features % cardinality) % cardinality
 
-        self.cardinality = check_valid(cardinality, int, 2, in_features + 1)
+        self.cardinality = check_valid(cardinality, int, 1, in_features + 1)
         self.out_shape = f"(N, {self.prod._out_features}, {out_channels}, {self.num_repetitions})"
 
     def _init_weights(self):

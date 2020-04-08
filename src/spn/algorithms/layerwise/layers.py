@@ -213,7 +213,7 @@ class Product(AbstractLayer):
 
         super().__init__(in_features, num_repetitions)
 
-        self.cardinality = check_valid(cardinality, int, 2, in_features + 1)
+        self.cardinality = check_valid(cardinality, int, 1, in_features + 1)
 
         # Implement product as convolution
         self._conv_weights = nn.Parameter(torch.ones(1, 1, cardinality, 1, 1), requires_grad=False)
@@ -240,6 +240,10 @@ class Product(AbstractLayer):
         # Only one product node
         if self.cardinality == x.shape[1]:
             return x.sum(1, keepdim=True)
+
+        # Special case: if cardinality is 1 (one child per product node), this is a no-op
+        if self.cardinality == 1:
+            return x
 
         # Pad if in_features % cardinality != 0
         if self._pad > 0:
