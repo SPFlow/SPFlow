@@ -1,17 +1,18 @@
-import torch
-import torchvision
-from torchvision import datasets, transforms
-import numpy as np
-from torch import nn
-from torch.nn import functional as F
-import time
-import sys
 import os
 import random
-import scipy.misc
+import sys
+import time
 
-import spn.algorithms.Inference as inference
-import spn.io.Graphics as graphics
+import imageio
+import numpy as np
+import skimage
+import torch
+import torchvision
+from torch import nn
+from torchvision import datasets, transforms
+
+from spn.experiments.RandomSPNs_layerwise.distributions import RatNormal
+from spn.experiments.RandomSPNs_layerwise.rat_spn import RatSpn, RatSpnConfig
 
 
 def one_hot(vector):
@@ -83,6 +84,29 @@ def get_mnist_loaders(use_cuda, device, batch_size):
     )
     return train_loader, test_loader
 
+def make_spn(S, I, R, D, dropout, device) -> RatSpn:
+    """Construct the RatSpn"""
+
+    # Setup RatSpnConfig
+    config = RatSpnConfig()
+    config.F = 28 ** 2
+    config.R = R
+    config.D = D
+    config.I = I
+    config.S = S
+    config.C = 10
+    config.dropout = dropout
+    config.leaf_base_class = RatNormal
+    config.leaf_base_kwargs = {}
+
+    # Construct RatSpn from config
+    model = RatSpn(config)
+
+    model = model.to(device)
+    model.train()
+
+    print("Using device:", device)
+    return model
 
 def run_torch(n_epochs=100, batch_size=256):
     """Run the torch code.
@@ -91,17 +115,11 @@ def run_torch(n_epochs=100, batch_size=256):
         n_epochs (int, optional): Number of epochs.
         batch_size (int, optional): Batch size.
     """
-    from spn.experiments.RandomSPNs_layerwise.rat_spn import RatSpnConstructor
     from torch import optim
     from torch import nn
 
     assert len(sys.argv) == 2, "Usage: train.mnist cuda/cpu"
     dev = sys.argv[1]
-
-    rg = RatSpnConstructor(in_features=28 * 28, C=10, S=10, I=20, dropout=0.0)
-    n_splits = 2
-    for _ in range(0, n_splits):
-        rg.random_split(2, 1)
 
     if dev == "cpu":
         device = torch.device("cpu")
@@ -111,14 +129,10 @@ def run_torch(n_epochs=100, batch_size=256):
         use_cuda = True
         torch.cuda.benchmark = True
 
-    print("Using device:", device)
+    model = make_spn(S=10, I=10, D=3, R=5, device=dev, dropout=0.0)
 
-    model = rg.build().to(device)
     model.train()
     print(model)
-    print(f"Layer 0: {count_params(model.region_spns[0]._leaf) * n_splits}")
-    for i in range(1, len(model.region_spns[0]._spn._layers) + 1):
-        print(f"Layer {i}: {count_params(model.region_spns[0]._spn._layers[i - 1]) * n_splits}")
     print("Number of pytorch parameters: ", count_params(model))
 
     # Define optimizer
@@ -256,14 +270,14 @@ def plot_samples(x: torch.Tensor, path):
     Args:
         x (torch.Tensor): Batch of input images. Has to be shape: [N, C, H, W].
     """
-    import matplotlib.pyplot as plt
-
     # Normalize in valid range
     for i in range(x.shape[0]):
         x[i, :] = (x[i, :] - x[i, :].min()) / (x[i, :].max() - x[i, :].min())
 
     tensors = torchvision.utils.make_grid(x, nrow=10, padding=1).cpu()
-    scipy.misc.imsave(path, tensors.permute(1, 2, 0).numpy())
+    arr = tensors.permute(1, 2, 0).numpy()
+    arr = skimage.img_as_ubyte(arr)
+    imageio.imwrite(path, arr)
 
 
 def save_samples(samples, iteration: int):
