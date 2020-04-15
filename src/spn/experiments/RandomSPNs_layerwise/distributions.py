@@ -91,7 +91,7 @@ class IndependentMultivariate(Leaf):
             in_features: Number of input features.
             dropout: Dropout probabilities.
             leaf_base_class (Leaf): The encapsulating base leaf layer class.
-        
+
         """
         super(IndependentMultivariate, self).__init__(in_features, out_channels, num_repetitions, dropout)
         if leaf_base_kwargs is None:
@@ -104,8 +104,12 @@ class IndependentMultivariate(Leaf):
             num_repetitions=num_repetitions,
             **leaf_base_kwargs,
         )
-        self.prod = Product(in_features=in_features, cardinality=cardinality, num_repetitions=num_repetitions)
         self._pad = (cardinality - self.in_features % cardinality) % cardinality
+        # Number of input features for the product needs to be extended depending on the padding applied here
+        prod_in_features = in_features + self._pad
+        self.prod = Product(
+            in_features=prod_in_features, cardinality=cardinality, num_repetitions=num_repetitions
+        )
 
         self.cardinality = check_valid(cardinality, int, 1, in_features + 1)
         self.out_shape = f"(N, {self.prod._out_features}, {out_channels}, {self.num_repetitions})"
@@ -131,6 +135,11 @@ class IndependentMultivariate(Leaf):
 
     def sample(self, n: int = None, context: SamplingContext = None) -> torch.Tensor:
         context = self.prod.sample(context=context)
+
+        # Remove padding
+        if self._pad:
+            context.parent_indices = context.parent_indices[:, : -self._pad]
+
         samples = self.base_leaf.sample(context=context)
         return samples
 
