@@ -1,14 +1,18 @@
+import os
+import random
+import sys
+import time
+
+import imageio
+import numpy as np
+import skimage
 import torch
 import torchvision
-from torchvision import datasets, transforms
-import numpy as np
 from torch import nn
-from torch.nn import functional as F
-import time
-import sys
+from torchvision import datasets, transforms
 
-import spn.algorithms.Inference as inference
-import spn.io.Graphics as graphics
+from spn.experiments.RandomSPNs_layerwise.distributions import RatNormal
+from spn.experiments.RandomSPNs_layerwise.rat_spn import RatSpn, RatSpnConfig
 
 
 def one_hot(vector):
@@ -80,6 +84,29 @@ def get_mnist_loaders(use_cuda, device, batch_size):
     )
     return train_loader, test_loader
 
+def make_spn(S, I, R, D, dropout, device) -> RatSpn:
+    """Construct the RatSpn"""
+
+    # Setup RatSpnConfig
+    config = RatSpnConfig()
+    config.F = 28 ** 2
+    config.R = R
+    config.D = D
+    config.I = I
+    config.S = S
+    config.C = 10
+    config.dropout = dropout
+    config.leaf_base_class = RatNormal
+    config.leaf_base_kwargs = {}
+
+    # Construct RatSpn from config
+    model = RatSpn(config)
+
+    model = model.to(device)
+    model.train()
+
+    print("Using device:", device)
+    return model
 
 def run_torch(n_epochs=100, batch_size=256):
     """Run the torch code.
@@ -88,17 +115,11 @@ def run_torch(n_epochs=100, batch_size=256):
         n_epochs (int, optional): Number of epochs.
         batch_size (int, optional): Batch size.
     """
-    from spn.experiments.RandomSPNs_layerwise.rat_spn import RatSpnConstructor
     from torch import optim
     from torch import nn
 
     assert len(sys.argv) == 2, "Usage: train.mnist cuda/cpu"
     dev = sys.argv[1]
-
-    rg = RatSpnConstructor(in_features=28 * 28, C=10, S=10, I=20, dropout=0.0)
-    n_splits = 2
-    for _ in range(0, n_splits):
-        rg.random_split(2, 1)
 
     if dev == "cpu":
         device = torch.device("cpu")
@@ -108,14 +129,10 @@ def run_torch(n_epochs=100, batch_size=256):
         use_cuda = True
         torch.cuda.benchmark = True
 
-    print("Using device:", device)
+    model = make_spn(S=10, I=10, D=3, R=5, device=dev, dropout=0.0)
 
-    model = rg.build().to(device)
     model.train()
     print(model)
-    print(f"Layer 0: {count_params(model.region_spns[0]._leaf) * n_splits}")
-    for i in range(1, len(model.region_spns[0]._inner_layers) + 1):
-        print(f"Layer {i}: {count_params(model.region_spns[0]._inner_layers[i - 1]) * n_splits}")
     print("Number of pytorch parameters: ", count_params(model))
 
     # Define optimizer
@@ -125,10 +142,17 @@ def run_torch(n_epochs=100, batch_size=256):
 
     log_interval = 100
 
+    lmbda = 1.0
+
     for epoch in range(n_epochs):
+        if epoch > 20:
+            # lmbda = lmbda_0 + lmbda_rel * (0.95 ** (epoch - 20))
+            lmbda = 0.5
         t_start = time.time()
         running_loss = 0.0
-        for batch_idx, (data, target) in enumerate(train_loader):
+        running_loss_ce = 0.0
+        running_loss_nll = 0.0
+        for batch_index, (data, target) in enumerate(train_loader):
             # Send data to correct device
             data, target = data.to(device), target.to(device)
             data = data.view(data.shape[0], -1)
@@ -140,28 +164,43 @@ def run_torch(n_epochs=100, batch_size=256):
             output = model(data)
 
             # Compute loss
-            loss = loss_fn(output, target)
+            loss_ce = loss_fn(output, target)
+            loss_nll = -output.sum() / (data.shape[0] * 28 ** 2)
+
+            loss = (1 - lmbda) * loss_nll + lmbda * loss_ce
 
             # Backprop
             loss.backward()
             optimizer.step()
+            # scheduler.step()
 
             # Log stuff
             running_loss += loss.item()
-            if batch_idx % log_interval == (log_interval - 1):
+            running_loss_ce += loss_ce.item()
+            running_loss_nll += loss_nll.item()
+            if batch_index % log_interval == (log_interval - 1):
                 pred = output.argmax(1).eq(target).sum().cpu().numpy() / data.shape[0] * 100
                 print(
-                    "Train Epoch: {} [{: >5}/{: <5} ({:.0f}%)]\tLoss: {:.6f}\tAccuracy: {:.0f}%".format(
+                    "Train Epoch: {} [{: >5}/{: <5} ({:.0f}%)]\tLoss_ce: {:.6f}\tLoss_nll: {:.6f}\tAccuracy: {:.0f}%".format(
                         epoch,
-                        batch_idx * len(data),
+                        batch_index * len(data),
                         60000,
-                        100.0 * batch_idx / len(train_loader),
-                        running_loss / log_interval,
+                        100.0 * batch_index / len(train_loader),
+                        running_loss_ce / log_interval,
+                        running_loss_nll / log_interval,
                         pred,
                     ),
                     end="\r",
                 )
                 running_loss = 0.0
+                running_loss_ce = 0.0
+                running_loss_nll = 0.0
+
+        with torch.no_grad():
+            set_seed(0)
+            # samples = model.sample(n=25)
+            samples = model.sample(class_index=list(range(10)) * 5)
+            save_samples(samples, iteration=epoch)
 
         t_delta = time_delta_now(t_start)
         print("Train Epoch: {} took {}".format(epoch, t_delta))
@@ -185,7 +224,8 @@ def evaluate_model(model: torch.nn.Module, device, loader, tag) -> float:
         float: Tuple of loss and accuracy.
     """
     model.eval()
-    loss = 0
+    loss_ce = 0
+    loss_nll = 0
     correct = 0
     criterion = nn.CrossEntropyLoss(reduction="sum")
     with torch.no_grad():
@@ -193,19 +233,69 @@ def evaluate_model(model: torch.nn.Module, device, loader, tag) -> float:
             data, target = data.to(device), target.to(device)
             data = data.view(data.shape[0], -1)
             output = model(data)
-            loss += criterion(output, target).item()  # sum up batch loss
+            loss_ce += criterion(output, target).item()  # sum up batch loss
+            loss_nll += -output.sum()
             pred = output.argmax(dim=1)
             correct += (pred == target).sum().item()
 
-    loss /= len(loader.dataset)
+    loss_ce /= len(loader.dataset)
+    loss_nll /= len(loader.dataset) + 28 ** 2
     accuracy = 100.0 * correct / len(loader.dataset)
 
     print(
-        "{} set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
-            tag, loss, correct, len(loader.dataset), accuracy
+        "{} set: Average loss_ce: {:.4f} Average loss_nll: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
+            tag, loss_ce, loss_nll, correct, len(loader.dataset), accuracy
         )
     )
-    return (loss, accuracy)
+
+
+def ensure_dir(path: str):
+    """
+    Ensure that a directory exists.
+
+    For 'foo/bar/baz.csv' the directories 'foo' and 'bar' will be created if not already present.
+
+    Args:
+        path (str): Directory path.
+    """
+    d = os.path.dirname(path)
+    if not os.path.exists(d):
+        os.makedirs(d)
+
+
+def plot_samples(x: torch.Tensor, path):
+    """
+    Plot a single sample witht the target and prediction in the title.
+
+    Args:
+        x (torch.Tensor): Batch of input images. Has to be shape: [N, C, H, W].
+    """
+    # Normalize in valid range
+    for i in range(x.shape[0]):
+        x[i, :] = (x[i, :] - x[i, :].min()) / (x[i, :].max() - x[i, :].min())
+
+    tensors = torchvision.utils.make_grid(x, nrow=10, padding=1).cpu()
+    arr = tensors.permute(1, 2, 0).numpy()
+    arr = skimage.img_as_ubyte(arr)
+    imageio.imwrite(path, arr)
+
+
+def save_samples(samples, iteration: int):
+    d = "results/samples/"
+    ensure_dir(d)
+    plot_samples(samples.view(-1, 1, 28, 28), path=os.path.join(d, f"mnist-{iteration:03}.png"))
+
+
+def set_seed(seed: int):
+    """
+    Set the seed globally for python, numpy and torch.
+
+    Args:
+        seed (int): Seed.
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 
 if __name__ == "__main__":

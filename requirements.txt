@@ -13,3 +13,4 @@ sympy
 PyQt5==5.9.2
 arff
 pytest
+dataclasses
