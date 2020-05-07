@@ -19,8 +19,8 @@ def provide_evidence(spn: nn.Module, evidence: torch.Tensor):
     with torch.no_grad():
         # Enter
         for module in spn.modules():
-            if hasattr(module, "_enable_sampling_input_cache"):
-                module._enable_sampling_input_cache()
+            if hasattr(module, "_enable_input_cache"):
+                module._enable_input_cache()
 
         if evidence is not None:
             _ = spn(evidence)
@@ -30,8 +30,8 @@ def provide_evidence(spn: nn.Module, evidence: torch.Tensor):
 
         # Exit
         for module in spn.modules():
-            if hasattr(module, "_enable_sampling_input_cache"):
-                module._disable_sampling_input_cache()
+            if hasattr(module, "_enable_input_cache"):
+                module._disable_input_cache()
 
 
 @dataclass
@@ -45,8 +45,15 @@ class SamplingContext:
     # Indices into the repetition dimension
     repetition_indices: torch.Tensor = None
 
+    # MPE flag, if true, will perform most probable explanation sampling
+    is_mpe: bool = False
+
     def __setattr__(self, key, value):
         if hasattr(self, key):
             super().__setattr__(key, value)
         else:
             raise AttributeError(f"SamplingContext object has no attribute {key}")
+
+    @property
+    def is_root(self):
+        return self.parent_indices == None and self.repetition_indices == None
