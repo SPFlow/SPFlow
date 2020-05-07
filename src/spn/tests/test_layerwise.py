@@ -16,7 +16,7 @@ from spn.algorithms.layerwise.type_checks import (
     InvalidTypeException,
     InvalidStackedSpnConfigurationException,
 )
-from spn.algorithms.layerwise.utils import SamplingContext
+from spn.algorithms.layerwise.utils import SamplingContext, provide_evidence
 
 
 class TestLayerwiseImplementation(unittest.TestCase):
@@ -152,14 +152,16 @@ class TestLayerwiseSampling(unittest.TestCase):
                 sum_layer = layers.Sum(
                     in_channels=in_channels, out_channels=1, in_features=in_features, num_repetitions=num_repetitions
                 )
-                ctx = sum_layer.sample(n=n)
+                ctx = SamplingContext(n=n)
+                ctx = sum_layer.sample(context=ctx)
                 self.assertTrue(ctx.parent_indices.shape[0] == n)
                 self.assertTrue(ctx.parent_indices.shape[1] == in_features)
 
     def test_product_shape_as_root_node(self):
         """Check that the product node has the correct sampling shape when used as root."""
         prod_layer = layers.Product(in_features=10, cardinality=2, num_repetitions=1)
-        ctx = prod_layer.sample(n=5)
+        ctx = SamplingContext(n=5)
+        ctx = prod_layer.sample(context=ctx)
         self.assertTrue(ctx.parent_indices.shape[0] == 5)
         self.assertTrue(ctx.parent_indices.shape[1] == 1)
 
@@ -287,7 +289,8 @@ class TestLayerwiseSampling(unittest.TestCase):
         res = sum_4(x_test)
 
         # Sampling pass
-        ctx = sum_4.sample(n=1000)
+        ctx = SamplingContext(n=1000)
+        sum_4.sample(context=ctx)
         prd_3.sample(context=ctx)
         sum_3.sample(context=ctx)
         prd_2.sample(context=ctx)
@@ -295,6 +298,51 @@ class TestLayerwiseSampling(unittest.TestCase):
         prd_1.sample(context=ctx)
         sum_1.sample(context=ctx)
         samples = leaf.sample(context=ctx)
+
+    def test_spn_mpe(self):
+
+        # Define SPN
+        leaf = distributions.Normal(in_features=2 ** 3, out_channels=5, num_repetitions=1)
+        sum_1 = layers.Sum(in_channels=5, in_features=2 ** 3, out_channels=20, num_repetitions=1)
+        prd_1 = layers.Product(in_features=2 ** 3, cardinality=2, num_repetitions=1)
+        sum_2 = layers.Sum(in_channels=20, in_features=2 ** 2, out_channels=20, num_repetitions=1)
+        prd_2 = layers.Product(in_features=2 ** 2, cardinality=2, num_repetitions=1)
+        sum_3 = layers.Sum(in_channels=20, in_features=2 ** 1, out_channels=20, num_repetitions=1)
+        prd_3 = layers.Product(in_features=2 ** 1, cardinality=2, num_repetitions=1)
+        sum_4 = layers.Sum(in_channels=20, in_features=2 ** 0, out_channels=1, num_repetitions=1)
+
+        sum_1._enable_input_cache()
+        sum_2._enable_input_cache()
+        sum_3._enable_input_cache()
+        sum_4._enable_input_cache()
+
+        # Test forward pass
+        x_test = torch.randn(1, 2 ** 3)
+
+        x_test = leaf(x_test)
+        x_test = sum_1(x_test)
+        x_test = prd_1(x_test)
+        x_test = sum_2(x_test)
+        x_test = prd_2(x_test)
+        x_test = sum_3(x_test)
+        x_test = prd_3(x_test)
+        res = sum_4(x_test)
+
+        ctx = SamplingContext(n=x_test.shape[0], is_mpe=True)
+        sum_4.sample(context=ctx)
+        prd_3.sample(context=ctx)
+        sum_3.sample(context=ctx)
+        prd_2.sample(context=ctx)
+        sum_2.sample(context=ctx)
+        prd_1.sample(context=ctx)
+        sum_1.sample(context=ctx)
+
+        # Should be the same
+        mpe_1 = leaf.sample(context=ctx)
+        mpe_2 = leaf.sample(context=ctx)
+        mpe_3 = leaf.sample(context=ctx)
+        self.assertTrue(((mpe_1 - mpe_2).abs() < 1e-6).all())
+        self.assertTrue(((mpe_2 - mpe_3).abs() < 1e-6).all())
 
 
 class TestTypeChecks(unittest.TestCase):
@@ -398,6 +446,33 @@ class TestRATLayerwise(unittest.TestCase):
         x = torch.randn(n, config.F)
         x[:, 0 : config.F // 2] = float("nan")
         spn.sample(evidence=x)
+
+    def test_rat_mpe(self):
+        from spn.experiments.RandomSPNs_layerwise.rat_spn import RatSpn
+        from spn.experiments.RandomSPNs_layerwise.rat_spn import RatSpnConfig
+        from spn.experiments.RandomSPNs_layerwise.distributions import RatNormal
+
+        # Setup RatSpn
+        config = RatSpnConfig()
+        config.F = 16
+        config.R = 13
+        config.D = 3
+        config.C = 2
+        config.I = 11
+        config.S = 12
+        config.dropout = 0.0
+        config.leaf_base_class = RatNormal
+        spn = RatSpn(config)
+
+        # Conditional MPE
+        x = torch.randn(10, config.F)
+        x[:, 0 : config.F // 2] = float("nan")
+        mpe_1 = spn.mpe(evidence=x)
+        mpe_2 = spn.mpe(evidence=x)
+        mpe_3 = spn.mpe(evidence=x)
+        self.assertTrue(((mpe_1 - mpe_2).abs() < 1e-6).all())
+        self.assertTrue(((mpe_2 - mpe_3).abs() < 1e-6).all())
+
 
 
 if __name__ == "__main__":
