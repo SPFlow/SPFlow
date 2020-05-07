@@ -360,14 +360,9 @@ class RatSpn(nn.Module):
             # Now each sample in `indices` belongs to one repetition, index in `repetition_indices`
 
             # Continue at layers
-            # Sample inner modules
+            # Sample inner layers in reverse order (starting from topmost)
             for layer in reversed(self._inner_layers):
-                if isinstance(layer, Sum):
-                    ctx = layer.sample(context=ctx)
-                elif isinstance(layer, CrossProduct):
-                    ctx = layer.sample(context=ctx)
-                else:
-                    raise Exception("Only Sum or CrossProduct is allowed as intermediate layer.")
+                ctx = layer.sample(context=ctx)
 
             # Sample leaf
             samples = self._leaf.sample(context=ctx)
