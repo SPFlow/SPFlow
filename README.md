@@ -540,7 +540,7 @@ This project is licensed under the Apache License, Version 2.0 - see the [LICENS
 
 
 ## Acknowledgments
-<img src="https://github.com/SPFlow/SPFlow/blob/master/Documentation/acknowledgements/bmbf.png" height="100"/><img src="https://github.com/SPFlow/SPFlow/blob/master/Documentation/acknowledgements/dfg.jpg"  height="100"/>
+<img src="https://github.com/SPFlow/SPFlow/blob/master/Documentation/acknowledgements/bmbf.png" height="100"/><img src="https://github.com/SPFlow/SPFlow/blob/master/Documentation/acknowledgements/dfg.jpg"  height="100"/><img src="https://github.com/SPFlow/SPFlow/blob/master/Documentation/acknowledgements/euc.png"  height="100"/>
 * Parts of SPFlow as well as its motivating research have been supported by the Germany Science Foundation (DFG) - AIPHES, GRK 1994, and CAML, KE 1686/3-1 as part of SPP 1999- and the Federal Ministry of Education and Research (BMBF) - InDaS, 01IS17063B.
 
-
+* This project received funding from the European Union's Horizon 2020 research and innovation programme under the Marie Sklodowska-Curie Grant Agreement No. 797223 (HYBSPN).
