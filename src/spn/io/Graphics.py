@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_networkx_obj(spn):
+def _get_networkx_obj(spn):
     import networkx as nx
     from spn.structure.Base import Sum, Product, Leaf, get_nodes_by_type
     import numpy as np
@@ -46,22 +46,18 @@ def get_networkx_obj(spn):
     return g, labels
 
 
-def plot_spn(spn, fname="plot.pdf"):
+def draw_spn(spn):
 
     import networkx as nx
     from networkx.drawing.nx_pydot import graphviz_layout
-
     import matplotlib.pyplot as plt
 
     plt.clf()
 
-    g, labels = get_networkx_obj(spn)
+    g, labels = _get_networkx_obj(spn)
 
     pos = graphviz_layout(g, prog="dot")
-    # plt.figure(figsize=(18, 12))
     ax = plt.gca()
-
-    # ax.invert_yaxis()
 
     nx.draw(
         g,
@@ -89,6 +85,10 @@ def plot_spn(spn, fname="plot.pdf"):
     plt.margins(0, 0)
     plt.gca().xaxis.set_major_locator(NullLocator())
     plt.gca().yaxis.set_major_locator(NullLocator())
+    return plt
+
+def plot_spn(spn, fname="plot.pdf"):
+    plt = draw_spn(spn)
     plt.savefig(fname, bbox_inches="tight", pad_inches=0)
 
 
@@ -96,7 +96,7 @@ def plot_spn2(spn, fname="plot.pdf"):
     import networkx as nx
     import matplotlib.pyplot as plt
 
-    g, _ = get_networkx_obj(spn)
+    g, _ = _get_networkx_obj(spn)
 
     pos = graphviz_layout(g, prog="dot")
     nx.draw(g, pos, with_labels=False, arrows=False)
@@ -106,7 +106,7 @@ def plot_spn2(spn, fname="plot.pdf"):
 def plot_spn_to_svg(root_node, fname="plot.svg"):
     import networkx.drawing.nx_pydot as nxpd
 
-    g, _ = get_networkx_obj(root_node)
+    g, _ = _get_networkx_obj(root_node)
 
     pdG = nxpd.to_pydot(g)
     svg_string = pdG.create_svg()
