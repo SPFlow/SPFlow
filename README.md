@@ -532,6 +532,7 @@ See also the list of [contributors](https://github.com/alejandromolinaml/SPFlow/
 * **Claas Voelcker** - *TU Darmstadt*
 * **Simon Roesler** - *Karlsruhe Institute of Technology*
 * **Steven Lang** - *TU Darmstadt*
+* **Alexander L. Hayes** - *Indiana University, Bloomington*
 
 ## License
 
