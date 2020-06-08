@@ -76,6 +76,7 @@ def spn_to_tf_graph(node, data, batch_size=None, node_tf_graph=_node_log_tf_grap
     if not dtype:
         dtype = data.dtype
     # data is a placeholder, with shape same as numpy data
+    tf.compat.v1.disable_eager_execution()
     data_placeholder = tf.compat.v1.placeholder(data.dtype, (batch_size, data.shape[1]))
     variable_dict = {}
     tf_graph = eval_spn_bottom_up(
