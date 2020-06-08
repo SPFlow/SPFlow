@@ -10,7 +10,7 @@ import spn.algorithms.Inference as Inference
 class TestRatSpn(unittest.TestCase):
     def test_inference_results(self):
         np.random.seed(123)
-        tf.set_random_seed(123)
+        tf.compat.v1.set_random_seed(123)
 
         num_dims = 20
 
@@ -22,10 +22,10 @@ class TestRatSpn(unittest.TestCase):
         args.normalized_sums = True
         spn = RAT_SPN.RatSpn(10, region_graph=rg, name="obj-spn", args=args)
 
-        sess = tf.Session()
-        sess.run(tf.global_variables_initializer())
+        sess = tf.compat.v1.Session()
+        sess.run(tf.compat.v1.global_variables_initializer())
         dummy_input = np.random.normal(0.0, 1.2, [10, num_dims])
-        input_ph = tf.placeholder(tf.float32, [10, num_dims])
+        input_ph = tf.compat.v1.placeholder(tf.float32, [10, num_dims])
         output_tensor = spn.forward(input_ph)
         tf_output = sess.run(output_tensor, feed_dict={input_ph: dummy_input})
 

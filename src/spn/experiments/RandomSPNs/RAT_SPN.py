@@ -17,37 +17,37 @@ def add_to_map(given_map, key, item):
 
 def variable_with_weight_decay(name, shape, stddev, wd, mean=0.0, values=None):
     if values is None:
-        initializer = tf.truncated_normal_initializer(mean=mean, stddev=stddev, dtype=tf.float32)
+        initializer = tf.compat.v1.truncated_normal_initializer(mean=mean, stddev=stddev, dtype=tf.float32)
     else:
-        initializer = tf.constant_initializer(values)
+        initializer = tf.compat.v1.constant_initializer(values)
     """Get a TF variable with optional l2-loss attached."""
-    var = tf.get_variable(name, shape, initializer=initializer, dtype=tf.float32)
+    var = tf.compat.v1.get_variable(name, shape, initializer=initializer, dtype=tf.float32)
     if wd is not None:
         weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name="weight_loss")
-        tf.add_to_collection("losses", weight_decay)
-        tf.add_to_collection("weight_losses", weight_decay)
+        tf.compat.v1.add_to_collection("losses", weight_decay)
+        tf.compat.v1.add_to_collection("weight_losses", weight_decay)
 
     return var
 
 
 def bernoulli_variable_with_weight_decay(name, shape, wd, p=-0.7, values=None):
     if values is None:
-        initializer = tf.constant_initializer([p])
+        initializer = tf.compat.v1.constant_initializer([p])
     else:
-        initializer = tf.constant_initializer(values)
+        initializer = tf.compat.v1.constant_initializer(values)
     """Get a TF variable with optional l2-loss attached."""
-    var = tf.get_variable(name, shape, initializer=initializer, dtype=tf.float32)
+    var = tf.compat.v1.get_variable(name, shape, initializer=initializer, dtype=tf.float32)
     if wd is not None:
         weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name="weight_loss")
-        tf.add_to_collection("losses", weight_decay)
-        tf.add_to_collection("weight_losses", weight_decay)
+        tf.compat.v1.add_to_collection("losses", weight_decay)
+        tf.compat.v1.add_to_collection("weight_losses", weight_decay)
 
     return var
 
 
 def print_if_nan(tensor, msg):
-    is_nan = tf.reduce_any(tf.is_nan(tensor))
-    return tf.cond(is_nan, lambda: tf.Print(tensor, [is_nan], message=msg), lambda: tf.identity(tensor))
+    is_nan = tf.reduce_any(input_tensor=tf.math.is_nan(tensor))
+    return tf.cond(pred=is_nan, true_fn=lambda: tf.compat.v1.Print(tensor, [is_nan], message=msg), false_fn=lambda: tf.identity(tensor))
 
 
 class NodeVector(object):
@@ -135,7 +135,7 @@ class GaussVector(NodeVector):
             # gauss_log_pdf_single = tf.log(weighted_gauss_pdf + local_marginalized_broadcast)
             gauss_log_pdf_single = gauss_log_pdf_single * (1 - local_marginalized)
 
-        gauss_log_pdf = tf.reduce_sum(gauss_log_pdf_single, 1)
+        gauss_log_pdf = tf.reduce_sum(input_tensor=gauss_log_pdf_single, axis=1)
         return gauss_log_pdf
 
     def sample(self, num_samples, num_dims, seed=None):
@@ -144,7 +144,7 @@ class GaussVector(NodeVector):
         sample_shape = [num_samples, num_dims, self.size]
         indices = tf.meshgrid(tf.range(num_samples), self.scope, tf.range(self.size))
         indices = tf.stack(indices, axis=-1)
-        indices = tf.transpose(indices, [1, 0, 2, 3])
+        indices = tf.transpose(a=indices, perm=[1, 0, 2, 3])
         samples = tf.scatter_nd(indices, sample_values, sample_shape)
         return samples
 
@@ -187,7 +187,7 @@ class BernoulliVector(NodeVector):
         if classes:
             return bernoulli_log_pdf_single
         else:
-            bernoulli_log_pdf = tf.reduce_sum(bernoulli_log_pdf_single, 1)
+            bernoulli_log_pdf = tf.reduce_sum(input_tensor=bernoulli_log_pdf_single, axis=1)
         return bernoulli_log_pdf
 
     def sample(self, num_samples, num_dims, seed=None):
@@ -195,7 +195,7 @@ class BernoulliVector(NodeVector):
         sample_shape = [num_samples, num_dims, self.size]
         indices = tf.meshgrid(tf.range(num_samples), self.scope, tf.range(self.size))
         indices = tf.stack(indices, axis=-1)
-        indices = tf.transpose(indices, [1, 0, 2, 3])
+        indices = tf.transpose(a=indices, perm=[1, 0, 2, 3])
         samples = tf.scatter_nd(indices, sample_values, sample_shape)
         return samples
 
@@ -223,7 +223,7 @@ class ProductVector(NodeVector):
     def forward(self, inputs):
         dists1 = inputs[0]
         dists2 = inputs[1]
-        with tf.variable_scope("products") as scope:
+        with tf.compat.v1.variable_scope("products") as scope:
             num_dist1 = int(dists1.shape[1])
             num_dist2 = int(dists2.shape[1])
 
@@ -234,7 +234,7 @@ class ProductVector(NodeVector):
             # product == sum in log-domain
             prod = dists1_expand + dists2_expand
             # flatten out the outer product
-            prod = tf.reshape(prod, [tf.shape(dists1)[0], num_dist1 * num_dist2])
+            prod = tf.reshape(prod, [tf.shape(input=dists1)[0], num_dist1 * num_dist2])
 
         return prod
 
@@ -279,8 +279,8 @@ class SumVector(NodeVector):
                 if args.sum_weight_l2:
                     exp_weights = tf.exp(self.weights)
                     weight_decay = tf.multiply(tf.nn.l2_loss(exp_weights), args.sum_weight_l2)
-                    tf.add_to_collection("losses", weight_decay)
-                    tf.add_to_collection("weight_losses", weight_decay)
+                    tf.compat.v1.add_to_collection("losses", weight_decay)
+                    tf.compat.v1.add_to_collection("weight_losses", weight_decay)
             else:
                 self.weights = self.params
 
@@ -289,7 +289,7 @@ class SumVector(NodeVector):
         weights = self.weights
 
         if self.args.linear_sum_weights:
-            sums = tf.log(tf.matmul(tf.exp(prods), tf.squeeze(self.weights)))
+            sums = tf.math.log(tf.matmul(tf.exp(prods), tf.squeeze(self.weights)))
         else:
             prods = tf.expand_dims(prods, axis=-1)
             if self.dropout_op is not None:
@@ -299,26 +299,26 @@ class SumVector(NodeVector):
                     dropout_shape = [batch_size, prod_num, self.size]
 
                     random_tensor = random_ops.random_uniform(dropout_shape, dtype=self.weights.dtype)
-                    dropout_mask = tf.log(math_ops.floor(self.dropout_op + random_tensor))
+                    dropout_mask = tf.math.log(math_ops.floor(self.dropout_op + random_tensor))
                     weights = weights + dropout_mask
 
                 else:
                     random_tensor = random_ops.random_uniform(prods.shape, dtype=prods.dtype)
-                    dropout_mask = tf.log(math_ops.floor(self.dropout_op + random_tensor))
+                    dropout_mask = tf.math.log(math_ops.floor(self.dropout_op + random_tensor))
                     prods = prods + dropout_mask
 
-            sums = tf.reduce_logsumexp(prods + weights, axis=1)
+            sums = tf.reduce_logsumexp(input_tensor=prods + weights, axis=1)
 
         return sums
 
     def sample(self, inputs, seed=None):
         inputs = tf.concat(inputs, 2)
-        logits = tf.transpose(self.weights[0])
+        logits = tf.transpose(a=self.weights[0])
         dist = dists.Categorical(logits=logits)
 
         indices = dist.sample([inputs.shape[0]], seed=seed)
         indices = tf.reshape(tf.tile(indices, [1, inputs.shape[1]]), [inputs.shape[0], self.size, inputs.shape[1]])
-        indices = tf.transpose(indices, [0, 2, 1])
+        indices = tf.transpose(a=indices, perm=[0, 2, 1])
 
         others = tf.meshgrid(tf.range(inputs.shape[1]), tf.range(inputs.shape[0]), tf.range(self.size))
 
@@ -355,7 +355,7 @@ class RatSpn(object):
         self.output_vector = None
 
         # make the SPN...
-        with tf.variable_scope(self.name) as scope:
+        with tf.compat.v1.variable_scope(self.name) as scope:
             if region_graph is not None:
                 self._make_spn_from_region_graph()
             elif vector_list is not None:
@@ -363,7 +363,7 @@ class RatSpn(object):
             else:
                 raise ValueError("Either vector_list or region_graph must not be None")
 
-        self.variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
+        self.variables = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
         self.num_dims = len(self.output_vector.scope)
 
     def _make_spn_from_vector_list(self, vector_list, sess):
@@ -380,7 +380,7 @@ class RatSpn(object):
                         bernoulli_vector = BernoulliVector(
                             scope, self.args, name, given_params=a_node.probs.eval(session=sess)
                         )
-                        init_new_vars_op = tf.initializers.variables([bernoulli_vector.probs], name="init")
+                        init_new_vars_op = tf.compat.v1.initializers.variables([bernoulli_vector.probs], name="init")
                         sess.run(init_new_vars_op)
                         self.vector_list[0].append(bernoulli_vector)
                         node_to_vec[id(a_node)] = bernoulli_vector
@@ -393,7 +393,7 @@ class RatSpn(object):
                             given_means=a_node.means.eval(session=sess),
                             given_stddevs=a_node.sigma_params.eval(session=sess),
                         )
-                        init_new_vars_op = tf.initializers.variables(
+                        init_new_vars_op = tf.compat.v1.initializers.variables(
                             [gauss_vector.means, gauss_vector.sigma_params], name="init"
                         )
                         sess.run(init_new_vars_op)

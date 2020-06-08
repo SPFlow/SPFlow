@@ -35,7 +35,7 @@ class SPNClassifier(BaseEstimator, ClassifierMixin):
         tf_optimize_weights=False,
         tf_n_epochs=100,
         tf_batch_size: int = None,
-        tf_optimizer=tf.train.AdamOptimizer(learning_rate=0.001),
+        tf_optimizer=tf.compat.v1.train.AdamOptimizer(learning_rate=0.001),
         tf_pre_optimization_hook=None,
         tf_post_optimization_hook=None,
     ):
@@ -195,7 +195,7 @@ def classification_categorical_to_tf_graph(
     Therefore, this custom method adds a small epsilon, such that the zero probability value in the one-hot vector will
     not degrade to negative infinity.
     """
-    with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
+    with tf.compat.v1.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         p = np.array(node.p, dtype=dtype)
 
         # Epsilon to make sure there are no zero values

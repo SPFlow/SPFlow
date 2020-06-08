@@ -47,8 +47,8 @@ class TestTensorflow(unittest.TestCase):
 
         tf_graph, data_placeholder, variable_dict = spn_to_tf_graph(spn_copy, data, 1)
 
-        with tf.Session() as sess:
-            sess.run(tf.global_variables_initializer())
+        with tf.compat.v1.Session() as sess:
+            sess.run(tf.compat.v1.global_variables_initializer())
             tf_graph_to_spn(variable_dict)
 
         str_val = spn_to_str_equation(spn)
@@ -109,10 +109,10 @@ class TestTensorflow(unittest.TestCase):
 
         loss = likelihood_loss(tf_graph)
 
-        output = tf.train.AdamOptimizer(0.001).minimize(loss)
+        output = tf.compat.v1.train.AdamOptimizer(0.001).minimize(loss)
 
-        with tf.Session() as session:
-            session.run(tf.global_variables_initializer())
+        with tf.compat.v1.Session() as session:
+            session.run(tf.compat.v1.global_variables_initializer())
             for step in range(50):
                 session.run(output, feed_dict={data_placeholder: data})
                 # print("loss:", step, session.run(-loss, feed_dict={data_placeholder: data}))

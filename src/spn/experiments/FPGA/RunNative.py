@@ -23,12 +23,12 @@ import time
 
 
 def sum_to_tf_graph(node, children, data_placeholder, **args):
-    with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
+    with tf.compat.v1.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         return tf.add_n([node.weights[i] * ctf for i, ctf in enumerate(children)])
 
 
 def prod_to_tf_graph(node, children, data_placeholder, **args):
-    with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
+    with tf.compat.v1.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         prod_res = None
         for c in children:
             if prod_res is None:
@@ -127,21 +127,21 @@ if __name__ == "__main__":
             from tensorflow.python.client import timeline
             import json
 
-            tf.reset_default_graph()
+            tf.compat.v1.reset_default_graph()
 
             elapsed = 0
-            data_placeholder = tf.placeholder(tf.int32, test_data.shape)
+            data_placeholder = tf.compat.v1.placeholder(tf.int32, test_data.shape)
             tf_graph = spn_to_tf_graph(spn, data_placeholder, log_space=False)
             tfstart = time.perf_counter()
             n_repeats = 1000
-            with tf.Session() as sess:
+            with tf.compat.v1.Session() as sess:
 
                 for i in range(n_repeats):
 
-                    run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-                    run_metadata = tf.RunMetadata()
+                    run_options = tf.compat.v1.RunOptions(trace_level=tf.compat.v1.RunOptions.FULL_TRACE)
+                    run_metadata = tf.compat.v1.RunMetadata()
 
-                    sess.run(tf.global_variables_initializer())
+                    sess.run(tf.compat.v1.global_variables_initializer())
                     # start = time.perf_counter()
                     tf_ll = sess.run(
                         tf_graph,

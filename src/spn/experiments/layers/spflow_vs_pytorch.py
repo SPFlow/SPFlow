@@ -161,8 +161,8 @@ def run_tf(spflow_spn, n_feats, batch_size, repetitions):
     x = np.random.rand(batch_size, n_feats).astype(np.float32)
     tf_graph, placeholder, _ = spn_to_tf_graph(spflow_spn, x, dtype=np.float32)
 
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
+    with tf.compat.v1.Session() as sess:
+        sess.run(tf.compat.v1.global_variables_initializer())
         # warmup:
         for i in range(10):
             result = sess.run(tf_graph, feed_dict={placeholder: x})

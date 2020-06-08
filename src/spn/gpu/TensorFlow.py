@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 
 def log_sum_to_tf_graph(node, children, data_placeholder=None, variable_dict=None, log_space=True, dtype=np.float32):
     assert log_space
-    with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
+    with tf.compat.v1.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         softmaxInverse = np.log(node.weights / np.max(node.weights)).astype(dtype)
-        tfweights = tf.nn.softmax(tf.get_variable("weights", initializer=tf.constant(softmaxInverse)))
+        tfweights = tf.nn.softmax(tf.compat.v1.get_variable("weights", initializer=tf.constant(softmaxInverse)))
         variable_dict[node] = tfweights
         childrenprob = tf.stack(children, axis=1)
-        return tf.reduce_logsumexp(childrenprob + tf.log(tfweights), axis=1)
+        return tf.reduce_logsumexp(input_tensor=childrenprob + tf.math.log(tfweights), axis=1)
 
 
 def tf_graph_to_sum(node, tfvar):
@@ -36,12 +36,12 @@ def tf_graph_to_sum(node, tfvar):
 
 def log_prod_to_tf_graph(node, children, data_placeholder=None, variable_dict=None, log_space=True, dtype=np.float32):
     assert log_space
-    with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
+    with tf.compat.v1.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         return tf.add_n(children)
 
 
 def histogram_to_tf_graph(node, data_placeholder=None, log_space=True, variable_dict=None, dtype=np.float32):
-    with tf.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
+    with tf.compat.v1.variable_scope("%s_%s" % (node.__class__.__name__, node.id)):
         inps = np.arange(int(max(node.breaks))).reshape((-1, 1))
         tmpscope = node.scope[0]
         node.scope[0] = 0
@@ -72,11 +72,11 @@ def add_tf_graph_to_node(node_type, lambda_func):
 
 
 def spn_to_tf_graph(node, data, batch_size=None, node_tf_graph=_node_log_tf_graph, log_space=True, dtype=None):
-    tf.reset_default_graph()
+    tf.compat.v1.reset_default_graph()
     if not dtype:
         dtype = data.dtype
     # data is a placeholder, with shape same as numpy data
-    data_placeholder = tf.placeholder(data.dtype, (batch_size, data.shape[1]))
+    data_placeholder = tf.compat.v1.placeholder(data.dtype, (batch_size, data.shape[1]))
     variable_dict = {}
     tf_graph = eval_spn_bottom_up(
         node,
@@ -95,7 +95,7 @@ def tf_graph_to_spn(variable_dict, tf_graph_to_node=_tf_graph_to_node):
     for n, tfvars in variable_dict.items():
         tensors.append(tfvars)
 
-    variable_list = tf.get_default_session().run(tensors)
+    variable_list = tf.compat.v1.get_default_session().run(tensors)
 
     for i, (n, tfvars) in enumerate(variable_dict.items()):
         tf_graph_to_node[type(n)](n, variable_list[i])
@@ -103,7 +103,7 @@ def tf_graph_to_spn(variable_dict, tf_graph_to_node=_tf_graph_to_node):
 
 def likelihood_loss(tf_graph):
     # minimize negative log likelihood
-    return -tf.reduce_sum(tf_graph)
+    return -tf.reduce_sum(input_tensor=tf_graph)
 
 
 def optimize_tf(
@@ -111,7 +111,7 @@ def optimize_tf(
     data: np.ndarray,
     epochs=1000,
     batch_size: int = None,
-    optimizer: tf.train.Optimizer = None,
+    optimizer: tf.compat.v1.train.Optimizer = None,
     return_loss=False,
 ) -> Union[Tuple[Node, List[float]], Node]:
     """
@@ -148,14 +148,14 @@ def optimize_tf_graph(
     tf_graph, variable_dict, data_placeholder, data, epochs=1000, batch_size=None, optimizer=None
 ) -> List[float]:
     if optimizer is None:
-        optimizer = tf.train.GradientDescentOptimizer(0.001)
-    loss = -tf.reduce_sum(tf_graph)
+        optimizer = tf.compat.v1.train.GradientDescentOptimizer(0.001)
+    loss = -tf.reduce_sum(input_tensor=tf_graph)
     opt_op = optimizer.minimize(loss)
 
     # Collect loss
     loss_list = []
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
+    with tf.compat.v1.Session() as sess:
+        sess.run(tf.compat.v1.global_variables_initializer())
         if not batch_size:
             batch_size = data.shape[0]
         batches_per_epoch = data.shape[0] // batch_size
@@ -189,26 +189,26 @@ def eval_tf(spn, data, save_graph_path=None, dtype=np.float32):
 
 
 def eval_tf_graph(tf_graph, data_placeholder, data, save_graph_path=None):
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
+    with tf.compat.v1.Session() as sess:
+        sess.run(tf.compat.v1.global_variables_initializer())
         result = sess.run(tf_graph, feed_dict={data_placeholder: data})
 
         if save_graph_path is not None:
-            tf.summary.FileWriter(save_graph_path, sess.graph)
+            tf.compat.v1.summary.FileWriter(save_graph_path, sess.graph)
 
         return result.reshape(-1, 1)
 
 
 def eval_tf_trace(spn, data, log_space=True, save_graph_path=None):
-    data_placeholder = tf.placeholder(data.dtype, data.shape)
+    data_placeholder = tf.compat.v1.placeholder(data.dtype, data.shape)
     import time
 
     tf_graph = spn_to_tf_graph(spn, data_placeholder, log_space)
     run_metadata = None
-    with tf.Session() as sess:
-        run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-        run_metadata = tf.RunMetadata()
-        sess.run(tf.global_variables_initializer())
+    with tf.compat.v1.Session() as sess:
+        run_options = tf.compat.v1.RunOptions(trace_level=tf.compat.v1.RunOptions.FULL_TRACE)
+        run_metadata = tf.compat.v1.RunMetadata()
+        sess.run(tf.compat.v1.global_variables_initializer())
 
         start = time.perf_counter()
         result = sess.run(tf_graph, feed_dict={data_placeholder: data}, options=run_options, run_metadata=run_metadata)
@@ -230,7 +230,7 @@ def eval_tf_trace(spn, data, log_space=True, save_graph_path=None):
         return result, elapsed
 
         if save_graph_path is not None:
-            summary_fw = tf.summary.FileWriter(save_graph_path, sess.graph)
+            summary_fw = tf.compat.v1.summary.FileWriter(save_graph_path, sess.graph)
             if trace:
                 summary_fw.add_run_metadata(run_metadata, "run")
 

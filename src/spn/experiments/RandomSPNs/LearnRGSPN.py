@@ -126,7 +126,7 @@ if __name__ == "__main__":
 
     spns = vector_list[-1][0]
     tensor_spn = RatSpn(10, vector_list=vector_list, args=args, name="tensor-spn-from-vectorlist")
-    input_ph = tf.placeholder(tf.float32, (1000, 28 * 28))
+    input_ph = tf.compat.v1.placeholder(tf.float32, (1000, 28 * 28))
     output = tensor_spn.forward(input_ph)
 
     (train_im, train_lab), (test_im, test_lab) = mnist("data/mnist")
@@ -147,8 +147,8 @@ if __name__ == "__main__":
         end = time.perf_counter()
         print("finished: ", (end - tfstart))
 
-        sess = tf.Session()
-        sess.run(tf.global_variables_initializer())
+        sess = tf.compat.v1.Session()
+        sess.run(tf.compat.v1.global_variables_initializer())
         print("starting")
         tfstart = time.perf_counter()
         sess.run(output, feed_dict={input_ph: train_im[0:1000]})

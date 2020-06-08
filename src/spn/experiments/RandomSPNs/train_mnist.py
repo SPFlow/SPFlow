@@ -27,24 +27,24 @@ def load_mnist():
     return (train_im, train_lab), (test_im, test_lab)
 
 
-def train_spn(spn, train_im, train_lab=None, num_epochs=50, batch_size=100, sess=tf.Session()):
+def train_spn(spn, train_im, train_lab=None, num_epochs=50, batch_size=100, sess=tf.compat.v1.Session()):
 
-    input_ph = tf.placeholder(tf.float32, [batch_size, train_im.shape[1]])
-    label_ph = tf.placeholder(tf.int32, [batch_size])
+    input_ph = tf.compat.v1.placeholder(tf.float32, [batch_size, train_im.shape[1]])
+    label_ph = tf.compat.v1.placeholder(tf.int32, [batch_size])
     marginalized = tf.zeros_like(input_ph)
     spn_output = spn.forward(input_ph, marginalized)
     if train_lab is not None:
-        disc_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_ph, logits=spn_output))
+        disc_loss = tf.reduce_mean(input_tensor=tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_ph, logits=spn_output))
         label_idx = tf.stack([tf.range(batch_size), label_ph], axis=1)
-        gen_loss = tf.reduce_mean(-1 * tf.gather_nd(spn_output, label_idx))
-    very_gen_loss = -1 * tf.reduce_mean(tf.reduce_logsumexp(spn_output, axis=1))
+        gen_loss = tf.reduce_mean(input_tensor=-1 * tf.gather_nd(spn_output, label_idx))
+    very_gen_loss = -1 * tf.reduce_mean(input_tensor=tf.reduce_logsumexp(input_tensor=spn_output, axis=1))
     loss = disc_loss
-    optimizer = tf.train.AdamOptimizer()
+    optimizer = tf.compat.v1.train.AdamOptimizer()
     train_op = optimizer.minimize(loss)
     batches_per_epoch = train_im.shape[0] // batch_size
 
     # sess.run(tf.variables_initializer(optimizer.variables()))
-    sess.run(tf.global_variables_initializer())
+    sess.run(tf.compat.v1.global_variables_initializer())
 
     for i in range(num_epochs):
         num_correct = 0
@@ -84,15 +84,15 @@ if __name__ == "__main__":
     spn = RAT_SPN.RatSpn(10, region_graph=rg, name="obj-spn", args=args)
     print("num_params", spn.num_params())
 
-    sess = tf.Session()
-    sess.run(tf.global_variables_initializer())
+    sess = tf.compat.v1.Session()
+    sess.run(tf.compat.v1.global_variables_initializer())
 
     (train_im, train_labels), _ = load_mnist()
     train_spn(spn, train_im, train_labels, num_epochs=3, sess=sess)
 
     # dummy_input = np.random.normal(0.0, 1.2, [10, 9])
     dummy_input = train_im[:5]
-    input_ph = tf.placeholder(tf.float32, [None] + list(dummy_input.shape[1:]))
+    input_ph = tf.compat.v1.placeholder(tf.float32, [None] + list(dummy_input.shape[1:]))
     output_tensor = spn.forward(input_ph)
     tf_output = sess.run(output_tensor, feed_dict={input_ph: dummy_input})
 
