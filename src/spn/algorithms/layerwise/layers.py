@@ -64,17 +64,17 @@ class Sum(AbstractLayer):
         self.out_shape = f"(N, {self.in_features}, {self.out_channels}, {self.num_repetitions})"
 
         # Necessary for sampling with evidence: Save input during forward pass.
-        self._is_sampling_input_cache_enabled = False
-        self._sampling_input_cache = None
+        self._is_input_cache_enabled = False
+        self._input_cache = None
 
-    def _enable_sampling_input_cache(self):
+    def _enable_input_cache(self):
         """Enables the input cache. This will store the input in forward passes into `self.__input_cache`."""
-        self._is_sampling_input_cache_enabled = True
+        self._is_input_cache_enabled = True
 
-    def _disable_sampling_input_cache(self):
+    def _disable_input_cache(self):
         """Disables and clears the input cache."""
-        self._is_sampling_input_cache_enabled = False
-        self._sampling_input_cache = None
+        self._is_input_cache_enabled = False
+        self._input_cache = None
 
     @property
     def __device(self):
@@ -92,8 +92,8 @@ class Sum(AbstractLayer):
             torch.Tensor: Output of shape [batch, in_features, out_channels]
         """
         # Save input if input cache is enabled
-        if self._is_sampling_input_cache_enabled:
-            self._sampling_input_cache = x.clone()
+        if self._is_input_cache_enabled:
+            self._input_cache = x.clone()
 
         # Apply dropout: Set random sum node children to 0 (-inf in log domain)
         if self.dropout > 0.0 and self.training:
@@ -140,11 +140,14 @@ class Sum(AbstractLayer):
         # index is of size in_feature
         weights = self.weights.data
         d, ic, oc, r = weights.shape
+        n = context.n
 
         # Create sampling context if this is a root layer
-        if context is None:
+        if context.is_root:
             assert oc == 1 and r == 1, "Cannot start sampling from non-root layer."
-            context = SamplingContext(n=n, parent_indices=None, repetition_indices=torch.zeros(n, dtype=int, device=self.__device))
+
+            # Initialize rep indices
+            context.repetition_indices = torch.zeros(n, dtype=int, device=self.__device)
 
             # Select weights, repeat n times along the last dimension
             weights = weights[:, :, [0] * n, 0]  # Shape: [D, IC, N]
@@ -155,10 +158,11 @@ class Sum(AbstractLayer):
             # If this is not the root node, use the paths (out channels), specified by the parent layer
             self._check_repetition_indices(context)
 
-            n = context.n
             tmp = torch.zeros(n, d, ic, device=self.__device)
             for i in range(n):
-                tmp[i, :, :] = weights[range(self.in_features), :, context.parent_indices[i], context.repetition_indices[i]]
+                tmp[i, :, :] = weights[
+                    range(self.in_features), :, context.parent_indices[i], context.repetition_indices[i]
+                ]
             weights = tmp
 
         # Check dimensions
@@ -168,14 +172,19 @@ class Sum(AbstractLayer):
         log_weights = F.log_softmax(weights, dim=2)
 
         # If evidence is given, adjust the weights with the likelihoods of the observed paths
-        if self._is_sampling_input_cache_enabled and self._sampling_input_cache is not None:
+        if self._is_input_cache_enabled and self._input_cache is not None:
             for i in range(n):
                 # Reweight the i-th samples weights by its likelihood values at the correct repetition
-                log_weights[i, :, :] += self._sampling_input_cache[i, :, :, context.repetition_indices[i]]
+                log_weights[i, :, :] += self._input_cache[i, :, :, context.repetition_indices[i]]
 
-        # Create categorical distribution and use weights as logits
-        dist = torch.distributions.Categorical(logits=log_weights)
-        indices = dist.sample()
+        # If sampling context is MPE, set max weight to 1 and rest to zero, such that the maximum index will be sampled
+        if context.is_mpe:
+            # Get index of largest weight along in-channel dimension
+            indices = log_weights.argmax(dim=2)
+        else:
+            # Create categorical distribution and use weights as logits
+            dist = torch.distributions.Categorical(logits=log_weights)
+            indices = dist.sample()
 
         # Update parent indices
         context.parent_indices = indices
@@ -275,14 +284,13 @@ class Product(AbstractLayer):
         """
 
         # If this is a root node
-        if context is None:
+        if context.is_root:
+
             if self.num_repetitions == 1:
                 # If there is only a single repetition, create new sampling context
-                return SamplingContext(
-                    n=n,
-                    parent_indices=torch.zeros(n, 1, dtype=int, device=self.__device),
-                    repetition_indices=torch.zeros(n, dtype=int, device=self.__device),
-                )
+                context.parent_indices = torch.zeros(context.n, 1, dtype=int, device=self.__device)
+                context.repetition_indices = torch.zeros(context.n, dtype=int, device=self.__device)
+                return context
             else:
                 raise Exception(
                     "Cannot start sampling from Product layer with num_repetitions > 1 and no context given."
@@ -416,14 +424,12 @@ class CrossProduct(AbstractLayer):
         """
 
         # If this is a root node
-        if context is None:
+        if context.is_root:
             if self.num_repetitions == 1:
                 # If there is only a single repetition, create new sampling context
-                return SamplingContext(
-                    n=n,
-                    parent_indices=torch.zeros(n, 1, dtype=int, device=self.__device),
-                    repetition_indices=torch.zeros(n, dtype=int, device=self.__device),
-                )
+                context.parent_indices = torch.zeros(context.n, 1, dtype=int, device=self.__device)
+                context.repetition_indices = torch.zeros(context.n, dtype=int, device=self.__device)
+                return context
             else:
                 raise Exception(
                     "Cannot start sampling from CrossProduct layer with num_repetitions > 1 and no context given."

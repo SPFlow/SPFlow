@@ -43,9 +43,30 @@ def dist_forward(distribution, x):
     return x
 
 
-def dist_sample(
-    distribution: dist.Distribution, context: SamplingContext = None
-) -> torch.Tensor:
+def _mode(distribution: dist.Distribution, context: SamplingContext = None) -> torch.Tensor:
+    """
+    Get the mode of a given distribution.
+
+    Args:
+        distribution: Leaf distribution from which to choose the mode from.
+        context: Sampling context.
+    Returns:
+        torch.Tensor: Mode of the given distribution.
+    """
+    # TODO: Implement more torch distributions
+    if isinstance(distribution, dist.Normal):
+        # Repeat the mode along the batch axis
+        return distribution.mean.repeat(context.n, 1, 1, 1, 1)
+    elif isinstance(distribution, dist.Bernoulli):
+        mode = distribution.probs.clone()
+        mode[mode >= 0.5] = 1.0
+        mode[mode < 0.5] = 0.0
+        return mode.repeat(context.n, 1, 1, 1, 1)
+    else:
+        raise Exception(f"MPE not yet implemented for type {type(distribution)}")
+
+
+def dist_sample(distribution: dist.Distribution, context: SamplingContext = None) -> torch.Tensor:
     """
     Sample n samples from a given distribution.
 
@@ -56,7 +77,10 @@ def dist_sample(
     """
 
     # Sample from the specified distribution
-    samples = distribution.sample(sample_shape=(context.n,))
+    if context.is_mpe:
+        samples = _mode(distribution, context)
+    else:
+        samples = distribution.sample(sample_shape=(context.n,))
 
     assert (
         samples.shape[1] == 1
@@ -128,9 +152,8 @@ class Leaf(AbstractLayer):
     def forward(self, x):
         # Forward through base distribution
         d = self._get_base_distribution()
-        x = dist_forward(d, x)
-
         x = self._marginalize_input(x)
+        x = dist_forward(d, x)
         x = self._apply_dropout(x)
 
         return x

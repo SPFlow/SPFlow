@@ -280,7 +280,18 @@ class RatSpn(nn.Module):
                 truncated_normal_(module.weights, std=0.5)
                 continue
 
-    def sample(self, n: int = None, class_index=None, evidence: torch.Tensor = None):
+    def mpe(self, evidence: torch.Tensor) -> torch.Tensor:
+        """
+        Perform MPE given some evidence.
+
+        Args:
+            evidence: Input evidence. Must contain some NaN values.
+        Returns:
+            torch.Tensor: Clone of input tensor with NaNs replaced by MPE estimates.
+        """
+        return self.sample(evidence=evidence, is_mpe=True)
+
+    def sample(self, n: int = None, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False):
         """
         Sample from the distribution represented by this SPN.
 
@@ -301,6 +312,7 @@ class RatSpn(nn.Module):
                 `class_index` must be `None`. Evidence must contain NaN values which will be imputed according to the
                 distribution represented by the SPN. The result will contain the evidence and replace all NaNs with the
                 sampled values.
+            is_mpe: Flag to perform max sampling (MPE).
 
         Returns:
             torch.Tensor: Samples generated according to the distribution specified by the SPN.
@@ -327,10 +339,11 @@ class RatSpn(nn.Module):
                     indices.fill_(class_index)
 
                 # Create new sampling context
-                ctx = SamplingContext(n=n, parent_indices=indices, repetition_indices=None)
+                ctx = SamplingContext(n=n, parent_indices=indices, repetition_indices=None, is_mpe=is_mpe)
             else:
                 # Start sampling one of the C root nodes TODO: check what happens if C=1
-                ctx = self._sampling_root.sample(n=n)
+                ctx = SamplingContext(n=n, is_mpe=is_mpe)
+                ctx = self._sampling_root.sample(context=ctx)
 
             # Sample from RatSpn root layer: Results are indices into the stacked output channels of all repetitions
             ctx.repetition_indices = torch.zeros(n, dtype=int, device=self.__device)
@@ -347,14 +360,9 @@ class RatSpn(nn.Module):
             # Now each sample in `indices` belongs to one repetition, index in `repetition_indices`
 
             # Continue at layers
-            # Sample inner modules
+            # Sample inner layers in reverse order (starting from topmost)
             for layer in reversed(self._inner_layers):
-                if isinstance(layer, Sum):
-                    ctx = layer.sample(context=ctx)
-                elif isinstance(layer, CrossProduct):
-                    ctx = layer.sample(context=ctx)
-                else:
-                    raise Exception("Only Sum or CrossProduct is allowed as intermediate layer.")
+                ctx = layer.sample(context=ctx)
 
             # Sample leaf
             samples = self._leaf.sample(context=ctx)
