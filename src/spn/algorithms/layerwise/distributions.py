@@ -152,8 +152,9 @@ class Leaf(AbstractLayer):
     def forward(self, x):
         # Forward through base distribution
         d = self._get_base_distribution()
-        x = self._marginalize_input(x)
         x = dist_forward(d, x)
+
+        x = self._marginalize_input(x)
         x = self._apply_dropout(x)
 
         return x
