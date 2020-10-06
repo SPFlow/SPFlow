@@ -182,9 +182,20 @@ class Sum(AbstractLayer):
             # Get index of largest weight along in-channel dimension
             indices = log_weights.argmax(dim=2)
         else:
-            # Create categorical distribution and use weights as logits
-            dist = torch.distributions.Categorical(logits=log_weights)
-            indices = dist.sample()
+            # Create categorical distribution and use weights as logits.
+            #
+            # Use the Gumble-Softmax trick to obtain one-hot indices of the categorical distribution
+            # represented by the given logits. (Use Gumble-Softmax instead of Categorical
+            # to allow for gradients).
+            #
+            # The code below is an approximation of:
+            #
+            # >> dist = torch.distributions.Categorical(logits=log_weights)
+            # >> indices = dist.sample()
+
+            cats = torch.arange(ic, device=log_weights.device)
+            one_hot = F.gumbel_softmax(logits=log_weights, hard=True, dim=-1)
+            indices = (one_hot * cats).sum(-1).long()
 
         # Update parent indices
         context.parent_indices = indices
