@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 
 import torch
@@ -7,7 +7,7 @@ from torch import nn
 
 
 @contextmanager
-def provide_evidence(spn: nn.Module, evidence: torch.Tensor):
+def provide_evidence(spn: nn.Module, evidence: torch.Tensor, requires_grad=False):
     """
     Context manager for sampling with evidence. In this context, the SPN graph is reweighted with the likelihoods
     computed using the given evidence.
@@ -15,8 +15,17 @@ def provide_evidence(spn: nn.Module, evidence: torch.Tensor):
     Args:
         spn: SPN that is being used to perform the sampling.
         evidence: Provided evidence. The SPN will perform a forward pass prior to entering this contex.
+        requires_grad: If False, runs in torch.no_grad() context. (default: False)
     """
-    with torch.no_grad():
+    # If no gradients are required, run in no_grad context
+    if not requires_grad:
+        context = torch.no_grad
+    else:
+        # Else provide null context
+        context = nullcontext
+
+    # Run forward pass in given context
+    with context():
         # Enter
         for module in spn.modules():
             if hasattr(module, "_enable_input_cache"):
