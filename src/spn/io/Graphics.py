@@ -73,7 +73,7 @@ def draw_spn(spn):
     )
     ax.collections[0].set_edgecolor("#333333")
     edge_labels = nx.draw_networkx_edge_labels(
-        g, pos=pos, edge_labels=nx.get_edge_attributes(g, "weight"), font_size=16, clip_on=False, alpha=0.6
+        g, pos=pos, edge_labels=nx.get_edge_attributes(g, "weight"), font_size=16, alpha=0.6
     )
 
     xpos = list(map(lambda p: p[0], pos.values()))
