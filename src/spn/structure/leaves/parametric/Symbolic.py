@@ -48,7 +48,7 @@ def poisson_to_sympy(node, input_vars=None, log=False):
 
 
 def bernoulli_to_sympy(node, input_vars=None, log=False):
-    result = get_density(st.Bernoulli("Node%s" % node.id, node.p), node, input_vars)
+    result = st.density(st.FiniteRV("Node%s" % node.id, {1:node.p, 0:1-node.p}))(None)(input_vars[node.scope[0]])
     if log:
         result = sp.log(result)
     return result
@@ -56,7 +56,7 @@ def bernoulli_to_sympy(node, input_vars=None, log=False):
 
 def categorical_to_sympy(node, input_vars=None, log=False):
     cat_param = {i: p for i, p in enumerate(node.p)}
-    result = get_density(st.FiniteRV("Node%s" % node.id, cat_param), node, input_vars)
+    result = st.density(st.FiniteRV("Node%s" % node.id, cat_param))(None)(input_vars[node.scope[0]])
     if log:
         result = sp.log(result)
     return result
