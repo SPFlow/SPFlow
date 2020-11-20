@@ -42,10 +42,6 @@ class DistributionClipper(object):
             param = module.stds.data
             param.clamp_(self.lower_bound)
 
-        if hasattr(module, "probs"):
-            param = module.probs.data
-            param.clamp_(0.0, 1.0)
-
         if hasattr(module, "concentration0"):
             param = module.concentration0.data
             param.clamp_(self.lower_bound)
