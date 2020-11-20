@@ -6,16 +6,7 @@ Created on March 21, 2018
 
 import tensorflow as tf
 
-from spn.gpu.TensorFlow import add_node_to_tf_graph, add_tf_graph_to_node
-from spn.structure.leaves.parametric.Parametric import (
-    Gaussian,
-    Categorical,
-    LogNormal,
-    Exponential,
-    Gamma,
-    Poisson,
-    Bernoulli,
-)
+
 import numpy as np
 import logging
 
@@ -136,19 +127,3 @@ def tf_graph_to_bernoulli(node, tfvar):
     node.p = tfvar
 
 
-def add_parametric_tensorflow_support():
-    add_node_to_tf_graph(Gaussian, gaussian_to_tf_graph)
-    add_node_to_tf_graph(Exponential, exponential_to_tf_graph)
-    add_node_to_tf_graph(Gamma, gamma_to_tf_graph)
-    add_node_to_tf_graph(LogNormal, lognormal_to_tf_graph)
-    add_node_to_tf_graph(Poisson, poisson_to_tf_graph)
-    add_node_to_tf_graph(Bernoulli, bernoulli_to_tf_graph)
-    add_node_to_tf_graph(Categorical, categorical_to_tf_graph)
-
-    add_tf_graph_to_node(Gaussian, tf_graph_to_gaussian)
-    add_tf_graph_to_node(Exponential, tf_graph_to_exponential)
-    add_tf_graph_to_node(Gamma, tf_graph_to_gamma)
-    add_tf_graph_to_node(LogNormal, tf_graph_to_gaussian)
-    add_tf_graph_to_node(Poisson, tf_graph_to_poisson)
-    add_tf_graph_to_node(Bernoulli, tf_graph_to_bernoulli)
-    add_tf_graph_to_node(Categorical, tf_graph_to_categorical)
