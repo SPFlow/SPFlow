@@ -1,5 +1,5 @@
 numpy
-scipy==1.2
+scipy
 sklearn
 statsmodels
 networkx
@@ -8,8 +8,9 @@ matplotlib
 pydot
 lark-parser
 tqdm
-ete3>=3.1.1
+ete3
 sympy
 PyQt5
 arff
 pytest
+dataclasses

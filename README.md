@@ -26,6 +26,12 @@ To install the latest released version of SPFlow using pip
 pip3 install spflow
 ```
 
+An AUR package is available for Arch Linux. The PKGBUILD should automatically apply a patch for SPFlow to work with Tensorflow 2.
+
+```sh
+yay -S python-spflow
+```
+
 ## Examples
 
 We start by creating an SPN. Using a Domain-Specific Language (DSL), we can quickly create an SPN of categorical
@@ -39,7 +45,7 @@ spn = 0.4 * (Categorical(p=[0.2, 0.8], scope=0) *
              (0.3 * (Categorical(p=[0.3, 0.7], scope=1) *
                      Categorical(p=[0.4, 0.6], scope=2))
             + 0.7 * (Categorical(p=[0.5, 0.5], scope=1) *
-                     Categorical(p=[0.6, 0.4], scope=2))))
+                     Categorical(p=[0.6, 0.4], scope=2)))) \
     + 0.6 * (Categorical(p=[0.2, 0.8], scope=0) *
              Categorical(p=[0.3, 0.7], scope=1) *
              Categorical(p=[0.4, 0.6], scope=2))
@@ -65,8 +71,6 @@ spn = Sum(weights=[0.4, 0.6], children=[p2, p4])
 
 assign_ids(spn)
 rebuild_scopes_bottom_up(spn)
-
-return spn
 ```
 
 The p parameter indicates the probabilities, and the scope indicates the variable we are modeling.
@@ -385,6 +389,7 @@ The _Expectations_ function allows you to directly compute first oder moments gi
 
 ```python
 from spn.algorithms.stats.Expectations import Expectation
+from spn.structure.leaves.piecewise.PiecewiseLinear import PiecewiseLinear
 
 piecewise_spn = ((0.5 * PiecewiseLinear([0, 1, 2], [0, 1, 0], [], scope=[0]) +
                   0.5 * PiecewiseLinear([-2, -1, 0], [0, 1, 0], [], scope=[0])) *
@@ -527,6 +532,7 @@ See also the list of [contributors](https://github.com/alejandromolinaml/SPFlow/
 * **Claas Voelcker** - *TU Darmstadt*
 * **Simon Roesler** - *Karlsruhe Institute of Technology*
 * **Steven Lang** - *TU Darmstadt*
+* **Alexander L. Hayes** - *Indiana University, Bloomington*
 
 ## License
 
@@ -535,7 +541,7 @@ This project is licensed under the Apache License, Version 2.0 - see the [LICENS
 
 
 ## Acknowledgments
-<img src="https://github.com/SPFlow/SPFlow/blob/master/Documentation/acknowledgements/bmbf.png" height="100"/><img src="https://github.com/SPFlow/SPFlow/blob/master/Documentation/acknowledgements/dfg.jpg"  height="100"/>
+<img src="https://github.com/SPFlow/SPFlow/blob/master/Documentation/acknowledgements/bmbf.png" height="100"/><img src="https://github.com/SPFlow/SPFlow/blob/master/Documentation/acknowledgements/dfg.jpg"  height="100"/><img src="https://github.com/SPFlow/SPFlow/blob/master/Documentation/acknowledgements/euc.png"  height="100"/>
 * Parts of SPFlow as well as its motivating research have been supported by the Germany Science Foundation (DFG) - AIPHES, GRK 1994, and CAML, KE 1686/3-1 as part of SPP 1999- and the Federal Ministry of Education and Research (BMBF) - InDaS, 01IS17063B.
 
-
+* This project received funding from the European Union's Horizon 2020 research and innovation programme under the Marie Sklodowska-Curie Grant Agreement No. 797223 (HYBSPN).
