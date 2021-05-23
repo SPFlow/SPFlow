@@ -5,30 +5,30 @@ Created on May 05, 2021
 
 This file provides the basic components to build abstract probabilistic circuits, like SumNode, ProductNode, and LeafNode.
 """
-from typing import Optional
+from typing import List, Optional
 
 
 class Node:
     """Base class for all types of nodes
 
     Attributes:
-        children: A list of nodes containing the children of this node.
-        scope: A list of integers containing the scopes of this node.
+        children: A list of nodes containing the children of this node, or None.
+        scope: A list of integers containing the scopes of this node, or None.
     """
 
     def __init__(
-        self, children: Optional[list["Node"]] = None, scope: Optional[list[int]] = None
+        self, children: Optional[List["Node"]] = None, scope: Optional[list[int]] = None
     ) -> None:
         # TODO: sollten Nodes auch IDs haben? (siehe SPFlow, z.B. fuer SPN-Ausgabe/Viz noetig)
-        self.children: Optional[list[Node]] = children
-        self.scope: Optional[list[int]] = scope
+        self.children: Optional[List[Node]] = children
+        self.scope: Optional[List[int]] = scope
 
 
 class ProductNode(Node):
     """A ProductNode provides a factorization of its children, i.e. product nodes in SPNs have children with distinct scopes"""
 
     def __init__(
-        self, children: Optional[list[Node]] = None, scope: Optional[list[int]] = None
+        self, children: Optional[List[Node]] = None, scope: Optional[List[int]] = None
     ) -> None:
         super().__init__(children=children, scope=scope)
 
@@ -43,19 +43,19 @@ class SumNode(Node):
 
     def __init__(
         self,
-        children: Optional[list[Node]] = None,
-        scope: Optional[list[int]] = None,
-        weights: Optional[list[float]] = None,
+        children: Optional[List[Node]] = None,
+        scope: Optional[List[int]] = None,
+        weights: Optional[List[float]] = None,
     ) -> None:
         super().__init__(children=children, scope=scope)
-        self.weights: Optional[list[float]] = weights
+        self.weights: Optional[List[float]] = weights
 
 
 class LeafNode(Node):
     """A LeafNode provides a probability distribution over some input variable(s)"""
 
     def __init__(
-        self, children: Optional[list[Node]] = None, scope: Optional[list[int]] = None
+        self, children: Optional[List[Node]] = None, scope: Optional[List[int]] = None
     ) -> None:
         super().__init__(children=children, scope=scope)
         # TODO: mit Steven abklaren, wie children in LeafNode behandelt werden; oder ob nicht Node, sondern SumNode/ProductNode children haben sollten
