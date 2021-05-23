@@ -1,0 +1,17 @@
+# ignore caches
+.mypy_cache/
+__pycache__/
+
+# ignore IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# ignore system files
+__MACOSX/
+
+# ignore venvs
+Include/
+Lib/
+Scripts/
+pyvenv.cfg
