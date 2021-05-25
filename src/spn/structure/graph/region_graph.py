@@ -7,7 +7,7 @@ This file provides the structure and construction algorithm for abstract RegionG
 used to build RAT-SPNs.
 """
 import random
-from typing import Any, Optional, Set
+from typing import Any, Optional, Set, List
 
 
 class RegionGraph:
@@ -15,7 +15,7 @@ class RegionGraph:
 
     Attributes:
         root_region:
-            A Region over the whole set of random variables, X, that holds R Partitions. 
+            A Region over the whole set of random variables, X, that holds R Partitions.
             (R: the number of replicas)
     """
 
@@ -26,12 +26,12 @@ class RegionGraph:
         # self.regions: Set[Region] = set()
         # self.partitions: Set[Partition] = set()
 
-    
     def __str__(self) -> str:
         return "RegionGraph over RV " + str(self.root_region.random_variables)
 
     def __repr__(self) -> str:
         return self.__str__()
+
 
 class Region:
     """A Region is a non-empty subset of the random variables X.
@@ -47,12 +47,9 @@ class Region:
             but the root_region has exactly 1 Partition as child.
     """
 
-    def __init__(self, random_variables: Optional[Set[int]] = None) -> None:
-        self.random_variables: Set[int] = (
-            random_variables if random_variables else set()
-        )
+    def __init__(self, random_variables: Optional[Set[int]]) -> None:
+        self.random_variables = random_variables if random_variables else set()
         self.partitions: Set[Partition] = set()
-
 
     def __str__(self) -> str:
         return "Region with RV: " + str(self.random_variables)
@@ -70,13 +67,14 @@ class Partition:
             by Peharz et. al), each Partition has exactly two Regions as children.
     """
 
-    def __init__(self, regions: Optional[Set[Region]] = None) -> None:
-        self.regions: Set[Region] = regions if regions else set()
+    def __init__(self, regions: Optional[Set[Region]]) -> None:
+        self.regions = regions if regions else set()
 
-    
     def __str__(self) -> str:
-        return "Partition over " + str([region.random_variables for region in self.regions])
-        
+        return "Partition over " + str(
+            [region.random_variables for region in self.regions]
+        )
+
     def __repr__(self) -> str:
         return self.__str__()
 
@@ -89,11 +87,11 @@ def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
             The set of all indices/scopes of random variables that the RegionGraph contains.
         depth:
             (D in the paper)
-            An integer that controls the depth of the graph structure of the RegionGraph. One level 
+            An integer that controls the depth of the graph structure of the RegionGraph. One level
             of depth equals to a pair of (Partitions, Regions). The root has depth 0.
         replicas:
             (R in the paper)
-            An integer for the number of replicas. Replicas are distinct Partitions of the whole 
+            An integer for the number of replicas. Replicas are distinct Partitions of the whole
             set of random variables X, which are children of the root_region of the RegionGraph.
 
     Returns:
@@ -109,8 +107,8 @@ def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
     if replicas < 1:
         raise ValueError("Number of replicas must be at least 1")
 
-    region_graph: RegionGraph = RegionGraph()
-    root_region: Region = Region(random_variables=X)
+    region_graph = RegionGraph()
+    root_region = Region(random_variables=X)
     region_graph.root_region = root_region
 
     for r in range(0, replicas):
@@ -122,10 +120,10 @@ def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
 def split(region_graph: RegionGraph, parent_region: Region, depth: int) -> None:
     """Splits a Region into balanced Partitions.
 
-    Recursively builds up a binary tree structure of the RegionGraph. First, it splits the 
+    Recursively builds up a binary tree structure of the RegionGraph. First, it splits the
     random variables of the parent_region, Y, into a Partition consisting of two balanced,
-    distinct subsets of Y, and adds it as a child of the parent_region. Then, split() will 
-    be called onto each of the two subsets of Y until the maximum depth of the RegionGraph 
+    distinct subsets of Y, and adds it as a child of the parent_region. Then, split() will
+    be called onto each of the two subsets of Y until the maximum depth of the RegionGraph
     is reached, OR each Region consists of only 1 random variable,
 
     Args:
@@ -144,10 +142,10 @@ def split(region_graph: RegionGraph, parent_region: Region, depth: int) -> None:
     split_index = len(parent_region.random_variables) // 2
     shuffle_random_variables = list(parent_region.random_variables)
     random.shuffle(shuffle_random_variables)
-    region1: Region = Region(set(shuffle_random_variables[:split_index]))
-    region2: Region = Region(set(shuffle_random_variables[split_index:]))
+    region1 = Region(set(shuffle_random_variables[:split_index]))
+    region2 = Region(set(shuffle_random_variables[split_index:]))
 
-    partition: Partition = Partition({region1, region2})
+    partition = Partition({region1, region2})
     parent_region.partitions.add(partition)
 
     if depth > 1:
@@ -162,14 +160,14 @@ def _print_region_graph(region_graph: RegionGraph) -> None:
 
     TODO: Needs to be moved to a test-module.
     """
-    nodes: list[Any] = list(region_graph.root_region.partitions)
+    nodes: List[Any] = list(region_graph.root_region.partitions)
     print("RegionGraph: ", region_graph.root_region.random_variables)
 
     while nodes:
         node: Any = nodes.pop(0)
 
         if type(node) is Partition:
-            scope: list[int] = [region.random_variables for region in node.regions]
+            scope: List[int] = [region.random_variables for region in node.regions]
             print("Partition: ", scope)
             nodes.extend(node.regions)
 
@@ -182,5 +180,5 @@ def _print_region_graph(region_graph: RegionGraph) -> None:
 
 
 if __name__ == "__main__":
-    region_graph = random_region_graph(X=set(range(1, 8)), depth=0, replicas=1)
+    region_graph = random_region_graph(X=set(range(1, 8)), depth=2, replicas=2)
     _print_region_graph(region_graph)

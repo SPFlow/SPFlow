@@ -16,20 +16,16 @@ class Node:
         scope: A list of integers containing the scopes of this node, or None.
     """
 
-    def __init__(
-        self, children: Optional[List["Node"]] = None, scope: Optional[List[int]] = None
-    ) -> None:
+    def __init__(self, children: List["Node"], scope: List[int]) -> None:
         # TODO: sollten Nodes auch IDs haben? (siehe SPFlow, z.B. fuer SPN-Ausgabe/Viz noetig)
-        self.children: Optional[List[Node]] = children
-        self.scope: Optional[List[int]] = scope
+        self.children = children
+        self.scope = scope
 
 
 class ProductNode(Node):
     """A ProductNode provides a factorization of its children, i.e. product nodes in SPNs have children with distinct scopes"""
 
-    def __init__(
-        self, children: Optional[List[Node]] = None, scope: Optional[List[int]] = None
-    ) -> None:
+    def __init__(self, children: List[Node], scope: List[int]) -> None:
         super().__init__(children=children, scope=scope)
 
 
@@ -42,22 +38,17 @@ class SumNode(Node):
     """
 
     def __init__(
-        self,
-        children: Optional[List[Node]] = None,
-        scope: Optional[List[int]] = None,
-        weights: Optional[List[float]] = None,
+        self, children: List[Node], scope: List[int], weights: List[float]
     ) -> None:
         super().__init__(children=children, scope=scope)
-        self.weights: Optional[List[float]] = weights
+        self.weights = weights
 
 
 class LeafNode(Node):
     """A LeafNode provides a probability distribution over some input variable(s)"""
 
-    def __init__(
-        self, children: Optional[List[Node]] = None, scope: Optional[List[int]] = None
-    ) -> None:
-        super().__init__(children=children, scope=scope)
+    def __init__(self, children: Optional[List[Node]], scope: List[int]) -> None:
         # TODO: mit Steven abklaren, wie children in LeafNode behandelt werden; oder ob nicht Node, sondern SumNode/ProductNode children haben sollten
         if children is not None:
             raise ValueError("LeafNode must not have children")
+        super().__init__(children=[], scope=scope)

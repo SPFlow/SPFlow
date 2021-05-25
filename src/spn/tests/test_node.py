@@ -9,11 +9,17 @@ class TestNode(unittest.TestCase):
         spn: Node.Node = Node.SumNode(
             [
                 Node.ProductNode(
-                    children=[Node.LeafNode(scope=[1]), Node.LeafNode(scope=[2])],
+                    children=[
+                        Node.LeafNode(children=None, scope=[1]),
+                        Node.LeafNode(children=None, scope=[2]),
+                    ],
                     scope=[1, 2],
                 ),
                 Node.ProductNode(
-                    children=[Node.LeafNode(scope=[1]), Node.LeafNode(scope=[2])],
+                    children=[
+                        Node.LeafNode(children=None, scope=[1]),
+                        Node.LeafNode(children=None, scope=[2]),
+                    ],
                     scope=[1, 2],
                 ),
             ],
@@ -54,7 +60,7 @@ class TestNode(unittest.TestCase):
 
             # assert that LeafNodes are actually leaves
             elif isinstance(node, Node.LeafNode):
-                self.assertIsNone(node.children)
+                self.assertEqual(len(node.children), 0)
             else:
                 self.AssertionError(
                     "Node must be SumNode, ProductNode, or a subclass of LeafNode"
