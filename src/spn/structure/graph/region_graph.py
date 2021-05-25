@@ -26,6 +26,12 @@ class RegionGraph:
         # self.regions: Set[Region] = set()
         # self.partitions: Set[Partition] = set()
 
+    
+    def __str__(self) -> str:
+        return "RegionGraph over RV " + str(self.root_region.random_variables)
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 class Region:
     """A Region is a non-empty subset of the random variables X.
@@ -48,6 +54,13 @@ class Region:
         self.partitions: Set[Partition] = set()
 
 
+    def __str__(self) -> str:
+        return "Region with RV: " + str(self.random_variables)
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+
 class Partition:
     """A Partition is a set of Regions, where the scopes of all Regions are pairwise distinct.
 
@@ -60,6 +73,13 @@ class Partition:
     def __init__(self, regions: Optional[Set[Region]] = None) -> None:
         self.regions: Set[Region] = regions if regions else set()
 
+    
+    def __str__(self) -> str:
+        return "Partition over " + str([region.random_variables for region in self.regions])
+        
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
     """Creates a RegionGraph from a set of random variables X.
@@ -69,8 +89,8 @@ def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
             The set of all indices/scopes of random variables that the RegionGraph contains.
         depth:
             (D in the paper)
-            An integer that controls the depth of the graph structure of the RegionGraph.
-            One level of depth equals to a pair of (Partitions, Regions).
+            An integer that controls the depth of the graph structure of the RegionGraph. One level 
+            of depth equals to a pair of (Partitions, Regions). The root has depth 0.
         replicas:
             (R in the paper)
             An integer for the number of replicas. Replicas are distinct Partitions of the whole 
@@ -78,7 +98,17 @@ def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
 
     Returns:
         A RegionGraph with a binary tree structure, consisting of alternating Regions and Partitions.
+
+    Raises:
+        ValueError: If any argument is invalid.
     """
+    if X is None or len(X) < 2:
+        raise ValueError("Need at least two random variables to build RegionGraph")
+    if depth < 0:
+        raise ValueError("Depth must not be negative")
+    if replicas < 1:
+        raise ValueError("Number of replicas must be at least 1")
+
     region_graph: RegionGraph = RegionGraph()
     root_region: Region = Region(random_variables=X)
     region_graph.root_region = root_region
@@ -136,7 +166,7 @@ def _print_region_graph(region_graph: RegionGraph) -> None:
     print("RegionGraph: ", region_graph.root_region.random_variables)
 
     while nodes:
-        node: Any = nodes.pop()
+        node: Any = nodes.pop(0)
 
         if type(node) is Partition:
             scope: list[int] = [region.random_variables for region in node.regions]
@@ -152,5 +182,5 @@ def _print_region_graph(region_graph: RegionGraph) -> None:
 
 
 if __name__ == "__main__":
-    region_graph = random_region_graph(X=set(range(1, 100)), depth=7, replicas=1)
+    region_graph = random_region_graph(X=set(range(1, 8)), depth=0, replicas=1)
     _print_region_graph(region_graph)

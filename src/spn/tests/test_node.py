@@ -24,7 +24,7 @@ class TestNode(unittest.TestCase):
         # assert all nodes via BFS. This section is not runtime-optimized
         nodes: list[Node.Node] = [spn]
         while nodes:
-            node: Node.Node = nodes.pop()
+            node: Node.Node = nodes.pop(0)
             self.assertIsNotNone(node.scope)
 
             # assert that SumNodes are smooth and weights sum up to 1

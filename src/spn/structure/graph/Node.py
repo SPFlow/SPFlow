@@ -17,7 +17,7 @@ class Node:
     """
 
     def __init__(
-        self, children: Optional[List["Node"]] = None, scope: Optional[list[int]] = None
+        self, children: Optional[List["Node"]] = None, scope: Optional[List[int]] = None
     ) -> None:
         # TODO: sollten Nodes auch IDs haben? (siehe SPFlow, z.B. fuer SPN-Ausgabe/Viz noetig)
         self.children: Optional[List[Node]] = children
