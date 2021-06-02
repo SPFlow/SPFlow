@@ -52,7 +52,9 @@ def construct_spn_from_region_graph(
     i = 0
     while i < num_root_sum:
         root_node = SumNode(
-            children=[], scope=list(region_graph.root_region.random_variables), weights=[]
+            children=[],
+            scope=list(region_graph.root_region.random_variables),
+            weights=[],
         )
         rat_spn.nodes.append(root_node)
         i += 1
@@ -79,7 +81,9 @@ def construct_spn_from_region_graph(
                 node.nodes = []
                 i = 0
                 while i < num_int_sum:
-                    sum = SumNode(children=[], scope=list(node.random_variables), weights=[])
+                    sum = SumNode(
+                        children=[], scope=list(node.random_variables), weights=[]
+                    )
                     node.nodes.append(sum)
                     i += 1
         else:
