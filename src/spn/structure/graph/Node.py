@@ -23,13 +23,12 @@ class Node:
         self.children = children
         self.scope = scope
 
-        self.name = "Node"
-
     def __str__(self) -> str:
         '''
         Ad-hoc method to print structure of node and children (for debugging purposes)
         '''
-        strings = [self.name]
+        #strings = [self.name]
+        strings = [self.__class__.__name__]
         strings += [str(child).replace("\n", "\n    ") for child in self.children]
 
         return "\n    ".join(strings)
@@ -40,8 +39,6 @@ class ProductNode(Node):
 
     def __init__(self, children: List[Node], scope: List[int]) -> None:
         super().__init__(children=children, scope=scope)
-
-        self.name = "ProductNode"
 
 
 class SumNode(Node):
@@ -58,8 +55,6 @@ class SumNode(Node):
         super().__init__(children=children, scope=scope)
         self.weights = weights
 
-        self.name = "SumNode"
-
 class LeafNode(Node):
     """A LeafNode provides a probability distribution over some input variable(s)"""
 
@@ -67,5 +62,3 @@ class LeafNode(Node):
         # TODO: mit Steven abklaren, wie children in LeafNode behandelt werden; oder ob nicht Node, sondern SumNode/ProductNode children haben sollten
     
         super().__init__(children=[], scope=scope)
-
-        self.name = "LeafNode"
