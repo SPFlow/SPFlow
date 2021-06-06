@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 
-from spn.structure.graph.Node import Node, SumNode, ProductNode, LeafNode
+from spn.structure.graph.node import Node, SumNode, ProductNode, LeafNode
 
 
 class TorchNode(nn.Module):

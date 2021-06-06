@@ -1,73 +1,194 @@
 import unittest
+from spn.structure.graph.node import (
+    Node,
+    SumNode,
+    LeafNode,
+    ProductNode,
+    _get_node_counts,
+)
 
-from spn.structure.graph import Node
+from spn.structure.graph.validity_checks import _isvalid_spn
 
 
 class TestNode(unittest.TestCase):
-    def test_spn(self):
-        # dieser Test ist noch ziemlich nutzlos, kann aber spaeter als Schema für gelernte SPNs und Tests prinzipiell dienen
-        spn: Node.Node = Node.SumNode(
-            [
-                Node.ProductNode(
-                    children=[
-                        Node.LeafNode(children=None, scope=[1]),
-                        Node.LeafNode(children=None, scope=[2]),
-                    ],
-                    scope=[1, 2],
-                ),
-                Node.ProductNode(
-                    children=[
-                        Node.LeafNode(children=None, scope=[1]),
-                        Node.LeafNode(children=None, scope=[2]),
-                    ],
-                    scope=[1, 2],
-                ),
+    def test_spn_fail_scope(self):
+        spn: Node = ProductNode(
+            children=[
+                LeafNode(scope=[1]),
+                LeafNode(scope=[1]),
             ],
             scope=[1, 2],
-            weights=[0.3, 0.7],
         )
 
-        # assert all nodes via BFS. This section is not runtime-optimized
-        nodes: list[Node.Node] = [spn]
-        while nodes:
-            node: Node.Node = nodes.pop(0)
-            self.assertIsNotNone(node.scope)
+        with self.assertRaises(AssertionError):
+            _isvalid_spn(spn)
 
-            # assert that SumNodes are smooth and weights sum up to 1
-            if type(node) is Node.SumNode:
-                self.assertIsNotNone(node.children)
-                self.assertIsNotNone(node.weights)
-                self.assertAlmostEqual(sum(node.weights), 1.0)
-                for child in node.children:
-                    self.assertEqual(child.scope, node.scope)
+    def test_spn_fail_weights(self):
+        spn: Node = SumNode(
+            children=[
+                LeafNode(scope=[1]),
+                LeafNode(scope=[1]),
+            ],
+            scope=[1],
+            weights=[0.1, 0.1],
+        )
 
-            # assert that ProductNodes are decomposable
-            elif type(node) is Node.ProductNode:
-                self.assertIsNotNone(node.children)
-                self.assertEqual(
-                    node.scope,
-                    [scope for child in node.children for scope in child.scope],
-                )
-                length = len(node.children)
-                # assert that each child's scope is true subset of ProductNode's scope (set<set = subset)
-                for i in range(0, length):
-                    self.assertTrue(set(node.children[i].scope) < set(node.scope))
-                    # assert that all children's scopes are pairwise distinct (set&set = intersection)
-                    for j in range(i + 1, length):
-                        self.assertFalse(
-                            set(node.children[i].scope) & set(node.children[j].scope)
-                        )
+        with self.assertRaises(AssertionError):
+            _isvalid_spn(spn)
 
-            # assert that LeafNodes are actually leaves
-            elif isinstance(node, Node.LeafNode):
-                self.assertEqual(len(node.children), 0)
-            else:
-                self.AssertionError(
-                    "Node must be SumNode, ProductNode, or a subclass of LeafNode"
-                )
+    def test_spn_fail_leaf_with_children(self):
+        spn: Node = SumNode(
+            children=[
+                LeafNode(scope=[1]),
+                LeafNode(scope=[1]),
+            ],
+            scope=[1],
+            weights=[0.1, 0.1],
+        )
+        spn.children[0].children.append(LeafNode(scope=[1]))
 
-            if node.children:
-                nodes.extend(node.children)
+        with self.assertRaises(AssertionError):
+            _isvalid_spn(spn)
+
+    def test_spn_fail_none_children(self):
+        spn: Node = ProductNode(
+            children=[
+                LeafNode(scope=[1]),
+                None,
+            ],
+            scope=[1, 2],
+        )
+
+        with self.assertRaises(AssertionError):
+            _isvalid_spn(spn)
+
+    def test_spn_tree_small(self):
+        spn: Node = ProductNode(
+            children=[
+                SumNode(
+                    children=[
+                        LeafNode(scope=[1]),
+                        LeafNode(scope=[1]),
+                    ],
+                    scope=[1],
+                    weights=[0.3, 0.7],
+                ),
+                LeafNode(scope=[2]),
+            ],
+            scope=[1, 2],
+        )
+
+        _isvalid_spn(spn)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts([spn])
+        self.assertEqual(sum_nodes, 1)
+        self.assertEqual(prod_nodes, 1)
+        self.assertEqual(leaf_nodes, 3)
+
+    def test_spn_tree_big(self):
+        spn: Node = ProductNode(
+            children=[
+                SumNode(
+                    children=[
+                        ProductNode(
+                            children=[
+                                SumNode(
+                                    children=[
+                                        ProductNode(
+                                            children=[
+                                                LeafNode(scope=[1]),
+                                                LeafNode(scope=[2]),
+                                            ],
+                                            scope=[1, 2],
+                                        ),
+                                        LeafNode(scope=[1, 2]),
+                                    ],
+                                    scope=[1, 2],
+                                    weights=[0.9, 0.1],
+                                ),
+                                LeafNode(scope=[3]),
+                            ],
+                            scope=[1, 2, 3],
+                        ),
+                        ProductNode(
+                            children=[
+                                LeafNode(scope=[1]),
+                                SumNode(
+                                    children=[
+                                        LeafNode(scope=[2, 3]),
+                                        LeafNode(scope=[2, 3]),
+                                    ],
+                                    scope=[2, 3],
+                                    weights=[0.5, 0.5],
+                                ),
+                            ],
+                            scope=[1, 2, 3],
+                        ),
+                        LeafNode(scope=[1, 2, 3]),
+                    ],
+                    scope=[1, 2, 3],
+                    weights=[0.4, 0.1, 0.5],
+                ),
+                SumNode(
+                    children=[
+                        ProductNode(
+                            children=[
+                                LeafNode(scope=[4]),
+                                LeafNode(scope=[5]),
+                            ],
+                            scope=[4, 5],
+                        ),
+                        LeafNode(scope=[4, 5]),
+                    ],
+                    scope=[4, 5],
+                    weights=[0.5, 0.5],
+                ),
+            ],
+            scope=[1, 2, 3, 4, 5],
+        )
+
+        _isvalid_spn(spn)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts([spn])
+        self.assertEqual(sum_nodes, 4)
+        self.assertEqual(prod_nodes, 5)
+        self.assertEqual(leaf_nodes, 11)
+
+    def test_spn_graph_small(self):
+        leaf1 = LeafNode(scope=[1])
+        leaf2 = LeafNode(scope=[2])
+        prod1 = ProductNode(children=[leaf1, leaf2], scope=[1, 2])
+        prod2 = ProductNode(children=[leaf1, leaf2], scope=[1, 2])
+        sum = SumNode(children=[prod1, prod2], scope=[1, 2], weights=[0.3, 0.7])
+
+        _isvalid_spn(sum)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts([sum])
+        self.assertEqual(sum_nodes, 1)
+        self.assertEqual(prod_nodes, 2)
+        self.assertEqual(leaf_nodes, 2)
+
+    def test_spn_graph_medium(self):
+        leaf_11 = LeafNode(scope=[1])
+        leaf_12 = LeafNode(scope=[1])
+        leaf_21 = LeafNode(scope=[2])
+        leaf_22 = LeafNode(scope=[2])
+        sum_11 = SumNode(children=[leaf_11, leaf_12], scope=[1], weights=[0.3, 0.7])
+        sum_12 = SumNode(children=[leaf_11, leaf_12], scope=[1], weights=[0.9, 0.1])
+        sum_21 = SumNode(children=[leaf_21, leaf_22], scope=[2], weights=[0.4, 0.6])
+        sum_22 = SumNode(children=[leaf_21, leaf_22], scope=[2], weights=[0.8, 0.2])
+        prod_11 = ProductNode(children=[sum_11, sum_21], scope=[1, 2])
+        prod_12 = ProductNode(children=[sum_11, sum_22], scope=[1, 2])
+        prod_13 = ProductNode(children=[sum_12, sum_21], scope=[1, 2])
+        prod_14 = ProductNode(children=[sum_12, sum_22], scope=[1, 2])
+        sum = SumNode(
+            children=[prod_11, prod_12, prod_13, prod_14],
+            scope=[1, 2],
+            weights=[0.1, 0.2, 0.3, 0.4],
+        )
+
+        _isvalid_spn(sum)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts([sum])
+        self.assertEqual(sum_nodes, 5)
+        self.assertEqual(prod_nodes, 4)
+        self.assertEqual(leaf_nodes, 4)
 
 
 if __name__ == "__main__":
