@@ -1,141 +1,125 @@
 """
-Created on May 31, 2021
+Created on May 24, 2021
 
-@authors: Bennet Wittelsbach, Kevin Huy Nguyen
-
-This file provides the structure and construction algorithm for abstract RAT-SPNs, which are
-depending on the abstract the abstract nodes and the region graph.
+@authors: Bennet Wittelsbach
 """
-from region_graph import *
-from Node import *
+import itertools
+from functools import reduce
+from typing import List, cast
+
+from spn.structure.graph.node import LeafNode, ProductNode, SumNode, _print_node_graph
+from spn.structure.graph.region_graph import (
+    RegionGraph,
+    _print_region_graph,
+    random_region_graph,
+)
 
 
-class RATSPN:
-    """The RATSPN holds all sum and product nodes and relies on the structure of the region graph.
+class RatSpn:
+    """A RAT-SPN is a randomized SPN, usually built from a RegionGraph.
 
     Attributes:
-        nodes:
-            A list of root sum nodes.
+        root_nodes:
+            A list of SumNodes that are the roots of the RAT-SPN. Root nodes are the outputs
+            of SPNs. Usually, SPNs only have one root node, but can also have multiple roots
+            for multiple outputs, e.g. classes. When the SPN is constructed from a
+            RegionGraph, the roots are the nodes of the root_region of the RegionGraph.
+
     """
 
-    def __init__(self, nodes: Optional[List["SumNode"]]) -> None:
-        self.nodes = nodes if nodes else []
+    def __init__(self) -> None:
+        self.root_nodes: List[SumNode] = list()
 
 
-def construct_spn_from_region_graph(
-    region_graph: RegionGraph, num_root_sum: int, num_int_sum: int, num_inp_distr: int
-):
-    """Constructs the RAT-SPN from the structure of a given region graph.
+def construct_spn(
+    region_graph: RegionGraph,
+    num_nodes_root: int,
+    num_nodes_region: int,
+    num_nodes_leaf: int,
+) -> RatSpn:
+    """Builds a RAT-SPN from a given RegionGraph.
 
-    This function traverses through the given region graph twice top-down. The first iteration it initializes all the
-    sum and leaf nodes and equips them to their corresponding region to remember the structure. The second iteration
-    initializes all the product nodes and connects them to their children and parents. The product nodes form
-    cross-products of nodes, which are co-children of the partition. The product nodes then get connected to all the
-    sum nodes in their parent region.
+    This algorithm is an implementation of "Algorithm 2" of the original paper. The Regions and
+    Partitions in the RegionGraph are equipped with an appropriate number of nodes each, and the
+    nodes will be connected afterwards. The resulting RAT-SPN holds a list of the root nodes, which
+    in turn hold the whole constructed (graph) SPN. The number of ProductNodes in a Partition is
+    determined by the length of the cross product of the children Regions of the respective Partition.
 
     Args:
-        region_graph:
-            The RegionGraph which given.
-        num_root_sum:
-            The number of sum nodes in the root region.
-        num_int_sum:
-            The number of sum nodes in the internal regions.
-        num_inp_distr:
-            The number of leaf nodes in the leaf regions
+        num_nodes_root:
+            (C in the paper)
+            The number of SumNodes the root_region is equipped with. This will be the length of the
+            root_node list of the resulting RAT-SPN and the number of output nodes, respectively.
+        num_nodes_region:
+            (S in the paper)
+            The number of SumNodes each region but the root and leaf regions are equipped with.
+        num_nodes_leaf:
+            (I in the paper)
+            The number of LeafNodes each leaf region is equipped with. All LeafNodes of the same region
+            are multivariate distributions over the same scope, but possibly differently parametrized.
     """
-    nodes: List[Any] = list(region_graph.root_region.partitions)
+    rat_spn = RatSpn()
 
-    # initialize RAT-SPN
-    rat_spn = RATSPN(nodes=[])
+    for region in region_graph.regions:
+        # determine the scope of the nodes the Region will be equipped with
+        region_scope = list(region.random_variables)
+        region_scope.sort()
+        if not region.parent:
+            # the region is the root_region
+            region.nodes = [
+                SumNode(children=[], scope=region_scope, weights=[])
+                for i in range(num_nodes_root)
+            ]
+            rat_spn.root_nodes = cast(List[SumNode], region.nodes)
+        elif not region.partitions:
+            # the region is a leaf
+            region.nodes = [LeafNode(scope=region_scope) for i in range(num_nodes_leaf)]
+        else:
+            # the region is an internal region
+            region.nodes = [
+                SumNode(children=[], scope=region_scope, weights=[])
+                for i in range(num_nodes_region)
+            ]
 
-    # populate RAT-SPN with root sum nodes
-    i = 0
-    while i < num_root_sum:
-        root_node = SumNode(
-            children=[],
-            scope=list(region_graph.root_region.random_variables),
-            weights=[],
+    for partition in region_graph.partitions:
+        # determine the number and the scope of the ProductNodes the Partition will be equipped with
+        num_nodes_partition = reduce(
+            (lambda r, s: r * s), [len(region.nodes) for region in partition.regions]
         )
-        rat_spn.nodes.append(root_node)
-        i += 1
+        partition_scope = list(
+            itertools.chain(*[region.random_variables for region in partition.regions])
+        )
+        partition_scope.sort()
+        partition.nodes = [
+            ProductNode(children=[], scope=partition_scope)
+            for i in range(num_nodes_partition)
+        ]
 
-    # first traversion through region graph for creation of sum nodes
-    while nodes:
-        node: Any = nodes.pop(0)
+        # each ProductNode of the Partition points to a unique combination consisting of one Node of each Region that is a child of the partition
+        cartesian_product = list(
+            itertools.product(*[region.nodes for region in partition.regions])
+        )
+        for i in range(len(cartesian_product)):
+            partition.nodes[i].children = list(cartesian_product[i])
+        # all ProductNodes of the Partition are children of each SumNode in its parent Region
+        for parent_node in partition.parent.nodes:
+            # all parent nodes are SumNodes
+            parent_node = cast(SumNode, parent_node)
+            replicas = len(partition.parent.partitions)
+            parent_node.children.extend(partition.nodes)
+            # determine the total number of children the parent node might have. this is important for correct weights in the root nodes
+            parent_node.weights.extend(
+                [1 / (num_nodes_partition * replicas)] * num_nodes_partition
+            )
 
-        if type(node) is Partition:
-            nodes.extend(node.regions)
+    if not rat_spn.root_nodes:
+        raise ValueError("Constructed RAT-SPN does not have root nodes")
 
-        elif type(node) is Region:
-            nodes.extend(node.partitions)
-            # if the region has no partition as children, it is a leaf node
-            if node.partitions == set():
-                node.nodes = []
-                i = 0
-                while i < num_inp_distr:
-                    leaf = LeafNode(children=None, scope=list(node.random_variables))
-                    node.nodes.append(leaf)
-                    i += 1
-            # if the region has children it is an internal sum node
-            else:
-                node.nodes = []
-                i = 0
-                while i < num_int_sum:
-                    sum = SumNode(
-                        children=[], scope=list(node.random_variables), weights=[]
-                    )
-                    node.nodes.append(sum)
-                    i += 1
-        else:
-            raise ValueError("Node must be Region or Partition")
-
-    # second traversion for product nodes
-    # staggered_nodes collects the parent regions of the product nodes, so that we can connect them
-    staggered_nodes = [rat_spn]
-    nodes = list(region_graph.root_region.partitions)
-    while nodes:
-        node = nodes.pop(0)
-
-        if type(node) is Partition:
-            nodes.extend(node.regions)
-            node.nodes = []
-            # sub_region_nodes is a list of lists of all the nodes in the child regions of the current partition
-            sub_region_nodes = [region.nodes for region in node.regions]
-            # creates product nodes and connects them in a way that the nodes of the child regions form cross products.
-            for sub_region_node_1 in sub_region_nodes[0]:
-                for sub_region_node_2 in sub_region_nodes[1]:
-                    scope = [sub_region_node_1.scope + sub_region_node_2.scope]
-                    product_node = ProductNode(
-                        children=[sub_region_node_1, sub_region_node_2], scope=scope
-                    )
-                    print("product")
-                    print(scope)
-                    node.nodes.append(product_node)
-                    print("children")
-                    print(sub_region_node_1)
-                    print(sub_region_node_2)
-                    print("parent")
-                    # connect the product node to all the sum nodes of its parent region
-                    for sum_node in staggered_nodes[0].nodes:
-                        print(staggered_nodes[0])
-                        sum_node.children.append(product_node)
-            # after the product nodes of a partition is connected to the sum nodes of a parent region,
-            # we can remove the parent region in staggered_nodes
-            # exception is the root region as it can have multiple partitions, so we do not remove the parent region
-            if type(staggered_nodes[0]) is not RATSPN:
-                del staggered_nodes[0]
-        elif type(node) is Region:
-            nodes.extend(node.partitions)
-        else:
-            raise ValueError("Node must be Region or Partition")
-        # if all objects in nodes are regions, it means that all parent regions in staggered nodes have been processed
-        # we replace staggered_nodes with the parent regions of the next layer
-        if all(isinstance(x, Region) for x in nodes):
-            staggered_nodes = nodes.copy()
     return rat_spn
 
 
 if __name__ == "__main__":
     region_graph = random_region_graph(X=set(range(1, 8)), depth=2, replicas=2)
-    rat_spn = construct_spn_from_region_graph(region_graph, 3, 2, 2)
-    print(rat_spn.nodes)
+    _print_region_graph(region_graph)
+    rat_spn = construct_spn(region_graph, 1, 2, 2)
+    _print_node_graph(rat_spn.root_nodes)
