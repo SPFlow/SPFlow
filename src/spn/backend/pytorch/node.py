@@ -64,7 +64,8 @@ class TorchSumNode(TorchNode):
         normalize: bool = True,
     ) -> None:
 
-        assert len(children) > 0, "Sum node must have at least one child."
+        if not children:
+            raise ValueError("Sum node must have at least one child.")
 
         # convert weight list to torch tensor
         # if no weights specified initialize weights randomly in [0,1)
@@ -72,7 +73,8 @@ class TorchSumNode(TorchNode):
             torch.tensor(weights) if weights else torch.rand(len(children))
         )
 
-        assert torch.all(weights_torch >= 0), "All weights must be non-negative."
+        if not torch.all(weights_torch >= 0):
+            raise ValueError("All weights must be non-negative.")
 
         # noramlize
         if normalize:
@@ -113,7 +115,8 @@ class TorchProductNode(TorchNode):
 
     def __init__(self, children: List[TorchNode], scope: List[int]) -> None:
 
-        assert len(children) > 0, "Sum node must have at least one child."
+        if not children:
+            raise ValueError("Product node must have at least one child.")
 
         super(TorchProductNode, self).__init__(children, scope)
 
