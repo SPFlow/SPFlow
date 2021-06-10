@@ -12,10 +12,11 @@ import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 
+from spn.backend.pytorch.module import TorchModule
 from spn.structure.graph.node import Node, SumNode, ProductNode, LeafNode
 
 
-class TorchNode(nn.Module):
+class TorchNode(nn.Module, TorchModule):
     """PyTorch version of an abstract node. See Node.
 
     Attributes:
@@ -25,7 +26,7 @@ class TorchNode(nn.Module):
 
     scope: List[int]
 
-    def __init__(self, children: List["TorchNode"], scope: List[int]) -> None:
+    def __init__(self, children: List[TorchModule], scope: List[int]) -> None:
 
         super(TorchNode, self).__init__()
 
@@ -34,7 +35,9 @@ class TorchNode(nn.Module):
             self.add_module("child_{}".format(i + 1), child)
 
         self.scope = scope
-
+    
+    def __len(self):
+        return 1
 
 @multimethod  # type: ignore[no-redef]
 def toTorch(x: Node) -> TorchNode:
@@ -58,7 +61,7 @@ class TorchSumNode(TorchNode):
 
     def __init__(
         self,
-        children: List[TorchNode],
+        children: List[TorchModule],
         scope: List[int],
         weights: Optional[List[float]] = [],
         normalize: bool = True,
@@ -90,7 +93,6 @@ class TorchSumNode(TorchNode):
         # return weighted sum
         return (x * self.weights).sum()
 
-
 @multimethod  # type: ignore[no-redef]
 def toTorch(x: SumNode) -> TorchSumNode:
     return TorchSumNode(
@@ -113,7 +115,7 @@ class TorchProductNode(TorchNode):
         scope: Non-empty list of integers containing the scopes of this node.
     """
 
-    def __init__(self, children: List[TorchNode], scope: List[int]) -> None:
+    def __init__(self, children: List[TorchModule], scope: List[int]) -> None:
 
         if not children:
             raise ValueError("Product node must have at least one child.")

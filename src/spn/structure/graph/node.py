@@ -5,11 +5,13 @@ Created on May 05, 2021
 
 This file provides the basic components to build abstract probabilistic circuits, like SumNode, ProductNode, and LeafNode.
 """
+from spn.structure.graph.module import Module
+
 from typing import List, Optional, Tuple, cast
 from multimethod import multimethod
 
 
-class Node:
+class Node(Module):
     """Base class for all types of nodes in an SPN
 
     Attributes:
@@ -21,7 +23,7 @@ class Node:
 
     scope: List[int]
 
-    def __init__(self, children: List["Node"], scope: List[int]) -> None:
+    def __init__(self, children: List[Module], scope: List[int]) -> None:
         # TODO: sollten Nodes auch IDs haben? (siehe SPFlow, z.B. fuer SPN-Ausgabe/Viz noetig)
         self.children = children
         self.scope = scope
@@ -41,7 +43,7 @@ class Node:
         for child in self.children:
             child.print_treelike(prefix=prefix + "    ")
 
-    def equals(self, other: "Node") -> bool:
+    def equals(self, other: Module) -> bool:
         """
         Checks whether two objects are identical by comparing their class, scope and children (recursively).
         """
@@ -55,7 +57,7 @@ class Node:
 class ProductNode(Node):
     """A ProductNode provides a factorization of its children, i.e. ProductNodes in SPNs have children with distinct scopes"""
 
-    def __init__(self, children: List[Node], scope: List[int]) -> None:
+    def __init__(self, children: List[Module], scope: List[int]) -> None:
         super().__init__(children=children, scope=scope)
 
 
@@ -69,12 +71,12 @@ class SumNode(Node):
     """
 
     def __init__(
-        self, children: List[Node], scope: List[int], weights: List[float]
+        self, children: List[Module], scope: List[int], weights: List[float]
     ) -> None:
         super().__init__(children=children, scope=scope)
         self.weights = weights
 
-    def equals(self, other: Node) -> bool:
+    def equals(self, other: Module) -> bool:
         """
         Checks whether two objects are identical by comparing their class, scope, children (recursively) and weights.
         Note that weight comparison is done approximately due to numerical issues when conversion between graph representations.
