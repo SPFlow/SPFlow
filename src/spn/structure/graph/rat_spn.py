@@ -7,6 +7,7 @@ import itertools
 from functools import reduce
 from typing import List, cast
 
+from spn.structure.graph.module import Module
 from spn.structure.graph.node import LeafNode, ProductNode, SumNode, _print_node_graph
 from spn.structure.graph.region_graph import (
     RegionGraph,
@@ -15,7 +16,7 @@ from spn.structure.graph.region_graph import (
 )
 
 
-class RatSpn:
+class RatSpn(Module):
     """A RAT-SPN is a randomized SPN, usually built from a RegionGraph.
 
     Attributes:
