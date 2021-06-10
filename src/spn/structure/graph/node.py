@@ -34,6 +34,9 @@ class Node(Module):
     def __repr__(self) -> str:
         return self.__str__()
 
+    def __len__(self) -> int:
+        return 1
+
     def print_treelike(self, prefix: str="") -> None:
         """
         Ad-hoc method to print structure of node and children (for debugging purposes)

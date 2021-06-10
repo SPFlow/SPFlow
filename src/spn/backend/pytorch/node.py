@@ -36,7 +36,7 @@ class TorchNode(nn.Module, TorchModule):
 
         self.scope = scope
     
-    def __len(self):
+    def __len(self) -> int:
         return 1
 
 @multimethod  # type: ignore[no-redef]
@@ -73,7 +73,7 @@ class TorchSumNode(TorchNode):
         # convert weight list to torch tensor
         # if no weights specified initialize weights randomly in [0,1)
         weights_torch: torch.Tensor = (
-            torch.tensor(weights) if weights else torch.rand(len(children))
+            torch.tensor(weights) if weights else torch.rand(sum(len(child) for child in children))
         )
 
         if not torch.all(weights_torch >= 0):
