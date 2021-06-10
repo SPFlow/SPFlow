@@ -3,13 +3,13 @@ Created on May 05, 2021
 
 @authors: Kevin Huy Nguyen, Bennet Wittelsbach
 
-This file provides the structure and construction algorithm for abstract RegionGraphs, which are 
+This file provides the base and construction algorithm for abstract RegionGraphs, which are
 used to build RAT-SPNs.
 """
 import random
 from typing import Any, Optional, Set, List, Tuple
 
-from spn.structure.graph.node import Node, ProductNode
+from spn.base.nodes.node import Node, ProductNode
 
 
 class RegionGraph:
@@ -109,7 +109,7 @@ def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
             The set of all indices/scopes of random variables that the RegionGraph contains.
         depth:
             (D in the paper)
-            An integer that controls the depth of the graph structure of the RegionGraph. One level
+            An integer that controls the depth of the nodes base of the RegionGraph. One level
             of depth equals to a pair of (Partitions, Regions). The root has depth 0.
         replicas:
             (R in the paper)
@@ -117,7 +117,7 @@ def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
             set of random variables X, which are children of the root_region of the RegionGraph.
 
     Returns:
-        A RegionGraph with a binary tree structure, consisting of alternating Regions and Partitions.
+        A RegionGraph with a binary tree base, consisting of alternating Regions and Partitions.
 
     Raises:
         ValueError: If any argument is invalid.
@@ -143,7 +143,7 @@ def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
 def split(region_graph: RegionGraph, parent_region: Region, depth: int) -> None:
     """Splits a Region into (currently balanced) Partitions.
 
-    Recursively builds up a binary tree structure of the RegionGraph. First, it splits the
+    Recursively builds up a binary tree base of the RegionGraph. First, it splits the
     random variables of the parent_region, Y, into a Partition consisting of two balanced,
     distinct subsets of Y, and adds it as a child of the parent_region. Then, split() will
     be called onto each of the two subsets of Y until the maximum depth of the RegionGraph

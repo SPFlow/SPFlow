@@ -7,9 +7,9 @@ import itertools
 from functools import reduce
 from typing import List, cast
 
-from spn.structure.graph.module import Module
-from spn.structure.graph.node import LeafNode, ProductNode, SumNode, _print_node_graph
-from spn.structure.graph.region_graph import (
+from spn.base.nodes.module import Module
+from spn.base.nodes.node import LeafNode, ProductNode, SumNode, _print_node_graph
+from spn.base.rat.region_graph import (
     RegionGraph,
     _print_region_graph,
     random_region_graph,
@@ -46,7 +46,7 @@ def construct_spn(
     This algorithm is an implementation of "Algorithm 2" of the original paper. The Regions and
     Partitions in the RegionGraph are equipped with an appropriate number of nodes each, and the
     nodes will be connected afterwards. The resulting RAT-SPN holds a list of the root nodes, which
-    in turn hold the whole constructed (graph) SPN. The number of ProductNodes in a Partition is
+    in turn hold the whole constructed (nodes) SPN. The number of ProductNodes in a Partition is
     determined by the length of the cross product of the children Regions of the respective Partition.
 
     Args:

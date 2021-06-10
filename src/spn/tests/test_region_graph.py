@@ -1,4 +1,4 @@
-from spn.structure.graph import region_graph as rg
+from spn.base.rat import region_graph as rg
 import unittest
 
 
@@ -46,7 +46,7 @@ class TestRegionGraph(unittest.TestCase):
 
         regions_by_depth, leaves = rg._get_regions_by_depth(simple_region_graph)
 
-        # assert depth of region graph is equal to argument depth
+        # assert depth of region nodes is equal to argument depth
         self.assertEqual(len(regions_by_depth) - 1, 2)
         # assert correct number of regions, partitions, and leaves
         self.assertEqual(len(simple_region_graph.regions), 7)
@@ -68,7 +68,7 @@ class TestRegionGraph(unittest.TestCase):
 
         regions_by_depth, leaves = rg._get_regions_by_depth(simple_region_graph)
 
-        # assert depth of region graph is equal to argument depth
+        # assert depth of region nodes is equal to argument depth
         self.assertEqual(len(regions_by_depth) - 1, 3)
         # assert correct number of regions, partitions, and leaves
         self.assertEqual(len(simple_region_graph.regions), 13)
@@ -90,7 +90,7 @@ class TestRegionGraph(unittest.TestCase):
 
         regions_by_depth, leaves = rg._get_regions_by_depth(simple_region_graph)
 
-        # assert depth of region graph is equal to argument depth
+        # assert depth of region nodes is equal to argument depth
         self.assertEqual(len(regions_by_depth) - 1, 3)
         # assert correct number of regions, partitions, and leaves
         self.assertEqual(len(simple_region_graph.regions), 25)

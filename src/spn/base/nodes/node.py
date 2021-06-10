@@ -5,7 +5,7 @@ Created on May 05, 2021
 
 This file provides the basic components to build abstract probabilistic circuits, like SumNode, ProductNode, and LeafNode.
 """
-from spn.structure.graph.module import Module
+from spn.base.nodes.module import Module
 
 from typing import List, Optional, Tuple, cast
 from multimethod import multimethod
@@ -39,7 +39,7 @@ class Node(Module):
 
     def print_treelike(self, prefix: str="") -> None:
         """
-        Ad-hoc method to print structure of node and children (for debugging purposes)
+        Ad-hoc method to print base of node and children (for debugging purposes)
         """
         print(prefix + f"{self.__class__.__name__}: {self.scope}")
 
@@ -82,7 +82,7 @@ class SumNode(Node):
     def equals(self, other: Module) -> bool:
         """
         Checks whether two objects are identical by comparing their class, scope, children (recursively) and weights.
-        Note that weight comparison is done approximately due to numerical issues when conversion between graph representations.
+        Note that weight comparison is done approximately due to numerical issues when conversion between nodes representations.
         """
         from math import isclose
 
@@ -112,7 +112,7 @@ class LeafNode(Node):
 
 @multimethod
 def _print_node_graph(root_nodes: List[Node]) -> None:
-    """Prints all unique nodes of a node graph in BFS fashion.
+    """Prints all unique nodes of a node nodes in BFS fashion.
 
     Args:
         root_nodes:

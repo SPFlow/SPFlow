@@ -1,8 +1,8 @@
 from typing import List
 from multimethod import multimethod
-from spn.structure.graph.node import LeafNode, Node, ProductNode, SumNode
+from spn.base.nodes.node import LeafNode, Node, ProductNode, SumNode
 
-from spn.structure.graph.rat_spn import RatSpn
+from spn.base.rat.rat_spn import RatSpn
 
 
 @multimethod

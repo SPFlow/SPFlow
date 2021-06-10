@@ -1,8 +1,8 @@
 import unittest
-from spn.structure.graph.validity_checks import _isvalid_spn
-from spn.structure.graph.rat_spn import construct_spn
-from spn.structure.graph.region_graph import random_region_graph
-from spn.structure.graph.node import _get_node_counts
+from spn.base.nodes.validity_checks import _isvalid_spn
+from spn.base.rat.rat_spn import construct_spn
+from spn.base.rat.region_graph import random_region_graph
+from spn.base.nodes.node import _get_node_counts
 
 
 class TestRatSpn(unittest.TestCase):

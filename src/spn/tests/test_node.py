@@ -1,5 +1,5 @@
 import unittest
-from spn.structure.graph.node import (
+from spn.base.nodes.node import (
     Node,
     SumNode,
     LeafNode,
@@ -7,7 +7,7 @@ from spn.structure.graph.node import (
     _get_node_counts,
 )
 
-from spn.structure.graph.validity_checks import _isvalid_spn
+from spn.base.nodes.validity_checks import _isvalid_spn
 
 
 class TestNode(unittest.TestCase):
