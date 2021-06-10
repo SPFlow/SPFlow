@@ -32,14 +32,14 @@ class Node:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def print_treelike(self) -> str:
+    def print_treelike(self, prefix: str="") -> None:
         """
         Ad-hoc method to print structure of node and children (for debugging purposes)
         """
-        strings = [f"{self.__class__.__name__}: {self.scope}"]
-        strings += [str(child).replace("\n", "\n    ") for child in self.children]
+        print(prefix + f"{self.__class__.__name__}: {self.scope}")
 
-        return "\n    ".join(strings)
+        for child in self.children:
+            child.print_treelike(prefix=prefix + "    ")
 
     def equals(self, other: "Node") -> bool:
         """
