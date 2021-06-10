@@ -30,6 +30,9 @@ class RatSpn(Module):
 
     def __init__(self) -> None:
         self.root_nodes: List[SumNode] = list()
+    
+    def __len__(self):
+        return 1
 
 
 def construct_spn(

@@ -35,9 +35,10 @@ class TorchNode(nn.Module, TorchModule):
             self.add_module("child_{}".format(i + 1), child)
 
         self.scope = scope
-    
-    def __len(self) -> int:
+
+    def __len__(self) -> int:
         return 1
+
 
 @multimethod  # type: ignore[no-redef]
 def toTorch(x: Node) -> TorchNode:
@@ -73,7 +74,9 @@ class TorchSumNode(TorchNode):
         # convert weight list to torch tensor
         # if no weights specified initialize weights randomly in [0,1)
         weights_torch: torch.Tensor = (
-            torch.tensor(weights) if weights else torch.rand(sum(len(child) for child in children))
+            torch.tensor(weights)
+            if weights
+            else torch.rand(sum(len(child) for child in children))
         )
 
         if not torch.all(weights_torch >= 0):
@@ -92,6 +95,7 @@ class TorchSumNode(TorchNode):
         # TODO: broadcast across batches
         # return weighted sum
         return (x * self.weights).sum()
+
 
 @multimethod  # type: ignore[no-redef]
 def toTorch(x: SumNode) -> TorchSumNode:
