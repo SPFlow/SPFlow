@@ -3,7 +3,7 @@ Created on May 27, 2021
 
 @authors: Philipp Deibert
 
-This file provides the PyTorch variants of individual nodes nodes.
+This file provides the PyTorch variants of individual graph nodes.
 """
 from multimethod import multimethod
 from typing import List, Optional
@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 
-from spn.backend.pytorch.nodes.module import TorchModule
+from spn.backend.pytorch.module import TorchModule
 from spn.base.nodes.node import Node, SumNode, ProductNode, LeafNode
 
 

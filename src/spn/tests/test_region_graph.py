@@ -1,4 +1,4 @@
-from spn.base.rat import region_graph as rg
+from spn.base.rat.region_graph import random_region_graph, _get_regions_by_depth
 import unittest
 
 
@@ -9,7 +9,7 @@ class TestRegionGraph(unittest.TestCase):
         replicas = 1
 
         with self.assertRaises(ValueError):
-            rg.random_region_graph(X=random_variables, depth=depth, replicas=replicas)
+            random_region_graph(X=random_variables, depth=depth, replicas=replicas)
 
     def test_region_graph_not_enough_randomvars(self):
         random_varables = set(range(1, 2))
@@ -17,7 +17,7 @@ class TestRegionGraph(unittest.TestCase):
         replicas = 1
 
         with self.assertRaises(ValueError):
-            rg.random_region_graph(X=random_varables, depth=depth, replicas=replicas)
+            random_region_graph(X=random_varables, depth=depth, replicas=replicas)
 
     def test_region_graph_negative_depth(self):
         random_varables = set(range(1, 3))
@@ -25,7 +25,7 @@ class TestRegionGraph(unittest.TestCase):
         replicas = 1
 
         with self.assertRaises(ValueError):
-            rg.random_region_graph(X=random_varables, depth=depth, replicas=replicas)
+            random_region_graph(X=random_varables, depth=depth, replicas=replicas)
 
     def test_region_graph_no_replicas(self):
         random_varables = set(range(1, 3))
@@ -33,20 +33,20 @@ class TestRegionGraph(unittest.TestCase):
         replicas = 0
 
         with self.assertRaises(ValueError):
-            rg.random_region_graph(X=random_varables, depth=depth, replicas=replicas)
+            random_region_graph(X=random_varables, depth=depth, replicas=replicas)
 
     def test_region_graph_X7d2r1(self):
         random_variables = set(range(1, 8))  # 7 randomvars
         depth = 2
         replicas = 1
 
-        simple_region_graph = rg.random_region_graph(
+        simple_region_graph = random_region_graph(
             X=random_variables, depth=depth, replicas=replicas
         )
 
-        regions_by_depth, leaves = rg._get_regions_by_depth(simple_region_graph)
+        regions_by_depth, leaves = _get_regions_by_depth(simple_region_graph)
 
-        # assert depth of region nodes is equal to argument depth
+        # assert depth of region graph is equal to argument depth
         self.assertEqual(len(regions_by_depth) - 1, 2)
         # assert correct number of regions, partitions, and leaves
         self.assertEqual(len(simple_region_graph.regions), 7)
@@ -62,13 +62,13 @@ class TestRegionGraph(unittest.TestCase):
         depth = 3
         replicas = 1
 
-        simple_region_graph = rg.random_region_graph(
+        simple_region_graph = random_region_graph(
             X=random_variables, depth=depth, replicas=replicas
         )
 
-        regions_by_depth, leaves = rg._get_regions_by_depth(simple_region_graph)
+        regions_by_depth, leaves = _get_regions_by_depth(simple_region_graph)
 
-        # assert depth of region nodes is equal to argument depth
+        # assert depth of region graph is equal to argument depth
         self.assertEqual(len(regions_by_depth) - 1, 3)
         # assert correct number of regions, partitions, and leaves
         self.assertEqual(len(simple_region_graph.regions), 13)
@@ -84,13 +84,13 @@ class TestRegionGraph(unittest.TestCase):
         depth = 3
         replicas = 2
 
-        simple_region_graph = rg.random_region_graph(
+        simple_region_graph = random_region_graph(
             X=random_variables, depth=depth, replicas=replicas
         )
 
-        regions_by_depth, leaves = rg._get_regions_by_depth(simple_region_graph)
+        regions_by_depth, leaves = _get_regions_by_depth(simple_region_graph)
 
-        # assert depth of region nodes is equal to argument depth
+        # assert depth of region graph is equal to argument depth
         self.assertEqual(len(regions_by_depth) - 1, 3)
         # assert correct number of regions, partitions, and leaves
         self.assertEqual(len(simple_region_graph.regions), 25)
