@@ -16,7 +16,7 @@ from spn.backend.pytorch.module import TorchModule
 from spn.base.nodes.node import Node, SumNode, ProductNode, LeafNode
 
 
-class TorchNode(TorchModule):
+class TorchNode(nn.Module, TorchModule):
     """PyTorch version of an abstract node. See Node.
 
     Attributes:
@@ -72,9 +72,7 @@ class TorchSumNode(TorchNode):
         # convert weight list to torch tensor
         # if no weights specified initialize weights randomly in [0,1)
         weights_torch: torch.Tensor = (
-            torch.tensor(weights)
-            if weights
-            else torch.rand(sum(len(child) for child in children))
+            torch.tensor(weights) if weights else torch.rand(sum(len(child) for child in children))
         )
 
         if not torch.all(weights_torch >= 0):
@@ -132,16 +130,12 @@ class TorchProductNode(TorchNode):
 
 @multimethod  # type: ignore[no-redef]
 def toTorch(x: ProductNode) -> TorchProductNode:
-    return TorchProductNode(
-        children=[toTorch(child) for child in x.children], scope=x.scope
-    )
+    return TorchProductNode(children=[toTorch(child) for child in x.children], scope=x.scope)
 
 
 @multimethod  # type: ignore[no-redef]
 def toNodes(x: TorchProductNode) -> ProductNode:
-    return ProductNode(
-        children=[toNodes(child) for child in x.children()], scope=x.scope
-    )
+    return ProductNode(children=[toNodes(child) for child in x.children()], scope=x.scope)
 
 
 class TorchLeafNode(TorchNode):
