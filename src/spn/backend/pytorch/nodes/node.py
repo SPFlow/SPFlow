@@ -16,7 +16,7 @@ from spn.backend.pytorch.module import TorchModule
 from spn.base.nodes.node import Node, SumNode, ProductNode, LeafNode
 
 
-class TorchNode(nn.Module, TorchModule):
+class TorchNode(TorchModule):
     """PyTorch version of an abstract node. See Node.
 
     Attributes:
