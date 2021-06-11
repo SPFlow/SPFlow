@@ -21,8 +21,6 @@ class Node(Module):
             A list of integers containing the scopes of this Node, or None.
     """
 
-    scope: List[int]
-
     def __init__(self, children: List[Module], scope: List[int]) -> None:
         # TODO: sollten Nodes auch IDs haben? (siehe SPFlow, z.B. fuer SPN-Ausgabe/Viz noetig)
         self.children = children
@@ -37,7 +35,7 @@ class Node(Module):
     def __len__(self) -> int:
         return 1
 
-    def print_treelike(self, prefix: str="") -> None:
+    def print_treelike(self, prefix: str = "") -> None:
         """
         Ad-hoc method to print structure of node and children (for debugging purposes)
         """
@@ -73,9 +71,7 @@ class SumNode(Node):
 
     """
 
-    def __init__(
-        self, children: List[Module], scope: List[int], weights: List[float]
-    ) -> None:
+    def __init__(self, children: List[Module], scope: List[int], weights: List[float]) -> None:
         super().__init__(children=children, scope=scope)
         self.weights = weights
 
