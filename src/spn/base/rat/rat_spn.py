@@ -20,17 +20,18 @@ class RatSpn(Module):
     """A RAT-SPN is a randomized SPN, usually built from a RegionGraph.
 
     Attributes:
-        root_nodes:
-            A list of SumNodes that are the roots of the RAT-SPN. Root nodes are the outputs
-            of SPNs. Usually, SPNs only have one root node, but can also have multiple roots
-            for multiple outputs, e.g. classes. When the SPN is constructed from a
-            RegionGraph, the roots are the nodes of the root_region of the RegionGraph.
+        root_node:
+            A single SumNode that has a list of SumNodes as children and is the root of the RAT-SPN.
+            The root node is the output of SPNs. Usually, SPNs only have one root node,
+            but one can also look at its child SumNodes for multiple outputs, e.g. classes.
+            When the SPN is constructed from a RegionGraph, the children of the root are the nodes of
+            the root_region of the RegionGraph.
 
     """
 
     def __init__(self) -> None:
-        self.root_nodes: List[SumNode] = list()
-    
+        self.root_node: SumNode
+
     def __len__(self):
         return 1
 
@@ -52,11 +53,11 @@ def construct_spn(
     Args:
         num_nodes_root:
             (C in the paper)
-            The number of SumNodes the root_region is equipped with. This will be the length of the
-            root_node list of the resulting RAT-SPN and the number of output nodes, respectively.
+            The number of SumNodes the root_region is equipped with. This will be the length of the children of the
+            root_node of the resulting RAT-SPN.
         num_nodes_region:
             (S in the paper)
-            The number of SumNodes each region but the root and leaf regions are equipped with.
+            The number of SumNodes each region except the root and leaf regions are equipped with.
         num_nodes_leaf:
             (I in the paper)
             The number of LeafNodes each leaf region is equipped with. All LeafNodes of the same region
@@ -71,10 +72,13 @@ def construct_spn(
         if not region.parent:
             # the region is the root_region
             region.nodes = [
-                SumNode(children=[], scope=region_scope, weights=[])
-                for i in range(num_nodes_root)
+                SumNode(children=[], scope=region_scope, weights=[]) for i in range(num_nodes_root)
             ]
-            rat_spn.root_nodes = cast(List[SumNode], region.nodes)
+            rat_spn.root_node = SumNode(
+                children=cast(List[SumNode], region.nodes),
+                scope=region_scope,
+                weights=[1 / len(region.nodes)] * len(region.nodes),
+            )
         elif not region.partitions:
             # the region is a leaf
             region.nodes = [LeafNode(scope=region_scope) for i in range(num_nodes_leaf)]
@@ -95,14 +99,11 @@ def construct_spn(
         )
         partition_scope.sort()
         partition.nodes = [
-            ProductNode(children=[], scope=partition_scope)
-            for i in range(num_nodes_partition)
+            ProductNode(children=[], scope=partition_scope) for i in range(num_nodes_partition)
         ]
 
         # each ProductNode of the Partition points to a unique combination consisting of one Node of each Region that is a child of the partition
-        cartesian_product = list(
-            itertools.product(*[region.nodes for region in partition.regions])
-        )
+        cartesian_product = list(itertools.product(*[region.nodes for region in partition.regions]))
         for i in range(len(cartesian_product)):
             partition.nodes[i].children = list(cartesian_product[i])
         # all ProductNodes of the Partition are children of each SumNode in its parent Region
@@ -112,12 +113,10 @@ def construct_spn(
             replicas = len(partition.parent.partitions)
             parent_node.children.extend(partition.nodes)
             # determine the total number of children the parent node might have. this is important for correct weights in the root nodes
-            parent_node.weights.extend(
-                [1 / (num_nodes_partition * replicas)] * num_nodes_partition
-            )
+            parent_node.weights.extend([1 / (num_nodes_partition * replicas)] * num_nodes_partition)
 
-    if not rat_spn.root_nodes:
-        raise ValueError("Constructed RAT-SPN does not have root nodes")
+    if not rat_spn.root_node:
+        raise ValueError("Constructed RAT-SPN does not have root node")
 
     return rat_spn
 
@@ -125,5 +124,5 @@ def construct_spn(
 if __name__ == "__main__":
     region_graph = random_region_graph(X=set(range(1, 8)), depth=2, replicas=2)
     _print_region_graph(region_graph)
-    rat_spn = construct_spn(region_graph, 1, 2, 2)
-    _print_node_graph(rat_spn.root_nodes)
+    rat_spn = construct_spn(region_graph, 3, 2, 2)
+    _print_node_graph(rat_spn.root_node)

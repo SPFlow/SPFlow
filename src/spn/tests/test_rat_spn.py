@@ -15,13 +15,11 @@ class TestRatSpn(unittest.TestCase):
         num_nodes_root = 1
         num_nodes_region = 1
         num_nodes_leaf = 1
-        rat_spn = construct_spn(
-            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf
-        )
+        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
 
-        _isvalid_spn(rat_spn.root_nodes)
-        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_nodes)
-        self.assertEqual(sum_nodes, 3)
+        _isvalid_spn(rat_spn.root_node)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_node)
+        self.assertEqual(sum_nodes, 4)
         self.assertEqual(prod_nodes, 3)
         self.assertEqual(leaf_nodes, 4)
 
@@ -34,13 +32,11 @@ class TestRatSpn(unittest.TestCase):
         num_nodes_root = 1
         num_nodes_region = 1
         num_nodes_leaf = 1
-        rat_spn = construct_spn(
-            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf
-        )
+        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
 
         _isvalid_spn(rat_spn)
-        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_nodes)
-        self.assertEqual(sum_nodes, 6)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_node)
+        self.assertEqual(sum_nodes, 7)
         self.assertEqual(prod_nodes, 6)
         self.assertEqual(leaf_nodes, 7)
 
@@ -53,13 +49,11 @@ class TestRatSpn(unittest.TestCase):
         num_nodes_root = 2
         num_nodes_region = 2
         num_nodes_leaf = 2
-        rat_spn = construct_spn(
-            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf
-        )
+        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
 
         _isvalid_spn(rat_spn)
-        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_nodes)
-        self.assertEqual(sum_nodes, 22)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_node)
+        self.assertEqual(sum_nodes, 23)
         self.assertEqual(prod_nodes, 48)
         self.assertEqual(leaf_nodes, 28)
 
@@ -72,13 +66,11 @@ class TestRatSpn(unittest.TestCase):
         num_nodes_root = 3
         num_nodes_region = 3
         num_nodes_leaf = 3
-        rat_spn = construct_spn(
-            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf
-        )
+        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
 
         _isvalid_spn(rat_spn)
-        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_nodes)
-        self.assertEqual(sum_nodes, 48)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_node)
+        self.assertEqual(sum_nodes, 49)
         self.assertEqual(prod_nodes, 162)
         self.assertEqual(leaf_nodes, 63)
 
