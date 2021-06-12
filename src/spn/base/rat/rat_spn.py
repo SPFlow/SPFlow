@@ -22,7 +22,7 @@ class RatSpn(Module):
     Attributes:
         root_node:
             A single SumNode that has a list of SumNodes as children and is the root of the RAT-SPN.
-            The root node is the output of SPNs. Usually, SPNs only have one root node,
+            The root node is the output of SPNs. SPNs only have one root node,
             but one can also look at its child SumNodes for multiple outputs, e.g. classes.
             When the SPN is constructed from a RegionGraph, the children of the root are the nodes of
             the root_region of the RegionGraph.
@@ -46,8 +46,8 @@ def construct_spn(
 
     This algorithm is an implementation of "Algorithm 2" of the original paper. The Regions and
     Partitions in the RegionGraph are equipped with an appropriate number of nodes each, and the
-    nodes will be connected afterwards. The resulting RAT-SPN holds a list of the root nodes, which
-    in turn hold the whole constructed (graph) SPN. The number of ProductNodes in a Partition is
+    nodes will be connected afterwards. The resulting RAT-SPN holds a root node, which
+    in turn holds the whole constructed (graph) SPN. The number of ProductNodes in a Partition is
     determined by the length of the cross product of the children Regions of the respective Partition.
 
     Args:
