@@ -4,9 +4,9 @@ Created on May 24, 2021
 @authors: Bennet Wittelsbach
 """
 import itertools
+import numpy as np
 from functools import reduce
 from typing import List, cast
-
 from spn.base.module import Module
 from spn.base.nodes.node import LeafNode, ProductNode, SumNode, _print_node_graph
 from spn.base.rat.region_graph import (
@@ -22,7 +22,7 @@ class RatSpn(Module):
     Attributes:
         root_node:
             A single SumNode that has a list of SumNodes as children and is the root of the RAT-SPN.
-            The root node is the output of SPNs. SPNs only have one root node,
+            The root node is the output of SPNs. Usually, SPNs only have one root node,
             but one can also look at its child SumNodes for multiple outputs, e.g. classes.
             When the SPN is constructed from a RegionGraph, the children of the root are the nodes of
             the root_region of the RegionGraph.
@@ -46,8 +46,8 @@ def construct_spn(
 
     This algorithm is an implementation of "Algorithm 2" of the original paper. The Regions and
     Partitions in the RegionGraph are equipped with an appropriate number of nodes each, and the
-    nodes will be connected afterwards. The resulting RAT-SPN holds a root node, which
-    in turn holds the whole constructed (graph) SPN. The number of ProductNodes in a Partition is
+    nodes will be connected afterwards. The resulting RAT-SPN holds a list of the root nodes, which
+    in turn hold the whole constructed (graph) SPN. The number of ProductNodes in a Partition is
     determined by the length of the cross product of the children Regions of the respective Partition.
 
     Args:
@@ -72,12 +72,13 @@ def construct_spn(
         if not region.parent:
             # the region is the root_region
             region.nodes = [
-                SumNode(children=[], scope=region_scope, weights=[]) for i in range(num_nodes_root)
+                SumNode(children=[], scope=region_scope, weights=np.empty(0))
+                for i in range(num_nodes_root)
             ]
             rat_spn.root_node = SumNode(
                 children=cast(List[SumNode], region.nodes),
                 scope=region_scope,
-                weights=[1 / len(region.nodes)] * len(region.nodes),
+                weights=np.full(len(region.nodes), 1 / len(region.nodes)),
             )
         elif not region.partitions:
             # the region is a leaf
@@ -85,7 +86,7 @@ def construct_spn(
         else:
             # the region is an internal region
             region.nodes = [
-                SumNode(children=[], scope=region_scope, weights=[])
+                SumNode(children=[], scope=region_scope, weights=np.empty(0))
                 for i in range(num_nodes_region)
             ]
 
@@ -113,7 +114,10 @@ def construct_spn(
             replicas = len(partition.parent.partitions)
             parent_node.children.extend(partition.nodes)
             # determine the total number of children the parent node might have. this is important for correct weights in the root nodes
-            parent_node.weights.extend([1 / (num_nodes_partition * replicas)] * num_nodes_partition)
+            parent_node.weights = np.append(
+                parent_node.weights,
+                np.full(num_nodes_partition, 1 / (num_nodes_partition * replicas)),
+            )
 
     if not rat_spn.root_node:
         raise ValueError("Constructed RAT-SPN does not have root node")

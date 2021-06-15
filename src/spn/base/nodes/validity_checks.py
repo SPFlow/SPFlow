@@ -3,6 +3,7 @@ from multimethod import multimethod
 from spn.base.nodes.node import LeafNode, Node, ProductNode, SumNode
 
 from spn.base.rat.rat_spn import RatSpn
+import numpy as np
 
 
 @multimethod
@@ -18,7 +19,7 @@ def _isvalid_spn(root_nodes: List[Node]) -> None:
     # assert all nodes via BFS. This section is not runtime-optimized yet
     import math
 
-    nodes: list[Node] = list(root_nodes)
+    nodes: List[Node] = list(root_nodes)
     while nodes:
         node: Node = nodes.pop(0)
         assert node.scope is not None
@@ -30,8 +31,8 @@ def _isvalid_spn(root_nodes: List[Node]) -> None:
             assert not None in node.children
             assert node.weights is not None
             assert not None in node.weights
-            assert len(node.weights) == len(node.children)
-            assert math.isclose(sum(node.weights), 1.0)
+            assert node.weights.shape == node.weights.shape
+            assert np.isclose(sum(node.weights), 1.0)
             for child in node.children:
                 assert child.scope == node.scope
         # assert that ProductNodes are decomposable

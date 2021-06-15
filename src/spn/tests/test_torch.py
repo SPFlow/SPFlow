@@ -4,6 +4,7 @@ from spn.backend.pytorch.nodes.node import (
     toNodes,
 )
 import unittest
+import numpy as np
 
 
 class TestTorch(unittest.TestCase):
@@ -16,7 +17,7 @@ class TestTorch(unittest.TestCase):
                 ProductNode([LeafNode(scope=[3])], scope=[3]),
             ],
             scope=[1, 2, 3],
-            weights=[0.3, 0.7],
+            weights=np.array([0.3, 0.7]),
         )
 
         # conversion to PyTorch graph

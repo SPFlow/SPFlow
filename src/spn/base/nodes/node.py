@@ -9,6 +9,8 @@ from spn.base.module import Module
 
 from typing import List, Optional, Tuple, cast
 from multimethod import multimethod
+import numpy as np
+import numpy.typing as npt
 
 
 class Node(Module):
@@ -67,11 +69,11 @@ class SumNode(Node):
 
     Attributes:
         weights:
-            A list of floats assigning a weight value to each of the SumNode's children.
+            A np.array of floats assigning a weight value to each of the SumNode's children.
 
     """
 
-    def __init__(self, children: List[Module], scope: List[int], weights: List[float]) -> None:
+    def __init__(self, children: List[Module], scope: List[int], weights: np.ndarray) -> None:
         super().__init__(children=children, scope=scope)
         self.weights = weights
 
@@ -80,20 +82,12 @@ class SumNode(Node):
         Checks whether two objects are identical by comparing their class, scope, children (recursively) and weights.
         Note that weight comparison is done approximately due to numerical issues when conversion between graph representations.
         """
-        from math import isclose
-
         if type(other) is SumNode:
             other = cast(SumNode, other)
             return (
                 super().equals(other)
-                and all(
-                    map(
-                        lambda x, y: isclose(x, y, rel_tol=1.0e-5),
-                        self.weights,
-                        other.weights,
-                    )
-                )
-                and len(self.weights) == len(other.weights)
+                and np.allclose(self.weights, other.weights, rtol=1.0e-5)
+                and self.weights.shape == other.weights.shape
             )
         else:
             return False

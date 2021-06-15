@@ -7,6 +7,7 @@ This file provides the PyTorch variants of individual graph nodes.
 """
 from multimethod import multimethod
 from typing import List, Optional
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -54,7 +55,8 @@ class TorchSumNode(TorchNode):
     Attributes:
         children (list(TorchNode)): Non-empty list of child torch nodes.
         scope: Non-empty list of integers containing the scopes of this node.
-        weights (list(float)): List of non-negative weights for each child (defaults to empty list and gets initialized to random weights in [0,1)).
+        weights (list(float)): List of non-negative weights for each child (defaults to empty list and gets initialized
+                               to random weights in [0,1)).
         normalize (bool): Boolean specifying whether or not to normalize the weights to sum up to one (defaults to True).
     """
 
@@ -62,17 +64,19 @@ class TorchSumNode(TorchNode):
         self,
         children: List[TorchModule],
         scope: List[int],
-        weights: Optional[List[float]] = [],
+        weights: Optional[List[float]] = np.empty(0),
         normalize: bool = True,
     ) -> None:
 
         if not children:
             raise ValueError("Sum node must have at least one child.")
 
-        # convert weight list to torch tensor
+        # convert weight np.array to torch tensor
         # if no weights specified initialize weights randomly in [0,1)
         weights_torch: torch.Tensor = (
-            torch.tensor(weights) if weights else torch.rand(sum(len(child) for child in children))
+            torch.tensor(weights)
+            if weights is not None
+            else torch.rand(sum(len(child) for child in children))
         )
 
         if not torch.all(weights_torch >= 0):
@@ -104,7 +108,7 @@ def toTorch(x: SumNode) -> TorchSumNode:
 
 @multimethod  # type: ignore[no-redef]
 def toNodes(x: TorchSumNode) -> SumNode:
-    return SumNode(children=[toNodes(child) for child in x.children()], scope=x.scope, weights=x.weights.tolist())  # type: ignore[operator]
+    return SumNode(children=[toNodes(child) for child in x.children()], scope=x.scope, weights=x.weights.detach().numpy())  # type: ignore[operator]
 
 
 class TorchProductNode(TorchNode):
