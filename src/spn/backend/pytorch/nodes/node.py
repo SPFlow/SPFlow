@@ -64,7 +64,7 @@ class TorchSumNode(TorchNode):
         self,
         children: List[TorchModule],
         scope: List[int],
-        weights: Optional[List[float]] = np.empty(0),
+        weights: np.ndarray = np.empty(0),
         normalize: bool = True,
     ) -> None:
 
@@ -81,6 +81,9 @@ class TorchSumNode(TorchNode):
 
         if not torch.all(weights_torch >= 0):
             raise ValueError("All weights must be non-negative.")
+
+        if not len(weights) == sum(len(child) for child in children):
+            raise ValueError("Number of weights does not match number of specified child nodes.")
 
         # noramlize
         if normalize:
