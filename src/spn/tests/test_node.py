@@ -44,8 +44,12 @@ class TestNode(unittest.TestCase):
                 LeafNode(scope=[1]),
             ],
             scope=[1],
-            weights=np.array([0.1, 0.1]),
+            weights=np.array([0.5, 0.5]),
         )
+
+        # make sure SPN is valid to begin with
+        _isvalid_spn(spn)
+
         spn.children[0].children.append(LeafNode(scope=[1]))
 
         with self.assertRaises(AssertionError):
