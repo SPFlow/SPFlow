@@ -16,7 +16,7 @@ class TestTorchNode(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             # creat SPN with (invalid) negative weights
-            spn: TorchNode = TorchSumNode(
+            spn = TorchSumNode(
                 [TorchLeafNode(scope=[1]), TorchLeafNode(scope=[2])],
                 scope=[1, 2],
                 weights=np.array([-0.5, 0.5]),
@@ -24,7 +24,7 @@ class TestTorchNode(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             # creat SPN with not enough weights
-            spn: TorchNode = TorchSumNode(
+            spn = TorchSumNode(
                 [TorchLeafNode(scope=[1]), TorchLeafNode(scope=[2])],
                 scope=[1, 2],
                 weights=np.array([0.5]),
@@ -32,7 +32,7 @@ class TestTorchNode(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             # creat SPN with too many weights
-            spn: TorchNode = TorchSumNode(
+            spn = TorchSumNode(
                 [TorchLeafNode(scope=[1]), TorchLeafNode(scope=[2])],
                 scope=[1, 2],
                 weights=np.array([0.25, 0.25, 0.5]),
@@ -45,7 +45,7 @@ class TestTorchNode(unittest.TestCase):
         weights /= weights.sum()
 
         # Node graph
-        graph: TorchNode = SumNode(
+        graph = SumNode(
             [
                 ProductNode([LeafNode(scope=[1]), LeafNode(scope=[2])], scope=[1, 2]),
                 ProductNode([LeafNode(scope=[3])], scope=[3]),
@@ -65,7 +65,7 @@ class TestTorchNode(unittest.TestCase):
 
     def test_spn_fail_scope(self):
         # based on the corresponding test for Nodes
-        invalid_spn: TorchNode = TorchProductNode(
+        invalid_spn = TorchProductNode(
             children=[TorchLeafNode(scope=[1]), TorchLeafNode(scope=[1])], scope=[1, 2]
         )
 
@@ -75,7 +75,7 @@ class TestTorchNode(unittest.TestCase):
 
     def test_spn_pass_scope(self):
         # based on the corresponding test for Nodes
-        valid_spn: TorchNode = TorchProductNode(
+        valid_spn = TorchProductNode(
             children=[TorchLeafNode(scope=[1]), TorchLeafNode(scope=[2])], scope=[1, 2]
         )
 
@@ -85,7 +85,7 @@ class TestTorchNode(unittest.TestCase):
     def test_spn_fail_no_children(self):
 
         with self.assertRaises(ValueError):
-            spn: TorchNode = TorchProductNode(
+            spn = TorchProductNode(
                 children=None,
                 scope=[1, 2],
             )

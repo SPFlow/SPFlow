@@ -7,10 +7,9 @@ This file provides the basic components to build abstract probabilistic circuits
 """
 from spn.base.module import Module
 
-from typing import List, Optional, Tuple, cast
+from typing import List, Tuple, cast
 from multimethod import multimethod
 import numpy as np
-import numpy.typing as npt
 
 
 class Node(Module):
