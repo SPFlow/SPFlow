@@ -24,7 +24,6 @@ class Node(Module):
     """
 
     def __init__(self, children: List[Module], scope: List[int]) -> None:
-        # TODO: sollten Nodes auch IDs haben? (siehe SPFlow, z.B. fuer SPN-Ausgabe/Viz noetig)
         self.children = children
         self.scope = scope
 
@@ -73,7 +72,9 @@ class SumNode(Node):
 
     """
 
-    def __init__(self, children: List[Module], scope: List[int], weights: np.ndarray) -> None:
+    def __init__(
+        self, children: List[Module], scope: List[int], weights: np.ndarray
+    ) -> None:
         super().__init__(children=children, scope=scope)
         self.weights = weights
 
