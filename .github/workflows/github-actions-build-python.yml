@@ -1,4 +1,4 @@
-name: Github Actions Build and Test python
+name: Development Build & Test
 
 on: [push]
 
