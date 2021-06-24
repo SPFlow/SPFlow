@@ -116,6 +116,8 @@ def random_region_graph(X: Set[int], depth: int, replicas: int, num_splits: int 
             (R in the paper)
             An integer for the number of replicas. Replicas are distinct Partitions of the whole
             set of random variables X, which are children of the root_region of the RegionGraph.
+        num_splits:
+            The number of splits per Region (defaults to 2).
 
     Returns:
         A RegionGraph with a binary tree structure, consisting of alternating Regions and Partitions.
@@ -129,6 +131,8 @@ def random_region_graph(X: Set[int], depth: int, replicas: int, num_splits: int 
         raise ValueError("Depth must not be negative")
     if replicas < 1:
         raise ValueError("Number of replicas must be at least 1")
+    if(num_splits < 2):
+        raise ValueError("Number of splits must be at least 2")
 
     region_graph = RegionGraph()
     root_region = Region(random_variables=X, partitions=None, parent=None)
@@ -159,9 +163,12 @@ def split(
             The Region whose random variables are to be partitioned. The parent of the created Partition.
         depth:
             The maximum depth of the RegionGraph until which split() will be recursively called.
+        num_splits:
+            The number of splits per Region.
     """
-    # TODO: nicht-binäre Splits erlauben
-    split_index = len(parent_region.random_variables) // 2
+    if(num_splits < 2):
+        raise ValueError("Number of splits must be at least 2")
+
     shuffle_random_variables = list(parent_region.random_variables)
     random.shuffle(shuffle_random_variables)
 
