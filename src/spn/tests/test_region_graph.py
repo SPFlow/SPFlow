@@ -12,28 +12,36 @@ class TestRegionGraph(unittest.TestCase):
             random_region_graph(X=random_variables, depth=depth, replicas=replicas)
 
     def test_region_graph_not_enough_randomvars(self):
-        random_varables = set(range(1, 2))
-        depth = 1
-        replicas = 1
 
-        with self.assertRaises(ValueError):
-            random_region_graph(X=random_varables, depth=depth, replicas=replicas)
+        for num_random_variables in range(1, 3):
+
+            random_variables = set(range(1, num_random_variables + 1))
+            depth = 1
+            replicas = 1
+
+            with self.assertRaises(ValueError):
+                random_region_graph(
+                    X=random_variables,
+                    depth=depth,
+                    replicas=replicas,
+                    num_splits=num_random_variables + 1,
+                )
 
     def test_region_graph_negative_depth(self):
-        random_varables = set(range(1, 3))
+        random_variables = set(range(1, 3))
         depth = -1
         replicas = 1
 
         with self.assertRaises(ValueError):
-            random_region_graph(X=random_varables, depth=depth, replicas=replicas)
+            random_region_graph(X=random_variables, depth=depth, replicas=replicas)
 
     def test_region_graph_no_replicas(self):
-        random_varables = set(range(1, 3))
+        random_variables = set(range(1, 3))
         depth = 1
         replicas = 0
 
         with self.assertRaises(ValueError):
-            random_region_graph(X=random_varables, depth=depth, replicas=replicas)
+            random_region_graph(X=random_variables, depth=depth, replicas=replicas)
 
     def test_region_graph_X7d2r1(self):
         random_variables = set(range(1, 8))  # 7 randomvars
