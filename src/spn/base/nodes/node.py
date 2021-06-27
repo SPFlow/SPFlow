@@ -6,7 +6,6 @@ Created on May 05, 2021
 This file provides the basic components to build abstract probabilistic circuits, like SumNode, ProductNode, and LeafNode.
 """
 from spn.base.module import Module
-
 from typing import List, Optional, Tuple, cast
 from multimethod import multimethod
 import numpy as np
@@ -27,6 +26,7 @@ class Node(Module):
         # TODO: sollten Nodes auch IDs haben? (siehe SPFlow, z.B. fuer SPN-Ausgabe/Viz noetig)
         self.children = children
         self.scope = scope
+        self.value: float
 
     def __str__(self) -> str:
         return f"{type(self).__name__}: {self.scope}"
@@ -153,3 +153,29 @@ def _get_node_counts(root_nodes: List[Node]) -> Tuple[int, int, int]:
 def _get_node_counts(root_node: Node) -> Tuple[int, int, int]:
     """Wrapper for SPNs with single root node"""
     return _get_node_counts([root_node])
+
+
+@multimethod
+def _get_leaf_nodes(root_nodes: List[Node]) -> List[Node]:
+    """Returns a list of leaf nodes to populate.
+
+    Args:
+        root_nodes:
+            A list of Nodes that are the roots/outputs of the (perhaps multi-class) SPN.
+    """
+    nodes: List[Node] = root_nodes
+    leaves: List[Node] = []
+    id_counter = 0
+    while nodes:
+        node: Node = nodes.pop(0)
+        if type(node) is LeafNode:
+            leaves.append(node)
+        nodes.extend(list(set(node.children) - set(nodes)))
+        id_counter += 1
+    return leaves
+
+
+@multimethod  # type: ignore[no-redef]
+def _get_leaf_nodes(root_node: Node) -> List[Node]:
+    """Wrapper for SPNs with single root node"""
+    return _get_leaf_nodes([root_node])

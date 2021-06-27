@@ -26,7 +26,6 @@ class RatSpn(Module):
             but one can also look at its child SumNodes for multiple outputs, e.g. classes.
             When the SPN is constructed from a RegionGraph, the children of the root are the nodes of
             the root_region of the RegionGraph.
-
     """
 
     def __init__(self) -> None:
