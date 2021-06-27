@@ -7,6 +7,7 @@ This file provides the structure and construction algorithm for abstract RegionG
 used to build RAT-SPNs.
 """
 import random
+import numpy as np
 from typing import Any, Optional, Set, List, Tuple
 
 from spn.base.nodes.node import Node, ProductNode
@@ -99,7 +100,7 @@ class Partition:
         return self.__str__()
 
 
-def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
+def random_region_graph(X: Set[int], depth: int, replicas: int, num_splits: int = 2) -> RegionGraph:
     """Creates a RegionGraph from a set of random variables X.
 
     This algorithm is an implementation of "Algorithm 1" of the original paper.
@@ -115,6 +116,8 @@ def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
             (R in the paper)
             An integer for the number of replicas. Replicas are distinct Partitions of the whole
             set of random variables X, which are children of the root_region of the RegionGraph.
+        num_splits:
+            The number of splits per Region (defaults to 2).
 
     Returns:
         A RegionGraph with a binary tree structure, consisting of alternating Regions and Partitions.
@@ -122,12 +125,14 @@ def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
     Raises:
         ValueError: If any argument is invalid.
     """
-    if X is None or len(X) < 2:
-        raise ValueError("Need at least two random variables to build RegionGraph")
+    if X is None or len(X) < num_splits:
+        raise ValueError("Need at least 'num_splits' random variables to build RegionGraph")
     if depth < 0:
         raise ValueError("Depth must not be negative")
     if replicas < 1:
         raise ValueError("Number of replicas must be at least 1")
+    if(num_splits < 2):
+        raise ValueError("Number of splits must be at least 2")
 
     region_graph = RegionGraph()
     root_region = Region(random_variables=X, partitions=None, parent=None)
@@ -135,12 +140,14 @@ def random_region_graph(X: Set[int], depth: int, replicas: int) -> RegionGraph:
     region_graph.regions.add(root_region)
 
     for r in range(0, replicas):
-        split(region_graph, root_region, depth)
+        split(region_graph, root_region, depth, num_splits)
 
     return region_graph
 
 
-def split(region_graph: RegionGraph, parent_region: Region, depth: int) -> None:
+def split(
+    region_graph: RegionGraph, parent_region: Region, depth: int, num_splits: int = 2
+) -> None:
     """Splits a Region into (currently balanced) Partitions.
 
     Recursively builds up a binary tree structure of the RegionGraph. First, it splits the
@@ -156,35 +163,42 @@ def split(region_graph: RegionGraph, parent_region: Region, depth: int) -> None:
             The Region whose random variables are to be partitioned. The parent of the created Partition.
         depth:
             The maximum depth of the RegionGraph until which split() will be recursively called.
+        num_splits:
+            The number of splits per Region.
     """
-    # TODO: nicht-binäre Splits erlauben
-    split_index = len(parent_region.random_variables) // 2
+    if(num_splits < 2):
+        raise ValueError("Number of splits must be at least 2")
+
     shuffle_random_variables = list(parent_region.random_variables)
     random.shuffle(shuffle_random_variables)
-    region1 = Region(
-        random_variables=set(shuffle_random_variables[:split_index]),
-        partitions=None,
-        parent=None,
-    )
-    region2 = Region(
-        random_variables=set(shuffle_random_variables[split_index:]),
-        partitions=None,
-        parent=None,
-    )
-    partition = Partition(regions={region1, region2}, parent=parent_region)
 
-    region1.parent = partition
-    region2.parent = partition
+    splits = np.array_split(shuffle_random_variables, num_splits)
+
+    if any(region_scope.size == 0 for region_scope in splits):
+        raise ValueError(
+            "Number of random variables cannot be split into 'num_splits' non-empty splits (make sure 'split' is called appropriately)."
+        )
+
+    regions = []
+
+    for region_scope in splits:
+        regions.append(Region(random_variables=set(region_scope), partitions=None, parent=None))
+
+    partition = Partition(regions={*regions}, parent=parent_region)
+
+    for region in regions:
+        region.parent = partition
+
     parent_region.partitions.add(partition)
 
     region_graph.partitions.add(partition)
-    region_graph.regions.update([region1, region2])
+    region_graph.regions.update(regions)
 
     if depth > 1:
-        if len(region1.random_variables) > 1:
-            split(region_graph, region1, depth - 1)
-        if len(region2.random_variables) > 1:
-            split(region_graph, region2, depth - 1)
+        for region in regions:
+            # if region scope can be divided into 'num_splits' non-empty splits
+            if len(region.random_variables) >= num_splits:
+                split(region_graph, region, depth - 1, num_splits)
 
 
 def _print_region_graph(region_graph: RegionGraph) -> None:

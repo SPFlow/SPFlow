@@ -6,10 +6,9 @@ Created on May 05, 2021
 This file provides the basic components to build abstract probabilistic circuits, like SumNode, ProductNode, and LeafNode.
 """
 from spn.base.module import Module
-from typing import List, Optional, Tuple, cast
+from typing import List, Tuple, cast
 from multimethod import multimethod
 import numpy as np
-import numpy.typing as npt
 
 
 class Node(Module):
@@ -23,7 +22,6 @@ class Node(Module):
     """
 
     def __init__(self, children: List[Module], scope: List[int]) -> None:
-        # TODO: sollten Nodes auch IDs haben? (siehe SPFlow, z.B. fuer SPN-Ausgabe/Viz noetig)
         self.children = children
         self.scope = scope
         self.value: float
@@ -73,7 +71,9 @@ class SumNode(Node):
 
     """
 
-    def __init__(self, children: List[Module], scope: List[int], weights: np.ndarray) -> None:
+    def __init__(
+        self, children: List[Module], scope: List[int], weights: np.ndarray
+    ) -> None:
         super().__init__(children=children, scope=scope)
         self.weights = weights
 

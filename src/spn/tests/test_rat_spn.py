@@ -6,6 +6,28 @@ from spn.base.nodes.node import _get_node_counts
 
 
 class TestRatSpn(unittest.TestCase):
+    def test_rat_spn_num_nodes(self):
+        random_variables = set(range(1, 8))
+        depth = 2
+        replicas = 1
+        region_graph = random_region_graph(random_variables, depth, replicas)
+
+        num_nodes_root = 0
+        num_nodes_region = 1
+        num_nodes_leaf = 1
+        with self.assertRaises(ValueError):
+            rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+
+        num_nodes_root = 1
+        num_nodes_region = 0
+        with self.assertRaises(ValueError):
+            rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+
+        num_nodes_region = 1
+        num_nodes_leaf = 0
+        with self.assertRaises(ValueError):
+            rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+
     def test_rat_spn_1(self):
         random_variables = set(range(1, 8))
         depth = 2
@@ -73,6 +95,80 @@ class TestRatSpn(unittest.TestCase):
         self.assertEqual(sum_nodes, 49)
         self.assertEqual(prod_nodes, 162)
         self.assertEqual(leaf_nodes, 63)
+
+    def test_rat_spn_5(self):
+        random_variables = set(range(1, 8))
+        depth = 2
+        replicas = 1
+        num_splits = 3
+        region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
+
+        num_nodes_root = 1
+        num_nodes_region = 1
+        num_nodes_leaf = 1
+        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+
+        _isvalid_spn(rat_spn.root_node)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_node)
+
+        self.assertEqual(sum_nodes, 3)
+        self.assertEqual(prod_nodes, 2)
+        self.assertEqual(leaf_nodes, 5)
+
+    def test_rat_spn_6(self):
+        random_variables = set(range(1, 10))
+        depth = 3
+        replicas = 1
+        num_splits = 3
+        region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
+
+        num_nodes_root = 1
+        num_nodes_region = 1
+        num_nodes_leaf = 1
+        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+
+        _isvalid_spn(rat_spn)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_node)
+        self.assertEqual(sum_nodes, 5)
+        self.assertEqual(prod_nodes, 4)
+        self.assertEqual(leaf_nodes, 9)
+
+    def test_rat_spn_7(self):
+        random_variables = set(range(1, 8))
+        depth = 2
+        replicas = 2
+        num_splits = 3
+        region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
+
+        num_nodes_root = 2
+        num_nodes_region = 2
+        num_nodes_leaf = 2
+        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+
+        _isvalid_spn(rat_spn)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_node)
+        self.assertEqual(sum_nodes, 7)
+        self.assertEqual(prod_nodes, 32)
+        self.assertEqual(leaf_nodes, 20)
+
+    def test_rat_spn_8(self):
+        random_variables = set(range(1, 21))
+        depth = 3
+        replicas = 3
+        num_splits = 3
+        region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
+
+        num_nodes_root = 3
+        num_nodes_region = 3
+        num_nodes_leaf = 2
+        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+
+        _isvalid_spn(rat_spn)
+        sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_node)
+        print(sum_nodes, prod_nodes, leaf_nodes)
+        self.assertEqual(sum_nodes, 49)
+        self.assertEqual(prod_nodes, 225)
+        self.assertEqual(leaf_nodes, 78)
 
 
 if __name__ == "__main__":

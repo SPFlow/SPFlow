@@ -17,29 +17,31 @@ def _isvalid_spn(root_nodes: List[Node]) -> None:
 
     """
     # assert all nodes via BFS. This section is not runtime-optimized yet
-    import math
-
     nodes: List[Node] = list(root_nodes)
+
     while nodes:
         node: Node = nodes.pop(0)
         assert node.scope is not None
-        assert not None in node.scope
+        assert None not in node.scope
 
         # assert that SumNodes are smooth and weights sum up to 1
         if type(node) is SumNode:
             assert node.children is not None
-            assert not None in node.children
+            assert None not in node.children
             assert node.weights is not None
-            assert not None in node.weights
+            assert None not in node.weights
             assert node.weights.shape == node.weights.shape
+            assert np.array(node.children).shape == node.weights.shape
             assert np.isclose(sum(node.weights), 1.0)
             for child in node.children:
                 assert child.scope == node.scope
         # assert that ProductNodes are decomposable
         elif type(node) is ProductNode:
             assert node.children is not None
-            assert not None in node.children
-            assert node.scope == sorted([scope for child in node.children for scope in child.scope])
+            assert None not in node.children
+            assert node.scope == sorted(
+                [scope for child in node.children for scope in child.scope]
+            )
             length = len(node.children)
             # assert that each child's scope is true subset of ProductNode's scope (set<set = subset)
             for i in range(0, length):
@@ -51,7 +53,9 @@ def _isvalid_spn(root_nodes: List[Node]) -> None:
         elif isinstance(node, LeafNode):
             assert len(node.children) == 0
         else:
-            raise ValueError("Node must be SumNode, ProductNode, or a subclass of LeafNode")
+            raise ValueError(
+                "Node must be SumNode, ProductNode, or a subclass of LeafNode"
+            )
 
         if node.children:
             nodes.extend(list(set(node.children) - set(nodes)))

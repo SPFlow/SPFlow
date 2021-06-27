@@ -6,11 +6,10 @@ Created on May 27, 2021
 This file provides the PyTorch variants of individual graph nodes.
 """
 from multimethod import multimethod
-from typing import List, Optional
+from typing import List
 import numpy as np
 
 import torch
-import torch.nn as nn
 from torch.nn.parameter import Parameter
 
 from spn.backend.pytorch.module import TorchModule
@@ -64,7 +63,7 @@ class TorchSumNode(TorchNode):
         self,
         children: List[TorchModule],
         scope: List[int],
-        weights: Optional[List[float]] = np.empty(0),
+        weights: np.ndarray = np.empty(0),
         normalize: bool = True,
     ) -> None:
 
@@ -81,6 +80,11 @@ class TorchSumNode(TorchNode):
 
         if not torch.all(weights_torch >= 0):
             raise ValueError("All weights must be non-negative.")
+
+        if not len(weights) == sum(len(child) for child in children):
+            raise ValueError(
+                "Number of weights does not match number of specified child nodes."
+            )
 
         # noramlize
         if normalize:
@@ -134,12 +138,16 @@ class TorchProductNode(TorchNode):
 
 @multimethod  # type: ignore[no-redef]
 def toTorch(x: ProductNode) -> TorchProductNode:
-    return TorchProductNode(children=[toTorch(child) for child in x.children], scope=x.scope)
+    return TorchProductNode(
+        children=[toTorch(child) for child in x.children], scope=x.scope
+    )
 
 
 @multimethod  # type: ignore[no-redef]
 def toNodes(x: TorchProductNode) -> ProductNode:
-    return ProductNode(children=[toNodes(child) for child in x.children()], scope=x.scope)
+    return ProductNode(
+        children=[toNodes(child) for child in x.children()], scope=x.scope
+    )
 
 
 class TorchLeafNode(TorchNode):

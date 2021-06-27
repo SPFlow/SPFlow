@@ -61,7 +61,23 @@ def construct_spn(
             (I in the paper)
             The number of LeafNodes each leaf region is equipped with. All LeafNodes of the same region
             are multivariate distributions over the same scope, but possibly differently parametrized.
+
+
+    Returns:
+        A RatSpn with a single SumNode as root. It's children are the SumNodes of the root_region in
+        the region_graph. The rest of the SPN consists of alternating Sum- and ProductNodes, providing
+        the scope factorizations determined by the region_graph.
+
+    Raises:
+        ValueError:
+            If any argument is invalid (too less roots to build an SPN).
     """
+    if num_nodes_root < 1:
+        raise ValueError("num_nodes_root must be at least 1")
+    if num_nodes_region < 1:
+        raise ValueError("num_nodes_region must be at least 1")
+    if num_nodes_leaf < 1:
+        raise ValueError("num_nodes_leaf must be at least 1")
     rat_spn = RatSpn()
 
     for region in region_graph.regions:
@@ -99,11 +115,14 @@ def construct_spn(
         )
         partition_scope.sort()
         partition.nodes = [
-            ProductNode(children=[], scope=partition_scope) for i in range(num_nodes_partition)
+            ProductNode(children=[], scope=partition_scope)
+            for i in range(num_nodes_partition)
         ]
 
         # each ProductNode of the Partition points to a unique combination consisting of one Node of each Region that is a child of the partition
-        cartesian_product = list(itertools.product(*[region.nodes for region in partition.regions]))
+        cartesian_product = list(
+            itertools.product(*[region.nodes for region in partition.regions])
+        )
         for i in range(len(cartesian_product)):
             partition.nodes[i].children = list(cartesian_product[i])
         # all ProductNodes of the Partition are children of each SumNode in its parent Region
