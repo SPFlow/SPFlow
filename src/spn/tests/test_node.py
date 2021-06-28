@@ -192,9 +192,7 @@ class TestNode(unittest.TestCase):
         leaf2 = LeafNode(scope=[2])
         prod1 = ProductNode(children=[leaf1, leaf2], scope=[1, 2])
         prod2 = ProductNode(children=[leaf1, leaf2], scope=[1, 2])
-        sum = SumNode(
-            children=[prod1, prod2], scope=[1, 2], weights=np.array([0.3, 0.7])
-        )
+        sum = SumNode(children=[prod1, prod2], scope=[1, 2], weights=np.array([0.3, 0.7]))
 
         _isvalid_spn(sum)
         sum_nodes, prod_nodes, leaf_nodes = _get_node_counts([sum])
@@ -207,18 +205,10 @@ class TestNode(unittest.TestCase):
         leaf_12 = LeafNode(scope=[1])
         leaf_21 = LeafNode(scope=[2])
         leaf_22 = LeafNode(scope=[2])
-        sum_11 = SumNode(
-            children=[leaf_11, leaf_12], scope=[1], weights=np.array([0.3, 0.7])
-        )
-        sum_12 = SumNode(
-            children=[leaf_11, leaf_12], scope=[1], weights=np.array([0.9, 0.1])
-        )
-        sum_21 = SumNode(
-            children=[leaf_21, leaf_22], scope=[2], weights=np.array([0.4, 0.6])
-        )
-        sum_22 = SumNode(
-            children=[leaf_21, leaf_22], scope=[2], weights=np.array([0.8, 0.2])
-        )
+        sum_11 = SumNode(children=[leaf_11, leaf_12], scope=[1], weights=np.array([0.3, 0.7]))
+        sum_12 = SumNode(children=[leaf_11, leaf_12], scope=[1], weights=np.array([0.9, 0.1]))
+        sum_21 = SumNode(children=[leaf_21, leaf_22], scope=[2], weights=np.array([0.4, 0.6]))
+        sum_22 = SumNode(children=[leaf_21, leaf_22], scope=[2], weights=np.array([0.8, 0.2]))
         prod_11 = ProductNode(children=[sum_11, sum_21], scope=[1, 2])
         prod_12 = ProductNode(children=[sum_11, sum_22], scope=[1, 2])
         prod_13 = ProductNode(children=[sum_12, sum_21], scope=[1, 2])

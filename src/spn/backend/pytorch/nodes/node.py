@@ -82,9 +82,7 @@ class TorchSumNode(TorchNode):
             raise ValueError("All weights must be non-negative.")
 
         if not len(weights) == sum(len(child) for child in children):
-            raise ValueError(
-                "Number of weights does not match number of specified child nodes."
-            )
+            raise ValueError("Number of weights does not match number of specified child nodes.")
 
         # noramlize
         if normalize:
@@ -138,16 +136,12 @@ class TorchProductNode(TorchNode):
 
 @multimethod  # type: ignore[no-redef]
 def toTorch(x: ProductNode) -> TorchProductNode:
-    return TorchProductNode(
-        children=[toTorch(child) for child in x.children], scope=x.scope
-    )
+    return TorchProductNode(children=[toTorch(child) for child in x.children], scope=x.scope)
 
 
 @multimethod  # type: ignore[no-redef]
 def toNodes(x: TorchProductNode) -> ProductNode:
-    return ProductNode(
-        children=[toNodes(child) for child in x.children()], scope=x.scope
-    )
+    return ProductNode(children=[toNodes(child) for child in x.children()], scope=x.scope)
 
 
 class TorchLeafNode(TorchNode):

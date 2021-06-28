@@ -39,9 +39,7 @@ def _isvalid_spn(root_nodes: List[Node]) -> None:
         elif type(node) is ProductNode:
             assert node.children is not None
             assert None not in node.children
-            assert node.scope == sorted(
-                [scope for child in node.children for scope in child.scope]
-            )
+            assert node.scope == sorted([scope for child in node.children for scope in child.scope])
             length = len(node.children)
             # assert that each child's scope is true subset of ProductNode's scope (set<set = subset)
             for i in range(0, length):
@@ -53,9 +51,7 @@ def _isvalid_spn(root_nodes: List[Node]) -> None:
         elif isinstance(node, LeafNode):
             assert len(node.children) == 0
         else:
-            raise ValueError(
-                "Node must be SumNode, ProductNode, or a subclass of LeafNode"
-            )
+            raise ValueError("Node must be SumNode, ProductNode, or a subclass of LeafNode")
 
         if node.children:
             nodes.extend(list(set(node.children) - set(nodes)))

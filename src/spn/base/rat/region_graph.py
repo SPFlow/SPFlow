@@ -131,7 +131,7 @@ def random_region_graph(X: Set[int], depth: int, replicas: int, num_splits: int 
         raise ValueError("Depth must not be negative")
     if replicas < 1:
         raise ValueError("Number of replicas must be at least 1")
-    if(num_splits < 2):
+    if num_splits < 2:
         raise ValueError("Number of splits must be at least 2")
 
     region_graph = RegionGraph()
@@ -166,7 +166,7 @@ def split(
         num_splits:
             The number of splits per Region.
     """
-    if(num_splits < 2):
+    if num_splits < 2:
         raise ValueError("Number of splits must be at least 2")
 
     shuffle_random_variables = list(parent_region.random_variables)
@@ -176,7 +176,8 @@ def split(
 
     if any(region_scope.size == 0 for region_scope in splits):
         raise ValueError(
-            "Number of random variables cannot be split into 'num_splits' non-empty splits (make sure 'split' is called appropriately)."
+            "Number of random variables cannot be split into 'num_splits' "
+            "non-empty splits (make sure 'split' is called appropriately)."
         )
 
     regions = []

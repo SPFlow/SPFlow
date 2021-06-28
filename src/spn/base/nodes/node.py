@@ -3,7 +3,8 @@ Created on May 05, 2021
 
 @authors: Kevin Huy Nguyen, Bennet Wittelsbach
 
-This file provides the basic components to build abstract probabilistic circuits, like SumNode, ProductNode, and LeafNode.
+This file provides the basic components to build abstract probabilistic circuits, like SumNode, ProductNode,
+and LeafNode.
 """
 from spn.base.module import Module
 from typing import List, Tuple, cast
@@ -19,12 +20,14 @@ class Node(Module):
             A list of Nodes containing the children of this Node, or None.
         scope:
             A list of integers containing the scopes of this Node, or None.
+        value:
+            A float representing the value of the node. nan-value represents a node, with its value not calculated yet.
     """
 
     def __init__(self, children: List[Module], scope: List[int]) -> None:
         self.children = children
         self.scope = scope
-        self.value: float
+        self.value: float = np.nan
 
     def __str__(self) -> str:
         return f"{type(self).__name__}: {self.scope}"
@@ -37,7 +40,7 @@ class Node(Module):
 
     def print_treelike(self, prefix: str = "") -> None:
         """
-        Ad-hoc method to print structure of node and children (for debugging purposes)
+        Ad-hoc method to print structure of node and children (for debugging purposes).
         """
         print(prefix + f"{self.__class__.__name__}: {self.scope}")
 
@@ -56,7 +59,8 @@ class Node(Module):
 
 
 class ProductNode(Node):
-    """A ProductNode provides a factorization of its children, i.e. ProductNodes in SPNs have children with distinct scopes"""
+    """A ProductNode provides a factorization of its children,
+    i.e. ProductNodes in SPNs have children with distinct scopes"""
 
     def __init__(self, children: List[Module], scope: List[int]) -> None:
         super().__init__(children=children, scope=scope)
@@ -71,16 +75,15 @@ class SumNode(Node):
 
     """
 
-    def __init__(
-        self, children: List[Module], scope: List[int], weights: np.ndarray
-    ) -> None:
+    def __init__(self, children: List[Module], scope: List[int], weights: np.ndarray) -> None:
         super().__init__(children=children, scope=scope)
         self.weights = weights
 
     def equals(self, other: Module) -> bool:
         """
         Checks whether two objects are identical by comparing their class, scope, children (recursively) and weights.
-        Note that weight comparison is done approximately due to numerical issues when conversion between graph representations.
+        Note that weight comparison is done approximately due to numerical issues when conversion between graph
+        representations.
         """
         if type(other) is SumNode:
             other = cast(SumNode, other)
@@ -146,7 +149,7 @@ def _get_node_counts(root_nodes: List[Node]) -> Tuple[int, int, int]:
             raise ValueError("Node must be SumNode, ProductNode, or LeafNode")
         nodes.extend(list(set(node.children) - set(nodes)))
 
-    return (n_sumnodes, n_productnodes, n_leaves)
+    return n_sumnodes, n_productnodes, n_leaves
 
 
 @multimethod  # type: ignore[no-redef]

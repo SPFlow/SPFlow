@@ -115,14 +115,12 @@ def construct_spn(
         )
         partition_scope.sort()
         partition.nodes = [
-            ProductNode(children=[], scope=partition_scope)
-            for i in range(num_nodes_partition)
+            ProductNode(children=[], scope=partition_scope) for i in range(num_nodes_partition)
         ]
 
-        # each ProductNode of the Partition points to a unique combination consisting of one Node of each Region that is a child of the partition
-        cartesian_product = list(
-            itertools.product(*[region.nodes for region in partition.regions])
-        )
+        # each ProductNode of the Partition points to a unique combination consisting of one Node of each Region
+        # that is a child of the partition
+        cartesian_product = list(itertools.product(*[region.nodes for region in partition.regions]))
         for i in range(len(cartesian_product)):
             partition.nodes[i].children = list(cartesian_product[i])
         # all ProductNodes of the Partition are children of each SumNode in its parent Region
@@ -131,7 +129,8 @@ def construct_spn(
             parent_node = cast(SumNode, parent_node)
             replicas = len(partition.parent.partitions)
             parent_node.children.extend(partition.nodes)
-            # determine the total number of children the parent node might have. this is important for correct weights in the root nodes
+            # determine the total number of children the parent node might have.
+            # this is important for correct weights in the root nodes
             parent_node.weights = np.append(
                 parent_node.weights,
                 np.full(num_nodes_partition, 1 / (num_nodes_partition * replicas)),
