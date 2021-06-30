@@ -11,6 +11,7 @@ from spn.base.nodes.node import LeafNode, Node
 from spn.base.nodes.leaves.parametric.exceptions import InvalidParametersError  # type: ignore
 from spn.base.nodes.leaves.parametric.statistical_types import ParametricType  # type: ignore
 from scipy.stats import norm, lognorm, multivariate_normal, uniform, bernoulli, binom, nbinom, poisson, geom, hypergeom, expon, gamma  # type: ignore
+from scipy.stats._distn_infrastructure import rv_continuous, rv_discrete  # type: ignore
 
 
 # TODO:
@@ -312,6 +313,9 @@ def get_scipy_object(node: Node) -> None:
         node:
             The node of which the respective scipy object shall be returned
 
+    Returns:
+        A scipy object representing the distribution of the given node, or None.
+
     Raises:
         NotImplementedError:
             The node is a LeafNode and does not provide a scipy object or the node is not a LeafNode
@@ -325,62 +329,62 @@ def get_scipy_object(node: Node) -> None:
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: Gaussian) -> Dict[str, float]:
+def get_scipy_object(node: Gaussian) -> rv_continuous:
     return norm
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: LogNormal) -> Dict[str, float]:
+def get_scipy_object(node: LogNormal) -> rv_continuous:
     return lognorm
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: MultivariateGaussian) -> Dict[str, float]:
+def get_scipy_object(node: MultivariateGaussian) -> rv_continuous:
     return multivariate_normal
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: Uniform) -> Dict[str, float]:
+def get_scipy_object(node: Uniform) -> rv_continuous:
     return uniform
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: Bernoulli) -> Dict[str, float]:
+def get_scipy_object(node: Bernoulli) -> rv_discrete:
     return bernoulli
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: Binomial) -> Dict[str, float]:
+def get_scipy_object(node: Binomial) -> rv_discrete:
     return binom
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: NegativeBinomial) -> Dict[str, float]:
+def get_scipy_object(node: NegativeBinomial) -> rv_discrete:
     return nbinom
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: Poisson) -> Dict[str, float]:
+def get_scipy_object(node: Poisson) -> rv_discrete:
     return poisson
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: Geometric) -> Dict[str, float]:
+def get_scipy_object(node: Geometric) -> rv_discrete:
     return geom
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: Hypergemoetric) -> Dict[str, float]:
+def get_scipy_object(node: Hypergemoetric) -> rv_discrete:
     return hypergeom
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: Exponential) -> Dict[str, float]:
+def get_scipy_object(node: Exponential) -> rv_continuous:
     return expon
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: Gamma) -> Dict[str, float]:
+def get_scipy_object(node: Gamma) -> rv_continuous:
     return gamma
 
 
@@ -395,6 +399,9 @@ def get_scipy_object_parameters(node: Node) -> None:
     Arguments:
         node:
             The node of which the parameters shall be returned
+
+    Returns:
+        A dictionary with {"parameter": value}, or None.
 
     Raises:
         NotImplementedError:
