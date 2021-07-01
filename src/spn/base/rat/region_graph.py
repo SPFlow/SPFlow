@@ -10,8 +10,6 @@ import random
 import numpy as np
 from typing import Any, Optional, Set, List, Tuple
 
-from spn.base.nodes.node import Node, ProductNode
-
 
 class RegionGraph:
     """The RegionGraph holds all regions and partitions over a set of random variables X.
@@ -66,7 +64,6 @@ class Region:
         self.random_variables = random_variables
         self.partitions = partitions if partitions else set()
         self.parent = parent
-        self.nodes: List[Node] = []
 
     def __str__(self) -> str:
         return f"Region: {self.random_variables}"
@@ -91,7 +88,6 @@ class Partition:
     def __init__(self, regions: Set[Region], parent: Region) -> None:
         self.regions = regions
         self.parent = parent
-        self.nodes: List[ProductNode] = []
 
     def __str__(self) -> str:
         return f"Partition: {[region.random_variables for region in self.regions]}"
@@ -185,7 +181,7 @@ def split(
     for region_scope in splits:
         regions.append(Region(random_variables=set(region_scope), partitions=None, parent=None))
 
-    partition = Partition(regions={*regions}, parent=parent_region)
+    partition = Partition(regions=set(regions), parent=parent_region)
 
     for region in regions:
         region.parent = partition
@@ -297,5 +293,5 @@ def _get_regions_by_depth(
 
 
 if __name__ == "__main__":
-    region_graph = random_region_graph(X=set(range(1, 8)), depth=3, replicas=1)
+    region_graph = random_region_graph(X=set(range(1, 9)), depth=3, replicas=1, num_splits=3)
     _print_region_graph(region_graph)

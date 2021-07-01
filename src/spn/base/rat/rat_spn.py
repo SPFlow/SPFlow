@@ -6,10 +6,12 @@ Created on May 24, 2021
 import itertools
 import numpy as np
 from functools import reduce
-from typing import List, cast
+from typing import Dict, List, Union, cast
 from spn.base.module import Module
-from spn.base.nodes.node import LeafNode, ProductNode, SumNode, _print_node_graph
+from spn.base.nodes.node import LeafNode, Node, ProductNode, SumNode, _print_node_graph
 from spn.base.rat.region_graph import (
+    Partition,
+    Region,
     RegionGraph,
     _print_region_graph,
     random_region_graph,
@@ -80,27 +82,30 @@ def construct_spn(
         raise ValueError("num_nodes_leaf must be at least 1")
     rat_spn = RatSpn()
 
+    rg_nodes: Dict[Union[Region, Partition], List[Node]] = {}
+
     for region in region_graph.regions:
         # determine the scope of the nodes the Region will be equipped with
         region_scope = list(region.random_variables)
         region_scope.sort()
         if not region.parent:
             # the region is the root_region
-            region.nodes = [
+            root_nodes: List[Node] = [
                 SumNode(children=[], scope=region_scope, weights=np.empty(0))
                 for i in range(num_nodes_root)
             ]
+            rg_nodes[region] = root_nodes
             rat_spn.root_node = SumNode(
-                children=cast(List[SumNode], region.nodes),
+                children=root_nodes,
                 scope=region_scope,
-                weights=np.full(len(region.nodes), 1 / len(region.nodes)),
+                weights=np.full(len(rg_nodes[region]), 1 / len(rg_nodes[region])),
             )
         elif not region.partitions:
             # the region is a leaf
-            region.nodes = [LeafNode(scope=region_scope) for i in range(num_nodes_leaf)]
+            rg_nodes[region] = [LeafNode(scope=region_scope) for i in range(num_nodes_leaf)]
         else:
             # the region is an internal region
-            region.nodes = [
+            rg_nodes[region] = [
                 SumNode(children=[], scope=region_scope, weights=np.empty(0))
                 for i in range(num_nodes_region)
             ]
@@ -108,27 +113,29 @@ def construct_spn(
     for partition in region_graph.partitions:
         # determine the number and the scope of the ProductNodes the Partition will be equipped with
         num_nodes_partition = reduce(
-            (lambda r, s: r * s), [len(region.nodes) for region in partition.regions]
+            (lambda r, s: r * s), [len(rg_nodes[region]) for region in partition.regions]
         )
         partition_scope = list(
             itertools.chain(*[region.random_variables for region in partition.regions])
         )
         partition_scope.sort()
-        partition.nodes = [
+        rg_nodes[partition] = [
             ProductNode(children=[], scope=partition_scope) for i in range(num_nodes_partition)
         ]
 
         # each ProductNode of the Partition points to a unique combination consisting of one Node of each Region
         # that is a child of the partition
-        cartesian_product = list(itertools.product(*[region.nodes for region in partition.regions]))
+        cartesian_product = list(
+            itertools.product(*[rg_nodes[region] for region in partition.regions])
+        )
         for i in range(len(cartesian_product)):
-            partition.nodes[i].children = list(cartesian_product[i])
+            rg_nodes[partition][i].children = list(cartesian_product[i])
         # all ProductNodes of the Partition are children of each SumNode in its parent Region
-        for parent_node in partition.parent.nodes:
+        for parent_node in rg_nodes[partition.parent]:
             # all parent nodes are SumNodes
             parent_node = cast(SumNode, parent_node)
             replicas = len(partition.parent.partitions)
-            parent_node.children.extend(partition.nodes)
+            parent_node.children.extend(rg_nodes[partition])
             # determine the total number of children the parent node might have.
             # this is important for correct weights in the root nodes
             parent_node.weights = np.append(
