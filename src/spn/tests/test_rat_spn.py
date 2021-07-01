@@ -16,17 +16,17 @@ class TestRatSpn(unittest.TestCase):
         num_nodes_region = 1
         num_nodes_leaf = 1
         with self.assertRaises(ValueError):
-            rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+            construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
 
         num_nodes_root = 1
         num_nodes_region = 0
         with self.assertRaises(ValueError):
-            rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+            construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
 
         num_nodes_region = 1
         num_nodes_leaf = 0
         with self.assertRaises(ValueError):
-            rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+            construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
 
     def test_rat_spn_1(self):
         random_variables = set(range(1, 8))
