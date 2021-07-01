@@ -530,3 +530,17 @@ def get_scipy_object_parameters(node: Gamma) -> Dict[str, float]:
         raise InvalidParametersError(f"Parameter 'beta' of {node} must not be None")
     parameters = {"a": node.alpha, "scale": 1.0 / node.beta}
     return parameters
+
+
+if __name__ == "__main__":
+    gauss_leaf = Gaussian(scope=[1], mean=0, stdev=1.0)
+    print(
+        get_scipy_object(gauss_leaf).pdf(
+            x=[-1.0, 0, 1.0, 4.2], **get_scipy_object_parameters(gauss_leaf)
+        )
+    )
+    print(
+        get_scipy_object(gauss_leaf).cdf(
+            x=[-1.0, 0, 1.0, 4.2], **get_scipy_object_parameters(gauss_leaf)
+        )
+    )
