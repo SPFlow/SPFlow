@@ -234,7 +234,7 @@ class Geometric(ParametricLeaf):
         self.p = p
 
 
-class Hypergemoetric(ParametricLeaf):
+class Hypergeometric(ParametricLeaf):
     """(Univariate) Hypergeometric distribution
 
     PMF(k) =
@@ -374,7 +374,7 @@ def get_scipy_object(node: Geometric) -> rv_discrete:
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: Hypergemoetric) -> rv_discrete:
+def get_scipy_object(node: Hypergeometric) -> rv_discrete:
     return hypergeom
 
 
@@ -503,7 +503,7 @@ def get_scipy_object_parameters(node: Geometric) -> Dict[str, float]:
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: Hypergemoetric) -> Dict[str, float]:
+def get_scipy_object_parameters(node: Hypergeometric) -> Dict[str, float]:
     if node.N is None:
         raise InvalidParametersError(f"Parameter 'N' of {node} must not be None")
     if node.M is None:
