@@ -10,7 +10,20 @@ from typing import Dict, List
 from spn.base.nodes.node import LeafNode, Node
 from spn.base.nodes.leaves.parametric.exceptions import InvalidParametersError  # type: ignore
 from spn.base.nodes.leaves.parametric.statistical_types import ParametricType  # type: ignore
-from scipy.stats import norm, lognorm, multivariate_normal, uniform, bernoulli, binom, nbinom, poisson, geom, hypergeom, expon, gamma  # type: ignore
+from scipy.stats import (  # type: ignore
+    norm,
+    lognorm,
+    multivariate_normal,
+    uniform,
+    bernoulli,
+    binom,
+    nbinom,
+    poisson,
+    geom,
+    hypergeom,
+    expon,
+    gamma,
+)
 from scipy.stats._distn_infrastructure import rv_continuous, rv_discrete  # type: ignore
 
 
@@ -234,7 +247,7 @@ class Geometric(ParametricLeaf):
         self.p = p
 
 
-class Hypergemoetric(ParametricLeaf):
+class Hypergeometric(ParametricLeaf):
     """(Univariate) Hypergeometric distribution
 
     PMF(k) =
@@ -374,7 +387,7 @@ def get_scipy_object(node: Geometric) -> rv_discrete:
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object(node: Hypergemoetric) -> rv_discrete:
+def get_scipy_object(node: Hypergeometric) -> rv_discrete:
     return hypergeom
 
 
@@ -390,7 +403,8 @@ def get_scipy_object(node: Gamma) -> rv_continuous:
 
 @multimethod
 def get_scipy_object_parameters(node: Node) -> None:
-    """Get the parameters of a paremetric leaf node, s.t. they can be directly passed to the PDF, CDF, etc. of the associated scipy object.
+    """Get the parameters of a paremetric leaf node, s.t. they can be directly passed to the PDF, CDF, etc. of the
+    associated scipy object.
 
     The standard implementation accepts nodes of any type and raises an error, if it is a leaf node that does
     not provide parameters or the node is not a leaf node. Else, the respective dispatched function will be called
@@ -503,7 +517,7 @@ def get_scipy_object_parameters(node: Geometric) -> Dict[str, float]:
 
 
 @multimethod  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: Hypergemoetric) -> Dict[str, float]:
+def get_scipy_object_parameters(node: Hypergeometric) -> Dict[str, float]:
     if node.N is None:
         raise InvalidParametersError(f"Parameter 'N' of {node} must not be None")
     if node.M is None:
@@ -534,6 +548,7 @@ def get_scipy_object_parameters(node: Gamma) -> Dict[str, float]:
 
 if __name__ == "__main__":
     gauss_leaf = Gaussian(scope=[1], mean=0, stdev=1.0)
+    # raise ValueError(get_scipy_object_parameters(gauss_leaf))
     print(
         get_scipy_object(gauss_leaf).pdf(
             x=[-1.0, 0, 1.0, 4.2], **get_scipy_object_parameters(gauss_leaf)
