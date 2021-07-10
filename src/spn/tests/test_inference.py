@@ -1,170 +1,103 @@
 import unittest
-from spn.base.rat.rat_spn import construct_spn
-from spn.base.rat.region_graph import random_region_graph
-from spn.base.nodes.node import _get_leaf_nodes
-from spn.base.nodes.inference import inference
+from spn.base.nodes.inference import likelihood, log_likelihood
+from spn.base.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
 from spn.base.nodes.node import (
-    Node,
     SumNode,
-    LeafNode,
     ProductNode,
 )
 
 
 class TestInference(unittest.TestCase):
     def test_inference_1(self):
-        random_variables = set(range(1, 8))
-        depth = 2
-        replicas = 1
-        region_graph = random_region_graph(random_variables, depth, replicas)
-
-        num_nodes_root = 1
-        num_nodes_region = 1
-        num_nodes_leaf = 1
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
-        leaves = _get_leaf_nodes(rat_spn.root_node)
-        for leaf in leaves:
-            leaf.value = 2
-        result = inference(rat_spn.root_node)
-        self.assertAlmostEqual(result, 16)
-
-    def test_inference_2(self):
-        random_variables = set(range(1, 8))
-        depth = 2
-        replicas = 2
-        region_graph = random_region_graph(random_variables, depth, replicas)
-
-        num_nodes_root = 3
-        num_nodes_region = 2
-        num_nodes_leaf = 2
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
-        leaves = _get_leaf_nodes(rat_spn.root_node)
-        for leaf in leaves:
-            leaf.value = 2
-        result = inference(rat_spn.root_node)
-        self.assertAlmostEqual(result, 16)
-
-    def test_inference_3(self):
-        random_variables = set(range(1, 8))
-        depth = 1
-        replicas = 2
-        region_graph = random_region_graph(random_variables, depth, replicas)
-
-        num_nodes_root = 3
-        num_nodes_region = 2
-        num_nodes_leaf = 2
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
-        leaves = _get_leaf_nodes(rat_spn.root_node)
-        for leaf in leaves:
-            leaf.value = 2
-        result = inference(rat_spn.root_node)
-        self.assertAlmostEqual(result, 4)
-
-    def test_inference_4(self):
-        random_variables = set(range(1, 8))
-        depth = 2
-        replicas = 2
-        region_graph = random_region_graph(random_variables, depth, replicas)
-
-        num_nodes_root = 3
-        num_nodes_region = 2
-        num_nodes_leaf = 2
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
-        leaves = _get_leaf_nodes(rat_spn.root_node)
-        for leaf in leaves:
-            leaf.value = 0.5
-        result = inference(rat_spn.root_node)
-        self.assertAlmostEqual(result, 0.0625)
-
-    def test_inference_5(self):
-        random_variables = set(range(1, 8))
-        depth = 2
-        replicas = 2
-        region_graph = random_region_graph(random_variables, depth, replicas)
-
-        num_nodes_root = 3
-        num_nodes_region = 2
-        num_nodes_leaf = 2
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
-        leaves = _get_leaf_nodes(rat_spn.root_node)
-        i = 0
-        while i + 4 < 17:
-            leaves[i : i + 4] = sorted(leaves[i : i + 4], key=lambda child: child.scope[0])
-            i += 4
-        i = 0
-        for leaf in leaves:
-            leaf.value = np.floor(i / 2)
-            i += 1
-        result = inference(rat_spn.root_node)
-        self.assertAlmostEqual(result, 420)
-
-    def test_inference_6(self):
-        spn: Node = ProductNode(
+        spn = SumNode(
             children=[
-                SumNode(
+                ProductNode(
                     children=[
-                        ProductNode(
+                        Gaussian(scope=[0], mean=0, stdev=1.0),
+                        SumNode(
                             children=[
-                                SumNode(
+                                ProductNode(
                                     children=[
-                                        ProductNode(
-                                            children=[
-                                                LeafNode(scope=[1]),
-                                                LeafNode(scope=[2]),
-                                            ],
-                                            scope=[1, 2],
-                                        ),
-                                        LeafNode(scope=[1, 2]),
+                                        Gaussian(scope=[1], mean=0, stdev=1.0),
+                                        Gaussian(scope=[2], mean=0, stdev=1.0),
                                     ],
                                     scope=[1, 2],
-                                    weights=np.array([0.9, 0.1]),
                                 ),
-                                LeafNode(scope=[3]),
-                            ],
-                            scope=[1, 2, 3],
-                        ),
-                        ProductNode(
-                            children=[
-                                LeafNode(scope=[1]),
-                                SumNode(
+                                ProductNode(
                                     children=[
-                                        LeafNode(scope=[2, 3]),
-                                        LeafNode(scope=[2, 3]),
+                                        Gaussian(scope=[1], mean=0, stdev=1.0),
+                                        Gaussian(scope=[2], mean=0, stdev=1.0),
                                     ],
-                                    scope=[2, 3],
-                                    weights=np.array([0.5, 0.5]),
+                                    scope=[1, 2],
                                 ),
                             ],
-                            scope=[1, 2, 3],
+                            scope=[1, 2],
+                            weights=np.array([0.3, 0.7]),
                         ),
-                        LeafNode(scope=[1, 2, 3]),
                     ],
-                    scope=[1, 2, 3],
-                    weights=np.array([0.4, 0.1, 0.5]),
+                    scope=[0, 1, 2],
                 ),
-                SumNode(
+                ProductNode(
                     children=[
-                        ProductNode(
-                            children=[
-                                LeafNode(scope=[4]),
-                                LeafNode(scope=[5]),
-                            ],
-                            scope=[4, 5],
-                        ),
-                        LeafNode(scope=[4, 5]),
+                        Gaussian(scope=[0], mean=0, stdev=1.0),
+                        Gaussian(scope=[1], mean=0, stdev=1.0),
+                        Gaussian(scope=[2], mean=0, stdev=1.0),
                     ],
-                    scope=[4, 5],
-                    weights=np.array([0.5, 0.5]),
+                    scope=[0, 1, 2],
                 ),
             ],
-            scope=[1, 2, 3, 4, 5],
+            scope=[0, 1, 2],
+            weights=np.array([0.4, 0.6]),
         )
-        leaves = _get_leaf_nodes(spn)
-        for leaf in leaves:
-            leaf.value = 0.5
-        result = inference(spn)
-        self.assertAlmostEqual(result, 99 / 800)
+
+        result = likelihood(spn, data=np.array([1.0, 0.0, 1.0]).reshape(-1, 3))
+        self.assertAlmostEqual(result[0][0], 0.023358)
+
+    def test_inference_2(self):
+        spn = SumNode(
+            children=[
+                ProductNode(
+                    children=[
+                        Gaussian(scope=[0], mean=0, stdev=1.0),
+                        SumNode(
+                            children=[
+                                ProductNode(
+                                    children=[
+                                        Gaussian(scope=[1], mean=0, stdev=1.0),
+                                        Gaussian(scope=[2], mean=0, stdev=1.0),
+                                    ],
+                                    scope=[1, 2],
+                                ),
+                                ProductNode(
+                                    children=[
+                                        Gaussian(scope=[1], mean=0, stdev=1.0),
+                                        Gaussian(scope=[2], mean=0, stdev=1.0),
+                                    ],
+                                    scope=[1, 2],
+                                ),
+                            ],
+                            scope=[1, 2],
+                            weights=np.array([0.3, 0.7]),
+                        ),
+                    ],
+                    scope=[0, 1, 2],
+                ),
+                ProductNode(
+                    children=[
+                        Gaussian(scope=[0], mean=0, stdev=1.0),
+                        Gaussian(scope=[1], mean=0, stdev=1.0),
+                        Gaussian(scope=[2], mean=0, stdev=1.0),
+                    ],
+                    scope=[0, 1, 2],
+                ),
+            ],
+            scope=[0, 1, 2],
+            weights=np.array([0.4, 0.6]),
+        )
+
+        result = log_likelihood(spn, data=np.array([1.0, 0.0, 1.0]).reshape(-1, 3))
+        self.assertAlmostEqual(result[0][0], -3.7568156)
 
 
 if __name__ == "__main__":
