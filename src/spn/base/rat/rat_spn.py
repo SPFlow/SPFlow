@@ -86,7 +86,7 @@ def construct_spn(
         raise ValueError("num_nodes_region must be at least 1")
     if num_nodes_leaf < 1:
         raise ValueError("num_nodes_leaf must be at least 1")
-    
+
     rat_spn = RatSpn()
     rat_spn.region_graph = region_graph
     rat_spn.num_nodes_root = num_nodes_root
@@ -113,7 +113,9 @@ def construct_spn(
             )
         elif not region.partitions:
             # the region is a leaf
-            rg_nodes[region] = [Gaussian(scope=region_scope, mean=0.0, stdev=1.0) for i in range(num_nodes_leaf)]
+            rg_nodes[region] = [
+                Gaussian(scope=region_scope, mean=0.0, stdev=1.0) for i in range(num_nodes_leaf)
+            ]
         else:
             # the region is an internal region
             rg_nodes[region] = [
