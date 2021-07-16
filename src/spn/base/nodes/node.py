@@ -6,7 +6,7 @@ Created on May 05, 2021
 This file provides the basic components to build abstract probabilistic circuits, like SumNode, ProductNode,
 and LeafNode.
 """
-from typing import List, Tuple, cast, Callable, Set, Type, Deque, OrderedDict, Optional, Dict
+from typing import List, Tuple, cast, Callable, Set, Type, Deque, Optional, Dict
 from multimethod import multimethod
 import numpy as np
 from numpy import ndarray
@@ -244,8 +244,8 @@ def get_topological_order(node: Node):
     """
     nodes: List[Node] = get_nodes_by_type(node)
 
-    parents: OrderedDict[Node, List] = collections.OrderedDict({node: []})
-    in_degree: OrderedDict[Node, int] = collections.OrderedDict()
+    parents: "OrderedDict[Node, List]" = OrderedDict({node: []})
+    in_degree: "OrderedDict[Node, int]" = OrderedDict()
     for n in nodes:
         in_degree[n] = in_degree.get(n, 0)
         if not isinstance(n, LeafNode):
