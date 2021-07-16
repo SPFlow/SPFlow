@@ -327,7 +327,7 @@ def eval_spn_bottom_up(
                 n_is_leaf = True
             else:
                 raise AssertionError(
-                    "No lambda function associated with type: %s" % (type(n).__name__)
+                    "No lambda function associated with type: %s" % type(n).__name__
                 )
 
         if n_is_leaf:
