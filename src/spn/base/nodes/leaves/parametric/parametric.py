@@ -4,9 +4,9 @@ Created on June 11, 2021
 @authors: Bennet Wittelsbach
 """
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from multimethod import multimethod
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from spn.base.nodes.node import LeafNode, Node
 from spn.base.nodes.leaves.parametric.exceptions import InvalidParametersError  # type: ignore
 from spn.base.nodes.leaves.parametric.statistical_types import ParametricType  # type: ignore
@@ -45,7 +45,14 @@ class ParametricLeaf(LeafNode, ABC):
 
     def __init__(self, scope: List[int]) -> None:
         super().__init__(scope)
+    
+    @abstractmethod
+    def set_params(self):
+        pass
 
+    @abstractmethod
+    def get_params(self):
+        pass
 
 class Gaussian(ParametricLeaf):
     """(Univariate) Normal distribution
@@ -69,7 +76,13 @@ class Gaussian(ParametricLeaf):
         super().__init__(scope)
         self.mean = mean
         self.stdev = stdev
+    
+    def set_params(self, mean: float, stdev: float) -> None:
+        self.mean = mean
+        self.stdev = stdev
 
+    def get_params(self) -> Tuple[float, float]:
+        return self.mean, self.stdev
 
 class LogNormal(ParametricLeaf):
     """(Univariate) Log-Normal distribution
@@ -90,6 +103,13 @@ class LogNormal(ParametricLeaf):
         super().__init__(scope)
         self.mean = mean
         self.stdev = stdev
+    
+    def set_params(self, mean: float, stdev: float) -> None:
+        self.mean = mean
+        self.stdev = stdev
+
+    def get_params(self) -> Tuple[float, float]:
+        return self.mean, self.stdev
 
 
 class MultivariateGaussian(ParametricLeaf):
@@ -123,6 +143,13 @@ class MultivariateGaussian(ParametricLeaf):
         super().__init__(scope)
         self.mean_vector = mean_vector
         self.covariance_matrix = covariance_matrix
+    
+    def set_params(self, mean_vector: List[float], covariance_matrix: List[List[float]]) -> None:
+        self.mean_vector = mean_vector
+        self.covariance_matrix = covariance_matrix
+
+    def get_params(self) -> Tuple[List[float], List[List[float]]]:
+        return self.mean_vector, self.covariance_matrix
 
 
 class Uniform(ParametricLeaf):
@@ -146,6 +173,13 @@ class Uniform(ParametricLeaf):
         super().__init__(scope)
         self.start = start
         self.end = end
+    
+    def set_params(self, start: float, end: float) -> None:
+        self.start = start
+        self.end = end
+
+    def get_params(self) -> Tuple[float, float]:
+        return self.start, self.end
 
 
 class Bernoulli(ParametricLeaf):
@@ -166,6 +200,11 @@ class Bernoulli(ParametricLeaf):
         super().__init__(scope)
         self.p = p
 
+    def set_params(self, p: float) -> None:
+        self.p = p
+
+    def get_params(self) -> float:
+        return self.p
 
 class Binomial(ParametricLeaf):
     """(Univariate) Binomial distribution
@@ -188,6 +227,12 @@ class Binomial(ParametricLeaf):
         self.n = n
         self.p = p
 
+    def set_params(self, n: int, p: float) -> None:
+        self.n = n
+        self.p = p
+
+    def get_params(self) -> Tuple[int, float]:
+        return self.n, self.p
 
 class NegativeBinomial(ParametricLeaf):
     """(Univariate) Negative Binomial distribution
@@ -209,6 +254,13 @@ class NegativeBinomial(ParametricLeaf):
         super().__init__(scope)
         self.n = n
         self.p = p
+    
+    def set_params(self, n: int, p: float) -> None:
+        self.n = n
+        self.p = p
+
+    def get_params(self) -> Tuple[int, float]:
+        return self.n, self.p
 
 
 class Poisson(ParametricLeaf):
@@ -227,6 +279,12 @@ class Poisson(ParametricLeaf):
     def __init__(self, scope: List[int], l: float) -> None:
         super().__init__(scope)
         self.l = l
+    
+    def set_params(self, l: float) -> None:
+        self.l = l
+
+    def get_params(self) -> float:
+        return self.l
 
 
 class Geometric(ParametricLeaf):
@@ -245,6 +303,12 @@ class Geometric(ParametricLeaf):
     def __init__(self, scope: List[int], p: float) -> None:
         super().__init__(scope)
         self.p = p
+    
+    def set_params(self, p: float) -> None:
+        self.p = p
+
+    def get_params(self) -> float:
+        return self.p
 
 
 class Hypergeometric(ParametricLeaf):
@@ -270,6 +334,14 @@ class Hypergeometric(ParametricLeaf):
         self.M = M
         self.N = N
         self.n = n
+    
+    def set_params(self, N: int, M: int, n: int) -> None:
+        self.N = N
+        self.M = M
+        self.n = n
+
+    def get_params(self) -> Tuple[int, int, int]:
+        return self.N, self.M, self.n
 
 
 class Exponential(ParametricLeaf):
@@ -289,6 +361,12 @@ class Exponential(ParametricLeaf):
     def __init__(self, scope: List[int], l: float) -> None:
         super().__init__(scope)
         self.l = l
+    
+    def set_params(self, l: float) -> None:
+        self.l = l
+
+    def get_params(self) -> float:
+        return self.l
 
 
 class Gamma(ParametricLeaf):
@@ -312,6 +390,13 @@ class Gamma(ParametricLeaf):
         super().__init__(scope)
         self.alpha = alpha
         self.beta = beta
+
+    def set_params(self, alpha: float, beta: float) -> None:
+        self.alpha = alpha
+        self.beta = beta
+
+    def get_params(self) -> Tuple[float, float]:
+        return self.alpha, self.beta
 
 
 @multimethod

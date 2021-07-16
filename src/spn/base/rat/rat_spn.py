@@ -9,6 +9,7 @@ from functools import reduce
 from typing import Dict, List, Union, cast
 from spn.base.module import Module
 from spn.base.nodes.node import LeafNode, Node, ProductNode, SumNode, _print_node_graph
+from spn.base.nodes.leaves.parametric.parametric import Gaussian
 from spn.base.rat.region_graph import (
     Partition,
     Region,
@@ -32,6 +33,11 @@ class RatSpn(Module):
 
     def __init__(self) -> None:
         self.root_node: SumNode
+        self.region_graph: RegionGraph
+        self.num_nodes_root: int
+        self.num_nodes_region: int
+        self.num_nodes_leaf: int
+        self.rg_nodes: Dict[Union[Region, Partition], List[Node]]
 
     def __len__(self):
         return 1
@@ -80,7 +86,12 @@ def construct_spn(
         raise ValueError("num_nodes_region must be at least 1")
     if num_nodes_leaf < 1:
         raise ValueError("num_nodes_leaf must be at least 1")
+    
     rat_spn = RatSpn()
+    rat_spn.region_graph = region_graph
+    rat_spn.num_nodes_root = num_nodes_root
+    rat_spn.num_nodes_region = num_nodes_region
+    rat_spn.num_nodes_leaf = num_nodes_leaf
 
     rg_nodes: Dict[Union[Region, Partition], List[Node]] = {}
 
@@ -102,7 +113,7 @@ def construct_spn(
             )
         elif not region.partitions:
             # the region is a leaf
-            rg_nodes[region] = [LeafNode(scope=region_scope) for i in range(num_nodes_leaf)]
+            rg_nodes[region] = [Gaussian(scope=region_scope, mean=0.0, stdev=1.0) for i in range(num_nodes_leaf)]
         else:
             # the region is an internal region
             rg_nodes[region] = [
@@ -142,6 +153,8 @@ def construct_spn(
                 parent_node.weights,
                 np.full(num_nodes_partition, 1 / (num_nodes_partition * replicas)),
             )
+
+    rat_spn.rg_nodes = rg_nodes
 
     if not rat_spn.root_node:
         raise ValueError("Constructed RAT-SPN does not have root node")
