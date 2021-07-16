@@ -45,7 +45,7 @@ class ParametricLeaf(LeafNode, ABC):
 
     def __init__(self, scope: List[int]) -> None:
         super().__init__(scope)
-    
+
     @abstractmethod
     def set_params(self):
         pass
@@ -53,6 +53,7 @@ class ParametricLeaf(LeafNode, ABC):
     @abstractmethod
     def get_params(self):
         pass
+
 
 class Gaussian(ParametricLeaf):
     """(Univariate) Normal distribution
@@ -76,13 +77,14 @@ class Gaussian(ParametricLeaf):
         super().__init__(scope)
         self.mean = mean
         self.stdev = stdev
-    
+
     def set_params(self, mean: float, stdev: float) -> None:
         self.mean = mean
         self.stdev = stdev
 
     def get_params(self) -> Tuple[float, float]:
         return self.mean, self.stdev
+
 
 class LogNormal(ParametricLeaf):
     """(Univariate) Log-Normal distribution
@@ -103,7 +105,7 @@ class LogNormal(ParametricLeaf):
         super().__init__(scope)
         self.mean = mean
         self.stdev = stdev
-    
+
     def set_params(self, mean: float, stdev: float) -> None:
         self.mean = mean
         self.stdev = stdev
@@ -143,7 +145,7 @@ class MultivariateGaussian(ParametricLeaf):
         super().__init__(scope)
         self.mean_vector = mean_vector
         self.covariance_matrix = covariance_matrix
-    
+
     def set_params(self, mean_vector: List[float], covariance_matrix: List[List[float]]) -> None:
         self.mean_vector = mean_vector
         self.covariance_matrix = covariance_matrix
@@ -173,7 +175,7 @@ class Uniform(ParametricLeaf):
         super().__init__(scope)
         self.start = start
         self.end = end
-    
+
     def set_params(self, start: float, end: float) -> None:
         self.start = start
         self.end = end
@@ -206,6 +208,7 @@ class Bernoulli(ParametricLeaf):
     def get_params(self) -> float:
         return self.p
 
+
 class Binomial(ParametricLeaf):
     """(Univariate) Binomial distribution
 
@@ -234,6 +237,7 @@ class Binomial(ParametricLeaf):
     def get_params(self) -> Tuple[int, float]:
         return self.n, self.p
 
+
 class NegativeBinomial(ParametricLeaf):
     """(Univariate) Negative Binomial distribution
 
@@ -254,7 +258,7 @@ class NegativeBinomial(ParametricLeaf):
         super().__init__(scope)
         self.n = n
         self.p = p
-    
+
     def set_params(self, n: int, p: float) -> None:
         self.n = n
         self.p = p
@@ -279,7 +283,7 @@ class Poisson(ParametricLeaf):
     def __init__(self, scope: List[int], l: float) -> None:
         super().__init__(scope)
         self.l = l
-    
+
     def set_params(self, l: float) -> None:
         self.l = l
 
@@ -303,7 +307,7 @@ class Geometric(ParametricLeaf):
     def __init__(self, scope: List[int], p: float) -> None:
         super().__init__(scope)
         self.p = p
-    
+
     def set_params(self, p: float) -> None:
         self.p = p
 
@@ -334,7 +338,7 @@ class Hypergeometric(ParametricLeaf):
         self.M = M
         self.N = N
         self.n = n
-    
+
     def set_params(self, N: int, M: int, n: int) -> None:
         self.N = N
         self.M = M
@@ -361,7 +365,7 @@ class Exponential(ParametricLeaf):
     def __init__(self, scope: List[int], l: float) -> None:
         super().__init__(scope)
         self.l = l
-    
+
     def set_params(self, l: float) -> None:
         self.l = l
 
