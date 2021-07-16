@@ -145,7 +145,7 @@ def _get_node_counts(root_nodes: List[Node]) -> Tuple[int, int, int]:
             n_sumnodes += 1
         elif type(node) is ProductNode:
             n_productnodes += 1
-        elif type(node) is LeafNode:
+        elif isinstance(node, LeafNode):
             n_leaves += 1
         else:
             raise ValueError("Node must be SumNode, ProductNode, or LeafNode")
