@@ -23,7 +23,7 @@ from spn.base.nodes.leaves.parametric.parametric import (
     Gamma,
 )
 from typing import Optional
-from multimethod import multimethod
+from multipledispatch import dispatch  # type: ignore
 import numpy as np
 from numpy import ndarray
 from spn.base.nodes.node import Node
@@ -36,7 +36,7 @@ POS_EPS = np.finfo(float).eps
 MIN_NEG = np.finfo(float).min
 
 
-@multimethod
+@dispatch(Node, data=ndarray)  # type: ignore[no-redef]
 def node_likelihood(node: Node, data: Optional[ndarray] = None) -> None:
     """Calculates the likelihood of node depending on the given data.
 
@@ -59,13 +59,13 @@ def node_likelihood(node: Node, data: Optional[ndarray] = None) -> None:
     raise NotImplementedError(f"Likelihood not provided for {node}.")
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Gaussian, data=ndarray)  # type: ignore[no-redef]
 def node_likelihood(node: Gaussian, data=None) -> np.ndarray:
     probs = get_scipy_object(node).pdf(x=data[:, node.scope], **get_scipy_object_parameters(node))
     return probs
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(MultivariateGaussian, data=ndarray)  # type: ignore[no-redef]
 def node_likelihood(node: MultivariateGaussian, data=None) -> np.ndarray:
     probs = np.ones((data.shape[0], 1))
     probs[:, 0] = get_scipy_object(node).pdf(
@@ -74,7 +74,7 @@ def node_likelihood(node: MultivariateGaussian, data=None) -> np.ndarray:
     return probs
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Bernoulli, data=ndarray)  # type: ignore[no-redef]
 def node_likelihood(node: Bernoulli, data=None) -> np.ndarray:
     probs = get_scipy_object(node).pdf(x=data[:, node.scope], **get_scipy_object_parameters(node))
     probs[probs == 1.0] = 0.999999999
@@ -82,7 +82,7 @@ def node_likelihood(node: Bernoulli, data=None) -> np.ndarray:
     return probs
 
 
-@multimethod
+@dispatch(Node, data=ndarray)  # type: ignore[no-redef]
 def node_log_likelihood(node: Node, data: Optional[ndarray] = None):
     """Calculates the log-likelihood of node depending on the given data.
 
@@ -105,7 +105,7 @@ def node_log_likelihood(node: Node, data: Optional[ndarray] = None):
     raise NotImplementedError(f"Log-Likelihood not provided for {node}.")
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Gaussian, data=ndarray)  # type: ignore[no-redef]
 def node_log_likelihood(node: Gaussian, data=None) -> np.ndarray:
     probs = get_scipy_object(node).logpdf(
         x=data[:, node.scope], **get_scipy_object_parameters(node)
@@ -113,7 +113,7 @@ def node_log_likelihood(node: Gaussian, data=None) -> np.ndarray:
     return probs
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Hypergeometric, data=ndarray)  # type: ignore[no-redef]
 def node_log_likelihood(node: Hypergeometric, data=None) -> np.ndarray:
     probs = get_scipy_object(node).logpdf(
         x=data[:, node.scope], **get_scipy_object_parameters(node)
@@ -121,7 +121,7 @@ def node_log_likelihood(node: Hypergeometric, data=None) -> np.ndarray:
     return probs
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(LogNormal, data=ndarray)  # type: ignore[no-redef]
 def node_log_likelihood(node: LogNormal, data=None) -> np.ndarray:
     probs = get_scipy_object(node).logpdf(
         x=data[:, node.scope], **get_scipy_object_parameters(node)
@@ -129,7 +129,7 @@ def node_log_likelihood(node: LogNormal, data=None) -> np.ndarray:
     return probs
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Gamma, data=ndarray)  # type: ignore[no-redef]
 def node_log_likelihood(node: Gamma, data=None) -> np.ndarray:
     data = data[:, node.scope]
     data[data == 0] += POS_EPS
@@ -137,7 +137,7 @@ def node_log_likelihood(node: Gamma, data=None) -> np.ndarray:
     return probs
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Poisson, data=ndarray)  # type: ignore[no-redef]
 def node_log_likelihood(node: Poisson, data=None) -> np.ndarray:
     probs = get_scipy_object(node).logpdf(
         x=data[:, node.scope], **get_scipy_object_parameters(node)
@@ -146,7 +146,7 @@ def node_log_likelihood(node: Poisson, data=None) -> np.ndarray:
     return probs
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Bernoulli, data=ndarray)  # type: ignore[no-redef]
 def node_log_likelihood(node: Bernoulli, data=None) -> np.ndarray:
     probs = get_scipy_object(node).logpdf(
         x=data[:, node.scope], **get_scipy_object_parameters(node)
@@ -155,7 +155,7 @@ def node_log_likelihood(node: Bernoulli, data=None) -> np.ndarray:
     return probs
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Geometric, data=ndarray)  # type: ignore[no-redef]
 def node_log_likelihood(node: Geometric, data=None) -> np.ndarray:
     probs = get_scipy_object(node).logpdf(
         x=data[:, node.scope], **get_scipy_object_parameters(node)
@@ -164,7 +164,7 @@ def node_log_likelihood(node: Geometric, data=None) -> np.ndarray:
     return probs
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Exponential, data=ndarray)  # type: ignore[no-redef]
 def node_log_likelihood(node: Exponential, data=None) -> np.ndarray:
     probs = get_scipy_object(node).logpdf(
         x=data[:, node.scope], **get_scipy_object_parameters(node)
@@ -173,7 +173,7 @@ def node_log_likelihood(node: Exponential, data=None) -> np.ndarray:
 
 
 # correct?
-@multimethod  # type: ignore[no-redef]
+@dispatch(Uniform, data=ndarray)  # type: ignore[no-redef]
 def node_log_likelihood(node: Uniform, data=None) -> np.ndarray:
     probs = np.log(node.density)
     return probs
