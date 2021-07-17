@@ -7,7 +7,7 @@ This file provides the basic components to build abstract probabilistic circuits
 and LeafNode.
 """
 from typing import List, Tuple, cast, Callable, Set, Type, Deque, Optional, Dict
-from multimethod import multimethod
+from multipledispatch import dispatch  # type: ignore
 import numpy as np
 from numpy import ndarray
 import collections
@@ -105,7 +105,7 @@ class LeafNode(Node):
         super().__init__(children=[], scope=scope)
 
 
-@multimethod
+@dispatch(list)  # type: ignore[no-redef]
 def _print_node_graph(root_nodes: List[Node]) -> None:
     """Prints all unique nodes of a node graph in BFS fashion.
 
@@ -120,13 +120,13 @@ def _print_node_graph(root_nodes: List[Node]) -> None:
         nodes.extend(list(set(node.children) - set(nodes)))
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Node)  # type: ignore[no-redef]
 def _print_node_graph(root_node: Node) -> None:
     """Wrapper for SPNs with single root node"""
     _print_node_graph([root_node])
 
 
-@multimethod
+@dispatch(list)  # type: ignore[no-redef]
 def _get_node_counts(root_nodes: List[Node]) -> Tuple[int, int, int]:
     """Count the # of unique SumNodes, ProductNodes, LeafNodes in an SPN with arbitrarily many root nodes.
 
@@ -154,13 +154,13 @@ def _get_node_counts(root_nodes: List[Node]) -> Tuple[int, int, int]:
     return n_sumnodes, n_productnodes, n_leaves
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Node)  # type: ignore[no-redef]
 def _get_node_counts(root_node: Node) -> Tuple[int, int, int]:
     """Wrapper for SPNs with single root node"""
     return _get_node_counts([root_node])
 
 
-@multimethod
+@dispatch(list)  # type: ignore[no-redef]
 def _get_leaf_nodes(root_nodes: List[Node]) -> List[Node]:
     """Returns a list of leaf nodes to populate.
 
@@ -180,7 +180,7 @@ def _get_leaf_nodes(root_nodes: List[Node]) -> List[Node]:
     return leaves
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Node)  # type: ignore[no-redef]
 def _get_leaf_nodes(root_node: Node) -> List[Node]:
     """Wrapper for SPNs with single root node"""
     return _get_leaf_nodes([root_node])

@@ -5,7 +5,7 @@ Created on June 11, 2021
 """
 
 from abc import ABC, abstractmethod
-from multimethod import multimethod
+from multipledispatch import dispatch  # type: ignore
 from typing import Dict, List, Tuple
 from spn.base.nodes.node import LeafNode, Node
 from spn.base.nodes.leaves.parametric.exceptions import InvalidParametersError  # type: ignore
@@ -45,14 +45,6 @@ class ParametricLeaf(LeafNode, ABC):
 
     def __init__(self, scope: List[int]) -> None:
         super().__init__(scope)
-
-    @abstractmethod
-    def set_params(self):
-        pass
-
-    @abstractmethod
-    def get_params(self):
-        pass
 
 
 class Gaussian(ParametricLeaf):
@@ -403,7 +395,7 @@ class Gamma(ParametricLeaf):
         return self.alpha, self.beta
 
 
-@multimethod
+@dispatch(Node)  # type: ignore[no-redef]
 def get_scipy_object(node: Node) -> None:
     """Get the associated scipy object of a parametric leaf node. This can be used to call the PDF, CDF, PPF, etc.
 
@@ -430,67 +422,67 @@ def get_scipy_object(node: Node) -> None:
         raise NotImplementedError(f"{node} cannot provide scipy objects")
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Gaussian)  # type: ignore[no-redef]
 def get_scipy_object(node: Gaussian) -> rv_continuous:
     return norm
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(LogNormal)  # type: ignore[no-redef]
 def get_scipy_object(node: LogNormal) -> rv_continuous:
     return lognorm
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(MultivariateGaussian)  # type: ignore[no-redef]
 def get_scipy_object(node: MultivariateGaussian) -> rv_continuous:
     return multivariate_normal
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Uniform)  # type: ignore[no-redef]
 def get_scipy_object(node: Uniform) -> rv_continuous:
     return uniform
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Bernoulli)  # type: ignore[no-redef]
 def get_scipy_object(node: Bernoulli) -> rv_discrete:
     return bernoulli
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Binomial)  # type: ignore[no-redef]
 def get_scipy_object(node: Binomial) -> rv_discrete:
     return binom
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(NegativeBinomial)  # type: ignore[no-redef]
 def get_scipy_object(node: NegativeBinomial) -> rv_discrete:
     return nbinom
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Poisson)  # type: ignore[no-redef]
 def get_scipy_object(node: Poisson) -> rv_discrete:
     return poisson
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Geometric)  # type: ignore[no-redef]
 def get_scipy_object(node: Geometric) -> rv_discrete:
     return geom
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Hypergeometric)  # type: ignore[no-redef]
 def get_scipy_object(node: Hypergeometric) -> rv_discrete:
     return hypergeom
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Exponential)  # type: ignore[no-redef]
 def get_scipy_object(node: Exponential) -> rv_continuous:
     return expon
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Gamma)  # type: ignore[no-redef]
 def get_scipy_object(node: Gamma) -> rv_continuous:
     return gamma
 
 
-@multimethod
+@dispatch(Node)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Node) -> None:
     """Get the parameters of a paremetric leaf node, s.t. they can be directly passed to the PDF, CDF, etc. of the
     associated scipy object.
@@ -519,7 +511,7 @@ def get_scipy_object_parameters(node: Node) -> None:
         raise NotImplementedError(f"{node} cannot provide parameters")
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Gaussian)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Gaussian) -> Dict[str, float]:
     if node.mean is None:
         raise InvalidParametersError(f"Parameter 'mean' of {node} must not be None")
@@ -529,7 +521,7 @@ def get_scipy_object_parameters(node: Gaussian) -> Dict[str, float]:
     return parameters
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(LogNormal)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: LogNormal) -> Dict[str, float]:
     if node.mean is None:
         raise InvalidParametersError(f"Parameter 'mean' of {node} must not be None")
@@ -541,7 +533,7 @@ def get_scipy_object_parameters(node: LogNormal) -> Dict[str, float]:
     return parameters
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(MultivariateGaussian)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: MultivariateGaussian) -> Dict[str, float]:
     if node.mean_vector is None:
         raise InvalidParametersError(f"Parameter 'mean_vector' of {node} must not be None")
@@ -551,7 +543,7 @@ def get_scipy_object_parameters(node: MultivariateGaussian) -> Dict[str, float]:
     return parameters
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Uniform)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Uniform) -> Dict[str, float]:
     if node.start is None:
         raise InvalidParametersError(f"Parameter 'start' of {node} must not be None")
@@ -561,7 +553,7 @@ def get_scipy_object_parameters(node: Uniform) -> Dict[str, float]:
     return parameters
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Bernoulli)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Bernoulli) -> Dict[str, float]:
     if node.p is None:
         raise InvalidParametersError(f"Parameter 'p' of {node} must not be None")
@@ -569,7 +561,7 @@ def get_scipy_object_parameters(node: Bernoulli) -> Dict[str, float]:
     return parameters
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Binomial)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Binomial) -> Dict[str, float]:
     if node.n is None:
         raise InvalidParametersError(f"Parameter 'n' of {node} must not be None")
@@ -579,7 +571,7 @@ def get_scipy_object_parameters(node: Binomial) -> Dict[str, float]:
     return parameters
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(NegativeBinomial)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: NegativeBinomial) -> Dict[str, float]:
     if node.n is None:
         raise InvalidParametersError(f"Parameter 'n' of {node} must not be None")
@@ -589,7 +581,7 @@ def get_scipy_object_parameters(node: NegativeBinomial) -> Dict[str, float]:
     return parameters
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Poisson)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Poisson) -> Dict[str, float]:
     if node.l is None:
         raise InvalidParametersError(f"Parameter 'l' of {node} must not be None")
@@ -597,7 +589,7 @@ def get_scipy_object_parameters(node: Poisson) -> Dict[str, float]:
     return parameters
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Geometric)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Geometric) -> Dict[str, float]:
     if node.p is None:
         raise InvalidParametersError(f"Parameter 'p' of {node} must not be None")
@@ -605,7 +597,7 @@ def get_scipy_object_parameters(node: Geometric) -> Dict[str, float]:
     return parameters
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Hypergeometric)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Hypergeometric) -> Dict[str, float]:
     if node.N is None:
         raise InvalidParametersError(f"Parameter 'N' of {node} must not be None")
@@ -617,7 +609,7 @@ def get_scipy_object_parameters(node: Hypergeometric) -> Dict[str, float]:
     return parameters
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Exponential)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Exponential) -> Dict[str, float]:
     if node.l is not None:
         raise InvalidParametersError(f"Parameter 'l' of {node} must not be None")
@@ -625,7 +617,7 @@ def get_scipy_object_parameters(node: Exponential) -> Dict[str, float]:
     return parameters
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Gamma)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Gamma) -> Dict[str, float]:
     if node.alpha is None:
         raise InvalidParametersError(f"Parameter 'alpha' of {node} must not be None")
