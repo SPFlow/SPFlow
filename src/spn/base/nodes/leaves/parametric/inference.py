@@ -61,7 +61,12 @@ def node_likelihood(node: Node, data: Optional[ndarray] = None) -> None:
 
 @multimethod  # type: ignore[no-redef]
 def node_likelihood(node: Gaussian, data=None) -> np.ndarray:
-    probs = get_scipy_object(node).pdf(x=data[:, node.scope], **get_scipy_object_parameters(node))
+    probs = np.ones((data.shape[0], 1))
+    data = data[:, node.scope]
+    marg_ids = np.isnan(data)
+    probs[~marg_ids] = get_scipy_object(node).pdf(
+        x=data[~marg_ids], **get_scipy_object_parameters(node)
+    )
     return probs
 
 
@@ -76,7 +81,12 @@ def node_likelihood(node: MultivariateGaussian, data=None) -> np.ndarray:
 
 @multimethod  # type: ignore[no-redef]
 def node_likelihood(node: Bernoulli, data=None) -> np.ndarray:
-    probs = get_scipy_object(node).pdf(x=data[:, node.scope], **get_scipy_object_parameters(node))
+    probs = np.ones((data.shape[0], 1))
+    data = data[:, node.scope]
+    marg_ids = np.isnan(data)
+    probs[~marg_ids] = get_scipy_object(node).pdf(
+        x=data[~marg_ids], **get_scipy_object_parameters(node)
+    )
     probs[probs == 1.0] = 0.999999999
     probs[np.isinf(probs)] = 0.000000001
     return probs
@@ -107,40 +117,57 @@ def node_log_likelihood(node: Node, data: Optional[ndarray] = None):
 
 @multimethod  # type: ignore[no-redef]
 def node_log_likelihood(node: Gaussian, data=None) -> np.ndarray:
-    probs = get_scipy_object(node).logpdf(
-        x=data[:, node.scope], **get_scipy_object_parameters(node)
+    probs = np.zeros((data.shape[0], 1))
+    data = data[:, node.scope]
+    marg_ids = np.isnan(data)
+    probs[~marg_ids] = get_scipy_object(node).logpdf(
+        x=data[~marg_ids], **get_scipy_object_parameters(node)
     )
     return probs
 
 
 @multimethod  # type: ignore[no-redef]
 def node_log_likelihood(node: Hypergeometric, data=None) -> np.ndarray:
-    probs = get_scipy_object(node).logpdf(
-        x=data[:, node.scope], **get_scipy_object_parameters(node)
+    probs = np.zeros((data.shape[0], 1))
+    data = data[:, node.scope]
+    marg_ids = np.isnan(data)
+    probs[~marg_ids] = get_scipy_object(node).logpdf(
+        x=data[~marg_ids], **get_scipy_object_parameters(node)
     )
     return probs
 
 
 @multimethod  # type: ignore[no-redef]
 def node_log_likelihood(node: LogNormal, data=None) -> np.ndarray:
-    probs = get_scipy_object(node).logpdf(
-        x=data[:, node.scope], **get_scipy_object_parameters(node)
+    probs = np.zeros((data.shape[0], 1))
+    data = data[:, node.scope]
+    marg_ids = np.isnan(data)
+    probs[~marg_ids] = get_scipy_object(node).logpdf(
+        x=data[~marg_ids], **get_scipy_object_parameters(node)
     )
     return probs
 
 
 @multimethod  # type: ignore[no-redef]
 def node_log_likelihood(node: Gamma, data=None) -> np.ndarray:
+    probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
-    data[data == 0] += POS_EPS
-    probs = get_scipy_object(node).logpdf(x=data, **get_scipy_object_parameters(node))
+    marg_ids = np.isnan(data)
+    observations = data[~marg_ids]
+    observations[observations == 0] += POS_EPS
+    probs[~marg_ids] = get_scipy_object(node).logpdf(
+        x=observations, **get_scipy_object_parameters(node)
+    )
     return probs
 
 
 @multimethod  # type: ignore[no-redef]
 def node_log_likelihood(node: Poisson, data=None) -> np.ndarray:
-    probs = get_scipy_object(node).logpdf(
-        x=data[:, node.scope], **get_scipy_object_parameters(node)
+    probs = np.zeros((data.shape[0], 1))
+    data = data[:, node.scope]
+    marg_ids = np.isnan(data)
+    probs[~marg_ids] = get_scipy_object(node).logpdf(
+        x=data[~marg_ids], **get_scipy_object_parameters(node)
     )
     probs[np.isinf(probs)] = MIN_NEG
     return probs
@@ -148,8 +175,11 @@ def node_log_likelihood(node: Poisson, data=None) -> np.ndarray:
 
 @multimethod  # type: ignore[no-redef]
 def node_log_likelihood(node: Bernoulli, data=None) -> np.ndarray:
-    probs = get_scipy_object(node).logpdf(
-        x=data[:, node.scope], **get_scipy_object_parameters(node)
+    probs = np.zeros((data.shape[0], 1))
+    data = data[:, node.scope]
+    marg_ids = np.isnan(data)
+    probs[~marg_ids] = get_scipy_object(node).logpdf(
+        x=data[~marg_ids], **get_scipy_object_parameters(node)
     )
     probs[np.isinf(probs)] = MIN_NEG
     return probs
@@ -157,8 +187,11 @@ def node_log_likelihood(node: Bernoulli, data=None) -> np.ndarray:
 
 @multimethod  # type: ignore[no-redef]
 def node_log_likelihood(node: Geometric, data=None) -> np.ndarray:
-    probs = get_scipy_object(node).logpdf(
-        x=data[:, node.scope], **get_scipy_object_parameters(node)
+    probs = np.zeros((data.shape[0], 1))
+    data = data[:, node.scope]
+    marg_ids = np.isnan(data)
+    probs[~marg_ids] = get_scipy_object(node).logpdf(
+        x=data[~marg_ids], **get_scipy_object_parameters(node)
     )
     probs[np.isinf(probs)] = MIN_NEG
     return probs
@@ -166,8 +199,11 @@ def node_log_likelihood(node: Geometric, data=None) -> np.ndarray:
 
 @multimethod  # type: ignore[no-redef]
 def node_log_likelihood(node: Exponential, data=None) -> np.ndarray:
-    probs = get_scipy_object(node).logpdf(
-        x=data[:, node.scope], **get_scipy_object_parameters(node)
+    probs = np.zeros((data.shape[0], 1))
+    data = data[:, node.scope]
+    marg_ids = np.isnan(data)
+    probs[~marg_ids] = get_scipy_object(node).logpdf(
+        x=data[~marg_ids], **get_scipy_object_parameters(node)
     )
     return probs
 
@@ -175,5 +211,8 @@ def node_log_likelihood(node: Exponential, data=None) -> np.ndarray:
 # correct?
 @multimethod  # type: ignore[no-redef]
 def node_log_likelihood(node: Uniform, data=None) -> np.ndarray:
-    probs = np.log(node.density)
+    probs = np.zeros((data.shape[0], 1))
+    data = data[:, node.scope]
+    marg_ids = np.isnan(data)
+    probs[~marg_ids] = np.log(node.density)
     return probs
