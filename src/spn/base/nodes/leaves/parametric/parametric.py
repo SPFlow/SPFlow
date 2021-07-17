@@ -46,14 +46,6 @@ class ParametricLeaf(LeafNode, ABC):
     def __init__(self, scope: List[int]) -> None:
         super().__init__(scope)
 
-    @abstractmethod
-    def set_params(self):
-        pass
-
-    @abstractmethod
-    def get_params(self):
-        pass
-
 
 class Gaussian(ParametricLeaf):
     """(Univariate) Normal distribution
