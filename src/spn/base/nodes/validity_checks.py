@@ -1,12 +1,12 @@
 from typing import List
-from multimethod import multimethod
+from multipledispatch import dispatch  # type: ignore
 from spn.base.nodes.node import LeafNode, Node, ProductNode, SumNode
 
 from spn.base.rat.rat_spn import RatSpn
 import numpy as np
 
 
-@multimethod
+@dispatch(list)  # type: ignore[no-redef]
 def _isvalid_spn(root_nodes: List[Node]) -> None:
     """Assert that there are no None-states in the SPN, SumNodes are smooth,
        ProductNodes are decomposable and LeafNodes don't have children
@@ -57,13 +57,13 @@ def _isvalid_spn(root_nodes: List[Node]) -> None:
             nodes.extend(list(set(node.children) - set(nodes)))
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Node)  # type: ignore[no-redef]
 def _isvalid_spn(root_node: Node) -> None:
     """Wrapper for SPNs with one root"""
     _isvalid_spn([root_node])
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(RatSpn)  # type: ignore[no-redef]
 def _isvalid_spn(rat_spn: RatSpn) -> None:
     """Wrapper for RAT-SPNs"""
     _isvalid_spn(rat_spn.root_node)

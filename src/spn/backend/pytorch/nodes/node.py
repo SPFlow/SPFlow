@@ -5,7 +5,8 @@ Created on May 27, 2021
 
 This file provides the PyTorch variants of individual graph nodes.
 """
-from multimethod import multimethod
+from abc import ABC, abstractmethod
+from multipledispatch import dispatch  # type: ignore
 from typing import List
 import numpy as np
 
@@ -38,12 +39,12 @@ class TorchNode(TorchModule):
         return 1
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(Node)  # type: ignore[no-redef]
 def toTorch(x: Node) -> TorchNode:
     return TorchNode(children=[toTorch(child) for child in x.children], scope=x.scope)
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(TorchNode)  # type: ignore[no-redef]
 def toNodes(x: TorchNode) -> Node:
     return Node(children=[toNodes(child) for child in x.children()], scope=x.scope)
 
@@ -99,7 +100,7 @@ class TorchSumNode(TorchNode):
         return (x * self.weights).sum()
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(SumNode)  # type: ignore[no-redef]
 def toTorch(x: SumNode) -> TorchSumNode:
     return TorchSumNode(
         children=[toTorch(child) for child in x.children],
@@ -108,7 +109,7 @@ def toTorch(x: SumNode) -> TorchSumNode:
     )
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(TorchSumNode)  # type: ignore[no-redef]
 def toNodes(x: TorchSumNode) -> SumNode:
     return SumNode(children=[toNodes(child) for child in x.children()], scope=x.scope, weights=x.weights.detach().numpy())  # type: ignore[operator]
 
@@ -134,12 +135,12 @@ class TorchProductNode(TorchNode):
         return x.prod()
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(ProductNode)  # type: ignore[no-redef]
 def toTorch(x: ProductNode) -> TorchProductNode:
     return TorchProductNode(children=[toTorch(child) for child in x.children], scope=x.scope)
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(TorchProductNode)  # type: ignore[no-redef]
 def toNodes(x: TorchProductNode) -> ProductNode:
     return ProductNode(children=[toNodes(child) for child in x.children()], scope=x.scope)
 
@@ -157,11 +158,11 @@ class TorchLeafNode(TorchNode):
         pass
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(LeafNode)  # type: ignore[no-redef]
 def toTorch(x: LeafNode) -> TorchLeafNode:
     return TorchLeafNode(scope=x.scope)
 
 
-@multimethod  # type: ignore[no-redef]
+@dispatch(TorchLeafNode)  # type: ignore[no-redef]
 def toNodes(x: TorchLeafNode) -> LeafNode:
     return LeafNode(scope=x.scope)
