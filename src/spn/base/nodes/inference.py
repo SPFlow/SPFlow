@@ -200,4 +200,11 @@ if __name__ == "__main__":
     result = log_likelihood(spn, data=np.array([1.0, 0.0, 1.0]).reshape(-1, 3))
     print(np.exp(result), result)
 
+    result = likelihood(spn, data=np.array([np.nan, 0.0, 1.0]).reshape(-1, 3))
+    print(result, np.log(result))
+
+    result = log_likelihood(spn, data=np.array([np.nan, 0.0, 1.0]).reshape(-1, 3))
+    print(np.exp(result), result)
+
     # [[0.023358]] [[-3.7568156]]
+    # [[0.09653235]] [[-2.33787707]] marginallize rv with scope 0
