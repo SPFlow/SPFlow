@@ -52,7 +52,7 @@ class _PartitionLayer(nn.Module):
             self.add_module(f"region_{i}", region)
 
         # compute number of outputs
-        self.num_out = reduce(lambda x,y: x*y, [len(region) for region in regions])
+        self.num_out = reduce(lambda x, y: x * y, [len(region) for region in regions])
 
     def __len__(self) -> int:
         # return number of outputs
