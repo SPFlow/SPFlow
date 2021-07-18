@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 
-import math
+from functools import reduce
 from typing import List, Union, Dict
 
 from multipledispatch import dispatch  # type: ignore
@@ -52,7 +52,7 @@ class _PartitionLayer(nn.Module):
             self.add_module(f"region_{i}", region)
 
         # compute number of outputs
-        self.num_out = math.prod(len(region) for region in regions)
+        self.num_out = reduce(lambda x,y: x*y, [len(region) for region in regions])
 
     def __len__(self) -> int:
         # return number of outputs
