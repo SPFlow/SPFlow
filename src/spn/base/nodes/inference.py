@@ -14,6 +14,8 @@ from spn.base.nodes.leaves.parametric.inference import node_likelihood, node_log
 from spn.base.nodes.leaves.parametric.parametric import Gaussian
 from typing import List, Callable, Type, Optional, Dict
 
+from multipledispatch import dispatch  # type: ignore
+
 
 def prod_log_likelihood(node: ProductNode, children: List[ndarray], **kwargs):
     """
@@ -103,7 +105,8 @@ _node_likelihood: Dict[Type, Callable] = {
     LeafNode: node_likelihood,
 }
 
-
+# TODO: **kwargs not supported
+@dispatch(Node, ndarray, node_likelihood=dict)
 def likelihood(
     node: Node, data: ndarray, node_likelihood: Dict[Type, Callable] = _node_likelihood, **kwargs
 ):
@@ -129,6 +132,8 @@ def likelihood(
     return result
 
 
+# TODO: **kwargs not supported
+@dispatch(Node, ndarray, node_log_likelihood=dict)
 def log_likelihood(
     node: Node,
     data: ndarray,
