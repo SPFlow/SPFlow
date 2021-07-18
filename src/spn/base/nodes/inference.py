@@ -107,9 +107,7 @@ _node_likelihood: Dict[Type, Callable] = {
 
 # TODO: **kwargs not supported
 @dispatch(Node, ndarray, node_likelihood=dict)
-def likelihood(
-    node: Node, data: ndarray, node_likelihood: Dict[Type, Callable] = _node_likelihood, **kwargs
-):
+def likelihood(node: Node, data: ndarray, node_likelihood: Dict[Type, Callable] = _node_likelihood) -> ndarray:
     """
     Calculates the likelihood for a SPN.
 
@@ -126,20 +124,15 @@ def likelihood(
     """
 
     all_results: Optional[Dict[Node, ndarray]] = {}
-    result: ndarray = eval_spn_bottom_up(
-        node, node_likelihood, all_results=all_results, data=data, **kwargs
-    )
+    result: ndarray = eval_spn_bottom_up(node, node_likelihood, all_results=all_results, data=data)
     return result
 
 
 # TODO: **kwargs not supported
 @dispatch(Node, ndarray, node_log_likelihood=dict)
 def log_likelihood(
-    node: Node,
-    data: ndarray,
-    node_log_likelihood: Dict[Type, Callable] = _node_log_likelihood,
-    **kwargs
-):
+    node: Node, data: ndarray, node_log_likelihood: Dict[Type, Callable] = _node_log_likelihood
+) -> ndarray:
     """
     Calculates the log-likelihood for a SPN.
 
@@ -154,7 +147,7 @@ def log_likelihood(
 
     Returns: Log-likelihood value for SPN.
     """
-    return likelihood(node, data, node_likelihood=node_log_likelihood, **kwargs)
+    return likelihood(node, data, node_likelihood=node_log_likelihood)
 
 
 if __name__ == "__main__":
@@ -199,16 +192,16 @@ if __name__ == "__main__":
         weights=np.array([0.4, 0.6]),
     )
 
-    result = likelihood(spn, data=np.array([1.0, 0.0, 1.0]).reshape(-1, 3))
+    result = likelihood(spn, np.array([1.0, 0.0, 1.0]).reshape(-1, 3))
     print(result, np.log(result))
 
-    result = log_likelihood(spn, data=np.array([1.0, 0.0, 1.0]).reshape(-1, 3))
+    result = log_likelihood(spn, np.array([1.0, 0.0, 1.0]).reshape(-1, 3))
     print(np.exp(result), result)
 
-    result = likelihood(spn, data=np.array([np.nan, 0.0, 1.0]).reshape(-1, 3))
+    result = likelihood(spn, np.array([np.nan, 0.0, 1.0]).reshape(-1, 3))
     print(result, np.log(result))
 
-    result = log_likelihood(spn, data=np.array([np.nan, 0.0, 1.0]).reshape(-1, 3))
+    result = log_likelihood(spn, np.array([np.nan, 0.0, 1.0]).reshape(-1, 3))
     print(np.exp(result), result)
 
     # [[0.023358]] [[-3.7568156]]
