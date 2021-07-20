@@ -10,7 +10,6 @@ from spn.base.rat.region_graph import random_region_graph, _print_region_graph
 from spn.base.rat.rat_spn import RatSpn, construct_spn
 from spn.backend.pytorch.rat.rat_spn import TorchRatSpn, toNodes, toTorch, _RegionLayer, _LeafLayer
 
-
 class TestTorchRatSpn(unittest.TestCase):
     def test_torch_rat_spn_to_nodes(self):
 
@@ -42,7 +41,7 @@ class TestTorchRatSpn(unittest.TestCase):
         nodes_output = log_likelihood(rat, dummy_data)
 
         # compute outputs for torch rat spn
-        torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data, dtype=torch.float32))
+        torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data))
 
         # compare outputs
         # self.assertTrue( np.allclose(nodes_output, torch_output.detach().cpu().numpy(), rtol=0.3, equal_nan=True) )
