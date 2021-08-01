@@ -11,3 +11,10 @@ class InvalidParametersError(Exception):
 
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
+
+
+class NotViableError(Exception):
+    """Exception used for operations that are not supported by some parametric distributions, e.g. MLE for the Negative Binomial distribution"""
+
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
