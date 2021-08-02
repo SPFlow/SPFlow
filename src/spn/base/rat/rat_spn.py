@@ -5,7 +5,6 @@ Created on May 24, 2021
 """
 import itertools
 import numpy as np
-from functools import reduce
 from typing import Dict, List, Union, cast
 from spn.base.module import Module
 from spn.base.nodes.node import LeafNode, Node, ProductNode, SumNode, _print_node_graph
@@ -125,9 +124,8 @@ def construct_spn(
 
     for partition in region_graph.partitions:
         # determine the number and the scope of the ProductNodes the Partition will be equipped with
-        num_nodes_partition = reduce(
-            (lambda r, s: r * s), [len(rg_nodes[region]) for region in partition.regions]
-        )
+        num_nodes_partition = np.prod([len(rg_nodes[region]) for region in partition.regions])
+
         partition_scope = list(
             itertools.chain(*[region.random_variables for region in partition.regions])
         )
