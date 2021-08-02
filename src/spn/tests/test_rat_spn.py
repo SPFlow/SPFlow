@@ -165,7 +165,6 @@ class TestRatSpn(unittest.TestCase):
 
         _isvalid_spn(rat_spn)
         sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn.root_node)
-        print(sum_nodes, prod_nodes, leaf_nodes)
         self.assertEqual(sum_nodes, 49)
         self.assertEqual(prod_nodes, 225)
         self.assertEqual(leaf_nodes, 78)
