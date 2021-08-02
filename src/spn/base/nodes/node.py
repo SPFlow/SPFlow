@@ -6,10 +6,10 @@ Created on May 05, 2021
 This file provides the basic components to build abstract probabilistic circuits, like SumNode, ProductNode,
 and LeafNode.
 """
-from typing import List, Tuple, cast, Callable, Set, Type, Deque, Optional, Dict
+
+from typing import List, Tuple, cast, Callable, Set, Type, Deque, Optional, Dict, Union
 from multipledispatch import dispatch  # type: ignore
 import numpy as np
-from numpy import ndarray
 import collections
 from collections import deque, OrderedDict
 
@@ -210,7 +210,7 @@ def bfs(root: Node, func: Callable):
                     queue.append(c)
 
 
-def get_nodes_by_type(node: Node, ntype: Type = Node):
+def get_nodes_by_type(node: Node, ntype: Union[Type, Tuple[Type, ...]] = Node) -> List[Node]:
     """Iterates SPN in breadth first order and collects nodes of type ntype..
 
     Args:
@@ -232,7 +232,7 @@ def get_nodes_by_type(node: Node, ntype: Type = Node):
     return result
 
 
-def get_topological_order(node: Node):
+def get_topological_order(node: Node) -> List[Node]:
     """
     Evaluates the spn bottom up using functions specified for node types.
 
@@ -280,9 +280,9 @@ def get_topological_order(node: Node):
 def eval_spn_bottom_up(
     node: Node,
     eval_functions: Dict[Type, Callable],
-    all_results: Optional[Dict[Node, ndarray]] = None,
+    all_results: Optional[Dict[Node, np.ndarray]] = None,
     **args,
-):
+) -> np.ndarray:
     """
     Evaluates the spn bottom up using functions specified for node types.
 
@@ -315,7 +315,7 @@ def eval_spn_bottom_up(
         node_type_is_leaf_dict[node_type] = issubclass(node_type, LeafNode)
     leaf_func: Optional[Callable] = eval_functions.get(LeafNode, None)
 
-    tmp_children_list: List[Optional[ndarray]] = []
+    tmp_children_list: List[Optional[np.ndarray]] = []
     len_tmp_children_list: int = 0
     for n in nodes:
         try:
@@ -331,7 +331,7 @@ def eval_spn_bottom_up(
                 )
 
         if n_is_leaf:
-            result: ndarray = func(n, **args)
+            result: np.ndarray = func(n, **args)
         else:
             len_children: int = len(n.children)
             if len_tmp_children_list < len_children:

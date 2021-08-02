@@ -10,6 +10,7 @@ import numpy as np
 from numpy import ndarray
 from scipy.special import logsumexp  # type: ignore
 from spn.base.nodes.node import LeafNode, ProductNode, SumNode, eval_spn_bottom_up, Node
+from spn.base.nodes.structural_marginalization import marginalize
 from spn.base.nodes.leaves.parametric.inference import node_likelihood, node_log_likelihood
 from spn.base.nodes.leaves.parametric.parametric import Gaussian
 from typing import List, Callable, Type, Optional, Dict
@@ -17,7 +18,7 @@ from typing import List, Callable, Type, Optional, Dict
 from multipledispatch import dispatch  # type: ignore
 
 
-def prod_log_likelihood(node: ProductNode, children: List[ndarray], **kwargs):
+def prod_log_likelihood(node: ProductNode, children: List[ndarray], **kwargs) -> ndarray:
     """
     Calculates the log-likelihood for a product node.
 
@@ -37,7 +38,7 @@ def prod_log_likelihood(node: ProductNode, children: List[ndarray], **kwargs):
     return pll
 
 
-def prod_likelihood(node: ProductNode, children: List[ndarray], **kwargs):
+def prod_likelihood(node: ProductNode, children: List[ndarray], **kwargs) -> ndarray:
     """
     Calculates the likelihood for a product node.
 
@@ -55,7 +56,7 @@ def prod_likelihood(node: ProductNode, children: List[ndarray], **kwargs):
     return np.prod(llchildren, axis=1).reshape(-1, 1)
 
 
-def sum_log_likelihood(node: SumNode, children: List[ndarray], **kwargs):
+def sum_log_likelihood(node: SumNode, children: List[ndarray], **kwargs) -> ndarray:
     """
     Calculates the log-likelihood for a sum node.
 
@@ -75,7 +76,7 @@ def sum_log_likelihood(node: SumNode, children: List[ndarray], **kwargs):
     return sll
 
 
-def sum_likelihood(node: SumNode, children: List[ndarray], **kwargs):
+def sum_likelihood(node: SumNode, children: List[ndarray], **kwargs) -> ndarray:
     """
     Calculates the likelihood for a sum node.
 
@@ -105,9 +106,11 @@ _node_likelihood: Dict[Type, Callable] = {
     LeafNode: node_likelihood,
 }
 
-# TODO: **kwargs not supported
+
 @dispatch(Node, ndarray, node_likelihood=dict)
-def likelihood(node: Node, data: ndarray, node_likelihood: Dict[Type, Callable] = _node_likelihood) -> ndarray:
+def likelihood(
+    node: Node, data: ndarray, node_likelihood: Dict[Type, Callable] = _node_likelihood
+) -> ndarray:
     """
     Calculates the likelihood for a SPN.
 
@@ -128,7 +131,6 @@ def likelihood(node: Node, data: ndarray, node_likelihood: Dict[Type, Callable] 
     return result
 
 
-# TODO: **kwargs not supported
 @dispatch(Node, ndarray, node_log_likelihood=dict)
 def log_likelihood(
     node: Node, data: ndarray, node_log_likelihood: Dict[Type, Callable] = _node_log_likelihood
@@ -191,6 +193,7 @@ if __name__ == "__main__":
         scope=[0, 1, 2],
         weights=np.array([0.4, 0.6]),
     )
+    spn_marg = marginalize(spn, [1, 2])
 
     result = likelihood(spn, np.array([1.0, 0.0, 1.0]).reshape(-1, 3))
     print(result, np.log(result))
@@ -203,6 +206,12 @@ if __name__ == "__main__":
 
     result = log_likelihood(spn, np.array([np.nan, 0.0, 1.0]).reshape(-1, 3))
     print(np.exp(result), result)
+
+    l_marg = likelihood(spn_marg, np.array([1.0, 0.0, 1.0]).reshape(-1, 3))
+    print(l_marg, np.log(l_marg))
+
+    ll_marg = log_likelihood(spn_marg, np.array([1.0, 0.0, 1.0]).reshape(-1, 3))
+    print(np.exp(ll_marg), ll_marg)
 
     # [[0.023358]] [[-3.7568156]]
     # [[0.09653235]] [[-2.33787707]] marginallize rv with scope 0
