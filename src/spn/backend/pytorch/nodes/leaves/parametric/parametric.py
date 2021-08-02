@@ -55,8 +55,8 @@ class TorchGaussian(TorchParametricLeaf):
             raise ValueError("Invalid scope size for univariate Gaussian")
 
         # register mean and standard deviation as torch parameters
-        self.register_parameter("mean", Parameter(torch.tensor(mean, dtype=torch.float32)))
-        self.register_parameter("stdev", Parameter(torch.tensor(stdev, dtype=torch.float32)))
+        self.register_parameter("mean", Parameter(torch.tensor(float(mean))))
+        self.register_parameter("stdev", Parameter(torch.tensor(float(stdev))))
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -66,7 +66,7 @@ class TorchGaussian(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
 
@@ -127,7 +127,7 @@ class TorchLogNormal(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
 
@@ -216,7 +216,7 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
 
@@ -304,7 +304,7 @@ class TorchUniform(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
 
@@ -367,7 +367,7 @@ class TorchBernoulli(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
 
@@ -435,7 +435,7 @@ class TorchBinomial(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
 
@@ -504,7 +504,7 @@ class TorchNegativeBinomial(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
 
@@ -566,7 +566,7 @@ class TorchPoisson(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
 
@@ -627,7 +627,7 @@ class TorchGeometric(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
 
@@ -745,7 +745,7 @@ class TorchExponential(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
 
@@ -810,7 +810,7 @@ class TorchGamma(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
 

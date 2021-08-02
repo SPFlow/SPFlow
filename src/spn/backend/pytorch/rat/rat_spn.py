@@ -16,21 +16,10 @@ import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 
-from functools import reduce
+import numpy as np
 from typing import List, Union, Dict
 
 from multipledispatch import dispatch  # type: ignore
-
-
-# def weighted_logsumexp(tensor: torch.Tensor, weights: torch.Tensor, dim: int=-1):
-"""
-    Log of sum of exponentials with (optional) scaling factors for each exponential.
-
-    Args:
-        tensor (torch.Tensor): tensor of input values (in log space).
-        b (Union[torch.Tensor, int]): float scaling factor to be used for all exponentials or torch tensor with individual scaling factors (must be broadcastable; defaults to 1.0).
-        dim (int): dimension (defaults to -1).
-"""
 
 
 class _PartitionLayer(nn.Module):
@@ -52,7 +41,7 @@ class _PartitionLayer(nn.Module):
             self.add_module(f"region_{i}", region)
 
         # compute number of outputs
-        self.num_out = reduce(lambda x, y: x * y, [len(region) for region in regions])
+        self.num_out = np.prod([len(region) for region in regions])
 
     def __len__(self) -> int:
         # return number of outputs
@@ -102,9 +91,7 @@ class _RegionLayer(nn.Module):
         # create and register weight parameters for sum nodes
         self.register_parameter(
             "weight",
-            Parameter(
-                torch.full(size=(self.num_out, self.num_in), fill_value=1.0 / self.num_in)
-            ),  # , dtype=torch.float64))
+            Parameter(torch.full(size=(self.num_out, self.num_in), fill_value=1.0 / self.num_in)),
         )
 
     def __len__(self) -> int:
@@ -115,15 +102,10 @@ class _RegionLayer(nn.Module):
         # get inputs recursively
         inputs = torch.hstack([partition(data) for partition in self.partitions])  # type: ignore
 
-        # maximum input (per batch entry)
-        inputs_max = inputs.max(dim=-1, keepdim=True).values
+        # broadcast inputs per output node and weight them in log-space
+        weighted_inputs = inputs.unsqueeze(1) + self.weight.log()  # type: ignore
 
-        # compute weighted sum (logsumexp in log-space using logsumexp trick for numerical stability)
-        out = (
-            inputs_max + (inputs.sub(inputs_max).exp().unsqueeze(1) * self.weight).sum(dim=-1).log()
-        )
-
-        return out
+        return torch.logsumexp(weighted_inputs, dim=-1)
 
 
 class _LeafLayer(nn.Module):
@@ -273,16 +255,10 @@ class TorchRatSpn(TorchModule):
         # get inputs recursively
         inputs = self.root_region(data)
 
-        # maximum input (per batch entry)
-        inputs_max = inputs.max(dim=-1, keepdim=True).values
+        # broadcast inputs per output node and weight them
+        weighted_inputs = inputs.unsqueeze(1) + self.root_node_weight.log()  # type: ignore
 
-        # compute weighted sum (logsumexp in log-space using logsumexp trick for numerical stability)
-        out = (
-            inputs_max
-            + (inputs.sub(inputs_max).exp().unsqueeze(1) * self.root_node_weight).sum(dim=-1).log()
-        )
-
-        return out
+        return torch.logsumexp(weighted_inputs, dim=-1)
 
 
 @dispatch(_RegionLayer, list)  # type: ignore[no-redef]
