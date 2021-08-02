@@ -1,5 +1,5 @@
 from .rat_spn import TorchRatSpn
-from multipledispatch import dispatch
+from multipledispatch import dispatch  # type: ignore
 import torch
 
 
