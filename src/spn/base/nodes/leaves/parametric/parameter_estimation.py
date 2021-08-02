@@ -8,7 +8,21 @@ import numpy as np
 from typing import Any
 from multipledispatch import dispatch  # type: ignore
 from spn.base.nodes.leaves.parametric.exceptions import InvalidParametersError, NotViableError
-from spn.base.nodes.leaves.parametric.parametric import Gaussian, MultivariateGaussian, LogNormal, Bernoulli, Binomial, NegativeBinomial, Poisson, Geometric, Hypergeometric, Exponential, Gamma, get_scipy_object, get_scipy_object_parameters
+from spn.base.nodes.leaves.parametric.parametric import (
+    Gaussian,
+    MultivariateGaussian,
+    LogNormal,
+    Bernoulli,
+    Binomial,
+    NegativeBinomial,
+    Poisson,
+    Geometric,
+    Hypergeometric,
+    Exponential,
+    Gamma,
+    get_scipy_object,
+    get_scipy_object_parameters,
+)
 from spn.base.nodes.node import Node
 from scipy.stats import lognorm, gamma  # type: ignore
 
@@ -19,7 +33,7 @@ from scipy.stats import lognorm, gamma  # type: ignore
 # TODO: update typing (see when numpy typing became available and if it collides with current requirements)
 @dispatch(Node)  # type: ignore[no-redef]
 def maximum_likelihood_estimation(node: Node, data: Any) -> None:
-    """ Compute the parameters of the distribution represented by the node via MLE, if an closed-form estimator is available.
+    """Compute the parameters of the distribution represented by the node via MLE, if an closed-form estimator is available.
 
     Arguments:
         node:
@@ -45,20 +59,22 @@ def maximum_likelihood_estimation(node: Gaussian, data: Any) -> None:
     if get_scipy_object(node).pdf(node.mean, **get_scipy_object_parameters(node)) >= 1.0:
         print(f"Warning: 'Degenerated' PDF! Density at node.mean is greater than 1.0!")
 
+
 @dispatch(MultivariateGaussian)  # type: ignore[no-redef]
 def maximum_likelihood_estimation(node: MultivariateGaussian, data: Any) -> None:
     data = validate_data(data, data.shape[1])
-    if(data.shape[1] == 1):
+    if data.shape[1] == 1:
         print(f"Warning: Trying to estimate MultivarateGaussian, but data has shape {data.shape}")
 
     node.mean_vector = np.mean(data, axis=0).tolist()
     node.covariance_matrix = np.cov(data, rowvar=0).tolist()
 
-    # check for univariate degeneracy 
-    #for i in range(len(node.mean_vector)):
-    #   [if pdf(mean) >= 1: print warning]    
+    # check for univariate degeneracy
+    # for i in range(len(node.mean_vector)):
+    #   [if pdf(mean) >= 1: print warning]
 
     pass
+
 
 @dispatch(LogNormal)  # type: ignore[no-redef]
 def maximum_likelihood_estimation(node: LogNormal, data: Any) -> None:
@@ -74,36 +90,47 @@ def maximum_likelihood_estimation(node: LogNormal, data: Any) -> None:
 def maximum_likelihood_estimation(node: Bernoulli, data: Any) -> None:
     data = validate_data(data, 1)
     node.p = data.sum().item() / len(data)
-    
+
+
 @dispatch(Binomial)  # type: ignore[no-redef]
 def maximum_likelihood_estimation(node: Binomial, data: Any) -> None:
     data = validate_data(data, 1)
     node.n = len(data)
     node.p = data.sum().item() / (len(data) ** 2)
 
+
 @dispatch(NegativeBinomial)  # type: ignore[no-redef]
 def maximum_likelihood_estimation(node: NegativeBinomial, data: Any) -> None:
-    raise NotViableError("The Negative Binomal distribution parameters 'n, p' cannot be estimated via Maximum-Likelihood Estimation")
+    raise NotViableError(
+        "The Negative Binomal distribution parameters 'n, p' cannot be estimated via Maximum-Likelihood Estimation"
+    )
+
 
 @dispatch(Poisson)  # type: ignore[no-redef]
 def maximum_likelihood_estimation(node: Poisson, data: Any) -> None:
     data = validate_data(data, 1)
     node.l = np.mean(data).item()
 
+
 @dispatch(Geometric)  # type: ignore[no-redef]
 def maximum_likelihood_estimation(node: Geometric, data: Any) -> None:
     data = validate_data(data, 1)
     node.p = len(data) / data.sum().item
 
+
 @dispatch(Hypergeometric)  # type: ignore[no-redef]
 def maximum_likelihood_estimation(node: Hypergeometric, data: Any) -> None:
-    raise NotViableError("The Hypergeometric distribution parameters 'M, N, n' cannot be estimated via Maximum-Likelihood Estimation")
+    raise NotViableError(
+        "The Hypergeometric distribution parameters 'M, N, n' cannot be estimated via Maximum-Likelihood Estimation"
+    )
+
 
 @dispatch(Exponential)  # type: ignore[no-redef]
 def maximum_likelihood_estimation(node: Exponential, data: Any) -> None:
     data = validate_data(data, 1)
     node.l = np.mean(data).item()
-    
+
+
 @dispatch(Gamma)  # type: ignore[no-redef]
 def maximum_likelihood_estimation(node: Gamma, data: Any) -> None:
     data = validate_data(data, 1)
@@ -130,14 +157,14 @@ def maximum_likelihood_estimation(node: Gamma, data: Any) -> None:
 
 
 def validate_data(data: Any, expected_dimensions: int, remove_nan: bool = True) -> Any:
-    """ Checking the data before using it for maximum-likelihood estimation.
-    
+    """Checking the data before using it for maximum-likelihood estimation.
+
     Arguments:
         data:
             A 2-dimensional numpy-array holding the data used for maximum-likelihood estimation
         expected_dimensions:
-            The dimensions of the data and the distribution that is to be estimated. Equals 1 for all 
-            univariate distributions, else the number of dimensions of a multivariate distribution 
+            The dimensions of the data and the distribution that is to be estimated. Equals 1 for all
+            univariate distributions, else the number of dimensions of a multivariate distribution
         remove_nan:
             Boolean if nan entries (according to numpy.isnan()) shall be removed or kept.
 

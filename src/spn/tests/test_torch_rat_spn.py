@@ -10,6 +10,7 @@ from spn.base.rat.region_graph import random_region_graph, _print_region_graph
 from spn.base.rat.rat_spn import RatSpn, construct_spn
 from spn.backend.pytorch.rat.rat_spn import TorchRatSpn, toNodes, toTorch, _RegionLayer, _LeafLayer
 
+
 class TestTorchRatSpn(unittest.TestCase):
     def test_torch_rat_spn_to_nodes(self):
 
