@@ -9,14 +9,22 @@ This file provides the inference methods for SPNs.
 import numpy as np
 from numpy import ndarray
 from scipy.special import logsumexp  # type: ignore
-from spn.python.structure.nodes.node import Node, SumNode, ProductNode, LeafNode, get_topological_order
-#from spn.python.structure.
+from spn.python.structure.nodes.node import (
+    Node,
+    SumNode,
+    ProductNode,
+    LeafNode,
+    get_topological_order,
+)
+
+# from spn.python.structure.
 from spn.python.structure.nodes.structural_marginalization import marginalize
 from spn.python.structure.nodes import Gaussian
 from spn.python.inference.nodes.leaves.parametric import node_likelihood, node_log_likelihood
 from typing import List, Callable, Type, Optional, Dict
 
 from multipledispatch import dispatch  # type: ignore
+
 
 def eval_spn_bottom_up(
     node: Node,
