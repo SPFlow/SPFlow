@@ -26,8 +26,8 @@ class RegionGraph:
 
     def __init__(self) -> None:
         self.root_region: Region
-        self.regions: Set[Region] = set()
-        self.partitions: Set[Partition] = set()
+        self.regions: List[Region] = list()
+        self.partitions: List[Partition] = list()
 
     def __str__(self) -> str:
         return f"RegionGraph over RV {self.root_region.random_variables}"
@@ -57,11 +57,11 @@ class Region:
     def __init__(
         self,
         random_variables: Set[int],
-        partitions: Optional[Set["Partition"]],
+        partitions: Optional[List["Partition"]],
         parent: Optional["Partition"],
     ) -> None:
         self.random_variables = random_variables
-        self.partitions = partitions if partitions else set()
+        self.partitions = partitions if partitions else list()
         self.parent = parent
 
     def __str__(self) -> str:
@@ -84,7 +84,7 @@ class Partition:
             A list of ProductNodes assigned while constructing the RAT-SPN.
     """
 
-    def __init__(self, regions: Set[Region], parent: Region) -> None:
+    def __init__(self, regions: List[Region], parent: Region) -> None:
         self.regions = regions
         self.parent = parent
 
@@ -95,7 +95,7 @@ class Partition:
         return self.__str__()
 
 
-def random_region_graph(X: Set[int], depth: int, replicas: int, num_splits: int = 2) -> RegionGraph:
+def random_region_graph(X: Set[int], depth: int, replicas: int, num_splits: int = 2, ) -> RegionGraph:
     """Creates a RegionGraph from a set of random variables X.
 
     This algorithm is an implementation of "Algorithm 1" of the original paper.
@@ -132,7 +132,7 @@ def random_region_graph(X: Set[int], depth: int, replicas: int, num_splits: int 
     region_graph = RegionGraph()
     root_region = Region(random_variables=X, partitions=None, parent=None)
     region_graph.root_region = root_region
-    region_graph.regions.add(root_region)
+    region_graph.regions.append(root_region)
 
     for r in range(0, replicas):
         split(region_graph, root_region, depth, num_splits)
@@ -180,15 +180,15 @@ def split(
     for region_scope in splits:
         regions.append(Region(random_variables=set(region_scope), partitions=None, parent=None))
 
-    partition = Partition(regions=set(regions), parent=parent_region)
+    partition = Partition(regions=regions, parent=parent_region)
 
     for region in regions:
         region.parent = partition
 
-    parent_region.partitions.add(partition)
+    parent_region.partitions.append(partition)
 
-    region_graph.partitions.add(partition)
-    region_graph.regions.update(regions)
+    region_graph.partitions.append(partition)
+    region_graph.regions += regions
 
     if depth > 1:
         for region in regions:
