@@ -15,7 +15,7 @@ class TestTorchRatSpn(unittest.TestCase):
     def test_torch_rat_spn_to_nodes(self):
 
         # create region graph
-        rg = random_region_graph(X=set(range(9)), depth=3, replicas=2, num_splits=3)
+        rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
 
         # create torch rat spn from region graph
         torch_rat = TorchRatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3)
@@ -36,7 +36,7 @@ class TestTorchRatSpn(unittest.TestCase):
         rat = toNodes(torch_rat)
 
         # create dummy input data (batch size x random variables)
-        dummy_data = np.random.randn(3, 9)
+        dummy_data = np.random.randn(3, 1024)
 
         # compute outputs for node rat spn
         nodes_output = log_likelihood(rat, dummy_data)
@@ -45,15 +45,15 @@ class TestTorchRatSpn(unittest.TestCase):
         torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data))
 
         # compare outputs
-        # self.assertTrue( np.allclose(nodes_output, torch_output.detach().cpu().numpy(), rtol=0.3, equal_nan=True) )
+        self.assertTrue( np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True) )
 
     def test_nodes_rat_spn_to_torch(self):
 
         # create region graph
-        rg = random_region_graph(X=set(range(9)), depth=3, replicas=2, num_splits=3)
+        rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
 
         # create torch rat spn from region graph
-        rat = construct_spn(rg, num_nodes_root=5, num_nodes_region=3, num_nodes_leaf=2)
+        rat = construct_spn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3)
 
         sum_nodes = get_nodes_by_type(rat.root_node, SumNode)
         leaf_nodes = get_nodes_by_type(rat.root_node, LeafNode)
@@ -69,7 +69,7 @@ class TestTorchRatSpn(unittest.TestCase):
         torch_rat = toTorch(rat)
 
         # create dummy input data (batch size x random variables)
-        dummy_data = np.random.randn(3, 9)
+        dummy_data = np.random.randn(3, 1024)
 
         # compute outputs for node rat spn
         nodes_output = log_likelihood(rat, dummy_data)
@@ -78,12 +78,12 @@ class TestTorchRatSpn(unittest.TestCase):
         torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data, dtype=torch.float32))
 
         # compare outputs
-        # self.assertTrue( np.allclose(nodes_output, torch_output.detach().cpu().numpy(), rtol=1e-3, equal_nan=True) )
+        self.assertTrue( np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True) )
 
     def test_torch_rat_spn_to_nodes_to_torch(self):
 
         # create region graph
-        rg = random_region_graph(X=set(range(9)), depth=3, replicas=2, num_splits=3)
+        rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
 
         # create torch rat spn from region graph
         torch_rat = TorchRatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3)
@@ -108,16 +108,16 @@ class TestTorchRatSpn(unittest.TestCase):
             self.assertTrue(torch.allclose(p1.data, p2.data))
 
         # create dummy input data (batch size x random variables)
-        dummy_data = np.random.randn(3, 9)
+        dummy_data = np.random.randn(3, 1024)
 
         # compute outputs for node rat spn
-        torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data, dtype=torch.float32))
+        torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data))
 
         # compute outputs for torch rat spn
-        torch_output_2 = log_likelihood(torch_rat_2, torch.tensor(dummy_data, dtype=torch.float32))
+        torch_output_2 = log_likelihood(torch_rat_2, torch.tensor(dummy_data))
 
         # compare outputs
-        self.assertTrue(torch.allclose(torch_output, torch_output_2))
+        self.assertTrue( torch.allclose(torch_output, torch_output_2) )
 
 
 if __name__ == "__main__":
