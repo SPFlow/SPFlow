@@ -1,5 +1,11 @@
 from spn.python.structure.nodes import ProductNode, SumNode, LeafNode
-from spn.torch.structure.nodes import TorchProductNode, TorchSumNode, TorchLeafNode, toTorch, toNodes
+from spn.torch.structure.nodes import (
+    TorchProductNode,
+    TorchSumNode,
+    TorchLeafNode,
+    toTorch,
+    toNodes,
+)
 from spn.python.structure.nodes.validity_checks import _isvalid_spn
 import unittest
 import numpy as np
