@@ -1,4 +1,4 @@
-from spn.base.rat.region_graph import random_region_graph, _get_regions_by_depth
+from spn.python.structure.rat.region_graph import random_region_graph, _get_regions_by_depth
 import unittest
 
 

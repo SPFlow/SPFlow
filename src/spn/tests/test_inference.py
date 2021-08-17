@@ -1,11 +1,8 @@
 import unittest
-from spn.base.nodes.inference import likelihood, log_likelihood
-from spn.base.nodes.leaves.parametric.parametric import Gaussian
+from spn.python.inference.nodes import likelihood, log_likelihood
+from spn.python.structure.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
-from spn.base.nodes.node import (
-    SumNode,
-    ProductNode,
-)
+from spn.python.structure.nodes import SumNode, ProductNode
 
 # TODO:
 # test all other parametric types

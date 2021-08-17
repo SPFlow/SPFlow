@@ -1,11 +1,8 @@
 import unittest
-from spn.base.nodes.structural_marginalization import marginalize
-from spn.base.nodes.leaves.parametric.parametric import Gaussian
+from spn.python.structure.nodes.structural_marginalization import marginalize
+from spn.python.structure.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
-from spn.base.nodes.node import (
-    SumNode,
-    ProductNode,
-)
+from spn.python.structure.nodes.node import SumNode, ProductNode
 
 
 class TestStructuralMarginalization(unittest.TestCase):
