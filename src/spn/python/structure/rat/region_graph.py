@@ -24,11 +24,10 @@ class RegionGraph:
             A set of all Partitions in the RegionGraph.
     """
 
-    def __init__(self, rnd_seed: int = 12345) -> None:
+    def __init__(self) -> None:
         self.root_region: Region
         self.regions: Set[Region] = set()
         self.partitions: Set[Partition] = set()
-        random.seed(rnd_seed)
 
     def __str__(self) -> str:
         return f"RegionGraph over RV {self.root_region.random_variables}"
