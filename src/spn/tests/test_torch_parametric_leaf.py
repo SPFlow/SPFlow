@@ -1,7 +1,7 @@
-from spn.base.nodes.leaves.parametric.parametric import Gaussian
-from spn.base.nodes.inference import log_likelihood
-from spn.backend.pytorch.nodes.leaves.parametric.parametric import TorchGaussian
-from spn.backend.pytorch.inference import log_likelihood
+from spn.python.structure.nodes.leaves.parametric.parametric import Gaussian
+from spn.python.inference.nodes.node import log_likelihood
+from spn.torch.structure.nodes.leaves.parametric import TorchGaussian
+from spn.torch.inference import log_likelihood
 
 import torch
 import numpy as np

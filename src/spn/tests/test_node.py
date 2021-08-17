@@ -1,14 +1,7 @@
 import unittest
 import numpy as np
-from spn.base.nodes.node import (
-    Node,
-    SumNode,
-    LeafNode,
-    ProductNode,
-    _get_node_counts,
-)
-
-from spn.base.nodes.validity_checks import _isvalid_spn
+from spn.python.structure.nodes.node import Node, SumNode, LeafNode, ProductNode, _get_node_counts
+from spn.python.structure.nodes.validity_checks import _isvalid_spn
 
 
 class TestNode(unittest.TestCase):

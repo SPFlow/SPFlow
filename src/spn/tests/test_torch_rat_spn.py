@@ -1,14 +1,14 @@
 import unittest
 
 import random
-from spn.base.nodes.node import get_nodes_by_type, SumNode, LeafNode
-from spn.base.rat.inference import log_likelihood, likelihood
-from spn.backend.pytorch.inference import log_likelihood, likelihood
+from spn.python.structure.nodes.node import get_nodes_by_type, SumNode, LeafNode
+from spn.python.inference.rat import log_likelihood, likelihood
 import torch
 import numpy as np
-from spn.base.rat.region_graph import random_region_graph, _print_region_graph
-from spn.base.rat.rat_spn import RatSpn, construct_spn
-from spn.backend.pytorch.rat.rat_spn import TorchRatSpn, toNodes, toTorch, _RegionLayer, _LeafLayer
+from spn.python.structure.rat.region_graph import random_region_graph, _print_region_graph
+from spn.python.structure.rat import RatSpn, construct_spn
+from spn.torch.structure.rat import TorchRatSpn, toNodes, toTorch, _RegionLayer, _LeafLayer
+from spn.torch.inference import log_likelihood, likelihood
 
 
 class TestTorchRatSpn(unittest.TestCase):
