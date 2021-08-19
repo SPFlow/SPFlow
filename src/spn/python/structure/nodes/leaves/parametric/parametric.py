@@ -6,7 +6,7 @@ Created on June 11, 2021
 
 from abc import ABC, abstractmethod
 from multipledispatch import dispatch  # type: ignore
-from typing import Dict, List, Tuple
+from typing import Union, Dict, List, Tuple
 from spn.python.structure.nodes import LeafNode, Node
 from .exceptions import InvalidParametersError  # type: ignore
 from .statistical_types import ParametricType  # type: ignore
@@ -534,7 +534,7 @@ def get_scipy_object_parameters(node: LogNormal) -> Dict[str, float]:
 
 
 @dispatch(MultivariateGaussian)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: MultivariateGaussian) -> Dict[str, float]:
+def get_scipy_object_parameters(node: MultivariateGaussian) -> Dict[str, Union[List[float], List[List[float]]]]:
     if node.mean_vector is None:
         raise InvalidParametersError(f"Parameter 'mean_vector' of {node} must not be None")
     if node.covariance_matrix is None:
@@ -562,7 +562,7 @@ def get_scipy_object_parameters(node: Bernoulli) -> Dict[str, float]:
 
 
 @dispatch(Binomial)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: Binomial) -> Dict[str, float]:
+def get_scipy_object_parameters(node: Binomial) -> Dict[str, Union[int, float]]:
     if node.n is None:
         raise InvalidParametersError(f"Parameter 'n' of {node} must not be None")
     if node.p is None:
@@ -572,7 +572,7 @@ def get_scipy_object_parameters(node: Binomial) -> Dict[str, float]:
 
 
 @dispatch(NegativeBinomial)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: NegativeBinomial) -> Dict[str, float]:
+def get_scipy_object_parameters(node: NegativeBinomial) -> Dict[str, Union[int, float]]:
     if node.n is None:
         raise InvalidParametersError(f"Parameter 'n' of {node} must not be None")
     if node.p is None:
@@ -598,7 +598,7 @@ def get_scipy_object_parameters(node: Geometric) -> Dict[str, float]:
 
 
 @dispatch(Hypergeometric)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: Hypergeometric) -> Dict[str, float]:
+def get_scipy_object_parameters(node: Hypergeometric) -> Dict[str, int]:
     if node.N is None:
         raise InvalidParametersError(f"Parameter 'N' of {node} must not be None")
     if node.M is None:
