@@ -58,6 +58,9 @@ class TorchGaussian(TorchParametricLeaf):
         self.register_parameter("mean", Parameter(torch.tensor(float(mean))))
         self.register_parameter("stdev", Parameter(torch.tensor(float(stdev))))
 
+        # create Torch distribution with specified parameters
+        self.dist = D.Normal(loc=self.mean, scale=self.stdev)
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
         batch_size: int = data.shape[0]
@@ -75,12 +78,9 @@ class TorchGaussian(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create torch distribution
-        dist = D.Normal(loc=self.mean, scale=self.stdev)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
@@ -119,6 +119,9 @@ class TorchLogNormal(TorchParametricLeaf):
         self.register_parameter("mean", Parameter(torch.tensor(mean, dtype=torch.float32)))
         self.register_parameter("stdev", Parameter(torch.tensor(stdev, dtype=torch.float32)))
 
+        # create Torch distribution with specified parameters
+        self.dist = D.LogNormal(loc=self.mean, scale=self.stdev)
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
         batch_size: int = data.shape[0]
@@ -136,12 +139,9 @@ class TorchLogNormal(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create torch distribution
-        dist = D.LogNormal(loc=self.mean, scale=self.stdev)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
@@ -208,6 +208,11 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         self.register_parameter("mean_vector", Parameter(mean_vector))
         self.register_parameter("covariance_matrix", Parameter(covariance_matrix))
 
+        # create Torch distribution with specified parameters
+        self.dist = D.MultivariateNormal(
+            loc=self.mean_vector, covariance_matrix=self.covariance_matrix
+        )
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
         batch_size: int = data.shape[0]
@@ -225,12 +230,9 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create torch distribution
-        dist = D.MultivariateNormal(loc=self.mean_vector, covariance_matrix=self.covariance_matrix)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
@@ -296,6 +298,9 @@ class TorchUniform(TorchParametricLeaf):
         self.register_buffer("start", torch.tensor(start, dtype=torch.float32))
         self.register_buffer("end", torch.tensor(end, dtype=torch.float32))
 
+        # create Torch distribution with specified parameters
+        self.dist = D.Uniform(low=self.start, high=self.end)
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
         batch_size: int = data.shape[0]
@@ -313,12 +318,9 @@ class TorchUniform(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create torch distribution
-        dist = D.Uniform(low=self.start, high=self.end)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
@@ -359,6 +361,9 @@ class TorchBernoulli(TorchParametricLeaf):
         # register success probability p as torch parameter
         self.register_parameter("p", Parameter(torch.tensor(p, dtype=torch.float32)))
 
+        # create Torch distribution with specified parameters
+        self.dist = D.Bernoulli(probs=self.p)
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
         batch_size: int = data.shape[0]
@@ -376,12 +381,9 @@ class TorchBernoulli(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create torch distribution
-        dist = D.Bernoulli(probs=self.p)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
@@ -427,6 +429,9 @@ class TorchBinomial(TorchParametricLeaf):
         # register success probability p as torch parameter
         self.register_parameter("p", Parameter(torch.tensor(p, dtype=torch.float32)))
 
+        # create Torch distribution with specified parameters
+        self.dist = D.Binomial(total_count=self.n, probs=self.p)
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
         batch_size: int = data.shape[0]
@@ -444,12 +449,9 @@ class TorchBinomial(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create torch distribution
-        dist = D.Binomial(total_count=self.n, probs=self.p)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
@@ -496,6 +498,9 @@ class TorchNegativeBinomial(TorchParametricLeaf):
         # register success probability p as torch parameter
         self.register_parameter("p", Parameter(torch.tensor(p, dtype=torch.float32)))
 
+        # create Torch distribution with specified parameters
+        self.dist = D.NegativeBinomial(total_count=self.n, probs=self.p)
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
         batch_size: int = data.shape[0]
@@ -513,12 +518,9 @@ class TorchNegativeBinomial(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create torch distribution
-        dist = D.NegativeBinomial(total_count=self.n, probs=self.p)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
@@ -558,6 +560,9 @@ class TorchPoisson(TorchParametricLeaf):
         # register lambda l as torch parameter
         self.register_parameter("l", Parameter(torch.tensor(l, dtype=torch.float32)))
 
+        # create Torch distribution with specified parameters
+        self.dist = D.Poisson(rate=self.l)
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
         batch_size: int = data.shape[0]
@@ -575,12 +580,9 @@ class TorchPoisson(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create torch distribution
-        dist = D.Poisson(rate=self.l)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
@@ -619,6 +621,9 @@ class TorchGeometric(TorchParametricLeaf):
         # register success probability p as torch parameter
         self.register_parameter("p", Parameter(torch.tensor(p, dtype=torch.float32)))
 
+        # create Torch distribution with specified parameters
+        self.dist = D.Geometric(probs=self.p)
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
         batch_size: int = data.shape[0]
@@ -636,12 +641,9 @@ class TorchGeometric(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create torch distribution
-        dist = D.Geometric(probs=self.p)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
@@ -737,6 +739,9 @@ class TorchExponential(TorchParametricLeaf):
         # TODO
         self.register_parameter("l", Parameter(torch.tensor(l, dtype=torch.float32)))
 
+        # create Torch distribution with specified parameters
+        self.dist = D.Exponential(rate=self.l)
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
         batch_size: int = data.shape[0]
@@ -754,12 +759,9 @@ class TorchExponential(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create torch distribution
-        dist = D.Exponential(rate=self.l)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
@@ -802,6 +804,9 @@ class TorchGamma(TorchParametricLeaf):
         self.register_parameter("alpha", Parameter(torch.tensor(alpha, dtype=torch.float32)))
         self.register_parameter("beta", Parameter(torch.tensor(beta, dtype=torch.float32)))
 
+        # create Torch distribution with specified parameters
+        self.dist = D.Gamma(concentration=self.alpha, rate=self.beta)
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
         batch_size: int = data.shape[0]
@@ -819,12 +824,9 @@ class TorchGamma(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create torch distribution
-        dist = D.Gamma(concentration=self.alpha, rate=self.beta)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
