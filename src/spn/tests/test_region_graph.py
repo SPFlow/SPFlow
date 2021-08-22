@@ -11,7 +11,10 @@ class TestRegionGraph(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             random_region_graph(
-                X=random_variables, depth=depth, replicas=replicas, num_splits=num_splits
+                X=random_variables,
+                depth=depth,
+                replicas=replicas,
+                num_splits=num_splits,
             )
 
     def test_region_graph_not_enough_randomvars(self):
@@ -37,7 +40,10 @@ class TestRegionGraph(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             random_region_graph(
-                X=random_variables, depth=depth, replicas=replicas, num_splits=num_splits
+                X=random_variables,
+                depth=depth,
+                replicas=replicas,
+                num_splits=num_splits,
             )
 
     def test_region_graph_no_replicas(self):
@@ -48,7 +54,10 @@ class TestRegionGraph(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             random_region_graph(
-                X=random_variables, depth=depth, replicas=replicas, num_splits=num_splits
+                X=random_variables,
+                depth=depth,
+                replicas=replicas,
+                num_splits=num_splits,
             )
 
     def test_region_graph_invalid_num_split(self):
@@ -59,7 +68,10 @@ class TestRegionGraph(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             random_region_graph(
-                X=random_variables, depth=depth, replicas=replicas, num_splits=num_splits
+                X=random_variables,
+                depth=depth,
+                replicas=replicas,
+                num_splits=num_splits,
             )
 
     def test_region_graph_structure_1(self):

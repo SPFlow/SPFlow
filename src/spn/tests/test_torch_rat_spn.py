@@ -45,7 +45,9 @@ class TestTorchRatSpn(unittest.TestCase):
         torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data))
 
         # compare outputs
-        self.assertTrue( np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True) )
+        self.assertTrue(
+            np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True)
+        )
 
     def test_nodes_rat_spn_to_torch(self):
 
@@ -78,7 +80,9 @@ class TestTorchRatSpn(unittest.TestCase):
         torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data, dtype=torch.float32))
 
         # compare outputs
-        self.assertTrue( np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True) )
+        self.assertTrue(
+            np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True)
+        )
 
     def test_torch_rat_spn_to_nodes_to_torch(self):
 
@@ -117,7 +121,7 @@ class TestTorchRatSpn(unittest.TestCase):
         torch_output_2 = log_likelihood(torch_rat_2, torch.tensor(dummy_data))
 
         # compare outputs
-        self.assertTrue( torch.allclose(torch_output, torch_output_2) )
+        self.assertTrue(torch.allclose(torch_output, torch_output_2))
 
 
 if __name__ == "__main__":
