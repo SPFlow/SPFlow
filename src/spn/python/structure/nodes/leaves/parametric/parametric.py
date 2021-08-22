@@ -529,12 +529,14 @@ def get_scipy_object_parameters(node: LogNormal) -> Dict[str, float]:
         raise InvalidParametersError(f"Parameter 'stdev' of {node} must not be None")
     from numpy import exp
 
-    parameters = {"loc": exp(node.mean), "scale": node.stdev}
+    parameters = {"loc": 0.0, "scale": exp(node.mean), "s": node.stdev}
     return parameters
 
 
 @dispatch(MultivariateGaussian)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: MultivariateGaussian) -> Dict[str, Union[List[float], List[List[float]]]]:
+def get_scipy_object_parameters(
+    node: MultivariateGaussian,
+) -> Dict[str, Union[List[float], List[List[float]]]]:
     if node.mean_vector is None:
         raise InvalidParametersError(f"Parameter 'mean_vector' of {node} must not be None")
     if node.covariance_matrix is None:
@@ -549,7 +551,7 @@ def get_scipy_object_parameters(node: Uniform) -> Dict[str, float]:
         raise InvalidParametersError(f"Parameter 'start' of {node} must not be None")
     if node.end is None:
         raise InvalidParametersError(f"Parameter 'end' of {node} must not be None")
-    parameters = {"start": node.start, "end": node.end}
+    parameters = {"loc": node.start, "scale": node.end - node.start}
     return parameters
 
 
@@ -611,7 +613,7 @@ def get_scipy_object_parameters(node: Hypergeometric) -> Dict[str, int]:
 
 @dispatch(Exponential)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Exponential) -> Dict[str, float]:
-    if node.l is not None:
+    if node.l is None:
         raise InvalidParametersError(f"Parameter 'l' of {node} must not be None")
     parameters = {"scale": 1.0 / node.l}
     return parameters
