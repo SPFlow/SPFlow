@@ -13,7 +13,6 @@ from spn.python.structure.nodes.leaves.parametric.parametric import (
     Gamma,
 )
 from spn.python.inference.nodes.node import likelihood, log_likelihood
-import torch
 import numpy as np
 
 import random
@@ -123,6 +122,12 @@ class TestParametricLeaf(unittest.TestCase):
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
+
+    def test_multivariate_gaussian(self):
+        pass
+
+    def test_uniform(self):
+        pass
 
     def test_bernoulli(self):
 
