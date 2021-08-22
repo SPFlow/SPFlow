@@ -197,8 +197,8 @@ class Bernoulli(ParametricLeaf):
     def set_params(self, p: float) -> None:
         self.p = p
 
-    def get_params(self) -> float:
-        return self.p
+    def get_params(self) -> Tuple[float]:
+        return (self.p,)
 
 
 class Binomial(ParametricLeaf):
@@ -279,8 +279,8 @@ class Poisson(ParametricLeaf):
     def set_params(self, l: float) -> None:
         self.l = l
 
-    def get_params(self) -> float:
-        return self.l
+    def get_params(self) -> Tuple[float]:
+        return (self.l,)
 
 
 class Geometric(ParametricLeaf):
@@ -303,8 +303,8 @@ class Geometric(ParametricLeaf):
     def set_params(self, p: float) -> None:
         self.p = p
 
-    def get_params(self) -> float:
-        return self.p
+    def get_params(self) -> Tuple[float]:
+        return (self.p,)
 
 
 class Hypergeometric(ParametricLeaf):
@@ -361,8 +361,8 @@ class Exponential(ParametricLeaf):
     def set_params(self, l: float) -> None:
         self.l = l
 
-    def get_params(self) -> float:
-        return self.l
+    def get_params(self) -> Tuple[float]:
+        return (self.l,)
 
 
 class Gamma(ParametricLeaf):
@@ -529,7 +529,7 @@ def get_scipy_object_parameters(node: LogNormal) -> Dict[str, float]:
         raise InvalidParametersError(f"Parameter 'stdev' of {node} must not be None")
     from numpy import exp
 
-    parameters = {"loc": exp(node.mean), "scale": node.stdev}
+    parameters = {"loc": 0.0, "scale": exp(node.mean), "s": node.stdev}
     return parameters
 
 
@@ -551,7 +551,7 @@ def get_scipy_object_parameters(node: Uniform) -> Dict[str, float]:
         raise InvalidParametersError(f"Parameter 'start' of {node} must not be None")
     if node.end is None:
         raise InvalidParametersError(f"Parameter 'end' of {node} must not be None")
-    parameters = {"start": node.start, "end": node.end}
+    parameters = {"loc": node.start, "scale": node.end - node.start}
     return parameters
 
 
@@ -613,7 +613,7 @@ def get_scipy_object_parameters(node: Hypergeometric) -> Dict[str, int]:
 
 @dispatch(Exponential)  # type: ignore[no-redef]
 def get_scipy_object_parameters(node: Exponential) -> Dict[str, float]:
-    if node.l is not None:
+    if node.l is None:
         raise InvalidParametersError(f"Parameter 'l' of {node} must not be None")
     parameters = {"scale": 1.0 / node.l}
     return parameters
