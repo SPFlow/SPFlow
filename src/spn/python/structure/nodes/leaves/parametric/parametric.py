@@ -197,8 +197,8 @@ class Bernoulli(ParametricLeaf):
     def set_params(self, p: float) -> None:
         self.p = p
 
-    def get_params(self) -> float:
-        return self.p
+    def get_params(self) -> Tuple[float]:
+        return (self.p,)
 
 
 class Binomial(ParametricLeaf):
@@ -279,8 +279,8 @@ class Poisson(ParametricLeaf):
     def set_params(self, l: float) -> None:
         self.l = l
 
-    def get_params(self) -> float:
-        return self.l
+    def get_params(self) -> Tuple[float]:
+        return (self.l,)
 
 
 class Geometric(ParametricLeaf):
@@ -303,8 +303,8 @@ class Geometric(ParametricLeaf):
     def set_params(self, p: float) -> None:
         self.p = p
 
-    def get_params(self) -> float:
-        return self.p
+    def get_params(self) -> Tuple[float]:
+        return (self.p,)
 
 
 class Hypergeometric(ParametricLeaf):
@@ -361,8 +361,8 @@ class Exponential(ParametricLeaf):
     def set_params(self, l: float) -> None:
         self.l = l
 
-    def get_params(self) -> float:
-        return self.l
+    def get_params(self) -> Tuple[float]:
+        return (self.l,)
 
 
 class Gamma(ParametricLeaf):

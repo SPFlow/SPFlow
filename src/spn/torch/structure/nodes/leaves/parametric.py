@@ -291,9 +291,6 @@ class TorchUniform(TorchParametricLeaf):
     def __init__(self, scope: List[int], start: float, end: float) -> None:
         super(TorchUniform, self).__init__(scope)
 
-        self.start = start
-        self.end = end
-
         # register interval bounds as torch buffers (should not be changed)
         self.register_buffer("start", torch.tensor(start, dtype=torch.float32))
         self.register_buffer("end", torch.tensor(end, dtype=torch.float32))
@@ -339,7 +336,7 @@ def toTorch(node: P.Uniform) -> TorchUniform:
 
 @dispatch(TorchUniform)  # type: ignore[no-redef]
 def toNodes(torch_node: TorchUniform) -> P.Uniform:
-    return P.Uniform(torch_node.scope, torch_node.start, torch_node.end)
+    return P.Uniform(torch_node.scope, torch_node.start.cpu().numpy(), torch_node.end.cpu().numpy())  # type: ignore
 
 
 class TorchBernoulli(TorchParametricLeaf):
@@ -390,18 +387,18 @@ class TorchBernoulli(TorchParametricLeaf):
     def set_params(self, p: float) -> None:
         self.p.data = torch.tensor(p, dtype=torch.float32)
 
-    def get_params(self) -> float:
-        return self.p.data.cpu().numpy()  # type: ignore
+    def get_params(self) -> Tuple[float]:
+        return (self.p.data.cpu().numpy(),)  # type: ignore
 
 
 @dispatch(P.Bernoulli)  # type: ignore[no-redef]
 def toTorch(node: P.Bernoulli) -> TorchBernoulli:
-    return TorchBernoulli(node.scope, node.get_params())
+    return TorchBernoulli(node.scope, *node.get_params())
 
 
 @dispatch(TorchBernoulli)  # type: ignore[no-redef]
 def toNodes(torch_node: TorchBernoulli) -> P.Bernoulli:
-    return P.Bernoulli(torch_node.scope, torch_node.get_params())
+    return P.Bernoulli(torch_node.scope, *torch_node.get_params())
 
 
 class TorchBinomial(TorchParametricLeaf):
@@ -420,8 +417,6 @@ class TorchBinomial(TorchParametricLeaf):
 
     def __init__(self, scope: List[int], n: int, p: float) -> None:
         super(TorchBinomial, self).__init__(scope)
-
-        self.n = n
 
         # register number of trials n as torch buffer (should not be changed)
         self.register_buffer("n", torch.tensor(n))
@@ -490,16 +485,11 @@ class TorchNegativeBinomial(TorchParametricLeaf):
     def __init__(self, scope: List[int], n: int, p: float) -> None:
         super(TorchNegativeBinomial, self).__init__(scope)
 
-        self.n = n
-
         # register number of trials n as torch buffer (should not be changed)
         self.register_buffer("n", torch.tensor(n))
 
         # register success probability p as torch parameter
         self.register_parameter("p", Parameter(torch.tensor(p, dtype=torch.float32)))
-
-        # create Torch distribution with specified parameters
-        self.dist = D.NegativeBinomial(total_count=self.n, probs=self.p)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -518,9 +508,13 @@ class TorchNegativeBinomial(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
+        # create Torch distribution with specified parameters
+        # note: the distribution is not stored as an attribute due to mismatching parameters after gradient updates (gradients don't flow back to p when initializing with 1.0-p)
+        dist = D.NegativeBinomial(total_count=self.n, probs=torch.ones(1) - self.p)
+
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
 
         return log_prob
 
@@ -589,18 +583,18 @@ class TorchPoisson(TorchParametricLeaf):
     def set_params(self, l: float) -> None:
         self.l.data = torch.tensor(l)
 
-    def get_params(self) -> float:
-        return self.l.data.cpu().numpy()  # type: ignore
+    def get_params(self) -> Tuple[float]:
+        return (self.l.data.cpu().numpy(),)  # type: ignore
 
 
 @dispatch(P.Poisson)  # type: ignore[no-redef]
 def toTorch(node: P.Poisson) -> TorchPoisson:
-    return TorchPoisson(node.scope, node.get_params())
+    return TorchPoisson(node.scope, *node.get_params())
 
 
 @dispatch(TorchPoisson)  # type: ignore[no-redef]
 def toNodes(torch_node: TorchPoisson) -> P.Poisson:
-    return P.Poisson(torch_node.scope, torch_node.get_params())
+    return P.Poisson(torch_node.scope, *torch_node.get_params())
 
 
 class TorchGeometric(TorchParametricLeaf):
@@ -643,25 +637,25 @@ class TorchGeometric(TorchParametricLeaf):
 
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask] - 1)
 
         return log_prob
 
     def set_params(self, p: float) -> None:
         self.p.data = torch.tensor(p)
 
-    def get_params(self) -> float:
-        return self.p.data.cpu().numpy()  # type: ignore
+    def get_params(self) -> Tuple[float]:
+        return (self.p.data.cpu().numpy(),)  # type: ignore
 
 
 @dispatch(P.Geometric)  # type: ignore[no-redef]
 def toTorch(node: P.Geometric) -> TorchGeometric:
-    return TorchGeometric(node.scope, node.get_params())
+    return TorchGeometric(node.scope, *node.get_params())
 
 
 @dispatch(TorchGeometric)  # type: ignore[no-redef]
 def toNodes(torch_node: TorchGeometric) -> P.Geometric:
-    return P.Geometric(torch_node.scope, torch_node.get_params())
+    return P.Geometric(torch_node.scope, *torch_node.get_params())
 
 
 class TorchHypergeometric(TorchParametricLeaf):
@@ -768,18 +762,18 @@ class TorchExponential(TorchParametricLeaf):
     def set_params(self, l: float) -> None:
         self.l.data = torch.tensor(l)
 
-    def get_params(self) -> float:
-        return self.l.data.cpu().numpy()  # type: ignore
+    def get_params(self) -> Tuple[float]:
+        return (self.l.data.cpu().numpy(),)  # type: ignore
 
 
 @dispatch(P.Exponential)  # type: ignore[no-redef]
 def toTorch(node: P.Exponential) -> TorchExponential:
-    return TorchExponential(node.scope, node.get_params())
+    return TorchExponential(node.scope, *node.get_params())
 
 
 @dispatch(TorchExponential)  # type: ignore[no-redef]
 def toNodes(torch_node: TorchExponential) -> P.Exponential:
-    return P.Exponential(torch_node.scope, torch_node.get_params())
+    return P.Exponential(torch_node.scope, *torch_node.get_params())
 
 
 class TorchGamma(TorchParametricLeaf):
