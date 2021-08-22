@@ -40,8 +40,13 @@ class TestInference(unittest.TestCase):
                 ),
                 ProductNode(
                     children=[
-                        Gaussian(scope=[0], mean=0, stdev=1.0),
-                        Gaussian(scope=[1], mean=0, stdev=1.0),
+                        ProductNode(
+                            children=[
+                                Gaussian(scope=[0], mean=0, stdev=1.0),
+                                Gaussian(scope=[1], mean=0, stdev=1.0),
+                            ],
+                            scope=[0, 1],
+                        ),
                         Gaussian(scope=[2], mean=0, stdev=1.0),
                     ],
                     scope=[0, 1, 2],
@@ -85,8 +90,13 @@ class TestInference(unittest.TestCase):
                 ),
                 ProductNode(
                     children=[
-                        Gaussian(scope=[0], mean=0, stdev=1.0),
-                        Gaussian(scope=[1], mean=0, stdev=1.0),
+                        ProductNode(
+                            children=[
+                                Gaussian(scope=[0], mean=0, stdev=1.0),
+                                Gaussian(scope=[1], mean=0, stdev=1.0),
+                            ],
+                            scope=[0, 1],
+                        ),
                         Gaussian(scope=[2], mean=0, stdev=1.0),
                     ],
                     scope=[0, 1, 2],
@@ -130,8 +140,13 @@ class TestInference(unittest.TestCase):
                 ),
                 ProductNode(
                     children=[
-                        Gaussian(scope=[0], mean=0, stdev=1.0),
-                        Gaussian(scope=[1], mean=0, stdev=1.0),
+                        ProductNode(
+                            children=[
+                                Gaussian(scope=[0], mean=0, stdev=1.0),
+                                Gaussian(scope=[1], mean=0, stdev=1.0),
+                            ],
+                            scope=[0, 1],
+                        ),
                         Gaussian(scope=[2], mean=0, stdev=1.0),
                     ],
                     scope=[0, 1, 2],
@@ -175,8 +190,13 @@ class TestInference(unittest.TestCase):
                 ),
                 ProductNode(
                     children=[
-                        Gaussian(scope=[0], mean=0, stdev=1.0),
-                        Gaussian(scope=[1], mean=0, stdev=1.0),
+                        ProductNode(
+                            children=[
+                                Gaussian(scope=[0], mean=0, stdev=1.0),
+                                Gaussian(scope=[1], mean=0, stdev=1.0),
+                            ],
+                            scope=[0, 1],
+                        ),
                         Gaussian(scope=[2], mean=0, stdev=1.0),
                     ],
                     scope=[0, 1, 2],
