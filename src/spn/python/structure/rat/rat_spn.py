@@ -7,7 +7,7 @@ import itertools
 import numpy as np
 from typing import Dict, List, Union, cast
 from spn.python.structure.module import Module
-from spn.python.structure.nodes.node import LeafNode, Node, ProductNode, SumNode, _print_node_graph
+from spn.python.structure.nodes.node import Node, ProductNode, SumNode, _print_node_graph
 from spn.python.structure.nodes.leaves.parametric import Gaussian
 from .region_graph import (
     Partition,

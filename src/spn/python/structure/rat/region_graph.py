@@ -95,7 +95,12 @@ class Partition:
         return self.__str__()
 
 
-def random_region_graph(X: Set[int], depth: int, replicas: int, num_splits: int = 2, ) -> RegionGraph:
+def random_region_graph(
+    X: Set[int],
+    depth: int,
+    replicas: int,
+    num_splits: int = 2,
+) -> RegionGraph:
     """Creates a RegionGraph from a set of random variables X.
 
     This algorithm is an implementation of "Algorithm 1" of the original paper.

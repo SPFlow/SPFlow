@@ -4,11 +4,11 @@ from spn.python.structure.rat import RatSpn
 from spn.python.inference.nodes import log_likelihood
 
 
-@dispatch(RatSpn, np.ndarray)
+@dispatch(RatSpn, np.ndarray)  # type: ignore[no-redef]
 def log_likelihood(rat_spn: RatSpn, data: np.ndarray):
     return log_likelihood(rat_spn.root_node, data)
 
 
-@dispatch(RatSpn, np.ndarray)
+@dispatch(RatSpn, np.ndarray)  # type: ignore[no-redef]
 def likelihood(rat_spn: RatSpn, data: np.ndarray):
     np.exp(log_likelihood(rat_spn, data))

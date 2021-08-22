@@ -38,5 +38,9 @@ META_TYPE_MAP = {
         ParametricType.POSITIVE,
     ],
     MetaType.BINARY: [ParametricType.BINARY],
-    MetaType.DISCRETE: [ParametricType.CATEGORICAL, ParametricType.ORDINAL, ParametricType.COUNT],
+    MetaType.DISCRETE: [
+        ParametricType.CATEGORICAL,
+        ParametricType.ORDINAL,
+        ParametricType.COUNT,
+    ],
 }

@@ -60,7 +60,9 @@ def marginalize(node: Node, keep: List[int]) -> Optional[Node]:
 
         if isinstance(node, SumNode):
             sum_node: SumNode = node.__class__(
-                children=children, scope=list(new_node_scope), weights=np.array(node.weights)
+                children=children,
+                scope=list(new_node_scope),
+                weights=np.array(node.weights),
             )
             new_node: Node = sum_node
         else:

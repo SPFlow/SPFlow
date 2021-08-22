@@ -534,7 +534,9 @@ def get_scipy_object_parameters(node: LogNormal) -> Dict[str, float]:
 
 
 @dispatch(MultivariateGaussian)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: MultivariateGaussian) -> Dict[str, Union[List[float], List[List[float]]]]:
+def get_scipy_object_parameters(
+    node: MultivariateGaussian,
+) -> Dict[str, Union[List[float], List[List[float]]]]:
     if node.mean_vector is None:
         raise InvalidParametersError(f"Parameter 'mean_vector' of {node} must not be None")
     if node.covariance_matrix is None:

@@ -7,8 +7,11 @@ Created on July 01, 2021
 import numpy as np
 from typing import Any
 from multipledispatch import dispatch  # type: ignore
-from spn.base.nodes.leaves.parametric.exceptions import InvalidParametersError, NotViableError
-from spn.base.nodes.leaves.parametric.parametric import (
+from spn.python.structure.nodes.leaves.parametric.exceptions import (
+    InvalidParametersError,
+    NotViableError,
+)
+from spn.python.structure.nodes.leaves.parametric.parametric import (
     Gaussian,
     MultivariateGaussian,
     LogNormal,
@@ -23,7 +26,7 @@ from spn.base.nodes.leaves.parametric.parametric import (
     get_scipy_object,
     get_scipy_object_parameters,
 )
-from spn.base.nodes.node import Node
+from spn.python.structure.nodes.node import Node
 from scipy.stats import lognorm, gamma  # type: ignore
 
 

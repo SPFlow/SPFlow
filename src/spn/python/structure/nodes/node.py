@@ -275,3 +275,186 @@ def get_topological_order(node: Node) -> List[Node]:
 
     assert len(L) == len(nodes), "Graph is not DAG, it has at least one cycle"
     return L
+
+
+def eval_spn_bottom_up(
+    node: Node,
+    eval_functions: Dict[Type, Callable],
+    all_results: Optional[Dict[Node, np.ndarray]] = None,
+    **args,
+) -> np.ndarray:
+    """
+    Evaluates the spn bottom up using functions specified for node types.
+
+    Args:
+        node:
+            SPN root node.
+        eval_functions:
+            dictionary that contains k: Class of the node, v: lambda function that receives as parameters (node, args**)
+            for leaf nodes and (node, [children results], args**) for other nodes.
+        all_results: dictionary that contains k: node, v: result of evaluation of the lambda
+                        function for that node. Used to store intermediate results so non-tree graphs can be
+                        computed in O(n) size of the network.
+        args: free parameters that will be fed to the lambda functions.
+
+    Returns: Result of computing and propagating all the values through the network.
+    """
+
+    nodes: List[Node] = get_topological_order(node)
+
+    if all_results is None:
+        all_results = {}
+    else:
+        all_results.clear()
+    node_type_eval_func_dict: Dict[Type, List[Callable]] = {}
+    node_type_is_leaf_dict: Dict[Type, bool] = {}
+    for node_type, func in eval_functions.items():
+        if node_type not in node_type_eval_func_dict:
+            node_type_eval_func_dict[node_type] = []
+        node_type_eval_func_dict[node_type].append(func)
+        node_type_is_leaf_dict[node_type] = issubclass(node_type, LeafNode)
+    leaf_func: Optional[Callable] = eval_functions.get(LeafNode, None)
+
+    tmp_children_list: List[Optional[np.ndarray]] = []
+    len_tmp_children_list: int = 0
+    for n in nodes:
+        try:
+            func = node_type_eval_func_dict[type(n)][-1]
+            n_is_leaf: bool = node_type_is_leaf_dict[type(n)]
+        except:
+            if isinstance(n, LeafNode) and leaf_func is not None:
+                func = leaf_func
+                n_is_leaf = True
+            else:
+                raise AssertionError(
+                    "No lambda function associated with type: %s" % type(n).__name__
+                )
+
+        if n_is_leaf:
+            result: np.ndarray = func(n, **args)
+        else:
+            len_children: int = len(n.children)
+            if len_tmp_children_list < len_children:
+                tmp_children_list.extend([None] * len_children)
+                len_tmp_children_list = len(tmp_children_list)
+            for i in range(len_children):
+                ci: Node = n.children[i]
+                tmp_children_list[i] = all_results[ci]
+            result = func(n, tmp_children_list[0:len_children], **args)
+        all_results[n] = result
+
+    for node_type, func in eval_functions.items():
+        del node_type_eval_func_dict[node_type][-1]
+        if len(node_type_eval_func_dict[node_type]) == 0:
+            del node_type_eval_func_dict[node_type]
+    return all_results[node]
+
+
+def get_topological_order_layers(node: Node) -> List[List[Node]]:
+    """
+    Returns the nodes in their topological ordering starting from the bottom to the top layers.
+
+    Args:
+        node:
+            SPN root node.
+
+    Returns: List containing lists of nodes each representing a layer.
+    """
+    nodes: List[Node] = get_nodes_by_type(node)
+
+    parents: "OrderedDict[Node, List]" = OrderedDict({node: []})
+    in_degree: "OrderedDict[Node, int]" = OrderedDict()
+    for n in nodes:
+        in_degree[n] = in_degree.get(n, 0)
+        if not isinstance(n, LeafNode):
+            for c in n.children:
+                parent_list: Optional[List[Optional[Node]]] = parents.get(c, None)
+                if parent_list is None:
+                    parents[c] = parent_list = []
+                parent_list.append(n)
+                in_degree[n] += 1
+
+    # create list of all nodes with no incoming edge
+    layer: List[Node] = []
+    for u in in_degree:
+        if in_degree[u] == 0:
+            layer.append(u)
+
+    # add first layer
+    L: List[List[Node]] = [layer]
+
+    added_nodes: int = len(layer)
+    while True:
+        layer = []
+
+        for n in L[-1]:
+            for m in parents[n]:  # for each node m with an edge e from n to m do
+                in_degree_m: int = in_degree[m] - 1  # remove edge e from the graph
+                in_degree[m] = in_degree_m
+                if in_degree_m == 0:  # if m has no other incoming edges then
+                    layer.append(m)  # insert m into layer
+
+        if len(layer) == 0:
+            break
+
+        added_nodes += len(layer)
+        L.append(layer)
+
+    assert added_nodes == len(nodes), "Graph is not DAG, it has at least one cycle"
+    return L
+
+
+def eval_spn_top_down(
+    root: Node,
+    eval_functions: Dict[Type, Callable],
+    all_results: Optional[Dict[Node, List]] = None,
+    parent_result: Optional[np.ndarray] = None,
+    **args,
+) -> List:
+    """
+    Evaluates an spn top to down using functions specified for node types.
+
+    Args:
+        root:
+            SPN root node.
+        eval_functions:
+            dictionary that contains k: Class of the node, v: lambda function that receives as
+            parameters (node, args**) for leaf nodes and (node, [children results], args**) for other nodes.
+        all_results: dictionary that contains k: node, v: result of evaluation of the lambda
+                        function for that node. Used to store intermediate results so non-tree graphs can be
+                        computed in O(n) size of the network.
+        parent_result: initial input to the root node.
+        args: free parameters that will be fed to the lambda functions.
+
+    Returns: Result of computing and propagating all the values through the network.
+    """
+
+    if all_results is None:
+        all_results = {}
+    else:
+        all_results.clear()
+
+    all_results[root] = [parent_result]
+    leaf_func: Optional[Callable] = eval_functions.get(LeafNode, None)
+
+    for layer in reversed(get_topological_order_layers(root)):
+        for n in layer:
+            if isinstance(n, LeafNode) and leaf_func is not None:
+                try:
+                    func: Callable = leaf_func
+                except:
+                    raise AssertionError(
+                        "No lambda function associated with type: %s" % type(n).__name__
+                    )
+            else:
+                func = eval_functions[type(n)]
+
+            params: Optional[List] = all_results[n]
+            result: Optional[Dict[Node, np.ndarray]] = func(n, params, **args)
+
+            if result is not None and not isinstance(n, LeafNode):
+                for child, param in result.items():
+                    if child not in all_results:
+                        all_results[child] = []
+                    all_results[child].append(param)
+    return all_results[root]
