@@ -16,8 +16,9 @@ class TestDispatch(unittest.TestCase):
         torch_node = TorchGaussian([0], 0.0, 1.0)
 
         # make sure that log likelihood is not known for either node
-        # self.assertRaises(UnboundLocalError, log_likelihood(leaf_node))
-        # self.assertRaises(UnboundLocalError, log_likelihood(torch_leaf_node))
+        with self.assertRaises(UnboundLocalError):
+            log_likelihood(node, np.random.rand(1, 1))
+            log_likelihood(torch_node, torch.random.rand(1, 1))
 
         from spn.python.inference.nodes.node import log_likelihood
 
@@ -50,6 +51,7 @@ class TestDispatch(unittest.TestCase):
         # verify that signature for dummy node is not yet registered
         self.assertRaises(NotImplementedError, log_likelihood, dummy_node, np.random.rand(1, 1))
 
+        # register new signature for dummy nodes
         @dispatch(DummyNode, np.ndarray)
         def log_likelihood(DummyNode: node, data: np.ndarray):
             pass
