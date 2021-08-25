@@ -291,12 +291,15 @@ class TorchUniform(TorchParametricLeaf):
     def __init__(self, scope: List[int], start: float, end: float) -> None:
         super(TorchUniform, self).__init__(scope)
 
+        # since torch Uniform distribution excludes the upper bound, compute next largest number
+        end_next = np.nextafter(end, np.inf)
+
         # register interval bounds as torch buffers (should not be changed)
         self.register_buffer("start", torch.tensor(start, dtype=torch.float32))
         self.register_buffer("end", torch.tensor(end, dtype=torch.float32))
 
         # create Torch distribution with specified parameters
-        self.dist = D.Uniform(low=self.start, high=self.end)
+        self.dist = D.Uniform(low=self.start, high=end_next)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -309,7 +312,7 @@ class TorchUniform(TorchParametricLeaf):
         log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
-
+ 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
         log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
 
@@ -317,7 +320,11 @@ class TorchUniform(TorchParametricLeaf):
 
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
+        # set probabilities of values outside of distribution support to 0 (-inf in log space)
+        support_mask = ((scope_data >= self.start) & (scope_data <= self.end)).sum(dim=1).bool()
+        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        # compute probabilities for values inside distribution support
+        log_prob[prob_mask & support_mask] = self.dist.log_prob(scope_data[prob_mask & support_mask])
 
         return log_prob
 
@@ -676,10 +683,6 @@ class TorchHypergeometric(TorchParametricLeaf):
     def __init__(self, scope: List[int], N: int, M: int, n: int) -> None:
         super(TorchHypergeometric, self).__init__(scope)
 
-        self.N = N
-        self.M = M
-        self.n = n
-
         # register parameters as torch buffers (should not be changed)
         self.register_buffer("N", torch.tensor(N, dtype=torch.int32))
         self.register_buffer("M", torch.tensor(M, dtype=torch.int32))
@@ -689,18 +692,17 @@ class TorchHypergeometric(TorchParametricLeaf):
         raise NotImplementedError("Distribution is not yet supported.")
 
     def set_params(self, N: int, M: int, n: int) -> None:
-        self.N = N
         self.M = M
+        self.N = N
         self.n = n
-
-        # self.N = torch.tensor(N, dtype=torch.int32)
-        # self.M = torch.tensor(M, dtype=torch.int32)
-        # self.n = torch.tensor(n, dtype=torch.int32)
+        
+        #self.N = torch.tensor(N, dtype=torch.int32)
+        #self.M = torch.tensor(M, dtype=torch.int32)
+        #self.n = torch.tensor(n, dtype=torch.int32)
 
         # TODO buffer and attribute to same tensor
 
     def get_params(self) -> Tuple[int, int, int]:
-        # TODO: buffer
         return self.N.data.cpu().numpy(), self.M.data.cpu().numpy(), self.n.data.cpu().numpy()  # type: ignore
 
 
