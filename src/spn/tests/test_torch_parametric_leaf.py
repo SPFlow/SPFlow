@@ -176,7 +176,55 @@ class TestTorchParametricLeaf(unittest.TestCase):
         pass
 
     def test_uniform(self):
-        pass
+
+        # ----- check inference -----
+    
+        start = random.random()
+        end = start + 1e-7 + random.random()
+
+        node_uniform = Uniform([0], start, end)
+        torch_uniform = TorchUniform([0], start, end)
+        
+        # create test inputs/outputs
+        data = np.random.rand(3, 1) * 2.0
+        
+        log_probs = log_likelihood(node_uniform, data)
+        log_probs_torch = log_likelihood(torch_uniform, torch.tensor(data, dtype=torch.float32))
+
+        # make sure that probabilities match python backend probabilities
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+
+        # ----- check gradient computation -----
+
+        # create dummy targets
+        targets_torch = torch.ones(3, 1)
+        targets_torch.requires_grad = True
+
+        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+        loss.backward()
+
+        self.assertTrue(torch_uniform.start.grad is None)
+        self.assertTrue(torch_uniform.end.grad is None)
+
+        # make sure distribution has no (learnable) parameters
+        self.assertFalse(list(torch_uniform.parameters()))
+
+        # ----- check conversion between python and backend -----
+
+        # check conversion from torch to python
+        self.assertTrue(
+            np.allclose(
+                np.array([*torch_uniform.get_params()]),
+                np.array([*toNodes(torch_uniform).get_params()]),
+            )
+        )
+        # check conversion from python to torch
+        self.assertTrue(
+            np.allclose(
+                np.array([*node_uniform.get_params()]),
+                np.array([*toTorch(node_uniform).get_params()]),
+            )
+        )
 
     def test_bernoulli(self):
 
