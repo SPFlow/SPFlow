@@ -137,6 +137,39 @@ class TestSampling(unittest.TestCase):
             ),
         )
 
+    def test_parameter_sampling(self):
+        spn = SumNode(
+            children=[
+                ProductNode(
+                    children=[
+                        Gaussian(scope=[0], mean=1, stdev=1.0),
+                        Gaussian(scope=[1], mean=2, stdev=2.0),
+                    ],
+                    scope=[0, 1],
+                ),
+                ProductNode(
+                    children=[
+                        Gaussian(scope=[0], mean=3, stdev=3.0),
+                        Gaussian(scope=[1], mean=4, stdev=4.0),
+                    ],
+                    scope=[0, 1],
+                ),
+            ],
+            scope=[0, 1],
+            weights=np.array([0.3, 0.7]),
+        )
+
+        result = np.mean(
+            sample_instances(
+                spn, np.array([np.nan, np.nan] * 1000000).reshape(-1, 2), RandomState(123)
+            ),
+            axis=0,
+        )
+
+        self.assertTrue(
+            np.allclose(result, np.array([0.3 * 1 + 0.7 * 3, 0.3 * 2 + 0.7 * 4]), atol=0.01),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

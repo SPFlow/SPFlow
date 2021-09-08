@@ -312,7 +312,7 @@ class TorchUniform(TorchParametricLeaf):
         log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
 
         # ----- marginalization -----
- 
+
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
         log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
 
@@ -324,7 +324,9 @@ class TorchUniform(TorchParametricLeaf):
         support_mask = ((scope_data >= self.start) & (scope_data <= self.end)).sum(dim=1).bool()
         log_prob[prob_mask & (~support_mask)] = -float("Inf")
         # compute probabilities for values inside distribution support
-        log_prob[prob_mask & support_mask] = self.dist.log_prob(scope_data[prob_mask & support_mask])
+        log_prob[prob_mask & support_mask] = self.dist.log_prob(
+            scope_data[prob_mask & support_mask]
+        )
 
         return log_prob
 
@@ -695,10 +697,10 @@ class TorchHypergeometric(TorchParametricLeaf):
         self.M = M
         self.N = N
         self.n = n
-        
-        #self.N = torch.tensor(N, dtype=torch.int32)
-        #self.M = torch.tensor(M, dtype=torch.int32)
-        #self.n = torch.tensor(n, dtype=torch.int32)
+
+        # self.N = torch.tensor(N, dtype=torch.int32)
+        # self.M = torch.tensor(M, dtype=torch.int32)
+        # self.n = torch.tensor(n, dtype=torch.int32)
 
         # TODO buffer and attribute to same tensor
 

@@ -127,15 +127,25 @@ class TestParametricLeaf(unittest.TestCase):
         pass
 
     def test_uniform(self):
-        
+
         start = random.random()
         end = start + 1e-7 + random.random()
 
         uniform = Uniform([0], start, end)
 
         # create test inputs/outputs
-        data = np.array([[np.nextafter(start, -np.inf)], [start], [(start+end)/2.0], [end], [np.nextafter(end, np.inf)]])
-        targets = np.array([[0.0], [1.0/(end-start)], [1.0/(end-start)], [1.0/(end-start)], [0.0]])
+        data = np.array(
+            [
+                [np.nextafter(start, -np.inf)],
+                [start],
+                [(start + end) / 2.0],
+                [end],
+                [np.nextafter(end, np.inf)],
+            ]
+        )
+        targets = np.array(
+            [[0.0], [1.0 / (end - start)], [1.0 / (end - start)], [1.0 / (end - start)], [0.0]]
+        )
 
         probs = likelihood(uniform, data)
         log_probs = log_likelihood(uniform, data)
