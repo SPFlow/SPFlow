@@ -178,16 +178,16 @@ class TestTorchParametricLeaf(unittest.TestCase):
     def test_uniform(self):
 
         # ----- check inference -----
-    
+
         start = random.random()
         end = start + 1e-7 + random.random()
 
         node_uniform = Uniform([0], start, end)
         torch_uniform = TorchUniform([0], start, end)
-        
+
         # create test inputs/outputs
         data = np.random.rand(3, 1) * 2.0
-        
+
         log_probs = log_likelihood(node_uniform, data)
         log_probs_torch = log_likelihood(torch_uniform, torch.tensor(data, dtype=torch.float32))
 
