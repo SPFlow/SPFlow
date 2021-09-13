@@ -190,19 +190,13 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
     ) -> None:
         super(TorchMultivariateGaussian, self).__init__(scope)
 
-        if isinstance(mean_vector, list):
-            # convert float list to torch tensor
-            mean_vector = torch.tensor(mean_vector, dtype=torch.float32)
-        elif isinstance(mean_vector, np.ndarray):
-            # convert numpy array to torch tensor
-            mean_vector = torch.from_numpy(mean_vector)
+        if isinstance(mean_vector, list) or isinstance(mean_vector, np.ndarray):
+            # convert float list or numpy array to torch tensor
+            mean_vector = torch.Tensor(mean_vector)
 
-        if isinstance(covariance_matrix, list):
-            # convert numpy array to torch tensor
-            covariance_matrix = torch.tensor(covariance_matrix, dtype=torch.float32)
-        elif isinstance(covariance_matrix, np.ndarray):
-            # convert numpy array to torch tensor
-            covariance_matrix = torch.from_numpy(covariance_matrix)
+        if isinstance(covariance_matrix, list) or isinstance(covariance_matrix, np.ndarray):
+            # convert float list or numpy array to torch tensor
+            covariance_matrix = torch.Tensor(covariance_matrix)
 
         # register mean and covariance as torch parameters
         self.register_parameter("mean_vector", Parameter(mean_vector))
@@ -232,7 +226,7 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
 
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask]).unsqueeze(-1)
 
         return log_prob
 
