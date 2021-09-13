@@ -173,7 +173,116 @@ class TestTorchParametricLeaf(unittest.TestCase):
         )
 
     def test_multivariate_gaussian(self):
-        pass
+
+        # ----- check inference -----
+
+        mean_vector = np.arange(3)
+        covariance_matrix = np.array([[2, 2, 1], [2, 3, 2], [1, 2, 3]])
+
+        torch_multivariate_gaussian = TorchMultivariateGaussian(
+            [0, 1, 2], mean_vector, covariance_matrix
+        )
+        node_multivariate_gaussian = MultivariateGaussian(
+            [0, 1, 2], mean_vector.tolist(), covariance_matrix.tolist()
+        )
+
+        # create dummy input data (batch size x random variables)
+        data = np.random.rand(3, 3)
+
+        log_probs = log_likelihood(node_multivariate_gaussian, data)
+        log_probs_torch = log_likelihood(
+            torch_multivariate_gaussian, torch.tensor(data, dtype=torch.float32)
+        )
+
+        # make sure that probabilities match python backend probabilities
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+
+        # ----- check gradient computation -----
+
+        # create dummy targets
+        targets_torch = torch.ones(3, 1)
+
+        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+        loss.backward()
+
+        self.assertTrue(torch_multivariate_gaussian.mean_vector.grad is not None)
+        self.assertTrue(torch_multivariate_gaussian.covariance_matrix.grad is not None)
+
+        mean_vector_orig = torch_multivariate_gaussian.mean_vector.detach().clone()
+        covariance_matrix_orig = torch_multivariate_gaussian.covariance_matrix.detach().clone()
+
+        optimizer = torch.optim.SGD(torch_multivariate_gaussian.parameters(), lr=1)
+        optimizer.step()
+
+        # make sure that parameters are correctly updated
+        self.assertTrue(
+            torch.allclose(
+                mean_vector_orig - torch_multivariate_gaussian.mean_vector.grad,
+                torch_multivariate_gaussian.mean_vector,
+            )
+        )
+        self.assertTrue(
+            torch.allclose(
+                covariance_matrix_orig - torch_multivariate_gaussian.covariance_matrix.grad,
+                torch_multivariate_gaussian.covariance_matrix,
+            )
+        )
+
+        # TODO: ensure that covariance matrix remains valid
+
+        # verify that distribution paramters are also correctly updated (match parameters)
+        self.assertTrue(
+            torch.allclose(
+                torch_multivariate_gaussian.mean_vector, torch_multivariate_gaussian.dist.loc
+            )
+        )
+        self.assertTrue(
+            torch.allclose(
+                torch_multivariate_gaussian.covariance_matrix,
+                torch_multivariate_gaussian.dist.covariance_matrix,
+            )
+        )
+
+        # reset torch distribution after gradient update
+        torch_multivariate_gaussian = TorchMultivariateGaussian(
+            [0, 1, 2], mean_vector, covariance_matrix
+        )
+
+        # ----- check conversion between python and backend -----
+
+        node_params = node_multivariate_gaussian.get_params()
+        torch_params = torch_multivariate_gaussian.get_params()
+
+        # check conversion from torch to python
+        torch_to_node_params = toNodes(torch_multivariate_gaussian).get_params()
+
+        self.assertTrue(
+            np.allclose(
+                np.array([torch_params[0]]),
+                np.array([torch_to_node_params[0]]),
+            )
+        )
+        self.assertTrue(
+            np.allclose(
+                np.array([torch_params[1]]),
+                np.array([torch_to_node_params[1]]),
+            )
+        )
+        # check conversion from python to torch#
+        node_to_torch_params = toTorch(node_multivariate_gaussian).get_params()
+
+        self.assertTrue(
+            np.allclose(
+                np.array([node_params[0]]),
+                np.array([node_to_torch_params[0]]),
+            )
+        )
+        self.assertTrue(
+            np.allclose(
+                np.array([node_params[1]]),
+                np.array([node_to_torch_params[1]]),
+            )
+        )
 
     def test_uniform(self):
 
