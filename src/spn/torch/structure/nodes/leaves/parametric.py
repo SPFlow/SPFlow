@@ -5,6 +5,7 @@ Created on July 4, 2021
 """
 
 from abc import ABC
+from spn.python.structure.nodes.node import get_topological_order
 from typing import List, Union, Tuple
 
 from multipledispatch import dispatch  # type: ignore
@@ -17,6 +18,8 @@ from torch.nn.parameter import Parameter
 from spn.torch.structure.nodes.node import TorchLeafNode
 from spn.python.structure.nodes.leaves.parametric.statistical_types import ParametricType
 import spn.python.structure.nodes.leaves.parametric.parametric as P
+
+from scipy.special import comb  # type: ignore
 
 
 class TorchParametricLeaf(TorchLeafNode, ABC):
@@ -684,19 +687,72 @@ class TorchHypergeometric(TorchParametricLeaf):
         self.register_buffer("M", torch.tensor(M, dtype=torch.int32))
         self.register_buffer("n", torch.tensor(n, dtype=torch.int32))
 
+    def log_prob(self, k: torch.Tensor):
+
+        N_minus_M = self.N - self.M
+        n_minus_k = self.n - k
+
+        # ----- (M over m) * (N-M over n-k) / (N over n) -----
+
+        # log_M_over_k = torch.lgamma(self.M+1) - torch.lgamma(self.M-k+1) - torch.lgamma(k+1)
+        # log_NM_over_nk = torch.lgamma(N_minus_M+1) - torch.lgamma(N_minus_M-n_minus_k+1) - torch.lgamma(n_minus_k+1)
+        # log_N_over_n = torch.lgamma(self.N+1) - torch.lgamma(self.N-self.n+1) - torch.lgamma(self.n+1)
+        # result = log_M_over_k + log_NM_over_nk - log_N_over_n
+
+        # ---- alternatively (more precise according to SciPy) -----
+        # betaln(good+1, 1) + betaln(bad+1,1) + betaln(total-draws+1, draws+1) - betaln(k+1, good-k+1) - betaln(draws-k+1, bad-draws+k+1) - betaln(total+1, 1)
+
+        # TODO: avoid recomputation of terms
+        result = (
+            torch.lgamma(self.M + 1)                # type: ignore
+            + torch.lgamma(torch.tensor(1.0))
+            - torch.lgamma(self.M + 2)              # type: ignore
+            + torch.lgamma(N_minus_M + 1)           # type: ignore
+            + torch.lgamma(torch.tensor(1.0))
+            - torch.lgamma(N_minus_M + 2)           # type: ignore
+            + torch.lgamma(self.N - self.n + 1)     # type: ignore
+            + torch.lgamma(self.n + 1)              # type: ignore
+            - torch.lgamma(self.N + 2)              # type: ignore
+            - torch.lgamma(k + 1)
+            - torch.lgamma(self.M - k + 1)
+            + torch.lgamma(self.M + 2)              # type: ignore
+            - torch.lgamma(n_minus_k + 1) 
+            - torch.lgamma(N_minus_M - self.n + k + 1)
+            + torch.lgamma(N_minus_M + 2)           # type: ignore
+            - torch.lgamma(self.N + 1)              # type: ignore
+            - torch.lgamma(torch.tensor(1.0))
+            + torch.lgamma(self.N + 2)              # type: ignore
+        )
+
+        return result
+
     def forward(self, data: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError("Distribution is not yet supported.")
+
+        batch_size: int = data.shape[0]
+
+        # get information relevant for the scope
+        scope_data = data[:, list(self.scope)]
+
+        # initialize empty tensor (number of output values matches batch_size)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+
+        # ----- marginalization -----
+
+        # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+
+        # ----- log probabilities -----
+
+        # compute probabilities on data samples where we have all values
+        prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
+        log_prob[prob_mask] = self.log_prob(scope_data[prob_mask])
+
+        return log_prob
 
     def set_params(self, N: int, M: int, n: int) -> None:
         self.M = M
         self.N = N
         self.n = n
-
-        # self.N = torch.tensor(N, dtype=torch.int32)
-        # self.M = torch.tensor(M, dtype=torch.int32)
-        # self.n = torch.tensor(n, dtype=torch.int32)
-
-        # TODO buffer and attribute to same tensor
 
     def get_params(self) -> Tuple[int, int, int]:
         return self.N.data.cpu().numpy(), self.M.data.cpu().numpy(), self.n.data.cpu().numpy()  # type: ignore
