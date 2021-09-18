@@ -1,7 +1,7 @@
 """
 Created on June 11, 2021
 
-@authors: Bennet Wittelsbach
+@authors: Bennet Wittelsbach, Philipp Deibert
 """
 
 from abc import ABC, abstractmethod
@@ -60,7 +60,7 @@ class Gaussian(ParametricLeaf):
         mean:
             mu
         stdev:
-            sigma
+            sigma (must be greater than 0)
     """
 
     type = ParametricType.CONTINUOUS
@@ -91,13 +91,16 @@ class LogNormal(ParametricLeaf):
     """(Univariate) Log-Normal distribution
 
     PDF(x) =
-        TODO
+        1/(x*sigma*sqrt(2*pi) * exp(-(ln(x)-mu)^2/(2*sigma^2)), where
+            - x is an observation
+            - mu is the mean
+            - sigma is the standard deviation
 
     Attributes:
         mean:
             mu
         stdev:
-            sigma
+            sigma (must be greater than 0)
     """
 
     type = ParametricType.POSITIVE
@@ -128,7 +131,7 @@ class MultivariateGaussian(ParametricLeaf):
     """Multivariate Normal distribution
 
     PDF(x) =
-        1/sqrt((2*pi)^d * det(cov)) * exp(-1/2 (x-mu)^T * cov * (x-mu)), where
+        1/sqrt((2*pi)^d * det(cov)) * exp(-1/2 (x-mu)^T * cov^(-1) * (x-mu)), where
             - d is the dimension of the distribution
             - x is the d-dim. vector of observations
             - mu is the d-dim. mean_vector
@@ -174,9 +177,9 @@ class Uniform(ParametricLeaf):
 
     Attributes:
         start:
-            Start of interval. Must be less than beta.
+            Start of interval
         end:
-            End of interval
+            End of interval (must be larger the interval start)
     """
 
     type = ParametricType.CONTINUOUS
@@ -210,7 +213,7 @@ class Bernoulli(ParametricLeaf):
 
     Attributes:
         p:
-            Probability of success (between 0.0 and 1.0)
+            Probability of success in the range [0,1]
     """
 
     type = ParametricType.BINARY
@@ -243,7 +246,7 @@ class Binomial(ParametricLeaf):
         n:
             Number of i.i.d. Bernoulli trials (greater of equal to 0)
         p:
-            Probability of success of each trial (between 0.0 and 1.0)
+            Probability of success of each trial in the range [0,1]
     """
 
     type = ParametricType.COUNT
@@ -283,7 +286,7 @@ class NegativeBinomial(ParametricLeaf):
         n:
             Number of i.i.d. trials (greater of equal to 0)
         p:
-            Probability of success of each trial (between 0.0 and 1.0)
+            Probability of success of each trial in the range (0,1]
     """
 
     type = ParametricType.COUNT
@@ -346,7 +349,7 @@ class Geometric(ParametricLeaf):
 
     Attributes:
         p:
-            Probability of success
+            Probability of success in the range (0,1]
     """
 
     type = ParametricType.BINARY
@@ -422,7 +425,7 @@ class Exponential(ParametricLeaf):
 
     Attributes:
         l:
-            TODO
+            Rate parameter of the Exponential distribution (usually denoted as lambda, must be greater than 0)
     """
 
     type = ParametricType.POSITIVE
@@ -448,8 +451,8 @@ class Gamma(ParametricLeaf):
     """(Univariate) Gamma distribution
 
     PDF(x) =
-        1/(G(beta) * alpha^beta) * x^(beta-1) * exp(-x/alpha)   , if x > 0
-        0                                                       , if x <= 0, where
+        1/G(alpha) * beta^alpha * x^(alpha-1) * exp(-x*beta)   , if x > 0
+        0                                                      , if x <= 0, where
             - G(beta) is the Gamma function
 
     Attributes:
