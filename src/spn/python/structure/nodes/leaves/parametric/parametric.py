@@ -607,7 +607,8 @@ def get_scipy_object_parameters(node: Hypergeometric) -> Dict[str, int]:
         raise InvalidParametersError(f"Parameter 'M' of {node} must not be None")
     if node.n is None:
         raise InvalidParametersError(f"Parameter 'n' of {node} must not be None")
-    parameters = {"N": node.N, "M": node.M, "n": node.n}
+    # note: scipy hypergeom has switched semantics for the parameters
+    parameters = {"M": node.N, "n": node.M, "N": node.n}
     return parameters
 
 
