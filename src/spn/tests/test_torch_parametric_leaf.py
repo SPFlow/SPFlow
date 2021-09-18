@@ -763,9 +763,8 @@ class TestTorchParametricLeaf(unittest.TestCase):
         )
 
     def test_gamma(self):
-        pass
-        """
-        #----- check inference -----
+
+        # ----- check inference -----
 
         alpha = random.randint(1, 5)
         beta = random.randint(1, 5)
@@ -782,7 +781,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # make sure that probabilities match python backend probabilities
         self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
-        #----- check gradient computation -----
+        # ----- check gradient computation -----
 
         # create dummy targets
         targets_torch = torch.ones(3, 1)
@@ -790,32 +789,41 @@ class TestTorchParametricLeaf(unittest.TestCase):
         loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
         loss.backward()
 
-        self.assertTrue(torch_gamma.l.grad is not None)
+        self.assertTrue(torch_gamma.alpha.grad is not None)
+        self.assertTrue(torch_gamma.beta.grad is not None)
 
         alpha_orig = torch_gamma.alpha.detach().clone()
+        beta_orig = torch_gamma.beta.detach().clone()
 
         optimizer = torch.optim.SGD(torch_gamma.parameters(), lr=1)
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(l_orig - torch_gamma.l.grad, torch_gamma.l))
-        self.assertTrue(
-            torch.allclose(l_orig - torch_gamma.l.grad, torch_gamma.l)
-        )
+        self.assertTrue(torch.allclose(alpha_orig - torch_gamma.alpha.grad, torch_gamma.alpha))
+        self.assertTrue(torch.allclose(beta_orig - torch_gamma.beta.grad, torch_gamma.beta))
 
         # verify that distribution paramters are also correctly updated (match parameters)
-        self.assertTrue(torch.allclose(torch_exponential.l, torch_exponential.dist.rate))
+        self.assertTrue(torch.allclose(torch_gamma.alpha, torch_gamma.dist.concentration))
+        self.assertTrue(torch.allclose(torch_gamma.beta, torch_gamma.dist.rate))
 
         # reset torch distribution after gradient update
-        torch_geometric = TorchGeometric([0], p)
-    
-        #----- check conversion between python and backend -----
+        torch_gamma = TorchGamma([0], alpha, beta)
+
+        # ----- check conversion between python and backend -----
 
         # check conversion from torch to python
-        self.assertTrue(np.allclose(np.array([*torch_geometric.get_params()]), np.array([*toNodes(torch_geometric).get_params()])))
+        self.assertTrue(
+            np.allclose(
+                np.array([*torch_gamma.get_params()]),
+                np.array([*toNodes(torch_gamma).get_params()]),
+            )
+        )
         # check conversion from python to torch
-        self.assertTrue(np.allclose(np.array([*node_geometric.get_params()]), np.array([*toTorch(node_geometric).get_params()])))
-        """
+        self.assertTrue(
+            np.allclose(
+                np.array([*node_gamma.get_params()]), np.array([*toTorch(node_gamma).get_params()])
+            )
+        )
 
 
 if __name__ == "__main__":
