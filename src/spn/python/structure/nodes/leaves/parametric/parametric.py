@@ -25,7 +25,7 @@ from scipy.stats import (  # type: ignore
     gamma,
 )
 from scipy.stats._distn_infrastructure import rv_continuous, rv_discrete  # type: ignore
-
+import numpy as np
 
 # TODO:
 #   - Categorical
@@ -67,10 +67,19 @@ class Gaussian(ParametricLeaf):
 
     def __init__(self, scope: List[int], mean: float, stdev: float) -> None:
         super().__init__(scope)
-        self.mean = mean
-        self.stdev = stdev
+        self.set_params(mean, stdev)
 
     def set_params(self, mean: float, stdev: float) -> None:
+
+        if not (np.isfinite(mean) and np.isfinite(stdev)):
+            raise ValueError(
+                f"Mean and standard deviation for Gaussian distribution must be finite, but were: {mean}, {stdev}"
+            )
+        if stdev <= 0.0:
+            raise ValueError(
+                f"Standard deviation for Gaussian distribution must be greater than 0.0, but was: {stdev}"
+            )
+
         self.mean = mean
         self.stdev = stdev
 
@@ -95,10 +104,19 @@ class LogNormal(ParametricLeaf):
 
     def __init__(self, scope: List[int], mean: float, stdev: float) -> None:
         super().__init__(scope)
-        self.mean = mean
-        self.stdev = stdev
+        self.set_params(mean, stdev)
 
     def set_params(self, mean: float, stdev: float) -> None:
+
+        if not (np.isfinite(mean) and np.isfinite(stdev)):
+            raise ValueError(
+                f"Mean and standard deviation for LogNormal distribution must be finite, but were: {mean}, {stdev}"
+            )
+        if stdev <= 0.0:
+            raise ValueError(
+                f"Standard deviation for LogNormal distribution must be greater than 0.0, but was: {stdev}"
+            )
+
         self.mean = mean
         self.stdev = stdev
 
@@ -165,10 +183,17 @@ class Uniform(ParametricLeaf):
 
     def __init__(self, scope: List[int], start: float, end: float) -> None:
         super().__init__(scope)
-        self.start = start
-        self.end = end
+        self.set_params(start, end)
 
     def set_params(self, start: float, end: float) -> None:
+
+        if not start < end:
+            raise ValueError(
+                f"Lower bound for Uniform distribution must be less than upper bound, but were: {start}, {end}"
+            )
+        if not (np.isfinite(start) and np.isfinite(end)):
+            raise ValueError(f"Lower and upper bound must be finite, but were: {start}, {end}")
+
         self.start = start
         self.end = end
 
@@ -185,16 +210,22 @@ class Bernoulli(ParametricLeaf):
 
     Attributes:
         p:
-            Probability of success
+            Probability of success (between 0.0 and 1.0)
     """
 
     type = ParametricType.BINARY
 
     def __init__(self, scope: List[int], p: float) -> None:
         super().__init__(scope)
-        self.p = p
+        self.set_params(p)
 
     def set_params(self, p: float) -> None:
+
+        if p < 0.0 or p > 1.0 or not np.isfinite(p):
+            raise ValueError(
+                f"Value of p for Bernoulli distribution must to be between 0.0 and 1.0, but was: {p}"
+            )
+
         self.p = p
 
     def get_params(self) -> Tuple[float]:
@@ -210,19 +241,30 @@ class Binomial(ParametricLeaf):
 
     Attributes:
         n:
-            Number of i.i.d. Bernoulli trials
+            Number of i.i.d. Bernoulli trials (greater of equal to 0)
         p:
-            Probability of success of each trial
+            Probability of success of each trial (between 0.0 and 1.0)
     """
 
     type = ParametricType.COUNT
 
     def __init__(self, scope: List[int], n: int, p: float) -> None:
         super().__init__(scope)
-        self.n = n
-        self.p = p
+
+        self.set_params(n, p)
 
     def set_params(self, n: int, p: float) -> None:
+
+        if p < 0.0 or p > 1.0 or not np.isfinite(p):
+            raise ValueError(
+                f"Value of p for Binomial distribution must to be between 0.0 and 1.0, but was: {p}"
+            )
+
+        if n < 0 or not np.isfinite(n):
+            raise ValueError(
+                f"Value of n for Binomial distribution must to greater of equal to 0, but was: {n}"
+            )
+
         self.n = n
         self.p = p
 
@@ -239,19 +281,28 @@ class NegativeBinomial(ParametricLeaf):
 
     Attributes:
         n:
-            Number of i.i.d. trials
+            Number of i.i.d. trials (greater of equal to 0)
         p:
-            Probability of success of each trial
+            Probability of success of each trial (between 0.0 and 1.0)
     """
 
     type = ParametricType.COUNT
 
     def __init__(self, scope: List[int], n: int, p: float) -> None:
         super().__init__(scope)
-        self.n = n
-        self.p = p
+        self.set_params(n, p)
 
     def set_params(self, n: int, p: float) -> None:
+
+        if p <= 0.0 or p > 1.0 or not np.isfinite(p):
+            raise ValueError(
+                f"Value of p for NegativeBinomial distribution must to be between 0.0 and 1.0, but was: {p}"
+            )
+        if n < 0 or not np.isfinite(n):
+            raise ValueError(
+                f"Value of n for NegativeBinomial distribution must to greater of equal to 0, but was: {n}"
+            )
+
         self.n = n
         self.p = p
 
@@ -274,9 +325,13 @@ class Poisson(ParametricLeaf):
 
     def __init__(self, scope: List[int], l: float) -> None:
         super().__init__(scope)
-        self.l = l
+        self.set_params(l)
 
     def set_params(self, l: float) -> None:
+
+        if not np.isfinite(l):
+            raise ValueError(f"Value of l for Poisson distribution must be finite, but was: {l}")
+
         self.l = l
 
     def get_params(self) -> Tuple[float]:
@@ -298,9 +353,15 @@ class Geometric(ParametricLeaf):
 
     def __init__(self, scope: List[int], p: float) -> None:
         super().__init__(scope)
-        self.p = p
+        self.set_params(p)
 
     def set_params(self, p: float) -> None:
+
+        if p <= 0.0 or p > 1.0 or not np.isfinite(p):
+            raise ValueError(
+                f"Value of p for Geometric distribution must to be greater than 0.0 and less or equal to 1.0, but was: {p}"
+            )
+
         self.p = p
 
     def get_params(self) -> Tuple[float]:
@@ -316,22 +377,34 @@ class Hypergeometric(ParametricLeaf):
 
     Attributes:
         N:
-            Total number of entities (in the population)
+            Total number of entities (in the population)0, grater or equal to 0
         M:
-            Number of entities with property of interest (in the population), less than or equal to N
+            Number of entities with property of interest (in the population), greater or equal to zero and less than or equal to N
         n:
-            Number of observed entities (sample size), less than or equal to N
+            Number of observed entities (sample size), greater or equal to zero and less than or equal to N
     """
 
     type = ParametricType.COUNT
 
     def __init__(self, scope: List[int], N: int, M: int, n: int) -> None:
         super().__init__(scope)
-        self.M = M
-        self.N = N
-        self.n = n
+        self.set_params(N, M, n)
 
     def set_params(self, N: int, M: int, n: int) -> None:
+
+        if N < 0 or not np.isfinite(N):
+            raise ValueError(
+                f"Value of N for Hypergeometric distribution must be greater of equal to 0, but was: {N}"
+            )
+        if M < 0 or M > N or not np.isfinite(M):
+            raise ValueError(
+                f"Value of M for Hypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {M}"
+            )
+        if n < 0 or n > N or not np.isfinite(n):
+            raise ValueError(
+                f"Value of n for Hypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {n}"
+            )
+
         self.N = N
         self.M = M
         self.n = n
@@ -356,9 +429,15 @@ class Exponential(ParametricLeaf):
 
     def __init__(self, scope: List[int], l: float) -> None:
         super().__init__(scope)
-        self.l = l
+        self.set_params(l)
 
     def set_params(self, l: float) -> None:
+
+        if l <= 0.0 or not np.isfinite(l):
+            raise ValueError(
+                f"Value of l for Exponential distribution must be greater than 0, but was: {l}"
+            )
+
         self.l = l
 
     def get_params(self) -> Tuple[float]:
@@ -384,10 +463,19 @@ class Gamma(ParametricLeaf):
 
     def __init__(self, scope: List[int], alpha: float, beta: float) -> None:
         super().__init__(scope)
-        self.alpha = alpha
-        self.beta = beta
+        self.set_params(alpha, beta)
 
     def set_params(self, alpha: float, beta: float) -> None:
+
+        if alpha <= 0.0 or not np.isfinite(alpha):
+            raise ValueError(
+                f"Value of alpha for Gamma distribution must be greater than 0, but was: {alpha}"
+            )
+        if beta <= 0.0 or not np.isfinite(beta):
+            raise ValueError(
+                f"Value of beta for Gamma distribution must be greater than 0, but was: {beta}"
+            )
+
         self.alpha = alpha
         self.beta = beta
 
@@ -527,9 +615,8 @@ def get_scipy_object_parameters(node: LogNormal) -> Dict[str, float]:
         raise InvalidParametersError(f"Parameter 'mean' of {node} must not be None")
     if node.stdev is None:
         raise InvalidParametersError(f"Parameter 'stdev' of {node} must not be None")
-    from numpy import exp
 
-    parameters = {"loc": 0.0, "scale": exp(node.mean), "s": node.stdev}
+    parameters = {"loc": 0.0, "scale": np.exp(node.mean), "s": node.stdev}
     return parameters
 
 
