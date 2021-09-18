@@ -400,11 +400,11 @@ class TestParametricLeaf(unittest.TestCase):
     def test_hypergeometric(self):
 
         # ----- configuration 1 -----
-        M = 500
-        N = 50
-        n = 100
+        N = 500
+        M = 100
+        n = 50
 
-        hypergeometric = Hypergeometric([0], M=M, N=N, n=n)
+        hypergeometric = Hypergeometric([0], N, M, n)
 
         # create test inputs/outputs
         data = np.array([[5], [10], [15]])
@@ -417,11 +417,11 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertTrue(np.allclose(probs, targets))
 
         # ----- configuration 2 -----
-        M = 100
-        N = 10
-        n = 50
+        N = 100
+        M = 50
+        n = 10
 
-        hypergeometric = Hypergeometric([0], M=M, N=N, n=n)
+        hypergeometric = Hypergeometric([0], N, M, n)
 
         # create test inputs/outputs
         data = np.array([[1], [5], [10]])
@@ -434,11 +434,11 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertTrue(np.allclose(probs, targets))
 
         # ----- configuration 3 -----
-        M = 250
-        N = 100
-        n = 150
+        N = 250
+        M = 150
+        n = 100
 
-        hypergeometric = Hypergeometric([0], M=M, N=N, n=n)
+        hypergeometric = Hypergeometric([0], N, M, n)
 
         # create test inputs/outputs
         data = np.array([[40], [50], [60]])
