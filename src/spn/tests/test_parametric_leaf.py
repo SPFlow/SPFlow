@@ -15,10 +15,10 @@ from spn.python.structure.nodes.leaves.parametric.parametric import (
 from spn.python.inference.nodes.node import likelihood, log_likelihood
 import numpy as np
 
-import random
-
 import unittest
+import warnings
 
+import random
 import math
 
 
@@ -73,6 +73,16 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
+        # ----- invalid parameters -----
+        mean = random.random()
+
+        self.assertRaises(Exception, Gaussian, [0], mean, 0.0)
+        self.assertRaises(Exception, Gaussian, [0], mean, np.nextafter(0.0, -1.0))
+        self.assertRaises(Exception, Gaussian, [0], np.inf, 1.0)
+        self.assertRaises(Exception, Gaussian, [0], np.nan, 1.0)
+        self.assertRaises(Exception, Gaussian, [0], mean, np.inf)
+        self.assertRaises(Exception, Gaussian, [0], mean, np.nan)
+
     def test_log_normal(self):
 
         # ----- configuration 1 -----
@@ -122,6 +132,34 @@ class TestParametricLeaf(unittest.TestCase):
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
+
+        # ----- support -----
+        mean = 0.0
+        stdev = 1.0
+
+        log_normal = LogNormal([0], mean, stdev)
+
+        # create test inputs testing around the boundaries
+        data = np.array(
+            [[-1.0], [0.0], [np.inf], [np.nextafter(0.0, 1.0)], [np.finfo(np.float64).max / 3.0]]
+        )
+
+        probs = likelihood(log_normal, data)
+        log_probs = log_likelihood(log_normal, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(all(np.isinf(log_probs[:3])))
+        self.assertTrue(all(~np.isinf(log_probs[3:])))
+
+        # ----- invalid parameters -----
+        mean = random.random()
+
+        self.assertRaises(Exception, Gaussian, [0], mean, 0.0)
+        self.assertRaises(Exception, Gaussian, [0], mean, np.nextafter(0.0, -1.0))
+        self.assertRaises(Exception, Gaussian, [0], np.inf, 1.0)
+        self.assertRaises(Exception, Gaussian, [0], np.nan, 1.0)
+        self.assertRaises(Exception, Gaussian, [0], mean, np.inf)
+        self.assertRaises(Exception, Gaussian, [0], mean, np.nan)
 
     def test_multivariate_gaussian(self):
 
@@ -203,6 +241,16 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
+        # ----- invalid parameters -----
+        start_end = random.random()
+
+        self.assertRaises(Exception, Uniform, [0], start_end, start_end)
+        self.assertRaises(Exception, Uniform, [0], start_end, np.nextafter(start_end, -1.0))
+        self.assertRaises(Exception, Uniform, [0], np.inf, 0.0)
+        self.assertRaises(Exception, Uniform, [0], np.nan, 0.0)
+        self.assertRaises(Exception, Uniform, [0], 0.0, np.inf)
+        self.assertRaises(Exception, Uniform, [0], 0.0, np.nan)
+
     def test_bernoulli(self):
 
         p = random.random()
@@ -218,6 +266,53 @@ class TestParametricLeaf(unittest.TestCase):
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
+
+        # ----- (invalid) parameters -----
+
+        # p = 0
+        bernoulli = Bernoulli([0], 0.0)
+
+        data = np.array([[0.0], [1.0]])
+        targets = np.array([[1.0], [0.0]])
+
+        probs = likelihood(bernoulli, data)
+        log_probs = log_likelihood(bernoulli, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, targets))
+
+        # p = 1
+        bernoulli = Bernoulli([0], 1.0)
+
+        data = np.array([[0.0], [1.0]])
+        targets = np.array([[0.0], [1.0]])
+
+        probs = likelihood(bernoulli, data)
+        log_probs = log_likelihood(bernoulli, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, targets))
+
+        # p < 0 and p > 1
+        self.assertRaises(Exception, Bernoulli, [0], np.nextafter(1.0, 2.0))
+        self.assertRaises(Exception, Bernoulli, [0], np.nextafter(0.0, -1.0))
+
+        # inf, nan
+        self.assertRaises(Exception, Bernoulli, [0], np.inf)
+        self.assertRaises(Exception, Bernoulli, [0], np.nan)
+
+        # ----- support -----
+        p = random.random()
+
+        bernoulli = Bernoulli([0], p)
+
+        data = np.array([[np.nextafter(0.0, -1.0)], [0.5], [np.nextafter(1.0, 2.0)]])
+
+        probs = likelihood(bernoulli, data)
+        log_probs = log_likelihood(bernoulli, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(all(probs == 0.0))
 
     def test_binomial(self):
 
@@ -269,6 +364,72 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
+        # ----- (invalid) parameters -----
+
+        # p = 0
+        binomial = Binomial([0], 1, 0.0)
+
+        data = np.array([[0.0], [1.0]])
+        targets = np.array([[1.0], [0.0]])
+
+        probs = likelihood(binomial, data)
+        log_probs = log_likelihood(binomial, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, targets))
+
+        # p = 1
+        binomial = Binomial([0], 1, 1.0)
+
+        data = np.array([[0.0], [1.0]])
+        targets = np.array([[0.0], [1.0]])
+
+        probs = likelihood(binomial, data)
+        log_probs = log_likelihood(binomial, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, targets))
+
+        # p < 0 and p > 1
+        self.assertRaises(Exception, Binomial, [0], 1, np.nextafter(1.0, 2.0))
+        self.assertRaises(Exception, Binomial, [0], 1, np.nextafter(0.0, -1.0))
+
+        # n = 0
+        binomial = Binomial([0], 0, 0.5)
+
+        data = np.array([[0.0], [1.0]])
+        targets = np.array([[1.0], [0.0]])
+
+        probs = likelihood(binomial, data)
+        log_probs = log_likelihood(binomial, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, targets))
+
+        # n < 0
+        self.assertRaises(Exception, Binomial, [0], -1, 0.5)
+
+        # TODO: n float
+
+        # inf, nan
+        self.assertRaises(Exception, Binomial, [0], np.inf, 0.5)
+        self.assertRaises(Exception, Binomial, [0], np.nan, 0.5)
+        self.assertRaises(Exception, Binomial, [0], 1, np.inf)
+        self.assertRaises(Exception, Binomial, [0], 1, np.nan)
+
+        # ----- support -----
+
+        binomial = Binomial([0], 1, 0.0)
+
+        data = np.array([[-1.0], [2.0]])
+        targets = np.array([[1.0], [0.0]])  #
+
+        probs = likelihood(binomial, data)
+        log_probs = log_likelihood(binomial, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(all(probs == 0))
+
     def test_negative_binomial(self):
 
         # ----- configuration 1 -----
@@ -302,6 +463,59 @@ class TestParametricLeaf(unittest.TestCase):
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
+
+        # ----- (invalid) parameters -----
+
+        # p = 1
+        negative_binomial = NegativeBinomial([0], 1, 1.0)
+
+        data = np.array([[0.0], [1.0]])
+        targets = np.array([[1.0], [0.0]])
+
+        probs = likelihood(negative_binomial, data)
+        log_probs = log_likelihood(negative_binomial, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, targets))
+
+        # p = 0
+        self.assertRaises(Exception, NegativeBinomial, [0], 1, 0.0)
+
+        # 1 >= p > 0
+        NegativeBinomial([0], 1, np.nextafter(0.0, 1.0))
+
+        # p < 0 and p > 1
+        self.assertRaises(Exception, Binomial, [0], 1, np.nextafter(1.0, 2.0))
+        self.assertRaises(Exception, Binomial, [0], 1, np.nextafter(0.0, -1.0))
+
+        # p inf, nan
+        self.assertRaises(Exception, NegativeBinomial, [0], 1, np.inf)
+        self.assertRaises(Exception, NegativeBinomial, [0], 1, np.nan)
+
+        # n = 0
+        NegativeBinomial([0], 0.0, 1.0)
+
+        # n < 0
+        self.assertRaises(Exception, NegativeBinomial, [0], np.nextafter(0.0, -1.0), 1.0)
+
+        # n inf, nan
+        self.assertRaises(Exception, NegativeBinomial, [0], np.inf, 1.0)
+        self.assertRaises(Exception, NegativeBinomial, [0], np.nan, 1.0)
+
+        # TODO: n float
+
+        # ----- support -----
+        n = 20
+        p = 0.3
+
+        data = np.array([[np.nextafter(0.0, -1.0)], [0.0]])
+
+        probs = likelihood(negative_binomial, data)
+        log_probs = log_likelihood(negative_binomial, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(all(probs[0] == 0.0))
+        self.assertTrue(all(probs[1] != 0.0))
 
     def test_poisson(self):
 
@@ -350,6 +564,27 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
+        # ----- invalid parameters -----
+        self.assertRaises(Exception, Poisson, [0], -np.inf)
+        self.assertRaises(Exception, Poisson, [0], np.inf)
+        self.assertRaises(Exception, Poisson, [0], np.nan)
+
+        # ----- support -----
+
+        l = random.random()
+
+        poisson = Poisson([0], l)
+
+        # create test inputs/outputs
+        data = np.array([[-1.0], [-0.5], [0.0]])
+
+        probs = likelihood(poisson, data)
+        log_probs = log_likelihood(poisson, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.all(probs[:2] == 0))
+        self.assertTrue(np.all(probs[-1] != 0))
+
     def test_geometric(self):
 
         # ----- configuration 1 -----
@@ -397,6 +632,29 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
+        # ----- invalid parameters -----
+
+        # p = 0
+        self.assertRaises(Exception, Geometric, [0], 0.0)
+        self.assertRaises(Exception, Geometric, [0], np.inf)
+        self.assertRaises(Exception, Geometric, [0], np.nan)
+
+        # ----- support -----
+
+        p = 0.8
+
+        geometric = Geometric([0], p)
+
+        # create test inputs/outputs
+        data = np.array([[0], [np.nextafter(1.0, 0.0)], [1.5], [1]])
+
+        probs = likelihood(geometric, data)
+        log_probs = log_likelihood(geometric, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.all(probs[:3] == 0))
+        self.assertTrue(np.all(probs[-1] != 0))
+
     def test_hypergeometric(self):
 
         # ----- configuration 1 -----
@@ -433,7 +691,7 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-        # ----- configuration 3 (outside of support) -----
+        # ----- support -----
         N = 15
         M = 10
         n = 10
@@ -441,14 +699,27 @@ class TestParametricLeaf(unittest.TestCase):
         hypergeometric = Hypergeometric([0], N, M, n)
 
         # create test inputs/outputs
-        data = np.array([[4], [5], [10], [11]])
-        targets = np.array([[0.0], [0.083916], [0.000333], [0.0]])
+        data = np.array([[4], [11], [5], [10]])
 
         probs = likelihood(hypergeometric, data)
         log_probs = log_likelihood(hypergeometric, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
-        self.assertTrue(np.allclose(probs, targets))
+        self.assertTrue(all(probs[:2] == 0))
+        self.assertTrue(all(probs[2:] != 0))
+
+        # ----- invalid parameters -----
+        self.assertRaises(Exception, Hypergeometric, -1, 1, 1)
+        self.assertRaises(Exception, Hypergeometric, 1, -1, 1)
+        self.assertRaises(Exception, Hypergeometric, 1, 2, 1)
+        self.assertRaises(Exception, Hypergeometric, 1, 1, -1)
+        self.assertRaises(Exception, Hypergeometric, 1, 1, 2)
+        self.assertRaises(Exception, Exponential, [0], np.inf, 1, 1)
+        self.assertRaises(Exception, Exponential, [0], np.nan, 1, 1)
+        self.assertRaises(Exception, Exponential, [0], 1, np.inf, 1)
+        self.assertRaises(Exception, Exponential, [0], 1, np.nan, 1)
+        self.assertRaises(Exception, Exponential, [0], 1, 1, np.inf)
+        self.assertRaises(Exception, Exponential, [0], 1, 1, np.nan)
 
     def test_exponential(self):
 
@@ -496,6 +767,28 @@ class TestParametricLeaf(unittest.TestCase):
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
+
+        # ----- (invalid) parameters -----
+        Exponential([0], np.nextafter(0.0, 1.0))
+        self.assertRaises(Exception, Exponential, [0], 0.0)
+        self.assertRaises(Exception, Exponential, [0], -1.0)
+        self.assertRaises(Exception, Exponential, [0], np.inf)
+        self.assertRaises(Exception, Exponential, [0], np.nan)
+
+        # ----- support -----
+        l = 1.5
+
+        exponential = Exponential([0], l)
+
+        # create test inputs/outputs
+        data = np.array([[np.nextafter(0.0, -1.0)], [0.0]])
+
+        probs = likelihood(exponential, data)
+        log_probs = log_likelihood(exponential, data)
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(all(probs[0] == 0.0))
+        self.assertTrue(all(probs[1] != 0.0))
 
     def test_gamma(self):
 
@@ -546,6 +839,16 @@ class TestParametricLeaf(unittest.TestCase):
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
+
+        # ----- (invalid) parameters -----
+        Gamma([0], np.nextafter(0.0, 1.0), 1.0)
+        Gamma([0], 1.0, np.nextafter(0.0, 1.0))
+        self.assertRaises(Exception, Gamma, [0], np.nextafter(0.0, -1.0), 1.0)
+        self.assertRaises(Exception, Gamma, [0], 1.0, np.nextafter(0.0, -1.0))
+        self.assertRaises(Exception, Gamma, [0], np.inf, 1.0)
+        self.assertRaises(Exception, Gamma, [0], np.nan, 1.0)
+        self.assertRaises(Exception, Gamma, [0], 1.0, np.inf)
+        self.assertRaises(Exception, Gamma, [0], 1.0, np.nan)
 
 
 if __name__ == "__main__":
