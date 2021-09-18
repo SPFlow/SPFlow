@@ -8,6 +8,7 @@ from spn.python.structure.nodes.leaves.parametric.parametric import (
     NegativeBinomial,
     Poisson,
     Geometric,
+    Hypergeometric,
     Exponential,
     Gamma,
 )
@@ -24,6 +25,7 @@ from spn.torch.structure.nodes.leaves.parametric import (
     TorchNegativeBinomial,
     TorchPoisson,
     TorchGeometric,
+    TorchHypergeometric,
     TorchExponential,
     TorchGamma,
 )
@@ -643,7 +645,62 @@ class TestTorchParametricLeaf(unittest.TestCase):
         )
 
     def test_hypergeometri(self):
-        pass
+
+        # ----- check inference -----
+
+        N = 15
+        M = 10
+        n = 10
+
+        torch_hypergeometric = TorchHypergeometric([0], N, M, n)
+        node_hypergeometric = Hypergeometric([0], N, M, n)
+
+        # create dummy input data (batch size x random variables)
+        data = np.array([[4], [5], [10], [11]])  # np.random.randint(1, 100, (1, 1))
+
+        log_probs = log_likelihood(node_hypergeometric, data)
+        log_probs_torch = log_likelihood(
+            torch_hypergeometric, torch.tensor(data, dtype=torch.float32)
+        )
+
+        # TODO: support is handled differently (in log space): -inf for torch and np.finfo().min for numpy (decide how to handle)
+        log_probs[log_probs == np.finfo(log_probs.dtype).min] = -np.inf
+
+        # make sure that probabilities match python backend probabilities
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+
+        # ----- check gradient computation -----
+
+        # create dummy targets
+        targets_torch = torch.ones(4, 1)
+        targets_torch.requires_grad = True
+
+        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+        loss.backward()
+
+        self.assertTrue(torch_hypergeometric.N.grad is None)
+        self.assertTrue(torch_hypergeometric.M.grad is None)
+        self.assertTrue(torch_hypergeometric.n.grad is None)
+
+        # make sure distribution has no (learnable) parameters
+        self.assertFalse(list(torch_hypergeometric.parameters()))
+
+        # ----- check conversion between python and backend -----
+
+        # check conversion from torch to python
+        self.assertTrue(
+            np.allclose(
+                np.array([*torch_hypergeometric.get_params()]),
+                np.array([*toNodes(torch_hypergeometric).get_params()]),
+            )
+        )
+        # check conversion from python to torch
+        self.assertTrue(
+            np.allclose(
+                np.array([*node_hypergeometric.get_params()]),
+                np.array([*toTorch(node_hypergeometric).get_params()]),
+            )
+        )
 
     def test_exponential(self):
 
