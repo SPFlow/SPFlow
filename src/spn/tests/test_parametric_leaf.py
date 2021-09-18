@@ -433,16 +433,16 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-        # ----- configuration 3 -----
-        N = 250
-        M = 150
-        n = 100
+        # ----- configuration 3 (outside of support) -----
+        N = 15
+        M = 10
+        n = 10
 
         hypergeometric = Hypergeometric([0], N, M, n)
 
         # create test inputs/outputs
-        data = np.array([[40], [50], [60]])
-        targets = np.array([[0.0000000999597], [0.0033495], [0.10478]])
+        data = np.array([[4], [5], [10], [11]])
+        targets = np.array([[0.0], [0.083916], [0.000333], [0.0]])
 
         probs = likelihood(hypergeometric, data)
         log_probs = log_likelihood(hypergeometric, data)
