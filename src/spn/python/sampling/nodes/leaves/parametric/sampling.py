@@ -7,7 +7,7 @@ This file provides the sampling methods for parametric leaves.
 """
 from spn.python.structure.nodes.node import LeafNode, Node
 from multipledispatch import dispatch  # type: ignore
-from .parametric import (
+from spn.python.structure.nodes.leaves.parametric.parametric import (
     ParametricLeaf,
     Gaussian,
     Gamma,

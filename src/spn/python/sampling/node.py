@@ -6,9 +6,9 @@ Created on August 09, 2021
 This file provides the sampling methods for SPNs.
 """
 
-from .node import LeafNode, ProductNode, SumNode, Node, eval_spn_top_down
-from .validity_checks import _isvalid_spn
-from .leaves.parametric.sampling import sample_parametric_node
+from spn.python.structure.nodes.node import LeafNode, ProductNode, SumNode, Node, eval_spn_top_down
+from spn.python.structure.nodes.validity_checks import _isvalid_spn
+from spn.python.sampling.nodes.leaves.parametric.sampling import sample_parametric_node
 from spn.python.inference.nodes.node import log_likelihood
 import numpy as np
 from numpy.random.mtrand import RandomState  # type: ignore
