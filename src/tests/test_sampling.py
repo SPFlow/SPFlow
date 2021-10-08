@@ -3,7 +3,7 @@ from numpy.random.mtrand import RandomState  # type: ignore
 from spn.python.structure.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
 from spn.python.structure.nodes.node import SumNode, ProductNode
-from spn.python.sampling.node import sample_instances
+from spn.python.sampling.nodes.node import sample_instances
 
 
 class TestSampling(unittest.TestCase):
