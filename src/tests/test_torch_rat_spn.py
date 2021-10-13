@@ -13,6 +13,7 @@ from spn.torch.inference import log_likelihood, likelihood
 
 class TestTorchRatSpn(unittest.TestCase):
     def test_torch_rat_spn_to_nodes(self):
+        torch.set_default_dtype(torch.float64)
 
         # create region graph
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
@@ -36,7 +37,7 @@ class TestTorchRatSpn(unittest.TestCase):
         rat = toNodes(torch_rat)
 
         # create dummy input data (batch size x random variables)
-        dummy_data = np.random.randn(3, 1024).astype(np.float32)
+        dummy_data = np.random.randn(3, 1024)
 
         # compute outputs for node rat spn
         nodes_output = log_likelihood(rat, dummy_data)
@@ -50,6 +51,7 @@ class TestTorchRatSpn(unittest.TestCase):
         )
 
     def test_nodes_rat_spn_to_torch(self):
+        torch.set_default_dtype(torch.float64)
 
         # create region graph
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
@@ -71,7 +73,7 @@ class TestTorchRatSpn(unittest.TestCase):
         torch_rat = toTorch(rat)
 
         # create dummy input data (batch size x random variables)
-        dummy_data = np.random.randn(3, 1024).astype(np.float32)
+        dummy_data = np.random.randn(3, 1024)
 
         # compute outputs for node rat spn
         nodes_output = log_likelihood(rat, dummy_data)
@@ -85,6 +87,7 @@ class TestTorchRatSpn(unittest.TestCase):
         )
 
     def test_torch_rat_spn_to_nodes_to_torch(self):
+        torch.set_default_dtype(torch.float64)
 
         # create region graph
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
@@ -112,7 +115,7 @@ class TestTorchRatSpn(unittest.TestCase):
             self.assertTrue(torch.allclose(p1.data, p2.data))
 
         # create dummy input data (batch size x random variables)
-        dummy_data = np.random.randn(3, 1024).astype(np.float32)
+        dummy_data = np.random.randn(3, 1024)
 
         # compute outputs for node rat spn
         torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data))

@@ -41,6 +41,7 @@ import unittest
 
 class TestTorchParametricLeaf(unittest.TestCase):
     def test_gaussian(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
@@ -116,6 +117,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, TorchGaussian, [0], mean, np.nan)
 
     def test_log_normal(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
@@ -212,6 +214,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertTrue(all(~torch.isinf(log_probs[3:])))
 
     def test_multivariate_gaussian(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
@@ -324,6 +327,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         )
 
     def test_uniform(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
@@ -402,6 +406,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, TorchUniform, [0], 0.0, np.nan)
 
     def test_bernoulli(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
@@ -509,6 +514,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertTrue(all(probs == 0.0))
 
     def test_binomial(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
@@ -638,6 +644,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertTrue(all(probs == 0))
 
     def test_negative_binomial(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
@@ -757,6 +764,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertTrue(all(probs[1] != 0.0))
 
     def test_poisson(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
@@ -838,6 +846,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertTrue(torch.all(probs[-1] != 0))
 
     def test_geometric(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
@@ -921,6 +930,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertTrue(torch.all(probs[-1] != 0))
 
     def test_hypergeometri(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
@@ -984,12 +994,12 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, TorchHypergeometric, 1, 2, 1)
         self.assertRaises(Exception, TorchHypergeometric, 1, 1, -1)
         self.assertRaises(Exception, TorchHypergeometric, 1, 1, 2)
-        self.assertRaises(Exception, TorchExponential, [0], np.inf, 1, 1)
-        self.assertRaises(Exception, TorchExponential, [0], np.nan, 1, 1)
-        self.assertRaises(Exception, TorchExponential, [0], 1, np.inf, 1)
-        self.assertRaises(Exception, TorchExponential, [0], 1, np.nan, 1)
-        self.assertRaises(Exception, TorchExponential, [0], 1, 1, np.inf)
-        self.assertRaises(Exception, TorchExponential, [0], 1, 1, np.nan)
+        self.assertRaises(Exception, TorchHypergeometric, [0], np.inf, 1, 1)
+        self.assertRaises(Exception, TorchHypergeometric, [0], np.nan, 1, 1)
+        self.assertRaises(Exception, TorchHypergeometric, [0], 1, np.inf, 1)
+        self.assertRaises(Exception, TorchHypergeometric, [0], 1, np.nan, 1)
+        self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, np.inf)
+        self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, np.nan)
 
         # ----- support -----
         N = 15
@@ -1009,6 +1019,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertTrue(all(probs[2:] != 0))
 
     def test_exponential(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
@@ -1091,6 +1102,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # TODO (fails): self.assertTrue(all(probs[1] != 0.0))
 
     def test_gamma(self):
+        torch.set_default_dtype(torch.float64)
 
         # ----- check inference -----
 
