@@ -12,8 +12,15 @@ from spn.torch.inference import log_likelihood, likelihood
 
 
 class TestTorchRatSpn(unittest.TestCase):
-    def test_torch_rat_spn_to_nodes(self):
+    @classmethod
+    def setup_class(cls):
         torch.set_default_dtype(torch.float64)
+
+    @classmethod
+    def teardown_class(cls):
+        torch.set_default_dtype(torch.float32)
+
+    def test_torch_rat_spn_to_nodes(self):
 
         # create region graph
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
@@ -51,7 +58,6 @@ class TestTorchRatSpn(unittest.TestCase):
         )
 
     def test_nodes_rat_spn_to_torch(self):
-        torch.set_default_dtype(torch.float64)
 
         # create region graph
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
@@ -87,7 +93,6 @@ class TestTorchRatSpn(unittest.TestCase):
         )
 
     def test_torch_rat_spn_to_nodes_to_torch(self):
-        torch.set_default_dtype(torch.float64)
 
         # create region graph
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
@@ -128,4 +133,5 @@ class TestTorchRatSpn(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    torch.set_default_dtype(torch.float64)
     unittest.main()
