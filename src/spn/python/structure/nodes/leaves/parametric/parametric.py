@@ -48,7 +48,7 @@ class ParametricLeaf(LeafNode, ABC):
 
 
 class Gaussian(ParametricLeaf):
-    """(Univariate) Normal distribution
+    """(Univariate) Normal distribution.
 
     PDF(x) =
         1/sqrt(2*pi*sigma^2) * exp(-(x-mu)^2/(2*sigma^2)), where
@@ -58,9 +58,9 @@ class Gaussian(ParametricLeaf):
 
     Attributes:
         mean:
-            mu
+            mean (mu) of the distribution.
         stdev:
-            sigma (must be greater than 0)
+            standard deviation (sigma) of the distribution.
     """
 
     type = ParametricType.CONTINUOUS
@@ -88,7 +88,7 @@ class Gaussian(ParametricLeaf):
 
 
 class LogNormal(ParametricLeaf):
-    """(Univariate) Log-Normal distribution
+    """(Univariate) Log-Normal distribution.
 
     PDF(x) =
         1/(x*sigma*sqrt(2*pi) * exp(-(ln(x)-mu)^2/(2*sigma^2)), where
@@ -98,9 +98,9 @@ class LogNormal(ParametricLeaf):
 
     Attributes:
         mean:
-            mu
+            mean (mu) of the distribution.
         stdev:
-            sigma (must be greater than 0)
+            standard deviation (sigma) of the distribution (must be greater than 0).
     """
 
     type = ParametricType.POSITIVE
@@ -128,7 +128,7 @@ class LogNormal(ParametricLeaf):
 
 
 class MultivariateGaussian(ParametricLeaf):
-    """Multivariate Normal distribution
+    """Multivariate Normal distribution.
 
     PDF(x) =
         1/sqrt((2*pi)^d * det(cov)) * exp(-1/2 (x-mu)^T * cov^(-1) * (x-mu)), where
@@ -139,10 +139,10 @@ class MultivariateGaussian(ParametricLeaf):
 
     Attributes:
         mean_vector:
-            A list holding the means (mu) of each of the one-dimensional Normal distributions.
+            A list or NumPy array holding the means (mu) of each of the one-dimensional Normal distributions.
             Has exactly as many elements as the scope of this leaf.
         covariance_matrix:
-            A list of lists (representing a two-dimensional NxN matrix, where N is the length
+            A list of lists or NumPy array (representing a two-dimensional NxN matrix, where N is the length
             of the scope) describing the covariances of the distribution. The diagonal holds
             the variances (sigma^2) of each of the one-dimensional distributions.
     """
@@ -152,8 +152,8 @@ class MultivariateGaussian(ParametricLeaf):
     def __init__(
         self,
         scope: List[int],
-        mean_vector: List[float],
-        covariance_matrix: List[List[float]],
+        mean_vector: Union[List[float], np.ndarray],
+        covariance_matrix: Union[List[List[float]], np.ndarray],
     ) -> None:
         super().__init__(scope)
         self.mean_vector = mean_vector
@@ -168,7 +168,7 @@ class MultivariateGaussian(ParametricLeaf):
 
 
 class Uniform(ParametricLeaf):
-    """(Univariate) continuous Uniform distribution
+    """(Univariate) continuous Uniform distribution.
 
     PDF(x) =
         1 / (end - start) * 1_[start, end], where
@@ -177,9 +177,9 @@ class Uniform(ParametricLeaf):
 
     Attributes:
         start:
-            Start of interval
+            Start of interval.
         end:
-            End of interval (must be larger the interval start)
+            End of interval (must be larger the interval start).
     """
 
     type = ParametricType.CONTINUOUS
@@ -213,7 +213,7 @@ class Bernoulli(ParametricLeaf):
 
     Attributes:
         p:
-            Probability of success in the range [0,1]
+            Probability of success in the range [0,1].
     """
 
     type = ParametricType.BINARY
@@ -236,7 +236,7 @@ class Bernoulli(ParametricLeaf):
 
 
 class Binomial(ParametricLeaf):
-    """(Univariate) Binomial distribution
+    """(Univariate) Binomial distribution.
 
     PMF(k) =
         (n)C(k) * p^k * (1-p)^(n-k), where
@@ -244,7 +244,7 @@ class Binomial(ParametricLeaf):
 
     Attributes:
         n:
-            Number of i.i.d. Bernoulli trials (greater of equal to 0)
+            Number of i.i.d. Bernoulli trials (greater of equal to 0).
         p:
             Probability of success of each trial in the range [0,1]
     """
@@ -276,7 +276,7 @@ class Binomial(ParametricLeaf):
 
 
 class NegativeBinomial(ParametricLeaf):
-    """(Univariate) Negative Binomial distribution
+    """(Univariate) Negative Binomial distribution.
 
     PMF(k) =
         (k+n-1)C(k) * (1-p)^n * p^k, where
@@ -284,9 +284,9 @@ class NegativeBinomial(ParametricLeaf):
 
     Attributes:
         n:
-            Number of i.i.d. trials (greater of equal to 0)
+            Number of i.i.d. trials (greater of equal to 0).
         p:
-            Probability of success of each trial in the range (0,1]
+            Probability of success of each trial in the range (0,1].
     """
 
     type = ParametricType.COUNT
@@ -314,14 +314,14 @@ class NegativeBinomial(ParametricLeaf):
 
 
 class Poisson(ParametricLeaf):
-    """(Univariate) Poisson distribution
+    """(Univariate) Poisson distribution.
 
     PMF(k) =
         l^k * exp(-l) / k!
 
     Attributes:
         l:
-            Expected value (& variance) of the Poisson distribution (usually denoted as lambda)
+            Expected value (& variance) of the Poisson distribution (usually denoted as lambda).
     """
 
     type = ParametricType.COUNT
@@ -342,14 +342,14 @@ class Poisson(ParametricLeaf):
 
 
 class Geometric(ParametricLeaf):
-    """(Univariate) Geometric distribution
+    """(Univariate) Geometric distribution.
 
     PMF(k) =
         p * (1-p)^(k-1)
 
     Attributes:
         p:
-            Probability of success in the range (0,1]
+            Probability of success in the range (0,1].
     """
 
     type = ParametricType.BINARY
@@ -372,7 +372,7 @@ class Geometric(ParametricLeaf):
 
 
 class Hypergeometric(ParametricLeaf):
-    """(Univariate) Hypergeometric distribution
+    """(Univariate) Hypergeometric distribution.
 
     PMF(k) =
         (M)C(k) * (N-M)C(n-k) / (N)C(n), where
@@ -380,11 +380,11 @@ class Hypergeometric(ParametricLeaf):
 
     Attributes:
         N:
-            Total number of entities (in the population)0, grater or equal to 0
+            Total number of entities (in the population), greater or equal to 0.
         M:
-            Number of entities with property of interest (in the population), greater or equal to zero and less than or equal to N
+            Number of entities with property of interest (in the population), greater or equal to zero and less than or equal to N.
         n:
-            Number of observed entities (sample size), greater or equal to zero and less than or equal to N
+            Number of observed entities (sample size), greater or equal to zero and less than or equal to N.
     """
 
     type = ParametricType.COUNT
@@ -417,7 +417,7 @@ class Hypergeometric(ParametricLeaf):
 
 
 class Exponential(ParametricLeaf):
-    """(Univariate) Exponential distribution
+    """(Univariate) Exponential distribution.
 
     PDF(x) =
         l * exp(-l * x) , if x > 0
@@ -425,7 +425,7 @@ class Exponential(ParametricLeaf):
 
     Attributes:
         l:
-            Rate parameter of the Exponential distribution (usually denoted as lambda, must be greater than 0)
+            Rate parameter of the Exponential distribution (usually denoted as lambda, must be greater than 0).
     """
 
     type = ParametricType.POSITIVE
@@ -448,7 +448,7 @@ class Exponential(ParametricLeaf):
 
 
 class Gamma(ParametricLeaf):
-    """(Univariate) Gamma distribution
+    """(Univariate) Gamma distribution.
 
     PDF(x) =
         1/G(alpha) * beta^alpha * x^(alpha-1) * exp(-x*beta)   , if x > 0
@@ -457,9 +457,9 @@ class Gamma(ParametricLeaf):
 
     Attributes:
         alpha:
-            Shape parameter, greater than 0
+            Shape parameter, greater than 0.
         beta:
-            Scale parameter, greater than 0
+            Scale parameter, greater than 0.
     """
 
     type = ParametricType.POSITIVE
