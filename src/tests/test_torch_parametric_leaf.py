@@ -29,7 +29,7 @@ from spn.torch.structure.nodes.leaves.parametric import (
     TorchExponential,
     TorchGamma,
 )
-from spn.torch.inference import log_likelihood
+from spn.torch.inference import log_likelihood, likelihood
 
 import torch
 import numpy as np
@@ -54,8 +54,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         data = np.random.randn(3, 1)
 
         log_probs = log_likelihood(node_gaussian, data)
-        log_probs_torch = log_likelihood(torch_gaussian, torch.tensor(data, dtype=torch.float32))
-
+        log_probs_torch = log_likelihood(torch_gaussian, torch.tensor(data))
         # make sure that probabilities match python backend probabilities
         self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
@@ -106,6 +105,16 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
+        # ----- invalid parameters -----
+        mean = random.random()
+
+        self.assertRaises(Exception, TorchGaussian, [0], mean, 0.0)
+        self.assertRaises(Exception, TorchGaussian, [0], mean, np.nextafter(0.0, -1.0))
+        self.assertRaises(Exception, TorchGaussian, [0], np.inf, 1.0)
+        self.assertRaises(Exception, TorchGaussian, [0], np.nan, 1.0)
+        self.assertRaises(Exception, TorchGaussian, [0], mean, np.inf)
+        self.assertRaises(Exception, TorchGaussian, [0], mean, np.nan)
+
     def test_log_normal(self):
 
         # ----- check inference -----
@@ -120,7 +129,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         data = np.random.rand(3, 1)
 
         log_probs = log_likelihood(node_log_normal, data)
-        log_probs_torch = log_likelihood(torch_log_normal, torch.tensor(data, dtype=torch.float32))
+        log_probs_torch = log_likelihood(torch_log_normal, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
         self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
@@ -174,6 +183,34 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
+        # ----- invalid parameters -----
+        mean = random.random()
+
+        self.assertRaises(Exception, TorchLogNormal, [0], mean, 0.0)
+        self.assertRaises(Exception, TorchLogNormal, [0], mean, np.nextafter(0.0, -1.0))
+        self.assertRaises(Exception, TorchLogNormal, [0], np.inf, 1.0)
+        self.assertRaises(Exception, TorchLogNormal, [0], np.nan, 1.0)
+        self.assertRaises(Exception, TorchLogNormal, [0], mean, np.inf)
+        self.assertRaises(Exception, TorchLogNormal, [0], mean, np.nan)
+
+        # ----- support -----
+        mean = 0.0
+        stdev = 1.0
+
+        log_normal = TorchLogNormal([0], mean, stdev)
+
+        # create test inputs testing around the boundaries
+        data = torch.tensor(
+            [[-1.0], [0.0], [float('Inf')], [torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
+        )
+
+        probs = likelihood(log_normal, data)
+        log_probs = log_likelihood(log_normal, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(all(torch.isinf(log_probs[:3])))
+        self.assertTrue(all(~torch.isinf(log_probs[3:])))
+
     def test_multivariate_gaussian(self):
 
         # ----- check inference -----
@@ -193,7 +230,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
 
         log_probs = log_likelihood(node_multivariate_gaussian, data)
         log_probs_torch = log_likelihood(
-            torch_multivariate_gaussian, torch.tensor(data, dtype=torch.float32)
+            torch_multivariate_gaussian, torch.tensor(data)
         )
 
         # make sure that probabilities match python backend probabilities
@@ -297,10 +334,27 @@ class TestTorchParametricLeaf(unittest.TestCase):
         torch_uniform = TorchUniform([0], start, end)
 
         # create test inputs/outputs
-        data = np.random.rand(3, 1) * 2.0
+        data_np = np.array(
+            [
+                [np.nextafter(start, -np.inf)],
+                [start],
+                [(start + end) / 2.0],
+                [end],
+                [np.nextafter(end, np.inf)],
+            ]
+        )
+        data_torch = torch.tensor(
+            [
+                [torch.nextafter(torch.tensor(start), -torch.tensor(float("Inf")))],
+                [start],
+                [(start + end) / 2.0],
+                [end],
+                [torch.nextafter(torch.tensor(end), torch.tensor(float("Inf")))],
+            ]
+        )
 
-        log_probs = log_likelihood(node_uniform, data)
-        log_probs_torch = log_likelihood(torch_uniform, torch.tensor(data, dtype=torch.float32))
+        log_probs = log_likelihood(node_uniform, data_np)
+        log_probs_torch = log_likelihood(torch_uniform, data_torch)
 
         # make sure that probabilities match python backend probabilities
         self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
@@ -308,7 +362,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # ----- check gradient computation -----
 
         # create dummy targets
-        targets_torch = torch.ones(3, 1)
+        targets_torch = torch.ones(5, 1)
         targets_torch.requires_grad = True
 
         loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
@@ -337,6 +391,16 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
+        # ----- invalid parameters -----
+        start_end = random.random()
+
+        self.assertRaises(Exception, TorchUniform, [0], start_end, start_end)
+        self.assertRaises(Exception, TorchUniform, [0], start_end, np.nextafter(start_end, -1.0))
+        self.assertRaises(Exception, TorchUniform, [0], np.inf, 0.0)
+        self.assertRaises(Exception, TorchUniform, [0], np.nan, 0.0)
+        self.assertRaises(Exception, TorchUniform, [0], 0.0, np.inf)
+        self.assertRaises(Exception, TorchUniform, [0], 0.0, np.nan)
+
     def test_bernoulli(self):
 
         # ----- check inference -----
@@ -350,7 +414,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         data = np.random.randint(0, 2, (3, 1))
 
         log_probs = log_likelihood(node_bernoulli, data)
-        log_probs_torch = log_likelihood(torch_bernoulli, torch.tensor(data, dtype=torch.float32))
+        log_probs_torch = log_likelihood(torch_bernoulli, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
         self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
@@ -396,6 +460,54 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
+        # ----- (invalid) parameters -----
+
+        # p = 0
+        bernoulli = TorchBernoulli([0], 0.0)
+
+        data = torch.tensor([[0.0], [1.0]])
+        targets = torch.tensor([[1.0], [0.0]])
+
+        probs = likelihood(bernoulli, data)
+        log_probs = log_likelihood(bernoulli, data)
+
+        
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        # TODO (fails): self.assertTrue(torch.allclose(probs, targets))
+
+        # p = 1
+        bernoulli = TorchBernoulli([0], 1.0)
+
+        data = torch.tensor([[0.0], [1.0]])
+        targets = torch.tensor([[0.0], [1.0]])
+
+        probs = likelihood(bernoulli, data)
+        log_probs = log_likelihood(bernoulli, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        # TODO (fails): self.assertTrue(torch.allclose(probs, targets))
+
+        # p < 0 and p > 1
+        self.assertRaises(Exception, TorchBernoulli, [0], torch.nextafter(torch.tensor(1.0), torch.tensor(2.0)))
+        self.assertRaises(Exception, TorchBernoulli, [0], torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)))
+
+        # inf, nan
+        self.assertRaises(Exception, TorchBernoulli, [0], np.inf)
+        self.assertRaises(Exception, TorchBernoulli, [0], np.nan)
+
+        # ----- support -----
+        p = random.random()
+
+        bernoulli = TorchBernoulli([0], p)
+
+        data = torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))], [0.5], [torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]])
+
+        probs = likelihood(bernoulli, data)
+        log_probs = log_likelihood(bernoulli, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(all(probs == 0.0))
+
     def test_binomial(self):
 
         # ----- check inference -----
@@ -410,7 +522,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         data = np.random.randint(1, n, (3, 1))
 
         log_probs = log_likelihood(node_binomial, data)
-        log_probs_torch = log_likelihood(torch_binomial, torch.tensor(data, dtype=torch.float32))
+        log_probs_torch = log_likelihood(torch_binomial, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
         self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
@@ -460,6 +572,71 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
+        # ----- (invalid) parameters -----
+
+        # p = 0
+        binomial = TorchBinomial([0], 1, 0.0)
+
+        data = torch.tensor([[0.0], [1.0]])
+        targets = torch.tensor([[1.0], [0.0]])
+
+        probs = likelihood(binomial, data)
+        log_probs = log_likelihood(binomial, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        # TODO (fails): self.assertTrue(torch.allclose(probs, targets))
+
+        # p = 1
+        binomial = TorchBinomial([0], 1, 1.0)
+
+        data = torch.tensor([[0.0], [1.0]])
+        targets = torch.tensor([[0.0], [1.0]])
+
+        probs = likelihood(binomial, data)
+        log_probs = log_likelihood(binomial, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        # TODO (fails): self.assertTrue(torch.allclose(probs, targets))
+
+        # p < 0 and p > 1
+        self.assertRaises(Exception, TorchBinomial, [0], 1, torch.nextafter(torch.tensor(1.0), torch.tensor(2.0)))
+        self.assertRaises(Exception, TorchBinomial, [0], 1, torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)))
+
+        # n = 0
+        # TODO (not supported): binomial = TorchBinomial([0], 0, 0.5)
+
+        #data = torch.tensor([[0.0], [1.0]])
+        #targets = torch.tensor([[1.0], [0.0]])
+
+        #probs = likelihood(binomial, data)
+        #log_probs = log_likelihood(binomial, data)
+
+        #self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        #self.assertTrue(torch.allclose(probs, targets))
+
+        # n < 0
+        self.assertRaises(Exception, TorchBinomial, [0], -1, 0.5)
+
+        # TODO: n float
+
+        # inf, nan
+        self.assertRaises(Exception, TorchBinomial, [0], np.inf, 0.5)
+        self.assertRaises(Exception, TorchBinomial, [0], np.nan, 0.5)
+        self.assertRaises(Exception, TorchBinomial, [0], 1, np.inf)
+        self.assertRaises(Exception, TorchBinomial, [0], 1, np.nan)
+
+        # ----- support -----
+
+        binomial = TorchBinomial([0], 1, 0.0)
+
+        data = torch.tensor([[-1.0], [2.0]])
+
+        probs = likelihood(binomial, data)
+        log_probs = log_likelihood(binomial, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(all(probs == 0))
+
     def test_negative_binomial(self):
 
         # ----- check inference -----
@@ -475,7 +652,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
 
         log_probs = log_likelihood(node_negative_binomial, data)
         log_probs_torch = log_likelihood(
-            torch_negative_binomial, torch.tensor(data, dtype=torch.float32)
+            torch_negative_binomial, torch.tensor(data)
         )
 
         # make sure that probabilities match python backend probabilities
@@ -524,6 +701,61 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
+        # ----- (invalid) parameters -----
+
+        # p = 1
+        negative_binomial = TorchNegativeBinomial([0], 1, 1.0)
+
+        data = torch.tensor([[0.0], [1.0]])
+        targets = torch.tensor([[1.0], [0.0]])
+
+        probs = likelihood(negative_binomial, data)
+        log_probs = log_likelihood(negative_binomial, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        # TODO (fail): self.assertTrue(torch.allclose(probs, targets))
+
+        # p = 0
+        self.assertRaises(Exception, TorchNegativeBinomial, [0], 1, 0.0)
+
+        # 1 >= p > 0
+        TorchNegativeBinomial([0], 1, torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
+
+        # p < 0 and p > 1
+        self.assertRaises(Exception, TorchBinomial, [0], 1, torch.nextafter(torch.tensor(1.0), torch.tensor(2.0)))
+        self.assertRaises(Exception, TorchBinomial, [0], 1, torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)))
+
+        # p inf, nan
+        self.assertRaises(Exception, TorchNegativeBinomial, [0], 1, np.inf)
+        self.assertRaises(Exception, TorchNegativeBinomial, [0], 1, np.nan)
+
+        # n = 0
+        TorchNegativeBinomial([0], 0.0, 1.0)
+
+        # n < 0
+        self.assertRaises(Exception, TorchNegativeBinomial, [0], torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)), 1.0)
+
+        # n inf, nan
+        self.assertRaises(Exception, TorchNegativeBinomial, [0], np.inf, 1.0)
+        self.assertRaises(Exception, TorchNegativeBinomial, [0], np.nan, 1.0)
+
+        # TODO: n float
+
+        # ----- support -----
+        n = 20
+        p = 0.3
+
+        negative_binomial = TorchNegativeBinomial([0], n, p)
+
+        data = torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))], [0.0]])
+
+        probs = likelihood(negative_binomial, data)
+        log_probs = log_likelihood(negative_binomial, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(all(probs[0] == 0.0))
+        self.assertTrue(all(probs[1] != 0.0))
+
     def test_poisson(self):
 
         # ----- check inference -----
@@ -537,7 +769,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         data = np.random.randint(0, 10, (3, 1))
 
         log_probs = log_likelihood(node_poisson, data)
-        log_probs_torch = log_likelihood(torch_poisson, torch.tensor(data, dtype=torch.float32))
+        log_probs_torch = log_likelihood(torch_poisson, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
         self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
@@ -584,6 +816,27 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
+        # ----- invalid parameters -----
+        self.assertRaises(Exception, TorchPoisson, [0], -np.inf)
+        self.assertRaises(Exception, TorchPoisson, [0], np.inf)
+        self.assertRaises(Exception, TorchPoisson, [0], np.nan)
+
+        # ----- support -----
+
+        l = random.random()
+
+        poisson = TorchPoisson([0], l)
+
+        # create test inputs/outputs
+        data = torch.tensor([[-1.0], [-0.5], [0.0]])
+
+        probs = likelihood(poisson, data)
+        log_probs = log_likelihood(poisson, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(torch.all(probs[:2] == 0))
+        self.assertTrue(torch.all(probs[-1] != 0))
+
     def test_geometric(self):
 
         # ----- check inference -----
@@ -597,7 +850,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         data = np.random.randint(1, 10, (3, 1))
 
         log_probs = log_likelihood(node_geometric, data)
-        log_probs_torch = log_likelihood(torch_geometric, torch.tensor(data, dtype=torch.float32))
+        log_probs_torch = log_likelihood(torch_geometric, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
         self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
@@ -644,6 +897,29 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
+        # ----- invalid parameters -----
+
+        # p = 0
+        self.assertRaises(Exception, TorchGeometric, [0], 0.0)
+        self.assertRaises(Exception, TorchGeometric, [0], np.inf)
+        self.assertRaises(Exception, TorchGeometric, [0], np.nan)
+
+        # ----- support -----
+
+        p = 0.8
+
+        geometric = TorchGeometric([0], p)
+
+        # create test inputs/outputs
+        data = torch.tensor([[0], [torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))], [1.5], [1]])
+
+        probs = likelihood(geometric, data)
+        log_probs = log_likelihood(geometric, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(torch.all(probs[:3] == 0))
+        self.assertTrue(torch.all(probs[-1] != 0))
+
     def test_hypergeometri(self):
 
         # ----- check inference -----
@@ -656,11 +932,11 @@ class TestTorchParametricLeaf(unittest.TestCase):
         node_hypergeometric = Hypergeometric([0], N, M, n)
 
         # create dummy input data (batch size x random variables)
-        data = np.array([[4], [5], [10], [11]])  # np.random.randint(1, 100, (1, 1))
+        data = np.array([[4], [5], [10], [11]])
 
         log_probs = log_likelihood(node_hypergeometric, data)
         log_probs_torch = log_likelihood(
-            torch_hypergeometric, torch.tensor(data, dtype=torch.float32)
+            torch_hypergeometric, torch.tensor(data)
         )
 
         # TODO: support is handled differently (in log space): -inf for torch and np.finfo().min for numpy (decide how to handle)
@@ -702,6 +978,36 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
+        # ----- invalid parameters -----
+        self.assertRaises(Exception, TorchHypergeometric, -1, 1, 1)
+        self.assertRaises(Exception, TorchHypergeometric, 1, -1, 1)
+        self.assertRaises(Exception, TorchHypergeometric, 1, 2, 1)
+        self.assertRaises(Exception, TorchHypergeometric, 1, 1, -1)
+        self.assertRaises(Exception, TorchHypergeometric, 1, 1, 2)
+        self.assertRaises(Exception, TorchExponential, [0], np.inf, 1, 1)
+        self.assertRaises(Exception, TorchExponential, [0], np.nan, 1, 1)
+        self.assertRaises(Exception, TorchExponential, [0], 1, np.inf, 1)
+        self.assertRaises(Exception, TorchExponential, [0], 1, np.nan, 1)
+        self.assertRaises(Exception, TorchExponential, [0], 1, 1, np.inf)
+        self.assertRaises(Exception, TorchExponential, [0], 1, 1, np.nan)
+
+        # ----- support -----
+        N = 15
+        M = 10
+        n = 10
+
+        hypergeometric = TorchHypergeometric([0], N, M, n)
+
+        # create test inputs/outputs
+        data = torch.tensor([[4], [11], [5], [10]])
+
+        probs = likelihood(hypergeometric, data)
+        log_probs = log_likelihood(hypergeometric, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(all(probs[:2] == 0))
+        self.assertTrue(all(probs[2:] != 0))
+
     def test_exponential(self):
 
         # ----- check inference -----
@@ -715,7 +1021,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         data = np.random.rand(3, 1)
 
         log_probs = log_likelihood(node_exponential, data)
-        log_probs_torch = log_likelihood(torch_exponential, torch.tensor(data, dtype=torch.float32))
+        log_probs_torch = log_likelihood(torch_exponential, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
         self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
@@ -762,6 +1068,28 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
+        # ----- (invalid) parameters -----
+        TorchExponential([0], torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
+        self.assertRaises(Exception, TorchExponential, [0], 0.0)
+        self.assertRaises(Exception, TorchExponential, [0], -1.0)
+        self.assertRaises(Exception, TorchExponential, [0], np.inf)
+        self.assertRaises(Exception, TorchExponential, [0], np.nan)
+
+        # ----- support -----
+        l = 1.5
+
+        exponential = TorchExponential([0], l)
+
+        # create test inputs/outputs
+        data = torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]])# TODO (fails):, [0.0]])
+
+        probs = likelihood(exponential, data)
+        log_probs = log_likelihood(exponential, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(all(probs[0] == 0.0))
+        # TODO (fails): self.assertTrue(all(probs[1] != 0.0))
+
     def test_gamma(self):
 
         # ----- check inference -----
@@ -776,7 +1104,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         data = np.random.rand(3, 1)
 
         log_probs = log_likelihood(node_gamma, data)
-        log_probs_torch = log_likelihood(torch_gamma, torch.tensor(data, dtype=torch.float32))
+        log_probs_torch = log_likelihood(torch_gamma, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
         self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
@@ -825,6 +1153,17 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
+         # ----- (invalid) parameters -----
+        TorchGamma([0], torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)), 1.0)
+        TorchGamma([0], 1.0, torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
+        self.assertRaises(Exception, TorchGamma, [0], np.nextafter(0.0, -1.0), 1.0)
+        self.assertRaises(Exception, TorchGamma, [0], 1.0, np.nextafter(0.0, -1.0))
+        self.assertRaises(Exception, TorchGamma, [0], np.inf, 1.0)
+        self.assertRaises(Exception, TorchGamma, [0], np.nan, 1.0)
+        self.assertRaises(Exception, TorchGamma, [0], 1.0, np.inf)
+        self.assertRaises(Exception, TorchGamma, [0], 1.0, np.nan)
+
 
 if __name__ == "__main__":
+    torch.set_default_dtype(torch.float64)
     unittest.main()
