@@ -36,7 +36,7 @@ class TestTorchRatSpn(unittest.TestCase):
         rat = toNodes(torch_rat)
 
         # create dummy input data (batch size x random variables)
-        dummy_data = np.random.randn(3, 1024)
+        dummy_data = np.random.randn(3, 1024).astype(np.float32)
 
         # compute outputs for node rat spn
         nodes_output = log_likelihood(rat, dummy_data)
@@ -71,13 +71,13 @@ class TestTorchRatSpn(unittest.TestCase):
         torch_rat = toTorch(rat)
 
         # create dummy input data (batch size x random variables)
-        dummy_data = np.random.randn(3, 1024)
+        dummy_data = np.random.randn(3, 1024).astype(np.float32)
 
         # compute outputs for node rat spn
         nodes_output = log_likelihood(rat, dummy_data)
 
         # compute outputs for torch rat spn
-        torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data, dtype=torch.float32))
+        torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data))
 
         # compare outputs
         self.assertTrue(
@@ -112,7 +112,7 @@ class TestTorchRatSpn(unittest.TestCase):
             self.assertTrue(torch.allclose(p1.data, p2.data))
 
         # create dummy input data (batch size x random variables)
-        dummy_data = np.random.randn(3, 1024)
+        dummy_data = np.random.randn(3, 1024).astype(np.float32)
 
         # compute outputs for node rat spn
         torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data))

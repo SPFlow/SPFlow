@@ -5,7 +5,6 @@ Created on July 4, 2021
 """
 
 from abc import ABC
-from spn.python.structure.nodes.node import get_topological_order
 from typing import List, Union, Tuple
 
 from multipledispatch import dispatch  # type: ignore
@@ -45,8 +44,10 @@ class TorchGaussian(TorchParametricLeaf):
             - sigma is the standard deviation
 
     Attributes:
-        mean (float): mean (mu) of the distribution.
-        stdev (float): standard deviation (sigma) of the distribution.
+        mean:
+            mean (mu) of the distribution.
+        stdev:
+            standard deviation (sigma) of the distribution.
     """
 
     ptype = ParametricType.CONTINUOUS
@@ -58,11 +59,11 @@ class TorchGaussian(TorchParametricLeaf):
             raise ValueError("Invalid scope size for univariate Gaussian")
 
         # register mean and standard deviation as torch parameters
-        self.register_parameter("mean", Parameter(torch.tensor(float(mean))))
-        self.register_parameter("stdev", Parameter(torch.tensor(float(stdev))))
+        self.register_parameter("mean", Parameter())
+        self.register_parameter("stdev", Parameter())
 
-        # create Torch distribution with specified parameters
-        self.dist = D.Normal(loc=self.mean, scale=self.stdev)
+        # set parameters
+        self.set_params(mean, stdev)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -72,12 +73,12 @@ class TorchGaussian(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
@@ -88,8 +89,21 @@ class TorchGaussian(TorchParametricLeaf):
         return log_prob
 
     def set_params(self, mean: float, stdev: float) -> None:
-        self.mean.data = torch.tensor(mean)
-        self.stdev.data = torch.tensor(stdev)
+
+        if not (np.isfinite(mean) and np.isfinite(stdev)):
+            raise ValueError(
+                f"Mean and standard deviation for Gaussian distribution must be finite, but were: {mean}, {stdev}"
+            )
+        if stdev <= 0.0:
+            raise ValueError(
+                f"Standard deviation for Gaussian distribution must be greater than 0.0, but was: {stdev}"
+            )
+        
+        self.mean.data = torch.tensor(float(mean))
+        self.stdev.data = torch.tensor(float(stdev))
+
+        # create Torch distribution with specified parameters
+        self.dist = D.Normal(loc=self.mean, scale=self.stdev)
 
     def get_params(self) -> Tuple[float, float]:
         return self.mean.data.cpu().numpy(), self.stdev.data.cpu().numpy()  # type: ignore
@@ -108,9 +122,17 @@ def toNodes(torch_node: TorchGaussian) -> P.Gaussian:
 class TorchLogNormal(TorchParametricLeaf):
     """(Univariate) Log-Normal distribution.
 
+    PDF(x) =
+        1/(x*sigma*sqrt(2*pi) * exp(-(ln(x)-mu)^2/(2*sigma^2)), where
+            - x is an observation
+            - mu is the mean
+            - sigma is the standard deviation
+
     Attributes:
-        mean (float): mean (mu) of the distribution.
-        stdev (float): standard deviation (sigma) of the distribution.
+        mean:
+            mean (mu) of the distribution.
+        stdev:
+            standard deviation (sigma) of the distribution (must be greater than 0).
     """
 
     ptype = ParametricType.POSITIVE
@@ -119,11 +141,11 @@ class TorchLogNormal(TorchParametricLeaf):
         super(TorchLogNormal, self).__init__(scope)
 
         # register mean and standard deviation as torch parameters
-        self.register_parameter("mean", Parameter(torch.tensor(mean, dtype=torch.float32)))
-        self.register_parameter("stdev", Parameter(torch.tensor(stdev, dtype=torch.float32)))
+        self.register_parameter("mean", Parameter())
+        self.register_parameter("stdev", Parameter())
 
-        # create Torch distribution with specified parameters
-        self.dist = D.LogNormal(loc=self.mean, scale=self.stdev)
+        # set parameters
+        self.set_params(mean, stdev)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -133,24 +155,43 @@ class TorchLogNormal(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
+        # test data for distribution support
+        support_mask = self.dist.support.check(scope_data).sum(dim=1) == scope_data.shape[1]
+
+        # set probability of data outside of support to -inf
+        log_prob[~support_mask] = -float("Inf")
+
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
+        log_prob[prob_mask & support_mask] = self.dist.log_prob(scope_data[prob_mask & support_mask])
 
         return log_prob
 
     def set_params(self, mean: float, stdev: float) -> None:
-        self.mean.data = torch.tensor(mean)
-        self.stdev.data = torch.tensor(stdev)
+
+        if not (np.isfinite(mean) and np.isfinite(stdev)):
+            raise ValueError(
+                f"Mean and standard deviation for Gaussian distribution must be finite, but were: {mean}, {stdev}"
+            )
+        if stdev <= 0.0:
+            raise ValueError(
+                f"Standard deviation for Gaussian distribution must be greater than 0.0, but was: {stdev}"
+            )
+
+        self.mean.data = torch.tensor(float(mean))
+        self.stdev.data = torch.tensor(float(stdev))
+
+        # create Torch distribution with specified parameters
+        self.dist = D.LogNormal(loc=self.mean, scale=self.stdev)
 
     def get_params(self) -> Tuple[float, float]:
         return self.mean.data.cpu().numpy(), self.stdev.data.cpu().numpy()  # type: ignore
@@ -170,15 +211,18 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
     """Multivariate Normal distribution.
 
     PDF(x) =
-        1/sqrt((2*pi)^d * det(cov)) * exp(-1/2 (x-mu)^T * cov * (x-mu)), where
+        1/sqrt((2*pi)^d * det(cov)) * exp(-1/2 (x-mu)^T * cov^(-1) * (x-mu)), where
             - d is the dimension of the distribution
             - x is the d-dim. vector of observations
             - mu is the d-dim. mean_vector
             - cov is the dxd covariance_matrix
 
     Attributes:
-        mean_vector (Union[List[float], torch.Tensor, np.ndarray]): A list, NumPy array or a PyTorch tensor holding the means (mu) for each dimension of the distribution (has exactly as mUnion[int, float] elements as the scope of this leaf).
-        covariance_matrix: A list of lists (representing a two-dimensional NxN matrix, where N is the length
+        mean_vector:
+            A list, NumPy array or a PyTorch tensor holding the means (mu) of each of the one-dimensional Normal distributions.
+            Has exactly as many elements as the scope of this leaf.
+        covariance_matrix:
+            A list of lists, NumPy array or PyTorch tensor (representing a two-dimensional NxN matrix, where N is the length
             of the scope) describing the covariances of the distribution. The diagonal holds
             the variances (sigma^2) of each of the one-dimensional distributions.
     """
@@ -218,12 +262,12 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
@@ -241,17 +285,17 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
 
         if isinstance(mean_vector, list):
             # convert float list to torch tensor
-            mean_vector = torch.tensor(mean_vector, dtype=torch.float32)
+            mean_vector = torch.tensor([float(v) for v in mean_vector])
         elif isinstance(mean_vector, np.ndarray):
             # convert numpy array to torch tensor
-            mean_vector = torch.from_numpy(mean_vector)
+            mean_vector = torch.from_numpy(mean_vector).type(torch.get_default_dtype())
 
         if isinstance(covariance_matrix, list):
             # convert numpy array to torch tensor
-            covariance_matrix = torch.tensor(covariance_matrix, dtype=torch.float32)
+            covariance_matrix = torch.tensor([[float(v) for v in row] for row in covariance_matrix])
         elif isinstance(covariance_matrix, np.ndarray):
             # convert numpy array to torch tensor
-            covariance_matrix = torch.from_numpy(covariance_matrix)
+            covariance_matrix = torch.from_numpy(covariance_matrix).type(torch.get_default_dtype())
 
         self.mean_vector.data = mean_vector
         self.covariance_matrix.data = covariance_matrix
@@ -279,8 +323,10 @@ class TorchUniform(TorchParametricLeaf):
 
 
     Attributes:
-        start (float): Start of the interval. Must be less than beta.
-        end (float): End of interval.
+        start:
+            Start of the interval.
+        end:
+            End of interval (must be larger the interval start).
     """
 
     ptype = ParametricType.CONTINUOUS
@@ -288,15 +334,12 @@ class TorchUniform(TorchParametricLeaf):
     def __init__(self, scope: List[int], start: float, end: float) -> None:
         super(TorchUniform, self).__init__(scope)
 
-        # since torch Uniform distribution excludes the upper bound, compute next largest number
-        end_next = np.nextafter(end, np.inf)
-
         # register interval bounds as torch buffers (should not be changed)
-        self.register_buffer("start", torch.tensor(start, dtype=torch.float32))
-        self.register_buffer("end", torch.tensor(end, dtype=torch.float32))
+        self.register_buffer("start", torch.empty(size=[]))
+        self.register_buffer("end", torch.empty(size=[]))
 
-        # create Torch distribution with specified parameters
-        self.dist = D.Uniform(low=self.start, high=end_next)
+        # set parameters
+        self.set_params(start, end)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -306,12 +349,12 @@ class TorchUniform(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
@@ -328,8 +371,22 @@ class TorchUniform(TorchParametricLeaf):
         return log_prob
 
     def set_params(self, start: float, end: float) -> None:
-        self.start.data = torch.tensor(start)  # type: ignore
-        self.end.data = torch.tensor(end)  # type: ignore
+
+        if not start < end:
+            raise ValueError(
+                f"Lower bound for Uniform distribution must be less than upper bound, but were: {start}, {end}"
+            )
+        if not (np.isfinite(start) and np.isfinite(end)):
+            raise ValueError(f"Lower and upper bound must be finite, but were: {start}, {end}")
+
+        # since torch Uniform distribution excludes the upper bound, compute next largest number
+        end_next = torch.nextafter(torch.tensor(end), torch.tensor(float("Inf")))
+
+        self.start.data = torch.tensor(float(start))  # type: ignore
+        self.end.data = torch.tensor(float(end_next))  # type: ignore
+
+        # create Torch distribution with specified parameters
+        self.dist = D.Uniform(low=self.start, high=end_next)
 
     def get_params(self) -> Tuple[float, float]:
         return self.start.cpu().numpy(), self.end.cpu().numpy()  # type: ignore
@@ -353,7 +410,8 @@ class TorchBernoulli(TorchParametricLeaf):
         1-p , if k=0
 
     Attributes:
-        p (float): Probability of success.
+        p:
+            Probability of success in the range [0,1].
     """
 
     ptype = ParametricType.BINARY
@@ -362,10 +420,10 @@ class TorchBernoulli(TorchParametricLeaf):
         super(TorchBernoulli, self).__init__(scope)
 
         # register success probability p as torch parameter
-        self.register_parameter("p", Parameter(torch.tensor(p, dtype=torch.float32)))
+        self.register_parameter("p", Parameter())
 
-        # create Torch distribution with specified parameters
-        self.dist = D.Bernoulli(probs=self.p)
+        # set parameters
+        self.set_params(p)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -375,23 +433,38 @@ class TorchBernoulli(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
+        # set probabilities of values outside of distribution support to 0 (-inf in log space)
+        support_mask = ((scope_data == 1) | (scope_data == 0)).sum(dim=1).bool()
+        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        # compute probabilities for values inside distribution support
+        log_prob[prob_mask & support_mask] = self.dist.log_prob(
+            scope_data[prob_mask & support_mask].type(torch.get_default_dtype())
+        )
 
         return log_prob
 
     def set_params(self, p: float) -> None:
-        self.p.data = torch.tensor(p, dtype=torch.float32)
+
+        if p < 0.0 or p > 1.0 or not np.isfinite(p):
+            raise ValueError(
+                f"Value of p for Bernoulli distribution must to be between 0.0 and 1.0, but was: {p}"
+            )
+
+        self.p.data = torch.tensor(float(p))
+
+        # create Torch distribution with specified parameters
+        self.dist = D.Bernoulli(probs=self.p)
 
     def get_params(self) -> Tuple[float]:
         return (self.p.data.cpu().numpy(),)  # type: ignore
@@ -415,8 +488,10 @@ class TorchBinomial(TorchParametricLeaf):
             - (n)C(k) is the binomial coefficient (n choose k)
 
     Attributes:
-        n (int): Number of i.i.d. Bernoulli trials.
-        p (float): Probability of success of each trial.
+        n:
+            Number of i.i.d. Bernoulli trials (greater of equal to 0).
+        p:
+            Probability of success of each trial in the range [0,1].
     """
 
     ptype = ParametricType.COUNT
@@ -425,13 +500,13 @@ class TorchBinomial(TorchParametricLeaf):
         super(TorchBinomial, self).__init__(scope)
 
         # register number of trials n as torch buffer (should not be changed)
-        self.register_buffer("n", torch.tensor(n))
+        self.register_buffer("n", torch.empty(size=[]))
 
         # register success probability p as torch parameter
-        self.register_parameter("p", Parameter(torch.tensor(p, dtype=torch.float32)))
+        self.register_parameter("p", Parameter())
 
-        # create Torch distribution with specified parameters
-        self.dist = D.Binomial(total_count=self.n, probs=self.p)
+        # set parameters
+        self.set_params(n, p)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -441,24 +516,47 @@ class TorchBinomial(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
+        # test data for distribution support
+        support_mask = self.dist.support.check(scope_data)
+
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
+        # set probabilities of values outside of distribution support to 0 (-inf in log space)
+        support_mask = ((scope_data >= 0) & (scope_data <= self.n)).sum(dim=1).bool()
+        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        # compute probabilities for values inside distribution support
+        log_prob[prob_mask & support_mask] = self.dist.log_prob(
+            scope_data[prob_mask & support_mask]
+        )
 
         return log_prob
 
     def set_params(self, n: int, p: float) -> None:
-        self.n.data = torch.tensor(n)  # type: ignore
-        self.p.data = torch.tensor(p)  # type: ignore
+
+        if p < 0.0 or p > 1.0 or not np.isfinite(p):
+            raise ValueError(
+                f"Value of p for Binomial distribution must to be between 0.0 and 1.0, but was: {p}"
+            )
+
+        if n < 0 or not np.isfinite(n):
+            raise ValueError(
+                f"Value of n for Binomial distribution must to greater of equal to 0, but was: {n}"
+            )
+
+        self.n.data = torch.tensor(int(n))  # type: ignore
+        self.p.data = torch.tensor(float(p))  # type: ignore
+
+        # create Torch distribution with specified parameters
+        self.dist = D.Binomial(total_count=self.n, probs=self.p)
 
     def get_params(self) -> Tuple[int, float]:
         return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
@@ -482,8 +580,10 @@ class TorchNegativeBinomial(TorchParametricLeaf):
             - (n)C(k) is the binomial coefficient (n choose k)
 
     Attributes:
-        n (int): Number of i.i.d. trials.
-        p (float): Probability of success of each trial.
+        n:
+            Number of i.i.d. trials (greater of equal to 0).
+        p:
+            Probability of success of each trial in the range (0,1].
     """
 
     ptype = ParametricType.COUNT
@@ -492,10 +592,13 @@ class TorchNegativeBinomial(TorchParametricLeaf):
         super(TorchNegativeBinomial, self).__init__(scope)
 
         # register number of trials n as torch buffer (should not be changed)
-        self.register_buffer("n", torch.tensor(n))
+        self.register_buffer("n", torch.empty(size=[]))
 
         # register success probability p as torch parameter
-        self.register_parameter("p", Parameter(torch.tensor(p, dtype=torch.float32)))
+        self.register_parameter("p", Parameter())
+
+        # set parameters
+        self.set_params(n, p)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -505,12 +608,12 @@ class TorchNegativeBinomial(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
@@ -520,13 +623,29 @@ class TorchNegativeBinomial(TorchParametricLeaf):
 
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask])
+        # set probabilities of values outside of distribution support to 0 (-inf in log space)
+        support_mask = (scope_data >= 0).sum(dim=1).bool()
+        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        # compute probabilities for values inside distribution support
+        log_prob[prob_mask & support_mask] = dist.log_prob(
+            scope_data[prob_mask & support_mask]
+        )
 
         return log_prob
 
     def set_params(self, n: int, p: float) -> None:
-        self.n.data = torch.tensor(n)  # type: ignore
-        self.p.data = torch.tensor(p)  # type: ignore
+
+        if p <= 0.0 or p > 1.0 or not np.isfinite(p):
+            raise ValueError(
+                f"Value of p for NegativeBinomial distribution must to be between 0.0 and 1.0, but was: {p}"
+            )
+        if n < 0 or not np.isfinite(n):
+            raise ValueError(
+                f"Value of n for NegativeBinomial distribution must to greater of equal to 0, but was: {n}"
+            )
+
+        self.n.data = torch.tensor(int(n))  # type: ignore
+        self.p.data = torch.tensor(float(p))  # type: ignore
 
     def get_params(self) -> Tuple[int, float]:
         return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
@@ -549,7 +668,8 @@ class TorchPoisson(TorchParametricLeaf):
         l^k * exp(-l) / k!
 
     Attributes:
-        l (float): Expected value (& variance) of the Poisson distribution (usually denoted as lambda).
+        l:
+            Expected value (& variance) of the Poisson distribution (usually denoted as lambda).
     """
 
     ptype = ParametricType.COUNT
@@ -558,10 +678,10 @@ class TorchPoisson(TorchParametricLeaf):
         super(TorchPoisson, self).__init__(scope)
 
         # register lambda l as torch parameter
-        self.register_parameter("l", Parameter(torch.tensor(l, dtype=torch.float32)))
+        self.register_parameter("l", Parameter())
 
-        # create Torch distribution with specified parameters
-        self.dist = D.Poisson(rate=self.l)
+        # set parameters
+        self.set_params(l)        
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -571,23 +691,36 @@ class TorchPoisson(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
+        # set probabilities of values outside of distribution support to 0 (-inf in log space)
+        support_mask = (scope_data >= 0).sum(dim=1).bool()
+        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        # compute probabilities for values inside distribution support
+        log_prob[prob_mask & support_mask] = self.dist.log_prob(
+            scope_data[prob_mask & support_mask]
+        )
 
         return log_prob
 
     def set_params(self, l: float) -> None:
-        self.l.data = torch.tensor(l)
+
+        if not np.isfinite(l):
+            raise ValueError(f"Value of l for Poisson distribution must be finite, but was: {l}")
+
+        self.l.data = torch.tensor(float(l))
+
+        # create Torch distribution with specified parameters
+        self.dist = D.Poisson(rate=self.l)
 
     def get_params(self) -> Tuple[float]:
         return (self.l.data.cpu().numpy(),)  # type: ignore
@@ -610,7 +743,8 @@ class TorchGeometric(TorchParametricLeaf):
         p * (1-p)^(k-1)
 
     Attributes:
-        p (float): Probability of success.
+        p:
+            Probability of success in the range (0,1].
     """
 
     ptype = ParametricType.BINARY
@@ -619,10 +753,10 @@ class TorchGeometric(TorchParametricLeaf):
         super(TorchGeometric, self).__init__(scope)
 
         # register success probability p as torch parameter
-        self.register_parameter("p", Parameter(torch.tensor(p, dtype=torch.float32)))
+        self.register_parameter("p", Parameter())
 
-        # create Torch distribution with specified parameters
-        self.dist = D.Geometric(probs=self.p)
+        # set parameters
+        self.set_params(p)        
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -632,23 +766,38 @@ class TorchGeometric(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask] - 1)
+        # set probabilities of values outside of distribution support to 0 (-inf in log space)
+        support_mask = ((scope_data >= 1) & self.dist.support.check(scope_data)).sum(dim=1).bool()
+        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        # compute probabilities for values inside distribution support
+        log_prob[prob_mask & support_mask] = self.dist.log_prob(
+            scope_data[prob_mask & support_mask] - 1
+        )
 
         return log_prob
 
     def set_params(self, p: float) -> None:
-        self.p.data = torch.tensor(p)
+
+        if p <= 0.0 or p > 1.0 or not np.isfinite(p):
+            raise ValueError(
+                f"Value of p for Geometric distribution must to be greater than 0.0 and less or equal to 1.0, but was: {p}"
+            )
+
+        self.p.data = torch.tensor(float(p))
+
+        # create Torch distribution with specified parameters
+        self.dist = D.Geometric(probs=self.p)
 
     def get_params(self) -> Tuple[float]:
         return (self.p.data.cpu().numpy(),)  # type: ignore
@@ -672,9 +821,12 @@ class TorchHypergeometric(TorchParametricLeaf):
             - (n)C(k) is the binomial coefficient (n choose k)
 
     Attributes:
-        N (int): Total number of entities (in the population).
-        M (int): Number of entities with property of interest (in the population), less than or equal to N.
-        n (int): Number of observed entities (sample size), less than or equal to N.
+        N:
+            Total number of entities (in the population), greater or equal to 0.
+        M:
+            Number of entities with property of interest (in the population), greater or equal to zero and less than or equal to N.
+        n:
+            Number of observed entities (sample size), greater or equal to zero and less than or equal to N.
     """
 
     ptype = ParametricType.COUNT
@@ -683,9 +835,12 @@ class TorchHypergeometric(TorchParametricLeaf):
         super(TorchHypergeometric, self).__init__(scope)
 
         # register parameters as torch buffers (should not be changed)
-        self.register_buffer("N", torch.tensor(N, dtype=torch.int32))
-        self.register_buffer("M", torch.tensor(M, dtype=torch.int32))
-        self.register_buffer("n", torch.tensor(n, dtype=torch.int32))
+        self.register_buffer("N", torch.empty(size=[]))
+        self.register_buffer("M", torch.empty(size=[]))
+        self.register_buffer("n", torch.empty(size=[]))
+
+        # set parameters
+        self.set_params(N, M, n)
 
     def log_prob(self, k: torch.Tensor):
 
@@ -734,25 +889,45 @@ class TorchHypergeometric(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = self.log_prob(scope_data[prob_mask])
+        # set probabilities of values outside of distribution support to 0 (-inf in log space)
+        support_mask = ((scope_data >= max(0,self.n+self.M-self.N)) & (scope_data <= min(self.n, self.M))).sum(dim=1).bool()
+        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        # compute probabilities for values inside distribution support
+        log_prob[prob_mask & support_mask] = self.log_prob(
+            scope_data[prob_mask & support_mask]
+        )
 
         return log_prob
 
     def set_params(self, N: int, M: int, n: int) -> None:
-        self.M = M
-        self.N = N
-        self.n = n
+
+        if N < 0 or not np.isfinite(N):
+            raise ValueError(
+                f"Value of N for Hypergeometric distribution must be greater of equal to 0, but was: {N}"
+            )
+        if M < 0 or M > N or not np.isfinite(M):
+            raise ValueError(
+                f"Value of M for Hypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {M}"
+            )
+        if n < 0 or n > N or not np.isfinite(n):
+            raise ValueError(
+                f"Value of n for Hypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {n}"
+            )
+
+        self.M.data = torch.tensor(int(M))
+        self.N.data = torch.tensor(int(N))
+        self.n.data = torch.tensor(int(n))
 
     def get_params(self) -> Tuple[int, int, int]:
         return self.N.data.cpu().numpy(), self.M.data.cpu().numpy(), self.n.data.cpu().numpy()  # type: ignore
@@ -776,7 +951,8 @@ class TorchExponential(TorchParametricLeaf):
         0               , if x <= 0
 
     Attributes:
-        l (float): TODO
+        l:
+            Rate parameter of the Exponential distribution (usually denoted as lambda, must be greater than 0).
     """
 
     ptype = ParametricType.POSITIVE
@@ -784,11 +960,11 @@ class TorchExponential(TorchParametricLeaf):
     def __init__(self, scope: List[int], l: float) -> None:
         super(TorchExponential, self).__init__(scope)
 
-        # TODO
-        self.register_parameter("l", Parameter(torch.tensor(l, dtype=torch.float32)))
+        # register rate parameter l as torch parameter
+        self.register_parameter("l", Parameter())
 
-        # create Torch distribution with specified parameters
-        self.dist = D.Exponential(rate=self.l)
+        # set parameters
+        self.set_params(l)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -798,23 +974,38 @@ class TorchExponential(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = self.dist.log_prob(scope_data[prob_mask])
+        # set probabilities of values outside of distribution support to 0 (-inf in log space)
+        support_mask = (scope_data >= 0).sum(dim=1).bool()
+        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        # compute probabilities for values inside distribution support
+        log_prob[prob_mask & support_mask] = self.dist.log_prob(
+            scope_data[prob_mask & support_mask]
+        )
 
         return log_prob
 
     def set_params(self, l: float) -> None:
-        self.l.data = torch.tensor(l)
+
+        if l <= 0.0 or not np.isfinite(l):
+            raise ValueError(
+                f"Value of l for Exponential distribution must be greater than 0, but was: {l}"
+            )
+
+        self.l.data = torch.tensor(float(l))
+
+        # create Torch distribution with specified parameters
+        self.dist = D.Exponential(rate=self.l)
 
     def get_params(self) -> Tuple[float]:
         return (self.l.data.cpu().numpy(),)  # type: ignore
@@ -839,8 +1030,10 @@ class TorchGamma(TorchParametricLeaf):
             - G(beta) is the Gamma function
 
     Attributes:
-        alpha (float): Shape parameter, greater than 0.
-        beta (float): Scale parameter, greater than 0.
+        alpha:
+            Shape parameter, greater than 0.
+        beta:
+            Scale parameter, greater than 0.
     """
 
     ptype = ParametricType.POSITIVE
@@ -848,9 +1041,12 @@ class TorchGamma(TorchParametricLeaf):
     def __init__(self, scope: List[int], alpha: float, beta: float) -> None:
         super(TorchGamma, self).__init__(scope)
 
-        # register alpha and gamma as torch parameters
-        self.register_parameter("alpha", Parameter(torch.tensor(alpha, dtype=torch.float32)))
-        self.register_parameter("beta", Parameter(torch.tensor(beta, dtype=torch.float32)))
+        # register alpha and beta as torch parameters
+        self.register_parameter("alpha", Parameter())
+        self.register_parameter("beta", Parameter())
+
+        # set parameters
+        self.set_params(alpha, beta)
 
         # create Torch distribution with specified parameters
         self.dist = D.Gamma(concentration=self.alpha, rate=self.beta)
@@ -863,12 +1059,12 @@ class TorchGamma(TorchParametricLeaf):
         scope_data = data[:, list(self.scope)]
 
         # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1, dtype=data.dtype)
+        log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
         # ----- marginalization -----
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0
+        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
 
         # ----- log probabilities -----
 
@@ -879,8 +1075,18 @@ class TorchGamma(TorchParametricLeaf):
         return log_prob
 
     def set_params(self, alpha: float, beta: float) -> None:
-        self.alpha.data = torch.tensor(alpha)
-        self.beta.data = torch.tensor(beta)
+
+        if alpha <= 0.0 or not np.isfinite(alpha):
+            raise ValueError(
+                f"Value of alpha for Gamma distribution must be greater than 0, but was: {alpha}"
+            )
+        if beta <= 0.0 or not np.isfinite(beta):
+            raise ValueError(
+                f"Value of beta for Gamma distribution must be greater than 0, but was: {beta}"
+            )
+
+        self.alpha.data = torch.tensor(float(alpha))
+        self.beta.data = torch.tensor(float(beta))
 
     def get_params(self) -> Tuple[float, float]:
         return self.alpha.data.cpu().numpy(), self.beta.data.cpu().numpy()  # type: ignore
