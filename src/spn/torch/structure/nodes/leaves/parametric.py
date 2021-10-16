@@ -704,24 +704,24 @@ class TorchHypergeometric(TorchParametricLeaf):
 
         # TODO: avoid recomputation of terms
         result = (
-            torch.lgamma(self.M + 1)                # type: ignore
+            torch.lgamma(self.M + 1)  # type: ignore
             + torch.lgamma(torch.tensor(1.0))
-            - torch.lgamma(self.M + 2)              # type: ignore
-            + torch.lgamma(N_minus_M + 1)           # type: ignore
+            - torch.lgamma(self.M + 2)  # type: ignore
+            + torch.lgamma(N_minus_M + 1)  # type: ignore
             + torch.lgamma(torch.tensor(1.0))
-            - torch.lgamma(N_minus_M + 2)           # type: ignore
-            + torch.lgamma(self.N - self.n + 1)     # type: ignore
-            + torch.lgamma(self.n + 1)              # type: ignore
-            - torch.lgamma(self.N + 2)              # type: ignore
+            - torch.lgamma(N_minus_M + 2)  # type: ignore
+            + torch.lgamma(self.N - self.n + 1)  # type: ignore
+            + torch.lgamma(self.n + 1)  # type: ignore
+            - torch.lgamma(self.N + 2)  # type: ignore
             - torch.lgamma(k + 1)
             - torch.lgamma(self.M - k + 1)
-            + torch.lgamma(self.M + 2)              # type: ignore
-            - torch.lgamma(n_minus_k + 1) 
+            + torch.lgamma(self.M + 2)  # type: ignore
+            - torch.lgamma(n_minus_k + 1)
             - torch.lgamma(N_minus_M - self.n + k + 1)
-            + torch.lgamma(N_minus_M + 2)           # type: ignore
-            - torch.lgamma(self.N + 1)              # type: ignore
+            + torch.lgamma(N_minus_M + 2)  # type: ignore
+            - torch.lgamma(self.N + 1)  # type: ignore
             - torch.lgamma(torch.tensor(1.0))
-            + torch.lgamma(self.N + 2)              # type: ignore
+            + torch.lgamma(self.N + 2)  # type: ignore
         )
 
         return result
