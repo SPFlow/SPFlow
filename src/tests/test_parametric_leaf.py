@@ -13,6 +13,7 @@ from spn.python.structure.nodes.leaves.parametric.parametric import (
     Gamma,
 )
 from spn.python.inference.nodes.node import likelihood, log_likelihood
+from spn.python.structure.nodes import SPN
 import numpy as np
 
 import unittest
@@ -35,8 +36,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]])
         targets = np.array([[0.398942], [0.241971], [0.241971]])
 
-        probs = likelihood(gaussian, data)
-        log_probs = log_likelihood(gaussian, data)
+        probs = likelihood(SPN(), gaussian, data)
+        log_probs = log_likelihood(SPN(), gaussian, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -51,8 +52,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]])
         targets = np.array([[0.178412], [0.108212], [0.108212]])
 
-        probs = likelihood(gaussian, data)
-        log_probs = log_likelihood(gaussian, data)
+        probs = likelihood(SPN(), gaussian, data)
+        log_probs = log_likelihood(SPN(), gaussian, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -67,8 +68,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]])
         targets = np.array([[0.892062], [0.541062], [0.541062]])
 
-        probs = likelihood(gaussian, data)
-        log_probs = log_likelihood(gaussian, data)
+        probs = likelihood(SPN(), gaussian, data)
+        log_probs = log_likelihood(SPN(), gaussian, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -95,8 +96,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.5], [1.0], [1.5]])
         targets = np.array([[0.0683495], [1.59577], [0.285554]])
 
-        probs = likelihood(log_normal, data)
-        log_probs = log_likelihood(log_normal, data)
+        probs = likelihood(SPN(), log_normal, data)
+        log_probs = log_likelihood(SPN(), log_normal, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -111,8 +112,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.5], [1.0], [1.5]])
         targets = np.array([[0.610455], [0.797885], [0.38287]])
 
-        probs = likelihood(log_normal, data)
-        log_probs = log_likelihood(log_normal, data)
+        probs = likelihood(SPN(), log_normal, data)
+        log_probs = log_likelihood(SPN(), log_normal, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -127,8 +128,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.5], [1.0], [1.5]])
         targets = np.array([[0.627496], [0.398942], [0.244974]])
 
-        probs = likelihood(log_normal, data)
-        log_probs = log_likelihood(log_normal, data)
+        probs = likelihood(SPN(), log_normal, data)
+        log_probs = log_likelihood(SPN(), log_normal, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -144,8 +145,8 @@ class TestParametricLeaf(unittest.TestCase):
             [[-1.0], [0.0], [np.inf], [np.nextafter(0.0, 1.0)], [np.finfo(np.float64).max / 3.0]]
         )
 
-        probs = likelihood(log_normal, data)
-        log_probs = log_likelihood(log_normal, data)
+        probs = likelihood(SPN(), log_normal, data)
+        log_probs = log_likelihood(SPN(), log_normal, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(all(np.isinf(log_probs[:3])))
@@ -176,8 +177,8 @@ class TestParametricLeaf(unittest.TestCase):
 
         targets = np.array([[0.1591549], [0.0585498]])
 
-        probs = likelihood(multivariate_gaussian, data)
-        log_probs = log_likelihood(multivariate_gaussian, data)
+        probs = likelihood(SPN(), multivariate_gaussian, data)
+        log_probs = log_likelihood(SPN(), multivariate_gaussian, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -208,8 +209,8 @@ class TestParametricLeaf(unittest.TestCase):
 
         targets = np.array([[0.0366580], [0.0159315], [0.0081795]])
 
-        probs = likelihood(multivariate_gaussian, data)
-        log_probs = log_likelihood(multivariate_gaussian, data)
+        probs = likelihood(SPN(), multivariate_gaussian, data)
+        log_probs = log_likelihood(SPN(), multivariate_gaussian, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -235,8 +236,8 @@ class TestParametricLeaf(unittest.TestCase):
             [[0.0], [1.0 / (end - start)], [1.0 / (end - start)], [1.0 / (end - start)], [0.0]]
         )
 
-        probs = likelihood(uniform, data)
-        log_probs = log_likelihood(uniform, data)
+        probs = likelihood(SPN(), uniform, data)
+        log_probs = log_likelihood(SPN(), uniform, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -261,8 +262,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0], [1]])
         targets = np.array([[1.0 - p], [p]])
 
-        probs = likelihood(bernoulli, data)
-        log_probs = log_likelihood(bernoulli, data)
+        probs = likelihood(SPN(), bernoulli, data)
+        log_probs = log_likelihood(SPN(), bernoulli, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -275,8 +276,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.0], [1.0]])
         targets = np.array([[1.0], [0.0]])
 
-        probs = likelihood(bernoulli, data)
-        log_probs = log_likelihood(bernoulli, data)
+        probs = likelihood(SPN(), bernoulli, data)
+        log_probs = log_likelihood(SPN(), bernoulli, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -287,8 +288,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.0], [1.0]])
         targets = np.array([[0.0], [1.0]])
 
-        probs = likelihood(bernoulli, data)
-        log_probs = log_likelihood(bernoulli, data)
+        probs = likelihood(SPN(), bernoulli, data)
+        log_probs = log_likelihood(SPN(), bernoulli, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -308,8 +309,8 @@ class TestParametricLeaf(unittest.TestCase):
 
         data = np.array([[np.nextafter(0.0, -1.0)], [0.5], [np.nextafter(1.0, 2.0)]])
 
-        probs = likelihood(bernoulli, data)
-        log_probs = log_likelihood(bernoulli, data)
+        probs = likelihood(SPN(), bernoulli, data)
+        log_probs = log_likelihood(SPN(), bernoulli, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(all(probs == 0.0))
@@ -326,8 +327,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0], [5], [10]])
         targets = np.array([[0.000976563], [0.246094], [0.000976563]])
 
-        probs = likelihood(binomial, data)
-        log_probs = log_likelihood(binomial, data)
+        probs = likelihood(SPN(), binomial, data)
+        log_probs = log_likelihood(SPN(), binomial, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -342,8 +343,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0], [2], [5]])
         targets = np.array([[0.00032], [0.0512], [0.32768]])
 
-        probs = likelihood(binomial, data)
-        log_probs = log_likelihood(binomial, data)
+        probs = likelihood(SPN(), binomial, data)
+        log_probs = log_likelihood(SPN(), binomial, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -358,8 +359,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0], [7], [15]])
         targets = np.array([[0.00474756], [0.08113], [0.0000000143489]])
 
-        probs = likelihood(binomial, data)
-        log_probs = log_likelihood(binomial, data)
+        probs = likelihood(SPN(), binomial, data)
+        log_probs = log_likelihood(SPN(), binomial, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -372,8 +373,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.0], [1.0]])
         targets = np.array([[1.0], [0.0]])
 
-        probs = likelihood(binomial, data)
-        log_probs = log_likelihood(binomial, data)
+        probs = likelihood(SPN(), binomial, data)
+        log_probs = log_likelihood(SPN(), binomial, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -384,8 +385,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.0], [1.0]])
         targets = np.array([[0.0], [1.0]])
 
-        probs = likelihood(binomial, data)
-        log_probs = log_likelihood(binomial, data)
+        probs = likelihood(SPN(), binomial, data)
+        log_probs = log_likelihood(SPN(), binomial, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -400,8 +401,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.0], [1.0]])
         targets = np.array([[1.0], [0.0]])
 
-        probs = likelihood(binomial, data)
-        log_probs = log_likelihood(binomial, data)
+        probs = likelihood(SPN(), binomial, data)
+        log_probs = log_likelihood(SPN(), binomial, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -424,8 +425,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[-1.0], [2.0]])
         targets = np.array([[1.0], [0.0]])  #
 
-        probs = likelihood(binomial, data)
-        log_probs = log_likelihood(binomial, data)
+        probs = likelihood(SPN(), binomial, data)
+        log_probs = log_likelihood(SPN(), binomial, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(all(probs == 0))
@@ -442,8 +443,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0], [5], [10]])
         targets = np.array([[0.000104858], [0.0163238], [0.0585708]])
 
-        probs = likelihood(negative_binomial, data)
-        log_probs = log_likelihood(negative_binomial, data)
+        probs = likelihood(SPN(), negative_binomial, data)
+        log_probs = log_likelihood(SPN(), negative_binomial, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -458,8 +459,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0], [10], [20]])
         targets = np.array([[0.0000000000348678], [0.0000197282], [0.00191757]])
 
-        probs = likelihood(negative_binomial, data)
-        log_probs = log_likelihood(negative_binomial, data)
+        probs = likelihood(SPN(), negative_binomial, data)
+        log_probs = log_likelihood(SPN(), negative_binomial, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -472,8 +473,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.0], [1.0]])
         targets = np.array([[1.0], [0.0]])
 
-        probs = likelihood(negative_binomial, data)
-        log_probs = log_likelihood(negative_binomial, data)
+        probs = likelihood(SPN(), negative_binomial, data)
+        log_probs = log_likelihood(SPN(), negative_binomial, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -510,8 +511,8 @@ class TestParametricLeaf(unittest.TestCase):
 
         data = np.array([[np.nextafter(0.0, -1.0)], [0.0]])
 
-        probs = likelihood(negative_binomial, data)
-        log_probs = log_likelihood(negative_binomial, data)
+        probs = likelihood(SPN(), negative_binomial, data)
+        log_probs = log_likelihood(SPN(), negative_binomial, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(all(probs[0] == 0.0))
@@ -528,8 +529,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0], [2], [5]])
         targets = np.array([[0.367879], [0.18394], [0.00306566]])
 
-        probs = likelihood(poisson, data)
-        log_probs = log_likelihood(poisson, data)
+        probs = likelihood(SPN(), poisson, data)
+        log_probs = log_likelihood(SPN(), poisson, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -543,8 +544,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[2], [4], [10]])
         targets = np.array([[0.146525], [0.195367], [0.00529248]])
 
-        probs = likelihood(poisson, data)
-        log_probs = log_likelihood(poisson, data)
+        probs = likelihood(SPN(), poisson, data)
+        log_probs = log_likelihood(SPN(), poisson, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -558,8 +559,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[5], [10], [15]])
         targets = np.array([[0.0378333], [0.12511], [0.0347181]])
 
-        probs = likelihood(poisson, data)
-        log_probs = log_likelihood(poisson, data)
+        probs = likelihood(SPN(), poisson, data)
+        log_probs = log_likelihood(SPN(), poisson, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -578,8 +579,8 @@ class TestParametricLeaf(unittest.TestCase):
         # create test inputs/outputs
         data = np.array([[-1.0], [-0.5], [0.0]])
 
-        probs = likelihood(poisson, data)
-        log_probs = log_likelihood(poisson, data)
+        probs = likelihood(SPN(), poisson, data)
+        log_probs = log_likelihood(SPN(), poisson, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.all(probs[:2] == 0))
@@ -596,8 +597,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[1], [5], [10]])
         targets = np.array([[0.2], [0.08192], [0.0268435]])
 
-        probs = likelihood(geometric, data)
-        log_probs = log_likelihood(geometric, data)
+        probs = likelihood(SPN(), geometric, data)
+        log_probs = log_likelihood(SPN(), geometric, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -611,8 +612,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[1], [5], [10]])
         targets = np.array([[0.5], [0.03125], [0.000976563]])
 
-        probs = likelihood(geometric, data)
-        log_probs = log_likelihood(geometric, data)
+        probs = likelihood(SPN(), geometric, data)
+        log_probs = log_likelihood(SPN(), geometric, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -626,8 +627,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[1], [5], [10]])
         targets = np.array([[0.8], [0.00128], [0.0000004096]])
 
-        probs = likelihood(geometric, data)
-        log_probs = log_likelihood(geometric, data)
+        probs = likelihood(SPN(), geometric, data)
+        log_probs = log_likelihood(SPN(), geometric, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -648,8 +649,8 @@ class TestParametricLeaf(unittest.TestCase):
         # create test inputs/outputs
         data = np.array([[0], [np.nextafter(1.0, 0.0)], [1.5], [1]])
 
-        probs = likelihood(geometric, data)
-        log_probs = log_likelihood(geometric, data)
+        probs = likelihood(SPN(), geometric, data)
+        log_probs = log_likelihood(SPN(), geometric, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.all(probs[:3] == 0))
@@ -668,8 +669,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[5], [10], [15]])
         targets = np.array([[0.0257071], [0.147368], [0.0270206]])
 
-        probs = likelihood(hypergeometric, data)
-        log_probs = log_likelihood(hypergeometric, data)
+        probs = likelihood(SPN(), hypergeometric, data)
+        log_probs = log_likelihood(SPN(), hypergeometric, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -685,8 +686,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[1], [5], [10]])
         targets = np.array([[0.00723683], [0.259334], [0.00059342]])
 
-        probs = likelihood(hypergeometric, data)
-        log_probs = log_likelihood(hypergeometric, data)
+        probs = likelihood(SPN(), hypergeometric, data)
+        log_probs = log_likelihood(SPN(), hypergeometric, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -701,8 +702,8 @@ class TestParametricLeaf(unittest.TestCase):
         # create test inputs/outputs
         data = np.array([[4], [11], [5], [10]])
 
-        probs = likelihood(hypergeometric, data)
-        log_probs = log_likelihood(hypergeometric, data)
+        probs = likelihood(SPN(), hypergeometric, data)
+        log_probs = log_likelihood(SPN(), hypergeometric, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(all(probs[:2] == 0))
@@ -732,8 +733,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0], [2], [5]])
         targets = np.array([[0.5], [0.18394], [0.0410425]])
 
-        probs = likelihood(exponential, data)
-        log_probs = log_likelihood(exponential, data)
+        probs = likelihood(SPN(), exponential, data)
+        log_probs = log_likelihood(SPN(), exponential, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -747,8 +748,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0], [2], [5]])
         targets = np.array([[1.0], [0.135335], [0.00673795]])
 
-        probs = likelihood(exponential, data)
-        log_probs = log_likelihood(exponential, data)
+        probs = likelihood(SPN(), exponential, data)
+        log_probs = log_likelihood(SPN(), exponential, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -762,8 +763,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0], [2], [5]])
         targets = np.array([[1.5], [0.0746806], [0.000829627]])
 
-        probs = likelihood(exponential, data)
-        log_probs = log_likelihood(exponential, data)
+        probs = likelihood(SPN(), exponential, data)
+        log_probs = log_likelihood(SPN(), exponential, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -783,8 +784,8 @@ class TestParametricLeaf(unittest.TestCase):
         # create test inputs/outputs
         data = np.array([[np.nextafter(0.0, -1.0)], [0.0]])
 
-        probs = likelihood(exponential, data)
-        log_probs = log_likelihood(exponential, data)
+        probs = likelihood(SPN(), exponential, data)
+        log_probs = log_likelihood(SPN(), exponential, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(all(probs[0] == 0.0))
@@ -802,8 +803,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.1], [1.0], [3.0]])
         targets = np.array([[0.904837], [0.367879], [0.0497871]])
 
-        probs = likelihood(gamma, data)
-        log_probs = log_likelihood(gamma, data)
+        probs = likelihood(SPN(), gamma, data)
+        log_probs = log_likelihood(SPN(), gamma, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -818,8 +819,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.1], [1.0], [3.0]])
         targets = np.array([[0.327492], [0.541341], [0.029745]])
 
-        probs = likelihood(gamma, data)
-        log_probs = log_likelihood(gamma, data)
+        probs = likelihood(SPN(), gamma, data)
+        log_probs = log_likelihood(SPN(), gamma, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -834,8 +835,8 @@ class TestParametricLeaf(unittest.TestCase):
         data = np.array([[0.1], [1.0], [3.0]])
         targets = np.array([[0.0904837], [0.367879], [0.149361]])
 
-        probs = likelihood(gamma, data)
-        log_probs = log_likelihood(gamma, data)
+        probs = likelihood(SPN(), gamma, data)
+        log_probs = log_likelihood(SPN(), gamma, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))

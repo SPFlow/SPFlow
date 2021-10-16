@@ -5,21 +5,21 @@ Created on May 24, 2021
 """
 import itertools
 import numpy as np
-from typing import Dict, List, Union, cast
+from typing import Dict, List, Union, cast, Optional, Tuple
 from spn.python.structure.module import Module
-from spn.python.structure.nodes.node import Node, ProductNode, SumNode, _print_node_graph
+from spn.python.structure.nodes.node import Node, ProductNode, SumNode, SPN, get_topological_order
 from spn.python.structure.nodes.leaves.parametric import Gaussian
 from .region_graph import (
     Partition,
     Region,
     RegionGraph,
-    _print_region_graph,
-    random_region_graph,
 )
 
 
 class RatSpn(Module):
-    """A RAT-SPN is a randomized SPN, usually built from a RegionGraph.
+    """A RAT-SPN is a randomized SPN, usually built from a RegionGraph. This is the module implementation for RAT-SPNs.
+       The paper referenced: Random Sum-Product Networks A Simple but Effective Approach to Probabilistic Deep Learning
+                          by R. Peharz et. al.
 
     Attributes:
         root_node:
@@ -28,15 +28,56 @@ class RatSpn(Module):
             but one can also look at its child SumNodes for multiple outputs, e.g. classes.
             When the SPN is constructed from a RegionGraph, the children of the root are the nodes of
             the root_region of the RegionGraph.
+        nodes:
+            List of nodes in RAT-SPN sorted in topological order bottom up.
+        network_type:
+            Network Type to dispatch to correct methods to evaluate RAT-SPN. RAT-SPNs are evaluated like SPNs.
+        output_nodes:
+            Output Node of RAT-SPN. In case of the RAT-SPN same as the root node.
+        rg_nodes:
+            Dictionary with k: regions and v: corresponding nodes in the region.
+        region_graph:
+            Region graph, the RAT-SPN is created from.
+        num_nodes_root:
+            (C in the paper)
+            The number of SumNodes the root_region is equipped with. This will be the length of the children of the
+            root_node of the resulting RAT-SPN.
+        num_nodes_region:
+            (S in the paper)
+            The number of SumNodes each region except the root and leaf regions are equipped with.
+        num_nodes_leaf:
+            (I in the paper)
+            The number of LeafNodes each leaf region is equipped with. All LeafNodes of the same region
+            are multivariate distributions over the same scope, but possibly differently parametrized.
+        children:
+            List of child modules. In case of RAT-SPNs set to None, as RAT-SPN modules can not have child module.
     """
 
-    def __init__(self) -> None:
-        self.root_node: SumNode
-        self.region_graph: RegionGraph
-        self.num_nodes_root: int
-        self.num_nodes_region: int
-        self.num_nodes_leaf: int
-        self.rg_nodes: Dict[Union[Region, Partition], List[Node]]
+    def __init__(
+        self,
+        region_graph: RegionGraph,
+        num_nodes_root: int,
+        num_nodes_region: int,
+        num_nodes_leaf: int,
+        children: None = None,
+    ) -> None:
+        super().__init__(children=children)
+        rat_result: Tuple[SumNode, Dict[Union[Region, Partition], List[Node]]] = construct_spn(
+            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf
+        )
+        rat_spn: SumNode = rat_result[0]
+        rat_spn_rg_nodes: Dict[Union[Region, Partition], List[Node]] = rat_result[1]
+        self.root_node: SumNode = rat_spn
+        self.nodes: List[Node] = get_topological_order(rat_spn)
+        self.network_type: SPN = SPN()
+        self.output_nodes: SumNode = rat_spn
+
+        # RAT-module specific attributes
+        self.region_graph: RegionGraph = region_graph
+        self.num_nodes_root: int = num_nodes_root
+        self.num_nodes_region: int = num_nodes_region
+        self.num_nodes_leaf: int = num_nodes_leaf
+        self.rg_nodes: Dict[Union[Region, Partition], List[Node]] = rat_spn_rg_nodes
 
     def __len__(self):
         return 1
@@ -47,7 +88,7 @@ def construct_spn(
     num_nodes_root: int,
     num_nodes_region: int,
     num_nodes_leaf: int,
-) -> RatSpn:
+) -> Tuple[SumNode, Dict[Union[Region, Partition], List[Node]]]:
     """Builds a RAT-SPN from a given RegionGraph.
 
     This algorithm is an implementation of "Algorithm 2" of the original paper. The Regions and
@@ -57,6 +98,8 @@ def construct_spn(
     determined by the length of the cross product of the children Regions of the respective Partition.
 
     Args:
+        region_graph:
+            Region graph, the RAT-SPN is created from.
         num_nodes_root:
             (C in the paper)
             The number of SumNodes the root_region is equipped with. This will be the length of the children of the
@@ -86,13 +129,8 @@ def construct_spn(
     if num_nodes_leaf < 1:
         raise ValueError("num_nodes_leaf must be at least 1")
 
-    rat_spn = RatSpn()
-    rat_spn.region_graph = region_graph
-    rat_spn.num_nodes_root = num_nodes_root
-    rat_spn.num_nodes_region = num_nodes_region
-    rat_spn.num_nodes_leaf = num_nodes_leaf
-
     rg_nodes: Dict[Union[Region, Partition], List[Node]] = {}
+    root_node = None
 
     for region in region_graph.regions:
         # determine the scope of the nodes the Region will be equipped with
@@ -105,7 +143,7 @@ def construct_spn(
                 for i in range(num_nodes_root)
             ]
             rg_nodes[region] = root_nodes
-            rat_spn.root_node = SumNode(
+            root_node = SumNode(
                 children=root_nodes,
                 scope=region_scope,
                 weights=np.full(len(rg_nodes[region]), 1 / len(rg_nodes[region])),
@@ -154,16 +192,7 @@ def construct_spn(
                 np.full(num_nodes_partition, 1 / (num_nodes_partition * replicas)),
             )
 
-    rat_spn.rg_nodes = rg_nodes
-
-    if not rat_spn.root_node:
+    if not root_node:
         raise ValueError("Constructed RAT-SPN does not have root node")
 
-    return rat_spn
-
-
-if __name__ == "__main__":
-    region_graph = random_region_graph(X=set(range(1, 8)), depth=2, replicas=2)
-    _print_region_graph(region_graph)
-    rat_spn = construct_spn(region_graph, 3, 2, 2)
-    _print_node_graph(rat_spn.root_node)
+    return root_node, rg_nodes

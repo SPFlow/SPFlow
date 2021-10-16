@@ -363,8 +363,8 @@ def _copy_region_parameters(src: List[LeafNode], dst: _LeafLayer) -> None:
 
 @dispatch(TorchRatSpn)  # type: ignore[no-redef]
 def toNodes(torch_rat: TorchRatSpn) -> RatSpn:
-    # create node SPN using region graph (includes scopes)
-    rat = construct_spn(
+    # create RAT-SPN module using region graph (includes scopes)
+    rat = RatSpn(
         torch_rat.region_graph,
         torch_rat.num_nodes_root,
         torch_rat.num_nodes_region,
