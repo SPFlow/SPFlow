@@ -6,7 +6,14 @@ Created on August 09, 2021
 This file provides the sampling methods for SPNs.
 """
 
-from spn.python.structure.nodes.node import LeafNode, ProductNode, SumNode, Node, eval_spn_top_down
+from spn.python.structure.nodes.node import (
+    LeafNode,
+    ProductNode,
+    SumNode,
+    Node,
+    eval_spn_top_down,
+    SPN,
+)
 from spn.python.structure.nodes.validity_checks import _isvalid_spn
 from spn.python.sampling.nodes.leaves.parametric.sampling import sample_parametric_node
 from spn.python.inference.nodes.node import log_likelihood
@@ -180,7 +187,7 @@ def sample_instances(
         np.any(np.isnan(data), axis=1)
     ), "each row must have at least a nan value where the samples will be substituted"
 
-    log_likelihood(node, data)
+    log_likelihood(SPN(), node, data)
 
     instance_ids: np.ndarray = np.arange(data.shape[0])
 

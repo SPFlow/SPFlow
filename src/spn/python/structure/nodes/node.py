@@ -12,6 +12,7 @@ from multipledispatch import dispatch  # type: ignore
 import numpy as np
 import collections
 from collections import deque, OrderedDict
+from spn.python.structure.network_type import NetworkType
 
 
 class Node:
@@ -105,6 +106,10 @@ class LeafNode(Node):
         super().__init__(children=[], scope=scope)
 
 
+class SPN(NetworkType):
+    """Class for the network type SPN"""
+
+
 @dispatch(list)  # type: ignore[no-redef]
 def _print_node_graph(root_nodes: List[Node]) -> None:
     """Prints all unique nodes of a node graph in BFS fashion.
@@ -173,7 +178,7 @@ def _get_leaf_nodes(root_nodes: List[Node]) -> List[Node]:
     id_counter = 0
     while nodes:
         node: Node = nodes.pop(0)
-        if type(node) is LeafNode:
+        if issubclass(type(node), LeafNode):
             leaves.append(node)
         nodes.extend(list(set(node.children) - set(nodes)))
         id_counter += 1

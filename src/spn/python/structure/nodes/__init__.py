@@ -1,4 +1,4 @@
-from .node import Node, SumNode, ProductNode, LeafNode
+from .node import Node, SumNode, ProductNode, LeafNode, SPN
 from .leaves.parametric import (
     ParametricLeaf,
     Gaussian,

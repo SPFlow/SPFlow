@@ -9,7 +9,15 @@ This file provides the inference methods for SPNs.
 import numpy as np
 from numpy import ndarray
 from scipy.special import logsumexp  # type: ignore
-from spn.python.structure.nodes.node import Node, SumNode, ProductNode, LeafNode, eval_spn_bottom_up
+from spn.python.structure.nodes.node import (
+    Node,
+    SumNode,
+    ProductNode,
+    LeafNode,
+    eval_spn_bottom_up,
+    SPN,
+)
+from spn.python.structure.network_type import NetworkType
 from .leaves.parametric import node_likelihood, node_log_likelihood
 from typing import List, Callable, Type, Optional, Dict
 from multipledispatch import dispatch  # type: ignore
@@ -104,14 +112,19 @@ _node_likelihood: Dict[Type, Callable] = {
 }
 
 
-@dispatch(Node, ndarray, node_likelihood=dict)
+@dispatch(SPN, Node, ndarray, node_likelihood=dict)
 def likelihood(
-    node: Node, data: ndarray, node_likelihood: Dict[Type, Callable] = _node_likelihood
+    network_type: SPN,
+    node: Node,
+    data: ndarray,
+    node_likelihood: Dict[Type, Callable] = _node_likelihood,
 ) -> ndarray:
     """
     Calculates the likelihood for a SPN.
 
     Args:
+        network_type:
+            Network Type to specify the inference method for SPNs.
         node:
             Root node of SPN to calculate likelihood for.
         data:
@@ -129,8 +142,9 @@ def likelihood(
     return result
 
 
-@dispatch(Node, ndarray, node_log_likelihood=dict)
+@dispatch(SPN, Node, ndarray, node_log_likelihood=dict)
 def log_likelihood(
+    network_type: SPN,
     node: Node,
     data: ndarray,
     node_log_likelihood: Dict[Type, Callable] = _node_log_likelihood,
@@ -139,6 +153,8 @@ def log_likelihood(
     Calculates the log-likelihood for a SPN.
 
     Args:
+        network_type:
+            Network Type to specify the inference method for SPNs.
         node:
             Root node of SPN to calculate log-likelihood for.
         data:
@@ -149,4 +165,4 @@ def log_likelihood(
 
     Returns: Log-likelihood value for SPN.
     """
-    return likelihood(node, data, node_likelihood=node_log_likelihood)
+    return likelihood(network_type, node, data, node_likelihood=node_log_likelihood)

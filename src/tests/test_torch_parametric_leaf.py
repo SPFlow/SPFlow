@@ -12,6 +12,7 @@ from spn.python.structure.nodes.leaves.parametric.parametric import (
     Exponential,
     Gamma,
 )
+from spn.python.structure.nodes.node import SPN
 from spn.python.inference.nodes.node import log_likelihood
 from spn.torch.structure.nodes.leaves.parametric import (
     toNodes,
@@ -53,7 +54,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.randn(3, 1)
 
-        log_probs = log_likelihood(node_gaussian, data)
+        log_probs = log_likelihood(SPN(), node_gaussian, data)
         log_probs_torch = log_likelihood(torch_gaussian, torch.tensor(data, dtype=torch.float32))
 
         # make sure that probabilities match python backend probabilities
@@ -119,7 +120,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)
 
-        log_probs = log_likelihood(node_log_normal, data)
+        log_probs = log_likelihood(SPN(), node_log_normal, data)
         log_probs_torch = log_likelihood(torch_log_normal, torch.tensor(data, dtype=torch.float32))
 
         # make sure that probabilities match python backend probabilities
@@ -191,7 +192,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 3)
 
-        log_probs = log_likelihood(node_multivariate_gaussian, data)
+        log_probs = log_likelihood(SPN(), node_multivariate_gaussian, data)
         log_probs_torch = log_likelihood(
             torch_multivariate_gaussian, torch.tensor(data, dtype=torch.float32)
         )
@@ -299,7 +300,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create test inputs/outputs
         data = np.random.rand(3, 1) * 2.0
 
-        log_probs = log_likelihood(node_uniform, data)
+        log_probs = log_likelihood(SPN(), node_uniform, data)
         log_probs_torch = log_likelihood(torch_uniform, torch.tensor(data, dtype=torch.float32))
 
         # make sure that probabilities match python backend probabilities
@@ -349,7 +350,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 2, (3, 1))
 
-        log_probs = log_likelihood(node_bernoulli, data)
+        log_probs = log_likelihood(SPN(), node_bernoulli, data)
         log_probs_torch = log_likelihood(torch_bernoulli, torch.tensor(data, dtype=torch.float32))
 
         # make sure that probabilities match python backend probabilities
@@ -409,7 +410,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, n, (3, 1))
 
-        log_probs = log_likelihood(node_binomial, data)
+        log_probs = log_likelihood(SPN(), node_binomial, data)
         log_probs_torch = log_likelihood(torch_binomial, torch.tensor(data, dtype=torch.float32))
 
         # make sure that probabilities match python backend probabilities
@@ -473,7 +474,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, n, (3, 1))
 
-        log_probs = log_likelihood(node_negative_binomial, data)
+        log_probs = log_likelihood(SPN(), node_negative_binomial, data)
         log_probs_torch = log_likelihood(
             torch_negative_binomial, torch.tensor(data, dtype=torch.float32)
         )
@@ -536,7 +537,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 10, (3, 1))
 
-        log_probs = log_likelihood(node_poisson, data)
+        log_probs = log_likelihood(SPN(), node_poisson, data)
         log_probs_torch = log_likelihood(torch_poisson, torch.tensor(data, dtype=torch.float32))
 
         # make sure that probabilities match python backend probabilities
@@ -596,7 +597,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, 10, (3, 1))
 
-        log_probs = log_likelihood(node_geometric, data)
+        log_probs = log_likelihood(SPN(), node_geometric, data)
         log_probs_torch = log_likelihood(torch_geometric, torch.tensor(data, dtype=torch.float32))
 
         # make sure that probabilities match python backend probabilities
@@ -658,7 +659,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.array([[4], [5], [10], [11]])  # np.random.randint(1, 100, (1, 1))
 
-        log_probs = log_likelihood(node_hypergeometric, data)
+        log_probs = log_likelihood(SPN(), node_hypergeometric, data)
         log_probs_torch = log_likelihood(
             torch_hypergeometric, torch.tensor(data, dtype=torch.float32)
         )
@@ -714,7 +715,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)
 
-        log_probs = log_likelihood(node_exponential, data)
+        log_probs = log_likelihood(SPN(), node_exponential, data)
         log_probs_torch = log_likelihood(torch_exponential, torch.tensor(data, dtype=torch.float32))
 
         # make sure that probabilities match python backend probabilities
@@ -775,7 +776,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)
 
-        log_probs = log_likelihood(node_gamma, data)
+        log_probs = log_likelihood(SPN(), node_gamma, data)
         log_probs_torch = log_likelihood(torch_gamma, torch.tensor(data, dtype=torch.float32))
 
         # make sure that probabilities match python backend probabilities
