@@ -155,12 +155,12 @@ class TestParametricLeaf(unittest.TestCase):
         # ----- invalid parameters -----
         mean = random.random()
 
-        self.assertRaises(Exception, Gaussian, [0], mean, 0.0)
-        self.assertRaises(Exception, Gaussian, [0], mean, np.nextafter(0.0, -1.0))
-        self.assertRaises(Exception, Gaussian, [0], np.inf, 1.0)
-        self.assertRaises(Exception, Gaussian, [0], np.nan, 1.0)
-        self.assertRaises(Exception, Gaussian, [0], mean, np.inf)
-        self.assertRaises(Exception, Gaussian, [0], mean, np.nan)
+        self.assertRaises(Exception, LogNormal, [0], mean, 0.0)
+        self.assertRaises(Exception, LogNormal, [0], mean, np.nextafter(0.0, -1.0))
+        self.assertRaises(Exception, LogNormal, [0], np.inf, 1.0)
+        self.assertRaises(Exception, LogNormal, [0], np.nan, 1.0)
+        self.assertRaises(Exception, LogNormal, [0], mean, np.inf)
+        self.assertRaises(Exception, LogNormal, [0], mean, np.nan)
 
     def test_multivariate_gaussian(self):
 
@@ -423,7 +423,6 @@ class TestParametricLeaf(unittest.TestCase):
         binomial = Binomial([0], 1, 0.0)
 
         data = np.array([[-1.0], [2.0]])
-        targets = np.array([[1.0], [0.0]])  #
 
         probs = likelihood(SPN(), binomial, data)
         log_probs = log_likelihood(SPN(), binomial, data)
@@ -508,6 +507,8 @@ class TestParametricLeaf(unittest.TestCase):
         # ----- support -----
         n = 20
         p = 0.3
+
+        negative_binomial = NegativeBinomial([0], n, p)
 
         data = np.array([[np.nextafter(0.0, -1.0)], [0.0]])
 

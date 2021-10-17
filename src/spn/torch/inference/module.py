@@ -10,4 +10,4 @@ def log_likelihood(module: TorchModule, data: torch.Tensor) -> torch.Tensor:
 
 @dispatch(TorchModule, torch.Tensor)
 def likelihood(module: TorchModule, data: torch.Tensor) -> torch.Tensor:
-    return torch.exp(log_likelihood(module))
+    return torch.exp(log_likelihood(module, data))

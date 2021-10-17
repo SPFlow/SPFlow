@@ -1,17 +1,25 @@
 import unittest
 
 import random
-from spn.python.structure.nodes.node import get_nodes_by_type, SumNode, LeafNode, SPN
-from spn.python.inference.rat import log_likelihood
+from spn.python.structure.nodes.node import get_nodes_by_type, SumNode, LeafNode
+from spn.python.inference.rat import log_likelihood, likelihood
 import torch
 import numpy as np
-from spn.python.structure.rat.region_graph import random_region_graph
-from spn.python.structure.rat import RatSpn
-from spn.torch.structure.rat import TorchRatSpn, toNodes, toTorch, _RegionLayer
-from spn.torch.inference import log_likelihood
+from spn.python.structure.rat.region_graph import random_region_graph, _print_region_graph
+from spn.python.structure.rat import RatSpn, construct_spn
+from spn.torch.structure.rat import TorchRatSpn, toNodes, toTorch, _RegionLayer, _LeafLayer
+from spn.torch.inference import log_likelihood, likelihood
 
 
 class TestTorchRatSpn(unittest.TestCase):
+    @classmethod
+    def setup_class(cls):
+        torch.set_default_dtype(torch.float64)
+
+    @classmethod
+    def teardown_class(cls):
+        torch.set_default_dtype(torch.float32)
+
     def test_torch_rat_spn_to_nodes(self):
 
         # create region graph
@@ -39,7 +47,7 @@ class TestTorchRatSpn(unittest.TestCase):
         dummy_data = np.random.randn(3, 1024)
 
         # compute outputs for node rat spn
-        nodes_output = log_likelihood(SPN(), rat.root_node, dummy_data)
+        nodes_output = log_likelihood(rat, dummy_data)
 
         # compute outputs for torch rat spn
         torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data))
@@ -54,7 +62,7 @@ class TestTorchRatSpn(unittest.TestCase):
         # create region graph
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
 
-        # create nodes rat spn from region graph
+        # create torch rat spn from region graph
         rat = RatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3)
 
         sum_nodes = get_nodes_by_type(rat.root_node, SumNode)
@@ -77,7 +85,7 @@ class TestTorchRatSpn(unittest.TestCase):
         nodes_output = log_likelihood(rat, dummy_data)
 
         # compute outputs for torch rat spn
-        torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data, dtype=torch.float32))
+        torch_output = log_likelihood(torch_rat, torch.tensor(dummy_data))
 
         # compare outputs
         self.assertTrue(
@@ -125,4 +133,5 @@ class TestTorchRatSpn(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    torch.set_default_dtype(torch.float64)
     unittest.main()
