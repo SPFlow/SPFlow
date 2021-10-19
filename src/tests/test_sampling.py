@@ -3,7 +3,11 @@ from numpy.random.mtrand import RandomState  # type: ignore
 from spn.python.structure.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
 from spn.python.structure.nodes.node import SumNode, ProductNode
-from spn.python.sampling.nodes.node import sample_instances
+from spn.python.structure.network_type import SPN
+from spn.python.structure.rat.rat_spn import RatSpn
+from spn.python.structure.nodes.validity_checks import _isvalid_spn
+from spn.python.structure.rat.region_graph import random_region_graph
+from spn.python.sampling.rat.rat_spn import sample_instances
 
 
 class TestSampling(unittest.TestCase):
@@ -55,7 +59,7 @@ class TestSampling(unittest.TestCase):
         )
 
         result = sample_instances(
-            spn, np.array([np.nan, np.nan, np.nan] * 5).reshape(-1, 3), RandomState(123)
+            SPN(), spn, np.array([np.nan, np.nan, np.nan] * 5).reshape(-1, 3), RandomState(123)
         )
         self.assertTrue(
             np.allclose(
@@ -120,7 +124,7 @@ class TestSampling(unittest.TestCase):
         )
 
         result = sample_instances(
-            spn, np.array([np.nan, 0, 0] * 5).reshape(-1, 3), RandomState(123)
+            SPN(), spn, np.array([np.nan, 0, 0] * 5).reshape(-1, 3), RandomState(123)
         )
         self.assertTrue(
             np.allclose(
@@ -137,7 +141,7 @@ class TestSampling(unittest.TestCase):
             ),
         )
 
-    def test_parameter_sampling(self):
+    def test_parameter_sampling_nodes(self):
         spn = SumNode(
             children=[
                 ProductNode(
@@ -161,13 +165,32 @@ class TestSampling(unittest.TestCase):
 
         result = np.mean(
             sample_instances(
-                spn, np.array([np.nan, np.nan] * 1000000).reshape(-1, 2), RandomState(123)
+                SPN(), spn, np.array([np.nan, np.nan] * 1000000).reshape(-1, 2), RandomState(123)
             ),
             axis=0,
         )
 
         self.assertTrue(
             np.allclose(result, np.array([0.3 * 1 + 0.7 * 3, 0.3 * 2 + 0.7 * 4]), atol=0.01),
+        )
+
+    def test_parameter_sampling_rat_module(self):
+
+        region_graph = random_region_graph(X=set(range(0, 2)), depth=1, replicas=2)
+        rat_spn_module = RatSpn(region_graph, 1, 1, 1)
+        _isvalid_spn(rat_spn_module.root_node)
+
+        result = np.mean(
+            sample_instances(
+                rat_spn_module,
+                np.array([np.nan, np.nan] * 1000000).reshape(-1, 2),
+                RandomState(123),
+            ),
+            axis=0,
+        )
+
+        self.assertTrue(
+            np.allclose(result, np.array([0, 0]), atol=0.01),
         )
 
 
