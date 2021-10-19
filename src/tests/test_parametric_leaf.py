@@ -13,7 +13,7 @@ from spn.python.structure.nodes.leaves.parametric.parametric import (
     Gamma,
 )
 from spn.python.inference.nodes.node import likelihood, log_likelihood
-from spn.python.structure.nodes import SPN
+from spn.python.structure.network_type import SPN
 import numpy as np
 
 import unittest

@@ -12,8 +12,8 @@ from spn.python.structure.nodes.node import (
     SumNode,
     Node,
     eval_spn_top_down,
-    SPN,
 )
+from spn.python.structure.network_type import SPN
 from spn.python.structure.nodes.validity_checks import _isvalid_spn
 from spn.python.sampling.nodes.leaves.parametric.sampling import sample_parametric_node
 from spn.python.inference.nodes.node import log_likelihood

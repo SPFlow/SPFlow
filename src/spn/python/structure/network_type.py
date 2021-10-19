@@ -9,3 +9,7 @@ This file provides the abstract NetworkType class for dispatching methods on spe
 
 class NetworkType:
     """Abstract network type class for dispatching methods."""
+
+
+class SPN(NetworkType):
+    """Class for the network type SPN"""
