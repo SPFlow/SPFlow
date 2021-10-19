@@ -4,13 +4,8 @@ from spn.python.structure.rat.rat_spn import construct_spn, RatSpn
 from spn.python.structure.rat.region_graph import random_region_graph
 from spn.python.structure.nodes.node import (
     _get_node_counts,
-    _get_leaf_nodes,
-    get_topological_order,
-    SPN,
 )
 from spn.python.inference.rat import likelihood, log_likelihood
-
-# from spn.python.inference.nodes.node import likelihood, log_likelihood
 import numpy as np
 
 

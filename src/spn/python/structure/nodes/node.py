@@ -12,7 +12,6 @@ from multipledispatch import dispatch  # type: ignore
 import numpy as np
 import collections
 from collections import deque, OrderedDict
-from spn.python.structure.network_type import NetworkType
 
 
 class Node:
@@ -104,10 +103,6 @@ class LeafNode(Node):
 
     def __init__(self, scope: List[int]) -> None:
         super().__init__(children=[], scope=scope)
-
-
-class SPN(NetworkType):
-    """Class for the network type SPN"""
 
 
 @dispatch(list)  # type: ignore[no-redef]

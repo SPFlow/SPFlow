@@ -2,7 +2,8 @@ import unittest
 from spn.python.inference.nodes import likelihood, log_likelihood
 from spn.python.structure.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
-from spn.python.structure.nodes import SumNode, ProductNode, SPN
+from spn.python.structure.nodes import SumNode, ProductNode
+from spn.python.structure.network_type import SPN
 
 
 class TestInference(unittest.TestCase):

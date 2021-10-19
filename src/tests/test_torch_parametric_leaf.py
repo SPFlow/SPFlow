@@ -12,7 +12,7 @@ from spn.python.structure.nodes.leaves.parametric.parametric import (
     Exponential,
     Gamma,
 )
-from spn.python.structure.nodes.node import SPN
+from spn.python.structure.network_type import SPN
 from spn.python.inference.nodes.node import log_likelihood
 from spn.torch.structure.nodes.leaves.parametric import (
     toNodes,

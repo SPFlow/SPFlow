@@ -23,7 +23,7 @@ class Module(ABC):
         self.root_node: Node
         self.nodes: List[Node]
         self.network_type: NetworkType
-        self.output_nodes: Node
+        self.output_nodes: List[Node]
         self.children: Optional[List[Module]] = children
 
     @abstractmethod
