@@ -7,7 +7,8 @@ import itertools
 import numpy as np
 from typing import Dict, List, Union, cast, Optional, Tuple
 from spn.python.structure.module import Module
-from spn.python.structure.nodes.node import Node, ProductNode, SumNode, SPN, get_topological_order
+from spn.python.structure.nodes.node import Node, ProductNode, SumNode, get_topological_order
+from spn.python.structure.network_type import SPN
 from spn.python.structure.nodes.leaves.parametric import Gaussian
 from .region_graph import (
     Partition,
@@ -70,7 +71,7 @@ class RatSpn(Module):
         self.root_node: SumNode = rat_spn
         self.nodes: List[Node] = get_topological_order(rat_spn)
         self.network_type: SPN = SPN()
-        self.output_nodes: SumNode = rat_spn
+        self.output_nodes: List[SumNode] = [rat_spn]
 
         # RAT-module specific attributes
         self.region_graph: RegionGraph = region_graph
@@ -114,9 +115,11 @@ def construct_spn(
 
 
     Returns:
-        A RatSpn with a single SumNode as root. It's children are the SumNodes of the root_region in
+        A tuple with two entries:
+        The first entry is a RatSpn with a single SumNode as root. It's children are the SumNodes of the root_region in
         the region_graph. The rest of the SPN consists of alternating Sum- and ProductNodes, providing
         the scope factorizations determined by the region_graph.
+        The second entry is a dictionary with k: regions and v: corresponding nodes in the region.
 
     Raises:
         ValueError:

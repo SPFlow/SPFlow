@@ -15,9 +15,8 @@ from spn.python.structure.nodes.node import (
     ProductNode,
     LeafNode,
     eval_spn_bottom_up,
-    SPN,
 )
-from spn.python.structure.network_type import NetworkType
+from spn.python.structure.network_type import SPN
 from .leaves.parametric import node_likelihood, node_log_likelihood
 from typing import List, Callable, Type, Optional, Dict
 from multipledispatch import dispatch  # type: ignore
