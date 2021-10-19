@@ -5,7 +5,7 @@ from spn.python.structure.rat.region_graph import random_region_graph
 from spn.python.structure.nodes.node import (
     _get_node_counts,
 )
-from spn.python.inference.rat import likelihood, log_likelihood
+from spn.python.inference.rat.rat_spn import likelihood, log_likelihood
 import numpy as np
 
 

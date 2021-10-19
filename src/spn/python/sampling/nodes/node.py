@@ -6,6 +6,7 @@ Created on August 09, 2021
 This file provides the sampling methods for SPNs.
 """
 
+from multipledispatch import dispatch  # type: ignore
 from spn.python.structure.nodes.node import (
     LeafNode,
     ProductNode,
@@ -148,7 +149,9 @@ _node_sampling: Dict[Type, Callable] = {
 }
 
 
+@dispatch(SPN, Node, np.ndarray, np.random.RandomState, _node_sampling=dict, in_place=bool)  # type: ignore[no-redef]
 def sample_instances(
+    network_type: SPN,
     node: Node,
     input_data: np.ndarray,
     rand_gen: np.random.RandomState,
@@ -187,7 +190,7 @@ def sample_instances(
         np.any(np.isnan(data), axis=1)
     ), "each row must have at least a nan value where the samples will be substituted"
 
-    log_likelihood(SPN(), node, data)
+    log_likelihood(network_type, node, data)
 
     instance_ids: np.ndarray = np.arange(data.shape[0])
 

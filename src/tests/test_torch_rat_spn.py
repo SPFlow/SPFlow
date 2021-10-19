@@ -2,7 +2,7 @@ import unittest
 
 import random
 from spn.python.structure.nodes.node import get_nodes_by_type, SumNode, LeafNode
-from spn.python.inference.rat import log_likelihood, likelihood
+from spn.python.inference.rat.rat_spn import log_likelihood, likelihood
 import torch
 import numpy as np
 from spn.python.structure.rat.region_graph import random_region_graph, _print_region_graph
