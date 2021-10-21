@@ -5,7 +5,7 @@ Created on July 1, 2021
 
 This file provides the PyTorch version of RAT SPNs.
 """
-from spn.python.structure.nodes.node import LeafNode, SumNode, Node
+from spn.python.structure.nodes.node import ILeafNode, ISumNode, Node
 from spn.python.structure.rat import RegionGraph, Partition, Region
 from spn.python.structure.rat import RatSpn, construct_spn
 from spn.torch.structure.nodes.node import TorchLeafNode
@@ -262,17 +262,17 @@ class TorchRatSpn(TorchModule):
 
 
 @dispatch(_RegionLayer, list)  # type: ignore[no-redef]
-def _copy_region_parameters(src: _RegionLayer, dst: List[SumNode]) -> None:
+def _copy_region_parameters(src: _RegionLayer, dst: List[ISumNode]) -> None:
     """Copy parameters from region layer to region sum nodes.
 
     args:
         src (_RegionLayer): region layer to copy parameters from.
-        dst (List[SumNode]): list of region nodes to copy parameters to.
+        dst (List[ISumNode]): list of region nodes to copy parameters to.
     """
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of SumNodes and number of outputs for _RegionLayer do not match.")
+        raise ValueError("Number of ISumNodes and number of outputs for _RegionLayer do not match.")
 
     # iterate over nodes and region weights
     for i, node in enumerate(dst):
@@ -280,7 +280,7 @@ def _copy_region_parameters(src: _RegionLayer, dst: List[SumNode]) -> None:
         # number of children of sum nodes should match number of region layer inputs
         if not (len(node.weights) == len(node.children) == src.weight.data.shape[1]):
             raise ValueError(
-                "Number of SumNode children or weights and number of inputs for _RegionLayer do not match."
+                "Number of ISumNode children or weights and number of inputs for _RegionLayer do not match."
             )
 
         # assign region weight slice to node weights
@@ -288,17 +288,17 @@ def _copy_region_parameters(src: _RegionLayer, dst: List[SumNode]) -> None:
 
 
 @dispatch(_LeafLayer, list)  # type: ignore[no-redef]
-def _copy_region_parameters(src: _LeafLayer, dst: List[LeafNode]) -> None:
+def _copy_region_parameters(src: _LeafLayer, dst: List[ILeafNode]) -> None:
     """Copy parameters from leaf layer to leaf nodes.
 
     args:
         src (_LeafLayer): leaf layer to copy parameters from.
-        dst (List[LeafNode]): list of leaf nodes to copy parameters to.
+        dst (List[ILeafNode]): list of leaf nodes to copy parameters to.
     """
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of LeafNodes and number of outputs for _LeafLayer do not match.")
+        raise ValueError("Number of ILeafNodes and number of outputs for _LeafLayer do not match.")
 
     # iterate over nodes and region weights
     for node, torch_node in zip(dst, src.leaf_nodes):
@@ -310,17 +310,17 @@ def _copy_region_parameters(src: _LeafLayer, dst: List[LeafNode]) -> None:
 
 
 @dispatch(list, _RegionLayer)  # type: ignore[no-redef]
-def _copy_region_parameters(src: List[SumNode], dst: _RegionLayer) -> None:
+def _copy_region_parameters(src: List[ISumNode], dst: _RegionLayer) -> None:
     """Copy parameters from region sum nodes to region layer.
 
     args:
-        src (List[SumNode]): list of sum nodes to copy parameters from.
+        src (List[ISumNode]): list of sum nodes to copy parameters from.
         dst (_RegionLayer): region layer to copy parameters to.
     """
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of SumNodes and number of outputs for _RegionLayer do not match.")
+        raise ValueError("Number of ISumNodes and number of outputs for _RegionLayer do not match.")
 
     # iterate over nodes and region weights
     for i, node in enumerate(src):
@@ -328,7 +328,7 @@ def _copy_region_parameters(src: List[SumNode], dst: _RegionLayer) -> None:
         # number of children of sum nodes should match number of region layer inputs
         if not (len(node.weights) == len(node.children) == dst.weight.data.shape[1]):
             raise ValueError(
-                "Number of SumNode children or weights and number of inputs for _RegionLayer do not match."
+                "Number of ISumNode children or weights and number of inputs for _RegionLayer do not match."
             )
 
         # assign node weights to region weight slice
@@ -336,21 +336,21 @@ def _copy_region_parameters(src: List[SumNode], dst: _RegionLayer) -> None:
 
 
 @dispatch(list, _LeafLayer)  # type: ignore[no-redef]
-def _copy_region_parameters(src: List[LeafNode], dst: _LeafLayer) -> None:
+def _copy_region_parameters(src: List[ILeafNode], dst: _LeafLayer) -> None:
     """Copy parameters from leaf nodes to leaf layer.
 
     args:
-        src (List[LeafNode]): list of leaf nodes to copy parameters from.
+        src (List[ILeafNode]): list of leaf nodes to copy parameters from.
         dst (_LeafLayer): leaf layer to copy parameters to.
     """
 
     # there must be some sum nodes
     if len(dst) == 0:
-        raise ValueError("No SumNodes specified.")
+        raise ValueError("No ISumNodes specified.")
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of LeafNodes and number of outputs for _LeafLayer do not match.")
+        raise ValueError("Number of ILeafNodes and number of outputs for _LeafLayer do not match.")
 
     # iterate over nodes and region weights
     for node, torch_node in zip(src, dst.leaf_nodes):
@@ -382,14 +382,14 @@ def toNodes(torch_rat: TorchRatSpn) -> RatSpn:
 
         # internal region
         if isinstance(region_layer, _RegionLayer):
-            # all nodes need to be SumNodes
-            if not all([isinstance(node, SumNode) for node in region_nodes]):
-                raise ValueError("Internal region nodes must all be SumNodes.")
+            # all nodes need to be ISumNodes
+            if not all([isinstance(node, ISumNode) for node in region_nodes]):
+                raise ValueError("Internal region nodes must all be ISumNodes.")
         # leaf region
         else:
-            # all nodes need to be LeafNodes
-            if not all([isinstance(node, LeafNode) for node in region_nodes]):
-                raise ValueError("Leaf region nodes must all be LeafNodes.")
+            # all nodes need to be ILeafNodes
+            if not all([isinstance(node, ILeafNode) for node in region_nodes]):
+                raise ValueError("Leaf region nodes must all be ILeafNodes.")
 
         # transfer region parameters from nodes to layer
         _copy_region_parameters(region_layer, region_nodes)
@@ -417,14 +417,14 @@ def toTorch(rat: RatSpn) -> TorchRatSpn:
 
         # internal region
         if isinstance(region_layer, _RegionLayer):
-            # all nodes need to be SumNodes
-            if not all([isinstance(node, SumNode) for node in region_nodes]):
-                raise ValueError("Internal region nodes must all be SumNodes.")
+            # all nodes need to be ISumNodes
+            if not all([isinstance(node, ISumNode) for node in region_nodes]):
+                raise ValueError("Internal region nodes must all be ISumNodes.")
         # leaf region
         else:
-            # all nodes need to be LeafNodes
-            if not all([isinstance(node, LeafNode) for node in region_nodes]):
-                raise ValueError("Leaf region nodes must all be LeafNodes.")
+            # all nodes need to be ILeafNodes
+            if not all([isinstance(node, ILeafNode) for node in region_nodes]):
+                raise ValueError("Leaf region nodes must all be ILeafNodes.")
 
         # transfer region parameters from layer to nodes
         _copy_region_parameters(region_nodes, region_layer)

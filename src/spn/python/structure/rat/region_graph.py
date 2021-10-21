@@ -51,7 +51,7 @@ class Region:
         parent:
             The parent Partition. If the Region has no parent, it is the root region.
         nodes:
-            A list of SumNodes or LeafNodes assigned while constructing the RATSPN.
+            A list of ISumNodes or ILeafNodes assigned while constructing the RATSPN.
     """
 
     def __init__(
@@ -81,7 +81,7 @@ class Partition:
         parent:
             The parent Region. Each partition has exactly one parent Region.
         nodes:
-            A list of ProductNodes assigned while constructing the RAT-SPN.
+            A list of IProductNodes assigned while constructing the RAT-SPN.
     """
 
     def __init__(self, regions: List[Region], parent: Region) -> None:

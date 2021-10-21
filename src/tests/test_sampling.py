@@ -2,7 +2,7 @@ import unittest
 from numpy.random.mtrand import RandomState  # type: ignore
 from spn.python.structure.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
-from spn.python.structure.nodes.node import SumNode, ProductNode
+from spn.python.structure.nodes.node import ISumNode, IProductNode
 from spn.python.structure.network_type import SPN
 from spn.python.structure.rat.rat_spn import RatSpn
 from spn.python.structure.nodes.validity_checks import _isvalid_spn
@@ -12,21 +12,21 @@ from spn.python.sampling.rat.rat_spn import sample_instances
 
 class TestSampling(unittest.TestCase):
     def test_full_sampling(self):
-        spn = SumNode(
+        spn = ISumNode(
             children=[
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[0], mean=0, stdev=1.0),
-                        SumNode(
+                        ISumNode(
                             children=[
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
                                     ],
                                     scope=[1, 2],
                                 ),
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
@@ -40,9 +40,9 @@ class TestSampling(unittest.TestCase):
                     ],
                     scope=[0, 1, 2],
                 ),
-                ProductNode(
+                IProductNode(
                     children=[
-                        ProductNode(
+                        IProductNode(
                             children=[
                                 Gaussian(scope=[0], mean=0, stdev=1.0),
                                 Gaussian(scope=[1], mean=0, stdev=1.0),
@@ -77,21 +77,21 @@ class TestSampling(unittest.TestCase):
         )
 
     def test_partial_sampling(self):
-        spn = SumNode(
+        spn = ISumNode(
             children=[
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[0], mean=0, stdev=1.0),
-                        SumNode(
+                        ISumNode(
                             children=[
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
                                     ],
                                     scope=[1, 2],
                                 ),
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
@@ -105,9 +105,9 @@ class TestSampling(unittest.TestCase):
                     ],
                     scope=[0, 1, 2],
                 ),
-                ProductNode(
+                IProductNode(
                     children=[
-                        ProductNode(
+                        IProductNode(
                             children=[
                                 Gaussian(scope=[0], mean=0, stdev=1.0),
                                 Gaussian(scope=[1], mean=0, stdev=1.0),
@@ -142,16 +142,16 @@ class TestSampling(unittest.TestCase):
         )
 
     def test_parameter_sampling_nodes(self):
-        spn = SumNode(
+        spn = ISumNode(
             children=[
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[0], mean=1, stdev=1.0),
                         Gaussian(scope=[1], mean=2, stdev=2.0),
                     ],
                     scope=[0, 1],
                 ),
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[0], mean=3, stdev=3.0),
                         Gaussian(scope=[1], mean=4, stdev=4.0),

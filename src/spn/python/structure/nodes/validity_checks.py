@@ -1,14 +1,14 @@
 from typing import List
 from multipledispatch import dispatch  # type: ignore
-from spn.python.structure.nodes import LeafNode, Node, ProductNode, SumNode
+from spn.python.structure.nodes import ILeafNode, Node, IProductNode, ISumNode
 from spn.python.structure.rat import RatSpn
 import numpy as np
 
 
 @dispatch(list)  # type: ignore[no-redef]
 def _isvalid_spn(root_nodes: List[Node]) -> None:
-    """Assert that there are no None-states in the SPN, SumNodes are smooth,
-       ProductNodes are decomposable and LeafNodes don't have children
+    """Assert that there are no None-states in the SPN, ISumNodes are smooth,
+       IProductNodes are decomposable and ILeafNodes don't have children
 
     Args:
         root_nodes:
@@ -23,8 +23,8 @@ def _isvalid_spn(root_nodes: List[Node]) -> None:
         assert node.scope is not None
         assert None not in node.scope
 
-        # assert that SumNodes are smooth and weights sum up to 1
-        if type(node) is SumNode:
+        # assert that ISumNodes are smooth and weights sum up to 1
+        if type(node) is ISumNode:
             assert node.children is not None
             assert None not in node.children
             assert node.weights is not None
@@ -34,23 +34,23 @@ def _isvalid_spn(root_nodes: List[Node]) -> None:
             assert np.isclose(sum(node.weights), 1.0)
             for child in node.children:
                 assert child.scope == node.scope
-        # assert that ProductNodes are decomposable
-        elif type(node) is ProductNode:
+        # assert that IProductNodes are decomposable
+        elif type(node) is IProductNode:
             assert node.children is not None
             assert None not in node.children
             assert node.scope == sorted([scope for child in node.children for scope in child.scope])
             length = len(node.children)
-            # assert that each child's scope is true subset of ProductNode's scope (set<set = subset)
+            # assert that each child's scope is true subset of IProductNode's scope (set<set = subset)
             for i in range(0, length):
                 assert set(node.children[i].scope) < set(node.scope)
                 # assert that all children's scopes are pairwise distinct (set&set = intersection)
                 for j in range(i + 1, length):
                     assert not set(node.children[i].scope) & set(node.children[j].scope)
-        # assert that LeafNodes are actually leaves
-        elif isinstance(node, LeafNode):
+        # assert that ILeafNodes are actually leaves
+        elif isinstance(node, ILeafNode):
             assert len(node.children) == 0
         else:
-            raise ValueError("Node must be SumNode, ProductNode, or a subclass of LeafNode")
+            raise ValueError("Node must be ISumNode, IProductNode, or a subclass of ILeafNode")
 
         if node.children:
             nodes.extend(list(set(node.children) - set(nodes)))

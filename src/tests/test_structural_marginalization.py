@@ -2,26 +2,26 @@ import unittest
 from spn.python.structure.nodes.structural_marginalization import marginalize
 from spn.python.structure.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
-from spn.python.structure.nodes.node import SumNode, ProductNode
+from spn.python.structure.nodes.node import ISumNode, IProductNode
 
 
 class TestStructuralMarginalization(unittest.TestCase):
     def test_structural_marginalization_1(self):
-        spn = SumNode(
+        spn = ISumNode(
             children=[
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[0], mean=0, stdev=1.0),
-                        SumNode(
+                        ISumNode(
                             children=[
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
                                     ],
                                     scope=[1, 2],
                                 ),
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
@@ -35,9 +35,9 @@ class TestStructuralMarginalization(unittest.TestCase):
                     ],
                     scope=[0, 1, 2],
                 ),
-                ProductNode(
+                IProductNode(
                     children=[
-                        ProductNode(
+                        IProductNode(
                             children=[
                                 Gaussian(scope=[0], mean=0, stdev=1.0),
                                 Gaussian(scope=[1], mean=0, stdev=1.0),
@@ -54,23 +54,23 @@ class TestStructuralMarginalization(unittest.TestCase):
         )
         spn_marg = marginalize(spn, [1, 2])
 
-        spn_marg_correct = SumNode(
+        spn_marg_correct = ISumNode(
             children=[
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[1], mean=0, stdev=1.0),
                         Gaussian(scope=[2], mean=0, stdev=1.0),
                     ],
                     scope=[1, 2],
                 ),
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[1], mean=0, stdev=1.0),
                         Gaussian(scope=[2], mean=0, stdev=1.0),
                     ],
                     scope=[1, 2],
                 ),
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[1], mean=0, stdev=1.0),
                         Gaussian(scope=[2], mean=0, stdev=1.0),
@@ -85,21 +85,21 @@ class TestStructuralMarginalization(unittest.TestCase):
         self.assertTrue(spn_marg.equals(spn_marg_correct))
 
     def test_structural_marginalization_2(self):
-        spn = SumNode(
+        spn = ISumNode(
             children=[
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[0], mean=0, stdev=1.0),
-                        SumNode(
+                        ISumNode(
                             children=[
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
                                     ],
                                     scope=[1, 2],
                                 ),
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
@@ -113,9 +113,9 @@ class TestStructuralMarginalization(unittest.TestCase):
                     ],
                     scope=[0, 1, 2],
                 ),
-                ProductNode(
+                IProductNode(
                     children=[
-                        ProductNode(
+                        IProductNode(
                             children=[
                                 Gaussian(scope=[0], mean=0, stdev=1.0),
                                 Gaussian(scope=[1], mean=0, stdev=1.0),

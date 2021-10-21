@@ -1,4 +1,4 @@
-from spn.python.structure.nodes import ProductNode, SumNode, LeafNode
+from spn.python.structure.nodes import IProductNode, ISumNode, ILeafNode
 from spn.torch.structure.nodes import (
     TorchProductNode,
     TorchSumNode,
@@ -45,10 +45,10 @@ class TestTorchNode(unittest.TestCase):
         weights /= weights.sum()
 
         # Node graph
-        graph = SumNode(
+        graph = ISumNode(
             [
-                ProductNode([LeafNode(scope=[1]), LeafNode(scope=[2])], scope=[1, 2]),
-                ProductNode([LeafNode(scope=[3])], scope=[3]),
+                IProductNode([ILeafNode(scope=[1]), ILeafNode(scope=[2])], scope=[1, 2]),
+                IProductNode([ILeafNode(scope=[3])], scope=[3]),
             ],
             scope=[1, 2, 3],
             weights=weights,

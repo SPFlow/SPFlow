@@ -3,7 +3,7 @@ Created on July 08, 2021
 
 @authors: Kevin Huy Nguyen
 
-This file provides the inference functions for the LeafNodes.
+This file provides the inference functions for the ILeafNodes.
 """
 
 from spn.python.structure.nodes.leaves.parametric.parametric import (
@@ -54,7 +54,7 @@ def node_likelihood(node: Node, data: Optional[ndarray] = None) -> None:
 
     Raises:
         NotImplementedError:
-            The node is a LeafNode and does not provide parameters or the node is not a LeafNode.
+            The node is a ILeafNode and does not provide parameters or the node is not a ILeafNode.
     """
     raise NotImplementedError(f"Likelihood not provided for {node}.")
 
@@ -222,7 +222,7 @@ def node_log_likelihood(node: Node, data: Optional[ndarray] = None):
 
     Raises:
         NotImplementedError:
-            The node is a LeafNode and does not provide parameters or the node is not a LeafNode.
+            The node is a ILeafNode and does not provide parameters or the node is not a ILeafNode.
     """
     raise NotImplementedError(f"Log-Likelihood not provided for {node}.")
 
