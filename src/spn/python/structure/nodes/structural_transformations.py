@@ -7,7 +7,7 @@ This file provides algorithms for transforming the structure of a SPN.
 """
 
 from .validity_checks import _isvalid_spn
-from .node import SumNode, ProductNode, LeafNode, get_nodes_by_type, Node
+from .node import ISumNode, IProductNode, ILeafNode, get_nodes_by_type, Node
 import numpy as np
 from typing import List, Type, cast
 
@@ -15,7 +15,7 @@ from typing import List, Type, cast
 def prune(node: Node, contract_single_parents: bool = True) -> Node:
     """
     Goes through all nodes of SPN and prunes them. Unnecessary nodes such as child nodes of the same type as its parent
-    are removed and its children correctly reconnected to the parent node. Weights of SumNodes are recalculated.
+    are removed and its children correctly reconnected to the parent node. Weights of ISumNodes are recalculated.
 
     Args:
         node:
@@ -26,18 +26,18 @@ def prune(node: Node, contract_single_parents: bool = True) -> Node:
 
     Returns: Root node of pruned valid SPN.
     """
-    nodes: List[Node] = get_nodes_by_type(node, (ProductNode, SumNode))
+    nodes: List[Node] = get_nodes_by_type(node, (IProductNode, ISumNode))
 
     while len(nodes) > 0:
         n: Node = nodes.pop()
         n_type: Type = type(n)
-        is_sum: bool = n_type == SumNode
+        is_sum: bool = n_type == ISumNode
 
         i = 0
         while i < len(n.children):
             c: Node = n.children[i]
 
-            if contract_single_parents and not isinstance(c, LeafNode) and len(c.children) == 1:
+            if contract_single_parents and not isinstance(c, ILeafNode) and len(c.children) == 1:
                 n.children[i] = c.children[0]
                 continue
 
@@ -46,8 +46,8 @@ def prune(node: Node, contract_single_parents: bool = True) -> Node:
                 n.children.extend(c.children)
 
                 if is_sum:
-                    c = cast(SumNode, c)
-                    n = cast(SumNode, n)
+                    c = cast(ISumNode, c)
+                    n = cast(ISumNode, n)
                     w: np.ndarray = n.weights[i]
                     weights: List[float] = list(n.weights)
                     del weights[i]
@@ -57,13 +57,13 @@ def prune(node: Node, contract_single_parents: bool = True) -> Node:
                 continue
             i += 1
         if is_sum and i > 0:
-            n = cast(SumNode, n)
+            n = cast(ISumNode, n)
             subtr: float = sum(list(n.weights)[1:])
             n.weights[0] = 1.0 - subtr
 
     if (
         contract_single_parents
-        and isinstance(node, (ProductNode, SumNode))
+        and isinstance(node, (IProductNode, ISumNode))
         and len(node.children) == 1
     ):
         node = node.children[0]

@@ -7,7 +7,7 @@ import itertools
 import numpy as np
 from typing import Dict, List, Union, cast, Optional, Tuple
 from spn.python.structure.module import Module
-from spn.python.structure.nodes.node import Node, ProductNode, SumNode, get_topological_order
+from spn.python.structure.nodes.node import Node, IProductNode, ISumNode, get_topological_order
 from spn.python.structure.network_type import SPN
 from spn.python.structure.nodes.leaves.parametric import Gaussian
 from .region_graph import (
@@ -24,9 +24,9 @@ class RatSpn(Module):
 
     Attributes:
         root_node:
-            A single SumNode that has a list of SumNodes as children and is the root of the RAT-SPN.
+            A single ISumNode that has a list of ISumNodes as children and is the root of the RAT-SPN.
             The root node is the output of SPNs. Usually, SPNs only have one root node,
-            but one can also look at its child SumNodes for multiple outputs, e.g. classes.
+            but one can also look at its child ISumNodes for multiple outputs, e.g. classes.
             When the SPN is constructed from a RegionGraph, the children of the root are the nodes of
             the root_region of the RegionGraph.
         nodes:
@@ -41,11 +41,11 @@ class RatSpn(Module):
             Region graph, the RAT-SPN is created from.
         num_nodes_root:
             (C in the paper)
-            The number of SumNodes the root_region is equipped with. This will be the length of the children of the
+            The number of ISumNodes the root_region is equipped with. This will be the length of the children of the
             root_node of the resulting RAT-SPN.
         num_nodes_region:
             (S in the paper)
-            The number of SumNodes each region except the root and leaf regions are equipped with.
+            The number of ISumNodes each region except the root and leaf regions are equipped with.
         num_nodes_leaf:
             (I in the paper)
             The number of LeafNodes each leaf region is equipped with. All LeafNodes of the same region
@@ -63,15 +63,15 @@ class RatSpn(Module):
         children: None = None,
     ) -> None:
         super().__init__(children=children)
-        rat_result: Tuple[SumNode, Dict[Union[Region, Partition], List[Node]]] = construct_spn(
+        rat_result: Tuple[ISumNode, Dict[Union[Region, Partition], List[Node]]] = construct_spn(
             region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf
         )
-        rat_spn: SumNode = rat_result[0]
+        rat_spn: ISumNode = rat_result[0]
         rat_spn_rg_nodes: Dict[Union[Region, Partition], List[Node]] = rat_result[1]
-        self.root_node: SumNode = rat_spn
+        self.root_node: ISumNode = rat_spn
         self.nodes: List[Node] = get_topological_order(rat_spn)
         self.network_type: SPN = SPN()
-        self.output_nodes: List[SumNode] = [rat_spn]
+        self.output_nodes: List[ISumNode] = [rat_spn]
 
         # RAT-module specific attributes
         self.region_graph: RegionGraph = region_graph
@@ -89,13 +89,13 @@ def construct_spn(
     num_nodes_root: int,
     num_nodes_region: int,
     num_nodes_leaf: int,
-) -> Tuple[SumNode, Dict[Union[Region, Partition], List[Node]]]:
+) -> Tuple[ISumNode, Dict[Union[Region, Partition], List[Node]]]:
     """Builds a RAT-SPN from a given RegionGraph.
 
     This algorithm is an implementation of "Algorithm 2" of the original paper. The Regions and
     Partitions in the RegionGraph are equipped with an appropriate number of nodes each, and the
     nodes will be connected afterwards. The resulting RAT-SPN holds a list of the root nodes, which
-    in turn hold the whole constructed (graph) SPN. The number of ProductNodes in a Partition is
+    in turn hold the whole constructed (graph) SPN. The number of IProductNodes in a Partition is
     determined by the length of the cross product of the children Regions of the respective Partition.
 
     Args:
@@ -103,11 +103,11 @@ def construct_spn(
             Region graph, the RAT-SPN is created from.
         num_nodes_root:
             (C in the paper)
-            The number of SumNodes the root_region is equipped with. This will be the length of the children of the
+            The number of ISumNodes the root_region is equipped with. This will be the length of the children of the
             root_node of the resulting RAT-SPN.
         num_nodes_region:
             (S in the paper)
-            The number of SumNodes each region except the root and leaf regions are equipped with.
+            The number of ISumNodes each region except the root and leaf regions are equipped with.
         num_nodes_leaf:
             (I in the paper)
             The number of LeafNodes each leaf region is equipped with. All LeafNodes of the same region
@@ -116,8 +116,8 @@ def construct_spn(
 
     Returns:
         A tuple with two entries:
-        The first entry is a RatSpn with a single SumNode as root. It's children are the SumNodes of the root_region in
-        the region_graph. The rest of the SPN consists of alternating Sum- and ProductNodes, providing
+        The first entry is a RatSpn with a single ISumNode as root. It's children are the ISumNodes of the root_region
+        in the region_graph. The rest of the SPN consists of alternating Sum- and IProductNodes, providing
         the scope factorizations determined by the region_graph.
         The second entry is a dictionary with k: regions and v: corresponding nodes in the region.
 
@@ -142,11 +142,11 @@ def construct_spn(
         if not region.parent:
             # the region is the root_region
             root_nodes: List[Node] = [
-                SumNode(children=[], scope=region_scope, weights=np.empty(0))
+                ISumNode(children=[], scope=region_scope, weights=np.empty(0))
                 for i in range(num_nodes_root)
             ]
             rg_nodes[region] = root_nodes
-            root_node = SumNode(
+            root_node = ISumNode(
                 children=root_nodes,
                 scope=region_scope,
                 weights=np.full(len(rg_nodes[region]), 1 / len(rg_nodes[region])),
@@ -159,12 +159,12 @@ def construct_spn(
         else:
             # the region is an internal region
             rg_nodes[region] = [
-                SumNode(children=[], scope=region_scope, weights=np.empty(0))
+                ISumNode(children=[], scope=region_scope, weights=np.empty(0))
                 for i in range(num_nodes_region)
             ]
 
     for partition in region_graph.partitions:
-        # determine the number and the scope of the ProductNodes the Partition will be equipped with
+        # determine the number and the scope of the IProductNodes the Partition will be equipped with
         num_nodes_partition = np.prod([len(rg_nodes[region]) for region in partition.regions])
 
         partition_scope = list(
@@ -172,20 +172,20 @@ def construct_spn(
         )
         partition_scope.sort()
         rg_nodes[partition] = [
-            ProductNode(children=[], scope=partition_scope) for i in range(num_nodes_partition)
+            IProductNode(children=[], scope=partition_scope) for i in range(num_nodes_partition)
         ]
 
-        # each ProductNode of the Partition points to a unique combination consisting of one Node of each Region
+        # each IProductNode of the Partition points to a unique combination consisting of one Node of each Region
         # that is a child of the partition
         cartesian_product = list(
             itertools.product(*[rg_nodes[region] for region in partition.regions])
         )
         for i in range(len(cartesian_product)):
             rg_nodes[partition][i].children = list(cartesian_product[i])
-        # all ProductNodes of the Partition are children of each SumNode in its parent Region
+        # all IProductNodes of the Partition are children of each ISumNode in its parent Region
         for parent_node in rg_nodes[partition.parent]:
-            # all parent nodes are SumNodes
-            parent_node = cast(SumNode, parent_node)
+            # all parent nodes are ISumNodes
+            parent_node = cast(ISumNode, parent_node)
             replicas = len(partition.parent.partitions)
             parent_node.children.extend(rg_nodes[partition])
             # determine the total number of children the parent node might have.

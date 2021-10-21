@@ -2,27 +2,27 @@ import unittest
 from spn.python.inference.nodes import likelihood, log_likelihood
 from spn.python.structure.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
-from spn.python.structure.nodes import SumNode, ProductNode
+from spn.python.structure.nodes import ISumNode, IProductNode
 from spn.python.structure.network_type import SPN
 
 
 class TestInference(unittest.TestCase):
     def test_inference_1(self):
-        spn = SumNode(
+        spn = ISumNode(
             children=[
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[0], mean=0, stdev=1.0),
-                        SumNode(
+                        ISumNode(
                             children=[
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
                                     ],
                                     scope=[1, 2],
                                 ),
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
@@ -36,9 +36,9 @@ class TestInference(unittest.TestCase):
                     ],
                     scope=[0, 1, 2],
                 ),
-                ProductNode(
+                IProductNode(
                     children=[
-                        ProductNode(
+                        IProductNode(
                             children=[
                                 Gaussian(scope=[0], mean=0, stdev=1.0),
                                 Gaussian(scope=[1], mean=0, stdev=1.0),
@@ -58,21 +58,21 @@ class TestInference(unittest.TestCase):
         self.assertAlmostEqual(result[0][0], 0.023358)
 
     def test_inference_2(self):
-        spn = SumNode(
+        spn = ISumNode(
             children=[
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[0], mean=0, stdev=1.0),
-                        SumNode(
+                        ISumNode(
                             children=[
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
                                     ],
                                     scope=[1, 2],
                                 ),
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
@@ -86,9 +86,9 @@ class TestInference(unittest.TestCase):
                     ],
                     scope=[0, 1, 2],
                 ),
-                ProductNode(
+                IProductNode(
                     children=[
-                        ProductNode(
+                        IProductNode(
                             children=[
                                 Gaussian(scope=[0], mean=0, stdev=1.0),
                                 Gaussian(scope=[1], mean=0, stdev=1.0),
@@ -108,21 +108,21 @@ class TestInference(unittest.TestCase):
         self.assertAlmostEqual(result[0][0], -3.7568156)
 
     def test_inference_3(self):
-        spn = SumNode(
+        spn = ISumNode(
             children=[
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[0], mean=0, stdev=1.0),
-                        SumNode(
+                        ISumNode(
                             children=[
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
                                     ],
                                     scope=[1, 2],
                                 ),
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
@@ -136,9 +136,9 @@ class TestInference(unittest.TestCase):
                     ],
                     scope=[0, 1, 2],
                 ),
-                ProductNode(
+                IProductNode(
                     children=[
-                        ProductNode(
+                        IProductNode(
                             children=[
                                 Gaussian(scope=[0], mean=0, stdev=1.0),
                                 Gaussian(scope=[1], mean=0, stdev=1.0),
@@ -158,21 +158,21 @@ class TestInference(unittest.TestCase):
         self.assertAlmostEqual(result[0][0], 0.09653235)
 
     def test_inference_4(self):
-        spn = SumNode(
+        spn = ISumNode(
             children=[
-                ProductNode(
+                IProductNode(
                     children=[
                         Gaussian(scope=[0], mean=0, stdev=1.0),
-                        SumNode(
+                        ISumNode(
                             children=[
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
                                     ],
                                     scope=[1, 2],
                                 ),
-                                ProductNode(
+                                IProductNode(
                                     children=[
                                         Gaussian(scope=[1], mean=0, stdev=1.0),
                                         Gaussian(scope=[2], mean=0, stdev=1.0),
@@ -186,9 +186,9 @@ class TestInference(unittest.TestCase):
                     ],
                     scope=[0, 1, 2],
                 ),
-                ProductNode(
+                IProductNode(
                     children=[
-                        ProductNode(
+                        IProductNode(
                             children=[
                                 Gaussian(scope=[0], mean=0, stdev=1.0),
                                 Gaussian(scope=[1], mean=0, stdev=1.0),
