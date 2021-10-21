@@ -1,4 +1,4 @@
-from spn.python.structure.nodes.leaves.parametric.parametric import (
+from spflow.python.structure.nodes.leaves.parametric.parametric import (
     Gaussian,
     LogNormal,
     MultivariateGaussian,
@@ -12,8 +12,8 @@ from spn.python.structure.nodes.leaves.parametric.parametric import (
     Exponential,
     Gamma,
 )
-from spn.python.inference.nodes.node import likelihood, log_likelihood
-from spn.python.structure.network_type import SPN
+from spflow.python.inference.nodes.node import likelihood, log_likelihood
+from spflow.python.structure.network_type import SPN
 import numpy as np
 
 import unittest
