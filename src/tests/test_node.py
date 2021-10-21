@@ -1,13 +1,13 @@
 import unittest
 import numpy as np
-from spn.python.structure.nodes.node import (
+from spflow.python.structure.nodes.node import (
     Node,
     ISumNode,
     ILeafNode,
     IProductNode,
     _get_node_counts,
 )
-from spn.python.structure.nodes.validity_checks import _isvalid_spn
+from spflow.python.structure.nodes.validity_checks import _isvalid_spn
 
 
 class TestNode(unittest.TestCase):
