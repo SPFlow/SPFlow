@@ -3,8 +3,8 @@ Created on May 05, 2021
 
 @authors: Kevin Huy Nguyen, Bennet Wittelsbach
 
-This file provides the basic components to build abstract probabilistic circuits, like SumNode, ProductNode,
-and LeafNode.
+This file provides the basic components to build abstract probabilistic circuits, like ISumNode, IProductNode,
+and ILeafNode.
 """
 
 from typing import List, Tuple, cast, Callable, Set, Type, Deque, Optional, Dict, Union
@@ -60,20 +60,21 @@ class Node:
         )
 
 
-class ProductNode(Node):
-    """A ProductNode provides a factorization of its children,
-    i.e. ProductNodes in SPNs have children with distinct scopes"""
+class IProductNode(Node):
+    """A Internal ProductNode provides a factorization of its children,
+    i.e. IProductNodes in SPNs have children with distinct scopes"""
 
     def __init__(self, children: List[Node], scope: List[int]) -> None:
         super().__init__(children=children, scope=scope)
 
 
-class SumNode(Node):
-    """A SumNode provides a weighted mixture of its children, i.e. SumNodes in SPNs have children with identical scopes
+class ISumNode(Node):
+    """An Internal SumNode provides a weighted mixture of its children,
+    i.e. ISumNodes in SPNs have children with identical scopes
 
     Attributes:
         weights:
-            A np.array of floats assigning a weight value to each of the SumNode's children.
+            A np.array of floats assigning a weight value to each of the ISumNode's children.
 
     """
 
@@ -87,8 +88,8 @@ class SumNode(Node):
         Note that weight comparison is done approximately due to numerical issues when conversion between graph
         representations.
         """
-        if type(other) is SumNode:
-            other = cast(SumNode, other)
+        if type(other) is ISumNode:
+            other = cast(ISumNode, other)
             return (
                 super().equals(other)
                 and np.allclose(self.weights, other.weights, rtol=1.0e-5)
@@ -98,8 +99,8 @@ class SumNode(Node):
             return False
 
 
-class LeafNode(Node):
-    """A LeafNode provides a probability distribution over the random variables in its scope"""
+class ILeafNode(Node):
+    """A Internal LeafNode provides a probability distribution over the random variables in its scope"""
 
     def __init__(self, scope: List[int]) -> None:
         super().__init__(children=[], scope=scope)
@@ -128,7 +129,7 @@ def _print_node_graph(root_node: Node) -> None:
 
 @dispatch(list)  # type: ignore[no-redef]
 def _get_node_counts(root_nodes: List[Node]) -> Tuple[int, int, int]:
-    """Count the # of unique SumNodes, ProductNodes, LeafNodes in an SPN with arbitrarily many root nodes.
+    """Count the # of unique internal ISumNodes, IProductNodes, ILeafNodes in an SPN with arbitrarily many root nodes.
 
     Args:
         root_nodes:
@@ -141,14 +142,14 @@ def _get_node_counts(root_nodes: List[Node]) -> Tuple[int, int, int]:
 
     while nodes:
         node: Node = nodes.pop(0)
-        if type(node) is SumNode:
+        if type(node) is ISumNode:
             n_sumnodes += 1
-        elif type(node) is ProductNode:
+        elif type(node) is IProductNode:
             n_productnodes += 1
-        elif isinstance(node, LeafNode):
+        elif isinstance(node, ILeafNode):
             n_leaves += 1
         else:
-            raise ValueError("Node must be SumNode, ProductNode, or LeafNode")
+            raise ValueError("Node must be ISumNode, IProductNode, or ILeafNode")
         nodes.extend(list(set(node.children) - set(nodes)))
 
     return n_sumnodes, n_productnodes, n_leaves
@@ -173,7 +174,7 @@ def _get_leaf_nodes(root_nodes: List[Node]) -> List[Node]:
     id_counter = 0
     while nodes:
         node: Node = nodes.pop(0)
-        if issubclass(type(node), LeafNode):
+        if issubclass(type(node), ILeafNode):
             leaves.append(node)
         nodes.extend(list(set(node.children) - set(nodes)))
         id_counter += 1
@@ -203,7 +204,7 @@ def bfs(root: Node, func: Callable):
     while queue:
         node = queue.popleft()
         func(node)
-        if not isinstance(node, LeafNode):
+        if not isinstance(node, ILeafNode):
             for c in node.children:
                 if c not in seen:
                     seen.add(c)
@@ -248,7 +249,7 @@ def get_topological_order(node: Node) -> List[Node]:
     in_degree: "OrderedDict[Node, int]" = OrderedDict()
     for n in nodes:
         in_degree[n] = in_degree.get(n, 0)
-        if not isinstance(n, LeafNode):
+        if not isinstance(n, ILeafNode):
             for c in n.children:
                 parent_list: Optional[List[Optional[Node]]] = parents.get(c, None)
                 if parent_list is None:
@@ -312,8 +313,8 @@ def eval_spn_bottom_up(
         if node_type not in node_type_eval_func_dict:
             node_type_eval_func_dict[node_type] = []
         node_type_eval_func_dict[node_type].append(func)
-        node_type_is_leaf_dict[node_type] = issubclass(node_type, LeafNode)
-    leaf_func: Optional[Callable] = eval_functions.get(LeafNode, None)
+        node_type_is_leaf_dict[node_type] = issubclass(node_type, ILeafNode)
+    leaf_func: Optional[Callable] = eval_functions.get(ILeafNode, None)
 
     tmp_children_list: List[Optional[np.ndarray]] = []
     len_tmp_children_list: int = 0
@@ -322,7 +323,7 @@ def eval_spn_bottom_up(
             func = node_type_eval_func_dict[type(n)][-1]
             n_is_leaf: bool = node_type_is_leaf_dict[type(n)]
         except:
-            if isinstance(n, LeafNode) and leaf_func is not None:
+            if isinstance(n, ILeafNode) and leaf_func is not None:
                 func = leaf_func
                 n_is_leaf = True
             else:
@@ -366,7 +367,7 @@ def get_topological_order_layers(node: Node) -> List[List[Node]]:
     in_degree: "OrderedDict[Node, int]" = OrderedDict()
     for n in nodes:
         in_degree[n] = in_degree.get(n, 0)
-        if not isinstance(n, LeafNode):
+        if not isinstance(n, ILeafNode):
             for c in n.children:
                 parent_list: Optional[List[Optional[Node]]] = parents.get(c, None)
                 if parent_list is None:
@@ -435,11 +436,11 @@ def eval_spn_top_down(
         all_results.clear()
 
     all_results[root] = [parent_result]
-    leaf_func: Optional[Callable] = eval_functions.get(LeafNode, None)
+    leaf_func: Optional[Callable] = eval_functions.get(ILeafNode, None)
 
     for layer in reversed(get_topological_order_layers(root)):
         for n in layer:
-            if isinstance(n, LeafNode) and leaf_func is not None:
+            if isinstance(n, ILeafNode) and leaf_func is not None:
                 try:
                     func: Callable = leaf_func
                 except:
@@ -452,7 +453,7 @@ def eval_spn_top_down(
             params: Optional[List] = all_results[n]
             result: Optional[Dict[Node, np.ndarray]] = func(n, params, **args)
 
-            if result is not None and not isinstance(n, LeafNode):
+            if result is not None and not isinstance(n, ILeafNode):
                 for child, param in result.items():
                     if child not in all_results:
                         all_results[child] = []

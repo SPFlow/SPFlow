@@ -5,7 +5,7 @@ Created on August 09, 2021
 
 This file provides the sampling methods for parametric leaves.
 """
-from spn.python.structure.nodes.node import LeafNode, Node
+from spn.python.structure.nodes.node import ILeafNode, Node
 from multipledispatch import dispatch  # type: ignore
 from spn.python.structure.nodes.leaves.parametric.parametric import (
     ParametricLeaf,
@@ -46,14 +46,14 @@ def sample_parametric_node(node: Node, n_samples, rand_gen) -> None:
 
     Raises:
         NotImplementedError:
-            The node is a LeafNode and does not provide a scipy object or the node is not a LeafNode
+            The node is a ILeafNode and does not provide a scipy object or the node is not a ILeafNode
             and cannot provide a scipy object.
 
     """
     assert n_samples > 0
     assert isinstance(node, ParametricLeaf)
 
-    if type(node) is LeafNode:
+    if type(node) is ILeafNode:
         raise NotImplementedError(f"{node} does not provide a scipy object")
     else:
         raise NotImplementedError(f"{node} cannot provide scipy objects")

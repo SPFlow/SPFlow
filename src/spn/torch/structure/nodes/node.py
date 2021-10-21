@@ -14,7 +14,7 @@ import torch
 from torch.nn.parameter import Parameter
 
 from spn.torch.structure.module import TorchModule
-from spn.python.structure.nodes.node import Node, SumNode, ProductNode, LeafNode
+from spn.python.structure.nodes.node import Node, ISumNode, IProductNode, ILeafNode
 
 
 class TorchNode(TorchModule):
@@ -50,7 +50,7 @@ def toNodes(x: TorchNode) -> Node:
 
 
 class TorchSumNode(TorchNode):
-    """PyTorch version of a sum node. See SumNode.
+    """PyTorch version of a sum node. See ISumNode.
 
     Attributes:
         children (list(TorchNode)): Non-empty list of child torch nodes.
@@ -100,8 +100,8 @@ class TorchSumNode(TorchNode):
         return (x * self.weights).sum()
 
 
-@dispatch(SumNode)  # type: ignore[no-redef]
-def toTorch(x: SumNode) -> TorchSumNode:
+@dispatch(ISumNode)  # type: ignore[no-redef]
+def toTorch(x: ISumNode) -> TorchSumNode:
     return TorchSumNode(
         children=[toTorch(child) for child in x.children],
         scope=x.scope,
@@ -110,12 +110,12 @@ def toTorch(x: SumNode) -> TorchSumNode:
 
 
 @dispatch(TorchSumNode)  # type: ignore[no-redef]
-def toNodes(x: TorchSumNode) -> SumNode:
-    return SumNode(children=[toNodes(child) for child in x.children()], scope=x.scope, weights=x.weights.detach().numpy())  # type: ignore[operator]
+def toNodes(x: TorchSumNode) -> ISumNode:
+    return ISumNode(children=[toNodes(child) for child in x.children()], scope=x.scope, weights=x.weights.detach().numpy())  # type: ignore[operator]
 
 
 class TorchProductNode(TorchNode):
-    """PyTorch version of a product node. See ProductNode.
+    """PyTorch version of a product node. See IProductNode.
 
     Attributes:
         children (list(TorchNode)): Non-empty list of child torch nodes.
@@ -135,19 +135,19 @@ class TorchProductNode(TorchNode):
         return x.prod()
 
 
-@dispatch(ProductNode)  # type: ignore[no-redef]
-def toTorch(x: ProductNode) -> TorchProductNode:
+@dispatch(IProductNode)  # type: ignore[no-redef]
+def toTorch(x: IProductNode) -> TorchProductNode:
     return TorchProductNode(children=[toTorch(child) for child in x.children], scope=x.scope)
 
 
 @dispatch(TorchProductNode)  # type: ignore[no-redef]
-def toNodes(x: TorchProductNode) -> ProductNode:
-    return ProductNode(children=[toNodes(child) for child in x.children()], scope=x.scope)
+def toNodes(x: TorchProductNode) -> IProductNode:
+    return IProductNode(children=[toNodes(child) for child in x.children()], scope=x.scope)
 
 
 class TorchLeafNode(TorchNode):
     def __init__(self, scope: List[int]) -> None:
-        """PyTorch version of an abstract leaf node. See LeafNode.
+        """PyTorch version of an abstract leaf node. See ILeafNode.
 
         Attributes:
             scope: Non-empty list of integers containing the scopes of this node.
@@ -158,11 +158,11 @@ class TorchLeafNode(TorchNode):
         pass
 
 
-@dispatch(LeafNode)  # type: ignore[no-redef]
-def toTorch(x: LeafNode) -> TorchLeafNode:
+@dispatch(ILeafNode)  # type: ignore[no-redef]
+def toTorch(x: ILeafNode) -> TorchLeafNode:
     return TorchLeafNode(scope=x.scope)
 
 
 @dispatch(TorchLeafNode)  # type: ignore[no-redef]
-def toNodes(x: TorchLeafNode) -> LeafNode:
-    return LeafNode(scope=x.scope)
+def toNodes(x: TorchLeafNode) -> ILeafNode:
+    return ILeafNode(scope=x.scope)

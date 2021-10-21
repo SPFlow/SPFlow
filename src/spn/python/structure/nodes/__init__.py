@@ -1,4 +1,4 @@
-from .node import Node, SumNode, ProductNode, LeafNode
+from .node import Node, ISumNode, IProductNode, ILeafNode
 from spn.python.structure.network_type import SPN
 from .leaves.parametric import (
     ParametricLeaf,

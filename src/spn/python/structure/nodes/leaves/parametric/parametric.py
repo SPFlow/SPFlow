@@ -7,7 +7,7 @@ Created on June 11, 2021
 from abc import ABC, abstractmethod
 from multipledispatch import dispatch  # type: ignore
 from typing import Union, Dict, List, Tuple
-from spn.python.structure.nodes import LeafNode, Node
+from spn.python.structure.nodes import ILeafNode, Node
 from .exceptions import InvalidParametersError  # type: ignore
 from .statistical_types import ParametricType  # type: ignore
 from scipy.stats import (  # type: ignore
@@ -32,7 +32,7 @@ import numpy as np
 #   - ... ?
 
 
-class ParametricLeaf(LeafNode, ABC):
+class ParametricLeaf(ILeafNode, ABC):
     """Base class for leaves that represent parametric probability distributions.
 
     Attributes:
@@ -503,11 +503,11 @@ def get_scipy_object(node: Node) -> None:
 
     Raises:
         NotImplementedError:
-            The node is a LeafNode and does not provide a scipy object or the node is not a LeafNode
+            The node is a ILeafNode and does not provide a scipy object or the node is not a ILeafNode
             and cannot provide a scipy object.
 
     """
-    if type(node) is LeafNode:
+    if type(node) is ILeafNode:
         raise NotImplementedError(f"{node} does not provide a scipy object")
     else:
         raise NotImplementedError(f"{node} cannot provide scipy objects")
@@ -591,12 +591,12 @@ def get_scipy_object_parameters(node: Node) -> None:
 
     Raises:
         NotImplementedError:
-            The node is a LeafNode and does not provide parameters or the node is not a LeafNode.
+            The node is a ILeafNode and does not provide parameters or the node is not a ILeafNode.
         InvalidParametersError:
             The parameters are None or set to invalid values.
 
     """
-    if type(node) is LeafNode:
+    if type(node) is ILeafNode:
         raise NotImplementedError(f"{node} does not provide any parameters")
     else:
         raise NotImplementedError(f"{node} cannot provide parameters")

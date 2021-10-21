@@ -8,9 +8,9 @@ This file provides the sampling methods for SPNs.
 
 from multipledispatch import dispatch  # type: ignore
 from spn.python.structure.nodes.node import (
-    LeafNode,
-    ProductNode,
-    SumNode,
+    ILeafNode,
+    IProductNode,
+    ISumNode,
     Node,
     eval_spn_top_down,
 )
@@ -24,7 +24,7 @@ from typing import List, Callable, Type, Optional, Dict, Union
 
 
 def sample_prod(
-    node: SumNode,
+    node: ISumNode,
     input_vals: Optional[List],
     data: np.ndarray,
     rand_gen: np.random.RandomState,
@@ -56,7 +56,7 @@ def sample_prod(
 
 
 def sample_sum(
-    node: SumNode,
+    node: ISumNode,
     input_vals: Optional[List],
     data: np.ndarray,
     rand_gen: np.random.RandomState,
@@ -105,7 +105,7 @@ def sample_sum(
 
 
 def sample_leaf(
-    node: LeafNode,
+    node: ILeafNode,
     input_vals: Optional[List],
     data: np.ndarray,
     rand_gen: np.random.RandomState,
@@ -143,9 +143,9 @@ def sample_leaf(
 
 
 _node_sampling: Dict[Type, Callable] = {
-    ProductNode: sample_prod,
-    SumNode: sample_sum,
-    LeafNode: sample_leaf,
+    IProductNode: sample_prod,
+    ISumNode: sample_sum,
+    ILeafNode: sample_leaf,
 }
 
 

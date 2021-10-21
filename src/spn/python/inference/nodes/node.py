@@ -11,9 +11,9 @@ from numpy import ndarray
 from scipy.special import logsumexp  # type: ignore
 from spn.python.structure.nodes.node import (
     Node,
-    SumNode,
-    ProductNode,
-    LeafNode,
+    ISumNode,
+    IProductNode,
+    ILeafNode,
     eval_spn_bottom_up,
 )
 from spn.python.structure.network_type import SPN
@@ -22,15 +22,15 @@ from typing import List, Callable, Type, Optional, Dict
 from multipledispatch import dispatch  # type: ignore
 
 
-def prod_log_likelihood(node: ProductNode, children: List[ndarray], **kwargs) -> ndarray:
+def prod_log_likelihood(node: IProductNode, children: List[ndarray], **kwargs) -> ndarray:
     """
     Calculates the log-likelihood for a product node.
 
     Args:
         node:
-            ProductNode to calculate log-likelihood for.
+            IProductNode to calculate log-likelihood for.
         children:
-            np.array of child node values of ProductNode.
+            np.array of child node values of IProductNode.
 
     Returns: Log-likelihood value for product node.
     """
@@ -42,15 +42,15 @@ def prod_log_likelihood(node: ProductNode, children: List[ndarray], **kwargs) ->
     return pll
 
 
-def prod_likelihood(node: ProductNode, children: List[ndarray], **kwargs) -> ndarray:
+def prod_likelihood(node: IProductNode, children: List[ndarray], **kwargs) -> ndarray:
     """
     Calculates the likelihood for a product node.
 
     Args:
         node:
-            ProductNode to calculate likelihood for.
+            IProductNode to calculate likelihood for.
         children:
-            np.array of child node values of ProductNode.
+            np.array of child node values of IProductNode.
 
     Returns: likelihood value for product node.
     """
@@ -60,15 +60,15 @@ def prod_likelihood(node: ProductNode, children: List[ndarray], **kwargs) -> nda
     return np.prod(llchildren, axis=1).reshape(-1, 1)
 
 
-def sum_log_likelihood(node: SumNode, children: List[ndarray], **kwargs) -> ndarray:
+def sum_log_likelihood(node: ISumNode, children: List[ndarray], **kwargs) -> ndarray:
     """
     Calculates the log-likelihood for a sum node.
 
     Args:
         node:
-            SumNode to calculate log-likelihood for.
+            ISumNode to calculate log-likelihood for.
         children:
-            np.array of child node values of SumNode.
+            np.array of child node values of ISumNode.
 
     Returns: Log-likelihood value for sum node.
     """
@@ -80,15 +80,15 @@ def sum_log_likelihood(node: SumNode, children: List[ndarray], **kwargs) -> ndar
     return sll
 
 
-def sum_likelihood(node: SumNode, children: List[ndarray], **kwargs) -> ndarray:
+def sum_likelihood(node: ISumNode, children: List[ndarray], **kwargs) -> ndarray:
     """
     Calculates the likelihood for a sum node.
 
     Args:
         node:
-            SumNode to calculate likelihood for.
+            ISumNode to calculate likelihood for.
         children:
-            np.array of child node values of SumNode.
+            np.array of child node values of ISumNode.
 
     Returns: Likelihood value for sum node.
     """
@@ -100,14 +100,14 @@ def sum_likelihood(node: SumNode, children: List[ndarray], **kwargs) -> ndarray:
 
 
 _node_log_likelihood: Dict[Type, Callable] = {
-    SumNode: sum_log_likelihood,
-    ProductNode: prod_log_likelihood,
-    LeafNode: node_log_likelihood,
+    ISumNode: sum_log_likelihood,
+    IProductNode: prod_log_likelihood,
+    ILeafNode: node_log_likelihood,
 }
 _node_likelihood: Dict[Type, Callable] = {
-    SumNode: sum_likelihood,
-    ProductNode: prod_likelihood,
-    LeafNode: node_likelihood,
+    ISumNode: sum_likelihood,
+    IProductNode: prod_likelihood,
+    ILeafNode: node_likelihood,
 }
 
 
@@ -127,7 +127,7 @@ def likelihood(
         node:
             Root node of SPN to calculate likelihood for.
         data:
-            Data given to evaluate LeafNodes.
+            Data given to evaluate ILeafNodes.
         node_likelihood:
             dictionary that contains k: Class of the node, v: lambda function that receives as parameters (node, args**)
             for leaf nodes and (node, [children results], args**) for other nodes.
@@ -157,7 +157,7 @@ def log_likelihood(
         node:
             Root node of SPN to calculate log-likelihood for.
         data:
-            Data given to evaluate LeafNodes.
+            Data given to evaluate ILeafNodes.
         node_log_likelihood:
             dictionary that contains k: Class of the node, v: lambda function that receives as parameters (node, args**)
             for leaf nodes and (node, [children results], args**) for other nodes.

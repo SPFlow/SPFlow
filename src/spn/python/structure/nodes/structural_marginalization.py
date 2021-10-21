@@ -9,7 +9,7 @@ This file provides the structural marginalization of a SPN.
 from copy import deepcopy
 from .structural_transformations import prune
 from .validity_checks import _isvalid_spn
-from .node import SumNode, LeafNode, Node
+from .node import ISumNode, ILeafNode, Node
 import numpy as np
 from typing import Set, List, Optional
 
@@ -45,7 +45,7 @@ def marginalize(node: Node, keep: List[int]) -> Optional[Node]:
             # we are summing out this node
             return None
 
-        if isinstance(node, LeafNode):
+        if isinstance(node, ILeafNode):
             if len(node.scope) > 1:
                 raise Exception("Leaf Node with |scope| > 1")
 
@@ -58,8 +58,8 @@ def marginalize(node: Node, keep: List[int]) -> Optional[Node]:
                 continue
             children.append(new_c)
 
-        if isinstance(node, SumNode):
-            sum_node: SumNode = node.__class__(
+        if isinstance(node, ISumNode):
+            sum_node: ISumNode = node.__class__(
                 children=children,
                 scope=list(new_node_scope),
                 weights=np.array(node.weights),
