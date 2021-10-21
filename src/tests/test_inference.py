@@ -1,9 +1,9 @@
 import unittest
-from spn.python.inference.nodes import likelihood, log_likelihood
-from spn.python.structure.nodes.leaves.parametric.parametric import Gaussian
+from spflow.python.inference.nodes import likelihood, log_likelihood
+from spflow.python.structure.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
-from spn.python.structure.nodes import ISumNode, IProductNode
-from spn.python.structure.network_type import SPN
+from spflow.python.structure.nodes import ISumNode, IProductNode
+from spflow.python.structure.network_type import SPN
 
 
 class TestInference(unittest.TestCase):

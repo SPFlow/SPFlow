@@ -1,11 +1,11 @@
 import unittest
-from spn.python.structure.nodes.validity_checks import _isvalid_spn
-from spn.python.structure.rat.rat_spn import construct_spn, RatSpn
-from spn.python.structure.rat.region_graph import random_region_graph
-from spn.python.structure.nodes.node import (
+from spflow.python.structure.nodes.validity_checks import _isvalid_spn
+from spflow.python.structure.rat.rat_spn import construct_spn, RatSpn
+from spflow.python.structure.rat.region_graph import random_region_graph
+from spflow.python.structure.nodes.node import (
     _get_node_counts,
 )
-from spn.python.inference.rat.rat_spn import likelihood, log_likelihood
+from spflow.python.inference.rat.rat_spn import likelihood, log_likelihood
 import numpy as np
 
 
