@@ -9,14 +9,14 @@ This file provides the inference methods for SPNs.
 import numpy as np
 from numpy import ndarray
 from scipy.special import logsumexp  # type: ignore
-from spflow.python.structure.nodes.node import (
+from spflow.base.structure.nodes.node import (
     Node,
     ISumNode,
     IProductNode,
     ILeafNode,
     eval_spn_bottom_up,
 )
-from spflow.python.structure.network_type import SPN
+from spflow.base.structure.network_type import SPN
 from .leaves.parametric import node_likelihood, node_log_likelihood
 from typing import List, Callable, Type, Optional, Dict
 from multipledispatch import dispatch  # type: ignore

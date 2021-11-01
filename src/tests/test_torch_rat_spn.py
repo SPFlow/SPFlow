@@ -1,12 +1,12 @@
 import unittest
 
 import random
-from spflow.python.structure.nodes.node import get_nodes_by_type, ISumNode, ILeafNode
-from spflow.python.inference.rat.rat_spn import log_likelihood, likelihood
+from spflow.base.structure.nodes.node import get_nodes_by_type, ISumNode, ILeafNode
+from spflow.base.inference.rat.rat_spn import log_likelihood, likelihood
 import torch
 import numpy as np
-from spflow.python.structure.rat.region_graph import random_region_graph, _print_region_graph
-from spflow.python.structure.rat import RatSpn, construct_spn
+from spflow.base.structure.rat.region_graph import random_region_graph, _print_region_graph
+from spflow.base.structure.rat import RatSpn, construct_spn
 from spflow.torch.structure.rat import TorchRatSpn, toNodes, toTorch, _RegionLayer, _LeafLayer
 from spflow.torch.inference import log_likelihood, likelihood
 
