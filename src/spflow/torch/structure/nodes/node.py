@@ -7,15 +7,21 @@ This file provides the PyTorch variants of individual graph nodes.
 """
 from abc import ABC, abstractmethod
 from multipledispatch import dispatch  # type: ignore
-from typing import List
+from typing import List, Any
 import numpy as np
 
 import torch
-from torch.nn.parameter import Parameter
+import torch.nn as nn
 
 from spflow.torch.structure.module import TorchModule
 from spflow.base.structure.nodes.node import Node, ISumNode, IProductNode, ILeafNode
 
+def proj_convex_to_real(x: torch.Tensor) -> torch.Tensor:
+    # convex coefficients are already normalized, so taking the log is sufficient
+    return torch.log(x)
+
+def proj_real_to_convex(x: torch.Tensor) -> torch.Tensor:
+    return torch.nn.functional.softmax(x, dim=-1)
 
 class TorchNode(TorchModule):
     """PyTorch version of an abstract node. See Node.
@@ -91,8 +97,22 @@ class TorchSumNode(TorchNode):
 
         super(TorchSumNode, self).__init__(children, scope)
 
-        # store weight parameters
-        self.register_parameter("weights", Parameter(weights_torch))
+        # store auxiliary weights as torch parameters
+        self.register_parameter("weights_aux", nn.Parameter(weights_torch.log()))
+    
+    def __getattr__(self, attr: str) -> Any:
+        if(attr == "weights"):
+            # project auxiliary weights onto weights that sum up to one
+            return proj_real_to_convex(self.weights_aux)
+        else:
+            return nn.Module.__getattr__(self, attr)
+    
+    def __setattr__(self, attr: str, value: Any) -> None:
+        if(attr == "weights"):
+            # TODO: make sure that weights (approximately) sum up to one and have correct length
+            self.weights_aux.data = proj_convex_to_real(value)
+        else:
+            nn.Module.__setattr__(self, attr, value)
 
     def forward(self, x):
         # TODO: broadcast across batches
