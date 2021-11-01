@@ -6,7 +6,7 @@ Created on July 08, 2021
 This file provides the inference functions for the ILeafNodes.
 """
 
-from spflow.python.structure.nodes.leaves.parametric.parametric import (
+from spflow.base.structure.nodes.leaves.parametric.parametric import (
     get_scipy_object_parameters,
     get_scipy_object,
     Gaussian,
@@ -26,7 +26,7 @@ from typing import Optional
 from multipledispatch import dispatch  # type: ignore
 import numpy as np
 from numpy import ndarray
-from spflow.python.structure.nodes import Node
+from spflow.base.structure.nodes import Node
 
 # TODO:
 # marginalization
