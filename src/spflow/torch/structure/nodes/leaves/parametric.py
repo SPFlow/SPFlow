@@ -96,6 +96,8 @@ class TorchGaussian(TorchParametricLeaf):
         if(attr == "stdev"):
             # project auxiliary parameter onto actual parameter range
             return proj_real_to_bounded(self.stdev_aux, lb=0.0)
+        elif(attr == "dist"):
+            return D.Normal(loc=self.mean, scale=self.stdev)
         else:
             return nn.Module.__getattr__(self, attr)
 
@@ -184,6 +186,8 @@ class TorchLogNormal(TorchParametricLeaf):
         if(attr == "stdev"):
             # project auxiliary parameter onto actual parameter range
             return proj_real_to_bounded(self.stdev_aux, lb=0.0)
+        elif(attr == "dist"):
+            return D.LogNormal(loc=self.mean, scale=self.stdev)
         else:
             return nn.Module.__getattr__(self, attr)
 
@@ -317,6 +321,8 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
             L = self.covariance_tril
             # return covariance matrix
             return torch.matmul(L, L.T)
+        elif(attr == "dist"):
+            return D.MultivariateNormal(loc=self.mean_vector, scale_tril=self.covariance_tril)
         else:
             return nn.Module.__getattr__(self, attr)
 
@@ -502,6 +508,8 @@ class TorchBernoulli(TorchParametricLeaf):
         if(attr == "p"):
             # project auxiliary parameter onto actual parameter range
             return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
+        elif(attr == "dist"):
+            return D.Bernoulli(probs=self.p)
         else:
             return nn.Module.__getattr__(self, attr)
 
@@ -590,6 +598,8 @@ class TorchBinomial(TorchParametricLeaf):
         if(attr == "p"):
             # project auxiliary parameter onto actual parameter range
             return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
+        elif(attr == "dist"):
+            return D.Binomial(total_count=self.n, probs=self.p)
         else:
             return nn.Module.__getattr__(self, attr)
 
@@ -687,6 +697,8 @@ class TorchNegativeBinomial(TorchParametricLeaf):
         if(attr == "p"):
             # project auxiliary parameter onto actual parameter range
             return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
+        elif(attr == "dist"):
+            return D.NegativeBinomial(total_count=self.n, probs=torch.ones(1) - self.p)
         else:
             return nn.Module.__getattr__(self, attr)
 
@@ -773,6 +785,8 @@ class TorchPoisson(TorchParametricLeaf):
         if(attr == "l"):
             # project auxiliary parameter onto actual parameter range
             return proj_real_to_bounded(self.l_aux, lb=0.0)
+        elif(attr == "dist"):
+            return D.Poisson(rate=self.l)
         else:
             return nn.Module.__getattr__(self, attr)
 
@@ -853,6 +867,8 @@ class TorchGeometric(TorchParametricLeaf):
         if(attr == "p"):
             # project auxiliary parameter onto actual parameter range
             return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
+        elif(attr == "dist"):
+            return D.Geometric(probs=self.p)
         else:
             return nn.Module.__getattr__(self, attr)
 
@@ -1066,6 +1082,8 @@ class TorchExponential(TorchParametricLeaf):
         if(attr == "l"):
             # project auxiliary parameter onto actual parameter range
             return proj_real_to_bounded(self.l_aux, lb=0.0)
+        elif(attr == "dist"):
+            return D.Exponential(rate=self.l)
         else:
             return nn.Module.__getattr__(self, attr)
 
@@ -1153,9 +1171,11 @@ class TorchGamma(TorchParametricLeaf):
         if(attr == "alpha"):
             # project auxiliary parameter onto actual parameter range
             return proj_real_to_bounded(self.alpha_aux, lb=0.0)
-        if(attr == "beta"):
+        elif(attr == "beta"):
             # project auxiliary parameter onto actual parameter range
             return proj_real_to_bounded(self.beta_aux, lb=0.0)
+        elif(attr == "dist"):
+            return D.Gamma(concentration=self.alpha, rate=self.beta)
         else:
             return nn.Module.__getattr__(self, attr)
 
