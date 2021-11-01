@@ -7,11 +7,11 @@ Created on July 01, 2021
 import numpy as np
 from typing import Any
 from multipledispatch import dispatch  # type: ignore
-from spflow.python.structure.nodes.leaves.parametric.exceptions import (
+from spflow.base.structure.nodes.leaves.parametric.exceptions import (
     InvalidParametersError,
     NotViableError,
 )
-from spflow.python.structure.nodes.leaves.parametric.parametric import (
+from spflow.base.structure.nodes.leaves.parametric.parametric import (
     Gaussian,
     MultivariateGaussian,
     LogNormal,
@@ -26,7 +26,7 @@ from spflow.python.structure.nodes.leaves.parametric.parametric import (
     get_scipy_object,
     get_scipy_object_parameters,
 )
-from spflow.python.structure.nodes.node import Node
+from spflow.base.structure.nodes.node import Node
 from scipy.stats import lognorm, gamma  # type: ignore
 
 

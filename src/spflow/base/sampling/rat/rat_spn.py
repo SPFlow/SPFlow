@@ -1,7 +1,7 @@
 from multipledispatch import dispatch  # type: ignore
 import numpy as np
-from spflow.python.structure.rat import RatSpn
-from spflow.python.sampling.nodes.node import sample_instances
+from spflow.base.structure.rat import RatSpn
+from spflow.base.sampling.nodes.node import sample_instances
 
 
 @dispatch(RatSpn, np.ndarray, np.random.RandomState)  # type: ignore[no-redef]

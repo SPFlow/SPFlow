@@ -1,7 +1,7 @@
 from multipledispatch import dispatch  # type: ignore
 import numpy as np
-from spflow.python.structure.rat import RatSpn
-from spflow.python.inference.nodes import log_likelihood
+from spflow.base.structure.rat import RatSpn
+from spflow.base.inference.nodes import log_likelihood
 
 
 @dispatch(RatSpn, np.ndarray)  # type: ignore[no-redef]
