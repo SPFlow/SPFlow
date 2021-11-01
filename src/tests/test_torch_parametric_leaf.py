@@ -78,7 +78,13 @@ class TestTorchParametricLeaf(unittest.TestCase):
 
         # ----- right bounded intervals -----
 
-        # TODO
+        x_real = torch.tensor([-10.0, 1.0])
+        x_bounded = torch.tensor([ub-eps, -1.7])
+        
+        print(x_real, proj_bounded_to_real(x_bounded, ub=ub))
+        print(x_bounded, proj_real_to_bounded(x_real, ub=ub))
+        self.assertTrue(torch.allclose(proj_real_to_bounded(x_real, ub=ub), x_bounded, rtol=0.1))
+        self.assertTrue(torch.allclose(proj_bounded_to_real(x_bounded, ub=ub), x_real, rtol=0.1))
 
     def test_gaussian(self):
 
@@ -122,10 +128,9 @@ class TestTorchParametricLeaf(unittest.TestCase):
             torch.allclose(stdev_aux_orig - torch_gaussian.stdev_aux.grad, torch_gaussian.stdev_aux)
         )
 
-        # TODO: how to deal with distributions ???
-        # verify that distribution paramters are also correctly updated (match parameters)
-        #self.assertTrue(torch.allclose(torch_gaussian.mean, torch_gaussian.dist.mean))
-        #self.assertTrue(torch.allclose(torch_gaussian.stdev, torch_gaussian.dist.stddev))
+        # verify that distribution parameters match parameters
+        self.assertTrue(torch.allclose(torch_gaussian.mean, torch_gaussian.dist.mean))
+        self.assertTrue(torch.allclose(torch_gaussian.stdev, torch_gaussian.dist.stddev))
 
         # reset torch distribution after gradient update
         torch_gaussian = TorchGaussian([0], mean, stdev)
@@ -203,10 +208,9 @@ class TestTorchParametricLeaf(unittest.TestCase):
             torch.allclose(stdev_aux_orig - torch_log_normal.stdev_aux.grad, torch_log_normal.stdev_aux)
         )
 
-        # TODO
-        # verify that distribution paramters are also correctly updated (match parameters)
-        #self.assertTrue(torch.allclose(torch_log_normal.mean, torch_log_normal.dist.loc))
-        #self.assertTrue(torch.allclose(torch_log_normal.stdev, torch_log_normal.dist.scale))
+        # verify that distribution parameters match parameters
+        self.assertTrue(torch.allclose(torch_log_normal.mean, torch_log_normal.dist.loc))
+        self.assertTrue(torch.allclose(torch_log_normal.stdev, torch_log_normal.dist.scale))
 
         # reset torch distribution after gradient update
         torch_log_normal = TorchLogNormal([0], mean, stdev)
@@ -318,19 +322,18 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
-        # TODO
-        # verify that distribution paramters are also correctly updated (match parameters)
-        #self.assertTrue(
-        #    torch.allclose(
-        #        torch_multivariate_gaussian.mean_vector, torch_multivariate_gaussian.dist.loc
-        #    )
-        #)
-        #self.assertTrue(
-        #    torch.allclose(
-        #        torch_multivariate_gaussian.covariance_matrix,
-        #        torch_multivariate_gaussian.dist.covariance_matrix,
-        #    )
-        #)
+        # verify that distribution parameters match parameters
+        self.assertTrue(
+            torch.allclose(
+                torch_multivariate_gaussian.mean_vector, torch_multivariate_gaussian.dist.loc
+            )
+        )
+        self.assertTrue(
+            torch.allclose(
+                torch_multivariate_gaussian.covariance_matrix,
+                torch_multivariate_gaussian.dist.covariance_matrix,
+            )
+        )
 
         # reset torch distribution after gradient update
         torch_multivariate_gaussian = TorchMultivariateGaussian(
@@ -487,9 +490,8 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # make sure that parameters are correctly updated
         self.assertTrue(torch.allclose(p_aux_orig - torch_bernoulli.p_aux.grad, torch_bernoulli.p_aux))
 
-        # TODO
-        # verify that distribution paramters are also correctly updated (match parameters)
-        #self.assertTrue(torch.allclose(torch_bernoulli.p, torch_bernoulli.dist.probs))
+        # verify that distribution parameters match parameters
+        self.assertTrue(torch.allclose(torch_bernoulli.p, torch_bernoulli.dist.probs))
 
         # reset torch distribution after gradient update
         torch_bernoulli = TorchBernoulli([0], p)
@@ -608,10 +610,9 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertTrue(torch.allclose(n_orig, torch_binomial.n))
         self.assertTrue(torch.allclose(p_aux_orig - torch_binomial.p_aux.grad, torch_binomial.p_aux))
 
-        # verify that distribution paramters are also correctly updated (match parameters)
-        # TODO
-        #self.assertTrue(torch.equal(torch_binomial.n, torch_binomial.dist.total_count.long()))
-        #self.assertTrue(torch.allclose(torch_binomial.p, torch_binomial.dist.probs))
+        # verify that distribution parameters match parameters
+        self.assertTrue(torch.equal(torch_binomial.n, torch_binomial.dist.total_count.long()))
+        self.assertTrue(torch.allclose(torch_binomial.p, torch_binomial.dist.probs))
 
         # reset torch distribution after gradient update
         torch_binomial = TorchBinomial([0], n, p)
@@ -865,9 +866,8 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # make sure that parameters are correctly updated
         self.assertTrue(torch.allclose(l_aux_orig - torch_poisson.l_aux.grad, torch_poisson.l_aux))
 
-        # verify that distribution paramters are also correctly updated (match parameters)
-        # TODO
-        #self.assertTrue(torch.allclose(torch_poisson.l, torch_poisson.dist.rate))
+        # verify that distribution parameters match parameters
+        self.assertTrue(torch.allclose(torch_poisson.l, torch_poisson.dist.rate))
 
         # reset torch distribution after gradient update
         torch_poisson = TorchPoisson([0], l)
@@ -946,9 +946,8 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # make sure that parameters are correctly updated
         self.assertTrue(torch.allclose(p_aux_orig - torch_geometric.p_aux.grad, torch_geometric.p_aux))
 
-        # verify that distribution paramters are also correctly updated (match parameters)
-        # TODO
-        #self.assertTrue(torch.allclose(torch_geometric.p, torch_geometric.dist.probs))
+        # verify that distribution parameters match parameters
+        self.assertTrue(torch.allclose(torch_geometric.p, torch_geometric.dist.probs))
 
         # reset torch distribution after gradient update
         torch_geometric = TorchGeometric([0], p)
@@ -1117,9 +1116,8 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # make sure that parameters are correctly updated
         self.assertTrue(torch.allclose(l_aux_orig - torch_exponential.l_aux.grad, torch_exponential.l_aux))
 
-        # verify that distribution paramters are also correctly updated (match parameters)
-        # TODO
-        #self.assertTrue(torch.allclose(torch_exponential.l, torch_exponential.dist.rate))
+        # verify that distribution parameters match parameters
+        self.assertTrue(torch.allclose(torch_exponential.l, torch_exponential.dist.rate))
 
         # reset torch distribution after gradient update
         torch_exponential = TorchExponential([0], l)
@@ -1205,10 +1203,9 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertTrue(torch.allclose(alpha_aux_orig - torch_gamma.alpha_aux.grad, torch_gamma.alpha_aux))
         self.assertTrue(torch.allclose(beta_aux_orig - torch_gamma.beta_aux.grad, torch_gamma.beta_aux))
 
-        # verify that distribution paramters are also correctly updated (match parameters)
-        # TODO
-        #self.assertTrue(torch.allclose(torch_gamma.alpha, torch_gamma.dist.concentration))
-        #self.assertTrue(torch.allclose(torch_gamma.beta, torch_gamma.dist.rate))
+        # verify that distribution parameters match parameters
+        self.assertTrue(torch.allclose(torch_gamma.alpha, torch_gamma.dist.concentration))
+        self.assertTrue(torch.allclose(torch_gamma.beta, torch_gamma.dist.rate))
 
         # reset torch distribution after gradient update
         torch_gamma = TorchGamma([0], alpha, beta)
