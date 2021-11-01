@@ -7,7 +7,7 @@ This file provides the PyTorch variants of individual graph nodes.
 """
 from abc import ABC, abstractmethod
 from multipledispatch import dispatch  # type: ignore
-from typing import List, Any
+from typing import List, Any, Union
 import numpy as np
 
 import torch
@@ -70,22 +70,19 @@ class TorchSumNode(TorchNode):
         self,
         children: List[TorchModule],
         scope: List[int],
-        weights: np.ndarray = np.empty(0),
+        weights: Union[np.ndarray, torch.Tensor] = np.empty(0),
         normalize: bool = True,
     ) -> None:
 
         if not children:
             raise ValueError("Sum node must have at least one child.")
+        
+        if weights is None:
+            weights = torch.rand(sum(len(child) for child in children))
+        elif(isinstance(weights, np.ndarray)):
+            weights = torch.tensor(weights)
 
-        # convert weight np.array to torch tensor
-        # if no weights specified initialize weights randomly in [0,1)
-        weights_torch: torch.Tensor = (
-            torch.tensor(weights)
-            if weights is not None
-            else torch.rand(sum(len(child) for child in children))
-        )
-
-        if not torch.all(weights_torch >= 0):
+        if not torch.all(weights >= 0):
             raise ValueError("All weights must be non-negative.")
 
         if not len(weights) == sum(len(child) for child in children):
@@ -93,12 +90,12 @@ class TorchSumNode(TorchNode):
 
         # noramlize
         if normalize:
-            weights_torch /= weights_torch.sum()
+            weights /= weights.sum()
 
         super(TorchSumNode, self).__init__(children, scope)
 
         # store auxiliary weights as torch parameters
-        self.register_parameter("weights_aux", nn.Parameter(weights_torch.log()))
+        self.register_parameter("weights_aux", nn.Parameter(weights.log()))
     
     def __getattr__(self, attr: str) -> Any:
         if(attr == "weights"):
