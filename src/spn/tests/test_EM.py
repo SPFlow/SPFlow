@@ -15,13 +15,14 @@ from spn.structure.leaves.parametric.Parametric import Gaussian
 class TestEM(unittest.TestCase):
     def test_optimization(self):
         np.random.seed(17)
-        d1 = np.random.normal(10, 5, size=2000).tolist()
-        d2 = np.random.normal(30, 5, size=2000).tolist()
+        d1 = np.random.normal(10, 1, size=4000).tolist()
+        d2 = np.random.normal(30, 1, size=4000).tolist()
         data = d1 + d2
-        data = np.array(data).reshape((-1, 10))
+        data = np.array(data).reshape((-1, 4))
         data = data.astype(np.float32)
 
         ds_context = Context(meta_types=[MetaType.REAL] * data.shape[1], parametric_types=[Gaussian] * data.shape[1])
+        ds_context.add_domains(data)
 
         spn = learn_parametric(data, ds_context)
 
@@ -32,16 +33,20 @@ class TestEM(unittest.TestCase):
 
         print(spn.weights, spn.children[0].children[0].mean)
 
-        EM_optimization(spn, data, iterations=10)
+        EM_optimization(spn, data, iterations=1000)
 
         print(spn.weights, spn.children[0].children[0].mean)
 
         py_ll_opt = np.sum(log_likelihood(spn, data))
 
         self.assertLessEqual(py_ll, py_ll_opt)
-        self.assertAlmostEqual(spn.weights[0], 0.5, 6)
-        self.assertAlmostEqual(spn.weights[1], 0.5, 6)
-        self.assertAlmostEqual(spn.children[1].children[0].mean, 10.50531, 4)
+        self.assertAlmostEqual(spn.weights[0], 0.5, 4)
+        self.assertAlmostEqual(spn.weights[1], 0.5, 4)
+
+        c1_mean = spn.children[0].children[0].mean
+        c2_mean = spn.children[1].children[0].mean
+        self.assertEqual(round(min(c1_mean, c2_mean)), 10)
+        self.assertEqual(round(max(c1_mean, c2_mean)), 30)
 
     def test_clustering(self):
         np.random.seed(0)
