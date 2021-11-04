@@ -1,0 +1,6 @@
+﻿spn.structure.Base.rebuild\_scopes\_bottom\_up
+==============================================
+
+.. currentmodule:: spn.structure.Base
+
+.. autofunction:: rebuild_scopes_bottom_up

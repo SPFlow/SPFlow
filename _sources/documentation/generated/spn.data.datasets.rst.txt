@@ -1,0 +1,35 @@
+﻿spn.data.datasets
+=================
+
+.. automodule:: spn.data.datasets
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      get_binary_data
+      get_categorical_data
+      get_mnist
+      get_nips_data
+      one_hot
+      preproc_arff_data
+      transpose_list
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

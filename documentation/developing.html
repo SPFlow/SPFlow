@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Development &mdash; SPFlow 0.0.40 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery-binder.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery-dataframe.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery-rendered-html.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Example Gallery" href="../auto_examples/index.html" />
+    <link rel="prev" title="spn.data.datasets" href="generated/spn.data.datasets.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> SPFlow
+            <img src="../_static/spflow_logoSquare.png" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                0.0.40
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../usage/installation.html">Installation Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/quickstart.html">Quickstart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="api.html">SPFlow API</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#testing">Testing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#projects-using-spflow">Projects using SPFlow</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html#syntax-and-dsl">Syntax and DSL</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html#tractable-probabilistic-models">Tractable Probabilistic Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html#querying-probabilistic-models">Querying Probabilistic Models</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">SPFlow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Development</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/documentation/developing.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="development">
+<h1>Development<a class="headerlink" href="#development" title="Permalink to this headline"></a></h1>
+<p>SPFlow is meant to be built on and extended. This short guide will help you get
+started on extending it further: pointing out testing, documentation, and some
+projects using SPFlow.</p>
+<section id="testing">
+<h2>Testing<a class="headerlink" href="#testing" title="Permalink to this headline"></a></h2>
+<p>Testing is done with pytest, and there are a few additional libraries which
+may be needed during development.</p>
+<p>Assuming you are on Ubuntu:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo apt-get install g++-7
+</pre></div>
+</div>
+<p>… and some additional Python packages:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install -r requirements.txt
+pip install <span class="nv">tensorflow</span><span class="o">==</span><span class="m">1</span>.15.0
+pip install pytest-xdist
+pip install torch
+pip install torchvision
+pip install cppyy
+</pre></div>
+</div>
+<p>Tests are based on <code class="docutils literal notranslate"><span class="pre">pytest</span></code>. From the base of the repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>find src/spn/tests/test*.py -print0 <span class="p">|</span> xargs -n <span class="m">1</span> -0 py.test
+</pre></div>
+</div>
+</section>
+<section id="documentation">
+<h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline"></a></h2>
+<p>Documentation is built with <code class="docutils literal notranslate"><span class="pre">sphinx</span></code>, and has its own set of dependencies
+for building:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> docs/
+pip install -r requirements.txt
+</pre></div>
+</div>
+<p>Once these are installed, a local copy of the documentation can be built
+using the <code class="docutils literal notranslate"><span class="pre">Makefile</span></code> (OSX/Linux) or <code class="docutils literal notranslate"><span class="pre">make.bat</span></code> (Windows).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="n">html</span>
+<span class="n">xdg</span><span class="o">-</span><span class="nb">open</span> <span class="n">build</span><span class="o">/</span><span class="n">html</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">html</span>  <span class="c1"># Open in default web browser</span>
+</pre></div>
+</div>
+</section>
+<section id="projects-using-spflow">
+<h2>Projects using SPFlow<a class="headerlink" href="#projects-using-spflow" title="Permalink to this headline"></a></h2>
+<p>There are several projects currently using SPFlow for a variety of tasks.
+Here we have links to a few of them:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/cvoelcker/DeepNotebooks">DeepNoteBooks</a>: <em>DeepNotebooks
+is an automated statistical analysis tool build on top of SPNs.</em></p></li>
+<li><p><a class="reference external" href="https://github.com/encryptogroup/CryptoSPN">CryptoSPN</a>: <em>an extension of
+SPFlow to allow for privacy-preserving SPN inference.</em></p></li>
+<li><p><a class="reference external" href="https://github.com/DataManagementLab/deepdb-public">DeepDB</a>: <em>a data-driven
+learned database component achieving state-of-the-art-performance in
+cardinality estimation and approximate query processing (AQP).</em></p></li>
+<li><p><a class="reference external" href="https://github.com/ml-research/Interpreting-SPNs">Interpreting-SPNs</a>:
+<em>Interpreting Sum-Product Networks via Influence Functions.</em></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="generated/spn.data.datasets.html" class="btn btn-neutral float-left" title="spn.data.datasets" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../auto_examples/index.html" class="btn btn-neutral float-right" title="Example Gallery" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Alejandro Molina, Antonio Vergari, Karl Stelzner, Robert Peharz, Nicola Di Mauro, Kristian Kersting.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

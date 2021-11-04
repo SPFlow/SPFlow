@@ -1,0 +1,6 @@
+﻿spn.algorithms.LearningWrappers.learn\_parametric
+=================================================
+
+.. currentmodule:: spn.algorithms.LearningWrappers
+
+.. autofunction:: learn_parametric

@@ -1,0 +1,6 @@
+﻿spn.algorithms.Validity.is\_valid
+=================================
+
+.. currentmodule:: spn.algorithms.Validity
+
+.. autofunction:: is_valid

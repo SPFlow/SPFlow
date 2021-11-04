@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parametric SPN &mdash; SPFlow 0.0.40 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/sg_gallery.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/sg_gallery-binder.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/sg_gallery-dataframe.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/sg_gallery-rendered-html.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Learning an SPN for Classification" href="plot_learn_spn_classifier.html" />
+    <link rel="prev" title="Mixed SPN" href="mixed_spn.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> SPFlow
+            <img src="../../_static/spflow_logoSquare.png" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                0.0.40
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/installation.html">Installation Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/quickstart.html">Quickstart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/api.html">SPFlow API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/developing.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Example Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#syntax-and-dsl">Syntax and DSL</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#tractable-probabilistic-models">Tractable Probabilistic Models</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="mixed_spn.html">Mixed SPN</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Parametric SPN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_learn_spn_classifier.html">Learning an SPN for Classification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multivariate_leaf.html">Multivariate Leaf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cnets.html">Cutset Networks (CNets)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#querying-probabilistic-models">Querying Probabilistic Models</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">SPFlow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Example Gallery</a> &raquo;</li>
+      <li>Parametric SPN</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/auto_examples/models/parametric_spn.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p>Click <a class="reference internal" href="#sphx-glr-download-auto-examples-models-parametric-spn-py"><span class="std std-ref">here</span></a>
+to download the full example code</p>
+</div>
+<section class="sphx-glr-example-title" id="parametric-spn">
+<span id="sphx-glr-auto-examples-models-parametric-spn-py"></span><h1>Parametric SPN<a class="headerlink" href="#parametric-spn" title="Permalink to this headline"></a></h1>
+<p>The setup is similar to the Mixed SPN, but here we learn a parametric SPN.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<a href="https://numpy.org/doc/stable/reference/random/generated/numpy.random.seed.html#numpy.random.seed" title="numpy.random.seed" class="sphx-glr-backref-module-numpy-random sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span></a><span class="p">(</span><span class="mi">123</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">spn.algorithms.LearningWrappers</span> <span class="kn">import</span> <a href="../../documentation/generated/spn.algorithms.LearningWrappers.learn_parametric.html#spn.algorithms.LearningWrappers.learn_parametric" title="spn.algorithms.LearningWrappers.learn_parametric" class="sphx-glr-backref-module-spn-algorithms-LearningWrappers sphx-glr-backref-type-py-function"><span class="n">learn_parametric</span></a>
+<span class="kn">from</span> <span class="nn">spn.structure.Base</span> <span class="kn">import</span> <a href="../../documentation/generated/spn.structure.Base.Context.html#spn.structure.Base.Context" title="spn.structure.Base.Context" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Context</span></a>
+<span class="kn">from</span> <span class="nn">spn.structure.leaves.parametric.Parametric</span> <span class="kn">import</span> <a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Categorical</span></a><span class="p">,</span> <a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Gaussian.html#spn.structure.leaves.parametric.Parametric.Gaussian" title="spn.structure.leaves.parametric.Parametric.Gaussian" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Gaussian</span></a>
+
+<span class="n">a</span> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/random/generated/numpy.random.randint.html#numpy.random.randint" title="numpy.random.randint" class="sphx-glr-backref-module-numpy-random sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span></a><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/random/generated/numpy.random.randint.html#numpy.random.randint" title="numpy.random.randint" class="sphx-glr-backref-module-numpy-random sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span></a><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.r_.html#numpy.r_" title="numpy.r_" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-data"><span class="n">np</span><span class="o">.</span><span class="n">r_</span></a><span class="p">[</span><a href="https://numpy.org/doc/stable/reference/random/generated/numpy.random.normal.html#numpy.random.normal" title="numpy.random.normal" class="sphx-glr-backref-module-numpy-random sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span></a><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="p">(</span><span class="mi">300</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <a href="https://numpy.org/doc/stable/reference/random/generated/numpy.random.normal.html#numpy.random.normal" title="numpy.random.normal" class="sphx-glr-backref-module-numpy-random sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span></a><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="p">(</span><span class="mi">700</span><span class="p">,</span> <span class="mi">1</span><span class="p">))]</span>
+<span class="n">d</span> <span class="o">=</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">a</span> <span class="o">+</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span>
+
+<span class="n">train_data</span> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.c_.html#numpy.c_" title="numpy.c_" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-data"><span class="n">np</span><span class="o">.</span><span class="n">c_</span></a><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span>
+
+<span class="n">ds_context</span> <span class="o">=</span> <a href="../../documentation/generated/spn.structure.Base.Context.html#spn.structure.Base.Context" title="spn.structure.Base.Context" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Context</span></a><span class="p">(</span><span class="n">parametric_types</span><span class="o">=</span><span class="p">[</span><a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Categorical</span></a><span class="p">,</span> <a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Categorical</span></a><span class="p">,</span> <a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Gaussian.html#spn.structure.leaves.parametric.Parametric.Gaussian" title="spn.structure.leaves.parametric.Parametric.Gaussian" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Gaussian</span></a><span class="p">,</span> <a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Gaussian.html#spn.structure.leaves.parametric.Parametric.Gaussian" title="spn.structure.leaves.parametric.Parametric.Gaussian" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Gaussian</span></a><span class="p">])</span><span class="o">.</span><span class="n">add_domains</span><span class="p">(</span><span class="n">train_data</span><span class="p">)</span>
+
+<span class="n">spn</span> <span class="o">=</span> <a href="../../documentation/generated/spn.algorithms.LearningWrappers.learn_parametric.html#spn.algorithms.LearningWrappers.learn_parametric" title="spn.algorithms.LearningWrappers.learn_parametric" class="sphx-glr-backref-module-spn-algorithms-LearningWrappers sphx-glr-backref-type-py-function"><span class="n">learn_parametric</span></a><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">ds_context</span><span class="p">,</span> <span class="n">min_instances_slice</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  0.000 seconds)</p>
+<div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-models-parametric-spn-py">
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/da2f939428c0f79bc02c1c198ab6c67e/parametric_spn.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">parametric_spn.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/2fe8097a22ea753af5a120cacad0f35c/parametric_spn.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">parametric_spn.ipynb</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="mixed_spn.html" class="btn btn-neutral float-left" title="Mixed SPN" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="plot_learn_spn_classifier.html" class="btn btn-neutral float-right" title="Learning an SPN for Classification" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Alejandro Molina, Antonio Vergari, Karl Stelzner, Robert Peharz, Nicola Di Mauro, Kristian Kersting.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

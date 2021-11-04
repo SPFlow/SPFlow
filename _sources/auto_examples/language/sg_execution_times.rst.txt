@@ -1,0 +1,14 @@
+
+:orphan:
+
+.. _sphx_glr_auto_examples_language_sg_execution_times:
+
+Computation times
+=================
+**00:00.576** total execution time for **auto_examples_language** files:
+
++--------------------------------------------------------------------------------------------------------+-----------+--------+
+| :ref:`sphx_glr_auto_examples_language_plot_spn_dsl.py` (``plot_spn_dsl.py``)                           | 00:00.322 | 0.0 MB |
++--------------------------------------------------------------------------------------------------------+-----------+--------+
+| :ref:`sphx_glr_auto_examples_language_plot_spn_object_hierarchy.py` (``plot_spn_object_hierarchy.py``) | 00:00.254 | 0.0 MB |
++--------------------------------------------------------------------------------------------------------+-----------+--------+

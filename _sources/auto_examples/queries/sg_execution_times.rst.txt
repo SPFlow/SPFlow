@@ -1,0 +1,14 @@
+
+:orphan:
+
+.. _sphx_glr_auto_examples_queries_sg_execution_times:
+
+Computation times
+=================
+**00:00.462** total execution time for **auto_examples_queries** files:
+
++-----------------------------------------------------------------------------------------------------+-----------+--------+
+| :ref:`sphx_glr_auto_examples_queries_plot_marginalize.py` (``plot_marginalize.py``)                 | 00:00.454 | 0.0 MB |
++-----------------------------------------------------------------------------------------------------+-----------+--------+
+| :ref:`sphx_glr_auto_examples_queries_plot_tractable_inference.py` (``plot_tractable_inference.py``) | 00:00.008 | 0.0 MB |
++-----------------------------------------------------------------------------------------------------+-----------+--------+

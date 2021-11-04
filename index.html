@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPFlow: An Easy and Extensible Library for Sum-Product Networks &mdash; SPFlow 0.0.40 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/sg_gallery.css" type="text/css" />
+      <link rel="stylesheet" href="_static/sg_gallery-binder.css" type="text/css" />
+      <link rel="stylesheet" href="_static/sg_gallery-dataframe.css" type="text/css" />
+      <link rel="stylesheet" href="_static/sg_gallery-rendered-html.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation Instructions" href="usage/installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="#" class="icon icon-home"> SPFlow
+            <img src="_static/spflow_logoSquare.png" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                0.0.40
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="usage/installation.html">Installation Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage/quickstart.html">Quickstart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="documentation/api.html">SPFlow API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documentation/developing.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#syntax-and-dsl">Syntax and DSL</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#tractable-probabilistic-models">Tractable Probabilistic Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#querying-probabilistic-models">Querying Probabilistic Models</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">SPFlow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
+      <li>SPFlow: An Easy and Extensible Library for Sum-Product Networks</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="spflow-an-easy-and-extensible-library-for-sum-product-networks">
+<h1>SPFlow: An Easy and Extensible Library for Sum-Product Networks<a class="headerlink" href="#spflow-an-easy-and-extensible-library-for-sum-product-networks" title="Permalink to this headline"></a></h1>
+<p>SPFlow, an open-source Python library providing a simple interface to inference,
+learning and manipulation routines for deep and tractable probabilistic models
+called Sum-Product Networks (SPNs). The library allows one to quickly create
+SPNs both from data and through a domain specific language (DSL). It efficiently
+implements several probabilistic inference routines like computing marginals,
+conditionals and (approximate) most probable explanations (MPEs) along with
+sampling as well as utilities for serializing, plotting and structure statistics
+on an SPN.</p>
+<p>Furthermore, SPFlow is extremely extensible and customizable, allowing users to
+promptly create new inference and learning routines by injecting custom code
+into a light-weight functional-oriented API framework.</p>
+<section id="getting-started">
+<h2><a class="reference internal" href="usage/installation.html#installation-instructions-link"><span class="std std-ref">Getting Started</span></a><a class="headerlink" href="#getting-started" title="Permalink to this headline"></a></h2>
+<p>This walks through the steps of getting SPFlow running. Then check out the
+<a class="reference internal" href="auto_examples/index.html#basic-examples"><span class="std std-ref">Tutorials</span></a> to dive into some examples.</p>
+<div class="toctree-wrapper compound">
+</div>
+</section>
+<section id="documentation">
+<h2><a class="reference internal" href="documentation/api.html#spflow-api"><span class="std std-ref">Documentation</span></a><a class="headerlink" href="#documentation" title="Permalink to this headline"></a></h2>
+<p>This includes API Documentation and some notes on developing with
+SPFlow.</p>
+<div class="toctree-wrapper compound">
+</div>
+</section>
+<section id="example-gallery">
+<h2><a class="reference internal" href="auto_examples/index.html#basic-examples"><span class="std std-ref">Example Gallery</span></a><a class="headerlink" href="#example-gallery" title="Permalink to this headline"></a></h2>
+<p>A gallery of examples with figures and expected outputs.</p>
+<div class="toctree-wrapper compound">
+</div>
+</section>
+<section id="papers-spflow-can-reproduce">
+<h2>Papers SPFlow can reproduce<a class="headerlink" href="#papers-spflow-can-reproduce" title="Permalink to this headline"></a></h2>
+<ul class="simple">
+<li><p>Nicola Di Mauro, Antonio Vergari, Teresa M.A. Basile, Floriana Esposito. “Fast and Accurate Density Estimation with Extremely Randomized Cutset Networks”. In: ECML/PKDD, 2017. <a class="reference external" href="https://doi.org/10.1007/978-3-319-71249-9_13">https://doi.org/10.1007/978-3-319-71249-9_13</a></p></li>
+<li><p>Nicola Di Mauro, Antonio Vergari, and Teresa M.A. Basile. “Learning Bayesian Random Cutset Forests”. In ISMIS 2015, LNAI 9384, pp. 1-11, Springer, 2015. <a class="reference external" href="https://doi.org/10.1007/978-3-319-25252-0_13">https://doi.org/10.1007/978-3-319-25252-0_13</a></p></li>
+<li><p>Nicola Di Mauro, Antonio Vergari, and Floriana Esposito. “Learning Accurate Cutset Networks by Exploiting Decomposability”. In AI*IA. 2015, LNAI 9336, 1-12, Springer, 2015. <a class="reference external" href="https://doi.org/10.1007/978-3-319-24309-2_17">https://doi.org/10.1007/978-3-319-24309-2_17</a></p></li>
+<li><p>Antonio Vergari, Nicola Di Mauro, and Floriana Esposito. “Simplifying, Regularizing and Strengthening Sum-Product Network Structure Learning”. In ECML/PKDD, LNCS, 343-358, Springer. 2015. <a class="reference external" href="https://doi.org/10.1007/978-3-319-23525-7_21">https://doi.org/10.1007/978-3-319-23525-7_21</a></p></li>
+</ul>
+</section>
+<section id="papers-implemented-in-spflow">
+<h2>Papers implemented in SPFlow<a class="headerlink" href="#papers-implemented-in-spflow" title="Permalink to this headline"></a></h2>
+<ul class="simple">
+<li><p>Molina, Alejandro, Sriraam Natarajan, and Kristian Kersting. “Poisson Sum-Product Networks: A Deep Architecture for Tractable Multivariate Poisson Distributions.” In AAAI, pp. 2357-2363. 2017. <a class="reference external" href="https://dl.acm.org/doi/10.5555/3298483.3298579">https://dl.acm.org/doi/10.5555/3298483.3298579</a></p></li>
+<li><p>Molina, Alejandro, Antonio Vergari, Nicola Di Mauro, Sriraam Natarajan, Floriana Esposito, and Kristian Kersting. “Mixed sum-product networks: A deep architecture for hybrid domains.” In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI). 2018. <a class="reference external" href="https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16865">https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16865</a></p></li>
+</ul>
+</section>
+<section id="citation">
+<h2>Citation<a class="headerlink" href="#citation" title="Permalink to this headline"></a></h2>
+<p>If you find SPFlow useful please cite the <a class="reference external" href="https://arxiv.org/abs/1901.03704">SPFlow arXiv paper</a> in work:</p>
+<div class="highlight-bibtex notranslate"><div class="highlight"><pre><span></span><span class="nc">@misc</span><span class="p">{</span><span class="nl">Molina2019SPFlow</span><span class="p">,</span>
+  <span class="na">Author</span> <span class="p">=</span> <span class="s">{Alejandro Molina and Antonio Vergari and Karl Stelzner and Robert Peharz and Pranav Subramani and Nicola Di Mauro and Pascal Poupart and Kristian Kersting}</span><span class="p">,</span>
+  <span class="na">Title</span> <span class="p">=</span> <span class="s">{SPFlow: An Easy and Extensible Library for Deep Probabilistic Learning using Sum-Product Networks}</span><span class="p">,</span>
+  <span class="na">Year</span> <span class="p">=</span> <span class="s">{2019}</span><span class="p">,</span>
+  <span class="na">Eprint</span> <span class="p">=</span> <span class="s">{arXiv:1901.03704}</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="authors">
+<h2>Authors<a class="headerlink" href="#authors" title="Permalink to this headline"></a></h2>
+<ul class="simple">
+<li><p>Alejandro Molina - <em>TU Darmstadt</em></p></li>
+<li><p>Antonio Vergari - <em>Max-Planck-Institute</em></p></li>
+<li><p>Karl Stelzner - <em>TU Darmstadt</em></p></li>
+<li><p>Robert Peharz - <em>University of Cambridge</em></p></li>
+<li><p>Nicola Di Mauro - <em>University of Bari Aldo Moro</em></p></li>
+<li><p>Kristian Kersting - <em>TU Darmstadt</em></p></li>
+</ul>
+</section>
+<section id="contributors">
+<h2>Contributors<a class="headerlink" href="#contributors" title="Permalink to this headline"></a></h2>
+<p>See also the list of <a class="reference external" href="https://github.com/SPFlow/SPFlow/contributors">contributors</a> who participated in this project.</p>
+<ul class="simple">
+<li><p>Moritz Kulessa - <em>TU Darmstadt</em></p></li>
+<li><p>Claas Voelcker - <em>TU Darmstadt</em></p></li>
+<li><p>Simon Roesler - <em>Karlsruhe Institute of Technology</em></p></li>
+<li><p>Steven Lang - <em>TU Darmstadt</em></p></li>
+<li><p>Xiaoting Shao</p></li>
+<li><p>Pranav Subramani - <em>Wolfram Research</em></p></li>
+<li><p>Maximilian Gottschalk</p></li>
+<li><p>Renato Lui Geh - <em>University of São Paulo</em></p></li>
+<li><p>Andy Shih - <em>Stanford University</em></p></li>
+<li><p><a class="reference external" href="https://hayesall.com/">Alexander L. Hayes</a> - <em>Indiana University, Bloomington</em></p></li>
+</ul>
+</section>
+<section id="license">
+<h2>License<a class="headerlink" href="#license" title="Permalink to this headline"></a></h2>
+<p>This project is licensed under the Apache License, Version 2.0 - see the <a class="reference external" href="https://github.com/SPFlow/SPFlow/blob/master/LICENSE.md">LICENSE</a> file for details</p>
+</section>
+<section id="acknowledgments">
+<h2>Acknowledgments<a class="headerlink" href="#acknowledgments" title="Permalink to this headline"></a></h2>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/SPFlow/SPFlow/master/Documentation/acknowledgements/bmbf.png"><img alt="Federal Ministry of Education and Research" src="https://raw.githubusercontent.com/SPFlow/SPFlow/master/Documentation/acknowledgements/bmbf.png" style="height: 100px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/SPFlow/SPFlow/master/Documentation/acknowledgements/dfg.jpg"><img alt="DFG Deutsche Forschungsgemeinschaft" src="https://raw.githubusercontent.com/SPFlow/SPFlow/master/Documentation/acknowledgements/dfg.jpg" style="height: 100px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/SPFlow/SPFlow/master/Documentation/acknowledgements/euc.png"><img alt="European Commission" src="https://raw.githubusercontent.com/SPFlow/SPFlow/master/Documentation/acknowledgements/euc.png" style="height: 100px;" /></a>
+<ul class="simple">
+<li><p>Parts of SPFlow as well as its motivating research have been supported by the Germany Science Foundation (DFG) - AIPHES, GRK 1994, and CAML, KE 1686/3-1 as part of SPP 1999- and the Federal Ministry of Education and Research (BMBF) - InDaS, 01IS17063B.</p></li>
+<li><p>This project received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Sklodowska-Curie Grant Agreement No. 797223 (HYBSPN).</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="usage/installation.html" class="btn btn-neutral float-right" title="Installation Instructions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Alejandro Molina, Antonio Vergari, Karl Stelzner, Robert Peharz, Nicola Di Mauro, Kristian Kersting.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

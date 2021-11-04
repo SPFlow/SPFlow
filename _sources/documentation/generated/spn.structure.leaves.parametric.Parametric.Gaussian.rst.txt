@@ -1,0 +1,32 @@
+﻿spn.structure.leaves.parametric.Parametric.Gaussian
+===================================================
+
+.. currentmodule:: spn.structure.leaves.parametric.Parametric
+
+.. autoclass:: Gaussian
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Gaussian.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Gaussian.name
+      ~Gaussian.parameters
+      ~Gaussian.precision
+      ~Gaussian.type
+      ~Gaussian.variance
+   
+   

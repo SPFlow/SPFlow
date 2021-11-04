@@ -1,0 +1,281 @@
+:orphan:
+
+
+
+.. _sphx_glr_auto_examples:
+
+.. _basic_examples:
+
+Example Gallery
+---------------
+
+These are some simple examples demonstrating ``spn``.
+
+
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. _sphx_glr_auto_examples_language:
+
+.. _dsl_examples:
+
+Syntax and DSL
+--------------
+
+Examples that demonstrate the basic syntax for composing Sum-Product Networks.
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="We start by creating an SPN. Using a Domain-Specific Language (DSL), we can quickly create an S...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/language/images/thumb/sphx_glr_plot_spn_dsl_thumb.png
+     :alt: Domain Specific Language for SPNs
+
+     :ref:`sphx_glr_auto_examples_language_plot_spn_dsl.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/language/plot_spn_dsl
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="The alternative to the DSL is to construct SPNs directly from Sum and Product objects, demonstr...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/language/images/thumb/sphx_glr_plot_spn_object_hierarchy_thumb.png
+     :alt: Composing SPNs from Sums and Products
+
+     :ref:`sphx_glr_auto_examples_language_plot_spn_object_hierarchy.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/language/plot_spn_object_hierarchy
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. _sphx_glr_auto_examples_models:
+
+.. _model_examples:
+
+Tractable Probabilistic Models
+------------------------------
+
+These examples demonstrate some of the tractable probabilistic models which
+can be represented, learned, and queried in SPFlow.
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This demonstrates learning a Mixed Sum-Product Network (MSPN) where the data is composed of var...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/models/images/thumb/sphx_glr_mixed_spn_thumb.png
+     :alt: Mixed SPN
+
+     :ref:`sphx_glr_auto_examples_models_mixed_spn.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/models/mixed_spn
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="The setup is similar to the Mixed SPN, but here we learn a parametric SPN. ">
+
+.. only:: html
+
+ .. figure:: /auto_examples/models/images/thumb/sphx_glr_parametric_spn_thumb.png
+     :alt: Parametric SPN
+
+     :ref:`sphx_glr_auto_examples_models_parametric_spn.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/models/parametric_spn
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="We can perform classification by learning an SPN from data and then comparing the probabilities...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/models/images/thumb/sphx_glr_plot_learn_spn_classifier_thumb.png
+     :alt: Learning an SPN for Classification
+
+     :ref:`sphx_glr_auto_examples_models_plot_learn_spn_classifier.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/models/plot_learn_spn_classifier
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="We can learn a SPN with multivariate leaf. This example demonstrates learning an SPN with Chow ...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/models/images/thumb/sphx_glr_multivariate_leaf_thumb.png
+     :alt: Multivariate Leaf
+
+     :ref:`sphx_glr_auto_examples_models_multivariate_leaf.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/models/multivariate_leaf
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="With SPFlow we can learn both the structure and the parameters of CNets, a particular kind of S...">
+
+.. only:: html
+
+ .. figure:: /auto_examples/models/images/thumb/sphx_glr_cnets_thumb.png
+     :alt: Cutset Networks (CNets)
+
+     :ref:`sphx_glr_auto_examples_models_cnets.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/models/cnets
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. _sphx_glr_auto_examples_queries:
+
+.. _probabilistic_queries:
+
+Querying Probabilistic Models
+-----------------------------
+
+One of the most interesting aspect of SPNs is the tractable inference.
+These examples demonstrate some of the ways these models may be queried.
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="&quot;Marginalizing an SPN&quot; means summing out all other non-relevant variables. ">
+
+.. only:: html
+
+ .. figure:: /auto_examples/queries/images/thumb/sphx_glr_plot_marginalize_thumb.png
+     :alt: Marginalizing an SPN
+
+     :ref:`sphx_glr_auto_examples_queries_plot_marginalize.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/queries/plot_marginalize
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This shows how to perform marginal inference on Sum-Product Networks.">
+
+.. only:: html
+
+ .. figure:: /auto_examples/queries/images/thumb/sphx_glr_plot_tractable_inference_thumb.png
+     :alt: Tractable Marginal Inference
+
+     :ref:`sphx_glr_auto_examples_queries_plot_tractable_inference.py`
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/queries/plot_tractable_inference
+.. raw:: html
+
+    <div class="sphx-glr-clear"></div>
+
+
+
+.. only :: html
+
+ .. container:: sphx-glr-footer
+    :class: sphx-glr-footer-gallery
+
+
+  .. container:: sphx-glr-download sphx-glr-download-python
+
+    :download:`Download all examples in Python source code: auto_examples_python.zip </auto_examples/auto_examples_python.zip>`
+
+
+
+  .. container:: sphx-glr-download sphx-glr-download-jupyter
+
+    :download:`Download all examples in Jupyter notebooks: auto_examples_jupyter.zip </auto_examples/auto_examples_jupyter.zip>`
+
+
+.. only:: html
+
+ .. rst-class:: sphx-glr-signature
+
+    `Gallery generated by Sphinx-Gallery <https://sphinx-gallery.github.io>`_

@@ -1,0 +1,30 @@
+﻿spn.structure.leaves.parametric.Parametric.Bernoulli
+====================================================
+
+.. currentmodule:: spn.structure.leaves.parametric.Parametric
+
+.. autoclass:: Bernoulli
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Bernoulli.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Bernoulli.name
+      ~Bernoulli.parameters
+      ~Bernoulli.type
+   
+   

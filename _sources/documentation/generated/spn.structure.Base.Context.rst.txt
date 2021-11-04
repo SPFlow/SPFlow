@@ -1,0 +1,26 @@
+﻿spn.structure.Base.Context
+==========================
+
+.. currentmodule:: spn.structure.Base
+
+.. autoclass:: Context
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Context.__init__
+      ~Context.add_domains
+      ~Context.get_domains_by_scope
+      ~Context.get_meta_types_by_scope
+      ~Context.get_parametric_types_by_scope
+   
+   
+
+   
+   
+   
