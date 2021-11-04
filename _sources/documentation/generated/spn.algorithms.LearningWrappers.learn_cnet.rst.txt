@@ -1,0 +1,6 @@
+﻿spn.algorithms.LearningWrappers.learn\_cnet
+===========================================
+
+.. currentmodule:: spn.algorithms.LearningWrappers
+
+.. autofunction:: learn_cnet

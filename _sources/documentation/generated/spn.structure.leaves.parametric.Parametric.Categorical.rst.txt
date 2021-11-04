@@ -1,0 +1,31 @@
+﻿spn.structure.leaves.parametric.Parametric.Categorical
+======================================================
+
+.. currentmodule:: spn.structure.leaves.parametric.Parametric
+
+.. autoclass:: Categorical
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Categorical.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Categorical.k
+      ~Categorical.name
+      ~Categorical.parameters
+      ~Categorical.type
+   
+   

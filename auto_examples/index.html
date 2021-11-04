@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Example Gallery &mdash; SPFlow 0.0.40 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery-binder.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery-dataframe.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery-rendered-html.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Domain Specific Language for SPNs" href="language/plot_spn_dsl.html" />
+    <link rel="prev" title="Development" href="../documentation/developing.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> SPFlow
+            <img src="../_static/spflow_logoSquare.png" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                0.0.40
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../usage/installation.html">Installation Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/quickstart.html">Quickstart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../documentation/api.html">SPFlow API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../documentation/developing.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Example Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#syntax-and-dsl">Syntax and DSL</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="language/plot_spn_dsl.html">Domain Specific Language for SPNs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language/plot_spn_object_hierarchy.html">Composing SPNs from Sums and Products</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#tractable-probabilistic-models">Tractable Probabilistic Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="models/mixed_spn.html">Mixed SPN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models/parametric_spn.html">Parametric SPN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models/plot_learn_spn_classifier.html">Learning an SPN for Classification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models/multivariate_leaf.html">Multivariate Leaf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models/cnets.html">Cutset Networks (CNets)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#querying-probabilistic-models">Querying Probabilistic Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="queries/plot_marginalize.html">Marginalizing an SPN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="queries/plot_tractable_inference.html">Tractable Marginal Inference</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">SPFlow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Example Gallery</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/auto_examples/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="example-gallery">
+<span id="basic-examples"></span><span id="sphx-glr-auto-examples"></span><h1>Example Gallery<a class="headerlink" href="#example-gallery" title="Permalink to this headline"></a></h1>
+<p>These are some simple examples demonstrating <code class="docutils literal notranslate"><span class="pre">spn</span></code>.</p>
+<div class="sphx-glr-clear"></div></section>
+<section id="syntax-and-dsl">
+<span id="dsl-examples"></span><span id="sphx-glr-auto-examples-language"></span><h1>Syntax and DSL<a class="headerlink" href="#syntax-and-dsl" title="Permalink to this headline"></a></h1>
+<p>Examples that demonstrate the basic syntax for composing Sum-Product Networks.</p>
+<div class="sphx-glr-thumbcontainer" tooltip="We start by creating an SPN. Using a Domain-Specific Language (DSL), we can quickly create an S..."><figure class="align-default" id="id1">
+<img alt="Domain Specific Language for SPNs" src="../_images/sphx_glr_plot_spn_dsl_thumb.png" />
+<figcaption>
+<p><span class="caption-text"><a class="reference internal" href="language/plot_spn_dsl.html#sphx-glr-auto-examples-language-plot-spn-dsl-py"><span class="std std-ref">Domain Specific Language for SPNs</span></a></span><a class="headerlink" href="#id1" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</div><div class="toctree-wrapper compound">
+</div>
+<div class="sphx-glr-thumbcontainer" tooltip="The alternative to the DSL is to construct SPNs directly from Sum and Product objects, demonstr..."><figure class="align-default" id="id2">
+<img alt="Composing SPNs from Sums and Products" src="../_images/sphx_glr_plot_spn_object_hierarchy_thumb.png" />
+<figcaption>
+<p><span class="caption-text"><a class="reference internal" href="language/plot_spn_object_hierarchy.html#sphx-glr-auto-examples-language-plot-spn-object-hierarchy-py"><span class="std std-ref">Composing SPNs from Sums and Products</span></a></span><a class="headerlink" href="#id2" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</div><div class="toctree-wrapper compound">
+</div>
+<div class="sphx-glr-clear"></div></section>
+<section id="tractable-probabilistic-models">
+<span id="model-examples"></span><span id="sphx-glr-auto-examples-models"></span><h1>Tractable Probabilistic Models<a class="headerlink" href="#tractable-probabilistic-models" title="Permalink to this headline"></a></h1>
+<p>These examples demonstrate some of the tractable probabilistic models which
+can be represented, learned, and queried in SPFlow.</p>
+<div class="sphx-glr-thumbcontainer" tooltip="This demonstrates learning a Mixed Sum-Product Network (MSPN) where the data is composed of var..."><figure class="align-default" id="id3">
+<img alt="Mixed SPN" src="../_images/sphx_glr_mixed_spn_thumb.png" />
+<figcaption>
+<p><span class="caption-text"><a class="reference internal" href="models/mixed_spn.html#sphx-glr-auto-examples-models-mixed-spn-py"><span class="std std-ref">Mixed SPN</span></a></span><a class="headerlink" href="#id3" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</div><div class="toctree-wrapper compound">
+</div>
+<div class="sphx-glr-thumbcontainer" tooltip="The setup is similar to the Mixed SPN, but here we learn a parametric SPN. "><figure class="align-default" id="id4">
+<img alt="Parametric SPN" src="../_images/sphx_glr_parametric_spn_thumb.png" />
+<figcaption>
+<p><span class="caption-text"><a class="reference internal" href="models/parametric_spn.html#sphx-glr-auto-examples-models-parametric-spn-py"><span class="std std-ref">Parametric SPN</span></a></span><a class="headerlink" href="#id4" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</div><div class="toctree-wrapper compound">
+</div>
+<div class="sphx-glr-thumbcontainer" tooltip="We can perform classification by learning an SPN from data and then comparing the probabilities..."><figure class="align-default" id="id5">
+<img alt="Learning an SPN for Classification" src="../_images/sphx_glr_plot_learn_spn_classifier_thumb.png" />
+<figcaption>
+<p><span class="caption-text"><a class="reference internal" href="models/plot_learn_spn_classifier.html#sphx-glr-auto-examples-models-plot-learn-spn-classifier-py"><span class="std std-ref">Learning an SPN for Classification</span></a></span><a class="headerlink" href="#id5" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</div><div class="toctree-wrapper compound">
+</div>
+<div class="sphx-glr-thumbcontainer" tooltip="We can learn a SPN with multivariate leaf. This example demonstrates learning an SPN with Chow ..."><figure class="align-default" id="id6">
+<img alt="Multivariate Leaf" src="../_images/sphx_glr_multivariate_leaf_thumb.png" />
+<figcaption>
+<p><span class="caption-text"><a class="reference internal" href="models/multivariate_leaf.html#sphx-glr-auto-examples-models-multivariate-leaf-py"><span class="std std-ref">Multivariate Leaf</span></a></span><a class="headerlink" href="#id6" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</div><div class="toctree-wrapper compound">
+</div>
+<div class="sphx-glr-thumbcontainer" tooltip="With SPFlow we can learn both the structure and the parameters of CNets, a particular kind of S..."><figure class="align-default" id="id7">
+<img alt="Cutset Networks (CNets)" src="../_images/sphx_glr_cnets_thumb.png" />
+<figcaption>
+<p><span class="caption-text"><a class="reference internal" href="models/cnets.html#sphx-glr-auto-examples-models-cnets-py"><span class="std std-ref">Cutset Networks (CNets)</span></a></span><a class="headerlink" href="#id7" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</div><div class="toctree-wrapper compound">
+</div>
+<div class="sphx-glr-clear"></div></section>
+<section id="querying-probabilistic-models">
+<span id="probabilistic-queries"></span><span id="sphx-glr-auto-examples-queries"></span><h1>Querying Probabilistic Models<a class="headerlink" href="#querying-probabilistic-models" title="Permalink to this headline"></a></h1>
+<p>One of the most interesting aspect of SPNs is the tractable inference.
+These examples demonstrate some of the ways these models may be queried.</p>
+<div class="sphx-glr-thumbcontainer" tooltip="&quot;Marginalizing an SPN&quot; means summing out all other non-relevant variables. "><figure class="align-default" id="id8">
+<img alt="Marginalizing an SPN" src="../_images/sphx_glr_plot_marginalize_thumb.png" />
+<figcaption>
+<p><span class="caption-text"><a class="reference internal" href="queries/plot_marginalize.html#sphx-glr-auto-examples-queries-plot-marginalize-py"><span class="std std-ref">Marginalizing an SPN</span></a></span><a class="headerlink" href="#id8" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</div><div class="toctree-wrapper compound">
+</div>
+<div class="sphx-glr-thumbcontainer" tooltip="This shows how to perform marginal inference on Sum-Product Networks."><figure class="align-default" id="id9">
+<img alt="Tractable Marginal Inference" src="../_images/sphx_glr_plot_tractable_inference_thumb.png" />
+<figcaption>
+<p><span class="caption-text"><a class="reference internal" href="queries/plot_tractable_inference.html#sphx-glr-auto-examples-queries-plot-tractable-inference-py"><span class="std std-ref">Tractable Marginal Inference</span></a></span><a class="headerlink" href="#id9" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</div><div class="toctree-wrapper compound">
+</div>
+<div class="sphx-glr-clear"></div><div class="sphx-glr-footer class sphx-glr-footer-gallery docutils container">
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/07fcc19ba03226cd3d83d4e40ec44385/auto_examples_python.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">all</span> <span class="pre">examples</span> <span class="pre">in</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">auto_examples_python.zip</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/6f1e7a639e0699d6164445b55e6c116d/auto_examples_jupyter.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">all</span> <span class="pre">examples</span> <span class="pre">in</span> <span class="pre">Jupyter</span> <span class="pre">notebooks:</span> <span class="pre">auto_examples_jupyter.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../documentation/developing.html" class="btn btn-neutral float-left" title="Development" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="language/plot_spn_dsl.html" class="btn btn-neutral float-right" title="Domain Specific Language for SPNs" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Alejandro Molina, Antonio Vergari, Karl Stelzner, Robert Peharz, Nicola Di Mauro, Kristian Kersting.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

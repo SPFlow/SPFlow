@@ -1,0 +1,29 @@
+﻿spn.structure.Base.Product
+==========================
+
+.. currentmodule:: spn.structure.Base
+
+.. autoclass:: Product
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Product.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Product.name
+      ~Product.parameters
+   
+   

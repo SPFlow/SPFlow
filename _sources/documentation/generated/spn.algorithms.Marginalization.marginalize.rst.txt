@@ -1,0 +1,6 @@
+﻿spn.algorithms.Marginalization.marginalize
+==========================================
+
+.. currentmodule:: spn.algorithms.Marginalization
+
+.. autofunction:: marginalize

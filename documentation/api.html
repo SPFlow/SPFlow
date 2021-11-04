@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPFlow API &mdash; SPFlow 0.0.40 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery-binder.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery-dataframe.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sg_gallery-rendered-html.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="spn.structure.Base.Context" href="generated/spn.structure.Base.Context.html" />
+    <link rel="prev" title="Quickstart" href="../usage/quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> SPFlow
+            <img src="../_static/spflow_logoSquare.png" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                0.0.40
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../usage/installation.html">Installation Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/quickstart.html">Quickstart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">SPFlow API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#structure">Structure</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.structure.Base.Context.html">spn.structure.Base.Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.structure.Base.Sum.html">spn.structure.Base.Sum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.structure.Base.Product.html">spn.structure.Base.Product</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.structure.Base.assign_ids.html">spn.structure.Base.assign_ids</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.structure.Base.rebuild_scopes_bottom_up.html">spn.structure.Base.rebuild_scopes_bottom_up</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.structure.StatisticalTypes.MetaType.html">spn.structure.StatisticalTypes.MetaType</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.structure.leaves.cltree.CLTree.create_cltree_leaf.html">spn.structure.leaves.cltree.CLTree.create_cltree_leaf</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.structure.leaves.parametric.Parametric.Bernoulli.html">spn.structure.leaves.parametric.Parametric.Bernoulli</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.structure.leaves.parametric.Parametric.Categorical.html">spn.structure.leaves.parametric.Parametric.Categorical</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.structure.leaves.parametric.Parametric.Gaussian.html">spn.structure.leaves.parametric.Parametric.Gaussian</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#learning">Learning</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.algorithms.LearningWrappers.learn_classifier.html">spn.algorithms.LearningWrappers.learn_classifier</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.algorithms.LearningWrappers.learn_cnet.html">spn.algorithms.LearningWrappers.learn_cnet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.algorithms.LearningWrappers.learn_mspn.html">spn.algorithms.LearningWrappers.learn_mspn</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.algorithms.LearningWrappers.learn_parametric.html">spn.algorithms.LearningWrappers.learn_parametric</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#inference">Inference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.algorithms.Inference.log_likelihood.html">spn.algorithms.Inference.log_likelihood</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.algorithms.Marginalization.marginalize.html">spn.algorithms.Marginalization.marginalize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.algorithms.MPE.mpe.html">spn.algorithms.MPE.mpe</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#utility-methods">Utility Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.io.Graphics.draw_spn.html">spn.io.Graphics.draw_spn</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.io.Graphics.plot_spn.html">spn.io.Graphics.plot_spn</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.algorithms.Statistics.get_structure_stats.html">spn.algorithms.Statistics.get_structure_stats</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.algorithms.Validity.is_valid.html">spn.algorithms.Validity.is_valid</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#datasets">Datasets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/spn.data.datasets.html">spn.data.datasets</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="developing.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html#syntax-and-dsl">Syntax and DSL</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html#tractable-probabilistic-models">Tractable Probabilistic Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html#querying-probabilistic-models">Querying Probabilistic Models</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">SPFlow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>SPFlow API</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/documentation/api.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="spflow-api">
+<span id="id1"></span><h1>SPFlow API<a class="headerlink" href="#spflow-api" title="Permalink to this headline"></a></h1>
+<section id="structure">
+<h2>Structure<a class="headerlink" href="#structure" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.structure.Base.Context.html#spn.structure.Base.Context" title="spn.structure.Base.Context"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.structure.Base.Context</span></code></a>([meta_types, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.structure.Base.Sum</span></code></a>([weights, children])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.structure.Base.Product</span></code></a>([children])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spn.structure.Base.assign_ids.html#spn.structure.Base.assign_ids" title="spn.structure.Base.assign_ids"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.structure.Base.assign_ids</span></code></a>(node[, ids])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.structure.Base.rebuild_scopes_bottom_up.html#spn.structure.Base.rebuild_scopes_bottom_up" title="spn.structure.Base.rebuild_scopes_bottom_up"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.structure.Base.rebuild_scopes_bottom_up</span></code></a>(node)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spn.structure.StatisticalTypes.MetaType.html#spn.structure.StatisticalTypes.MetaType" title="spn.structure.StatisticalTypes.MetaType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.structure.StatisticalTypes.MetaType</span></code></a>(value)</p></td>
+<td><p>An enumeration.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.structure.leaves.cltree.CLTree.create_cltree_leaf.html#spn.structure.leaves.cltree.CLTree.create_cltree_leaf" title="spn.structure.leaves.cltree.CLTree.create_cltree_leaf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.structure.leaves.cltree.CLTree.create_cltree_leaf</span></code></a>(...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spn.structure.leaves.parametric.Parametric.Bernoulli.html#spn.structure.leaves.parametric.Parametric.Bernoulli" title="spn.structure.leaves.parametric.Parametric.Bernoulli"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.structure.leaves.parametric.Parametric.Bernoulli</span></code></a>([...])</p></td>
+<td><p>Implements a univariate Bernoulli distribution with parameter p (probability of a success)</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.structure.leaves.parametric.Parametric.Categorical</span></code></a>([...])</p></td>
+<td><p>Implements a univariate categorical distribution with $k$ parameters {pi_{k}}</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spn.structure.leaves.parametric.Parametric.Gaussian.html#spn.structure.leaves.parametric.Parametric.Gaussian" title="spn.structure.leaves.parametric.Parametric.Gaussian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.structure.leaves.parametric.Parametric.Gaussian</span></code></a>([...])</p></td>
+<td><p>Implements a univariate gaussian distribution with parameters mu(mean) sigma ^ 2 (variance) (alternatively sigma is the standard deviation(stdev) and sigma ^ {-2} the precision)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="learning">
+<h2>Learning<a class="headerlink" href="#learning" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.algorithms.LearningWrappers.learn_classifier.html#spn.algorithms.LearningWrappers.learn_classifier" title="spn.algorithms.LearningWrappers.learn_classifier"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.algorithms.LearningWrappers.learn_classifier</span></code></a>(...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spn.algorithms.LearningWrappers.learn_cnet.html#spn.algorithms.LearningWrappers.learn_cnet" title="spn.algorithms.LearningWrappers.learn_cnet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.algorithms.LearningWrappers.learn_cnet</span></code></a>(...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.algorithms.LearningWrappers.learn_mspn.html#spn.algorithms.LearningWrappers.learn_mspn" title="spn.algorithms.LearningWrappers.learn_mspn"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.algorithms.LearningWrappers.learn_mspn</span></code></a>(...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spn.algorithms.LearningWrappers.learn_parametric.html#spn.algorithms.LearningWrappers.learn_parametric" title="spn.algorithms.LearningWrappers.learn_parametric"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.algorithms.LearningWrappers.learn_parametric</span></code></a>(...)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="inference">
+<h2>Inference<a class="headerlink" href="#inference" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.algorithms.Inference.log_likelihood.html#spn.algorithms.Inference.log_likelihood" title="spn.algorithms.Inference.log_likelihood"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.algorithms.Inference.log_likelihood</span></code></a>(...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spn.algorithms.Marginalization.marginalize.html#spn.algorithms.Marginalization.marginalize" title="spn.algorithms.Marginalization.marginalize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.algorithms.Marginalization.marginalize</span></code></a>(...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.algorithms.MPE.mpe.html#spn.algorithms.MPE.mpe" title="spn.algorithms.MPE.mpe"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.algorithms.MPE.mpe</span></code></a>(node, input_data[, ...])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="utility-methods">
+<h2>Utility Methods<a class="headerlink" href="#utility-methods" title="Permalink to this headline"></a></h2>
+<p>These generally relate to visualization, statistics, and whether the structure
+is valid.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.io.Graphics.draw_spn.html#spn.io.Graphics.draw_spn" title="spn.io.Graphics.draw_spn"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.io.Graphics.draw_spn</span></code></a>(spn)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spn.io.Graphics.plot_spn.html#spn.io.Graphics.plot_spn" title="spn.io.Graphics.plot_spn"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.io.Graphics.plot_spn</span></code></a>(spn[, fname])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.algorithms.Statistics.get_structure_stats.html#spn.algorithms.Statistics.get_structure_stats" title="spn.algorithms.Statistics.get_structure_stats"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.algorithms.Statistics.get_structure_stats</span></code></a>(node)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spn.algorithms.Validity.is_valid.html#spn.algorithms.Validity.is_valid" title="spn.algorithms.Validity.is_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.algorithms.Validity.is_valid</span></code></a>(node[, ...])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="datasets">
+<h2>Datasets<a class="headerlink" href="#datasets" title="Permalink to this headline"></a></h2>
+<p>The following data sets are included here:</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spn.data.datasets.html#module-spn.data.datasets" title="spn.data.datasets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spn.data.datasets</span></code></a></p></td>
+<td><p>Created on March 30, 2018</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../usage/quickstart.html" class="btn btn-neutral float-left" title="Quickstart" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="generated/spn.structure.Base.Context.html" class="btn btn-neutral float-right" title="spn.structure.Base.Context" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Alejandro Molina, Antonio Vergari, Karl Stelzner, Robert Peharz, Nicola Di Mauro, Kristian Kersting.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

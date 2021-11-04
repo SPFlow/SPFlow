@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tractable Marginal Inference &mdash; SPFlow 0.0.40 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/sg_gallery.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/sg_gallery-binder.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/sg_gallery-dataframe.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/sg_gallery-rendered-html.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="prev" title="Marginalizing an SPN" href="plot_marginalize.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> SPFlow
+            <img src="../../_static/spflow_logoSquare.png" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                0.0.40
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/installation.html">Installation Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/quickstart.html">Quickstart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/api.html">SPFlow API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/developing.html">Development</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Example Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#syntax-and-dsl">Syntax and DSL</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#tractable-probabilistic-models">Tractable Probabilistic Models</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#querying-probabilistic-models">Querying Probabilistic Models</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="plot_marginalize.html">Marginalizing an SPN</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Tractable Marginal Inference</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">SPFlow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Example Gallery</a> &raquo;</li>
+      <li>Tractable Marginal Inference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/auto_examples/queries/plot_tractable_inference.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p>Click <a class="reference internal" href="#sphx-glr-download-auto-examples-queries-plot-tractable-inference-py"><span class="std std-ref">here</span></a>
+to download the full example code</p>
+</div>
+<section class="sphx-glr-example-title" id="tractable-marginal-inference">
+<span id="sphx-glr-auto-examples-queries-plot-tractable-inference-py"></span><h1>Tractable Marginal Inference<a class="headerlink" href="#tractable-marginal-inference" title="Permalink to this headline"></a></h1>
+<p>This shows how to perform marginal inference on Sum-Product Networks.</p>
+<p>This picks up from the <a class="reference internal" href="plot_marginalize.html#marginalizing-an-spn"><span class="std std-ref">Marginalizing an SPN</span></a> tutorial.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spn.structure.leaves.parametric.Parametric</span> <span class="kn">import</span> <a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class"><span class="n">Categorical</span></a>
+<span class="kn">from</span> <span class="nn">spn.structure.Base</span> <span class="kn">import</span> <a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class"><span class="n">Sum</span></a><span class="p">,</span> <a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class"><span class="n">Product</span></a>
+<span class="kn">from</span> <span class="nn">spn.structure.Base</span> <span class="kn">import</span> <a href="../../documentation/generated/spn.structure.Base.assign_ids.html#spn.structure.Base.assign_ids" title="spn.structure.Base.assign_ids" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-function"><span class="n">assign_ids</span></a><span class="p">,</span> <a href="../../documentation/generated/spn.structure.Base.rebuild_scopes_bottom_up.html#spn.structure.Base.rebuild_scopes_bottom_up" title="spn.structure.Base.rebuild_scopes_bottom_up" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-function"><span class="n">rebuild_scopes_bottom_up</span></a>
+<span class="kn">from</span> <span class="nn">spn.algorithms.Marginalization</span> <span class="kn">import</span> <a href="../../documentation/generated/spn.algorithms.Marginalization.marginalize.html#spn.algorithms.Marginalization.marginalize" title="spn.algorithms.Marginalization.marginalize" class="sphx-glr-backref-module-spn-algorithms-Marginalization sphx-glr-backref-type-py-function"><span class="n">marginalize</span></a>
+
+<span class="kn">from</span> <span class="nn">spn.io.Graphics</span> <span class="kn">import</span> <span class="n">draw_spn</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">p0</span></a> <span class="o">=</span> <a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class"><span class="n">Product</span></a><span class="p">(</span><span class="n">children</span><span class="o">=</span><span class="p">[</span><a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class"><span class="n">Categorical</span></a><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">],</span> <span class="n">scope</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class"><span class="n">Categorical</span></a><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">],</span> <span class="n">scope</span><span class="o">=</span><span class="mi">2</span><span class="p">)])</span>
+<a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">p1</span></a> <span class="o">=</span> <a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class"><span class="n">Product</span></a><span class="p">(</span><span class="n">children</span><span class="o">=</span><span class="p">[</span><a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class"><span class="n">Categorical</span></a><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span> <span class="n">scope</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class"><span class="n">Categorical</span></a><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span> <span class="n">scope</span><span class="o">=</span><span class="mi">2</span><span class="p">)])</span>
+<a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">s1</span></a> <span class="o">=</span> <a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class"><span class="n">Sum</span></a><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">],</span> <span class="n">children</span><span class="o">=</span><span class="p">[</span><a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">p0</span></a><span class="p">,</span> <a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">p1</span></a><span class="p">])</span>
+<a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">p2</span></a> <span class="o">=</span> <a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class"><span class="n">Product</span></a><span class="p">(</span><span class="n">children</span><span class="o">=</span><span class="p">[</span><a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class"><span class="n">Categorical</span></a><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">],</span> <span class="n">scope</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">s1</span></a><span class="p">])</span>
+<a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">p3</span></a> <span class="o">=</span> <a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class"><span class="n">Product</span></a><span class="p">(</span><span class="n">children</span><span class="o">=</span><span class="p">[</span><a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class"><span class="n">Categorical</span></a><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">],</span> <span class="n">scope</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class"><span class="n">Categorical</span></a><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">],</span> <span class="n">scope</span><span class="o">=</span><span class="mi">1</span><span class="p">)])</span>
+<a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">p4</span></a> <span class="o">=</span> <a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class"><span class="n">Product</span></a><span class="p">(</span><span class="n">children</span><span class="o">=</span><span class="p">[</span><a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">p3</span></a><span class="p">,</span> <a href="../../documentation/generated/spn.structure.leaves.parametric.Parametric.Categorical.html#spn.structure.leaves.parametric.Parametric.Categorical" title="spn.structure.leaves.parametric.Parametric.Categorical" class="sphx-glr-backref-module-spn-structure-leaves-parametric-Parametric sphx-glr-backref-type-py-class"><span class="n">Categorical</span></a><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">],</span> <span class="n">scope</span><span class="o">=</span><span class="mi">2</span><span class="p">)])</span>
+<a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">spn</span></a> <span class="o">=</span> <a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class"><span class="n">Sum</span></a><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">],</span> <span class="n">children</span><span class="o">=</span><span class="p">[</span><a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">p2</span></a><span class="p">,</span> <a href="../../documentation/generated/spn.structure.Base.Product.html#spn.structure.Base.Product" title="spn.structure.Base.Product" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">p4</span></a><span class="p">])</span>
+
+<a href="../../documentation/generated/spn.structure.Base.assign_ids.html#spn.structure.Base.assign_ids" title="spn.structure.Base.assign_ids" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-function"><span class="n">assign_ids</span></a><span class="p">(</span><a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">spn</span></a><span class="p">)</span>
+<a href="../../documentation/generated/spn.structure.Base.rebuild_scopes_bottom_up.html#spn.structure.Base.rebuild_scopes_bottom_up" title="spn.structure.Base.rebuild_scopes_bottom_up" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-function"><span class="n">rebuild_scopes_bottom_up</span></a><span class="p">(</span><a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">spn</span></a><span class="p">)</span>
+
+<a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">spn_marg</span></a> <span class="o">=</span> <a href="../../documentation/generated/spn.algorithms.Marginalization.marginalize.html#spn.algorithms.Marginalization.marginalize" title="spn.algorithms.Marginalization.marginalize" class="sphx-glr-backref-module-spn-algorithms-Marginalization sphx-glr-backref-type-py-function"><span class="n">marginalize</span></a><span class="p">(</span><a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">spn</span></a><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Here is an example on how to evaluate the SPNs from the
+<a class="reference internal" href="plot_marginalize.html#marginalizing-an-spn"><span class="std std-ref">Marginalizing an SPN</span></a> tutorial.
+Since we have 3 variables, we want to create a 2D numpy array of 3 columns
+and 1 row.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">test_data</span></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">array</span></a><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can then compute the log-likelihood:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spn.algorithms.Inference</span> <span class="kn">import</span> <a href="../../documentation/generated/spn.algorithms.Inference.log_likelihood.html#spn.algorithms.Inference.log_likelihood" title="spn.algorithms.Inference.log_likelihood" class="sphx-glr-backref-module-spn-algorithms-Inference sphx-glr-backref-type-py-function"><span class="n">log_likelihood</span></a>
+
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">ll</span></a> <span class="o">=</span> <a href="../../documentation/generated/spn.algorithms.Inference.log_likelihood.html#spn.algorithms.Inference.log_likelihood" title="spn.algorithms.Inference.log_likelihood" class="sphx-glr-backref-module-spn-algorithms-Inference sphx-glr-backref-type-py-function"><span class="n">log_likelihood</span></a><span class="p">(</span><a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">spn</span></a><span class="p">,</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">test_data</span></a><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">ll</span></a><span class="p">,</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ufunc.html#numpy.ufunc" title="numpy.ufunc" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">np</span><span class="o">.</span><span class="n">exp</span></a><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">ll</span></a><span class="p">))</span>
+</pre></div>
+</div>
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>[[-1.90730501]] [[0.14848]]
+</pre></div>
+</div>
+<p>We can also compute the log-likelihood of the marginal SPN.
+Notice we use the same <code class="docutils literal notranslate"><span class="pre">test_data</span></code> as input: the SPN still expects an array
+with data at columns 1 and 2, but ignores column 0.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">llm</span></a> <span class="o">=</span> <a href="../../documentation/generated/spn.algorithms.Inference.log_likelihood.html#spn.algorithms.Inference.log_likelihood" title="spn.algorithms.Inference.log_likelihood" class="sphx-glr-backref-module-spn-algorithms-Inference sphx-glr-backref-type-py-function"><span class="n">log_likelihood</span></a><span class="p">(</span><a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">spn_marg</span></a><span class="p">,</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">test_data</span></a><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">llm</span></a><span class="p">,</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ufunc.html#numpy.ufunc" title="numpy.ufunc" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">np</span><span class="o">.</span><span class="n">exp</span></a><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">llm</span></a><span class="p">))</span>
+</pre></div>
+</div>
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>[[-1.68416146]] [[0.1856]]
+</pre></div>
+</div>
+<p>Another alternative would be to perform <strong>marginal inference</strong> on the original
+SPN. This can be done by setting <code class="docutils literal notranslate"><span class="pre">np.nan</span></code> for the feature we want to
+marginalize on the fly. It does not change the structure.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">test_data2</span></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">array</span></a><span class="p">([</span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">np</span><span class="o">.</span><span class="n">nan</span></a><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">llom</span></a> <span class="o">=</span> <a href="../../documentation/generated/spn.algorithms.Inference.log_likelihood.html#spn.algorithms.Inference.log_likelihood" title="spn.algorithms.Inference.log_likelihood" class="sphx-glr-backref-module-spn-algorithms-Inference sphx-glr-backref-type-py-function"><span class="n">log_likelihood</span></a><span class="p">(</span><a href="../../documentation/generated/spn.structure.Base.Sum.html#spn.structure.Base.Sum" title="spn.structure.Base.Sum" class="sphx-glr-backref-module-spn-structure-Base sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">spn</span></a><span class="p">,</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">test_data2</span></a><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">llom</span></a><span class="p">,</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ufunc.html#numpy.ufunc" title="numpy.ufunc" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">np</span><span class="o">.</span><span class="n">exp</span></a><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">llom</span></a><span class="p">))</span>
+</pre></div>
+</div>
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>[[-1.68416146]] [[0.1856]]
+</pre></div>
+</div>
+<p>Observe that the <em>marginal inference solution</em> and the <em>marginal SPN solution</em>
+are the same.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.array_equal.html#numpy.array_equal" title="numpy.array_equal" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">array_equal</span></a><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">llm</span></a><span class="p">,</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">llom</span></a><span class="p">))</span>
+</pre></div>
+</div>
+<p class="sphx-glr-script-out">Out:</p>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>True
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  0.008 seconds)</p>
+<div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-queries-plot-tractable-inference-py">
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/82531d732237bb926b5184543941be13/plot_tractable_inference.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_tractable_inference.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/3715488afb2fa2d9e5039485adb40e88/plot_tractable_inference.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_tractable_inference.ipynb</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="plot_marginalize.html" class="btn btn-neutral float-left" title="Marginalizing an SPN" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Alejandro Molina, Antonio Vergari, Karl Stelzner, Robert Peharz, Nicola Di Mauro, Kristian Kersting.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

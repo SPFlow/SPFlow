@@ -1,0 +1,6 @@
+﻿spn.algorithms.MPE.mpe
+======================
+
+.. currentmodule:: spn.algorithms.MPE
+
+.. autofunction:: mpe

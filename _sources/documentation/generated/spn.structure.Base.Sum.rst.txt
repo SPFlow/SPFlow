@@ -1,0 +1,29 @@
+﻿spn.structure.Base.Sum
+======================
+
+.. currentmodule:: spn.structure.Base
+
+.. autoclass:: Sum
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Sum.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Sum.name
+      ~Sum.parameters
+   
+   
