@@ -235,3 +235,50 @@ def eval_tf_trace(spn, data, log_space=True, save_graph_path=None):
                 summary_fw.add_run_metadata(run_metadata, "run")
 
         return result, -1
+
+
+
+def add_parametric_tensorflow_support():
+    from spn.structure.leaves.parametric.Parametric import (
+        Gaussian,
+        Categorical,
+        LogNormal,
+        Exponential,
+        Gamma,
+        Poisson,
+        Bernoulli,
+    )
+    from spn.structure.leaves.parametric.Tensorflow import (
+        gaussian_to_tf_graph,
+        exponential_to_tf_graph,
+        gamma_to_tf_graph,
+        lognormal_to_tf_graph,
+        poisson_to_tf_graph,
+        bernoulli_to_tf_graph,
+        categorical_to_tf_graph,
+
+        tf_graph_to_gaussian,
+        tf_graph_to_gamma,
+        tf_graph_to_exponential,
+        tf_graph_to_poisson,
+        tf_graph_to_bernoulli,
+        tf_graph_to_categorical
+    )
+
+    add_node_to_tf_graph(Gaussian, gaussian_to_tf_graph)
+    add_node_to_tf_graph(Exponential, exponential_to_tf_graph)
+    add_node_to_tf_graph(Gamma, gamma_to_tf_graph)
+    add_node_to_tf_graph(LogNormal, lognormal_to_tf_graph)
+    add_node_to_tf_graph(Poisson, poisson_to_tf_graph)
+    add_node_to_tf_graph(Bernoulli, bernoulli_to_tf_graph)
+    add_node_to_tf_graph(Categorical, categorical_to_tf_graph)
+
+    add_tf_graph_to_node(Gaussian, tf_graph_to_gaussian)
+    add_tf_graph_to_node(Exponential, tf_graph_to_exponential)
+    add_tf_graph_to_node(Gamma, tf_graph_to_gamma)
+    add_tf_graph_to_node(LogNormal, tf_graph_to_gaussian)
+    add_tf_graph_to_node(Poisson, tf_graph_to_poisson)
+    add_tf_graph_to_node(Bernoulli, tf_graph_to_bernoulli)
+    add_tf_graph_to_node(Categorical, tf_graph_to_categorical)
+
+add_parametric_tensorflow_support()
