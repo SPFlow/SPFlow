@@ -1,4 +1,4 @@
-from spflow.python.structure.nodes.leaves.parametric.parametric import (
+from spflow.base.structure.nodes.leaves.parametric.parametric import (
     Gaussian,
     LogNormal,
     MultivariateGaussian,
@@ -12,8 +12,8 @@ from spflow.python.structure.nodes.leaves.parametric.parametric import (
     Exponential,
     Gamma,
 )
-from spflow.python.structure.network_type import SPN
-from spflow.python.inference.nodes.node import log_likelihood
+from spflow.base.structure.network_type import SPN
+from spflow.base.inference.nodes.node import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import (
     toNodes,
     toTorch,

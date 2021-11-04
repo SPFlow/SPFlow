@@ -14,8 +14,8 @@ import torch.distributions as D
 from torch.nn.parameter import Parameter
 
 from spflow.torch.structure.nodes.node import TorchLeafNode
-from spflow.python.structure.nodes.leaves.parametric.statistical_types import ParametricType
-import spflow.python.structure.nodes.leaves.parametric.parametric as P
+from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
+import spflow.base.structure.nodes.leaves.parametric.parametric as P
 
 from scipy.special import comb  # type: ignore
 

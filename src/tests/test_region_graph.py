@@ -1,4 +1,4 @@
-from spflow.python.structure.rat.region_graph import random_region_graph, _get_regions_by_depth
+from spflow.base.structure.rat.region_graph import random_region_graph, _get_regions_by_depth
 import unittest
 
 

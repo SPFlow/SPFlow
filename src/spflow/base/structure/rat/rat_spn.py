@@ -6,10 +6,10 @@ Created on May 24, 2021
 import itertools
 import numpy as np
 from typing import Dict, List, Union, cast, Optional, Tuple
-from spflow.python.structure.module import Module
-from spflow.python.structure.nodes.node import Node, IProductNode, ISumNode, get_topological_order
-from spflow.python.structure.network_type import SPN
-from spflow.python.structure.nodes.leaves.parametric import Gaussian
+from spflow.base.structure.module import Module
+from spflow.base.structure.nodes.node import Node, IProductNode, ISumNode, get_topological_order
+from spflow.base.structure.network_type import SPN
+from spflow.base.structure.nodes.leaves.parametric import Gaussian
 from .region_graph import (
     Partition,
     Region,

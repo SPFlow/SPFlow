@@ -7,17 +7,17 @@ This file provides the sampling methods for SPNs.
 """
 
 from multipledispatch import dispatch  # type: ignore
-from spflow.python.structure.nodes.node import (
+from spflow.base.structure.nodes.node import (
     ILeafNode,
     IProductNode,
     ISumNode,
     Node,
     eval_spn_top_down,
 )
-from spflow.python.structure.network_type import SPN
-from spflow.python.structure.nodes.validity_checks import _isvalid_spn
-from spflow.python.sampling.nodes.leaves.parametric.sampling import sample_parametric_node
-from spflow.python.inference.nodes.node import log_likelihood
+from spflow.base.structure.network_type import SPN
+from spflow.base.structure.nodes.validity_checks import _isvalid_spn
+from spflow.base.sampling.nodes.leaves.parametric.sampling import sample_parametric_node
+from spflow.base.inference.nodes.node import log_likelihood
 import numpy as np
 from numpy.random.mtrand import RandomState  # type: ignore
 from typing import List, Callable, Type, Optional, Dict, Union

@@ -1,8 +1,8 @@
 import unittest
-from spflow.python.structure.nodes.structural_marginalization import marginalize
-from spflow.python.structure.nodes.leaves.parametric.parametric import Gaussian
+from spflow.base.structure.nodes.structural_marginalization import marginalize
+from spflow.base.structure.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
-from spflow.python.structure.nodes.node import ISumNode, IProductNode
+from spflow.base.structure.nodes.node import ISumNode, IProductNode
 
 
 class TestStructuralMarginalization(unittest.TestCase):

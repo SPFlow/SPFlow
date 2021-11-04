@@ -14,7 +14,7 @@ import torch
 from torch.nn.parameter import Parameter
 
 from spflow.torch.structure.module import TorchModule
-from spflow.python.structure.nodes.node import Node, ISumNode, IProductNode, ILeafNode
+from spflow.base.structure.nodes.node import Node, ISumNode, IProductNode, ILeafNode
 
 
 class TorchNode(TorchModule):
