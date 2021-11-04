@@ -1,4 +1,4 @@
-from spflow.python.structure.nodes import IProductNode, ISumNode, ILeafNode
+from spflow.base.structure.nodes import IProductNode, ISumNode, ILeafNode
 from spflow.torch.structure.nodes import (
     TorchProductNode,
     TorchSumNode,
@@ -6,7 +6,7 @@ from spflow.torch.structure.nodes import (
     toTorch,
     toNodes,
 )
-from spflow.python.structure.nodes.validity_checks import _isvalid_spn
+from spflow.base.structure.nodes.validity_checks import _isvalid_spn
 import unittest
 import numpy as np
 
