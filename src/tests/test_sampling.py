@@ -1,13 +1,13 @@
 import unittest
 from numpy.random.mtrand import RandomState  # type: ignore
-from spflow.python.structure.nodes.leaves.parametric.parametric import Gaussian
+from spflow.base.structure.nodes.leaves.parametric.parametric import Gaussian
 import numpy as np
-from spflow.python.structure.nodes.node import ISumNode, IProductNode
-from spflow.python.structure.network_type import SPN
-from spflow.python.structure.rat.rat_spn import RatSpn
-from spflow.python.structure.nodes.validity_checks import _isvalid_spn
-from spflow.python.structure.rat.region_graph import random_region_graph
-from spflow.python.sampling.rat.rat_spn import sample_instances
+from spflow.base.structure.nodes.node import ISumNode, IProductNode
+from spflow.base.structure.network_type import SPN
+from spflow.base.structure.rat.rat_spn import RatSpn
+from spflow.base.structure.nodes.validity_checks import _isvalid_spn
+from spflow.base.structure.rat.region_graph import random_region_graph
+from spflow.base.sampling.rat.rat_spn import sample_instances
 
 
 class TestSampling(unittest.TestCase):

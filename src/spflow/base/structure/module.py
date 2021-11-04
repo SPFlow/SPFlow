@@ -6,8 +6,8 @@ Created on June 10, 2021
 This file provides the abstract Module class for building graph structures.
 """
 from abc import ABC, abstractmethod
-from spflow.python.structure.nodes.node import Node
-from spflow.python.structure.network_type import NetworkType
+from spflow.base.structure.nodes.node import Node
+from spflow.base.structure.network_type import NetworkType
 from typing import List, Optional
 
 

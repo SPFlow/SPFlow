@@ -7,7 +7,7 @@ Created on June 11, 2021
 from abc import ABC, abstractmethod
 from multipledispatch import dispatch  # type: ignore
 from typing import Union, Dict, List, Tuple
-from spflow.python.structure.nodes import ILeafNode, Node
+from spflow.base.structure.nodes import ILeafNode, Node
 from .exceptions import InvalidParametersError  # type: ignore
 from .statistical_types import ParametricType  # type: ignore
 from scipy.stats import (  # type: ignore

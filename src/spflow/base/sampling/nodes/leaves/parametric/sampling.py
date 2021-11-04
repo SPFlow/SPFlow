@@ -5,9 +5,9 @@ Created on August 09, 2021
 
 This file provides the sampling methods for parametric leaves.
 """
-from spflow.python.structure.nodes.node import ILeafNode, Node
+from spflow.base.structure.nodes.node import ILeafNode, Node
 from multipledispatch import dispatch  # type: ignore
-from spflow.python.structure.nodes.leaves.parametric.parametric import (
+from spflow.base.structure.nodes.leaves.parametric.parametric import (
     ParametricLeaf,
     Gaussian,
     Gamma,

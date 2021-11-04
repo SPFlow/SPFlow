@@ -1,7 +1,7 @@
 from typing import List
 from multipledispatch import dispatch  # type: ignore
-from spflow.python.structure.nodes import ILeafNode, Node, IProductNode, ISumNode
-from spflow.python.structure.rat import RatSpn
+from spflow.base.structure.nodes import ILeafNode, Node, IProductNode, ISumNode
+from spflow.base.structure.rat import RatSpn
 import numpy as np
 
 
