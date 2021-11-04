@@ -63,7 +63,7 @@ body:
     placeholder: |
         + Python version: 3.10.0
         + SPFlow version: 1.0.0
-        + Operating system: Linux fedora 5.14.14-300.fc35.x86_64 \#1 SMP Wed Oct 20 16:14:50 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
+        + Operating system: Linux fedora 5.14.14-300.fc35.x86_64 #1 SMP Wed Oct 20 16:14:50 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
 
   validations:
     required: true
@@ -72,7 +72,7 @@ body:
   attributes:
     label: Installed Python Packages
     description: |
-      Provide the output of `pip freeze` wrapped in <details></details> tags:
+      Provide the output of `pip freeze` wrapped in `<details></details>` tags:
 
       ```
       <details>
@@ -81,7 +81,6 @@ body:
       ```
 
     placeholder: |
-
       <details>
         packages ...
       </details>
