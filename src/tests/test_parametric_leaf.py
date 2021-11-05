@@ -1,4 +1,4 @@
-from spflow.base.structure.nodes.leaves.parametric.parametric import (
+from spflow.base.structure.nodes.leaves.parametric import (
     Gaussian,
     LogNormal,
     MultivariateGaussian,

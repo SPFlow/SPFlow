@@ -1,6 +1,6 @@
 import unittest
 from numpy.random.mtrand import RandomState  # type: ignore
-from spflow.base.structure.nodes.leaves.parametric.parametric import Gaussian
+from spflow.base.structure.nodes.leaves.parametric import Gaussian
 import numpy as np
 from spflow.base.structure.nodes.node import ISumNode, IProductNode
 from spflow.base.structure.network_type import SPN
