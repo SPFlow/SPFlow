@@ -31,7 +31,6 @@ class TorchNegativeBinomial(TorchParametricLeaf):
         self.register_buffer("n", torch.empty(size=[]))
 
         # register auxiliary torch parameter for the success probability p
-        #self.register_parameter("p_aux", Parameter())
         self.p_aux = Parameter()
 
         # set parameters

@@ -25,7 +25,6 @@ class TorchGeometric(TorchParametricLeaf):
         super(TorchGeometric, self).__init__(scope)
 
         # register auxiliary torch parameter for the success probability p
-        #self.register_parameter("p_aux", Parameter())
         self.p_aux = Parameter()
 
         # set parameters

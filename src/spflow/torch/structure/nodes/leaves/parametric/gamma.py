@@ -29,8 +29,6 @@ class TorchGamma(TorchParametricLeaf):
         super(TorchGamma, self).__init__(scope)
 
         # register auxiliary torch parameters for alpha and beta
-        #self.register_parameter("alpha_aux", Parameter())
-        #self.register_parameter("beta_aux", Parameter())
         self.alpha_aux = Parameter()
         self.beta_aux = Parameter()
 
