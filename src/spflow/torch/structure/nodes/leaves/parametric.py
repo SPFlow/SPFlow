@@ -20,35 +20,40 @@ import spflow.base.structure.nodes.leaves.parametric.parametric as P
 
 from scipy.special import comb  # type: ignore
 
-def proj_real_to_bounded(x: torch.Tensor, lb: Optional[Union[float, torch.Tensor]]=None, ub: Optional[Union[float, torch.Tensor]]=None) -> torch.Tensor:
-    """Projects the real numbers onto a bounded interval.
-    """
-    if(lb is not None and ub is not None):
+
+def proj_real_to_bounded(
+    x: torch.Tensor,
+    lb: Optional[Union[float, torch.Tensor]] = None,
+    ub: Optional[Union[float, torch.Tensor]] = None,
+) -> torch.Tensor:
+    """Projects the real numbers onto a bounded interval."""
+    if lb is not None and ub is not None:
         # project to bounded interval
-        return torch.sigmoid(x)*(ub-lb) + lb
-    elif(ub is None):
+        return torch.sigmoid(x) * (ub - lb) + lb
+    elif ub is None:
         # project to left-bounded interval
         return torch.exp(x) + lb
     else:
         # project to right-bounded interval
         return -torch.exp(x) + ub
 
-def proj_bounded_to_real(x: torch.Tensor, lb: Optional[Union[float, torch.Tensor]]=None, ub: Optional[Union[float, torch.Tensor]]=None) -> torch.Tensor:
-    """Projects a bounded interval onto the real numbers.
-    """
-    if(lb is not None and ub is not None):
+
+def proj_bounded_to_real(
+    x: torch.Tensor,
+    lb: Optional[Union[float, torch.Tensor]] = None,
+    ub: Optional[Union[float, torch.Tensor]] = None,
+) -> torch.Tensor:
+    """Projects a bounded interval onto the real numbers."""
+    if lb is not None and ub is not None:
         # project from bounded interval
-        return torch.log( (x-lb)/(ub-x) )
-    elif(ub is None):
+        return torch.log((x - lb) / (ub - x))
+    elif ub is None:
         # project from left-bounded interval
-        return torch.log(x-lb)
+        return torch.log(x - lb)
     else:
         # project from right-bounded interval
-        return torch.log(ub-x)
+        return torch.log(ub - x)
 
-def proj_positive_definite_to_triangular(A: torch.Tensor) -> torch.Tensor:
-    L: torch.Tensor = torch.cholesky(A)
-    return L
 
 class TorchParametricLeaf(TorchLeafNode, ABC):
     """Base class for Torch leaf nodes representing parametric probability distributions.
@@ -86,20 +91,20 @@ class TorchGaussian(TorchParametricLeaf):
 
         # register mean as torch parameter
         self.register_parameter("mean", Parameter())
-        # register auxiliary torch paramter for standard deviation 
+        # register auxiliary torch paramter for standard deviation
         self.register_parameter("stdev_aux", Parameter())
 
         # set parameters
         self.set_params(mean, stdev)
 
-    def __getattr__(self, attr: str) -> Any:
-        if(attr == "stdev"):
-            # project auxiliary parameter onto actual parameter range
-            return proj_real_to_bounded(self.stdev_aux, lb=0.0)
-        elif(attr == "dist"):
-            return D.Normal(loc=self.mean, scale=self.stdev)
-        else:
-            return nn.Module.__getattr__(self, attr)
+    @property
+    def stdev(self) -> torch.Tensor:
+        # project auxiliary parameter onto actual parameter range
+        return proj_real_to_bounded(self.stdev_aux, lb=0.0)
+    
+    @property
+    def dist(self) -> D.Distribution:
+        return D.Normal(loc=self.mean, scale=self.stdev)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -176,20 +181,20 @@ class TorchLogNormal(TorchParametricLeaf):
 
         # register mean as torch parameter
         self.register_parameter("mean", Parameter())
-        # register auxiliary torch paramter for standard deviation 
+        # register auxiliary torch paramter for standard deviation
         self.register_parameter("stdev_aux", Parameter())
 
         # set parameters
         self.set_params(mean, stdev)
-    
-    def __getattr__(self, attr: str) -> Any:
-        if(attr == "stdev"):
-            # project auxiliary parameter onto actual parameter range
-            return proj_real_to_bounded(self.stdev_aux, lb=0.0)
-        elif(attr == "dist"):
-            return D.LogNormal(loc=self.mean, scale=self.stdev)
-        else:
-            return nn.Module.__getattr__(self, attr)
+
+    @property
+    def stdev(self) -> torch.Tensor:
+        # project auxiliary parameter onto actual parameter range
+        return proj_real_to_bounded(self.stdev_aux, lb=0.0)
+
+    @property
+    def dist(self) -> D.Distribution:
+        return D.LogNormal(loc=self.mean, scale=self.stdev)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -219,9 +224,7 @@ class TorchLogNormal(TorchParametricLeaf):
 
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask & support_mask] = dist.log_prob(
-            scope_data[prob_mask & support_mask]
-        )
+        log_prob[prob_mask & support_mask] = dist.log_prob(scope_data[prob_mask & support_mask])
 
         return log_prob
 
@@ -303,28 +306,32 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         # pre-compute and store indices of non-diagonal values for lower triangular matrix
         self.tril_nondiag_indices = torch.tril_indices(self.d, self.d, offset=-1)
 
-        #set parameters
+        # set parameters
         self.set_params(mean_vector, covariance_matrix)
-
-    def __getattr__(self, attr: str) -> Any:
-        if(attr == "covariance_tril"):
-            # create zero matrix of appropriate dimension
-            L_nondiag = torch.zeros(self.d, self.d)
-            # fill non-diagonal values of lower triangular matrix
-            L_nondiag[self.tril_nondiag_indices[0], self.tril_nondiag_indices[1]] = self.tril_nondiag
-            # add (projected) diagonal values
-            L = L_nondiag + proj_real_to_bounded(self.tril_diag_aux, lb=0.0)*torch.eye(self.d)
-            # return lower triangular matrix
-            return L
-        elif(attr == "covariance_matrix"):
-            # get lower triangular matrix
-            L = self.covariance_tril
-            # return covariance matrix
-            return torch.matmul(L, L.T)
-        elif(attr == "dist"):
-            return D.MultivariateNormal(loc=self.mean_vector, scale_tril=self.covariance_tril)
-        else:
-            return nn.Module.__getattr__(self, attr)
+    
+    @property
+    def covariance_tril(self) -> torch.Tensor:
+        # create zero matrix of appropriate dimension
+        L_nondiag = torch.zeros(self.d, self.d)
+        # fill non-diagonal values of lower triangular matrix
+        L_nondiag[
+            self.tril_nondiag_indices[0], self.tril_nondiag_indices[1]
+        ] = self.tril_nondiag
+        # add (projected) diagonal values
+        L = L_nondiag + proj_real_to_bounded(self.tril_diag_aux, lb=0.0) * torch.eye(self.d)
+        # return lower triangular matrix
+        return L
+    
+    @property
+    def covariance_matrix(self) -> torch.Tensor:
+        # get lower triangular matrix
+        L = self.covariance_tril
+        # return covariance matrix
+        return torch.matmul(L, L.T)
+    
+    @property
+    def dist(self) -> D.Distribution:
+        return D.MultivariateNormal(loc=self.mean_vector, scale_tril=self.covariance_tril)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -345,7 +352,7 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
 
         # create Torch distribution with specified parameters
         dist = D.MultivariateNormal(loc=self.mean_vector, scale_tril=self.covariance_tril)
-        
+
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
         log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask]).unsqueeze(-1)
@@ -376,7 +383,7 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
 
         # set mean vector
         self.mean_vector.data = mean_vector
-        
+
         # compute lower triangular matrix
         L = torch.linalg.cholesky(covariance_matrix)
 
@@ -504,14 +511,14 @@ class TorchBernoulli(TorchParametricLeaf):
         # set parameters
         self.set_params(p)
 
-    def __getattr__(self, attr: str) -> Any:
-        if(attr == "p"):
-            # project auxiliary parameter onto actual parameter range
-            return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
-        elif(attr == "dist"):
-            return D.Bernoulli(probs=self.p)
-        else:
-            return nn.Module.__getattr__(self, attr)
+    @property
+    def p(self) -> torch.Tensor:
+        # project auxiliary parameter onto actual parameter range
+        return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
+
+    @property
+    def dist(self) -> D.Distribution:
+        return D.Bernoulli(probs=self.p)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -593,15 +600,15 @@ class TorchBinomial(TorchParametricLeaf):
 
         # set parameters
         self.set_params(n, p)
-    
-    def __getattr__(self, attr: str) -> Any:
-        if(attr == "p"):
-            # project auxiliary parameter onto actual parameter range
-            return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
-        elif(attr == "dist"):
-            return D.Binomial(total_count=self.n, probs=self.p)
-        else:
-            return nn.Module.__getattr__(self, attr)
+
+    @property
+    def p(self) -> torch.Tensor:
+        # project auxiliary parameter onto actual parameter range
+        return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
+
+    @property
+    def dist(self) -> D.Distribution:
+        return D.Binomial(total_count=self.n, probs=self.p)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -632,9 +639,7 @@ class TorchBinomial(TorchParametricLeaf):
         support_mask = ((scope_data >= 0) & (scope_data <= self.n)).sum(dim=1).bool()
         log_prob[prob_mask & (~support_mask)] = -float("Inf")
         # compute probabilities for values inside distribution support
-        log_prob[prob_mask & support_mask] = dist.log_prob(
-            scope_data[prob_mask & support_mask]
-        )
+        log_prob[prob_mask & support_mask] = dist.log_prob(scope_data[prob_mask & support_mask])
 
         return log_prob
 
@@ -692,15 +697,14 @@ class TorchNegativeBinomial(TorchParametricLeaf):
 
         # set parameters
         self.set_params(n, p)
-    
-    def __getattr__(self, attr: str) -> Any:
-        if(attr == "p"):
-            # project auxiliary parameter onto actual parameter range
-            return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
-        elif(attr == "dist"):
-            return D.NegativeBinomial(total_count=self.n, probs=torch.ones(1) - self.p)
-        else:
-            return nn.Module.__getattr__(self, attr)
+
+    @property
+    def p(self) -> torch.Tensor:
+        # project auxiliary parameter onto actual parameter range
+        return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
+
+    def dist(self) -> D.Distribution:
+        return D.NegativeBinomial(total_count=self.n, probs=torch.ones(1) - self.p)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -780,15 +784,15 @@ class TorchPoisson(TorchParametricLeaf):
 
         # set parameters
         self.set_params(l)
-    
-    def __getattr__(self, attr: str) -> Any:
-        if(attr == "l"):
-            # project auxiliary parameter onto actual parameter range
-            return proj_real_to_bounded(self.l_aux, lb=0.0)
-        elif(attr == "dist"):
-            return D.Poisson(rate=self.l)
-        else:
-            return nn.Module.__getattr__(self, attr)
+
+    @property
+    def l(self) -> torch.Tensor:
+        # project auxiliary parameter onto actual parameter range
+        return proj_real_to_bounded(self.l_aux, lb=0.0)
+
+    @property
+    def dist(self) -> D.Distribution:
+        return D.Poisson(rate=self.l)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -816,9 +820,7 @@ class TorchPoisson(TorchParametricLeaf):
         support_mask = (scope_data >= 0).sum(dim=1).bool()
         log_prob[prob_mask & (~support_mask)] = -float("Inf")
         # compute probabilities for values inside distribution support
-        log_prob[prob_mask & support_mask] = dist.log_prob(
-            scope_data[prob_mask & support_mask]
-        )
+        log_prob[prob_mask & support_mask] = dist.log_prob(scope_data[prob_mask & support_mask])
 
         return log_prob
 
@@ -862,15 +864,15 @@ class TorchGeometric(TorchParametricLeaf):
 
         # set parameters
         self.set_params(p)
-    
-    def __getattr__(self, attr: str) -> Any:
-        if(attr == "p"):
-            # project auxiliary parameter onto actual parameter range
-            return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
-        elif(attr == "dist"):
-            return D.Geometric(probs=self.p)
-        else:
-            return nn.Module.__getattr__(self, attr)
+
+    @property
+    def p(self) -> torch.Tensor:
+        # project auxiliary parameter onto actual parameter range
+        return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)
+
+    @property
+    def dist(self) -> D.Distribution:
+        return D.Geometric(probs=self.p)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -898,9 +900,7 @@ class TorchGeometric(TorchParametricLeaf):
         support_mask = ((scope_data >= 1) & dist.support.check(scope_data)).sum(dim=1).bool()
         log_prob[prob_mask & (~support_mask)] = -float("Inf")
         # compute probabilities for values inside distribution support
-        log_prob[prob_mask & support_mask] = dist.log_prob(
-            scope_data[prob_mask & support_mask] - 1
-        )
+        log_prob[prob_mask & support_mask] = dist.log_prob(scope_data[prob_mask & support_mask] - 1)
 
         return log_prob
 
@@ -1077,15 +1077,15 @@ class TorchExponential(TorchParametricLeaf):
 
         # set parameters
         self.set_params(l)
-    
-    def __getattr__(self, attr: str) -> Any:
-        if(attr == "l"):
-            # project auxiliary parameter onto actual parameter range
-            return proj_real_to_bounded(self.l_aux, lb=0.0)
-        elif(attr == "dist"):
-            return D.Exponential(rate=self.l)
-        else:
-            return nn.Module.__getattr__(self, attr)
+
+    @property
+    def l(self) -> torch.Tensor:
+        # project auxiliary parameter onto actual parameter range
+        return proj_real_to_bounded(self.l_aux, lb=0.0)
+
+    @property
+    def dist(self) -> D.Distribution:
+        return D.Exponential(rate=self.l)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -1113,9 +1113,7 @@ class TorchExponential(TorchParametricLeaf):
         support_mask = (scope_data >= 0).sum(dim=1).bool()
         log_prob[prob_mask & (~support_mask)] = -float("Inf")
         # compute probabilities for values inside distribution support
-        log_prob[prob_mask & support_mask] = dist.log_prob(
-            scope_data[prob_mask & support_mask]
-        )
+        log_prob[prob_mask & support_mask] = dist.log_prob(scope_data[prob_mask & support_mask])
 
         return log_prob
 
@@ -1166,18 +1164,20 @@ class TorchGamma(TorchParametricLeaf):
 
         # set parameters
         self.set_params(alpha, beta)
-    
-    def __getattr__(self, attr: str) -> Any:
-        if(attr == "alpha"):
-            # project auxiliary parameter onto actual parameter range
-            return proj_real_to_bounded(self.alpha_aux, lb=0.0)
-        elif(attr == "beta"):
-            # project auxiliary parameter onto actual parameter range
-            return proj_real_to_bounded(self.beta_aux, lb=0.0)
-        elif(attr == "dist"):
-            return D.Gamma(concentration=self.alpha, rate=self.beta)
-        else:
-            return nn.Module.__getattr__(self, attr)
+
+    @property
+    def alpha(self) -> torch.Tensor:
+        # project auxiliary parameter onto actual parameter range
+        return proj_real_to_bounded(self.alpha_aux, lb=0.0)
+
+    @property
+    def beta(self) -> torch.Tensor:
+        # project auxiliary parameter onto actual parameter range
+        return proj_real_to_bounded(self.beta_aux, lb=0.0)
+
+    @property
+    def dist(self) -> D.Distribution:
+        return D.Gamma(concentration=self.alpha, rate=self.beta)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
