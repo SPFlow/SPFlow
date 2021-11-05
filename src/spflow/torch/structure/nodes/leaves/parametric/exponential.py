@@ -26,7 +26,8 @@ class TorchExponential(TorchParametricLeaf):
         super(TorchExponential, self).__init__(scope)
 
         # register auxiliary torch parameter for parameter l
-        self.register_parameter("l_aux", Parameter())
+        #self.register_parameter("l_aux", Parameter())
+        self.l_aux = Parameter()
 
         # set parameters
         self.set_params(l)

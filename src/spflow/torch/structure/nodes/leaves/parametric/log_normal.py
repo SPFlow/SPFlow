@@ -30,9 +30,11 @@ class TorchLogNormal(TorchParametricLeaf):
         super(TorchLogNormal, self).__init__(scope)
 
         # register mean as torch parameter
-        self.register_parameter("mean", Parameter())
+        #self.register_parameter("mean", Parameter())
+        self.mean = Parameter()
         # register auxiliary torch paramter for standard deviation
-        self.register_parameter("stdev_aux", Parameter())
+        #self.register_parameter("stdev_aux", Parameter())
+        self.stdev_aux = Parameter()
 
         # set parameters
         self.set_params(mean, stdev)

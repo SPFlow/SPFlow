@@ -50,12 +50,15 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         self.d = mean_vector.numel()
 
         # register mean vector as torch parameters
-        self.register_parameter("mean_vector", Parameter())
+        #self.register_parameter("mean_vector", Parameter())
+        self.mean_vector = Parameter()
 
         # internally we use the lower triangular matrix (Cholesky decomposition) to encode the covariance matrix
         # register (auxiliary) values for diagonal and non-diagonal values of lower triangular matrix as torch parameters
-        self.register_parameter("tril_diag_aux", Parameter())
-        self.register_parameter("tril_nondiag", Parameter())
+        #self.register_parameter("tril_diag_aux", Parameter())
+        self.tril_diag_aux = Parameter()
+        #self.register_parameter("tril_nondiag", Parameter())
+        self.tril_nondiag = Parameter()
 
         # pre-compute and store indices of non-diagonal values for lower triangular matrix
         self.tril_nondiag_indices = torch.tril_indices(self.d, self.d, offset=-1)
