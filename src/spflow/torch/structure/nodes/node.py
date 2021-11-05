@@ -95,7 +95,7 @@ class TorchSumNode(TorchNode):
         super(TorchSumNode, self).__init__(children, scope)
 
         # store auxiliary weights as torch parameters
-        self.register_parameter("weights_aux", nn.Parameter(weights.log()))
+        self.weights_aux = nn.Parameter(weights.log())
     
     def __getattr__(self, attr: str) -> Any:
         if(attr == "weights"):
