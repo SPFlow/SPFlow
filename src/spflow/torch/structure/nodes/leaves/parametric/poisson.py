@@ -25,7 +25,6 @@ class TorchPoisson(TorchParametricLeaf):
         super(TorchPoisson, self).__init__(scope)
 
         # register auxiliary torch parameter for lambda l
-        #self.register_parameter("l_aux", Parameter())
         self.l_aux = Parameter()
 
         # set parameters
