@@ -33,10 +33,8 @@ class TorchGaussian(TorchParametricLeaf):
             raise ValueError("Invalid scope size for univariate Gaussian")
 
         # register mean as torch parameter
-        #self.register_parameter("mean", Parameter())
         self.mean = Parameter()
         # register auxiliary torch paramter for standard deviation
-        #self.register_parameter("stdev_aux", Parameter())
         self.stdev_aux = Parameter()
 
         # set parameters
