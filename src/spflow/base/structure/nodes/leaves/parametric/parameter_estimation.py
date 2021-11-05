@@ -11,7 +11,7 @@ from spflow.base.structure.nodes.leaves.parametric.exceptions import (
     InvalidParametersError,
     NotViableError,
 )
-from spflow.base.structure.nodes.leaves.parametric.parametric import (
+from spflow.base.structure.nodes.leaves.parametric import (
     Gaussian,
     MultivariateGaussian,
     LogNormal,
