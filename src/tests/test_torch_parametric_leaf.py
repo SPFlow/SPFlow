@@ -53,36 +53,34 @@ class TestTorchParametricLeaf(unittest.TestCase):
 
     def test_projection(self):
 
-        eps=0.0001
+        eps = 0.0001
 
         # ----- bounded intervals -----
 
-        lb=-1.0
-        ub=1.0
+        lb = -1.0
+        ub = 1.0
 
         x_real = torch.tensor([-10.0, 0.0, 10.0])
-        x_bounded = torch.tensor([lb+eps, lb+(ub-lb)/2.0, ub-eps])
-        
+        x_bounded = torch.tensor([lb + eps, lb + (ub - lb) / 2.0, ub - eps])
+
         self.assertTrue(torch.allclose(proj_real_to_bounded(x_real, lb=lb, ub=ub), x_bounded))
-        self.assertTrue(torch.allclose(proj_bounded_to_real(x_bounded, lb=lb, ub=ub), x_real, rtol=0.1))
+        self.assertTrue(
+            torch.allclose(proj_bounded_to_real(x_bounded, lb=lb, ub=ub), x_real, rtol=0.1)
+        )
 
         # ----- left bounded intervals -----
 
         x_real = torch.tensor([-10.0, 1.0])
-        x_bounded = torch.tensor([lb+eps, 1.7])
-        
-        print(x_real, proj_bounded_to_real(x_bounded, lb=lb))
-        print(x_bounded, proj_real_to_bounded(x_real, lb=lb))
+        x_bounded = torch.tensor([lb + eps, 1.7])
+
         self.assertTrue(torch.allclose(proj_real_to_bounded(x_real, lb=lb), x_bounded, rtol=0.1))
         self.assertTrue(torch.allclose(proj_bounded_to_real(x_bounded, lb=lb), x_real, rtol=0.1))
 
         # ----- right bounded intervals -----
 
         x_real = torch.tensor([-10.0, 1.0])
-        x_bounded = torch.tensor([ub-eps, -1.7])
-        
-        print(x_real, proj_bounded_to_real(x_bounded, ub=ub))
-        print(x_bounded, proj_real_to_bounded(x_real, ub=ub))
+        x_bounded = torch.tensor([ub - eps, -1.7])
+
         self.assertTrue(torch.allclose(proj_real_to_bounded(x_real, ub=ub), x_bounded, rtol=0.1))
         self.assertTrue(torch.allclose(proj_bounded_to_real(x_bounded, ub=ub), x_real, rtol=0.1))
 
@@ -91,7 +89,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # ----- check inference -----
 
         mean = random.random()
-        stdev = random.random()
+        stdev = random.random() + 1e-7 # offset by small number to avoid zero
 
         torch_gaussian = TorchGaussian([0], mean, stdev)
         node_gaussian = Gaussian([0], mean, stdev)
@@ -132,7 +130,37 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertTrue(torch.allclose(torch_gaussian.mean, torch_gaussian.dist.mean))
         self.assertTrue(torch.allclose(torch_gaussian.stdev, torch_gaussian.dist.stddev))
 
-        # reset torch distribution after gradient update
+        # ----- check gradient optimization -----
+
+        # initialize distribution
+        torch_gaussian = TorchGaussian([0], mean=1.0, stdev=2.0)
+
+        torch.manual_seed(0)
+
+        # create dummy data (unit variance Gaussian)
+        data = torch.randn((100000,1))
+        data = (data - data.mean()) / data.std()
+
+        # initialize gradient optimizer
+        optimizer = torch.optim.SGD(torch_gaussian.parameters(), lr=0.5)
+
+        # perform optimization (possibly overfitting)
+        for i in range(20):
+
+            # clear gradients
+            optimizer.zero_grad()
+            
+            # compute negative log-likelihood
+            nll = -log_likelihood(torch_gaussian, data).mean()
+            nll.backward()
+
+            # update parameters
+            optimizer.step()
+
+        self.assertTrue(torch.allclose(torch_gaussian.mean, torch.tensor(0.0), atol=1e-3, rtol=1e-3))
+        self.assertTrue(torch.allclose(torch_gaussian.stdev, torch.tensor(1.0), atol=1e-3, rtol=1e-3))
+
+        # reset torch distribution after gradient update(s)
         torch_gaussian = TorchGaussian([0], mean, stdev)
 
         # ----- check conversion between python and backend -----
@@ -167,7 +195,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # ----- check inference -----
 
         mean = random.random()
-        stdev = random.random()
+        stdev = random.random() + 1e-7 # offset by small number to avoid zero
 
         torch_log_normal = TorchLogNormal([0], mean, stdev)
         node_log_normal = LogNormal([0], mean, stdev)
@@ -177,8 +205,6 @@ class TestTorchParametricLeaf(unittest.TestCase):
 
         log_probs = log_likelihood(SPN(), node_log_normal, data)
         log_probs_torch = log_likelihood(torch_log_normal, torch.tensor(data))
-
-        print(log_probs, log_probs_torch.detach().cpu().numpy())
 
         # make sure that probabilities match python backend probabilities
         self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
@@ -205,14 +231,45 @@ class TestTorchParametricLeaf(unittest.TestCase):
             torch.allclose(mean_orig - torch_log_normal.mean.grad, torch_log_normal.mean)
         )
         self.assertTrue(
-            torch.allclose(stdev_aux_orig - torch_log_normal.stdev_aux.grad, torch_log_normal.stdev_aux)
+            torch.allclose(
+                stdev_aux_orig - torch_log_normal.stdev_aux.grad, torch_log_normal.stdev_aux
+            )
         )
 
         # verify that distribution parameters match parameters
         self.assertTrue(torch.allclose(torch_log_normal.mean, torch_log_normal.dist.loc))
         self.assertTrue(torch.allclose(torch_log_normal.stdev, torch_log_normal.dist.scale))
 
-        # reset torch distribution after gradient update
+        # ----- check gradient optimization -----
+
+        # initialize distribution
+        torch_log_normal = TorchLogNormal([0], mean=1.0, stdev=2.0)
+
+        torch.manual_seed(0)
+
+        # create dummy data
+        data = torch.distributions.LogNormal(0.0, 1.0).sample((100000,1))
+
+        # initialize gradient optimizer
+        optimizer = torch.optim.SGD(torch_log_normal.parameters(), lr=0.5, momentum=0.5)
+
+        # perform optimization (possibly overfitting)
+        for i in range(20):
+
+            # clear gradients
+            optimizer.zero_grad()
+            
+            # compute negative log-likelihood
+            nll = -log_likelihood(torch_log_normal, data).mean()
+            nll.backward()
+
+            # update parameters
+            optimizer.step()
+
+        self.assertTrue(torch.allclose(torch_log_normal.mean, torch.tensor(0.0), atol=1e-3, rtol=0.3))
+        self.assertTrue(torch.allclose(torch_log_normal.stdev, torch.tensor(1.0), atol=1e-3, rtol=0.3))
+
+        # reset torch distribution after gradient update(s)
         torch_log_normal = TorchLogNormal([0], mean, stdev)
 
         # ----- check conversion between python and backend -----
@@ -335,7 +392,41 @@ class TestTorchParametricLeaf(unittest.TestCase):
             )
         )
 
-        # reset torch distribution after gradient update
+        # ----- check gradient optimization -----
+
+        # initialize distribution
+        torch_multivariate_gaussian = TorchMultivariateGaussian([0, 1], mean_vector=torch.tensor([1.0, -1.0]), 
+            covariance_matrix=torch.tensor([
+                [2.0, 0.5],
+                [0.5, 1.5],
+            ])
+        )
+
+        torch.manual_seed(0)
+
+        # create dummy data (unit variance Gaussian)
+        data = torch.distributions.MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2)).sample((100000,))
+
+        # initialize gradient optimizer
+        optimizer = torch.optim.SGD(torch_multivariate_gaussian.parameters(), lr=0.5)
+
+        # perform optimization (possibly overfitting)
+        for i in range(20):
+
+            # clear gradients
+            optimizer.zero_grad()
+            
+            # compute negative log-likelihood
+            nll = -log_likelihood(torch_multivariate_gaussian, data).mean()
+            nll.backward()
+
+            # update parameters
+            optimizer.step()
+
+        self.assertTrue(torch.allclose(torch_multivariate_gaussian.mean_vector, torch.zeros(2), atol=1e-2, rtol=0.3))
+        self.assertTrue(torch.allclose(torch_multivariate_gaussian.covariance_matrix, torch.eye(2), atol=1e-2, rtol=0.3))
+
+        # reset torch distribution after gradient update(s)
         torch_multivariate_gaussian = TorchMultivariateGaussian(
             [0, 1, 2], mean_vector, covariance_matrix
         )
@@ -488,12 +579,43 @@ class TestTorchParametricLeaf(unittest.TestCase):
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(p_aux_orig - torch_bernoulli.p_aux.grad, torch_bernoulli.p_aux))
+        self.assertTrue(
+            torch.allclose(p_aux_orig - torch_bernoulli.p_aux.grad, torch_bernoulli.p_aux)
+        )
 
         # verify that distribution parameters match parameters
         self.assertTrue(torch.allclose(torch_bernoulli.p, torch_bernoulli.dist.probs))
 
-        # reset torch distribution after gradient update
+        # ----- check gradient optimization -----
+
+        torch.manual_seed(0)
+
+        # initialize distribution
+        torch_bernoulli = TorchBernoulli([0], 0.3)
+
+        # create dummy data
+        p_target = 0.8
+        data = torch.bernoulli(torch.full((100000,1), p_target))
+
+        # initialize gradient optimizer
+        optimizer = torch.optim.SGD(torch_bernoulli.parameters(), lr=0.5, momentum=0.5)
+
+        # perform optimization (possibly overfitting)
+        for i in range(40):
+
+            # clear gradients
+            optimizer.zero_grad()
+            
+            # compute negative log-likelihood
+            nll = -log_likelihood(torch_bernoulli, data).mean()
+            nll.backward()
+
+            # update parameters
+            optimizer.step()
+
+        self.assertTrue(torch.allclose(torch_bernoulli.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
+
+        # reset torch distribution after gradient update(s)
         torch_bernoulli = TorchBernoulli([0], p)
 
         # ----- check conversion between python and backend -----
@@ -608,13 +730,44 @@ class TestTorchParametricLeaf(unittest.TestCase):
 
         # make sure that parameters are correctly updated
         self.assertTrue(torch.allclose(n_orig, torch_binomial.n))
-        self.assertTrue(torch.allclose(p_aux_orig - torch_binomial.p_aux.grad, torch_binomial.p_aux))
+        self.assertTrue(
+            torch.allclose(p_aux_orig - torch_binomial.p_aux.grad, torch_binomial.p_aux)
+        )
 
         # verify that distribution parameters match parameters
         self.assertTrue(torch.equal(torch_binomial.n, torch_binomial.dist.total_count.long()))
         self.assertTrue(torch.allclose(torch_binomial.p, torch_binomial.dist.probs))
 
-        # reset torch distribution after gradient update
+        # ----- check gradient optimization -----
+
+        torch.manual_seed(0)
+
+        # initialize distribution
+        torch_binomial = TorchBinomial([0], 5, 0.3)
+
+        # create dummy data
+        p_target = 0.8
+        data = torch.distributions.Binomial(5, p_target).sample((100000,1))
+
+        # initialize gradient optimizer
+        optimizer = torch.optim.SGD(torch_binomial.parameters(), lr=0.5)
+
+        # perform optimization (possibly overfitting)
+        for i in range(40):
+
+            # clear gradients
+            optimizer.zero_grad()
+            
+            # compute negative log-likelihood
+            nll = -log_likelihood(torch_binomial, data).mean()
+            nll.backward()
+
+            # update parameters
+            optimizer.step()
+
+        self.assertTrue(torch.allclose(torch_binomial.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
+
+        # reset torch distribution after gradient update(s)
         torch_binomial = TorchBinomial([0], n, p)
 
         # ----- check conversion between python and backend -----
@@ -742,10 +895,41 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # make sure that parameters are correctly updated
         self.assertTrue(torch.allclose(n_orig, torch_negative_binomial.n))
         self.assertTrue(
-            torch.allclose(p_aux_orig - torch_negative_binomial.p_aux.grad, torch_negative_binomial.p_aux)
+            torch.allclose(
+                p_aux_orig - torch_negative_binomial.p_aux.grad, torch_negative_binomial.p_aux
+            )
         )
 
-        # reset torch distribution after gradient update
+        # ----- check gradient optimization -----
+
+        torch.manual_seed(0)
+
+        # initialize distribution
+        torch_negative_binomial = TorchNegativeBinomial([0], 5, 0.3)
+
+        # create dummy data
+        p_target = 0.8
+        data = torch.distributions.NegativeBinomial(5, 1-p_target).sample((100000,1))
+
+        # initialize gradient optimizer
+        optimizer = torch.optim.SGD(torch_negative_binomial.parameters(), lr=0.5)
+
+        # perform optimization (possibly overfitting)
+        for i in range(40):
+
+            # clear gradients
+            optimizer.zero_grad()
+            
+            # compute negative log-likelihood
+            nll = -log_likelihood(torch_negative_binomial, data).mean()
+            nll.backward()
+
+            # update parameters
+            optimizer.step()
+
+        self.assertTrue(torch.allclose(torch_negative_binomial.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
+
+        # reset torch distribution after gradient update(s)
         torch_negative_binomial = TorchNegativeBinomial([0], n, p)
 
         # ----- check conversion between python and backend -----
@@ -869,7 +1053,35 @@ class TestTorchParametricLeaf(unittest.TestCase):
         # verify that distribution parameters match parameters
         self.assertTrue(torch.allclose(torch_poisson.l, torch_poisson.dist.rate))
 
-        # reset torch distribution after gradient update
+        # ----- check gradient optimization -----
+
+        # initialize distribution
+        torch_poisson = TorchPoisson([0], l=1.0)
+
+        torch.manual_seed(0)
+
+        # create dummy data
+        data = torch.distributions.Poisson(rate=4.0).sample((100000,1))
+
+        # initialize gradient optimizer
+        optimizer = torch.optim.SGD(torch_poisson.parameters(), lr=0.1)
+
+        # perform optimization (possibly overfitting)
+        for i in range(40):
+
+            # clear gradients
+            optimizer.zero_grad()
+            
+            # compute negative log-likelihood
+            nll = -log_likelihood(torch_poisson, data).mean()
+            nll.backward()
+
+            # update parameters
+            optimizer.step()
+
+        self.assertTrue(torch.allclose(torch_poisson.l, torch.tensor(4.0), atol=1e-3, rtol=0.3))
+
+        # reset torch distribution after gradient update(s)
         torch_poisson = TorchPoisson([0], l)
 
         # ----- check conversion between python and backend -----
@@ -944,12 +1156,43 @@ class TestTorchParametricLeaf(unittest.TestCase):
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(p_aux_orig - torch_geometric.p_aux.grad, torch_geometric.p_aux))
+        self.assertTrue(
+            torch.allclose(p_aux_orig - torch_geometric.p_aux.grad, torch_geometric.p_aux)
+        )
 
         # verify that distribution parameters match parameters
         self.assertTrue(torch.allclose(torch_geometric.p, torch_geometric.dist.probs))
 
-        # reset torch distribution after gradient update
+        # ----- check gradient optimization -----
+
+        torch.manual_seed(0)
+
+        # initialize distribution
+        torch_geometric = TorchGeometric([0], 0.3)
+
+        # create dummy data
+        p_target = 0.8
+        data = torch.distributions.Geometric(p_target).sample((100000,1))
+
+        # initialize gradient optimizer
+        optimizer = torch.optim.SGD(torch_geometric.parameters(), lr=0.9, momentum=0.6)
+
+        # perform optimization (possibly overfitting)
+        for i in range(40):
+
+            # clear gradients
+            optimizer.zero_grad()
+            
+            # compute negative log-likelihood
+            nll = -log_likelihood(torch_geometric, data).mean()
+            nll.backward()
+
+            # update parameters
+            optimizer.step()
+
+        self.assertTrue(torch.allclose(torch_geometric.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
+
+        # reset torch distribution after gradient update(s)
         torch_geometric = TorchGeometric([0], p)
 
         # ----- check conversion between python and backend -----
@@ -994,7 +1237,7 @@ class TestTorchParametricLeaf(unittest.TestCase):
         self.assertTrue(torch.all(probs[:3] == 0))
         self.assertTrue(torch.all(probs[-1] != 0))
 
-    def test_hypergeometri(self):
+    def test_hypergeometric(self):
 
         # ----- check inference -----
 
@@ -1114,12 +1357,42 @@ class TestTorchParametricLeaf(unittest.TestCase):
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(l_aux_orig - torch_exponential.l_aux.grad, torch_exponential.l_aux))
+        self.assertTrue(
+            torch.allclose(l_aux_orig - torch_exponential.l_aux.grad, torch_exponential.l_aux)
+        )
 
         # verify that distribution parameters match parameters
         self.assertTrue(torch.allclose(torch_exponential.l, torch_exponential.dist.rate))
 
-        # reset torch distribution after gradient update
+        # ----- check gradient optimization -----
+
+        # initialize distribution
+        torch_exponential = TorchExponential([0], l=0.5)
+
+        torch.manual_seed(0)
+
+        # create dummy data
+        data = torch.distributions.Exponential(rate=1.5).sample((100000,1))
+
+        # initialize gradient optimizer
+        optimizer = torch.optim.SGD(torch_exponential.parameters(), lr=0.5)
+
+        # perform optimization (possibly overfitting)
+        for i in range(20):
+
+            # clear gradients
+            optimizer.zero_grad()
+            
+            # compute negative log-likelihood
+            nll = -log_likelihood(torch_exponential, data).mean()
+            nll.backward()
+
+            # update parameters
+            optimizer.step()
+
+        self.assertTrue(torch.allclose(torch_exponential.l, torch.tensor(1.5), atol=1e-3, rtol=0.3))
+
+        # reset torch distribution after gradient update(s)
         torch_exponential = TorchExponential([0], l)
 
         # ----- check conversion between python and backend -----
@@ -1200,14 +1473,47 @@ class TestTorchParametricLeaf(unittest.TestCase):
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(alpha_aux_orig - torch_gamma.alpha_aux.grad, torch_gamma.alpha_aux))
-        self.assertTrue(torch.allclose(beta_aux_orig - torch_gamma.beta_aux.grad, torch_gamma.beta_aux))
+        self.assertTrue(
+            torch.allclose(alpha_aux_orig - torch_gamma.alpha_aux.grad, torch_gamma.alpha_aux)
+        )
+        self.assertTrue(
+            torch.allclose(beta_aux_orig - torch_gamma.beta_aux.grad, torch_gamma.beta_aux)
+        )
 
         # verify that distribution parameters match parameters
         self.assertTrue(torch.allclose(torch_gamma.alpha, torch_gamma.dist.concentration))
         self.assertTrue(torch.allclose(torch_gamma.beta, torch_gamma.dist.rate))
 
-        # reset torch distribution after gradient update
+        # ----- check gradient optimization -----
+
+        # initialize distribution
+        torch_gamma = TorchGamma([0], alpha=1.0, beta=2.0)
+
+        torch.manual_seed(0)
+
+        # create dummy data
+        data = torch.distributions.Gamma(concentration=2.0, rate=1.0).sample((100000,1))
+
+        # initialize gradient optimizer
+        optimizer = torch.optim.SGD(torch_gamma.parameters(), lr=0.5, momentum=0.5)
+
+        # perform optimization (possibly overfitting)
+        for i in range(20):
+
+            # clear gradients
+            optimizer.zero_grad()
+            
+            # compute negative log-likelihood
+            nll = -log_likelihood(torch_gamma, data).mean()
+            nll.backward()
+
+            # update parameters
+            optimizer.step()
+
+        self.assertTrue(torch.allclose(torch_gamma.alpha, torch.tensor(2.0), atol=1e-3, rtol=0.3))
+        self.assertTrue(torch.allclose(torch_gamma.beta, torch.tensor(1.0), atol=1e-3, rtol=0.3))
+
+        # reset torch distribution after gradient update(s)
         torch_gamma = TorchGamma([0], alpha, beta)
 
         # ----- check conversion between python and backend -----
