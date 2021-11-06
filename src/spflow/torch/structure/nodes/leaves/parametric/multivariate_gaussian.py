@@ -131,12 +131,24 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
             # convert numpy array to torch tensor
             covariance_matrix = torch.from_numpy(covariance_matrix).type(torch.get_default_dtype())
 
-        # TODO: dimensions should be same size as scope
+        d = mean_vector.numel()
+
+        # make sure that number of dimensions matches scope length
+        if(d != len(self.scope)):
+            raise ValueError(
+                f"Mean vector lenght {mean_vector.numel()} does not match scope length {len(self.scope)}"
+            )
+        
+        # make sure that dimensions of covariance matrix are correct
+        if(len(covariance_matrix.shape) != 2 or any(shape != d for shape in covariance_matrix.shape)):
+            raise ValueError(
+                f"Covariance matrix has shape {covariance_matrix.shape}, but should be of shape ({d},{d})"
+            )
 
         # set mean vector
         self.mean_vector.data = mean_vector
 
-        # compute lower triangular matrix
+        # compute lower triangular matrix (also check if covariance matrix is symmetric positive definite)
         L = torch.linalg.cholesky(covariance_matrix)  # type: ignore
 
         # set diagonal and non-diagonal values of lower triangular matrix
