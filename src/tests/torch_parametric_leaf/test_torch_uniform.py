@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchUniform(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -19,7 +20,7 @@ class TestTorchUniform(unittest.TestCase):
     @classmethod
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
-    
+
     def test_inference(self):
 
         start = random.random()
@@ -119,6 +120,7 @@ class TestTorchUniform(unittest.TestCase):
         self.assertRaises(Exception, TorchUniform, [0], np.nan, 0.0)
         self.assertRaises(Exception, TorchUniform, [0], 0.0, np.inf)
         self.assertRaises(Exception, TorchUniform, [0], 0.0, np.nan)
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchGamma(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -19,7 +20,7 @@ class TestTorchGamma(unittest.TestCase):
     @classmethod
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
-    
+
     def test_inference(self):
 
         alpha = random.randint(1, 5)
@@ -75,7 +76,7 @@ class TestTorchGamma(unittest.TestCase):
         # verify that distribution parameters match parameters
         self.assertTrue(torch.allclose(torch_gamma.alpha, torch_gamma.dist.concentration))
         self.assertTrue(torch.allclose(torch_gamma.beta, torch_gamma.dist.rate))
-    
+
     def test_gradient_optimization(self):
 
         # initialize distribution
@@ -84,7 +85,7 @@ class TestTorchGamma(unittest.TestCase):
         torch.manual_seed(0)
 
         # create dummy data
-        data = torch.distributions.Gamma(concentration=2.0, rate=1.0).sample((100000,1))
+        data = torch.distributions.Gamma(concentration=2.0, rate=1.0).sample((100000, 1))
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_gamma.parameters(), lr=0.5, momentum=0.5)
@@ -94,7 +95,7 @@ class TestTorchGamma(unittest.TestCase):
 
             # clear gradients
             optimizer.zero_grad()
-            
+
             # compute negative log-likelihood
             nll = -log_likelihood(torch_gamma, data).mean()
             nll.backward()
@@ -128,7 +129,7 @@ class TestTorchGamma(unittest.TestCase):
         )
 
     def test_initialization(self):
-        
+
         TorchGamma([0], torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)), 1.0)
         TorchGamma([0], 1.0, torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
         self.assertRaises(Exception, TorchGamma, [0], np.nextafter(0.0, -1.0), 1.0)
@@ -137,6 +138,7 @@ class TestTorchGamma(unittest.TestCase):
         self.assertRaises(Exception, TorchGamma, [0], np.nan, 1.0)
         self.assertRaises(Exception, TorchGamma, [0], 1.0, np.inf)
         self.assertRaises(Exception, TorchGamma, [0], 1.0, np.nan)
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

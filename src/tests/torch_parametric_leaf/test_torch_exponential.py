@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchExponential(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -19,7 +20,7 @@ class TestTorchExponential(unittest.TestCase):
     @classmethod
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
-    
+
     def test_inference(self):
 
         l = random.random()
@@ -76,7 +77,7 @@ class TestTorchExponential(unittest.TestCase):
         torch.manual_seed(0)
 
         # create dummy data
-        data = torch.distributions.Exponential(rate=1.5).sample((100000,1))
+        data = torch.distributions.Exponential(rate=1.5).sample((100000, 1))
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_exponential.parameters(), lr=0.5)
@@ -86,7 +87,7 @@ class TestTorchExponential(unittest.TestCase):
 
             # clear gradients
             optimizer.zero_grad()
-            
+
             # compute negative log-likelihood
             nll = -log_likelihood(torch_exponential, data).mean()
             nll.backward()
@@ -143,6 +144,7 @@ class TestTorchExponential(unittest.TestCase):
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(all(probs[0] == 0.0))
         # TODO (fails): self.assertTrue(all(probs[1] != 0.0))
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

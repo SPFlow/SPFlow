@@ -1,6 +1,10 @@
 from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian
 from spflow.base.inference import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric import TorchMultivariateGaussian, toNodes, toTorch
+from spflow.torch.structure.nodes.leaves.parametric import (
+    TorchMultivariateGaussian,
+    toNodes,
+    toTorch,
+)
 from spflow.torch.inference import log_likelihood, likelihood
 
 from spflow.base.structure.network_type import SPN
@@ -11,6 +15,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchMultivariateGaussian(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -19,7 +24,7 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
     @classmethod
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
-    
+
     def test_inference(self):
 
         mean_vector = np.arange(3)
@@ -108,17 +113,23 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
     def test_gradient_optimization(self):
 
         # initialize distribution
-        torch_multivariate_gaussian = TorchMultivariateGaussian([0, 1], mean_vector=torch.tensor([1.0, -1.0]), 
-            covariance_matrix=torch.tensor([
-                [2.0, 0.5],
-                [0.5, 1.5],
-            ])
+        torch_multivariate_gaussian = TorchMultivariateGaussian(
+            [0, 1],
+            mean_vector=torch.tensor([1.0, -1.0]),
+            covariance_matrix=torch.tensor(
+                [
+                    [2.0, 0.5],
+                    [0.5, 1.5],
+                ]
+            ),
         )
 
         torch.manual_seed(0)
 
         # create dummy data (unit variance Gaussian)
-        data = torch.distributions.MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2)).sample((100000,))
+        data = torch.distributions.MultivariateNormal(
+            loc=torch.zeros(2), covariance_matrix=torch.eye(2)
+        ).sample((100000,))
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_multivariate_gaussian.parameters(), lr=0.5)
@@ -128,7 +139,7 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
 
             # clear gradients
             optimizer.zero_grad()
-            
+
             # compute negative log-likelihood
             nll = -log_likelihood(torch_multivariate_gaussian, data).mean()
             nll.backward()
@@ -136,8 +147,16 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(torch.allclose(torch_multivariate_gaussian.mean_vector, torch.zeros(2), atol=1e-2, rtol=0.3))
-        self.assertTrue(torch.allclose(torch_multivariate_gaussian.covariance_matrix, torch.eye(2), atol=1e-2, rtol=0.3))
+        self.assertTrue(
+            torch.allclose(
+                torch_multivariate_gaussian.mean_vector, torch.zeros(2), atol=1e-2, rtol=0.3
+            )
+        )
+        self.assertTrue(
+            torch.allclose(
+                torch_multivariate_gaussian.covariance_matrix, torch.eye(2), atol=1e-2, rtol=0.3
+            )
+        )
 
     def test_base_backend_conversion(self):
 
@@ -184,6 +203,7 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
                 np.array([node_to_torch_params[1]]),
             )
         )
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

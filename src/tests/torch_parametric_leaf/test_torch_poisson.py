@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchPoisson(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -19,7 +20,7 @@ class TestTorchPoisson(unittest.TestCase):
     @classmethod
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
-    
+
     def test_inference(self):
 
         l = random.randint(1, 10)
@@ -74,7 +75,7 @@ class TestTorchPoisson(unittest.TestCase):
         torch.manual_seed(0)
 
         # create dummy data
-        data = torch.distributions.Poisson(rate=4.0).sample((100000,1))
+        data = torch.distributions.Poisson(rate=4.0).sample((100000, 1))
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_poisson.parameters(), lr=0.1)
@@ -84,7 +85,7 @@ class TestTorchPoisson(unittest.TestCase):
 
             # clear gradients
             optimizer.zero_grad()
-            
+
             # compute negative log-likelihood
             nll = -log_likelihood(torch_poisson, data).mean()
             nll.backward()
@@ -117,7 +118,7 @@ class TestTorchPoisson(unittest.TestCase):
         )
 
     def test_initialization(self):
-        
+
         self.assertRaises(Exception, TorchPoisson, [0], -np.inf)
         self.assertRaises(Exception, TorchPoisson, [0], np.inf)
         self.assertRaises(Exception, TorchPoisson, [0], np.nan)
@@ -137,6 +138,7 @@ class TestTorchPoisson(unittest.TestCase):
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.all(probs[:2] == 0))
         self.assertTrue(torch.all(probs[-1] != 0))
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)
