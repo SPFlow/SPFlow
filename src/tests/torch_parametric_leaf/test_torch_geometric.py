@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchGeometric(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -19,7 +20,7 @@ class TestTorchGeometric(unittest.TestCase):
     @classmethod
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
-    
+
     def test_inference(self):
 
         p = random.random()
@@ -69,7 +70,7 @@ class TestTorchGeometric(unittest.TestCase):
         self.assertTrue(torch.allclose(torch_geometric.p, torch_geometric.dist.probs))
 
     def test_gradient_optimization(self):
-        
+
         torch.manual_seed(0)
 
         # initialize distribution
@@ -77,7 +78,7 @@ class TestTorchGeometric(unittest.TestCase):
 
         # create dummy data
         p_target = 0.8
-        data = torch.distributions.Geometric(p_target).sample((100000,1))
+        data = torch.distributions.Geometric(p_target).sample((100000, 1))
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_geometric.parameters(), lr=0.9, momentum=0.6)
@@ -87,7 +88,7 @@ class TestTorchGeometric(unittest.TestCase):
 
             # clear gradients
             optimizer.zero_grad()
-            
+
             # compute negative log-likelihood
             nll = -log_likelihood(torch_geometric, data).mean()
             nll.backward()
@@ -95,7 +96,9 @@ class TestTorchGeometric(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(torch.allclose(torch_geometric.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
+        self.assertTrue(
+            torch.allclose(torch_geometric.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3)
+        )
 
     def test_base_backend_conversion(self):
 
@@ -143,6 +146,7 @@ class TestTorchGeometric(unittest.TestCase):
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.all(probs[:3] == 0))
         self.assertTrue(torch.all(probs[-1] != 0))
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

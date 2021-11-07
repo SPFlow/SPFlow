@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchBinomial(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -19,7 +20,7 @@ class TestTorchBinomial(unittest.TestCase):
     @classmethod
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
-    
+
     def test_inference(self):
 
         n = random.randint(2, 10)
@@ -83,7 +84,7 @@ class TestTorchBinomial(unittest.TestCase):
 
         # create dummy data
         p_target = 0.8
-        data = torch.distributions.Binomial(5, p_target).sample((100000,1))
+        data = torch.distributions.Binomial(5, p_target).sample((100000, 1))
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_binomial.parameters(), lr=0.5)
@@ -93,7 +94,7 @@ class TestTorchBinomial(unittest.TestCase):
 
             # clear gradients
             optimizer.zero_grad()
-            
+
             # compute negative log-likelihood
             nll = -log_likelihood(torch_binomial, data).mean()
             nll.backward()
@@ -101,7 +102,9 @@ class TestTorchBinomial(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(torch.allclose(torch_binomial.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
+        self.assertTrue(
+            torch.allclose(torch_binomial.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3)
+        )
 
     def test_base_backend_conversion(self):
 
@@ -194,6 +197,7 @@ class TestTorchBinomial(unittest.TestCase):
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(all(probs == 0))
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

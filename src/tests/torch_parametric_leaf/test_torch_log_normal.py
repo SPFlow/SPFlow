@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchLogNormal(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -19,11 +20,11 @@ class TestTorchLogNormal(unittest.TestCase):
     @classmethod
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
-    
+
     def test_inference(self):
 
         mean = random.random()
-        stdev = random.random() + 1e-7 # offset by small number to avoid zero
+        stdev = random.random() + 1e-7  # offset by small number to avoid zero
 
         torch_log_normal = TorchLogNormal([0], mean, stdev)
         node_log_normal = LogNormal([0], mean, stdev)
@@ -40,7 +41,7 @@ class TestTorchLogNormal(unittest.TestCase):
     def test_gradient_computation(self):
 
         mean = random.random()
-        stdev = random.random() + 1e-7 # offset by small number to avoid zero
+        stdev = random.random() + 1e-7  # offset by small number to avoid zero
 
         torch_log_normal = TorchLogNormal([0], mean, stdev)
 
@@ -86,7 +87,7 @@ class TestTorchLogNormal(unittest.TestCase):
         torch.manual_seed(0)
 
         # create dummy data
-        data = torch.distributions.LogNormal(0.0, 1.0).sample((100000,1))
+        data = torch.distributions.LogNormal(0.0, 1.0).sample((100000, 1))
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_log_normal.parameters(), lr=0.5, momentum=0.5)
@@ -96,7 +97,7 @@ class TestTorchLogNormal(unittest.TestCase):
 
             # clear gradients
             optimizer.zero_grad()
-            
+
             # compute negative log-likelihood
             nll = -log_likelihood(torch_log_normal, data).mean()
             nll.backward()
@@ -104,13 +105,17 @@ class TestTorchLogNormal(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(torch.allclose(torch_log_normal.mean, torch.tensor(0.0), atol=1e-3, rtol=0.3))
-        self.assertTrue(torch.allclose(torch_log_normal.stdev, torch.tensor(1.0), atol=1e-3, rtol=0.3))
+        self.assertTrue(
+            torch.allclose(torch_log_normal.mean, torch.tensor(0.0), atol=1e-3, rtol=0.3)
+        )
+        self.assertTrue(
+            torch.allclose(torch_log_normal.stdev, torch.tensor(1.0), atol=1e-3, rtol=0.3)
+        )
 
     def test_base_backend_conversion(self):
 
         mean = random.random()
-        stdev = random.random() + 1e-7 # offset by small number to avoid zero
+        stdev = random.random() + 1e-7  # offset by small number to avoid zero
 
         torch_log_normal = TorchLogNormal([0], mean, stdev)
         node_log_normal = LogNormal([0], mean, stdev)
@@ -131,7 +136,7 @@ class TestTorchLogNormal(unittest.TestCase):
         )
 
     def test_initialization(self):
-    
+
         mean = random.random()
 
         self.assertRaises(Exception, TorchLogNormal, [0], mean, 0.0)
@@ -159,6 +164,7 @@ class TestTorchLogNormal(unittest.TestCase):
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(all(torch.isinf(log_probs[:3])))
         self.assertTrue(all(~torch.isinf(log_probs[3:])))
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

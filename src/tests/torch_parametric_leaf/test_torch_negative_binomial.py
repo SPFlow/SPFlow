@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchNegativeBinomial(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -19,7 +20,7 @@ class TestTorchNegativeBinomial(unittest.TestCase):
     @classmethod
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
-    
+
     def test_inference(self):
 
         n = random.randint(2, 10)
@@ -81,7 +82,7 @@ class TestTorchNegativeBinomial(unittest.TestCase):
 
         # create dummy data
         p_target = 0.8
-        data = torch.distributions.NegativeBinomial(5, 1-p_target).sample((100000,1))
+        data = torch.distributions.NegativeBinomial(5, 1 - p_target).sample((100000, 1))
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_negative_binomial.parameters(), lr=0.5)
@@ -91,7 +92,7 @@ class TestTorchNegativeBinomial(unittest.TestCase):
 
             # clear gradients
             optimizer.zero_grad()
-            
+
             # compute negative log-likelihood
             nll = -log_likelihood(torch_negative_binomial, data).mean()
             nll.backward()
@@ -99,7 +100,9 @@ class TestTorchNegativeBinomial(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(torch.allclose(torch_negative_binomial.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
+        self.assertTrue(
+            torch.allclose(torch_negative_binomial.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3)
+        )
 
     def test_base_backend_conversion(self):
 
@@ -146,10 +149,18 @@ class TestTorchNegativeBinomial(unittest.TestCase):
 
         # p < 0 and p > 1
         self.assertRaises(
-            Exception, TorchNegativeBinomial, [0], 1, torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))
+            Exception,
+            TorchNegativeBinomial,
+            [0],
+            1,
+            torch.nextafter(torch.tensor(1.0), torch.tensor(2.0)),
         )
         self.assertRaises(
-            Exception, TorchNegativeBinomial, [0], 1, torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))
+            Exception,
+            TorchNegativeBinomial,
+            [0],
+            1,
+            torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)),
         )
 
         # p inf, nan
@@ -189,6 +200,7 @@ class TestTorchNegativeBinomial(unittest.TestCase):
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(all(probs[0] == 0.0))
         self.assertTrue(all(probs[1] != 0.0))
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

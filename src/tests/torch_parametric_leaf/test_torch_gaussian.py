@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchGaussian(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -23,7 +24,7 @@ class TestTorchGaussian(unittest.TestCase):
     def test_inference(self):
 
         mean = random.random()
-        stdev = random.random() + 1e-7 # offset by small number to avoid zero
+        stdev = random.random() + 1e-7  # offset by small number to avoid zero
 
         torch_gaussian = TorchGaussian([0], mean, stdev)
         node_gaussian = Gaussian([0], mean, stdev)
@@ -40,7 +41,7 @@ class TestTorchGaussian(unittest.TestCase):
     def test_gradient_computation(self):
 
         mean = random.random()
-        stdev = random.random() + 1e-7 # offset by small number to avoid zero
+        stdev = random.random() + 1e-7  # offset by small number to avoid zero
 
         torch_gaussian = TorchGaussian([0], mean, stdev)
 
@@ -82,7 +83,7 @@ class TestTorchGaussian(unittest.TestCase):
         torch.manual_seed(0)
 
         # create dummy data (unit variance Gaussian)
-        data = torch.randn((100000,1))
+        data = torch.randn((100000, 1))
         data = (data - data.mean()) / data.std()
 
         # initialize gradient optimizer
@@ -93,7 +94,7 @@ class TestTorchGaussian(unittest.TestCase):
 
             # clear gradients
             optimizer.zero_grad()
-            
+
             # compute negative log-likelihood
             nll = -log_likelihood(torch_gaussian, data).mean()
             nll.backward()
@@ -101,13 +102,17 @@ class TestTorchGaussian(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(torch.allclose(torch_gaussian.mean, torch.tensor(0.0), atol=1e-3, rtol=1e-3))
-        self.assertTrue(torch.allclose(torch_gaussian.stdev, torch.tensor(1.0), atol=1e-3, rtol=1e-3))
+        self.assertTrue(
+            torch.allclose(torch_gaussian.mean, torch.tensor(0.0), atol=1e-3, rtol=1e-3)
+        )
+        self.assertTrue(
+            torch.allclose(torch_gaussian.stdev, torch.tensor(1.0), atol=1e-3, rtol=1e-3)
+        )
 
     def test_base_backend_conversion(self):
 
         mean = random.random()
-        stdev = random.random() + 1e-7 # offset by small number to avoid zero
+        stdev = random.random() + 1e-7  # offset by small number to avoid zero
 
         torch_gaussian = TorchGaussian([0], mean, stdev)
         node_gaussian = Gaussian([0], mean, stdev)
@@ -136,6 +141,7 @@ class TestTorchGaussian(unittest.TestCase):
         self.assertRaises(Exception, TorchGaussian, [0], np.nan, 1.0)
         self.assertRaises(Exception, TorchGaussian, [0], mean, np.inf)
         self.assertRaises(Exception, TorchGaussian, [0], mean, np.nan)
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

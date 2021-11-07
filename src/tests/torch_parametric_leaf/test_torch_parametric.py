@@ -1,10 +1,14 @@
-from spflow.torch.structure.nodes.leaves.parametric import proj_bounded_to_real, proj_real_to_bounded
+from spflow.torch.structure.nodes.leaves.parametric import (
+    proj_bounded_to_real,
+    proj_real_to_bounded,
+)
 
 import torch
 import numpy as np
 
 import random
 import unittest
+
 
 class TestTorchParametric(unittest.TestCase):
     def test_projections(self):
@@ -39,6 +43,7 @@ class TestTorchParametric(unittest.TestCase):
 
         self.assertTrue(torch.allclose(proj_real_to_bounded(x_real, ub=ub), x_bounded, rtol=0.1))
         self.assertTrue(torch.allclose(proj_bounded_to_real(x_bounded, ub=ub), x_real, rtol=0.1))
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)
