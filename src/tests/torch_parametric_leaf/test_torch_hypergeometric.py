@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchHypergeometric(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -19,7 +20,7 @@ class TestTorchHypergeometric(unittest.TestCase):
     @classmethod
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
-    
+
     def test_inference(self):
 
         N = 15
@@ -123,6 +124,7 @@ class TestTorchHypergeometric(unittest.TestCase):
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(all(probs[:2] == 0))
         self.assertTrue(all(probs[2:] != 0))
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

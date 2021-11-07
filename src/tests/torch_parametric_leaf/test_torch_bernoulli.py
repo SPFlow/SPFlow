@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+
 class TestTorchBernoulli(unittest.TestCase):
     @classmethod
     def setup_class(cls):
@@ -19,7 +20,7 @@ class TestTorchBernoulli(unittest.TestCase):
     @classmethod
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
-    
+
     def test_inference(self):
 
         p = random.random()
@@ -77,7 +78,7 @@ class TestTorchBernoulli(unittest.TestCase):
 
         # create dummy data
         p_target = 0.8
-        data = torch.bernoulli(torch.full((100000,1), p_target))
+        data = torch.bernoulli(torch.full((100000, 1), p_target))
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_bernoulli.parameters(), lr=0.5, momentum=0.5)
@@ -87,7 +88,7 @@ class TestTorchBernoulli(unittest.TestCase):
 
             # clear gradients
             optimizer.zero_grad()
-            
+
             # compute negative log-likelihood
             nll = -log_likelihood(torch_bernoulli, data).mean()
             nll.backward()
@@ -95,7 +96,9 @@ class TestTorchBernoulli(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(torch.allclose(torch_bernoulli.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
+        self.assertTrue(
+            torch.allclose(torch_bernoulli.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3)
+        )
 
     def test_base_backend_conversion(self):
 
