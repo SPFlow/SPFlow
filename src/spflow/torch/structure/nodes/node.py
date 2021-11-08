@@ -5,9 +5,8 @@ Created on May 27, 2021
 
 This file provides the PyTorch variants of individual graph nodes.
 """
-from abc import ABC, abstractmethod
 from multipledispatch import dispatch  # type: ignore
-from typing import List, Any, Union
+from typing import List, Union, Optional
 import numpy as np
 
 import torch
@@ -73,7 +72,7 @@ class TorchSumNode(TorchNode):
         self,
         children: List[TorchModule],
         scope: List[int],
-        weights: Union[np.ndarray, torch.Tensor, List[float]] = np.empty(0),
+        weights: Optional[Union[np.ndarray, torch.Tensor, List[float]]] = None,
         normalize: bool = True,
     ) -> None:
 
