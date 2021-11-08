@@ -6,6 +6,8 @@ from spflow.torch.structure.nodes import (
     TorchGaussian,
     toTorch,
     toNodes,
+    proj_convex_to_real,
+    proj_real_to_convex
 )
 from spflow.torch.inference import log_likelihood
 import torch
@@ -66,17 +68,35 @@ class TestTorchNode(unittest.TestCase):
         # check whether converted graph matches original graph
         self.assertTrue(graph.equals(graph_nodes))
 
+    def test_projection(self):
+
+        self.assertTrue(torch.allclose(proj_real_to_convex(torch.randn(5)).sum(), torch.tensor(1.0)))
+        
+        weights = torch.rand(5)
+        weights /= weights.sum()
+
+        self.assertTrue(torch.allclose(proj_convex_to_real(weights), torch.log(weights)))
+
+    def test_sum_node_initialization(self):
+
+        self.assertRaises(ValueError, TorchSumNode, [], [0,1], torch.tensor([0.5, 0.5]))
+
+        leaf_1 = TorchLeafNode([0])
+        leaf_2 = TorchLeafNode([0])
+        # infer weights automatically
+
+        sum_node = TorchSumNode([leaf_1, leaf_2], [0])
+        self.assertTrue(torch.allclose(sum_node.weights.sum(), torch.tensor(1.0)))
+
+        weights = torch.rand(2)
+        weights /= weights.sum()
+
+        sum_node.weights = weights
+        self.assertTrue(torch.allclose(sum_node.weights, weights))
+
     def test_sum_gradient_optimization(self):
 
         torch.manual_seed(0)
-
-        # create dummy data
-        # data = torch.cat([
-        #    torch.normal(mean=2.0, std=1.0, size=(70,1)),
-        #    torch.normal(mean=-2.0, std=1.0, size=(30,1))
-        # ])
-
-        # print(data.shape)
 
         # generate random weights for a sum node with two children
         weights = torch.tensor([0.3, 0.7])
