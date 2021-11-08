@@ -23,6 +23,10 @@ class TorchBernoulli(TorchParametricLeaf):
     ptype = ParametricType.BINARY
 
     def __init__(self, scope: List[int], p: float) -> None:
+
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for TorchBernoulli should be 1, but was: {len(scope)}")
+
         super(TorchBernoulli, self).__init__(scope)
 
         # register auxiliary torch paramter for the success probability p
@@ -35,6 +39,16 @@ class TorchBernoulli(TorchParametricLeaf):
     def p(self) -> torch.Tensor:
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)  # type: ignore
+
+    @p.setter
+    def p(self, p: float) -> None:
+
+        if p < 0.0 or p > 1.0 or not np.isfinite(p):
+            raise ValueError(
+                f"Value of p for Bernoulli distribution must to be between 0.0 and 1.0, but was: {p}"
+            )
+
+        self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)
 
     @property
     def dist(self) -> D.Distribution:
@@ -73,13 +87,7 @@ class TorchBernoulli(TorchParametricLeaf):
         return log_prob
 
     def set_params(self, p: float) -> None:
-
-        if p < 0.0 or p > 1.0 or not np.isfinite(p):
-            raise ValueError(
-                f"Value of p for Bernoulli distribution must to be between 0.0 and 1.0, but was: {p}"
-            )
-
-        self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)
+        self.p = p
 
     def get_params(self) -> Tuple[float]:
         return (self.p.data.cpu().numpy(),)  # type: ignore

@@ -27,10 +27,11 @@ class TorchGaussian(TorchParametricLeaf):
     ptype = ParametricType.CONTINUOUS
 
     def __init__(self, scope: List[int], mean: float, stdev: float) -> None:
-        super(TorchGaussian, self).__init__(scope)
 
-        if len(scope) != 1:
-            raise ValueError("Invalid scope size for univariate Gaussian")
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for TorchGaussian should be 1, but was: {len(scope)}")
+
+        super(TorchGaussian, self).__init__(scope)
 
         # register mean as torch parameter
         self.mean = Parameter()

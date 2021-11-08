@@ -204,6 +204,22 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
             )
         )
 
+    def test_initialization(self):
+
+        # invalid scope length
+        self.assertRaises(Exception, TorchMultivariateGaussian, [], [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
+
+        # initialize using lists
+        TorchMultivariateGaussian([0, 1], [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
+
+        # initialize using numpy arrays
+        TorchMultivariateGaussian([0, 1], np.zeros(2), np.eye(2))
+
+        self.assertRaises(Exception, TorchMultivariateGaussian, [0,1], np.zeros(2), np.zeros((2, 3)))
+        self.assertRaises(Exception, TorchMultivariateGaussian, [0,1], np.zeros(2), np.zeros((2, 2, 1)))
+        
+        # TODO: test non-positive definite matrix
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

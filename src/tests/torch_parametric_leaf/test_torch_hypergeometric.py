@@ -107,6 +107,9 @@ class TestTorchHypergeometric(unittest.TestCase):
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, np.inf)
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, np.nan)
 
+        # invalid scope length
+        self.assertRaises(Exception, TorchHypergeometric, [], 1, 1, 1)
+
     def test_support(self):
 
         N = 15

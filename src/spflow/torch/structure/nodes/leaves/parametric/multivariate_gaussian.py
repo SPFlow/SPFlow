@@ -36,18 +36,11 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         mean_vector: Union[List[float], torch.Tensor, np.ndarray],
         covariance_matrix: Union[List[List[float]], torch.Tensor, np.ndarray],
     ) -> None:
+
         super(TorchMultivariateGaussian, self).__init__(scope)
 
-        if isinstance(mean_vector, list) or isinstance(mean_vector, np.ndarray):
-            # convert float list or numpy array to torch tensor
-            mean_vector = torch.Tensor(mean_vector)  # type: ignore
-
-        if isinstance(covariance_matrix, list) or isinstance(covariance_matrix, np.ndarray):
-            # convert float list or numpy array to torch tensor
-            covariance_matrix = torch.Tensor(covariance_matrix)  # type: ignore
-
         # dimensions
-        self.d = mean_vector.numel()
+        self.d = len(scope)
 
         # register mean vector as torch parameters
         self.mean_vector = Parameter()
@@ -131,12 +124,13 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
             # convert numpy array to torch tensor
             covariance_matrix = torch.from_numpy(covariance_matrix).type(torch.get_default_dtype())
 
+        # dimensions
         d = mean_vector.numel()
 
         # make sure that number of dimensions matches scope length
-        if(d != len(self.scope)):
+        if(d != self.d):
             raise ValueError(
-                f"Mean vector lenght {mean_vector.numel()} does not match scope length {len(self.scope)}"
+                f"Mean vector length {mean_vector.numel()} does not match scope length {self.d}"
             )
         
         # make sure that dimensions of covariance matrix are correct

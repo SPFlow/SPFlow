@@ -160,6 +160,9 @@ class TestTorchBernoulli(unittest.TestCase):
         self.assertRaises(Exception, TorchBernoulli, [0], np.inf)
         self.assertRaises(Exception, TorchBernoulli, [0], np.nan)
 
+        # invalid scope length
+        self.assertRaises(Exception, TorchBernoulli, [], 0.5)
+
     def test_support(self):
 
         p = random.random()
