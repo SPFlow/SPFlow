@@ -9,7 +9,7 @@ from typing import Dict, List, Union, cast, Optional, Tuple
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.node import Node, IProductNode, ISumNode, get_topological_order
 from spflow.base.structure.network_type import SPN
-from spflow.base.structure.nodes.leaves.parametric import Gaussian
+from spflow.base.structure.nodes.leaves.parametric import Gaussian, MultivariateGaussian
 from .region_graph import (
     Partition,
     Region,
@@ -154,7 +154,7 @@ def construct_spn(
         elif not region.partitions:
             # the region is a leaf
             rg_nodes[region] = [
-                Gaussian(scope=region_scope, mean=0.0, stdev=1.0) for i in range(num_nodes_leaf)
+                Gaussian(scope=region_scope, mean=0.0, stdev=1.0) if len(region_scope)==1 else MultivariateGaussian(scope=region_scope, mean_vector=np.zeros(len(region_scope)), covariance_matrix=np.eye(len(region_scope))) for i in range(num_nodes_leaf)
             ]
         else:
             # the region is an internal region
