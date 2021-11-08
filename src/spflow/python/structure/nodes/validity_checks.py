@@ -1,25 +1,25 @@
 from typing import List
 from multipledispatch import dispatch  # type: ignore
-from spflow.python.structure.nodes import ILeafNode, Node, IProductNode, ISumNode
-from spflow.python.structure.rat import RatSpn
+from spflow.python.structure.nodes import ILeafNode, INode, IProductNode, ISumNode
+from spflow.python.structure.module import Module
 import numpy as np
 
 
 @dispatch(list)  # type: ignore[no-redef]
-def _isvalid_spn(root_nodes: List[Node]) -> None:
+def _isvalid_spn(root_nodes: List[INode]) -> None:
     """Assert that there are no None-states in the SPN, ISumNodes are smooth,
        IProductNodes are decomposable and ILeafNodes don't have children
 
     Args:
         root_nodes:
-            A list of Nodes that are the roots/outputs of the (perhaps multi-class) SPN.
+            A list of INodes that are the roots/outputs of the (perhaps multi-class) SPN.
 
     """
     # assert all nodes via BFS. This section is not runtime-optimized yet
-    nodes: List[Node] = list(root_nodes)
+    nodes: List[INode] = list(root_nodes)
 
     while nodes:
-        node: Node = nodes.pop(0)
+        node: INode = nodes.pop(0)
         assert node.scope is not None
         assert None not in node.scope
 
@@ -56,13 +56,14 @@ def _isvalid_spn(root_nodes: List[Node]) -> None:
             nodes.extend(list(set(node.children) - set(nodes)))
 
 
-@dispatch(Node)  # type: ignore[no-redef]
-def _isvalid_spn(root_node: Node) -> None:
+@dispatch(INode)  # type: ignore[no-redef]
+def _isvalid_spn(root_node: INode) -> None:
     """Wrapper for SPNs with one root"""
     _isvalid_spn([root_node])
 
 
-@dispatch(RatSpn)  # type: ignore[no-redef]
-def _isvalid_spn(rat_spn: RatSpn) -> None:
-    """Wrapper for RAT-SPNs"""
-    _isvalid_spn(rat_spn.root_node)
+# multiple output nodes?
+@dispatch(Module)  # type: ignore[no-redef]
+def _isvalid_spn(module: Module) -> None:
+    """Wrapper for Modules"""
+    _isvalid_spn(module.output_nodes[0])

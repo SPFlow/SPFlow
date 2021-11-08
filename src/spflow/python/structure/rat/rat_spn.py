@@ -5,16 +5,21 @@ Created on May 24, 2021
 """
 import itertools
 import numpy as np
-from typing import Dict, List, Union, cast, Optional, Tuple
+from typing import Dict, List, Union, cast, Tuple
 from spflow.python.structure.module import Module
-from spflow.python.structure.nodes.node import Node, IProductNode, ISumNode, get_topological_order
+from spflow.python.structure.nodes.node import (
+    INode,
+    IProductNode,
+    ISumNode,
+    get_topological_order,
+)
 from spflow.python.structure.network_type import SPN
-from spflow.python.structure.nodes.leaves.parametric import Gaussian
 from .region_graph import (
     Partition,
     Region,
     RegionGraph,
 )
+from spflow.python.structure.nodes.leaves.parametric.parametric import Gaussian
 
 
 class RatSpn(Module):
@@ -23,18 +28,11 @@ class RatSpn(Module):
                           by R. Peharz et. al.
 
     Attributes:
-        root_node:
-            A single ISumNode that has a list of ISumNodes as children and is the root of the RAT-SPN.
-            The root node is the output of SPNs. Usually, SPNs only have one root node,
-            but one can also look at its child ISumNodes for multiple outputs, e.g. classes.
-            When the SPN is constructed from a RegionGraph, the children of the root are the nodes of
-            the root_region of the RegionGraph.
         nodes:
             List of nodes in RAT-SPN sorted in topological order bottom up.
-        network_type:
-            Network Type to dispatch to correct methods to evaluate RAT-SPN. RAT-SPNs are evaluated like SPNs.
         output_nodes:
-            Output Node of RAT-SPN. In case of the RAT-SPN same as the root node.
+            Output INodes of RAT-SPN. In case of the RAT-SPN only one node is needed to describe the entire RAT-SPN.
+            In the following that node is referred to as root node.
         rg_nodes:
             Dictionary with k: regions and v: corresponding nodes in the region.
         region_graph:
@@ -50,8 +48,6 @@ class RatSpn(Module):
             (I in the paper)
             The number of LeafNodes each leaf region is equipped with. All LeafNodes of the same region
             are multivariate distributions over the same scope, but possibly differently parametrized.
-        children:
-            List of child modules. In case of RAT-SPNs set to None, as RAT-SPN modules can not have child module.
     """
 
     def __init__(
@@ -60,17 +56,14 @@ class RatSpn(Module):
         num_nodes_root: int,
         num_nodes_region: int,
         num_nodes_leaf: int,
-        children: None = None,
     ) -> None:
-        super().__init__(children=children)
-        rat_result: Tuple[ISumNode, Dict[Union[Region, Partition], List[Node]]] = construct_spn(
+        rat_result: Tuple[ISumNode, Dict[Union[Region, Partition], List[INode]]] = construct_spn(
             region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf
         )
+        super().__init__(children=[], network_type=SPN(), scope=rat_result[0].scope)
         rat_spn: ISumNode = rat_result[0]
-        rat_spn_rg_nodes: Dict[Union[Region, Partition], List[Node]] = rat_result[1]
-        self.root_node: ISumNode = rat_spn
-        self.nodes: List[Node] = get_topological_order(rat_spn)
-        self.network_type: SPN = SPN()
+        rat_spn_rg_nodes: Dict[Union[Region, Partition], List[INode]] = rat_result[1]
+        self.nodes: List[INode] = get_topological_order(rat_spn)
         self.output_nodes: List[ISumNode] = [rat_spn]
 
         # RAT-module specific attributes
@@ -78,7 +71,7 @@ class RatSpn(Module):
         self.num_nodes_root: int = num_nodes_root
         self.num_nodes_region: int = num_nodes_region
         self.num_nodes_leaf: int = num_nodes_leaf
-        self.rg_nodes: Dict[Union[Region, Partition], List[Node]] = rat_spn_rg_nodes
+        self.rg_nodes: Dict[Union[Region, Partition], List[INode]] = rat_spn_rg_nodes
 
     def __len__(self):
         return 1
@@ -89,7 +82,7 @@ def construct_spn(
     num_nodes_root: int,
     num_nodes_region: int,
     num_nodes_leaf: int,
-) -> Tuple[ISumNode, Dict[Union[Region, Partition], List[Node]]]:
+) -> Tuple[ISumNode, Dict[Union[Region, Partition], List[INode]]]:
     """Builds a RAT-SPN from a given RegionGraph.
 
     This algorithm is an implementation of "Algorithm 2" of the original paper. The Regions and
@@ -123,7 +116,7 @@ def construct_spn(
 
     Raises:
         ValueError:
-            If any argument is invalid (too less roots to build an SPN).
+            If any argument is invalid (too few roots to build an SPN).
     """
     if num_nodes_root < 1:
         raise ValueError("num_nodes_root must be at least 1")
@@ -132,7 +125,7 @@ def construct_spn(
     if num_nodes_leaf < 1:
         raise ValueError("num_nodes_leaf must be at least 1")
 
-    rg_nodes: Dict[Union[Region, Partition], List[Node]] = {}
+    rg_nodes: Dict[Union[Region, Partition], List[INode]] = {}
     root_node = None
 
     for region in region_graph.regions:
@@ -141,7 +134,7 @@ def construct_spn(
         region_scope.sort()
         if not region.parent:
             # the region is the root_region
-            root_nodes: List[Node] = [
+            root_nodes: List[INode] = [
                 ISumNode(children=[], scope=region_scope, weights=np.empty(0))
                 for i in range(num_nodes_root)
             ]
@@ -175,7 +168,7 @@ def construct_spn(
             IProductNode(children=[], scope=partition_scope) for i in range(num_nodes_partition)
         ]
 
-        # each IProductNode of the Partition points to a unique combination consisting of one Node of each Region
+        # each IProductNode of the Partition points to a unique combination consisting of one INode of each Region
         # that is a child of the partition
         cartesian_product = list(
             itertools.product(*[rg_nodes[region] for region in partition.regions])
