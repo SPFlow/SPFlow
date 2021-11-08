@@ -84,6 +84,15 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, Gaussian, [0], mean, np.inf)
         self.assertRaises(Exception, Gaussian, [0], mean, np.nan)
 
+        # set parameters to None manually
+        gaussian.stdev = None
+        self.assertRaises(Exception, likelihood, SPN(), gaussian, data)
+        gaussian.mean = None
+        self.assertRaises(Exception, likelihood, SPN(), gaussian, data)
+
+        # invalid scope length
+        self.assertRaises(Exception, Gaussian, [], 0.0, 1.0)
+
     def test_log_normal(self):
 
         # ----- configuration 1 -----
@@ -162,6 +171,15 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, LogNormal, [0], mean, np.inf)
         self.assertRaises(Exception, LogNormal, [0], mean, np.nan)
 
+        # set parameters to None manually
+        log_normal.stdev = None
+        self.assertRaises(Exception, likelihood, SPN(), log_normal, data)
+        log_normal.mean = None
+        self.assertRaises(Exception, likelihood, SPN(), log_normal, data)
+
+        # invalid scope length
+        self.assertRaises(Exception, LogNormal, [], 0.0, 1.0)
+
     def test_multivariate_gaussian(self):
 
         # ----- configuration 1 -----
@@ -169,7 +187,7 @@ class TestParametricLeaf(unittest.TestCase):
         covariance_matrix = np.eye(2)
 
         multivariate_gaussian = MultivariateGaussian(
-            [0], mean_vector.tolist(), covariance_matrix.tolist()
+            [0, 1], mean_vector.tolist(), covariance_matrix.tolist()
         )
 
         # create test inputs/outputs
@@ -215,6 +233,15 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
+        # set parameters to None manually
+        multivariate_gaussian.covariance_matrix = None
+        self.assertRaises(Exception, likelihood, SPN(), multivariate_gaussian, data)
+        multivariate_gaussian.mean_vector = None
+        self.assertRaises(Exception, likelihood, SPN(), multivariate_gaussian, data)
+
+        # invalid scope length
+        self.assertRaises(Exception, MultivariateGaussian, [], [0.0, 0.0], [[1.0, 0.0],[0.0, 1.0]])
+
     def test_uniform(self):
 
         start = random.random()
@@ -251,6 +278,15 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, Uniform, [0], np.nan, 0.0)
         self.assertRaises(Exception, Uniform, [0], 0.0, np.inf)
         self.assertRaises(Exception, Uniform, [0], 0.0, np.nan)
+
+        # set parameters to None manually
+        uniform.end = None
+        self.assertRaises(Exception, likelihood, SPN(), uniform, data)
+        uniform.start = None
+        self.assertRaises(Exception, likelihood, SPN(), uniform, data)
+
+        # invalid scope length
+        self.assertRaises(Exception, Uniform, [], 0.0, 1.0)
 
     def test_bernoulli(self):
 
@@ -302,6 +338,13 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, Bernoulli, [0], np.inf)
         self.assertRaises(Exception, Bernoulli, [0], np.nan)
 
+        # set parameters to None manually
+        bernoulli.p = None
+        self.assertRaises(Exception, likelihood, SPN(), bernoulli, data)
+
+        # invalid scope length
+        self.assertRaises(Exception, Bernoulli, [], 0.5)
+        
         # ----- support -----
         p = random.random()
 
@@ -418,6 +461,15 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, Binomial, [0], 1, np.inf)
         self.assertRaises(Exception, Binomial, [0], 1, np.nan)
 
+        # set parameters to None manually
+        binomial.p = None
+        self.assertRaises(Exception, likelihood, SPN(), binomial, data)
+        binomial.n = None
+        self.assertRaises(Exception, likelihood, SPN(), binomial, data)
+
+        # invalid scope length
+        self.assertRaises(Exception, Binomial, [], 1, 0.5)
+
         # ----- support -----
 
         binomial = Binomial([0], 1, 0.0)
@@ -504,6 +556,15 @@ class TestParametricLeaf(unittest.TestCase):
 
         # TODO: n float
 
+        # set parameters to None manually
+        negative_binomial.p = None
+        self.assertRaises(Exception, likelihood, SPN(), negative_binomial, data)
+        negative_binomial.n = None
+        self.assertRaises(Exception, likelihood, SPN(), negative_binomial, data)
+
+        # invalid scope length
+        self.assertRaises(Exception, NegativeBinomial, [], 1, 0.5)
+
         # ----- support -----
         n = 20
         p = 0.3
@@ -570,6 +631,13 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, Poisson, [0], -np.inf)
         self.assertRaises(Exception, Poisson, [0], np.inf)
         self.assertRaises(Exception, Poisson, [0], np.nan)
+
+        # set parameters to None manually
+        poisson.l = None
+        self.assertRaises(Exception, likelihood, SPN(), poisson, data)
+
+        # invalid scope length
+        self.assertRaises(Exception, Poisson, [], 1)
 
         # ----- support -----
 
@@ -640,6 +708,13 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, Geometric, [0], 0.0)
         self.assertRaises(Exception, Geometric, [0], np.inf)
         self.assertRaises(Exception, Geometric, [0], np.nan)
+
+        # set parameters to None manually
+        geometric.p = None
+        self.assertRaises(Exception, likelihood, SPN(), geometric, data)
+
+        # invalid scope length
+        self.assertRaises(Exception, Geometric, [], 0.5)
 
         # ----- support -----
 
@@ -716,12 +791,23 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, Hypergeometric, 1, 2, 1)
         self.assertRaises(Exception, Hypergeometric, 1, 1, -1)
         self.assertRaises(Exception, Hypergeometric, 1, 1, 2)
-        self.assertRaises(Exception, Exponential, [0], np.inf, 1, 1)
-        self.assertRaises(Exception, Exponential, [0], np.nan, 1, 1)
-        self.assertRaises(Exception, Exponential, [0], 1, np.inf, 1)
-        self.assertRaises(Exception, Exponential, [0], 1, np.nan, 1)
-        self.assertRaises(Exception, Exponential, [0], 1, 1, np.inf)
-        self.assertRaises(Exception, Exponential, [0], 1, 1, np.nan)
+        self.assertRaises(Exception, Hypergeometric, [0], np.inf, 1, 1)
+        self.assertRaises(Exception, Hypergeometric, [0], np.nan, 1, 1)
+        self.assertRaises(Exception, Hypergeometric, [0], 1, np.inf, 1)
+        self.assertRaises(Exception, Hypergeometric, [0], 1, np.nan, 1)
+        self.assertRaises(Exception, Hypergeometric, [0], 1, 1, np.inf)
+        self.assertRaises(Exception, Hypergeometric, [0], 1, 1, np.nan)
+
+        # set parameters to None manually
+        hypergeometric.n = None
+        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
+        hypergeometric.M = None
+        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
+        hypergeometric.N = None
+        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
+
+        # invalid scope length
+        self.assertRaises(Exception, Hypergeometric, [], 1, 1, 1)
 
     def test_exponential(self):
 
@@ -776,6 +862,13 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, Exponential, [0], -1.0)
         self.assertRaises(Exception, Exponential, [0], np.inf)
         self.assertRaises(Exception, Exponential, [0], np.nan)
+
+        # set parameters to None manually
+        exponential.l = None
+        self.assertRaises(Exception, likelihood, SPN(), exponential, data)
+
+        # invalid scope length
+        self.assertRaises(Exception, Exponential, [], 1.0)
 
         # ----- support -----
         l = 1.5
@@ -852,6 +945,14 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, Gamma, [0], 1.0, np.inf)
         self.assertRaises(Exception, Gamma, [0], 1.0, np.nan)
 
+        # set parameters to None manually
+        gamma.beta = None
+        self.assertRaises(Exception, likelihood, SPN(), gamma, data)
+        gamma.alpha = None
+        self.assertRaises(Exception, likelihood, SPN(), gamma, data)
+        
+        # invalid scope length
+        self.assertRaises(Exception, Gamma, [], 1.0, 1.0)
 
 if __name__ == "__main__":
     unittest.main()
