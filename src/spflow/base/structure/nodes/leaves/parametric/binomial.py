@@ -26,8 +26,11 @@ class Binomial(ParametricLeaf):
     type = ParametricType.COUNT
 
     def __init__(self, scope: List[int], n: int, p: float) -> None:
-        super().__init__(scope)
 
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for Binomial should be 1, but was: {len(scope)}")
+
+        super().__init__(scope)
         self.set_params(n, p)
 
     def set_params(self, n: int, p: float) -> None:

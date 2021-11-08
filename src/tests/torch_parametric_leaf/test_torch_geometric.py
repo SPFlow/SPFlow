@@ -129,6 +129,9 @@ class TestTorchGeometric(unittest.TestCase):
         self.assertRaises(Exception, TorchGeometric, [0], np.inf)
         self.assertRaises(Exception, TorchGeometric, [0], np.nan)
 
+        # invalid scope length
+        self.assertRaises(Exception, TorchGeometric, [], 0.5)
+
     def test_support(self):
 
         p = 0.8

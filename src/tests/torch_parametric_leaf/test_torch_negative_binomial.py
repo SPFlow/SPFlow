@@ -185,6 +185,9 @@ class TestTorchNegativeBinomial(unittest.TestCase):
 
         # TODO: n float
 
+        # invalid scope length
+        self.assertRaises(Exception, TorchNegativeBinomial, [], 1, 1.0)
+
     def test_support(self):
 
         n = 20

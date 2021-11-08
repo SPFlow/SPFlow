@@ -28,6 +28,10 @@ class Gaussian(ParametricLeaf):
     type = ParametricType.CONTINUOUS
 
     def __init__(self, scope: List[int], mean: float, stdev: float) -> None:
+
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for Gaussian should be 1, but was: {len(scope)}")
+
         super().__init__(scope)
         self.set_params(mean, stdev)
 

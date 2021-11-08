@@ -24,6 +24,10 @@ class Bernoulli(ParametricLeaf):
     type = ParametricType.BINARY
 
     def __init__(self, scope: List[int], p: float) -> None:
+
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for Bernoulli should be 1, but was: {len(scope)}")
+
         super().__init__(scope)
         self.set_params(p)
 

@@ -132,7 +132,8 @@ class TestTorchGaussian(unittest.TestCase):
             )
         )
 
-        # ----- invalid parameters -----
+    def test_initialization(self):
+
         mean = random.random()
 
         self.assertRaises(Exception, TorchGaussian, [0], mean, 0.0)
@@ -142,6 +143,8 @@ class TestTorchGaussian(unittest.TestCase):
         self.assertRaises(Exception, TorchGaussian, [0], mean, np.inf)
         self.assertRaises(Exception, TorchGaussian, [0], mean, np.nan)
 
+        # invalid scope length
+        self.assertRaises(Exception, TorchGaussian, [], 0.0, 1.0)
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

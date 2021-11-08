@@ -25,7 +25,11 @@ class TorchBinomial(TorchParametricLeaf):
     ptype = ParametricType.COUNT
 
     def __init__(self, scope: List[int], n: int, p: float) -> None:
-        super(TorchBinomial, self).__init__(scope)
+
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for TorchBinomial should be 1, but was: {len(scope)}")
+        
+        super(TorchBinomial, self).__init__(scope)        
 
         # register number of trials n as torch buffer (should not be changed)
         self.register_buffer("n", torch.empty(size=[]))
@@ -40,6 +44,16 @@ class TorchBinomial(TorchParametricLeaf):
     def p(self) -> torch.Tensor:
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)  # type: ignore
+    
+    @p.setter
+    def p(self, p: float) -> None:
+        
+        if p < 0.0 or p > 1.0 or not np.isfinite(p):
+            raise ValueError(
+                f"Value of p for Binomial distribution must to be between 0.0 and 1.0, but was: {p}"
+            )
+
+        self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)  # type: ignore
 
     @property
     def dist(self) -> D.Distribution:
@@ -80,18 +94,14 @@ class TorchBinomial(TorchParametricLeaf):
 
     def set_params(self, n: int, p: float) -> None:
 
-        if p < 0.0 or p > 1.0 or not np.isfinite(p):
-            raise ValueError(
-                f"Value of p for Binomial distribution must to be between 0.0 and 1.0, but was: {p}"
-            )
-
         if n < 0 or not np.isfinite(n):
             raise ValueError(
                 f"Value of n for Binomial distribution must to greater of equal to 0, but was: {n}"
             )
 
+        self.p = p
         self.n.data = torch.tensor(int(n))  # type: ignore
-        self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)  # type: ignore
+        
 
     def get_params(self) -> Tuple[int, float]:
         return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore

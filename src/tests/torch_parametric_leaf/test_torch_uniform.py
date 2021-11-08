@@ -121,6 +121,9 @@ class TestTorchUniform(unittest.TestCase):
         self.assertRaises(Exception, TorchUniform, [0], 0.0, np.inf)
         self.assertRaises(Exception, TorchUniform, [0], 0.0, np.nan)
 
+        # invalid scope length
+        self.assertRaises(Exception, TorchUniform, [], 0.0, 1.0)
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

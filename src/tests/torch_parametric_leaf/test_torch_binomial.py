@@ -186,6 +186,9 @@ class TestTorchBinomial(unittest.TestCase):
         self.assertRaises(Exception, TorchBinomial, [0], 1, np.inf)
         self.assertRaises(Exception, TorchBinomial, [0], 1, np.nan)
 
+        # invalid scope length
+        self.assertRaises(Exception, TorchBinomial, [], 1, 0.5)
+
     def test_support(self):
 
         binomial = TorchBinomial([0], 1, 0.0)

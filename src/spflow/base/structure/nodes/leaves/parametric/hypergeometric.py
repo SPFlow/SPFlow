@@ -28,6 +28,10 @@ class Hypergeometric(ParametricLeaf):
     type = ParametricType.COUNT
 
     def __init__(self, scope: List[int], N: int, M: int, n: int) -> None:
+
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for Hypergeometric should be 1, but was: {len(scope)}")
+
         super().__init__(scope)
         self.set_params(N, M, n)
 

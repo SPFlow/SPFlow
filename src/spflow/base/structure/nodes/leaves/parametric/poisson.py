@@ -23,6 +23,10 @@ class Poisson(ParametricLeaf):
     type = ParametricType.COUNT
 
     def __init__(self, scope: List[int], l: float) -> None:
+
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for Poisson should be 1, but was: {len(scope)}")
+
         super().__init__(scope)
         self.set_params(l)
 

@@ -25,6 +25,10 @@ class TorchHypergeometric(TorchParametricLeaf):
     ptype = ParametricType.COUNT
 
     def __init__(self, scope: List[int], N: int, M: int, n: int) -> None:
+
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for TorchHypergeometric should be 1, but was: {len(scope)}")
+
         super(TorchHypergeometric, self).__init__(scope)
 
         # register parameters as torch buffers (should not be changed)

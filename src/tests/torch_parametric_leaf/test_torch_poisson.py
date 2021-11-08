@@ -123,6 +123,9 @@ class TestTorchPoisson(unittest.TestCase):
         self.assertRaises(Exception, TorchPoisson, [0], np.inf)
         self.assertRaises(Exception, TorchPoisson, [0], np.nan)
 
+        # invalid scope length
+        self.assertRaises(Exception, TorchPoisson, [], 1)
+
     def test_support(self):
 
         l = random.random()
