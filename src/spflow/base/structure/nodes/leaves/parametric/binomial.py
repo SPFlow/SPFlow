@@ -27,7 +27,7 @@ class Binomial(ParametricLeaf):
 
     def __init__(self, scope: List[int], n: int, p: float) -> None:
 
-        if(len(scope) != 1):
+        if len(scope) != 1:
             raise ValueError(f"Scope size for Binomial should be 1, but was: {len(scope)}")
 
         super().__init__(scope)

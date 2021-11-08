@@ -240,7 +240,7 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, likelihood, SPN(), multivariate_gaussian, data)
 
         # invalid scope length
-        self.assertRaises(Exception, MultivariateGaussian, [], [0.0, 0.0], [[1.0, 0.0],[0.0, 1.0]])
+        self.assertRaises(Exception, MultivariateGaussian, [], [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
 
     def test_uniform(self):
 
@@ -344,7 +344,7 @@ class TestParametricLeaf(unittest.TestCase):
 
         # invalid scope length
         self.assertRaises(Exception, Bernoulli, [], 0.5)
-        
+
         # ----- support -----
         p = random.random()
 
@@ -950,9 +950,10 @@ class TestParametricLeaf(unittest.TestCase):
         self.assertRaises(Exception, likelihood, SPN(), gamma, data)
         gamma.alpha = None
         self.assertRaises(Exception, likelihood, SPN(), gamma, data)
-        
+
         # invalid scope length
         self.assertRaises(Exception, Gamma, [], 1.0, 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

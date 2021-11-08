@@ -29,7 +29,7 @@ class Gaussian(ParametricLeaf):
 
     def __init__(self, scope: List[int], mean: float, stdev: float) -> None:
 
-        if(len(scope) != 1):
+        if len(scope) != 1:
             raise ValueError(f"Scope size for Gaussian should be 1, but was: {len(scope)}")
 
         super().__init__(scope)

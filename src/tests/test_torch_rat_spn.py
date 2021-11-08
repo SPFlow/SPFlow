@@ -5,7 +5,11 @@ from spflow.base.structure.nodes.node import get_nodes_by_type, ISumNode, ILeafN
 from spflow.base.inference.rat.rat_spn import log_likelihood, likelihood
 import torch
 import numpy as np
-from spflow.base.structure.rat.region_graph import random_region_graph, _print_region_graph, RegionGraph
+from spflow.base.structure.rat.region_graph import (
+    random_region_graph,
+    _print_region_graph,
+    RegionGraph,
+)
 from spflow.base.structure.rat import RatSpn, construct_spn
 from spflow.torch.structure.rat import TorchRatSpn, toNodes, toTorch, _RegionLayer, _LeafLayer
 from spflow.torch.inference import log_likelihood, likelihood
@@ -25,9 +29,15 @@ class TestTorchRatSpn(unittest.TestCase):
         # create region graph
         rg = RegionGraph()
 
-        self.assertRaises(ValueError, TorchRatSpn, rg, num_nodes_root=0, num_nodes_region=1, num_nodes_leaf=1)
-        self.assertRaises(ValueError, TorchRatSpn, rg, num_nodes_root=1, num_nodes_region=0, num_nodes_leaf=1)
-        self.assertRaises(ValueError, TorchRatSpn, rg, num_nodes_root=1, num_nodes_region=1, num_nodes_leaf=0)
+        self.assertRaises(
+            ValueError, TorchRatSpn, rg, num_nodes_root=0, num_nodes_region=1, num_nodes_leaf=1
+        )
+        self.assertRaises(
+            ValueError, TorchRatSpn, rg, num_nodes_root=1, num_nodes_region=0, num_nodes_leaf=1
+        )
+        self.assertRaises(
+            ValueError, TorchRatSpn, rg, num_nodes_root=1, num_nodes_region=1, num_nodes_leaf=0
+        )
 
     def test_torch_rat_spn_to_nodes(self):
 

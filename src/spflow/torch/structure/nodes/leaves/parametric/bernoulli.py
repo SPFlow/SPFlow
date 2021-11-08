@@ -24,7 +24,7 @@ class TorchBernoulli(TorchParametricLeaf):
 
     def __init__(self, scope: List[int], p: float) -> None:
 
-        if(len(scope) != 1):
+        if len(scope) != 1:
             raise ValueError(f"Scope size for TorchBernoulli should be 1, but was: {len(scope)}")
 
         super(TorchBernoulli, self).__init__(scope)
