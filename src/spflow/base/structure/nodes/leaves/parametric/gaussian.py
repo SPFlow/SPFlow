@@ -1,9 +1,3 @@
-"""
-Created on November 6, 2021
-
-@authors: Bennet Wittelsbach, Philipp Deibert
-"""
-
 from .parametric import ParametricLeaf
 from .statistical_types import ParametricType
 from .exceptions import InvalidParametersError
@@ -32,11 +26,28 @@ class Gaussian(ParametricLeaf):
     """
 
     type = ParametricType.CONTINUOUS
+    
+    @dispatch(list[int]) 
+    def __init__(self, scope: List[int]) -> None:
+        if len(scope) != 1:
+            raise ValueError(f"Scope size for Gaussian should be 1, but was: {len(scope)}")
+        super().__init__(scope)
+
+        np.random.seed(17) # maybe outsource this (eg. fct arg or global var)
+        mean = np.random.uniform(-1.0, 1.0)
+        stdev = np.random.uniform(0, 1)
+        self.set_params(mean, stdev)
+
+    @dispatch(list[int], float, float)
+    def __init__(self, scope: List[int], mean: float, stdev: float) -> None:
+        if len(scope) != 1:
+            raise ValueError(f"Scope size for Gaussian should be 1, but was: {len(scope)}")
+        super().__init__(scope)
+        self.set_params(mean, stdev)
 
     def __init__(self, scope: List[int], mean: float, stdev: float) -> None:
 
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for Gaussian should be 1, but was: {len(scope)}")
+        
 
         super().__init__(scope)
         self.set_params(mean, stdev)
