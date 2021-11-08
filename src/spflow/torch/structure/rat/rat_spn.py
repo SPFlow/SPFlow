@@ -5,9 +5,9 @@ Created on July 1, 2021
 
 This file provides the PyTorch version of RAT SPNs.
 """
-from spflow.python.structure.nodes.node import ILeafNode, ISumNode, Node
+from spflow.python.structure.nodes.node import ILeafNode, ISumNode, INode
 from spflow.python.structure.rat import RegionGraph, Partition, Region
-from spflow.python.structure.rat import RatSpn, construct_spn
+from spflow.python.structure.rat import RatSpn
 from spflow.torch.structure.nodes.node import TorchLeafNode
 from spflow.torch.structure.nodes.leaves.parametric import TorchGaussian
 from spflow.torch.structure.module import TorchModule
@@ -378,7 +378,7 @@ def toNodes(torch_rat: TorchRatSpn) -> RatSpn:
         region_layer: Union[_RegionLayer, _LeafLayer, _PartitionLayer] = torch_rat.rg_layers[region]
 
         # get region nodes from node RAT SPN
-        region_nodes: List[Node] = rat.rg_nodes[region]
+        region_nodes: List[INode] = rat.rg_nodes[region]
 
         # internal region
         if isinstance(region_layer, _RegionLayer):
@@ -395,7 +395,7 @@ def toNodes(torch_rat: TorchRatSpn) -> RatSpn:
         _copy_region_parameters(region_layer, region_nodes)
 
     # transfer root node weight
-    rat.root_node.weights = torch_rat.root_node_weight.data.cpu().numpy()  # type: ignore
+    rat.output_nodes[0].weights = torch_rat.root_node_weight.data.cpu().numpy()  # type: ignore
 
     return rat
 
@@ -413,7 +413,7 @@ def toTorch(rat: RatSpn) -> TorchRatSpn:
         region_layer: Union[_RegionLayer, _LeafLayer, _PartitionLayer] = torch_rat.rg_layers[region]
 
         # get region nodes from node RAT SPN
-        region_nodes: List[Node] = rat.rg_nodes[region]
+        region_nodes: List[INode] = rat.rg_nodes[region]
 
         # internal region
         if isinstance(region_layer, _RegionLayer):
@@ -430,6 +430,6 @@ def toTorch(rat: RatSpn) -> TorchRatSpn:
         _copy_region_parameters(region_nodes, region_layer)
 
     # transfer root node weight
-    torch_rat.root_node_weight.data = torch.tensor(rat.root_node.weights)
+    torch_rat.root_node_weight.data = torch.tensor(rat.output_nodes[0].weights)
 
     return torch_rat

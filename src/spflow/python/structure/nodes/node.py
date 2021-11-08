@@ -14,19 +14,19 @@ import collections
 from collections import deque, OrderedDict
 
 
-class Node:
+class INode:
     """Base class for all types of nodes in an SPN
 
     Attributes:
         children:
-            A list of Nodes containing the children of this Node, or None.
+            A list of INodes containing the children of this INode, or None.
         scope:
-            A list of integers containing the scopes of this Node, or None.
+            A list of integers containing the scopes of this INode, or None.
         value:
             A float representing the value of the node. nan-value represents a node, with its value not calculated yet.
     """
 
-    def __init__(self, children: List["Node"], scope: List[int]) -> None:
+    def __init__(self, children: List["INode"], scope: List[int]) -> None:
         self.children = children
         self.scope = scope
         self.value: float = np.nan
@@ -49,7 +49,7 @@ class Node:
         for child in self.children:
             child.print_treelike(prefix=prefix + "    ")
 
-    def equals(self, other: "Node") -> bool:
+    def equals(self, other: "INode") -> bool:
         """
         Checks whether two objects are identical by comparing their class, scope and children (recursively).
         """
@@ -60,29 +60,29 @@ class Node:
         )
 
 
-class IProductNode(Node):
+class IProductNode(INode):
     """A Internal ProductNode provides a factorization of its children,
     i.e. IProductNodes in SPNs have children with distinct scopes"""
 
-    def __init__(self, children: List[Node], scope: List[int]) -> None:
+    def __init__(self, children: List[INode], scope: List[int]) -> None:
         super().__init__(children=children, scope=scope)
 
 
-class ISumNode(Node):
+class ISumNode(INode):
     """An Internal SumNode provides a weighted mixture of its children,
     i.e. ISumNodes in SPNs have children with identical scopes
 
-    Attributes:
+    Args:
         weights:
-            A np.array of floats assigning a weight value to each of the ISumNode's children.
+            A np.array of floats assigning a weight value to each of the encapsulated ISumNode's children.
 
     """
 
-    def __init__(self, children: List[Node], scope: List[int], weights: np.ndarray) -> None:
+    def __init__(self, children: List[INode], scope: List[int], weights: np.ndarray) -> None:
         super().__init__(children=children, scope=scope)
         self.weights = weights
 
-    def equals(self, other: Node) -> bool:
+    def equals(self, other: INode) -> bool:
         """
         Checks whether two objects are identical by comparing their class, scope, children (recursively) and weights.
         Note that weight comparison is done approximately due to numerical issues when conversion between graph
@@ -99,7 +99,7 @@ class ISumNode(Node):
             return False
 
 
-class ILeafNode(Node):
+class ILeafNode(INode):
     """A Internal LeafNode provides a probability distribution over the random variables in its scope"""
 
     def __init__(self, scope: List[int]) -> None:
@@ -107,41 +107,41 @@ class ILeafNode(Node):
 
 
 @dispatch(list)  # type: ignore[no-redef]
-def _print_node_graph(root_nodes: List[Node]) -> None:
+def _print_node_graph(root_nodes: List[INode]) -> None:
     """Prints all unique nodes of a node graph in BFS fashion.
 
     Args:
         root_nodes:
             A list of Nodes that are the roots/outputs of the (perhaps multi-class) SPN.
     """
-    nodes: List[Node] = list(root_nodes)
+    nodes: List[INode] = list(root_nodes)
     while nodes:
-        node: Node = nodes.pop(0)
+        node: INode = nodes.pop(0)
         print(node)
         nodes.extend(list(set(node.children) - set(nodes)))
 
 
-@dispatch(Node)  # type: ignore[no-redef]
-def _print_node_graph(root_node: Node) -> None:
+@dispatch(INode)  # type: ignore[no-redef]
+def _print_node_graph(root_node: INode) -> None:
     """Wrapper for SPNs with single root node"""
     _print_node_graph([root_node])
 
 
 @dispatch(list)  # type: ignore[no-redef]
-def _get_node_counts(root_nodes: List[Node]) -> Tuple[int, int, int]:
+def _get_node_counts(root_nodes: List[INode]) -> Tuple[int, int, int]:
     """Count the # of unique internal ISumNodes, IProductNodes, ILeafNodes in an SPN with arbitrarily many root nodes.
 
     Args:
         root_nodes:
-            A list of Nodes that are the roots/outputs of the (perhaps multi-class) SPN.
+            A list of INodes that are the roots/outputs of the (perhaps multi-class) SPN.
     """
-    nodes: List[Node] = root_nodes
+    nodes: List[INode] = root_nodes.copy()
     n_sumnodes = 0
     n_productnodes = 0
     n_leaves = 0
 
     while nodes:
-        node: Node = nodes.pop(0)
+        node: INode = nodes.pop(0)
         if type(node) is ISumNode:
             n_sumnodes += 1
         elif type(node) is IProductNode:
@@ -155,41 +155,45 @@ def _get_node_counts(root_nodes: List[Node]) -> Tuple[int, int, int]:
     return n_sumnodes, n_productnodes, n_leaves
 
 
-@dispatch(Node)  # type: ignore[no-redef]
-def _get_node_counts(root_node: Node) -> Tuple[int, int, int]:
+@dispatch(INode)  # type: ignore[no-redef]
+def _get_node_counts(root_node: INode) -> Tuple[int, int, int]:
     """Wrapper for SPNs with single root node"""
     return _get_node_counts([root_node])
 
 
 @dispatch(list)  # type: ignore[no-redef]
-def _get_leaf_nodes(root_nodes: List[Node]) -> List[Node]:
+def _get_leaf_nodes(root_nodes: List[INode]) -> List[INode]:
     """Returns a list of leaf nodes to populate.
 
     Args:
         root_nodes:
-            A list of Nodes that are the roots/outputs of the (perhaps multi-class) SPN.
+            A list of INodes that are the roots/outputs of the (perhaps multi-class) SPN.
     """
-    nodes: List[Node] = root_nodes
-    leaves: List[Node] = []
+    nodes: List[INode] = root_nodes.copy()
+    leaves: List[INode] = []
     id_counter = 0
     while nodes:
-        node: Node = nodes.pop(0)
+        node: INode = nodes.pop(0)
         if issubclass(type(node), ILeafNode):
             leaves.append(node)
-        nodes.extend(list(set(node.children) - set(nodes)))
+        extension = node.children.copy()
+        for rem in nodes:
+            if rem in node.children:
+                extension.remove(rem)
+        nodes.extend(extension)
         id_counter += 1
     return leaves
 
 
-@dispatch(Node)  # type: ignore[no-redef]
-def _get_leaf_nodes(root_node: Node) -> List[Node]:
+@dispatch(INode)  # type: ignore[no-redef]
+def _get_leaf_nodes(root_node: INode) -> List[INode]:
     """Wrapper for SPNs with single root node"""
     return _get_leaf_nodes([root_node])
 
 
 ########################################################################################################################
 # multi für single vs multiple root nodes?
-def bfs(root: Node, func: Callable):
+def bfs(root: INode, func: Callable):
     """Iterates through SPN in breadth first order and calls func on all nodes in SPN.
 
     Args:
@@ -200,7 +204,7 @@ def bfs(root: Node, func: Callable):
     """
 
     seen: Set = {root}
-    queue: Deque[Node] = collections.deque([root])
+    queue: Deque[INode] = collections.deque([root])
     while queue:
         node = queue.popleft()
         func(node)
@@ -211,7 +215,7 @@ def bfs(root: Node, func: Callable):
                     queue.append(c)
 
 
-def get_nodes_by_type(node: Node, ntype: Union[Type, Tuple[Type, ...]] = Node) -> List[Node]:
+def get_nodes_by_type(node: INode, ntype: Union[Type, Tuple[Type, ...]] = INode) -> List[INode]:
     """Iterates SPN in breadth first order and collects nodes of type ntype..
 
     Args:
@@ -223,7 +227,7 @@ def get_nodes_by_type(node: Node, ntype: Union[Type, Tuple[Type, ...]] = Node) -
     Returns: List of nodes in SPN which fit ntype.
     """
     assert node is not None
-    result: List[Node] = []
+    result: List[INode] = []
 
     def add_node(node):
         if isinstance(node, ntype):
@@ -233,7 +237,7 @@ def get_nodes_by_type(node: Node, ntype: Union[Type, Tuple[Type, ...]] = Node) -
     return result
 
 
-def get_topological_order(node: Node) -> List[Node]:
+def get_topological_order(node: INode) -> List[INode]:
     """
     Evaluates the spn bottom up using functions specified for node types.
 
@@ -243,15 +247,15 @@ def get_topological_order(node: Node) -> List[Node]:
 
     Returns: List of nodes in SPN in their order specified by their structure.
     """
-    nodes: List[Node] = get_nodes_by_type(node)
+    nodes: List[INode] = get_nodes_by_type(node)
 
-    parents: "OrderedDict[Node, List]" = OrderedDict({node: []})
-    in_degree: "OrderedDict[Node, int]" = OrderedDict()
+    parents: "OrderedDict[INode, List]" = OrderedDict({node: []})
+    in_degree: "OrderedDict[INode, int]" = OrderedDict()
     for n in nodes:
         in_degree[n] = in_degree.get(n, 0)
         if not isinstance(n, ILeafNode):
             for c in n.children:
-                parent_list: Optional[List[Optional[Node]]] = parents.get(c, None)
+                parent_list: Optional[List[Optional[INode]]] = parents.get(c, None)
                 if parent_list is None:
                     parents[c] = parent_list = []
                 parent_list.append(n)
@@ -262,7 +266,7 @@ def get_topological_order(node: Node) -> List[Node]:
         if in_degree[u] == 0:
             S.appendleft(u)
 
-    L: List[Node] = []  # Empty list that will contain the sorted elements
+    L: List[INode] = []  # Empty list that will contain the sorted elements
 
     while S:
         n = S.pop()  # remove a node n from S
@@ -279,9 +283,9 @@ def get_topological_order(node: Node) -> List[Node]:
 
 
 def eval_spn_bottom_up(
-    node: Node,
+    node: INode,
     eval_functions: Dict[Type, Callable],
-    all_results: Optional[Dict[Node, np.ndarray]] = None,
+    all_results: Optional[Dict[INode, np.ndarray]] = None,
     **args,
 ) -> np.ndarray:
     """
@@ -301,7 +305,7 @@ def eval_spn_bottom_up(
     Returns: Result of computing and propagating all the values through the network.
     """
 
-    nodes: List[Node] = get_topological_order(node)
+    nodes: List[INode] = get_topological_order(node)
 
     if all_results is None:
         all_results = {}
@@ -339,7 +343,7 @@ def eval_spn_bottom_up(
                 tmp_children_list.extend([None] * len_children)
                 len_tmp_children_list = len(tmp_children_list)
             for i in range(len_children):
-                ci: Node = n.children[i]
+                ci: INode = n.children[i]
                 tmp_children_list[i] = all_results[ci]
             result = func(n, tmp_children_list[0:len_children], **args)
         all_results[n] = result
@@ -351,7 +355,7 @@ def eval_spn_bottom_up(
     return all_results[node]
 
 
-def get_topological_order_layers(node: Node) -> List[List[Node]]:
+def get_topological_order_layers(node: INode) -> List[List[INode]]:
     """
     Returns the nodes in their topological ordering starting from the bottom to the top layers.
 
@@ -361,28 +365,28 @@ def get_topological_order_layers(node: Node) -> List[List[Node]]:
 
     Returns: List containing lists of nodes each representing a layer.
     """
-    nodes: List[Node] = get_nodes_by_type(node)
+    nodes: List[INode] = get_nodes_by_type(node)
 
-    parents: "OrderedDict[Node, List]" = OrderedDict({node: []})
-    in_degree: "OrderedDict[Node, int]" = OrderedDict()
+    parents: "OrderedDict[INode, List]" = OrderedDict({node: []})
+    in_degree: "OrderedDict[INode, int]" = OrderedDict()
     for n in nodes:
         in_degree[n] = in_degree.get(n, 0)
         if not isinstance(n, ILeafNode):
             for c in n.children:
-                parent_list: Optional[List[Optional[Node]]] = parents.get(c, None)
+                parent_list: Optional[List[Optional[INode]]] = parents.get(c, None)
                 if parent_list is None:
                     parents[c] = parent_list = []
                 parent_list.append(n)
                 in_degree[n] += 1
 
     # create list of all nodes with no incoming edge
-    layer: List[Node] = []
+    layer: List[INode] = []
     for u in in_degree:
         if in_degree[u] == 0:
             layer.append(u)
 
     # add first layer
-    L: List[List[Node]] = [layer]
+    L: List[List[INode]] = [layer]
 
     added_nodes: int = len(layer)
     while True:
@@ -406,9 +410,9 @@ def get_topological_order_layers(node: Node) -> List[List[Node]]:
 
 
 def eval_spn_top_down(
-    root: Node,
+    root: INode,
     eval_functions: Dict[Type, Callable],
-    all_results: Optional[Dict[Node, List]] = None,
+    all_results: Optional[Dict[INode, List]] = None,
     parent_result: Optional[np.ndarray] = None,
     **args,
 ) -> List:
@@ -451,7 +455,7 @@ def eval_spn_top_down(
                 func = eval_functions[type(n)]
 
             params: Optional[List] = all_results[n]
-            result: Optional[Dict[Node, np.ndarray]] = func(n, params, **args)
+            result: Optional[Dict[INode, np.ndarray]] = func(n, params, **args)
 
             if result is not None and not isinstance(n, ILeafNode):
                 for child, param in result.items():

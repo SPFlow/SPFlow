@@ -65,8 +65,8 @@ class TestTorchRatSpn(unittest.TestCase):
         # create torch rat spn from region graph
         rat = RatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3)
 
-        sum_nodes = get_nodes_by_type(rat.root_node, ISumNode)
-        leaf_nodes = get_nodes_by_type(rat.root_node, ILeafNode)
+        sum_nodes = get_nodes_by_type(rat.output_nodes[0], ISumNode)
+        leaf_nodes = get_nodes_by_type(rat.output_nodes[0], ILeafNode)
 
         # randomly change parameters from inital values
         for node in sum_nodes:

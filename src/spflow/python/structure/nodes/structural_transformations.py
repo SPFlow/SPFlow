@@ -7,12 +7,12 @@ This file provides algorithms for transforming the structure of a SPN.
 """
 
 from .validity_checks import _isvalid_spn
-from .node import ISumNode, IProductNode, ILeafNode, get_nodes_by_type, Node
+from .node import ISumNode, IProductNode, ILeafNode, get_nodes_by_type, INode
 import numpy as np
 from typing import List, Type, cast
 
 
-def prune(node: Node, contract_single_parents: bool = True) -> Node:
+def prune(node: INode, contract_single_parents: bool = True) -> INode:
     """
     Goes through all nodes of SPN and prunes them. Unnecessary nodes such as child nodes of the same type as its parent
     are removed and its children correctly reconnected to the parent node. Weights of ISumNodes are recalculated.
@@ -26,16 +26,16 @@ def prune(node: Node, contract_single_parents: bool = True) -> Node:
 
     Returns: Root node of pruned valid SPN.
     """
-    nodes: List[Node] = get_nodes_by_type(node, (IProductNode, ISumNode))
+    nodes: List[INode] = get_nodes_by_type(node, (IProductNode, ISumNode))
 
     while len(nodes) > 0:
-        n: Node = nodes.pop()
+        n: INode = nodes.pop()
         n_type: Type = type(n)
         is_sum: bool = n_type == ISumNode
 
         i = 0
         while i < len(n.children):
-            c: Node = n.children[i]
+            c: INode = n.children[i]
 
             if contract_single_parents and not isinstance(c, ILeafNode) and len(c.children) == 1:
                 n.children[i] = c.children[0]

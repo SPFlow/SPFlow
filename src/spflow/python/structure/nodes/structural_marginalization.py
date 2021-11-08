@@ -9,12 +9,12 @@ This file provides the structural marginalization of a SPN.
 from copy import deepcopy
 from .structural_transformations import prune
 from .validity_checks import _isvalid_spn
-from .node import ISumNode, ILeafNode, Node
+from .node import ISumNode, ILeafNode, INode
 import numpy as np
 from typing import Set, List, Optional
 
 
-def marginalize(node: Node, keep: List[int]) -> Optional[Node]:
+def marginalize(node: INode, keep: List[int]) -> Optional[INode]:
     """
     Marginalizes the rvs not listed in keep.
 
@@ -24,18 +24,18 @@ def marginalize(node: Node, keep: List[int]) -> Optional[Node]:
         keep:
             Set of features to keep.
 
-    Returns: Root Node of marginalized SPN.
+    Returns: Root INode of marginalized SPN.
     """
     keep_set: Set = set(keep)
 
-    def marg_recursive(node: Node) -> Optional[Node]:
+    def marg_recursive(node: INode) -> Optional[INode]:
         """
         Recursively goes through all children of node and updates its/their scopes and children according to the
         features in keep.
 
         Args:
             node:
-                Node which will be recursively updated.
+                INode which will be recursively updated.
 
         Returns: Updated node.
         """
@@ -51,9 +51,9 @@ def marginalize(node: Node, keep: List[int]) -> Optional[Node]:
 
             return deepcopy(node)
 
-        children: List[Node] = []
+        children: List[INode] = []
         for c in node.children:
-            new_c: Optional[Node] = marg_recursive(c)
+            new_c: Optional[INode] = marg_recursive(c)
             if new_c is None:
                 continue
             children.append(new_c)
@@ -64,7 +64,7 @@ def marginalize(node: Node, keep: List[int]) -> Optional[Node]:
                 scope=list(new_node_scope),
                 weights=np.array(node.weights),
             )
-            new_node: Node = sum_node
+            new_node: INode = sum_node
         else:
             new_node = node.__class__(children=children, scope=list(new_node_scope))
         return new_node
@@ -74,7 +74,7 @@ def marginalize(node: Node, keep: List[int]) -> Optional[Node]:
     if new_node is None:
         return None
 
-    pruned_new_node: Node = prune(new_node)
+    pruned_new_node: INode = prune(new_node)
     _isvalid_spn(pruned_new_node)
 
     return pruned_new_node

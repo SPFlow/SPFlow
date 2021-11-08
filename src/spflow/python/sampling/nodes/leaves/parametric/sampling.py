@@ -5,7 +5,7 @@ Created on August 09, 2021
 
 This file provides the sampling methods for parametric leaves.
 """
-from spflow.python.structure.nodes.node import ILeafNode, Node
+from spflow.python.structure.nodes.node import ILeafNode, INode
 from multipledispatch import dispatch  # type: ignore
 from spflow.python.structure.nodes.leaves.parametric.parametric import (
     ParametricLeaf,
@@ -25,8 +25,8 @@ from spflow.python.structure.nodes.leaves.parametric.parametric import (
 import numpy as np
 
 
-@dispatch(Node)  # type: ignore[no-redef]
-def sample_parametric_node(node: Node, n_samples, rand_gen) -> None:
+@dispatch(INode)  # type: ignore[no-redef]
+def sample_parametric_node(node: INode, n_samples, rand_gen) -> None:
     """Sample from the associated scipy object of a parametric leaf node.
 
     The standard implementation accepts nodes of any type and raises an error, if there is no sampling

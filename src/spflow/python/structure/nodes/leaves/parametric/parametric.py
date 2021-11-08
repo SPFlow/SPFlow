@@ -7,7 +7,7 @@ Created on June 11, 2021
 from abc import ABC, abstractmethod
 from multipledispatch import dispatch  # type: ignore
 from typing import Union, Dict, List, Tuple
-from spflow.python.structure.nodes import ILeafNode, Node
+from spflow.python.structure.nodes import ILeafNode, INode
 from .exceptions import InvalidParametersError  # type: ignore
 from .statistical_types import ParametricType  # type: ignore
 from scipy.stats import (  # type: ignore
@@ -486,8 +486,8 @@ class Gamma(ParametricLeaf):
         return self.alpha, self.beta
 
 
-@dispatch(Node)  # type: ignore[no-redef]
-def get_scipy_object(node: Node) -> None:
+@dispatch(INode)  # type: ignore[no-redef]
+def get_scipy_object(node: INode) -> None:
     """Get the associated scipy object of a parametric leaf node. This can be used to call the PDF, CDF, PPF, etc.
 
     The standard implementation accepts nodes of any type and raises an error, if there is no scipy
@@ -573,8 +573,8 @@ def get_scipy_object(node: Gamma) -> rv_continuous:
     return gamma
 
 
-@dispatch(Node)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: Node) -> None:
+@dispatch(INode)  # type: ignore[no-redef]
+def get_scipy_object_parameters(node: INode) -> None:
     """Get the parameters of a paremetric leaf node, s.t. they can be directly passed to the PDF, CDF, etc. of the
     associated scipy object.
 

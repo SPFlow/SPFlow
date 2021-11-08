@@ -1,5 +1,4 @@
-from .node import Node, ISumNode, IProductNode, ILeafNode
-from spflow.python.structure.network_type import SPN
+from .node import INode, ISumNode, IProductNode, ILeafNode
 from .leaves.parametric import (
     ParametricLeaf,
     Gaussian,

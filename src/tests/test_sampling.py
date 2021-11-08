@@ -178,7 +178,7 @@ class TestSampling(unittest.TestCase):
 
         region_graph = random_region_graph(X=set(range(0, 2)), depth=1, replicas=2)
         rat_spn_module = RatSpn(region_graph, 1, 1, 1)
-        _isvalid_spn(rat_spn_module.root_node)
+        _isvalid_spn(rat_spn_module.output_nodes[0])
 
         result = np.mean(
             sample_instances(

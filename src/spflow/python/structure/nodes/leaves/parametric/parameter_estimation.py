@@ -26,7 +26,7 @@ from spflow.python.structure.nodes.leaves.parametric.parametric import (
     get_scipy_object,
     get_scipy_object_parameters,
 )
-from spflow.python.structure.nodes.node import Node
+from spflow.python.structure.nodes.node import INode
 from scipy.stats import lognorm, gamma  # type: ignore
 
 
@@ -34,8 +34,8 @@ from scipy.stats import lognorm, gamma  # type: ignore
 # TODO: design decision: _numpy arrays_ or default lists?
 
 # TODO: update typing (see when numpy typing became available and if it collides with current requirements)
-@dispatch(Node)  # type: ignore[no-redef]
-def maximum_likelihood_estimation(node: Node, data: Any) -> None:
+@dispatch(INode)  # type: ignore[no-redef]
+def maximum_likelihood_estimation(node: INode, data: Any) -> None:
     """Compute the parameters of the distribution represented by the node via MLE, if an closed-form estimator is available.
 
     Arguments:

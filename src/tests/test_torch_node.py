@@ -44,7 +44,7 @@ class TestTorchNode(unittest.TestCase):
         weights: np.array = np.random.rand(2)
         weights /= weights.sum()
 
-        # Node graph
+        # INode graph
         graph = ISumNode(
             [
                 IProductNode([ILeafNode(scope=[1]), ILeafNode(scope=[2])], scope=[1, 2]),
@@ -57,7 +57,7 @@ class TestTorchNode(unittest.TestCase):
         # conversion to PyTorch graph
         graph_torch = toTorch(graph)
 
-        # conversion back to Node representation
+        # conversion back to INode representation
         graph_nodes = toNodes(graph_torch)
 
         # check whether converted graph matches original graph

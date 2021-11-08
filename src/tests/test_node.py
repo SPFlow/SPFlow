@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 from spflow.python.structure.nodes.node import (
-    Node,
+    INode,
     ISumNode,
     ILeafNode,
     IProductNode,
@@ -12,7 +12,7 @@ from spflow.python.structure.nodes.validity_checks import _isvalid_spn
 
 class TestNode(unittest.TestCase):
     def test_spn_fail_scope1(self):
-        spn: Node = IProductNode(
+        spn: INode = IProductNode(
             children=[
                 ILeafNode(scope=[1]),
                 ILeafNode(scope=[1]),
@@ -24,7 +24,7 @@ class TestNode(unittest.TestCase):
             _isvalid_spn(spn)
 
     def test_spn_fail_scope2(self):
-        spn: Node = IProductNode(
+        spn: INode = IProductNode(
             children=[
                 ILeafNode(scope=[1]),
                 ILeafNode(scope=[2]),
@@ -36,7 +36,7 @@ class TestNode(unittest.TestCase):
             _isvalid_spn(spn)
 
     def test_spn_fail_weights1(self):
-        spn: Node = ISumNode(
+        spn: INode = ISumNode(
             children=[
                 ILeafNode(scope=[1]),
                 ILeafNode(scope=[1]),
@@ -49,7 +49,7 @@ class TestNode(unittest.TestCase):
             _isvalid_spn(spn)
 
     def test_spn_fail_weights2(self):
-        spn: Node = ISumNode(
+        spn: INode = ISumNode(
             children=[
                 ILeafNode(scope=[1]),
                 ILeafNode(scope=[1]),
@@ -62,13 +62,13 @@ class TestNode(unittest.TestCase):
             _isvalid_spn(spn)
 
     def test_spn_missing_children(self):
-        spn: Node = IProductNode(children=None, scope=[1, 2])
+        spn: INode = IProductNode(children=None, scope=[1, 2])
 
         with self.assertRaises(AssertionError):
             _isvalid_spn(spn)
 
     def test_spn_fail_leaf_with_children(self):
-        spn: Node = ISumNode(
+        spn: INode = ISumNode(
             children=[
                 ILeafNode(scope=[1]),
                 ILeafNode(scope=[1]),
@@ -86,7 +86,7 @@ class TestNode(unittest.TestCase):
             _isvalid_spn(spn)
 
     def test_spn_fail_none_children(self):
-        spn: Node = IProductNode(
+        spn: INode = IProductNode(
             children=[
                 ILeafNode(scope=[1]),
                 None,
@@ -98,7 +98,7 @@ class TestNode(unittest.TestCase):
             _isvalid_spn(spn)
 
     def test_spn_tree_small(self):
-        spn: Node = IProductNode(
+        spn: INode = IProductNode(
             children=[
                 ISumNode(
                     children=[
@@ -119,7 +119,7 @@ class TestNode(unittest.TestCase):
         self.assertEqual(leaf_nodes, 3)
 
     def test_spn_tree_big(self):
-        spn: Node = IProductNode(
+        spn: INode = IProductNode(
             children=[
                 ISumNode(
                     children=[

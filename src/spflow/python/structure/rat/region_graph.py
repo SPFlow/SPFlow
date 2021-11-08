@@ -96,10 +96,7 @@ class Partition:
 
 
 def random_region_graph(
-    X: Set[int],
-    depth: int,
-    replicas: int,
-    num_splits: int = 2,
+    X: Set[int], depth: int, replicas: int, num_splits: int = 2, random_seed: int = 0
 ) -> RegionGraph:
     """Creates a RegionGraph from a set of random variables X.
 
@@ -118,6 +115,8 @@ def random_region_graph(
             set of random variables X, which are children of the root_region of the RegionGraph.
         num_splits:
             The number of splits per Region (defaults to 2).
+        random_seed:
+            Seed for shuffling to be able to get deterministic results.
 
     Returns:
         A RegionGraph with a binary tree structure, consisting of alternating Regions and Partitions.
@@ -140,13 +139,17 @@ def random_region_graph(
     region_graph.regions.append(root_region)
 
     for r in range(0, replicas):
-        split(region_graph, root_region, depth, num_splits)
+        split(region_graph, root_region, depth, num_splits, random_seed)
 
     return region_graph
 
 
 def split(
-    region_graph: RegionGraph, parent_region: Region, depth: int, num_splits: int = 2
+    region_graph: RegionGraph,
+    parent_region: Region,
+    depth: int,
+    num_splits: int = 2,
+    random_seed: int = 0,
 ) -> None:
     """Splits a Region into (currently balanced) Partitions.
 
@@ -165,12 +168,14 @@ def split(
             The maximum depth of the RegionGraph until which split() will be recursively called.
         num_splits:
             The number of splits per Region.
+        random_seed:
+            Seed for shuffling to be able to get deterministic results.
     """
     if num_splits < 2:
         raise ValueError("Number of splits must be at least 2")
 
     shuffle_random_variables = list(parent_region.random_variables)
-    random.shuffle(shuffle_random_variables)
+    random.Random(random_seed).shuffle(shuffle_random_variables)
 
     splits = np.array_split(shuffle_random_variables, num_splits)
 
@@ -294,8 +299,3 @@ def _get_regions_by_depth(
                 raise ValueError("Node must be Region or Partition")
 
     return regions_by_depth, leaves
-
-
-if __name__ == "__main__":
-    region_graph = random_region_graph(X=set(range(1, 9)), depth=3, replicas=1, num_splits=3)
-    _print_region_graph(region_graph)

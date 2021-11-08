@@ -26,18 +26,16 @@ from typing import Optional
 from multipledispatch import dispatch  # type: ignore
 import numpy as np
 from numpy import ndarray
-from spflow.python.structure.nodes import Node
+from spflow.python.structure.nodes import INode
 
 # TODO:
-# marginalization
-# typing data with np.ndarray doesnt work??
 # Binomial, Negative Binomial?
 POS_EPS = np.finfo(float).eps
 MIN_NEG = np.finfo(float).min
 
 
-@dispatch(Node, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: Node, data: Optional[ndarray] = None) -> None:
+@dispatch(INode, data=ndarray)  # type: ignore[no-redef]
+def node_likelihood(node: INode, data: ndarray) -> None:
     """Calculates the likelihood of node depending on the given data.
 
     The standard implementation accepts nodes of any type and raises an error, if it is a leaf node that does not have
@@ -45,9 +43,9 @@ def node_likelihood(node: Node, data: Optional[ndarray] = None) -> None:
 
     Arguments:
         node:
-            Node to calculate likelihood value of.
+            INode to calculate likelihood value of.
         data:
-            Data given to evaluate Node.
+            Data given to evaluate INode.
 
     Returns:
         np.array with likelihood value for node.
@@ -60,7 +58,7 @@ def node_likelihood(node: Node, data: Optional[ndarray] = None) -> None:
 
 
 @dispatch(Gaussian, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: Gaussian, data=None) -> np.ndarray:
+def node_likelihood(node: Gaussian, data) -> np.ndarray:
     probs = np.ones((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -71,7 +69,7 @@ def node_likelihood(node: Gaussian, data=None) -> np.ndarray:
 
 
 @dispatch(LogNormal, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: LogNormal, data=None) -> np.ndarray:
+def node_likelihood(node: LogNormal, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -82,7 +80,7 @@ def node_likelihood(node: LogNormal, data=None) -> np.ndarray:
 
 
 @dispatch(MultivariateGaussian, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: MultivariateGaussian, data=None) -> np.ndarray:
+def node_likelihood(node: MultivariateGaussian, data) -> np.ndarray:
     probs = np.ones((data.shape[0], 1))
     # TODO: check for partially marginalization
     probs[:, 0] = get_scipy_object(node).pdf(
@@ -92,7 +90,7 @@ def node_likelihood(node: MultivariateGaussian, data=None) -> np.ndarray:
 
 
 @dispatch(Bernoulli, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: Bernoulli, data=None) -> np.ndarray:
+def node_likelihood(node: Bernoulli, data) -> np.ndarray:
     probs = np.ones((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -105,7 +103,7 @@ def node_likelihood(node: Bernoulli, data=None) -> np.ndarray:
 
 
 @dispatch(Binomial, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: Binomial, data=None) -> np.ndarray:
+def node_likelihood(node: Binomial, data) -> np.ndarray:
     probs = np.ones((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -118,7 +116,7 @@ def node_likelihood(node: Binomial, data=None) -> np.ndarray:
 
 
 @dispatch(NegativeBinomial, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: NegativeBinomial, data=None) -> np.ndarray:
+def node_likelihood(node: NegativeBinomial, data) -> np.ndarray:
     probs = np.ones((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -131,7 +129,7 @@ def node_likelihood(node: NegativeBinomial, data=None) -> np.ndarray:
 
 
 @dispatch(Geometric, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: Geometric, data=None) -> np.ndarray:
+def node_likelihood(node: Geometric, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -144,7 +142,7 @@ def node_likelihood(node: Geometric, data=None) -> np.ndarray:
 
 
 @dispatch(Poisson, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: Poisson, data=None) -> np.ndarray:
+def node_likelihood(node: Poisson, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -157,7 +155,7 @@ def node_likelihood(node: Poisson, data=None) -> np.ndarray:
 
 
 @dispatch(Hypergeometric, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: Hypergeometric, data=None) -> np.ndarray:
+def node_likelihood(node: Hypergeometric, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -170,7 +168,7 @@ def node_likelihood(node: Hypergeometric, data=None) -> np.ndarray:
 
 
 @dispatch(Exponential, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: Exponential, data=None) -> np.ndarray:
+def node_likelihood(node: Exponential, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -181,7 +179,7 @@ def node_likelihood(node: Exponential, data=None) -> np.ndarray:
 
 
 @dispatch(Gamma, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: Gamma, data=None) -> np.ndarray:
+def node_likelihood(node: Gamma, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -194,7 +192,7 @@ def node_likelihood(node: Gamma, data=None) -> np.ndarray:
 
 
 @dispatch(Uniform, data=ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: Uniform, data=None) -> np.ndarray:
+def node_likelihood(node: Uniform, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -204,8 +202,8 @@ def node_likelihood(node: Uniform, data=None) -> np.ndarray:
     return probs
 
 
-@dispatch(Node, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: Node, data: Optional[ndarray] = None):
+@dispatch(INode, data=ndarray)  # type: ignore[no-redef]
+def node_log_likelihood(node: INode, data: ndarray = None):
     """Calculates the log-likelihood of node depending on the given data.
 
     The standard implementation accepts nodes of any type and raises an error, if it is a leaf node that does not have
@@ -213,9 +211,9 @@ def node_log_likelihood(node: Node, data: Optional[ndarray] = None):
 
     Arguments:
         node:
-            Node to calculate log-likelihood value of.
+            INode to calculate log-likelihood value of.
         data:
-            Data given to evaluate Node.
+            Data given to evaluate INode.
 
     Returns:
         np.array with log-likelihood value for node.
@@ -228,7 +226,7 @@ def node_log_likelihood(node: Node, data: Optional[ndarray] = None):
 
 
 @dispatch(Gaussian, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: Gaussian, data=None) -> np.ndarray:
+def node_log_likelihood(node: Gaussian, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -239,7 +237,7 @@ def node_log_likelihood(node: Gaussian, data=None) -> np.ndarray:
 
 
 @dispatch(MultivariateGaussian, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: MultivariateGaussian, data=None) -> np.ndarray:
+def node_log_likelihood(node: MultivariateGaussian, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     # TODO: check for partially marginalization
     probs[:, 0] = get_scipy_object(node).logpdf(
@@ -249,7 +247,7 @@ def node_log_likelihood(node: MultivariateGaussian, data=None) -> np.ndarray:
 
 
 @dispatch(Hypergeometric, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: Hypergeometric, data=None) -> np.ndarray:
+def node_log_likelihood(node: Hypergeometric, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -261,7 +259,7 @@ def node_log_likelihood(node: Hypergeometric, data=None) -> np.ndarray:
 
 
 @dispatch(LogNormal, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: LogNormal, data=None) -> np.ndarray:
+def node_log_likelihood(node: LogNormal, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -272,7 +270,7 @@ def node_log_likelihood(node: LogNormal, data=None) -> np.ndarray:
 
 
 @dispatch(Gamma, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: Gamma, data=None) -> np.ndarray:
+def node_log_likelihood(node: Gamma, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -285,7 +283,7 @@ def node_log_likelihood(node: Gamma, data=None) -> np.ndarray:
 
 
 @dispatch(Poisson, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: Poisson, data=None) -> np.ndarray:
+def node_log_likelihood(node: Poisson, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -297,7 +295,7 @@ def node_log_likelihood(node: Poisson, data=None) -> np.ndarray:
 
 
 @dispatch(Bernoulli, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: Bernoulli, data=None) -> np.ndarray:
+def node_log_likelihood(node: Bernoulli, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -309,7 +307,7 @@ def node_log_likelihood(node: Bernoulli, data=None) -> np.ndarray:
 
 
 @dispatch(Binomial, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: Binomial, data=None) -> np.ndarray:
+def node_log_likelihood(node: Binomial, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -321,7 +319,7 @@ def node_log_likelihood(node: Binomial, data=None) -> np.ndarray:
 
 
 @dispatch(NegativeBinomial, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: NegativeBinomial, data=None) -> np.ndarray:
+def node_log_likelihood(node: NegativeBinomial, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -333,7 +331,7 @@ def node_log_likelihood(node: NegativeBinomial, data=None) -> np.ndarray:
 
 
 @dispatch(Geometric, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: Geometric, data=None) -> np.ndarray:
+def node_log_likelihood(node: Geometric, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -356,7 +354,7 @@ def node_log_likelihood(node: Exponential, data=None) -> np.ndarray:
 
 
 @dispatch(Uniform, data=ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: Uniform, data=None) -> np.ndarray:
+def node_log_likelihood(node: Uniform, data) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
