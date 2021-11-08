@@ -146,6 +146,7 @@ class TestTorchGaussian(unittest.TestCase):
         # invalid scope length
         self.assertRaises(Exception, TorchGaussian, [], 0.0, 1.0)
 
+
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)
     unittest.main()

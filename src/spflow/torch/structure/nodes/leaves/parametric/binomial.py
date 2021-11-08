@@ -26,10 +26,10 @@ class TorchBinomial(TorchParametricLeaf):
 
     def __init__(self, scope: List[int], n: int, p: float) -> None:
 
-        if(len(scope) != 1):
+        if len(scope) != 1:
             raise ValueError(f"Scope size for TorchBinomial should be 1, but was: {len(scope)}")
-        
-        super(TorchBinomial, self).__init__(scope)        
+
+        super(TorchBinomial, self).__init__(scope)
 
         # register number of trials n as torch buffer (should not be changed)
         self.register_buffer("n", torch.empty(size=[]))
@@ -44,10 +44,10 @@ class TorchBinomial(TorchParametricLeaf):
     def p(self) -> torch.Tensor:
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)  # type: ignore
-    
+
     @p.setter
     def p(self, p: float) -> None:
-        
+
         if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
                 f"Value of p for Binomial distribution must to be between 0.0 and 1.0, but was: {p}"
@@ -101,7 +101,6 @@ class TorchBinomial(TorchParametricLeaf):
 
         self.p = p
         self.n.data = torch.tensor(int(n))  # type: ignore
-        
 
     def get_params(self) -> Tuple[int, float]:
         return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore

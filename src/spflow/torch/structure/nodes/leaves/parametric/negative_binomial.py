@@ -26,8 +26,10 @@ class TorchNegativeBinomial(TorchParametricLeaf):
 
     def __init__(self, scope: List[int], n: int, p: float) -> None:
 
-        if(len(scope) != 1):
-            raise ValueError(f"Scope size for TorchNegativeBinomial should be 1, but was: {len(scope)}")
+        if len(scope) != 1:
+            raise ValueError(
+                f"Scope size for TorchNegativeBinomial should be 1, but was: {len(scope)}"
+            )
 
         super(TorchNegativeBinomial, self).__init__(scope)
 
@@ -73,7 +75,9 @@ class TorchNegativeBinomial(TorchParametricLeaf):
         support_mask = (scope_data >= 0).sum(dim=1).bool()
         log_prob[prob_mask & (~support_mask)] = -float("Inf")
         # compute probabilities for values inside distribution support
-        log_prob[prob_mask & support_mask] = self.dist.log_prob(scope_data[prob_mask & support_mask])
+        log_prob[prob_mask & support_mask] = self.dist.log_prob(
+            scope_data[prob_mask & support_mask]
+        )
 
         return log_prob
 

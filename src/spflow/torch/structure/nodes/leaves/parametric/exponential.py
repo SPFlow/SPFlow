@@ -24,7 +24,7 @@ class TorchExponential(TorchParametricLeaf):
 
     def __init__(self, scope: List[int], l: float) -> None:
 
-        if(len(scope) != 1):
+        if len(scope) != 1:
             raise ValueError(f"Scope size for TorchExponential should be 1, but was: {len(scope)}")
 
         super(TorchExponential, self).__init__(scope)

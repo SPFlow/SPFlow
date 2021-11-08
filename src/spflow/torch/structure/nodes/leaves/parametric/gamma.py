@@ -26,10 +26,10 @@ class TorchGamma(TorchParametricLeaf):
     ptype = ParametricType.POSITIVE
 
     def __init__(self, scope: List[int], alpha: float, beta: float) -> None:
-        
-        if(len(scope) != 1):
+
+        if len(scope) != 1:
             raise ValueError(f"Scope size for TorchGamma should be 1, but was: {len(scope)}")
-        
+
         super(TorchGamma, self).__init__(scope)
 
         # register auxiliary torch parameters for alpha and beta
