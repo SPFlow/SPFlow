@@ -1,12 +1,17 @@
-from spflow.python.structure.nodes import IProductNode, ISumNode, ILeafNode
+from spflow.base.structure.nodes import IProductNode, ISumNode, ILeafNode
 from spflow.torch.structure.nodes import (
     TorchProductNode,
     TorchSumNode,
     TorchLeafNode,
+    TorchGaussian,
     toTorch,
     toNodes,
+    proj_convex_to_real,
+    proj_real_to_convex,
 )
-from spflow.python.structure.nodes.validity_checks import _isvalid_spn
+from spflow.torch.inference import log_likelihood
+import torch
+from spflow.base.structure.nodes.validity_checks import _isvalid_spn
 import unittest
 import numpy as np
 
@@ -62,6 +67,97 @@ class TestTorchNode(unittest.TestCase):
 
         # check whether converted graph matches original graph
         self.assertTrue(graph.equals(graph_nodes))
+
+    def test_projection(self):
+
+        self.assertTrue(
+            torch.allclose(proj_real_to_convex(torch.randn(5)).sum(), torch.tensor(1.0))
+        )
+
+        weights = torch.rand(5)
+        weights /= weights.sum()
+
+        self.assertTrue(torch.allclose(proj_convex_to_real(weights), torch.log(weights)))
+
+    def test_sum_node_initialization(self):
+
+        self.assertRaises(ValueError, TorchSumNode, [], [0, 1], torch.tensor([0.5, 0.5]))
+
+        leaf_1 = TorchLeafNode([0])
+        leaf_2 = TorchLeafNode([0])
+        # infer weights automatically
+
+        sum_node = TorchSumNode([leaf_1, leaf_2], [0])
+        self.assertTrue(torch.allclose(sum_node.weights.sum(), torch.tensor(1.0)))
+
+        weights = torch.rand(2)
+        weights /= weights.sum()
+
+        sum_node.weights = weights
+        self.assertTrue(torch.allclose(sum_node.weights, weights))
+
+    def test_sum_gradient_optimization(self):
+
+        torch.manual_seed(0)
+
+        # generate random weights for a sum node with two children
+        weights = torch.tensor([0.3, 0.7])
+
+        data_1 = torch.randn((70000, 1))
+        data_1 = (data_1 - data_1.mean()) / data_1.std() + 5.0
+        data_2 = torch.randn((30000, 1))
+        data_2 = (data_2 - data_2.mean()) / data_2.std() - 5.0
+
+        data = torch.cat([data_1, data_2])
+
+        # initialize Gaussians
+        gaussian_1 = TorchGaussian(scope=[0], mean=5.0, stdev=1.0)
+        gaussian_2 = TorchGaussian(scope=[0], mean=-5.0, stdev=1.0)
+
+        # freeze Gaussians
+        gaussian_1.requires_grad = False
+        gaussian_2.requires_grad = False
+
+        # sum node to be optimized
+        sum_node = TorchSumNode(
+            [gaussian_1, gaussian_2],
+            scope=[0],
+            weights=weights,
+        )
+
+        # make sure that weights are correctly projected
+        self.assertTrue(torch.allclose(weights, sum_node.weights))
+
+        # initialize gradient optimizer
+        optimizer = torch.optim.SGD(sum_node.parameters(), lr=0.5)
+
+        for i in range(50):
+
+            # clear gradients
+            optimizer.zero_grad()
+
+            # compute negative log likelihood
+            nll = -log_likelihood(sum_node, data).mean()
+            nll.backward()
+
+            if i == 0:
+                # check a few general things (just for the first update)
+
+                # check if gradients are computed
+                self.assertTrue(sum_node.weights_aux.grad is not None)
+
+                # update parameters
+                optimizer.step()
+
+                # verify that sum node weights are still valid after update
+                self.assertTrue(torch.isclose(sum_node.weights.sum(), torch.tensor(1.0)))
+            else:
+                # update parameters
+                optimizer.step()
+
+        self.assertTrue(
+            torch.allclose(sum_node.weights, torch.tensor([0.7, 0.3]), atol=1e-3, rtol=1e-3)
+        )
 
     def test_spn_fail_scope(self):
         # based on the corresponding test for Nodes
