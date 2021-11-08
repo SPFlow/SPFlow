@@ -1,3 +1,9 @@
+"""
+Created on November 06, 2021
+
+@authors: Philipp Deibert
+"""
+
 import numpy as np
 import torch
 import torch.distributions as D

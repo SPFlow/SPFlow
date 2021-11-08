@@ -1,3 +1,9 @@
+"""
+Created on November 06, 2021
+
+@authors: Kevin Huy Nguyen
+"""
+
 from spflow.base.structure.nodes.leaves.parametric import (
     NegativeBinomial,
     get_scipy_object,
