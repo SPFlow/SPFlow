@@ -1,3 +1,9 @@
+"""
+Created on November 6, 2021
+
+@authors: Bennet Wittelsbach, Philipp Deibert
+"""
+
 from .parametric import ParametricLeaf
 from .statistical_types import ParametricType
 from .exceptions import InvalidParametersError
