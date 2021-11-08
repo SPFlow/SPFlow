@@ -28,7 +28,7 @@ class TorchLogNormal(TorchParametricLeaf):
 
     def __init__(self, scope: List[int], mean: float, stdev: float) -> None:
 
-        if(len(scope) != 1):
+        if len(scope) != 1:
             raise ValueError(f"Scope size for TorchLogNormal should be 1, but was: {len(scope)}")
 
         super(TorchLogNormal, self).__init__(scope)

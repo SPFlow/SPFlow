@@ -128,13 +128,15 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         d = mean_vector.numel()
 
         # make sure that number of dimensions matches scope length
-        if(d != self.d):
+        if d != self.d:
             raise ValueError(
                 f"Mean vector length {mean_vector.numel()} does not match scope length {self.d}"
             )
-        
+
         # make sure that dimensions of covariance matrix are correct
-        if(len(covariance_matrix.shape) != 2 or any(shape != d for shape in covariance_matrix.shape)):
+        if len(covariance_matrix.shape) != 2 or any(
+            shape != d for shape in covariance_matrix.shape
+        ):
             raise ValueError(
                 f"Covariance matrix has shape {covariance_matrix.shape}, but should be of shape ({d},{d})"
             )

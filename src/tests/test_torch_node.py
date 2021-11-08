@@ -7,7 +7,7 @@ from spflow.torch.structure.nodes import (
     toTorch,
     toNodes,
     proj_convex_to_real,
-    proj_real_to_convex
+    proj_real_to_convex,
 )
 from spflow.torch.inference import log_likelihood
 import torch
@@ -70,8 +70,10 @@ class TestTorchNode(unittest.TestCase):
 
     def test_projection(self):
 
-        self.assertTrue(torch.allclose(proj_real_to_convex(torch.randn(5)).sum(), torch.tensor(1.0)))
-        
+        self.assertTrue(
+            torch.allclose(proj_real_to_convex(torch.randn(5)).sum(), torch.tensor(1.0))
+        )
+
         weights = torch.rand(5)
         weights /= weights.sum()
 
@@ -79,7 +81,7 @@ class TestTorchNode(unittest.TestCase):
 
     def test_sum_node_initialization(self):
 
-        self.assertRaises(ValueError, TorchSumNode, [], [0,1], torch.tensor([0.5, 0.5]))
+        self.assertRaises(ValueError, TorchSumNode, [], [0, 1], torch.tensor([0.5, 0.5]))
 
         leaf_1 = TorchLeafNode([0])
         leaf_2 = TorchLeafNode([0])
