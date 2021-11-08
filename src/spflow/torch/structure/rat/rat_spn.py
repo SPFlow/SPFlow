@@ -5,9 +5,10 @@ Created on July 1, 2021
 
 This file provides the PyTorch version of RAT SPNs.
 """
-from spflow.python.structure.nodes.node import ILeafNode, ISumNode, INode
-from spflow.python.structure.rat import RegionGraph, Partition, Region
-from spflow.python.structure.rat import RatSpn
+
+from spflow.base.structure.nodes.node import ILeafNode, ISumNode, INode
+from spflow.base.structure.rat import RegionGraph, Partition, Region
+from spflow.base.structure.rat import RatSpn, construct_spn
 from spflow.torch.structure.nodes.node import TorchLeafNode
 from spflow.torch.structure.nodes.leaves.parametric import TorchGaussian
 from spflow.torch.structure.module import TorchModule

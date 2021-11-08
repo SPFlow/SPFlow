@@ -6,14 +6,23 @@ Created on May 27, 2021
 This file provides the PyTorch variants of individual graph nodes.
 """
 from multipledispatch import dispatch  # type: ignore
-from typing import List
+from typing import List, Union, Optional
 import numpy as np
 
 import torch
-from torch.nn.parameter import Parameter
+import torch.nn as nn
 
 from spflow.torch.structure.module import TorchModule
-from spflow.python.structure.nodes.node import INode, ISumNode, IProductNode, ILeafNode
+from spflow.base.structure.nodes.node import INode, ISumNode, IProductNode, ILeafNode
+
+
+def proj_convex_to_real(x: torch.Tensor) -> torch.Tensor:
+    # convex coefficients are already normalized, so taking the log is sufficient
+    return torch.log(x)
+
+
+def proj_real_to_convex(x: torch.Tensor) -> torch.Tensor:
+    return torch.nn.functional.softmax(x, dim=-1)
 
 
 class TorchNode(TorchModule):
@@ -63,22 +72,19 @@ class TorchSumNode(TorchNode):
         self,
         children: List[TorchModule],
         scope: List[int],
-        weights: np.ndarray = np.empty(0),
+        weights: Optional[Union[np.ndarray, torch.Tensor, List[float]]] = None,
         normalize: bool = True,
     ) -> None:
 
         if not children:
             raise ValueError("Sum node must have at least one child.")
 
-        # convert weight np.array to torch tensor
-        # if no weights specified initialize weights randomly in [0,1)
-        weights_torch: torch.Tensor = (
-            torch.tensor(weights)
-            if weights is not None
-            else torch.rand(sum(len(child) for child in children))
-        )
+        if weights is None:
+            weights = torch.rand(sum(len(child) for child in children))
+        elif isinstance(weights, np.ndarray) or isinstance(weights, list):
+            weights = torch.tensor(weights)
 
-        if not torch.all(weights_torch >= 0):
+        if not torch.all(weights >= 0):
             raise ValueError("All weights must be non-negative.")
 
         if not len(weights) == sum(len(child) for child in children):
@@ -86,17 +92,30 @@ class TorchSumNode(TorchNode):
 
         # noramlize
         if normalize:
-            weights_torch /= weights_torch.sum()
+            weights /= weights.sum()
 
         super(TorchSumNode, self).__init__(children, scope)
 
-        # store weight parameters
-        self.register_parameter("weights", Parameter(weights_torch))
+        # store auxiliary weights as torch parameters
+        self.weights_aux = nn.Parameter(weights.log())
 
-    def forward(self, x):
-        # TODO: broadcast across batches
-        # return weighted sum
-        return (x * self.weights).sum()
+    @property
+    def weights(self) -> torch.Tensor:
+        # project auxiliary weights onto weights that sum up to one
+        return proj_real_to_convex(self.weights_aux)
+
+    @weights.setter
+    def weights(self, value: Union[np.ndarray, torch.Tensor, List[float]]) -> None:
+        # TODO: possible checks
+        self.weights_aux.data = proj_convex_to_real(value)  # type: ignore
+
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
+        # get inputs recursively
+        inputs = torch.hstack([child(data) for child in self.children()])  # type: ignore
+        # weight inputs in log-space
+        weighted_inputs = inputs + self.weights.log()  # type: ignore
+
+        return torch.logsumexp(weighted_inputs, dim=-1)
 
 
 @dispatch(ISumNode)  # type: ignore[no-redef]
@@ -130,8 +149,8 @@ class TorchProductNode(TorchNode):
 
     def forward(self, x):
         # TODO: broadcast across batches
-        # return weighted product
-        return x.prod()
+        # return product (sum in log space)
+        return x.sum()
 
 
 @dispatch(IProductNode)  # type: ignore[no-redef]

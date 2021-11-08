@@ -1,4 +1,4 @@
-from .node import TorchNode, TorchSumNode, TorchProductNode, TorchLeafNode, toTorch, toNodes
+from .node import TorchNode, TorchSumNode, TorchProductNode, TorchLeafNode, toTorch, toNodes, proj_convex_to_real, proj_real_to_convex
 from .leaves.parametric import (
     TorchGaussian,
     TorchLogNormal,
@@ -15,4 +15,6 @@ from .leaves.parametric import (
     TorchParametricLeaf,
     toNodes,
     toTorch,
+    proj_bounded_to_real,
+    proj_real_to_bounded,
 )
