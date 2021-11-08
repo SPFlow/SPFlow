@@ -22,6 +22,10 @@ class TorchGeometric(TorchParametricLeaf):
     ptype = ParametricType.BINARY
 
     def __init__(self, scope: List[int], p: float) -> None:
+
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for TorchGeometric should be 1, but was: {len(scope)}")
+
         super(TorchGeometric, self).__init__(scope)
 
         # register auxiliary torch parameter for the success probability p

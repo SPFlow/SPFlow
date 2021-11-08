@@ -146,6 +146,9 @@ class TestTorchLogNormal(unittest.TestCase):
         self.assertRaises(Exception, TorchLogNormal, [0], mean, np.inf)
         self.assertRaises(Exception, TorchLogNormal, [0], mean, np.nan)
 
+        # invalid scope length
+        self.assertRaises(Exception, TorchLogNormal, [], 0.0, 1.0)
+
     def test_support(self):
 
         mean = 0.0

@@ -25,6 +25,10 @@ class TorchNegativeBinomial(TorchParametricLeaf):
     ptype = ParametricType.COUNT
 
     def __init__(self, scope: List[int], n: int, p: float) -> None:
+
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for TorchNegativeBinomial should be 1, but was: {len(scope)}")
+
         super(TorchNegativeBinomial, self).__init__(scope)
 
         # register number of trials n as torch buffer (should not be changed)
@@ -41,7 +45,9 @@ class TorchNegativeBinomial(TorchParametricLeaf):
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)  # type: ignore
 
+    @property
     def dist(self) -> D.Distribution:
+        # note: the distribution is not stored as an attribute due to mismatching parameters after gradient updates (gradients don't flow back to p when initializing with 1.0-p)
         return D.NegativeBinomial(total_count=self.n, probs=torch.ones(1) - self.p)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
@@ -61,17 +67,13 @@ class TorchNegativeBinomial(TorchParametricLeaf):
 
         # ----- log probabilities -----
 
-        # create Torch distribution with specified parameters
-        # note: the distribution is not stored as an attribute due to mismatching parameters after gradient updates (gradients don't flow back to p when initializing with 1.0-p)
-        dist = D.NegativeBinomial(total_count=self.n, probs=torch.ones(1) - self.p)
-
         # compute probabilities on data samples where we have all values
         prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
         # set probabilities of values outside of distribution support to 0 (-inf in log space)
         support_mask = (scope_data >= 0).sum(dim=1).bool()
         log_prob[prob_mask & (~support_mask)] = -float("Inf")
         # compute probabilities for values inside distribution support
-        log_prob[prob_mask & support_mask] = dist.log_prob(scope_data[prob_mask & support_mask])
+        log_prob[prob_mask & support_mask] = self.dist.log_prob(scope_data[prob_mask & support_mask])
 
         return log_prob
 

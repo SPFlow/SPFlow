@@ -37,9 +37,11 @@ class MultivariateGaussian(ParametricLeaf):
         mean_vector: Union[List[float], np.ndarray],
         covariance_matrix: Union[List[List[float]], np.ndarray],
     ) -> None:
+        if(len(scope) != len(mean_vector)):
+            raise ValueError(f"Size of mean vector for TorchMultivariateGaussian should match scope size {len(scope)}, but was: {len(mean_vector)}")
+
         super().__init__(scope)
-        self.mean_vector = mean_vector
-        self.covariance_matrix = covariance_matrix
+        self.set_params(mean_vector, covariance_matrix)
 
     def set_params(
         self,

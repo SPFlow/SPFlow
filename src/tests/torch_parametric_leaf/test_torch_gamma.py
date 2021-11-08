@@ -139,6 +139,9 @@ class TestTorchGamma(unittest.TestCase):
         self.assertRaises(Exception, TorchGamma, [0], 1.0, np.inf)
         self.assertRaises(Exception, TorchGamma, [0], 1.0, np.nan)
 
+        # invalid scope length
+        self.assertRaises(Exception, TorchGamma, [], 1.0, 1.0)
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

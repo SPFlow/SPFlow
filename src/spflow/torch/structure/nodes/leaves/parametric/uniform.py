@@ -24,6 +24,10 @@ class TorchUniform(TorchParametricLeaf):
     ptype = ParametricType.CONTINUOUS
 
     def __init__(self, scope: List[int], start: float, end: float) -> None:
+
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for TorchUniform should be 1, but was: {len(scope)}")
+
         super(TorchUniform, self).__init__(scope)
 
         # register interval bounds as torch buffers (should not be changed)

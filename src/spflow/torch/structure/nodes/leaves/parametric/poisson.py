@@ -22,6 +22,10 @@ class TorchPoisson(TorchParametricLeaf):
     ptype = ParametricType.COUNT
 
     def __init__(self, scope: List[int], l: float) -> None:
+
+        if(len(scope) != 1):
+            raise ValueError(f"Scope size for TorchPoisson should be 1, but was: {len(scope)}")
+
         super(TorchPoisson, self).__init__(scope)
 
         # register auxiliary torch parameter for lambda l
