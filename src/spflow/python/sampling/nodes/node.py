@@ -11,7 +11,7 @@ from spflow.python.structure.nodes.node import (
     ILeafNode,
     IProductNode,
     ISumNode,
-    Node,
+    INode,
     eval_spn_top_down,
 )
 from spflow.python.structure.network_type import SPN
@@ -28,7 +28,7 @@ def sample_prod(
     input_vals: Optional[List],
     data: np.ndarray,
     rand_gen: np.random.RandomState,
-) -> Optional[Dict[Node, np.ndarray]]:
+) -> Optional[Dict[INode, np.ndarray]]:
     """
     Sampling procedure for ProdNode. Passes on the input_vals to its children.
 
@@ -48,7 +48,7 @@ def sample_prod(
         return None
 
     conc_input_vals: np.ndarray = np.concatenate(input_vals)
-    children_row_ids: Dict[Node, np.ndarray] = {}
+    children_row_ids: Dict[INode, np.ndarray] = {}
 
     for i, c in enumerate(node.children):
         children_row_ids[c] = conc_input_vals
@@ -60,7 +60,7 @@ def sample_sum(
     input_vals: Optional[List],
     data: np.ndarray,
     rand_gen: np.random.RandomState,
-) -> Optional[Dict[Node, np.ndarray]]:
+) -> Optional[Dict[INode, np.ndarray]]:
     """
     Sampling procedure for sum nodes. Decides which child branch is to be sampled from by adding
     log-likelihood of child weights with drawn samples from gumbels distribution and then
@@ -96,7 +96,7 @@ def sample_sum(
     g_children_log_probs: np.ndarray = w_children_log_probs + z_gumbels
     rand_child_branches: Union[np.integer, np.ndarray] = np.argmax(g_children_log_probs, axis=1)
 
-    children_row_ids: Dict[Node, np.ndarray] = {}
+    children_row_ids: Dict[INode, np.ndarray] = {}
 
     for i, c in enumerate(node.children):
         children_row_ids[c] = conc_input_vals[rand_child_branches == i]
@@ -149,10 +149,10 @@ _node_sampling: Dict[Type, Callable] = {
 }
 
 
-@dispatch(SPN, Node, np.ndarray, np.random.RandomState, _node_sampling=dict, in_place=bool)  # type: ignore[no-redef]
+@dispatch(SPN, INode, np.ndarray, np.random.RandomState, _node_sampling=dict, in_place=bool)  # type: ignore[no-redef]
 def sample_instances(
     network_type: SPN,
-    node: Node,
+    node: INode,
     input_data: np.ndarray,
     rand_gen: np.random.RandomState,
     node_sampling: Dict[Type, Callable] = _node_sampling,

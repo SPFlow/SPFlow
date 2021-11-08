@@ -10,13 +10,13 @@ import numpy as np
 from numpy import ndarray
 from scipy.special import logsumexp  # type: ignore
 from spflow.python.structure.nodes.node import (
-    Node,
+    INode,
     ISumNode,
     IProductNode,
     ILeafNode,
     eval_spn_bottom_up,
 )
-from spflow.python.structure.network_type import SPN
+from spflow.python.structure.network_type import SPN, NetworkType
 from .leaves.parametric import node_likelihood, node_log_likelihood
 from typing import List, Callable, Type, Optional, Dict
 from multipledispatch import dispatch  # type: ignore
@@ -111,10 +111,10 @@ _node_likelihood: Dict[Type, Callable] = {
 }
 
 
-@dispatch(SPN, Node, ndarray, node_likelihood=dict)
+@dispatch(SPN, INode, ndarray, node_likelihood=dict)
 def likelihood(
-    network_type: SPN,
-    node: Node,
+    network_type: NetworkType,
+    node: INode,
     data: ndarray,
     node_likelihood: Dict[Type, Callable] = _node_likelihood,
 ) -> ndarray:
@@ -135,16 +135,16 @@ def likelihood(
     Returns: Likelihood value for SPN.
     """
 
-    all_results: Optional[Dict[Node, ndarray]] = {}
+    all_results: Optional[Dict[INode, ndarray]] = {}
     result: ndarray = eval_spn_bottom_up(node, node_likelihood, all_results=all_results, data=data)
 
     return result
 
 
-@dispatch(SPN, Node, ndarray, node_log_likelihood=dict)
+@dispatch(SPN, INode, ndarray, node_log_likelihood=dict)
 def log_likelihood(
-    network_type: SPN,
-    node: Node,
+    network_type: NetworkType,
+    node: INode,
     data: ndarray,
     node_log_likelihood: Dict[Type, Callable] = _node_log_likelihood,
 ) -> ndarray:

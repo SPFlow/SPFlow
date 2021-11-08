@@ -177,12 +177,11 @@ class TestRatSpn(unittest.TestCase):
         region_graph = random_region_graph(X=set(range(0, 7)), depth=2, replicas=2)
         rat_spn = construct_spn(region_graph, 3, 2, 2)[0]
         rat_spn_module = RatSpn(region_graph, 3, 2, 2)
-        self.assertTrue(rat_spn_module.root_node.equals(rat_spn))
+        self.assertTrue(rat_spn_module.output_nodes[0].equals(rat_spn))
 
     def test_rat_spn_module_inference(self):
         region_graph = random_region_graph(X=set(range(0, 2)), depth=1, replicas=1)
         rat_spn_module = RatSpn(region_graph, 1, 1, 1)
-        _isvalid_spn(rat_spn_module.root_node)
         self.assertAlmostEqual(
             likelihood(rat_spn_module, np.array([1.0, 1.0]).reshape(-1, 2))[0][0], 0.05854983
         )

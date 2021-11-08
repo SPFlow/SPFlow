@@ -5,7 +5,6 @@ Created on May 27, 2021
 
 This file provides the PyTorch variants of individual graph nodes.
 """
-from abc import ABC, abstractmethod
 from multipledispatch import dispatch  # type: ignore
 from typing import List
 import numpy as np
@@ -14,11 +13,11 @@ import torch
 from torch.nn.parameter import Parameter
 
 from spflow.torch.structure.module import TorchModule
-from spflow.python.structure.nodes.node import Node, ISumNode, IProductNode, ILeafNode
+from spflow.python.structure.nodes.node import INode, ISumNode, IProductNode, ILeafNode
 
 
 class TorchNode(TorchModule):
-    """PyTorch version of an abstract node. See Node.
+    """PyTorch version of an abstract node. See INode.
 
     Attributes:
         children (list(TorchNode)): List of child torch nodes (defaults to empty list).
@@ -39,14 +38,14 @@ class TorchNode(TorchModule):
         return 1
 
 
-@dispatch(Node)  # type: ignore[no-redef]
-def toTorch(x: Node) -> TorchNode:
+@dispatch(INode)  # type: ignore[no-redef]
+def toTorch(x: INode) -> TorchNode:
     return TorchNode(children=[toTorch(child) for child in x.children], scope=x.scope)
 
 
 @dispatch(TorchNode)  # type: ignore[no-redef]
-def toNodes(x: TorchNode) -> Node:
-    return Node(children=[toNodes(child) for child in x.children()], scope=x.scope)
+def toNodes(x: TorchNode) -> INode:
+    return INode(children=[toNodes(child) for child in x.children()], scope=x.scope)
 
 
 class TorchSumNode(TorchNode):
