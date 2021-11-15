@@ -7,9 +7,12 @@ This file provides the PyTorch version of RAT SPNs.
 """
 
 from spflow.base.structure.nodes.node import ILeafNode, ISumNode, INode
-from spflow.base.structure.rat import RegionGraph, Partition, Region
-from spflow.base.structure.rat import RatSpn, construct_spn
-from spflow.torch.structure.nodes.node import TorchLeafNode
+from spflow.base.structure.rat import RatSpn, RegionGraph, Partition, Region
+from spflow.torch.structure.nodes.node import (
+    TorchLeafNode,
+    proj_real_to_convex,
+    proj_convex_to_real,
+)
 from spflow.torch.structure.nodes.leaves.parametric import TorchGaussian
 from spflow.torch.structure.module import TorchModule
 
@@ -76,7 +79,12 @@ class _RegionLayer(nn.Module):
         partitions (List[_PartitionLayer]): List of child partitions.
     """
 
-    def __init__(self, num_nodes_region: int, partitions=List["_PartitionLayer"]) -> None:
+    def __init__(
+        self,
+        num_nodes_region: int,
+        partitions=List["_PartitionLayer"],
+        weights: torch.Tensor = None,
+    ) -> None:
         super(_RegionLayer, self).__init__()
 
         self.partitions = partitions
@@ -89,11 +97,33 @@ class _RegionLayer(nn.Module):
         self.num_out = num_nodes_region
         self.num_in = sum(len(partition) for partition in partitions)
 
-        # create and register weight parameters for sum nodes
-        self.register_parameter(
-            "weight",
-            Parameter(torch.full(size=(self.num_out, self.num_in), fill_value=1.0 / self.num_in)),
-        )
+        if weights is None:
+            # randomly generate weights (summing up to one per output)
+            weights = torch.rand((self.num_out, self.num_in)) + 1e-08  # avoid zeros
+            weights /= weights.sum(dim=-1, keepdim=True)
+
+        # create and register (auxiliary) weight parameters for sum nodes
+        self.register_parameter("weights_aux", Parameter())
+
+        self.weights = weights
+
+    @property
+    def weights(self) -> torch.Tensor:
+        # project auxiliary weights onto weights that sum up to one (per output)
+        return proj_real_to_convex(self.weights_aux)
+
+    @weights.setter
+    def weights(self, values: torch.Tensor) -> None:
+        if values.shape != (self.num_out, self.num_in):
+            raise ValueError(
+                f"Specified region weights for TorchRatSpn are of shape {values.shape}, but are expected to be of shape {(self.num_out, self.num_in)}."
+            )
+        elif not torch.allclose(values.sum(dim=-1), torch.tensor(1.0)):
+            raise ValueError(
+                "Region weights for TorchRatSpn must sum up to one for each output node."
+            )
+
+        self.weights_aux.data = proj_convex_to_real(values)
 
     def __len__(self) -> int:
         # return number of outputs
@@ -104,7 +134,7 @@ class _RegionLayer(nn.Module):
         inputs = torch.hstack([partition(data) for partition in self.partitions])  # type: ignore
 
         # broadcast inputs per output node and weight them in log-space
-        weighted_inputs = inputs.unsqueeze(1) + self.weight.log()  # type: ignore
+        weighted_inputs = inputs.unsqueeze(1) + self.weights.log()  # type: ignore
 
         return torch.logsumexp(weighted_inputs, dim=-1)
 
@@ -190,20 +220,41 @@ class TorchRatSpn(TorchModule):
         self.root_region = _RegionLayer(
             num_nodes_root,
             partitions=[
-                self.partition(partition) for partition in region_graph.root_region.partitions
+                self.partition(partition)
+                for partition in region_graph.root_region.partitions
             ],
         )
 
         # store root region mapping in dictionary
         self.rg_layers[region_graph.root_region] = self.root_region
 
+        # randomly generate root node weights (summing up to one)
+        root_node_weights = torch.rand((1, num_nodes_root)) + 1e-08  # avoid zeros
+        root_node_weights /= root_node_weights.sum(dim=-1, keepdim=True)
+
         # create weights for root node
         self.register_parameter(
-            "root_node_weight",
-            Parameter(
-                torch.full(size=(1, num_nodes_root), fill_value=1.0 / num_nodes_root)
-            ),  # , dtype=torch.float64))
+            "root_node_weights_aux",
+            Parameter(),
         )
+
+        self.root_node_weights = root_node_weights
+
+    @property
+    def root_node_weights(self) -> torch.Tensor:
+        # project auxiliary weights onto weights that sum up to one (per output)
+        return proj_real_to_convex(self.root_node_weights_aux)
+
+    @root_node_weights.setter
+    def root_node_weights(self, values: torch.Tensor) -> None:
+        if values.shape != (1, self.num_nodes_root):
+            raise ValueError(
+                f"Specified root node weights for TorchRatSpn are of shape {values.shape}, but are expected to be of shape {(1, self.num_nodes_root)}."
+            )
+        elif not torch.allclose(values.sum(dim=-1), torch.tensor(1.0)):
+            raise ValueError("Root node weights for TorchRatSpn must sum up to one.")
+
+        self.root_node_weights_aux.data = proj_convex_to_real(values)
 
     def partition(self, partition: Partition) -> _PartitionLayer:
         """Returns a _PartitionLayer object from a region graph Partition.
@@ -257,7 +308,7 @@ class TorchRatSpn(TorchModule):
         inputs = self.root_region(data)
 
         # broadcast inputs per output node and weight them
-        weighted_inputs = inputs.unsqueeze(1) + self.root_node_weight.log()  # type: ignore
+        weighted_inputs = inputs.unsqueeze(1) + self.root_node_weights.log()  # type: ignore
 
         return torch.logsumexp(weighted_inputs, dim=-1)
 
@@ -273,19 +324,21 @@ def _copy_region_parameters(src: _RegionLayer, dst: List[ISumNode]) -> None:
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of ISumNodes and number of outputs for _RegionLayer do not match.")
+        raise ValueError(
+            "Number of ISumNodes and number of outputs for _RegionLayer do not match."
+        )
 
     # iterate over nodes and region weights
     for i, node in enumerate(dst):
 
         # number of children of sum nodes should match number of region layer inputs
-        if not (len(node.weights) == len(node.children) == src.weight.data.shape[1]):
+        if not (len(node.weights) == len(node.children) == src.weights.data.shape[1]):
             raise ValueError(
                 "Number of ISumNode children or weights and number of inputs for _RegionLayer do not match."
             )
 
         # assign region weight slice to node weights
-        node.weights = src.weight.data[i, :].detach().cpu().tolist()
+        node.weights = src.weights.data[i, :].detach().cpu().tolist()
 
 
 @dispatch(_LeafLayer, list)  # type: ignore[no-redef]
@@ -299,7 +352,9 @@ def _copy_region_parameters(src: _LeafLayer, dst: List[ILeafNode]) -> None:
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of ILeafNodes and number of outputs for _LeafLayer do not match.")
+        raise ValueError(
+            "Number of ILeafNodes and number of outputs for _LeafLayer do not match."
+        )
 
     # iterate over nodes and region weights
     for node, torch_node in zip(dst, src.leaf_nodes):
@@ -321,19 +376,29 @@ def _copy_region_parameters(src: List[ISumNode], dst: _RegionLayer) -> None:
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of ISumNodes and number of outputs for _RegionLayer do not match.")
+        raise ValueError(
+            "Number of ISumNodes and number of outputs for _RegionLayer do not match."
+        )
+
+    region_weights = dst.weights.detach()
 
     # iterate over nodes and region weights
     for i, node in enumerate(src):
 
+        assert torch.isclose(
+            torch.tensor(sum(node.weights)), torch.tensor(1.0)
+        ), f"{torch.tensor(sum(node.weights))}"
+
         # number of children of sum nodes should match number of region layer inputs
-        if not (len(node.weights) == len(node.children) == dst.weight.data.shape[1]):
+        if not (len(node.weights) == len(node.children) == region_weights.shape[1]):
             raise ValueError(
                 "Number of ISumNode children or weights and number of inputs for _RegionLayer do not match."
             )
 
         # assign node weights to region weight slice
-        dst.weight.data[i, :] = torch.tensor(node.weights)
+        region_weights.data[i, :] = torch.tensor(node.weights)
+
+    dst.weights = region_weights
 
 
 @dispatch(list, _LeafLayer)  # type: ignore[no-redef]
@@ -351,7 +416,9 @@ def _copy_region_parameters(src: List[ILeafNode], dst: _LeafLayer) -> None:
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of ILeafNodes and number of outputs for _LeafLayer do not match.")
+        raise ValueError(
+            "Number of ILeafNodes and number of outputs for _LeafLayer do not match."
+        )
 
     # iterate over nodes and region weights
     for node, torch_node in zip(src, dst.leaf_nodes):
@@ -376,7 +443,9 @@ def toNodes(torch_rat: TorchRatSpn) -> RatSpn:
     for region in torch_rat.region_graph.regions:
 
         # get region layer from torch RAT SPN
-        region_layer: Union[_RegionLayer, _LeafLayer, _PartitionLayer] = torch_rat.rg_layers[region]
+        region_layer: Union[
+            _RegionLayer, _LeafLayer, _PartitionLayer
+        ] = torch_rat.rg_layers[region]
 
         # get region nodes from node RAT SPN
         region_nodes: List[INode] = rat.rg_nodes[region]
@@ -396,7 +465,7 @@ def toNodes(torch_rat: TorchRatSpn) -> RatSpn:
         _copy_region_parameters(region_layer, region_nodes)
 
     # transfer root node weight
-    rat.output_nodes[0].weights = torch_rat.root_node_weight.data.cpu().numpy()  # type: ignore
+    rat.output_nodes[0].weights = torch_rat.root_node_weights.data.cpu().numpy()  # type: ignore
 
     return rat
 
@@ -411,7 +480,9 @@ def toTorch(rat: RatSpn) -> TorchRatSpn:
     for region in rat.region_graph.regions:
 
         # get region layer from torch RAT SPN
-        region_layer: Union[_RegionLayer, _LeafLayer, _PartitionLayer] = torch_rat.rg_layers[region]
+        region_layer: Union[
+            _RegionLayer, _LeafLayer, _PartitionLayer
+        ] = torch_rat.rg_layers[region]
 
         # get region nodes from node RAT SPN
         region_nodes: List[INode] = rat.rg_nodes[region]
@@ -431,6 +502,6 @@ def toTorch(rat: RatSpn) -> TorchRatSpn:
         _copy_region_parameters(region_nodes, region_layer)
 
     # transfer root node weight
-    torch_rat.root_node_weight.data = torch.tensor(rat.output_nodes[0].weights)
+    torch_rat.root_node_weights[0, :] = torch.tensor(rat.output_nodes[0].weights)
 
     return torch_rat
