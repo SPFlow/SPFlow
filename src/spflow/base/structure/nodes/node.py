@@ -78,8 +78,17 @@ class ISumNode(INode):
 
     """
 
-    def __init__(self, children: List[INode], scope: List[int], weights: np.ndarray) -> None:
+    def __init__(
+        self, children: List[INode], scope: List[int], weights: np.ndarray = None
+    ) -> None:
         super().__init__(children=children, scope=scope)
+
+        if weights is None:
+            weights = (
+                np.random.rand(sum(len(child) for child in children)) + 1e-08
+            )  # avoid zeros
+            weights /= weights.sum()
+
         self.weights = weights
 
     def equals(self, other: INode) -> bool:
@@ -215,7 +224,9 @@ def bfs(root: INode, func: Callable):
                     queue.append(c)
 
 
-def get_nodes_by_type(node: INode, ntype: Union[Type, Tuple[Type, ...]] = INode) -> List[INode]:
+def get_nodes_by_type(
+    node: INode, ntype: Union[Type, Tuple[Type, ...]] = INode
+) -> List[INode]:
     """Iterates SPN in breadth first order and collects nodes of type ntype..
 
     Args:
