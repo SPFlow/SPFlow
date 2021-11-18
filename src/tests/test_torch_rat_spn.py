@@ -13,6 +13,12 @@ from spflow.base.structure.rat.region_graph import (
 from spflow.base.structure.rat import RatSpn, construct_spn
 from spflow.torch.structure.rat import TorchRatSpn, toNodes, toTorch, _RegionLayer, _LeafLayer
 from spflow.torch.inference import log_likelihood, likelihood
+from spflow.base.learning.context import Context  # type: ignore
+from spflow.base.structure.nodes.leaves.parametric import (
+    Gaussian,
+    get_scipy_object,
+    get_scipy_object_parameters,
+)
 
 
 class TestTorchRatSpn(unittest.TestCase):
@@ -80,9 +86,10 @@ class TestTorchRatSpn(unittest.TestCase):
 
         # create region graph
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
+        context = Context(parametric_types=[Gaussian] * len(rg.root_region.random_variables))
 
         # create torch rat spn from region graph
-        rat = RatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3)
+        rat = RatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3, context=context)
 
         sum_nodes = get_nodes_by_type(rat.output_nodes[0], ISumNode)
         leaf_nodes = get_nodes_by_type(rat.output_nodes[0], ILeafNode)

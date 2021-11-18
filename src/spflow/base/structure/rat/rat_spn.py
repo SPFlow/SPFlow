@@ -5,17 +5,17 @@ Created on May 24, 2021
 """
 import itertools
 import numpy as np
-from typing import Dict, List, Union, cast, Optional, Tuple
+from typing import Dict, List, Union, cast, Optional, Tuple, Type, Sequence
 from spflow.base.structure.module import Module
+from spflow.base.learning.context import Context  # type: ignore
 from spflow.base.structure.nodes.node import INode, IProductNode, ISumNode, get_topological_order
 from spflow.base.structure.network_type import SPN
-from spflow.base.structure.nodes.leaves.parametric import Gaussian, MultivariateGaussian
+from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian, ParametricLeaf
 from .region_graph import (
     Partition,
     Region,
     RegionGraph,
 )
-from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 
 
 class RatSpn(Module):
@@ -52,9 +52,10 @@ class RatSpn(Module):
         num_nodes_root: int,
         num_nodes_region: int,
         num_nodes_leaf: int,
+        context: Context,
     ) -> None:
         rat_result: Tuple[ISumNode, Dict[Union[Region, Partition], List[INode]]] = construct_spn(
-            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf
+            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context
         )
         super().__init__(children=[], network_type=SPN(), scope=rat_result[0].scope)
         rat_spn: ISumNode = rat_result[0]
@@ -78,6 +79,7 @@ def construct_spn(
     num_nodes_root: int,
     num_nodes_region: int,
     num_nodes_leaf: int,
+    context: Context,
 ) -> Tuple[ISumNode, Dict[Union[Region, Partition], List[INode]]]:
     """Builds a RAT-SPN from a given RegionGraph.
 
@@ -101,6 +103,8 @@ def construct_spn(
             (I in the paper)
             The number of LeafNodes each leaf region is equipped with. All LeafNodes of the same region
             are multivariate distributions over the same scope, but possibly differently parametrized.
+        context:
+            Context object determining distributions for scopes in SPN.
 
 
     Returns:
@@ -143,7 +147,14 @@ def construct_spn(
         elif not region.partitions:
             # the region is a leaf
             rg_nodes[region] = [
-                Gaussian(scope=region_scope, mean=0.0, stdev=1.0) if len(region_scope)==1 else MultivariateGaussian(scope=region_scope, mean_vector=np.zeros(len(region_scope)), covariance_matrix=np.eye(len(region_scope))) for i in range(num_nodes_leaf)
+                context.parametric_types[region_scope[0]](scope=region_scope)
+                if len(region_scope) == 1
+                else MultivariateGaussian(
+                    scope=region_scope,
+                    mean_vector=np.zeros(len(region_scope)),
+                    covariance_matrix=np.eye(len(region_scope)),
+                )
+                for i in range(num_nodes_leaf)
             ]
         else:
             # the region is an internal region

@@ -12,7 +12,6 @@ from typing import List, Optional, Tuple
 from multipledispatch import dispatch  # type: ignore
 
 
-
 class Module(ABC):
     """Abstract module class for building graph structures.
 

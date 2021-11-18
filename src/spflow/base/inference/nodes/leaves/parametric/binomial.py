@@ -17,7 +17,7 @@ from typing import Optional
 
 
 @dispatch(Binomial, data=np.ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: Binomial, data: np.ndarray = None) -> np.ndarray:
+def node_likelihood(node: Binomial, data: np.ndarray) -> np.ndarray:
     probs = np.ones((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
@@ -30,7 +30,7 @@ def node_likelihood(node: Binomial, data: np.ndarray = None) -> np.ndarray:
 
 
 @dispatch(Binomial, data=np.ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: Binomial, data: np.ndarray = None) -> np.ndarray:
+def node_log_likelihood(node: Binomial, data: np.ndarray) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     data = data[:, node.scope]
     marg_ids = np.isnan(data)
