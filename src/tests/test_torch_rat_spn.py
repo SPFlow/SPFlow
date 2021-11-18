@@ -1,17 +1,15 @@
 import unittest
 
 import random
-from unittest.signals import registerResult
 from spflow.base.structure.nodes.node import get_nodes_by_type, ISumNode, ILeafNode
-from spflow.base.inference.rat.rat_spn import log_likelihood, likelihood
+from spflow.base.inference.rat.rat_spn import log_likelihood
 import torch
 import numpy as np
 from spflow.base.structure.rat.region_graph import (
     random_region_graph,
-    _print_region_graph,
     RegionGraph,
 )
-from spflow.base.structure.rat import RatSpn, construct_spn
+from spflow.base.structure.rat import RatSpn
 from spflow.torch.structure.rat import (
     TorchRatSpn,
     toNodes,
@@ -19,7 +17,7 @@ from spflow.torch.structure.rat import (
     _RegionLayer,
     _LeafLayer,
 )
-from spflow.torch.inference import log_likelihood, likelihood
+from spflow.torch.inference import log_likelihood
 
 
 class TestTorchRatSpn(unittest.TestCase):
@@ -190,6 +188,35 @@ class TestTorchRatSpn(unittest.TestCase):
         # compare outputs
         self.assertTrue(torch.allclose(torch_output.exp(), torch_output_2.exp()))
 
+    def torch_rat_spn_gradient_computation(self):
+
+        # create region graph
+        rg = random_region_graph(X=set(range(4)), depth=2, replicas=1, num_splits=2)
+
+        # create torch rat spn from region graph
+        torch_rat = TorchRatSpn(
+            rg, num_nodes_root=1, num_nodes_region=1, num_nodes_leaf=1
+        )
+
+        # create dummy input data (batch size x random variables)
+        data = np.random.randn((3, 4))
+
+        nll = -log_likelihood(torch_rat, data).mean()
+        nll.backward()
+
+        # iterate over regions
+        for region in torch_rat.region_graph.regions:
+
+            # get region
+            region = torch_rat.rg_layers[region]
+
+            if(isinstance(region, _RegionLayer)):
+                self.assertTrue(region.weights_aux.grad is not None)
+            
+            elif(isinstance(region, _LeafLayer)):
+                for leaf in region.leaf_nodes:
+                    for p in leaf.parameters():
+                        self.assertTrue(p.grad is not None)
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)
