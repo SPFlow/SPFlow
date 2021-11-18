@@ -1,24 +1,25 @@
 import unittest
-
 import random
 from spflow.base.structure.nodes.node import get_nodes_by_type, ISumNode, ILeafNode
-from spflow.base.inference.rat.rat_spn import log_likelihood, likelihood
+from spflow.base.inference.rat.rat_spn import log_likelihood
 import torch
 import numpy as np
 from spflow.base.structure.rat.region_graph import (
     random_region_graph,
-    _print_region_graph,
     RegionGraph,
 )
-from spflow.base.structure.rat import RatSpn, construct_spn
-from spflow.torch.structure.rat import TorchRatSpn, toNodes, toTorch, _RegionLayer, _LeafLayer
-from spflow.torch.inference import log_likelihood, likelihood
+
 from spflow.base.learning.context import Context  # type: ignore
-from spflow.base.structure.nodes.leaves.parametric import (
-    Gaussian,
-    get_scipy_object,
-    get_scipy_object_parameters,
+from spflow.base.structure.nodes.leaves.parametric import Gaussian
+from spflow.base.structure.rat import RatSpn
+from spflow.torch.structure.rat import (
+    TorchRatSpn,
+    toNodes,
+    toTorch,
+    _RegionLayer,
+    _LeafLayer,
 )
+from spflow.torch.inference import log_likelihood
 
 
 class TestTorchRatSpn(unittest.TestCase):
@@ -36,13 +37,28 @@ class TestTorchRatSpn(unittest.TestCase):
         rg = RegionGraph()
 
         self.assertRaises(
-            ValueError, TorchRatSpn, rg, num_nodes_root=0, num_nodes_region=1, num_nodes_leaf=1
+            ValueError,
+            TorchRatSpn,
+            rg,
+            num_nodes_root=0,
+            num_nodes_region=1,
+            num_nodes_leaf=1,
         )
         self.assertRaises(
-            ValueError, TorchRatSpn, rg, num_nodes_root=1, num_nodes_region=0, num_nodes_leaf=1
+            ValueError,
+            TorchRatSpn,
+            rg,
+            num_nodes_root=1,
+            num_nodes_region=0,
+            num_nodes_leaf=1,
         )
         self.assertRaises(
-            ValueError, TorchRatSpn, rg, num_nodes_root=1, num_nodes_region=1, num_nodes_leaf=0
+            ValueError,
+            TorchRatSpn,
+            rg,
+            num_nodes_root=1,
+            num_nodes_region=1,
+            num_nodes_leaf=0,
         )
 
     def test_torch_rat_spn_to_nodes(self):
@@ -51,19 +67,19 @@ class TestTorchRatSpn(unittest.TestCase):
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
 
         # create torch rat spn from region graph
-        torch_rat = TorchRatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3)
+        torch_rat = TorchRatSpn(
+            rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3
+        )
 
         # randomly change parameters from inital values
         for region in torch_rat.region_graph.regions:
 
             region_layer: _RegionLayer = torch_rat.rg_layers[region]
 
-            if isinstance(region_layer, _RegionLayer):
-                region_layer.weight.data = torch.rand_like(region_layer.weight.data)
-            else:
+            if isinstance(region_layer, _LeafLayer):
                 for leaf_node in region_layer.leaf_nodes:
                     # TODO: only works for Gaussians (provide method to randomize parameters ?)
-                    leaf_node.set_params(random.random(), random.random())
+                    leaf_node.set_params(random.random(), random.random() + 1e-08)
 
         # convert torch rat spn to node rat spn
         rat = toNodes(torch_rat)
@@ -79,7 +95,9 @@ class TestTorchRatSpn(unittest.TestCase):
 
         # compare outputs
         self.assertTrue(
-            np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True)
+            np.allclose(
+                nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True
+            )
         )
 
     def test_nodes_rat_spn_to_torch(self):
@@ -95,11 +113,8 @@ class TestTorchRatSpn(unittest.TestCase):
         leaf_nodes = get_nodes_by_type(rat.output_nodes[0], ILeafNode)
 
         # randomly change parameters from inital values
-        for node in sum_nodes:
-            node.weights = np.random.rand(len(node.weights))
-
         for node in leaf_nodes:
-            node.set_params(random.random(), random.random())
+            node.set_params(random.random(), random.random() + 1e-08)
 
         # convert node rat spn to torch rat spn
         torch_rat = toTorch(rat)
@@ -115,7 +130,9 @@ class TestTorchRatSpn(unittest.TestCase):
 
         # compare outputs
         self.assertTrue(
-            np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True)
+            np.allclose(
+                nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True
+            )
         )
 
     def test_torch_rat_spn_to_nodes_to_torch(self):
@@ -124,26 +141,43 @@ class TestTorchRatSpn(unittest.TestCase):
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
 
         # create torch rat spn from region graph
-        torch_rat = TorchRatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3)
+        torch_rat = TorchRatSpn(
+            rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3
+        )
 
         # randomly change parameters from inital values
         for region in torch_rat.region_graph.regions:
 
             region_layer: _RegionLayer = torch_rat.rg_layers[region]
 
-            if isinstance(region_layer, _RegionLayer):
-                region_layer.weight.data = torch.rand_like(region_layer.weight.data)
-            else:
+            if isinstance(region_layer, _LeafLayer):
                 for leaf_node in region_layer.leaf_nodes:
                     # TODO: only works for Gaussians (provide method to randomize parameters ?)
-                    leaf_node.set_params(random.random(), random.random())
+                    leaf_node.set_params(random.random(), random.random() + 1e-08)
 
         # convert torch rat spn to nodes and back to torch
         torch_rat_2 = toTorch(toNodes(torch_rat))
 
-        # compare parameters
-        for p1, p2 in zip(torch_rat.parameters(), torch_rat_2.parameters()):
-            self.assertTrue(torch.allclose(p1.data, p2.data))
+        self.assertTrue(
+            set(torch_rat.rg_layers.keys()) == set(torch_rat_2.rg_layers.keys())
+        )
+
+        for p1, p2 in [
+            (torch_rat.rg_layers[k], torch_rat_2.rg_layers[k])
+            for k in torch_rat.rg_layers.keys()
+        ]:
+
+            if isinstance(p1, _RegionLayer):
+                self.assertTrue(torch.allclose(p1.weights, p2.weights))
+            elif isinstance(p1, _LeafLayer):
+                for l1, l2 in zip(p1.leaf_nodes, p2.leaf_nodes):
+
+                    self.assertTrue(l1.scope == l2.scope)
+
+                    for l1_p, l2_p in zip(l1.get_params(), l2.get_params()):
+                        self.assertTrue(
+                            torch.allclose(torch.tensor(l1_p), torch.tensor(l2_p))
+                        )
 
         # create dummy input data (batch size x random variables)
         dummy_data = np.random.randn(3, 1024)
@@ -155,7 +189,37 @@ class TestTorchRatSpn(unittest.TestCase):
         torch_output_2 = log_likelihood(torch_rat_2, torch.tensor(dummy_data))
 
         # compare outputs
-        self.assertTrue(torch.allclose(torch_output, torch_output_2))
+        self.assertTrue(torch.allclose(torch_output.exp(), torch_output_2.exp()))
+
+    def torch_rat_spn_gradient_computation(self):
+
+        # create region graph
+        rg = random_region_graph(X=set(range(4)), depth=2, replicas=1, num_splits=2)
+
+        # create torch rat spn from region graph
+        torch_rat = TorchRatSpn(
+            rg, num_nodes_root=1, num_nodes_region=1, num_nodes_leaf=1
+        )
+
+        # create dummy input data (batch size x random variables)
+        data = np.random.randn((3, 4))
+
+        nll = -log_likelihood(torch_rat, data).mean()
+        nll.backward()
+
+        # iterate over regions
+        for region in torch_rat.region_graph.regions:
+
+            # get region
+            region = torch_rat.rg_layers[region]
+
+            if(isinstance(region, _RegionLayer)):
+                self.assertTrue(region.weights_aux.grad is not None)
+            
+            elif(isinstance(region, _LeafLayer)):
+                for leaf in region.leaf_nodes:
+                    for p in leaf.parameters():
+                        self.assertTrue(p.grad is not None)
 
 
 if __name__ == "__main__":
