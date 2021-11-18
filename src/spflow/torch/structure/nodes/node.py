@@ -73,31 +73,25 @@ class TorchSumNode(TorchNode):
         children: List[TorchModule],
         scope: List[int],
         weights: Optional[Union[np.ndarray, torch.Tensor, List[float]]] = None,
-        normalize: bool = True,
     ) -> None:
 
         if not children:
             raise ValueError("Sum node must have at least one child.")
 
         if weights is None:
-            weights = torch.rand(sum(len(child) for child in children))
-        elif isinstance(weights, np.ndarray) or isinstance(weights, list):
-            weights = torch.tensor(weights)
-
-        if not torch.all(weights >= 0):
-            raise ValueError("All weights must be non-negative.")
-
-        if not len(weights) == sum(len(child) for child in children):
-            raise ValueError("Number of weights does not match number of specified child nodes.")
-
-        # noramlize
-        if normalize:
+            weights = (
+                torch.rand(sum(len(child) for child in children)) + 1e-08
+            )  # avoid zeros
             weights /= weights.sum()
+
+        self.num_in = sum(len(child) for child in children)
 
         super(TorchSumNode, self).__init__(children, scope)
 
-        # store auxiliary weights as torch parameters
-        self.weights_aux = nn.Parameter(weights.log())
+        # register auxiliary parameters for weights as torch parameters
+        self.weights_aux = nn.Parameter()
+
+        self.weights = weights
 
     @property
     def weights(self) -> torch.Tensor:
@@ -106,7 +100,18 @@ class TorchSumNode(TorchNode):
 
     @weights.setter
     def weights(self, value: Union[np.ndarray, torch.Tensor, List[float]]) -> None:
-        # TODO: possible checks
+
+        if isinstance(value, np.ndarray) or isinstance(value, list):
+            value = torch.tensor(value)
+        if not torch.all(value >= 0):
+            raise ValueError("All weights must be non-negative.")
+        if not torch.isclose(value.sum(), torch.tensor(1.0, dtype=value.dtype)):
+            raise ValueError("Weights must sum up to one.")
+        if not len(value) == self.num_in:
+            raise ValueError(
+                "Number of weights does not match number of specified child nodes."
+            )
+
         self.weights_aux.data = proj_convex_to_real(value)  # type: ignore
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
@@ -155,12 +160,16 @@ class TorchProductNode(TorchNode):
 
 @dispatch(IProductNode)  # type: ignore[no-redef]
 def toTorch(x: IProductNode) -> TorchProductNode:
-    return TorchProductNode(children=[toTorch(child) for child in x.children], scope=x.scope)
+    return TorchProductNode(
+        children=[toTorch(child) for child in x.children], scope=x.scope
+    )
 
 
 @dispatch(TorchProductNode)  # type: ignore[no-redef]
 def toNodes(x: TorchProductNode) -> IProductNode:
-    return IProductNode(children=[toNodes(child) for child in x.children()], scope=x.scope)
+    return IProductNode(
+        children=[toNodes(child) for child in x.children()], scope=x.scope
+    )
 
 
 class TorchLeafNode(TorchNode):

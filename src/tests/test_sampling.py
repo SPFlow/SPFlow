@@ -1,6 +1,5 @@
 import unittest
 from numpy.random.mtrand import RandomState  # type: ignore
-from spflow.base.structure.nodes.leaves.parametric import Gaussian
 import numpy as np
 from spflow.base.structure.nodes.node import ISumNode, IProductNode
 from spflow.base.structure.network_type import SPN
@@ -9,11 +8,7 @@ from spflow.base.structure.nodes.validity_checks import _isvalid_spn
 from spflow.base.structure.rat.region_graph import random_region_graph
 from spflow.base.sampling.rat.rat_spn import sample_instances
 from spflow.base.learning.context import Context  # type: ignore
-from spflow.base.structure.nodes.leaves.parametric import (
-    Gaussian,
-    get_scipy_object,
-    get_scipy_object_parameters,
-)
+from spflow.base.structure.nodes.leaves.parametric import Gaussian
 
 
 class TestSampling(unittest.TestCase):
