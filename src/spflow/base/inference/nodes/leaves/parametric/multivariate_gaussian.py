@@ -15,7 +15,7 @@ import numpy as np
 
 
 @dispatch(MultivariateGaussian, data=np.ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: MultivariateGaussian, data: np.ndarray = None) -> np.ndarray:
+def node_likelihood(node: MultivariateGaussian, data: np.ndarray) -> np.ndarray:
     probs = np.ones((data.shape[0], 1))
     # TODO: check for partially marginalization
     probs[:, 0] = get_scipy_object(node).pdf(
@@ -25,7 +25,7 @@ def node_likelihood(node: MultivariateGaussian, data: np.ndarray = None) -> np.n
 
 
 @dispatch(MultivariateGaussian, data=np.ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: MultivariateGaussian, data: np.ndarray = None) -> np.ndarray:
+def node_log_likelihood(node: MultivariateGaussian, data: np.ndarray) -> np.ndarray:
     probs = np.zeros((data.shape[0], 1))
     # TODO: check for partially marginalization
     probs[:, 0] = get_scipy_object(node).logpdf(

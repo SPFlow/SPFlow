@@ -21,6 +21,12 @@ import numpy as np
 from typing import List, Union, Dict
 
 from multipledispatch import dispatch  # type: ignore
+from spflow.base.learning.context import Context  # type: ignore
+from spflow.base.structure.nodes.leaves.parametric import (
+    Gaussian,
+    get_scipy_object,
+    get_scipy_object_parameters,
+)
 
 
 class _PartitionLayer(nn.Module):
@@ -365,11 +371,15 @@ def _copy_region_parameters(src: List[ILeafNode], dst: _LeafLayer) -> None:
 @dispatch(TorchRatSpn)  # type: ignore[no-redef]
 def toNodes(torch_rat: TorchRatSpn) -> RatSpn:
     # create RAT-SPN module using region graph (includes scopes)
+    context = Context(
+        parametric_types=[Gaussian] * len(torch_rat.region_graph.root_region.random_variables)
+    )
     rat = RatSpn(
         torch_rat.region_graph,
         torch_rat.num_nodes_root,
         torch_rat.num_nodes_region,
         torch_rat.num_nodes_leaf,
+        context,
     )
 
     # get all regions

@@ -2,18 +2,19 @@
 @author Bennet Wittelsbach, based on code from Alejandro Molina
 """
 
-from typing import List
+from typing import List, Type
 import numpy as np
 from spflow.base.structure.nodes.leaves.parametric.parametric import ParametricLeaf
 
 from spflow.base.structure.nodes.leaves.parametric.statistical_types import MetaType
 
+
 class Context:
     """A Context provides meta information about data used to learn SPNs.
 
     In most cases, the following attributes need to be set by the user (if they're necessary for the type of SPN that shall be learned).
-    E.g. parametric_types is only needed if the SPN has parametric distributions as leaves (e.g. Gaussian, Poisson, ...). 
-    
+    E.g. parametric_types is only needed if the SPN has parametric distributions as leaves (e.g. Gaussian, Poisson, ...).
+
     Attributes:
         meta_types:
             List of meta types of the random variables in the data, indexed by the scope (index of the feature in the data).
@@ -25,8 +26,15 @@ class Context:
         feature_names:
             Name of the feature/random variable, indexed by scope. Optional.
     """
-    def __init__(self, meta_types:List[MetaType]=[], domains:List[np.ndarray]=[], parametric_types:List[ParametricLeaf]=[], feature_names:List[str]=[]) -> None:
-        # TODO: Do we need Context behind the scope of LearnSPN? Should Context be able to handle network_types? 
+
+    def __init__(
+        self,
+        meta_types: List[int] = [],
+        domains: List[np.ndarray] = [],
+        parametric_types: List[Type[ParametricLeaf]] = [],
+        feature_names: List[str] = [],
+    ) -> None:
+        # TODO: Do we need Context behind the scope of LearnSPN? Should Context be able to handle network_types?
         # TODO: E.g. should users define the network type of the learned PC here? And if so, extend it.
         self.meta_types = meta_types
         self.domains = domains
@@ -44,11 +52,11 @@ class Context:
         Arguments:
             scopes:
                 List of scopes of the random variables whose MetaType shall be retrieved.
-        
+
         Returns:
             List of MetaTypes of all random variables given by 'scopes'.
         """
-        return [self.meta_types[s] for s in scopes]
+        return [MetaType(self.meta_types[s]) for s in scopes]
 
     def get_domains_by_scope(self, scopes: List[int]) -> List[np.ndarray]:
         """Get the domains of the random variables given by 'scopes'.
@@ -56,7 +64,7 @@ class Context:
         Arguments:
             scopes:
                 List of scopes of the random variables whose domains shall be retrieved.
-        
+
         Returns:
             List of numpy arrays representing the domains of all random variables given by 'scopes'.
         """
@@ -68,7 +76,7 @@ class Context:
         Arguments:
             scopes:
                 List of scopes of the random variables whose ParametricType shall be retrieved.
-        
+
         Returns:
             List of ParametricType of all random variables given by 'scopes'.
         """
@@ -97,7 +105,7 @@ class Context:
         assert len(data.shape) == 2, "data is not 2D?"
         assert data.shape[1] == len(self.meta_types), "Data columns and metatype size doesn't match"
 
-        from spn.python.structure.nodes.leaves.parametric.statistical_types import MetaType
+        from spflow.base.structure.nodes.leaves.parametric.statistical_types import MetaType
 
         domain = []
 
@@ -114,6 +122,6 @@ class Context:
             else:
                 raise AssertionError("Unkown MetaType " + str(feature_meta_type))
 
-        self.domains = domain # np.asanyarray(domain)
+        self.domains = domain  # np.asanyarray(domain)
 
         return self

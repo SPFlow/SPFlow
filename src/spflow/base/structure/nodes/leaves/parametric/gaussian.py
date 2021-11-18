@@ -5,7 +5,6 @@ from typing import Tuple, Dict, List
 import numpy as np
 from scipy.stats import norm  # type: ignore
 from scipy.stats._distn_infrastructure import rv_continuous  # type: ignore
-
 from multipledispatch import dispatch  # type: ignore
 
 
@@ -26,23 +25,19 @@ class Gaussian(ParametricLeaf):
     """
 
     type = ParametricType.CONTINUOUS
-    
-    """@dispatch(list)
-    def __init__(self, scope: List[int]) -> None:
+
+    def __init__(
+        self,
+        scope: List[int],
+        mean: float = None,
+        stdev: float = None,
+    ) -> None:
         if len(scope) != 1:
             raise ValueError(f"Scope size for Gaussian should be 1, but was: {len(scope)}")
         super().__init__(scope)
-
-        np.random.seed(17) # maybe outsource this (eg. fct arg or global var)
-        mean = np.random.uniform(-1.0, 1.0)
-        stdev = np.random.uniform(0, 1)
-        self.set_params(mean, stdev)"""
-
-    def __init__(self, scope: List[int], mean: float, stdev: float) -> None:
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for Gaussian should be 1, but was: {len(scope)}")
-        super().__init__(scope)
-        self.set_params(mean, stdev)
+        self.mean = mean if mean is not None else np.random.uniform(-1, 1)
+        self.stdev = stdev if stdev is not None else np.random.uniform(0, 1)
+        self.set_params(self.mean, self.stdev)
 
     def set_params(self, mean: float, stdev: float) -> None:
 

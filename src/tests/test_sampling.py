@@ -8,6 +8,12 @@ from spflow.base.structure.rat.rat_spn import RatSpn
 from spflow.base.structure.nodes.validity_checks import _isvalid_spn
 from spflow.base.structure.rat.region_graph import random_region_graph
 from spflow.base.sampling.rat.rat_spn import sample_instances
+from spflow.base.learning.context import Context  # type: ignore
+from spflow.base.structure.nodes.leaves.parametric import (
+    Gaussian,
+    get_scipy_object,
+    get_scipy_object_parameters,
+)
 
 
 class TestSampling(unittest.TestCase):
@@ -176,8 +182,11 @@ class TestSampling(unittest.TestCase):
 
     def test_parameter_sampling_rat_module(self):
 
-        region_graph = random_region_graph(X=set(range(0, 2)), depth=1, replicas=2)
-        rat_spn_module = RatSpn(region_graph, 1, 1, 1)
+        region_graph = random_region_graph(X=set(range(0, 2)), depth=1, replicas=1)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
+        rat_spn_module = RatSpn(region_graph, 1, 1, 1, context)
         _isvalid_spn(rat_spn_module.output_nodes[0])
 
         result = np.mean(
@@ -190,7 +199,11 @@ class TestSampling(unittest.TestCase):
         )
 
         self.assertTrue(
-            np.allclose(result, np.array([0, 0]), atol=0.01),
+            np.allclose(
+                result,
+                np.array([rat_spn_module.nodes[0].mean, rat_spn_module.nodes[1].mean]),
+                atol=0.01,
+            ),
         )
 
 

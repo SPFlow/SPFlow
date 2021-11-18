@@ -19,12 +19,13 @@ from spflow.base.structure.network_type import NetworkType
 class Node(Module):
     """Base class for all types of nodes modules
 
-        Attributes:
-            output_nodes:
-                List of one INode as Node modules only encapsulate a single INode, which is at the same time the root.
-            nodes:
-                List of one INode as Node modules only encapsulate a single INode
-        """
+    Attributes:
+        output_nodes:
+            List of one INode as Node modules only encapsulate a single INode, which is at the same time the root.
+        nodes:
+            List of one INode as Node modules only encapsulate a single INode
+    """
+
     def __init__(self, scope: List[int], children: List[Module], network_type: NetworkType) -> None:
         super().__init__(children=children, network_type=network_type, scope=scope)
         self.output_nodes: List[INode] = []
@@ -37,10 +38,11 @@ class Node(Module):
 class SumNode(Node):
     """SumNode is module encapsulating one ISumNode.
 
-            Args:
-                weights:
-                    A np.array of floats assigning a weight value to each of the encapsulated ISumNode's children.
-            """
+    Args:
+        weights:
+            A np.array of floats assigning a weight value to each of the encapsulated ISumNode's children.
+    """
+
     def __init__(
         self,
         scope: List[int],
@@ -75,8 +77,8 @@ class SumNode(Node):
 
 
 class ProductNode(Node):
-    """ProductNode is module encapsulating one IProductNode.
-                """
+    """ProductNode is module encapsulating one IProductNode."""
+
     def __init__(self, scope: List[int], children: List[Module], network_type: NetworkType) -> None:
         super().__init__(children=children, network_type=network_type, scope=scope)
 
@@ -100,10 +102,11 @@ class ProductNode(Node):
 class LeafNode(Node):
     """LeafNode is module encapsulating one ILeafNode.
 
-        Args:
-            children:
-                Empty list as LeafNodes can not have children.
-                    """
+    Args:
+        children:
+            Empty list as LeafNodes can not have children.
+    """
+
     def __init__(
         self,
         scope: List[int],
