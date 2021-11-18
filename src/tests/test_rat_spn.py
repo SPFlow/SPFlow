@@ -7,41 +7,55 @@ from spflow.base.structure.nodes.node import (
 )
 from spflow.base.inference.rat.rat_spn import likelihood, log_likelihood
 import numpy as np
+from spflow.base.learning.context import Context  # type: ignore
+from spflow.base.structure.nodes.leaves.parametric import (
+    Gaussian,
+    get_scipy_object,
+    get_scipy_object_parameters,
+)
 
 
 class TestRatSpn(unittest.TestCase):
     def test_rat_spn_num_nodes(self):
-        random_variables = set(range(1, 8))
+        random_variables = set(range(0, 7))
         depth = 2
         replicas = 1
         region_graph = random_region_graph(random_variables, depth, replicas)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
 
         num_nodes_root = 0
         num_nodes_region = 1
         num_nodes_leaf = 1
         with self.assertRaises(ValueError):
-            construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+            construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context)
 
         num_nodes_root = 1
         num_nodes_region = 0
         with self.assertRaises(ValueError):
-            construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+            construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context)
 
         num_nodes_region = 1
         num_nodes_leaf = 0
         with self.assertRaises(ValueError):
-            construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)
+            construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context)
 
     def test_rat_spn_1(self):
-        random_variables = set(range(1, 8))
+        random_variables = set(range(0, 7))
         depth = 2
         replicas = 1
         region_graph = random_region_graph(random_variables, depth, replicas)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
 
         num_nodes_root = 1
         num_nodes_region = 1
         num_nodes_leaf = 1
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)[0]
+        rat_spn = construct_spn(
+            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context
+        )[0]
 
         _isvalid_spn(rat_spn)
         sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn)
@@ -50,15 +64,20 @@ class TestRatSpn(unittest.TestCase):
         self.assertEqual(leaf_nodes, 4)
 
     def test_rat_spn_2(self):
-        random_variables = set(range(1, 8))
+        random_variables = set(range(0, 7))
         depth = 3
         replicas = 1
         region_graph = random_region_graph(random_variables, depth, replicas)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
 
         num_nodes_root = 1
         num_nodes_region = 1
         num_nodes_leaf = 1
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)[0]
+        rat_spn = construct_spn(
+            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context
+        )[0]
 
         _isvalid_spn(rat_spn)
         sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn)
@@ -67,15 +86,20 @@ class TestRatSpn(unittest.TestCase):
         self.assertEqual(leaf_nodes, 7)
 
     def test_rat_spn_3(self):
-        random_variables = set(range(1, 8))
+        random_variables = set(range(0, 7))
         depth = 3
         replicas = 2
         region_graph = random_region_graph(random_variables, depth, replicas)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
 
         num_nodes_root = 2
         num_nodes_region = 2
         num_nodes_leaf = 2
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)[0]
+        rat_spn = construct_spn(
+            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context
+        )[0]
 
         _isvalid_spn(rat_spn)
         sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn)
@@ -84,15 +108,20 @@ class TestRatSpn(unittest.TestCase):
         self.assertEqual(leaf_nodes, 28)
 
     def test_rat_spn_4(self):
-        random_variables = set(range(1, 8))
+        random_variables = set(range(0, 7))
         depth = 3
         replicas = 3
         region_graph = random_region_graph(random_variables, depth, replicas)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
 
         num_nodes_root = 3
         num_nodes_region = 3
         num_nodes_leaf = 3
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)[0]
+        rat_spn = construct_spn(
+            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context
+        )[0]
 
         _isvalid_spn(rat_spn)
         sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn)
@@ -101,16 +130,21 @@ class TestRatSpn(unittest.TestCase):
         self.assertEqual(leaf_nodes, 63)
 
     def test_rat_spn_5(self):
-        random_variables = set(range(1, 8))
+        random_variables = set(range(0, 7))
         depth = 2
         replicas = 1
         num_splits = 3
         region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
 
         num_nodes_root = 1
         num_nodes_region = 1
         num_nodes_leaf = 1
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)[0]
+        rat_spn = construct_spn(
+            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context
+        )[0]
 
         _isvalid_spn(rat_spn)
         sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn)
@@ -120,16 +154,21 @@ class TestRatSpn(unittest.TestCase):
         self.assertEqual(leaf_nodes, 5)
 
     def test_rat_spn_6(self):
-        random_variables = set(range(1, 10))
+        random_variables = set(range(0, 9))
         depth = 3
         replicas = 1
         num_splits = 3
         region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
 
         num_nodes_root = 1
         num_nodes_region = 1
         num_nodes_leaf = 1
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)[0]
+        rat_spn = construct_spn(
+            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context
+        )[0]
 
         _isvalid_spn(rat_spn)
         sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn)
@@ -143,11 +182,16 @@ class TestRatSpn(unittest.TestCase):
         replicas = 2
         num_splits = 3
         region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
 
         num_nodes_root = 2
         num_nodes_region = 2
         num_nodes_leaf = 2
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)[0]
+        rat_spn = construct_spn(
+            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context
+        )[0]
 
         _isvalid_spn(rat_spn)
         sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn)
@@ -161,11 +205,16 @@ class TestRatSpn(unittest.TestCase):
         replicas = 3
         num_splits = 3
         region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
 
         num_nodes_root = 3
         num_nodes_region = 3
         num_nodes_leaf = 2
-        rat_spn = construct_spn(region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf)[0]
+        rat_spn = construct_spn(
+            region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context
+        )[0]
 
         _isvalid_spn(rat_spn)
         sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(rat_spn)
@@ -175,15 +224,28 @@ class TestRatSpn(unittest.TestCase):
 
     def test_rat_spn_module(self):
         region_graph = random_region_graph(X=set(range(0, 7)), depth=2, replicas=2)
-        rat_spn = construct_spn(region_graph, 3, 2, 2)[0]
-        rat_spn_module = RatSpn(region_graph, 3, 2, 2)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
+        rat_spn = construct_spn(region_graph, 3, 2, 2, context)[0]
+        rat_spn_module = RatSpn(region_graph, 3, 2, 2, context)
         self.assertTrue(rat_spn_module.output_nodes[0].equals(rat_spn))
 
     def test_rat_spn_module_inference(self):
         region_graph = random_region_graph(X=set(range(0, 2)), depth=1, replicas=1)
-        rat_spn_module = RatSpn(region_graph, 1, 1, 1)
+        context = Context(
+            parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
+        )
+        rat_spn_module = RatSpn(region_graph, 1, 1, 1, context)
+        leaf0 = get_scipy_object(rat_spn_module.nodes[0]).logpdf(
+            x=[1], **get_scipy_object_parameters(rat_spn_module.nodes[0])
+        )
+        leaf1 = get_scipy_object(rat_spn_module.nodes[1]).logpdf(
+            x=[1], **get_scipy_object_parameters(rat_spn_module.nodes[1])
+        )
         self.assertAlmostEqual(
-            likelihood(rat_spn_module, np.array([1.0, 1.0]).reshape(-1, 2))[0][0], 0.05854983
+            likelihood(rat_spn_module, np.array([1.0, 1.0]).reshape(-1, 2))[0][0],
+            np.exp(leaf0 + leaf1),
         )
 
 
