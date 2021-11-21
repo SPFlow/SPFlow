@@ -79,9 +79,7 @@ class TorchSumNode(TorchNode):
             raise ValueError("Sum node must have at least one child.")
 
         if weights is None:
-            weights = (
-                torch.rand(sum(len(child) for child in children)) + 1e-08
-            )  # avoid zeros
+            weights = torch.rand(sum(len(child) for child in children)) + 1e-08  # avoid zeros
             weights /= weights.sum()
 
         self.num_in = sum(len(child) for child in children)
@@ -108,9 +106,7 @@ class TorchSumNode(TorchNode):
         if not torch.isclose(value.sum(), torch.tensor(1.0, dtype=value.dtype)):
             raise ValueError("Weights must sum up to one.")
         if not len(value) == self.num_in:
-            raise ValueError(
-                "Number of weights does not match number of specified child nodes."
-            )
+            raise ValueError("Number of weights does not match number of specified child nodes.")
 
         self.weights_aux.data = proj_convex_to_real(value)  # type: ignore
 
@@ -160,16 +156,12 @@ class TorchProductNode(TorchNode):
 
 @dispatch(IProductNode)  # type: ignore[no-redef]
 def toTorch(x: IProductNode) -> TorchProductNode:
-    return TorchProductNode(
-        children=[toTorch(child) for child in x.children], scope=x.scope
-    )
+    return TorchProductNode(children=[toTorch(child) for child in x.children], scope=x.scope)
 
 
 @dispatch(TorchProductNode)  # type: ignore[no-redef]
 def toNodes(x: TorchProductNode) -> IProductNode:
-    return IProductNode(
-        children=[toNodes(child) for child in x.children()], scope=x.scope
-    )
+    return IProductNode(children=[toNodes(child) for child in x.children()], scope=x.scope)
 
 
 class TorchLeafNode(TorchNode):

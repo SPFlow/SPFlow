@@ -14,7 +14,7 @@ from spflow.base.structure.nodes.node import (
     INode,
     eval_spn_top_down,
 )
-from spflow.base.structure.network_type import SPN
+from spflow.base.structure.network_type import SPN, NetworkType
 from spflow.base.structure.nodes.validity_checks import _isvalid_spn
 from spflow.base.sampling.nodes.leaves.parametric.sampling import sample_parametric_node
 from spflow.base.inference.nodes.node import log_likelihood
@@ -151,7 +151,7 @@ _node_sampling: Dict[Type, Callable] = {
 
 @dispatch(SPN, INode, np.ndarray, np.random.RandomState, _node_sampling=dict, in_place=bool)  # type: ignore[no-redef]
 def sample_instances(
-    network_type: SPN,
+    network_type: NetworkType,
     node: INode,
     input_data: np.ndarray,
     rand_gen: np.random.RandomState,
@@ -164,6 +164,8 @@ def sample_instances(
     Then a top-down pass, to sample taking into account the likelihoods.
 
     Args:
+        network_type:
+            Specifies how to sample node.
         node:
             Root node of SPN to sample from.
         input_data:
