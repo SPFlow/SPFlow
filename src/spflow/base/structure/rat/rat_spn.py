@@ -10,7 +10,7 @@ from spflow.base.structure.module import Module
 from spflow.base.learning.context import Context  # type: ignore
 from spflow.base.structure.nodes.node import INode, IProductNode, ISumNode, get_topological_order
 from spflow.base.structure.network_type import SPN
-from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian, ParametricLeaf
+from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian
 from .region_graph import (
     Partition,
     Region,

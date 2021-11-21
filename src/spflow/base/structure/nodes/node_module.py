@@ -8,12 +8,13 @@ import numpy as np
 from typing import List
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.node import (
-    ILeafNode,
     IProductNode,
     ISumNode,
     INode,
 )
 from spflow.base.structure.network_type import NetworkType
+from spflow.base.learning.context import Context  # type: ignore
+from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian, ParametricLeaf
 
 
 class Node(Module):
@@ -107,13 +108,21 @@ class LeafNode(Node):
             Empty list as LeafNodes can not have children.
     """
 
-    def __init__(
-        self,
-        scope: List[int],
-        network_type: NetworkType,
-    ) -> None:
+    def __init__(self, scope: List[int], network_type: NetworkType, context: Context) -> None:
         super().__init__(children=[], network_type=network_type, scope=scope)
-        node: INode = ILeafNode(scope=scope)
+        if len(scope) == 1:
+            try:
+                node = context.parametric_types[scope[0]](scope=scope)
+            except IndexError:
+                raise IndexError(
+                    "Leaf scope outside of scopes specified for parametric types in context."
+                )
+        else:
+            node = MultivariateGaussian(
+                scope=scope,
+                mean_vector=np.zeros(len(scope)),
+                covariance_matrix=np.eye(len(scope)),
+            )
         self.nodes: List[INode] = [node]
         self.output_nodes: List[INode] = [node]
 

@@ -67,9 +67,7 @@ class TestTorchRatSpn(unittest.TestCase):
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
 
         # create torch rat spn from region graph
-        torch_rat = TorchRatSpn(
-            rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3
-        )
+        torch_rat = TorchRatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3)
 
         # randomly change parameters from inital values
         for region in torch_rat.region_graph.regions:
@@ -95,9 +93,7 @@ class TestTorchRatSpn(unittest.TestCase):
 
         # compare outputs
         self.assertTrue(
-            np.allclose(
-                nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True
-            )
+            np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True)
         )
 
     def test_nodes_rat_spn_to_torch(self):
@@ -130,9 +126,7 @@ class TestTorchRatSpn(unittest.TestCase):
 
         # compare outputs
         self.assertTrue(
-            np.allclose(
-                nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True
-            )
+            np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True)
         )
 
     def test_torch_rat_spn_to_nodes_to_torch(self):
@@ -141,9 +135,7 @@ class TestTorchRatSpn(unittest.TestCase):
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
 
         # create torch rat spn from region graph
-        torch_rat = TorchRatSpn(
-            rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3
-        )
+        torch_rat = TorchRatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3)
 
         # randomly change parameters from inital values
         for region in torch_rat.region_graph.regions:
@@ -158,13 +150,10 @@ class TestTorchRatSpn(unittest.TestCase):
         # convert torch rat spn to nodes and back to torch
         torch_rat_2 = toTorch(toNodes(torch_rat))
 
-        self.assertTrue(
-            set(torch_rat.rg_layers.keys()) == set(torch_rat_2.rg_layers.keys())
-        )
+        self.assertTrue(set(torch_rat.rg_layers.keys()) == set(torch_rat_2.rg_layers.keys()))
 
         for p1, p2 in [
-            (torch_rat.rg_layers[k], torch_rat_2.rg_layers[k])
-            for k in torch_rat.rg_layers.keys()
+            (torch_rat.rg_layers[k], torch_rat_2.rg_layers[k]) for k in torch_rat.rg_layers.keys()
         ]:
 
             if isinstance(p1, _RegionLayer):
@@ -175,9 +164,7 @@ class TestTorchRatSpn(unittest.TestCase):
                     self.assertTrue(l1.scope == l2.scope)
 
                     for l1_p, l2_p in zip(l1.get_params(), l2.get_params()):
-                        self.assertTrue(
-                            torch.allclose(torch.tensor(l1_p), torch.tensor(l2_p))
-                        )
+                        self.assertTrue(torch.allclose(torch.tensor(l1_p), torch.tensor(l2_p)))
 
         # create dummy input data (batch size x random variables)
         dummy_data = np.random.randn(3, 1024)
@@ -197,9 +184,7 @@ class TestTorchRatSpn(unittest.TestCase):
         rg = random_region_graph(X=set(range(4)), depth=2, replicas=1, num_splits=2)
 
         # create torch rat spn from region graph
-        torch_rat = TorchRatSpn(
-            rg, num_nodes_root=1, num_nodes_region=1, num_nodes_leaf=1
-        )
+        torch_rat = TorchRatSpn(rg, num_nodes_root=1, num_nodes_region=1, num_nodes_leaf=1)
 
         # create dummy input data (batch size x random variables)
         data = np.random.randn((3, 4))
@@ -213,10 +198,10 @@ class TestTorchRatSpn(unittest.TestCase):
             # get region
             region = torch_rat.rg_layers[region]
 
-            if(isinstance(region, _RegionLayer)):
+            if isinstance(region, _RegionLayer):
                 self.assertTrue(region.weights_aux.grad is not None)
-            
-            elif(isinstance(region, _LeafLayer)):
+
+            elif isinstance(region, _LeafLayer):
                 for leaf in region.leaf_nodes:
                     for p in leaf.parameters():
                         self.assertTrue(p.grad is not None)

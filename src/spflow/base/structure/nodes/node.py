@@ -78,16 +78,13 @@ class ISumNode(INode):
 
     """
 
-    def __init__(
-        self, children: List[INode], scope: List[int], weights: np.ndarray = None
-    ) -> None:
+    def __init__(self, children: List[INode], scope: List[int], weights: np.ndarray = None) -> None:
         super().__init__(children=children, scope=scope)
 
         if weights is None:
-            weights = (
-                np.random.rand(sum(len(child) for child in children)) + 1e-08
-            )  # avoid zeros
+            weights = np.random.rand(sum(len(child) for child in children)) + 1e-08  # avoid zeros
             weights /= weights.sum()
+            weights = cast(np.ndarray, weights)
 
         self.weights = weights
 
@@ -200,8 +197,6 @@ def _get_leaf_nodes(root_node: INode) -> List[INode]:
     return _get_leaf_nodes([root_node])
 
 
-########################################################################################################################
-# multi für single vs multiple root nodes?
 def bfs(root: INode, func: Callable):
     """Iterates through SPN in breadth first order and calls func on all nodes in SPN.
 
@@ -224,9 +219,7 @@ def bfs(root: INode, func: Callable):
                     queue.append(c)
 
 
-def get_nodes_by_type(
-    node: INode, ntype: Union[Type, Tuple[Type, ...]] = INode
-) -> List[INode]:
+def get_nodes_by_type(node: INode, ntype: Union[Type, Tuple[Type, ...]] = INode) -> List[INode]:
     """Iterates SPN in breadth first order and collects nodes of type ntype..
 
     Args:
