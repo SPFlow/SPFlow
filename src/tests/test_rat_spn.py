@@ -177,7 +177,7 @@ class TestRatSpn(unittest.TestCase):
         self.assertEqual(leaf_nodes, 9)
 
     def test_rat_spn_7(self):
-        random_variables = set(range(1, 8))
+        random_variables = set(range(0, 7))
         depth = 2
         replicas = 2
         num_splits = 3
@@ -200,7 +200,7 @@ class TestRatSpn(unittest.TestCase):
         self.assertEqual(leaf_nodes, 20)
 
     def test_rat_spn_8(self):
-        random_variables = set(range(1, 21))
+        random_variables = set(range(0, 20))
         depth = 3
         replicas = 3
         num_splits = 3

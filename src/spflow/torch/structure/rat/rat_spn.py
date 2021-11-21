@@ -226,8 +226,7 @@ class TorchRatSpn(TorchModule):
         self.root_region = _RegionLayer(
             num_nodes_root,
             partitions=[
-                self.partition(partition)
-                for partition in region_graph.root_region.partitions
+                self.partition(partition) for partition in region_graph.root_region.partitions
             ],
         )
 
@@ -330,9 +329,7 @@ def _copy_region_parameters(src: _RegionLayer, dst: List[ISumNode]) -> None:
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError(
-            "Number of ISumNodes and number of outputs for _RegionLayer do not match."
-        )
+        raise ValueError("Number of ISumNodes and number of outputs for _RegionLayer do not match.")
 
     # iterate over nodes and region weights
     for i, node in enumerate(dst):
@@ -358,9 +355,7 @@ def _copy_region_parameters(src: _LeafLayer, dst: List[ILeafNode]) -> None:
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError(
-            "Number of ILeafNodes and number of outputs for _LeafLayer do not match."
-        )
+        raise ValueError("Number of ILeafNodes and number of outputs for _LeafLayer do not match.")
 
     # iterate over nodes and region weights
     for node, torch_node in zip(dst, src.leaf_nodes):
@@ -382,9 +377,7 @@ def _copy_region_parameters(src: List[ISumNode], dst: _RegionLayer) -> None:
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError(
-            "Number of ISumNodes and number of outputs for _RegionLayer do not match."
-        )
+        raise ValueError("Number of ISumNodes and number of outputs for _RegionLayer do not match.")
 
     region_weights = dst.weights.detach()
 
@@ -422,9 +415,7 @@ def _copy_region_parameters(src: List[ILeafNode], dst: _LeafLayer) -> None:
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError(
-            "Number of ILeafNodes and number of outputs for _LeafLayer do not match."
-        )
+        raise ValueError("Number of ILeafNodes and number of outputs for _LeafLayer do not match.")
 
     # iterate over nodes and region weights
     for node, torch_node in zip(src, dst.leaf_nodes):
@@ -453,9 +444,7 @@ def toNodes(torch_rat: TorchRatSpn) -> RatSpn:
     for region in torch_rat.region_graph.regions:
 
         # get region layer from torch RAT SPN
-        region_layer: Union[
-            _RegionLayer, _LeafLayer, _PartitionLayer
-        ] = torch_rat.rg_layers[region]
+        region_layer: Union[_RegionLayer, _LeafLayer, _PartitionLayer] = torch_rat.rg_layers[region]
 
         # get region nodes from node RAT SPN
         region_nodes: List[INode] = rat.rg_nodes[region]
@@ -490,9 +479,7 @@ def toTorch(rat: RatSpn) -> TorchRatSpn:
     for region in rat.region_graph.regions:
 
         # get region layer from torch RAT SPN
-        region_layer: Union[
-            _RegionLayer, _LeafLayer, _PartitionLayer
-        ] = torch_rat.rg_layers[region]
+        region_layer: Union[_RegionLayer, _LeafLayer, _PartitionLayer] = torch_rat.rg_layers[region]
 
         # get region nodes from node RAT SPN
         region_nodes: List[INode] = rat.rg_nodes[region]
