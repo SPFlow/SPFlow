@@ -20,15 +20,15 @@ from spflow.base.sampling.nodes.leaves.parametric.sampling import sample_paramet
 from spflow.base.inference.nodes.node import log_likelihood
 import numpy as np
 from numpy.random.mtrand import RandomState  # type: ignore
-from typing import List, Callable, Type, Optional, Dict, Union
+from typing import List, Callable, Type, Dict, Union
 
 
 def sample_prod(
     node: ISumNode,
-    input_vals: Optional[List],
+    input_vals: List,
     data: np.ndarray,
     rand_gen: np.random.RandomState,
-) -> Optional[Dict[INode, np.ndarray]]:
+) -> Dict[INode, np.ndarray]:
     """
     Sampling procedure for ProdNode. Passes on the input_vals to its children.
 
@@ -44,8 +44,6 @@ def sample_prod(
     Returns: Dictionary, which has child nodes of input node as key and an array of integers,
              indicating which instances are to be sampled by which child.
     """
-    if input_vals is None:
-        return None
 
     conc_input_vals: np.ndarray = np.concatenate(input_vals)
     children_row_ids: Dict[INode, np.ndarray] = {}
@@ -57,10 +55,10 @@ def sample_prod(
 
 def sample_sum(
     node: ISumNode,
-    input_vals: Optional[List],
+    input_vals: List,
     data: np.ndarray,
     rand_gen: np.random.RandomState,
-) -> Optional[Dict[INode, np.ndarray]]:
+) -> Dict[INode, np.ndarray]:
     """
     Sampling procedure for sum nodes. Decides which child branch is to be sampled from by adding
     log-likelihood of child weights with drawn samples from gumbels distribution and then
@@ -79,8 +77,6 @@ def sample_sum(
     Returns: Dictionary, which has child nodes of input node as key and an array of integers,
              indicating which instances are to be sampled by which child.
     """
-    if input_vals is None:
-        return None
 
     conc_input_vals: np.ndarray = np.concatenate(input_vals)
 
@@ -106,7 +102,7 @@ def sample_sum(
 
 def sample_leaf(
     node: ILeafNode,
-    input_vals: Optional[List],
+    input_vals: List,
     data: np.ndarray,
     rand_gen: np.random.RandomState,
 ) -> None:
@@ -123,9 +119,6 @@ def sample_leaf(
         rand_gen:
             Seed to specify random state.
     """
-
-    if input_vals is None:
-        return None
 
     conc_input_vals: np.ndarray = np.concatenate(input_vals)
 

@@ -1,7 +1,10 @@
 import unittest
 from spflow.base.inference.nodes import likelihood, log_likelihood
 from spflow.base.structure.nodes.leaves.parametric import Gaussian
-from spflow.base.inference.nodes.leaves.parametric.parametric import node_likelihood, node_log_likelihood
+from spflow.base.inference.nodes.leaves.parametric.parametric import (
+    node_likelihood,
+    node_log_likelihood,
+)
 import numpy as np
 from spflow.base.structure.nodes import ISumNode, IProductNode, INode
 from spflow.base.structure.network_type import SPN

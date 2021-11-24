@@ -7,7 +7,7 @@ from spflow.base.structure.rat.rat_spn import RatSpn
 from spflow.base.structure.nodes.validity_checks import _isvalid_spn
 from spflow.base.structure.rat.region_graph import random_region_graph
 from spflow.base.sampling.rat.rat_spn import sample_instances
-from spflow.base.learning.context import Context  # type: ignore
+from spflow.base.learning.context import RandomVariableContext  # type: ignore
 from spflow.base.structure.nodes.leaves.parametric import Gaussian
 
 
@@ -178,7 +178,7 @@ class TestSampling(unittest.TestCase):
     def test_parameter_sampling_rat_module(self):
 
         region_graph = random_region_graph(X=set(range(0, 2)), depth=1, replicas=1)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
         rat_spn_module = RatSpn(region_graph, 1, 1, 1, context)

@@ -45,13 +45,11 @@ class Region:
     Attributes:
         random_variables:
             A set of random variables in the scope of the Region.
-        children:
-            A set of Partitions that are the children of the Region. Usually, each Region but the
+        partitions:
+            A list of Partitions that are the children of the Region. Usually, each Region but the
             root_region has exactly 1 Partition as child. A leaf Region has no children at all.
         parent:
             The parent Partition. If the Region has no parent, it is the root region.
-        nodes:
-            A list of ISumNodes or ILeafNodes assigned while constructing the RATSPN.
     """
 
     def __init__(
@@ -75,13 +73,11 @@ class Partition:
     """A Partition is a set of Regions, where the scopes of all Regions are pairwise distinct.
 
     Attributes:
-        children:
+        regions:
             A set of Regions. In the standard implementation (see "Random Sum-Product Networks"
             by Peharz et. al), each Partition has exactly two Regions as children.
         parent:
             The parent Region. Each partition has exactly one parent Region.
-        nodes:
-            A list of IProductNodes assigned while constructing the RAT-SPN.
     """
 
     def __init__(self, regions: List[Region], parent: Region) -> None:

@@ -7,7 +7,7 @@ from spflow.base.structure.nodes.node import (
 )
 from spflow.base.inference.rat.rat_spn import likelihood, log_likelihood
 import numpy as np
-from spflow.base.learning.context import Context  # type: ignore
+from spflow.base.learning.context import RandomVariableContext  # type: ignore
 from spflow.base.structure.nodes.leaves.parametric import (
     Gaussian,
     get_scipy_object,
@@ -21,7 +21,7 @@ class TestRatSpn(unittest.TestCase):
         depth = 2
         replicas = 1
         region_graph = random_region_graph(random_variables, depth, replicas)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
 
@@ -46,7 +46,7 @@ class TestRatSpn(unittest.TestCase):
         depth = 2
         replicas = 1
         region_graph = random_region_graph(random_variables, depth, replicas)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
 
@@ -68,7 +68,7 @@ class TestRatSpn(unittest.TestCase):
         depth = 3
         replicas = 1
         region_graph = random_region_graph(random_variables, depth, replicas)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
 
@@ -90,7 +90,7 @@ class TestRatSpn(unittest.TestCase):
         depth = 3
         replicas = 2
         region_graph = random_region_graph(random_variables, depth, replicas)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
 
@@ -112,7 +112,7 @@ class TestRatSpn(unittest.TestCase):
         depth = 3
         replicas = 3
         region_graph = random_region_graph(random_variables, depth, replicas)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
 
@@ -135,7 +135,7 @@ class TestRatSpn(unittest.TestCase):
         replicas = 1
         num_splits = 3
         region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
 
@@ -159,7 +159,7 @@ class TestRatSpn(unittest.TestCase):
         replicas = 1
         num_splits = 3
         region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
 
@@ -182,7 +182,7 @@ class TestRatSpn(unittest.TestCase):
         replicas = 2
         num_splits = 3
         region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
 
@@ -205,7 +205,7 @@ class TestRatSpn(unittest.TestCase):
         replicas = 3
         num_splits = 3
         region_graph = random_region_graph(random_variables, depth, replicas, num_splits)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
 
@@ -224,7 +224,7 @@ class TestRatSpn(unittest.TestCase):
 
     def test_rat_spn_module(self):
         region_graph = random_region_graph(X=set(range(0, 7)), depth=2, replicas=2)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
         rat_spn = construct_spn(region_graph, 3, 2, 2, context)[0]
@@ -233,7 +233,7 @@ class TestRatSpn(unittest.TestCase):
 
     def test_rat_spn_module_inference(self):
         region_graph = random_region_graph(X=set(range(0, 2)), depth=1, replicas=1)
-        context = Context(
+        context = RandomVariableContext(
             parametric_types=[Gaussian] * len(region_graph.root_region.random_variables)
         )
         rat_spn_module = RatSpn(region_graph, 1, 1, 1, context)

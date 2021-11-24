@@ -13,7 +13,6 @@ from .parametric import MIN_NEG
 from multipledispatch import dispatch  # type: ignore
 
 import numpy as np
-from typing import Optional
 
 
 @dispatch(Bernoulli, data=np.ndarray)  # type: ignore[no-redef]

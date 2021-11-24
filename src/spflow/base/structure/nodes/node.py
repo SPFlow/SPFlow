@@ -259,7 +259,7 @@ def get_topological_order(node: INode) -> List[INode]:
         in_degree[n] = in_degree.get(n, 0)
         if not isinstance(n, ILeafNode):
             for c in n.children:
-                parent_list: Optional[List[Optional[INode]]] = parents.get(c, None)
+                parent_list: Optional[List[INode]] = parents.get(c, None)
                 if parent_list is None:
                     parents[c] = parent_list = []
                 parent_list.append(n)
@@ -377,7 +377,7 @@ def get_topological_order_layers(node: INode) -> List[List[INode]]:
         in_degree[n] = in_degree.get(n, 0)
         if not isinstance(n, ILeafNode):
             for c in n.children:
-                parent_list: Optional[List[Optional[INode]]] = parents.get(c, None)
+                parent_list: Optional[List[INode]] = parents.get(c, None)
                 if parent_list is None:
                     parents[c] = parent_list = []
                 parent_list.append(n)

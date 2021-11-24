@@ -24,7 +24,7 @@ import numpy as np
 from typing import List, Union, Dict
 
 from multipledispatch import dispatch  # type: ignore
-from spflow.base.learning.context import Context  # type: ignore
+from spflow.base.learning.context import RandomVariableContext  # type: ignore
 from spflow.base.structure.nodes.leaves.parametric import (
     Gaussian,
     get_scipy_object,
@@ -429,7 +429,7 @@ def _copy_region_parameters(src: List[ILeafNode], dst: _LeafLayer) -> None:
 @dispatch(TorchRatSpn)  # type: ignore[no-redef]
 def toNodes(torch_rat: TorchRatSpn) -> RatSpn:
     # create RAT-SPN module using region graph (includes scopes)
-    context = Context(
+    context = RandomVariableContext(
         parametric_types=[Gaussian] * len(torch_rat.region_graph.root_region.random_variables)
     )
     rat = RatSpn(
