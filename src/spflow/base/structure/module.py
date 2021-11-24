@@ -6,6 +6,7 @@ Created on June 10, 2021
 This file provides the abstract Module class for building graph structures.
 """
 from abc import ABC, abstractmethod
+import spflow
 from spflow.base.structure.nodes.node import INode, _get_node_counts, _get_leaf_nodes
 from spflow.base.structure.network_type import NetworkType
 from typing import List, Tuple
@@ -29,10 +30,15 @@ class Module(ABC):
     """
 
     def __init__(
-        self, children: List["Module"], network_type: NetworkType, scope: List[int]
+        self, children: List["Module"], network_type: Optional[NetworkType] = None, scope: List[int] = None
     ) -> None:
         self.nodes: List[INode] = []
-        self.network_type: NetworkType = network_type
+
+        # Set network type - if none is specified, get default global network type
+        if network_type == None:
+            self.network_type = spflow.get_network_type()
+        else:
+            self.network_type: NetworkType = network_type
         self.output_nodes: List[INode] = []
         self.children: List["Module"] = children
         self.scope: List[int] = scope
