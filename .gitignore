@@ -15,3 +15,7 @@ Include/
 Lib/
 Scripts/
 pyvenv.cfg
+
+# ignore coverage test files
+.coverage
+htmlcov/

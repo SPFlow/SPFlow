@@ -12,7 +12,6 @@ from spflow.base.structure.nodes.leaves.parametric import (
 from multipledispatch import dispatch  # type: ignore
 
 import numpy as np
-from typing import Optional
 
 
 @dispatch(Exponential, data=np.ndarray)  # type: ignore[no-redef]

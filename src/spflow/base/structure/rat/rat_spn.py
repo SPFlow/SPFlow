@@ -5,9 +5,9 @@ Created on May 24, 2021
 """
 import itertools
 import numpy as np
-from typing import Dict, List, Union, cast, Optional, Tuple, Type, Sequence
+from typing import Dict, List, Union, cast, Tuple
 from spflow.base.structure.module import Module
-from spflow.base.learning.context import Context  # type: ignore
+from spflow.base.learning.context import RandomVariableContext  # type: ignore
 from spflow.base.structure.nodes.node import INode, IProductNode, ISumNode, get_topological_order
 from spflow.base.structure.network_type import SPN
 from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian
@@ -52,7 +52,7 @@ class RatSpn(Module):
         num_nodes_root: int,
         num_nodes_region: int,
         num_nodes_leaf: int,
-        context: Context,
+        context: RandomVariableContext,
     ) -> None:
         rat_result: Tuple[ISumNode, Dict[Union[Region, Partition], List[INode]]] = construct_spn(
             region_graph, num_nodes_root, num_nodes_region, num_nodes_leaf, context
@@ -79,7 +79,7 @@ def construct_spn(
     num_nodes_root: int,
     num_nodes_region: int,
     num_nodes_leaf: int,
-    context: Context,
+    context: RandomVariableContext,
 ) -> Tuple[ISumNode, Dict[Union[Region, Partition], List[INode]]]:
     """Builds a RAT-SPN from a given RegionGraph.
 
@@ -104,7 +104,7 @@ def construct_spn(
             The number of LeafNodes each leaf region is equipped with. All LeafNodes of the same region
             are multivariate distributions over the same scope, but possibly differently parametrized.
         context:
-            Context object determining distributions for scopes in SPN.
+            RandomVariableContext object determining distributions for scopes in SPN.
 
 
     Returns:
