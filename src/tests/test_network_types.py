@@ -4,8 +4,8 @@ import unittest
 import spflow
 from spflow.base.structure.network_type import SPN, BN, UnspecifiedNetworkType
 
-class TestNetworkTypeContextManager(unittest.TestCase):
 
+class TestNetworkTypeContextManager(unittest.TestCase):
     def test_network_type_defaul_value(self):
         # Initial value
         self.assertEqual(type(spflow.get_network_type()), UnspecifiedNetworkType)
@@ -41,6 +41,6 @@ class TestNetworkTypeContextManager(unittest.TestCase):
 
         self.assertEqual(type(spflow.get_network_type()), UnspecifiedNetworkType)
 
+
 if __name__ == "__main__":
     unittest.main()
-
