@@ -8,7 +8,7 @@ This file provides the abstract Module class for building graph structures.
 from abc import ABC, abstractmethod
 from spflow.base.structure.nodes.node import INode, _get_node_counts, _get_leaf_nodes
 from spflow.base.structure.network_type import NetworkType
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 from multipledispatch import dispatch  # type: ignore
 
 

@@ -9,8 +9,8 @@ from spflow.base.structure.nodes.leaves.parametric.parametric import ParametricL
 from spflow.base.structure.nodes.leaves.parametric.statistical_types import MetaType
 
 
-class Context:
-    """A Context provides meta information about data used to learn SPNs.
+class RandomVariableContext:
+    """A RandomVariableContext provides meta information about data used to learn SPNs.
 
     In most cases, the following attributes need to be set by the user (if they're necessary for the type of SPN that shall be learned).
     E.g. parametric_types is only needed if the SPN has parametric distributions as leaves (e.g. Gaussian, Poisson, ...).
@@ -34,7 +34,8 @@ class Context:
         parametric_types: List[Type[ParametricLeaf]] = [],
         feature_names: List[str] = [],
     ) -> None:
-        # TODO: Do we need Context behind the scope of LearnSPN? Should Context be able to handle network_types?
+        # TODO: Do we need RandomVariableContext behind the scope of LearnSPN?
+        #  Should RandomVariableContext be able to handle network_types?
         # TODO: E.g. should users define the network type of the learned PC here? And if so, extend it.
         self.meta_types = meta_types
         self.domains = domains
@@ -82,7 +83,7 @@ class Context:
         """
         return [self.parametric_types[s] for s in scopes]
 
-    def add_domains(self, data: np.ndarray) -> "Context":
+    def add_domains(self, data: np.ndarray) -> "RandomVariableContext":
         """Infer the domains of each random variable from 2-dimensional data.
 
         The domain is the range of values between the minimum and the maximum value of each random variable present in 'data'.
@@ -94,7 +95,7 @@ class Context:
                 A (2-dimensional) numpy array from which the domains of each random variables are to be inferred.
 
         Returns:
-            The Context itself.
+            The RandomVariableContext itself.
 
         Raises:
             AssertionError:

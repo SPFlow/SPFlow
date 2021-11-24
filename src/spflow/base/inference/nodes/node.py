@@ -20,7 +20,7 @@ from spflow.base.structure.nodes.node import (
 
 from spflow.base.structure.network_type import SPN, NetworkType
 from .leaves.parametric import node_likelihood, node_log_likelihood
-from typing import List, Callable, Type, Optional, Dict
+from typing import List, Callable, Type, Dict
 from multipledispatch import dispatch  # type: ignore
 
 
@@ -137,7 +137,7 @@ def likelihood(
     Returns: Likelihood value for SPN.
     """
 
-    all_results: Optional[Dict[INode, ndarray]] = {}
+    all_results: Dict[INode, ndarray] = {}
     result: ndarray = eval_spn_bottom_up(node, node_likelihood, all_results=all_results, data=data)
 
     return result

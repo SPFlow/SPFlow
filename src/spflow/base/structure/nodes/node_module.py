@@ -13,7 +13,7 @@ from spflow.base.structure.nodes.node import (
     INode,
 )
 from spflow.base.structure.network_type import NetworkType
-from spflow.base.learning.context import Context  # type: ignore
+from spflow.base.learning.context import RandomVariableContext  # type: ignore
 from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian, ParametricLeaf
 
 
@@ -108,7 +108,9 @@ class LeafNode(Node):
             Empty list as LeafNodes can not have children.
     """
 
-    def __init__(self, scope: List[int], network_type: NetworkType, context: Context) -> None:
+    def __init__(
+        self, scope: List[int], network_type: NetworkType, context: RandomVariableContext
+    ) -> None:
         super().__init__(children=[], network_type=network_type, scope=scope)
         if len(scope) == 1:
             try:

@@ -9,7 +9,7 @@ from spflow.base.structure.rat.region_graph import (
     RegionGraph,
 )
 
-from spflow.base.learning.context import Context  # type: ignore
+from spflow.base.learning.context import RandomVariableContext  # type: ignore
 from spflow.base.structure.nodes.leaves.parametric import Gaussian
 from spflow.base.structure.rat import RatSpn
 from spflow.torch.structure.rat import (
@@ -100,7 +100,9 @@ class TestTorchRatSpn(unittest.TestCase):
 
         # create region graph
         rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=4)
-        context = Context(parametric_types=[Gaussian] * len(rg.root_region.random_variables))
+        context = RandomVariableContext(
+            parametric_types=[Gaussian] * len(rg.root_region.random_variables)
+        )
 
         # create torch rat spn from region graph
         rat = RatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3, context=context)
