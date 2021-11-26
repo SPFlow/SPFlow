@@ -1,3 +1,9 @@
+"""
+Created on November 26, 2021
+
+@authors: Philipp Deibert
+"""
+
 import torch
 from multipledispatch import dispatch  # type: ignore
 from typing import Dict
