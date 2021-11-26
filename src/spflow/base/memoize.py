@@ -1,6 +1,11 @@
+"""
+Created on November 26, 2021
+
+@authors: Philipp Deibert
+"""
+
 from functools import wraps
 from typing import Any, Dict
-from multipledispatch import dispatch
 
 
 def memoize(key_type: Any):
@@ -12,6 +17,9 @@ def memoize(key_type: Any):
     Args:
         key_type:
             Type of the key variable used to look up the cache.
+
+    Returns:
+        Wrapped function that automatically checks against the cache.
     """
 
     def memoize_decorator(f):
