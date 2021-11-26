@@ -25,7 +25,7 @@ class RegionGraph:
     """
 
     def __init__(self) -> None:
-        self.root_region: Region
+        self.root_region: Region = None
         self.regions: List[Region] = list()
         self.partitions: List[Partition] = list()
 
