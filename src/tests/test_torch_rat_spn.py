@@ -60,7 +60,7 @@ class TestTorchRatSpn(unittest.TestCase):
             num_nodes_region=1,
             num_nodes_leaf=0,
         )
-    
+
     def test_torch_rat_spn_to_nodes(self):
 
         # create region graph
@@ -95,7 +95,7 @@ class TestTorchRatSpn(unittest.TestCase):
         self.assertTrue(
             np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True)
         )
-    
+
     def test_nodes_rat_spn_to_torch(self):
 
         # create region graph
@@ -130,7 +130,7 @@ class TestTorchRatSpn(unittest.TestCase):
         self.assertTrue(
             np.allclose(nodes_output, torch_output.detach().cpu().numpy(), equal_nan=True)
         )
-    
+
     def test_torch_rat_spn_to_nodes_to_torch(self):
 
         # create region graph
