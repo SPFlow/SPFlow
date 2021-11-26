@@ -25,83 +25,85 @@ from typing import List, Union, Dict
 
 from multipledispatch import dispatch  # type: ignore
 from spflow.base.learning.context import RandomVariableContext  # type: ignore
-from spflow.base.structure.nodes.leaves.parametric import (
-    Gaussian,
-    get_scipy_object,
-    get_scipy_object_parameters,
-)
+from spflow.base.structure.nodes.leaves.parametric import Gaussian
 
 
-class _PartitionLayer(nn.Module):
-    """torch.nn.Module representing a RAT-SPN partition layer
+class _TorchPartitionLayer(TorchModule):
+    """TorchModule representing a RAT-SPN partition layer
 
     Computes the products of all unique element-wise combinations across the child regions' outputs.
 
     Args:
-        regions (List[Union[_RegionLayer, _LeafLayer]]): List of (internal or leaf) child regions.
+        regions (List[Union[_TorchRegionLayer, _TorchLeafLayer]]): List of (internal or leaf) child regions.
     """
 
-    def __init__(self, regions=List[Union["_RegionLayer", "_LeafLayer"]]) -> None:
-        super(_PartitionLayer, self).__init__()
+    def __init__(
+        self, children: List[Union["_TorchRegionLayer", "_TorchLeafLayer"]], scope: List[int]
+    ) -> None:
+        super(_TorchPartitionLayer, self).__init__()
 
-        self.regions = regions
+        self.scope = scope
 
         # register regions as child modules
-        for i, region in enumerate(regions, start=1):
+        for i, region in enumerate(children, start=1):
             self.add_module(f"region_{i}", region)
 
         # compute number of outputs
-        self.num_out = np.prod([len(region) for region in regions])
+        self.num_out = np.prod([len(region) for region in self.children()])
 
     def __len__(self) -> int:
         # return number of outputs
         return self.num_out
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-        # get inputs recursively
-        inputs = [region(data) for region in self.regions]
+    def forward(self, inputs: List[torch.Tensor]) -> torch.Tensor:
 
-        batch_size = data.shape[0]
+        batch_size = inputs[0].shape[0]
 
         out_batch = []
         input_batch = [[inp[i] for inp in inputs] for i in range(batch_size)]
 
         # multiply cartesian products (sum in log space) for each entry in batch
         for inputs_batch in input_batch:
+            # try:
             out_batch.append(torch.cartesian_prod(*inputs_batch).sum(dim=1))
+            # except:
+            #    print(inputs_batch)
+            #    input()
+            #    raise Exception()
 
         out = torch.vstack(out_batch)  # type: ignore
 
         return out
 
 
-class _RegionLayer(nn.Module):
+class _TorchRegionLayer(TorchModule):
     """torch.nn.Module representing a RAT-SPN region layer
 
     Outputs are computed as a convex sum of the inputs where each output has its own weights.
 
     Args:
         num_nodes_region (int): number of sum nodes in the region.
-        partitions (List[_PartitionLayer]): List of child partitions.
+        partitions (List[_TorchPartitionLayer]): List of child partitions.
     """
 
     def __init__(
         self,
+        children: List["_TorchPartitionLayer"],
+        scope: List[int],
         num_nodes_region: int,
-        partitions=List["_PartitionLayer"],
         weights: torch.Tensor = None,
     ) -> None:
-        super(_RegionLayer, self).__init__()
+        super(_TorchRegionLayer, self).__init__()
 
-        self.partitions = partitions
+        self.scope = scope
 
         # register partitions as child modules
-        for i, partition in enumerate(partitions, start=1):
+        for i, partition in enumerate(children, start=1):
             self.add_module(f"partition_{i}", partition)
 
         # compute number of inputs and outputs
         self.num_out = num_nodes_region
-        self.num_in = sum(len(partition) for partition in partitions)
+        self.num_in = sum(len(partition) for partition in self.children())
 
         if weights is None:
             # randomly generate weights (summing up to one per output)
@@ -135,17 +137,16 @@ class _RegionLayer(nn.Module):
         # return number of outputs
         return self.num_out
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-        # get inputs recursively
-        inputs = torch.hstack([partition(data) for partition in self.partitions])  # type: ignore
+    def forward(self, inputs: List[torch.Tensor]) -> torch.Tensor:
 
+        inputs = torch.hstack(inputs)  # type: ignore
         # broadcast inputs per output node and weight them in log-space
         weighted_inputs = inputs.unsqueeze(1) + self.weights.log()  # type: ignore
 
         return torch.logsumexp(weighted_inputs, dim=-1)
 
 
-class _LeafLayer(nn.Module):
+class _TorchLeafLayer(TorchModule):
     """torch.nn.Module representing a RAT-SPN leaf layer
 
     Contains a set of individual leaf nodes.
@@ -156,7 +157,7 @@ class _LeafLayer(nn.Module):
     """
 
     def __init__(self, scope: List[int], num_nodes_leaf: int) -> None:
-        super(_LeafLayer, self).__init__()
+        super(_TorchLeafLayer, self).__init__()
 
         self.scope = scope
 
@@ -177,13 +178,8 @@ class _LeafLayer(nn.Module):
         # return number of outputs
         return self.num_out
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-
-        inputs = [leaf(data) for leaf in self.leaf_nodes]
-        # generate outputs from all leaf nodes
-        outputs = torch.hstack(inputs)  # type: ignore
-
-        return outputs
+    def forward(self, inputs: List[torch.Tensor]) -> torch.Tensor:
+        return torch.hstack(inputs)  # type: ignore
 
 
 class TorchRatSpn(TorchModule):
@@ -207,6 +203,9 @@ class TorchRatSpn(TorchModule):
         super(TorchRatSpn, self).__init__()
 
         self.region_graph = region_graph
+        self.scope = (
+            list(region_graph.root_region.random_variables) if region_graph.root_region else []
+        )
         self.num_nodes_root = num_nodes_root
         self.num_nodes_region = num_nodes_region
         self.num_nodes_leaf = num_nodes_leaf
@@ -219,15 +218,18 @@ class TorchRatSpn(TorchModule):
             raise ValueError("num_nodes_leaf must be at least 1")
 
         self.rg_layers: Dict[
-            Union[Region, Partition], Union[_RegionLayer, _LeafLayer, _PartitionLayer]
+            Union[Region, Partition],
+            Union[_TorchRegionLayer, _TorchLeafLayer, _TorchPartitionLayer],
         ] = {}
 
         # recursively compute RatSpn layers beginning with root region
-        self.root_region = _RegionLayer(
-            num_nodes_root,
-            partitions=[
-                self.partition(partition) for partition in region_graph.root_region.partitions
+        self.root_region = _TorchRegionLayer(
+            children=[
+                self.partition(partition, list(region_graph.root_region.random_variables))
+                for partition in region_graph.root_region.partitions
             ],
+            scope=list(region_graph.root_region.random_variables),
+            num_nodes_region=num_nodes_root,
         )
 
         # store root region mapping in dictionary
@@ -261,13 +263,13 @@ class TorchRatSpn(TorchModule):
 
         self.root_node_weights_aux.data = proj_convex_to_real(values)
 
-    def partition(self, partition: Partition) -> _PartitionLayer:
-        """Returns a _PartitionLayer object from a region graph Partition.
+    def partition(self, partition: Partition, scope: List[int]) -> _TorchPartitionLayer:
+        """Returns a _TorchPartitionLayer object from a region graph Partition.
 
         Args:
             partition (Partition): Partition.
         """
-        region_layers: List[Union[_LeafLayer, _RegionLayer]] = []
+        region_layers: List[Union[_TorchLeafLayer, _TorchRegionLayer]] = []
 
         # iterate over child regions
         for region in partition.regions:
@@ -275,7 +277,7 @@ class TorchRatSpn(TorchModule):
             # leaf region (has no child partition)
             if not region.partitions:
                 # create leaf layer with corresponding scope and number of leaf nodes
-                leaf_layer = _LeafLayer(list(region.random_variables), self.num_nodes_leaf)  # type: ignore
+                leaf_layer = _TorchLeafLayer(scope=list(region.random_variables), num_nodes_leaf=self.num_nodes_leaf)  # type: ignore
 
                 region_layers.append(leaf_layer)
 
@@ -285,9 +287,12 @@ class TorchRatSpn(TorchModule):
             # internal region
             else:
                 # create region layer and recursively convert child partitions
-                region_layer = _RegionLayer(
-                    self.num_nodes_region,
-                    partitions=[self.partition(p) for p in region.partitions],
+                region_layer = _TorchRegionLayer(
+                    children=[
+                        self.partition(p, list(region.random_variables)) for p in region.partitions
+                    ],
+                    scope=list(region.random_variables),
+                    num_nodes_region=self.num_nodes_region,
                 )
 
                 region_layers.append(region_layer)
@@ -296,7 +301,7 @@ class TorchRatSpn(TorchModule):
                 self.rg_layers[region] = region_layer
 
         # create partition layer with computed child region layers
-        partition_layer = _PartitionLayer(regions=region_layers)
+        partition_layer = _TorchPartitionLayer(children=region_layers, scope=scope)
 
         # store partition mapping in dictionary
         self.rg_layers[partition] = partition_layer
@@ -307,29 +312,27 @@ class TorchRatSpn(TorchModule):
         # return number of outputs
         return 1
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-
-        # get inputs recursively
-        inputs = self.root_region(data)
-
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         # broadcast inputs per output node and weight them
         weighted_inputs = inputs.unsqueeze(1) + self.root_node_weights.log()  # type: ignore
 
         return torch.logsumexp(weighted_inputs, dim=-1)
 
 
-@dispatch(_RegionLayer, list)  # type: ignore[no-redef]
-def _copy_region_parameters(src: _RegionLayer, dst: List[ISumNode]) -> None:
+@dispatch(_TorchRegionLayer, list)  # type: ignore[no-redef]
+def _copy_region_parameters(src: _TorchRegionLayer, dst: List[ISumNode]) -> None:
     """Copy parameters from region layer to region sum nodes.
 
     args:
-        src (_RegionLayer): region layer to copy parameters from.
+        src (_TorchRegionLayer): region layer to copy parameters from.
         dst (List[ISumNode]): list of region nodes to copy parameters to.
     """
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of ISumNodes and number of outputs for _RegionLayer do not match.")
+        raise ValueError(
+            "Number of ISumNodes and number of outputs for _TorchRegionLayer do not match."
+        )
 
     # iterate over nodes and region weights
     for i, node in enumerate(dst):
@@ -337,25 +340,27 @@ def _copy_region_parameters(src: _RegionLayer, dst: List[ISumNode]) -> None:
         # number of children of sum nodes should match number of region layer inputs
         if not (len(node.weights) == len(node.children) == src.weights.data.shape[1]):
             raise ValueError(
-                "Number of ISumNode children or weights and number of inputs for _RegionLayer do not match."
+                "Number of ISumNode children or weights and number of inputs for _TorchRegionLayer do not match."
             )
 
         # assign region weight slice to node weights
         node.weights = src.weights.data[i, :].detach().cpu().tolist()
 
 
-@dispatch(_LeafLayer, list)  # type: ignore[no-redef]
-def _copy_region_parameters(src: _LeafLayer, dst: List[ILeafNode]) -> None:
+@dispatch(_TorchLeafLayer, list)  # type: ignore[no-redef]
+def _copy_region_parameters(src: _TorchLeafLayer, dst: List[ILeafNode]) -> None:
     """Copy parameters from leaf layer to leaf nodes.
 
     args:
-        src (_LeafLayer): leaf layer to copy parameters from.
+        src (_TorchLeafLayer): leaf layer to copy parameters from.
         dst (List[ILeafNode]): list of leaf nodes to copy parameters to.
     """
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of ILeafNodes and number of outputs for _LeafLayer do not match.")
+        raise ValueError(
+            "Number of ILeafNodes and number of outputs for _TorchLeafLayer do not match."
+        )
 
     # iterate over nodes and region weights
     for node, torch_node in zip(dst, src.leaf_nodes):
@@ -366,18 +371,20 @@ def _copy_region_parameters(src: _LeafLayer, dst: List[ILeafNode]) -> None:
         node.set_params(*torch_node.get_params())
 
 
-@dispatch(list, _RegionLayer)  # type: ignore[no-redef]
-def _copy_region_parameters(src: List[ISumNode], dst: _RegionLayer) -> None:
+@dispatch(list, _TorchRegionLayer)  # type: ignore[no-redef]
+def _copy_region_parameters(src: List[ISumNode], dst: _TorchRegionLayer) -> None:
     """Copy parameters from region sum nodes to region layer.
 
     args:
         src (List[ISumNode]): list of sum nodes to copy parameters from.
-        dst (_RegionLayer): region layer to copy parameters to.
+        dst (_TorchRegionLayer): region layer to copy parameters to.
     """
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of ISumNodes and number of outputs for _RegionLayer do not match.")
+        raise ValueError(
+            "Number of ISumNodes and number of outputs for _TorchRegionLayer do not match."
+        )
 
     region_weights = dst.weights.detach()
 
@@ -391,7 +398,7 @@ def _copy_region_parameters(src: List[ISumNode], dst: _RegionLayer) -> None:
         # number of children of sum nodes should match number of region layer inputs
         if not (len(node.weights) == len(node.children) == region_weights.shape[1]):
             raise ValueError(
-                "Number of ISumNode children or weights and number of inputs for _RegionLayer do not match."
+                "Number of ISumNode children or weights and number of inputs for _TorchRegionLayer do not match."
             )
 
         # assign node weights to region weight slice
@@ -400,13 +407,13 @@ def _copy_region_parameters(src: List[ISumNode], dst: _RegionLayer) -> None:
     dst.weights = region_weights
 
 
-@dispatch(list, _LeafLayer)  # type: ignore[no-redef]
-def _copy_region_parameters(src: List[ILeafNode], dst: _LeafLayer) -> None:
+@dispatch(list, _TorchLeafLayer)  # type: ignore[no-redef]
+def _copy_region_parameters(src: List[ILeafNode], dst: _TorchLeafLayer) -> None:
     """Copy parameters from leaf nodes to leaf layer.
 
     args:
         src (List[ILeafNode]): list of leaf nodes to copy parameters from.
-        dst (_LeafLayer): leaf layer to copy parameters to.
+        dst (_TorchLeafLayer): leaf layer to copy parameters to.
     """
 
     # there must be some sum nodes
@@ -415,7 +422,9 @@ def _copy_region_parameters(src: List[ILeafNode], dst: _LeafLayer) -> None:
 
     # number of sum nodes should match number of region layer outputs
     if not len(dst) == len(src):
-        raise ValueError("Number of ILeafNodes and number of outputs for _LeafLayer do not match.")
+        raise ValueError(
+            "Number of ILeafNodes and number of outputs for _TorchLeafLayer do not match."
+        )
 
     # iterate over nodes and region weights
     for node, torch_node in zip(src, dst.leaf_nodes):
@@ -444,13 +453,15 @@ def toNodes(torch_rat: TorchRatSpn) -> RatSpn:
     for region in torch_rat.region_graph.regions:
 
         # get region layer from torch RAT SPN
-        region_layer: Union[_RegionLayer, _LeafLayer, _PartitionLayer] = torch_rat.rg_layers[region]
+        region_layer: Union[
+            _TorchRegionLayer, _TorchLeafLayer, _TorchPartitionLayer
+        ] = torch_rat.rg_layers[region]
 
         # get region nodes from node RAT SPN
         region_nodes: List[INode] = rat.rg_nodes[region]
 
         # internal region
-        if isinstance(region_layer, _RegionLayer):
+        if isinstance(region_layer, _TorchRegionLayer):
             # all nodes need to be ISumNodes
             if not all([isinstance(node, ISumNode) for node in region_nodes]):
                 raise ValueError("Internal region nodes must all be ISumNodes.")
@@ -479,13 +490,15 @@ def toTorch(rat: RatSpn) -> TorchRatSpn:
     for region in rat.region_graph.regions:
 
         # get region layer from torch RAT SPN
-        region_layer: Union[_RegionLayer, _LeafLayer, _PartitionLayer] = torch_rat.rg_layers[region]
+        region_layer: Union[
+            _TorchRegionLayer, _TorchLeafLayer, _TorchPartitionLayer
+        ] = torch_rat.rg_layers[region]
 
         # get region nodes from node RAT SPN
         region_nodes: List[INode] = rat.rg_nodes[region]
 
         # internal region
-        if isinstance(region_layer, _RegionLayer):
+        if isinstance(region_layer, _TorchRegionLayer):
             # all nodes need to be ISumNodes
             if not all([isinstance(node, ISumNode) for node in region_nodes]):
                 raise ValueError("Internal region nodes must all be ISumNodes.")
