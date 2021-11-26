@@ -9,7 +9,7 @@ from spflow.torch.structure.nodes import (
     proj_convex_to_real,
     proj_real_to_convex,
 )
-from spflow.torch.inference import log_likelihood
+from spflow.torch.inference.nodes.node import log_likelihood
 import torch
 from spflow.base.structure.nodes.validity_checks import _isvalid_spn
 import unittest
