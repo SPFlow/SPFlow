@@ -6,7 +6,7 @@ Created on May 27, 2021
 This file provides the PyTorch variants of individual graph nodes.
 """
 from multipledispatch import dispatch  # type: ignore
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict
 import numpy as np
 
 import torch
@@ -110,12 +110,9 @@ class TorchSumNode(TorchNode):
 
         self.weights_aux.data = proj_convex_to_real(value)  # type: ignore
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-        # get inputs recursively
-        inputs = torch.hstack([child(data) for child in self.children()])  # type: ignore
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         # weight inputs in log-space
         weighted_inputs = inputs + self.weights.log()  # type: ignore
-
         return torch.logsumexp(weighted_inputs, dim=-1)
 
 
@@ -148,10 +145,9 @@ class TorchProductNode(TorchNode):
 
         super(TorchProductNode, self).__init__(children, scope)
 
-    def forward(self, x):
-        # TODO: broadcast across batches
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         # return product (sum in log space)
-        return x.sum()
+        return torch.sum(inputs, dim=-1)
 
 
 @dispatch(IProductNode)  # type: ignore[no-redef]
@@ -173,7 +169,7 @@ class TorchLeafNode(TorchNode):
         """
         super(TorchLeafNode, self).__init__([], scope)
 
-    def forward(self, x):
+    def forward(self, inputs: torch.Tensor) -> None:
         pass
 
 
