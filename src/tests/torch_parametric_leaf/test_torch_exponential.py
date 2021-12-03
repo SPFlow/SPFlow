@@ -31,7 +31,7 @@ class TestTorchExponential(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)
 
-        log_probs = log_likelihood(SPN(), node_exponential, data)
+        log_probs = log_likelihood(node_exponential, data, SPN())
         log_probs_torch = log_likelihood(torch_exponential, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities

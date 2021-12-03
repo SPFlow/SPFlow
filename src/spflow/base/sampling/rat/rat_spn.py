@@ -1,3 +1,11 @@
+"""
+Created on August 09, 2021
+
+@authors: Kevin Huy Nguyen
+
+This file provides the sampling methods for Rat-SPNs.
+"""
+
 from multipledispatch import dispatch  # type: ignore
 import numpy as np
 from spflow.base.structure.rat import RatSpn

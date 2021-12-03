@@ -31,7 +31,7 @@ class TestTorchGeometric(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, 10, (3, 1))
 
-        log_probs = log_likelihood(SPN(), node_geometric, data)
+        log_probs = log_likelihood(node_geometric, data, SPN())
         log_probs_torch = log_likelihood(torch_geometric, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
