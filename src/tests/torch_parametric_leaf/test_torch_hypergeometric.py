@@ -33,7 +33,7 @@ class TestTorchHypergeometric(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.array([[4], [5], [10], [11]])
 
-        log_probs = log_likelihood(SPN(), node_hypergeometric, data)
+        log_probs = log_likelihood(node_hypergeometric, data, SPN())
         log_probs_torch = log_likelihood(torch_hypergeometric, torch.tensor(data))
 
         # TODO: support is handled differently (in log space): -inf for torch and np.finfo().min for numpy (decide how to handle)

@@ -49,7 +49,7 @@ class TestTorchUniform(unittest.TestCase):
             ]
         )
 
-        log_probs = log_likelihood(SPN(), node_uniform, data_np)
+        log_probs = log_likelihood(node_uniform, data_np, SPN())
         log_probs_torch = log_likelihood(torch_uniform, data_torch)
 
         # make sure that probabilities match python backend probabilities
