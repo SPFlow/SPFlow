@@ -31,7 +31,7 @@ class TestTorchBernoulli(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 2, (3, 1))
 
-        log_probs = log_likelihood(SPN(), node_bernoulli, data)
+        log_probs = log_likelihood(node_bernoulli, data, SPN())
         log_probs_torch = log_likelihood(torch_bernoulli, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities

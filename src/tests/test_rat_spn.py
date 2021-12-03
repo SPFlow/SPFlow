@@ -2,10 +2,8 @@ import unittest
 from spflow.base.structure.nodes.validity_checks import _isvalid_spn
 from spflow.base.structure.rat.rat_spn import construct_spn, RatSpn
 from spflow.base.structure.rat.region_graph import random_region_graph
-from spflow.base.structure.nodes.node import (
-    _get_node_counts,
-)
-from spflow.base.inference.rat.rat_spn import likelihood
+from spflow.base.structure.nodes.node import _get_node_counts
+from spflow.base.inference.module import likelihood
 import numpy as np
 from spflow.base.learning.context import RandomVariableContext  # type: ignore
 from spflow.base.structure.nodes.leaves.parametric import (
@@ -243,10 +241,28 @@ class TestRatSpn(unittest.TestCase):
         leaf1 = get_scipy_object(rat_spn_module.nodes[1]).logpdf(
             x=[1], **get_scipy_object_parameters(rat_spn_module.nodes[1])
         )
+
         self.assertAlmostEqual(
             likelihood(rat_spn_module, np.array([1.0, 1.0]).reshape(-1, 2))[0][0],
-            np.exp(leaf0 + leaf1),
+            np.exp(leaf0 + leaf1)[0],
         )
+
+    def test_nodes_rat_spn_big(self):
+        # create region graph
+        rg = random_region_graph(X=set(range(1024)), depth=5, replicas=2, num_splits=2)
+        context = RandomVariableContext(
+            parametric_types=[Gaussian] * len(rg.root_region.random_variables)
+        )
+
+        # create torch rat spn from region graph
+        rat = RatSpn(rg, num_nodes_root=4, num_nodes_region=2, num_nodes_leaf=3, context=context)
+
+        # create dummy input data (batch size x random variables)
+        dummy_data = np.random.randn(3, 1024).reshape(-1, 1024)
+
+        # compute outputs for node rat spn
+        likelihood(rat, dummy_data)
+        self.assertTrue(True)
 
 
 if __name__ == "__main__":

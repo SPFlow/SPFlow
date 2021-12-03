@@ -32,8 +32,8 @@ class Module(ABC):
     def __init__(
         self,
         children: List["Module"],
+        scope: List[int],
         network_type: Optional[NetworkType] = None,
-        scope: List[int] = None,
     ) -> None:
         self.nodes: List[INode] = []
 

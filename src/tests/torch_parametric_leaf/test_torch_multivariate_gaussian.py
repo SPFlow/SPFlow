@@ -40,7 +40,7 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 3)
 
-        log_probs = log_likelihood(SPN(), node_multivariate_gaussian, data)
+        log_probs = log_likelihood(node_multivariate_gaussian, data, SPN())
         log_probs_torch = log_likelihood(torch_multivariate_gaussian, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities

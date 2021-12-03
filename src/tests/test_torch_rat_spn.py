@@ -1,7 +1,7 @@
 import unittest
 import random
 from spflow.base.structure.nodes.node import get_nodes_by_type, ISumNode, ILeafNode
-from spflow.base.inference.rat.rat_spn import log_likelihood
+from spflow.base.inference.module import log_likelihood, likelihood
 import torch
 import numpy as np
 from spflow.base.structure.rat.region_graph import (
@@ -19,7 +19,7 @@ from spflow.torch.structure.rat import (
     _TorchRegionLayer,
     _TorchLeafLayer,
 )
-from spflow.torch.inference import log_likelihood
+from spflow.torch.inference import log_likelihood, likelihood
 
 
 class TestTorchRatSpn(unittest.TestCase):

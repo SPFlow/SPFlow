@@ -32,7 +32,7 @@ class TestTorchBinomial(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, n, (3, 1))
 
-        log_probs = log_likelihood(SPN(), node_binomial, data)
+        log_probs = log_likelihood(node_binomial, data, SPN())
         log_probs_torch = log_likelihood(torch_binomial, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities

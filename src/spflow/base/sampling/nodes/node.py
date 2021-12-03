@@ -185,7 +185,7 @@ def sample_instances(
         np.any(np.isnan(data), axis=1)
     ), "each row must have at least a nan value where the samples will be substituted"
 
-    log_likelihood(network_type, node, data)
+    log_likelihood(node, data, network_type)
 
     instance_ids: np.ndarray = np.arange(data.shape[0])
 

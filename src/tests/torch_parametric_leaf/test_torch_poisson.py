@@ -31,7 +31,7 @@ class TestTorchPoisson(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 10, (3, 1))
 
-        log_probs = log_likelihood(SPN(), node_poisson, data)
+        log_probs = log_likelihood(node_poisson, data, SPN())
         log_probs_torch = log_likelihood(torch_poisson, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
