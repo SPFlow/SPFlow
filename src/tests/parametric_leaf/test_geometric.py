@@ -7,7 +7,7 @@ import unittest
 
 
 class TestGeometric(unittest.TestCase):
-    def test_geometric(self):
+    def test_likelihood(self):
 
         # ----- configuration 1 -----
         p = 0.2
@@ -54,21 +54,25 @@ class TestGeometric(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-        # ----- invalid parameters -----
+    def test_initialization(self):
 
         # p = 0
         self.assertRaises(Exception, Geometric, [0], 0.0)
         self.assertRaises(Exception, Geometric, [0], np.inf)
         self.assertRaises(Exception, Geometric, [0], np.nan)
 
+        geometric = Geometric([0], 0.5)
+        data = np.array([[1], [5], [10]])
+
         # set parameters to None manually
         geometric.p = None
         self.assertRaises(Exception, likelihood, SPN(), geometric, data)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, Geometric, [], 0.5)
+        self.assertRaises(Exception, Geometric, [0,1], 0.5)
 
-        # ----- support -----
+    def test_support(self):
 
         p = 0.8
 

@@ -27,6 +27,8 @@ class TestBernoulli(unittest.TestCase):
 
     def test_initialization(self):
 
+        # Valid parameters for Bernoulli distribution: p in [0,1]
+
         # p = 0
         bernoulli = Bernoulli([0], 0.0)
 
@@ -67,10 +69,13 @@ class TestBernoulli(unittest.TestCase):
         bernoulli.p = None
         self.assertRaises(Exception, likelihood, SPN(), bernoulli, data)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, Bernoulli, [], 0.5)
+        self.assertRaises(Exception, Bernoulli, [0, 1], 0.5)
 
     def test_support(self):
+
+        # Support for Bernoulli distribution: {0,1}
 
         p = random.random()
 

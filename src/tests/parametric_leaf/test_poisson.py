@@ -8,7 +8,7 @@ import random
 
 
 class TestPoisson(unittest.TestCase):
-    def test_poisson(self):
+    def test_likelihood(self):
 
         # ----- configuration 1 -----
         l = 1
@@ -55,10 +55,14 @@ class TestPoisson(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-        # ----- invalid parameters -----
+    def test_initialization(self):
+
         self.assertRaises(Exception, Poisson, [0], -np.inf)
         self.assertRaises(Exception, Poisson, [0], np.inf)
         self.assertRaises(Exception, Poisson, [0], np.nan)
+
+        poisson = Poisson([0], 1)
+        data = np.array([[0], [2], [5]])
 
         # set parameters to None manually
         poisson.l = None
@@ -66,8 +70,9 @@ class TestPoisson(unittest.TestCase):
 
         # invalid scope length
         self.assertRaises(Exception, Poisson, [], 1)
+        self.assertRaises(Exception, Poisson, [0,1], 1)
 
-        # ----- support -----
+    def test_support(self):
 
         l = random.random()
 

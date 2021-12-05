@@ -9,8 +9,8 @@ import math
 
 
 class TestGaussian(unittest.TestCase):
-    def test_gaussian(self):
-
+    def test_likelihood(self):
+        
         # ----- unit variance -----
         mean = random.random()
         var = 1.0
@@ -59,7 +59,8 @@ class TestGaussian(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-        # ----- invalid parameters -----
+    def test_initialization(self):
+
         mean = random.random()
 
         self.assertRaises(Exception, Gaussian, [0], mean, 0.0)
@@ -69,11 +70,15 @@ class TestGaussian(unittest.TestCase):
         self.assertRaises(Exception, Gaussian, [0], mean, np.inf)
         self.assertRaises(Exception, Gaussian, [0], mean, np.nan)
 
+        gaussian = Gaussian([0], 0.0, 1.0)
+        data = np.random.randn(1, 3)
+
         # set parameters to None manually
         gaussian.stdev = None
         self.assertRaises(Exception, likelihood, SPN(), gaussian, data)
         gaussian.mean = None
         self.assertRaises(Exception, likelihood, SPN(), gaussian, data)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, Gaussian, [], 0.0, 1.0)
+        self.assertRaises(Exception, Gaussian, [0,1], 0.0, 1.0)

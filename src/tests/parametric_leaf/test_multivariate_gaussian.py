@@ -7,7 +7,7 @@ import unittest
 
 
 class TestMultivariateGaussian(unittest.TestCase):
-    def test_multivariate_gaussian(self):
+    def test_likelihood(self):
 
         # ----- configuration 1 -----
         mean_vector = np.zeros(2)
@@ -60,14 +60,20 @@ class TestMultivariateGaussian(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
+    def test_initialization(self):
+
+        multivariate_gaussian = MultivariateGaussian([0,1], np.zeros(2), np.eye(2))
+        data = np.stack([np.zeros(2), np.ones(2)], axis=0)
+
         # set parameters to None manually
         multivariate_gaussian.covariance_matrix = None
         self.assertRaises(Exception, likelihood, SPN(), multivariate_gaussian, data)
         multivariate_gaussian.mean_vector = None
         self.assertRaises(Exception, likelihood, SPN(), multivariate_gaussian, data)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, MultivariateGaussian, [], [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
+        self.assertRaises(Exception, MultivariateGaussian, [0,1,2], [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
 
 
 if __name__ == "__main__":
