@@ -7,7 +7,7 @@ import unittest
 
 
 class TestNegativeBinomial(unittest.TestCase):
-    def test_negative_binomial(self):
+    def test_likelihood(self):
 
         # ----- configuration 1 -----
         n = 10
@@ -41,7 +41,7 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-        # ----- (invalid) parameters -----
+    def initialization(self):
 
         # p = 1
         negative_binomial = NegativeBinomial([0], 1, 1.0)
@@ -87,10 +87,12 @@ class TestNegativeBinomial(unittest.TestCase):
         negative_binomial.n = None
         self.assertRaises(Exception, likelihood, SPN(), negative_binomial, data)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, NegativeBinomial, [], 1, 0.5)
+        self.assertRaises(Exception, NegativeBinomial, [0,1], 1, 0.5)
 
-        # ----- support -----
+    def test_support(self):
+    
         n = 20
         p = 0.3
 

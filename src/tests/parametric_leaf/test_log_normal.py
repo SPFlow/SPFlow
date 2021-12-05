@@ -8,7 +8,7 @@ import random
 
 
 class TestLogNormal(unittest.TestCase):
-    def test_log_normal(self):
+    def test_likelihood(self):
 
         # ----- configuration 1 -----
         mean = 0.0
@@ -58,7 +58,32 @@ class TestLogNormal(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-        # ----- support -----
+    def test_initialization(self):
+
+        mean = random.random()
+
+        self.assertRaises(Exception, LogNormal, [0], mean, 0.0)
+        self.assertRaises(Exception, LogNormal, [0], mean, np.nextafter(0.0, -1.0))
+        self.assertRaises(Exception, LogNormal, [0], np.inf, 1.0)
+        self.assertRaises(Exception, LogNormal, [0], np.nan, 1.0)
+        self.assertRaises(Exception, LogNormal, [0], mean, np.inf)
+        self.assertRaises(Exception, LogNormal, [0], mean, np.nan)
+
+        log_normal = LogNormal([0], 0.0, 1.0)
+        data = np.array([[0.5], [1.0], [1.5]])
+
+        # set parameters to None manually
+        log_normal.stdev = None
+        self.assertRaises(Exception, likelihood, SPN(), log_normal, data)
+        log_normal.mean = None
+        self.assertRaises(Exception, likelihood, SPN(), log_normal, data)
+
+        # invalid scope lengths
+        self.assertRaises(Exception, LogNormal, [], 0.0, 1.0)
+        self.assertRaises(Exception, LogNormal, [0,1], 0.0, 1.0)
+
+    def test_support(self):
+
         mean = 0.0
         stdev = 1.0
 
@@ -75,25 +100,6 @@ class TestLogNormal(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(all(np.isinf(log_probs[:3])))
         self.assertTrue(all(~np.isinf(log_probs[3:])))
-
-        # ----- invalid parameters -----
-        mean = random.random()
-
-        self.assertRaises(Exception, LogNormal, [0], mean, 0.0)
-        self.assertRaises(Exception, LogNormal, [0], mean, np.nextafter(0.0, -1.0))
-        self.assertRaises(Exception, LogNormal, [0], np.inf, 1.0)
-        self.assertRaises(Exception, LogNormal, [0], np.nan, 1.0)
-        self.assertRaises(Exception, LogNormal, [0], mean, np.inf)
-        self.assertRaises(Exception, LogNormal, [0], mean, np.nan)
-
-        # set parameters to None manually
-        log_normal.stdev = None
-        self.assertRaises(Exception, likelihood, SPN(), log_normal, data)
-        log_normal.mean = None
-        self.assertRaises(Exception, likelihood, SPN(), log_normal, data)
-
-        # invalid scope length
-        self.assertRaises(Exception, LogNormal, [], 0.0, 1.0)
 
 
 if __name__ == "__main__":

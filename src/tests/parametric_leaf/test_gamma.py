@@ -7,7 +7,7 @@ import unittest
 
 
 class TestGamma(unittest.TestCase):
-    def test_gamma(self):
+    def test_likelihood(self):
 
         # ----- configuration 1 -----
         alpha = 1.0
@@ -48,7 +48,7 @@ class TestGamma(unittest.TestCase):
         gamma = Gamma([0], alpha, beta)
 
         # create test inputs/outputs
-        data = np.array([[0.1], [1.0], [3.0]])
+        
         targets = np.array([[0.0904837], [0.367879], [0.149361]])
 
         probs = likelihood(gamma, data, SPN())
@@ -57,7 +57,8 @@ class TestGamma(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-        # ----- (invalid) parameters -----
+    def test_initialization(self):
+
         Gamma([0], np.nextafter(0.0, 1.0), 1.0)
         Gamma([0], 1.0, np.nextafter(0.0, 1.0))
         self.assertRaises(Exception, Gamma, [0], np.nextafter(0.0, -1.0), 1.0)
@@ -67,15 +68,18 @@ class TestGamma(unittest.TestCase):
         self.assertRaises(Exception, Gamma, [0], 1.0, np.inf)
         self.assertRaises(Exception, Gamma, [0], 1.0, np.nan)
 
+        gamma = Gamma([0], 1.0, 1.0)
+        data = np.array([[0.1], [1.0], [3.0]])
+
         # set parameters to None manually
         gamma.beta = None
         self.assertRaises(Exception, likelihood, SPN(), gamma, data)
         gamma.alpha = None
         self.assertRaises(Exception, likelihood, SPN(), gamma, data)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, Gamma, [], 1.0, 1.0)
-
+        self.assertRaises(Exception, Gamma, [0,1], 1.0, 1.0)
 
 if __name__ == "__main__":
     unittest.main()
