@@ -5,7 +5,7 @@ Created on October 21, 2021
 """
 
 import numpy as np
-from typing import List
+from typing import List, Optional
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.node import (
     IProductNode,
@@ -14,7 +14,7 @@ from spflow.base.structure.nodes.node import (
 )
 from spflow.base.structure.network_type import NetworkType
 from spflow.base.learning.context import RandomVariableContext  # type: ignore
-from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian, ParametricLeaf
+from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian
 
 
 class Node(Module):
@@ -27,7 +27,9 @@ class Node(Module):
             List of one INode as Node modules only encapsulate a single INode
     """
 
-    def __init__(self, scope: List[int], children: List[Module], network_type: NetworkType) -> None:
+    def __init__(
+        self, scope: List[int], children: List[Module], network_type: Optional[NetworkType]
+    ) -> None:
         super().__init__(children=children, network_type=network_type, scope=scope)
         self.output_nodes: List[INode] = []
         self.nodes: List[INode] = []
@@ -49,7 +51,7 @@ class SumNode(Node):
         scope: List[int],
         weights: np.ndarray,
         children: List[Module],
-        network_type: NetworkType,
+        network_type: Optional[NetworkType] = None,
     ) -> None:
         super().__init__(children=children, network_type=network_type, scope=scope)
 
@@ -80,7 +82,9 @@ class SumNode(Node):
 class ProductNode(Node):
     """ProductNode is module encapsulating one IProductNode."""
 
-    def __init__(self, scope: List[int], children: List[Module], network_type: NetworkType) -> None:
+    def __init__(
+        self, scope: List[int], children: List[Module], network_type: Optional[NetworkType] = None
+    ) -> None:
         super().__init__(children=children, network_type=network_type, scope=scope)
 
         # check if all children are Modules
@@ -109,7 +113,10 @@ class LeafNode(Node):
     """
 
     def __init__(
-        self, scope: List[int], network_type: NetworkType, context: RandomVariableContext
+        self,
+        scope: List[int],
+        context: RandomVariableContext,
+        network_type: Optional[NetworkType] = None,
     ) -> None:
         super().__init__(children=[], network_type=network_type, scope=scope)
         if len(scope) == 1:

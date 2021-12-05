@@ -7,7 +7,7 @@ from spflow.base.inference.nodes.leaves.parametric.parametric import (
 )
 import numpy as np
 from spflow.base.structure.nodes import ISumNode, IProductNode, INode
-from spflow.base.structure.network_type import SPN
+from spflow.base.structure.network_type import SPN, set_network_type
 from spflow.base.structure.nodes.node_module import (
     SumNode,
     ProductNode,
@@ -245,58 +245,53 @@ class TestInference(unittest.TestCase):
 
     def test_inference_node_modules_log_ll(self):
         context = RandomVariableContext(parametric_types=[Gaussian, Gaussian, Gaussian])
-        spn = SumNode(
-            children=[
-                ProductNode(
-                    children=[
-                        LeafNode(scope=[0], context=context, network_type=SPN()),
-                        SumNode(
-                            children=[
-                                ProductNode(
-                                    children=[
-                                        LeafNode(scope=[1], context=context, network_type=SPN()),
-                                        LeafNode(scope=[2], context=context, network_type=SPN()),
-                                    ],
-                                    scope=[1, 2],
-                                    network_type=SPN(),
-                                ),
-                                ProductNode(
-                                    children=[
-                                        LeafNode(scope=[1], context=context, network_type=SPN()),
-                                        LeafNode(scope=[2], context=context, network_type=SPN()),
-                                    ],
-                                    scope=[1, 2],
-                                    network_type=SPN(),
-                                ),
-                            ],
-                            scope=[1, 2],
-                            weights=np.array([0.3, 0.7]),
-                            network_type=SPN(),
-                        ),
-                    ],
-                    scope=[0, 1, 2],
-                    network_type=SPN(),
-                ),
-                ProductNode(
-                    children=[
-                        ProductNode(
-                            children=[
-                                LeafNode(scope=[0], context=context, network_type=SPN()),
-                                LeafNode(scope=[1], context=context, network_type=SPN()),
-                            ],
-                            scope=[0, 1],
-                            network_type=SPN(),
-                        ),
-                        LeafNode(scope=[2], context=context, network_type=SPN()),
-                    ],
-                    scope=[0, 1, 2],
-                    network_type=SPN(),
-                ),
-            ],
-            scope=[0, 1, 2],
-            weights=np.array([0.4, 0.6]),
-            network_type=SPN(),
-        )
+
+        with set_network_type(SPN()):
+            spn = SumNode(
+                children=[
+                    ProductNode(
+                        children=[
+                            LeafNode(scope=[0], context=context),
+                            SumNode(
+                                children=[
+                                    ProductNode(
+                                        children=[
+                                            LeafNode(scope=[1], context=context),
+                                            LeafNode(scope=[2], context=context),
+                                        ],
+                                        scope=[1, 2],
+                                    ),
+                                    ProductNode(
+                                        children=[
+                                            LeafNode(scope=[1], context=context),
+                                            LeafNode(scope=[2], context=context),
+                                        ],
+                                        scope=[1, 2],
+                                    ),
+                                ],
+                                scope=[1, 2],
+                                weights=np.array([0.3, 0.7]),
+                            ),
+                        ],
+                        scope=[0, 1, 2],
+                    ),
+                    ProductNode(
+                        children=[
+                            ProductNode(
+                                children=[
+                                    LeafNode(scope=[0], context=context),
+                                    LeafNode(scope=[1], context=context),
+                                ],
+                                scope=[0, 1],
+                            ),
+                            LeafNode(scope=[2], context=context),
+                        ],
+                        scope=[0, 1, 2],
+                    ),
+                ],
+                scope=[0, 1, 2],
+                weights=np.array([0.4, 0.6]),
+            )
 
         result_node_module = log_likelihood(spn, np.array([np.nan, 0.0, 1.0]).reshape(-1, 3))
         result_nodes = log_likelihood(
@@ -306,58 +301,53 @@ class TestInference(unittest.TestCase):
 
     def test_inference_node_modules_ll(self):
         context = RandomVariableContext(parametric_types=[Gaussian, Gaussian, Gaussian])
-        spn = SumNode(
-            children=[
-                ProductNode(
-                    children=[
-                        LeafNode(scope=[0], context=context, network_type=SPN()),
-                        SumNode(
-                            children=[
-                                ProductNode(
-                                    children=[
-                                        LeafNode(scope=[1], context=context, network_type=SPN()),
-                                        LeafNode(scope=[2], context=context, network_type=SPN()),
-                                    ],
-                                    scope=[1, 2],
-                                    network_type=SPN(),
-                                ),
-                                ProductNode(
-                                    children=[
-                                        LeafNode(scope=[1], context=context, network_type=SPN()),
-                                        LeafNode(scope=[2], context=context, network_type=SPN()),
-                                    ],
-                                    scope=[1, 2],
-                                    network_type=SPN(),
-                                ),
-                            ],
-                            scope=[1, 2],
-                            weights=np.array([0.3, 0.7]),
-                            network_type=SPN(),
-                        ),
-                    ],
-                    scope=[0, 1, 2],
-                    network_type=SPN(),
-                ),
-                ProductNode(
-                    children=[
-                        ProductNode(
-                            children=[
-                                LeafNode(scope=[0], context=context, network_type=SPN()),
-                                LeafNode(scope=[1], context=context, network_type=SPN()),
-                            ],
-                            scope=[0, 1],
-                            network_type=SPN(),
-                        ),
-                        LeafNode(scope=[2], context=context, network_type=SPN()),
-                    ],
-                    scope=[0, 1, 2],
-                    network_type=SPN(),
-                ),
-            ],
-            scope=[0, 1, 2],
-            weights=np.array([0.4, 0.6]),
-            network_type=SPN(),
-        )
+
+        with set_network_type(SPN()):
+            spn = SumNode(
+                children=[
+                    ProductNode(
+                        children=[
+                            LeafNode(scope=[0], context=context),
+                            SumNode(
+                                children=[
+                                    ProductNode(
+                                        children=[
+                                            LeafNode(scope=[1], context=context),
+                                            LeafNode(scope=[2], context=context),
+                                        ],
+                                        scope=[1, 2],
+                                    ),
+                                    ProductNode(
+                                        children=[
+                                            LeafNode(scope=[1], context=context),
+                                            LeafNode(scope=[2], context=context),
+                                        ],
+                                        scope=[1, 2],
+                                    ),
+                                ],
+                                scope=[1, 2],
+                                weights=np.array([0.3, 0.7]),
+                            ),
+                        ],
+                        scope=[0, 1, 2],
+                    ),
+                    ProductNode(
+                        children=[
+                            ProductNode(
+                                children=[
+                                    LeafNode(scope=[0], context=context),
+                                    LeafNode(scope=[1], context=context),
+                                ],
+                                scope=[0, 1],
+                            ),
+                            LeafNode(scope=[2], context=context),
+                        ],
+                        scope=[0, 1, 2],
+                    ),
+                ],
+                scope=[0, 1, 2],
+                weights=np.array([0.4, 0.6]),
+            )
 
         result_node_module = likelihood(spn, np.array([np.nan, 0.0, 1.0]).reshape(-1, 3))
         result_nodes = likelihood(

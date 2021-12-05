@@ -2,7 +2,6 @@ from typing import List
 from multipledispatch import dispatch  # type: ignore
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes import ILeafNode, INode, IProductNode, ISumNode
-from spflow.base.structure.rat import RatSpn
 import numpy as np
 
 
