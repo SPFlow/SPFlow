@@ -7,7 +7,7 @@ import unittest
 
 
 class TestHypergeometric(unittest.TestCase):
-    def test_hypergeometric(self):
+    def test_initialization(self):
 
         # ----- configuration 1 -----
         N = 500
@@ -43,7 +43,37 @@ class TestHypergeometric(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-        # ----- support -----
+    def test_initialization(self):
+    
+        self.assertRaises(Exception, Hypergeometric, -1, 1, 1)
+        self.assertRaises(Exception, Hypergeometric, 1, -1, 1)
+        self.assertRaises(Exception, Hypergeometric, 1, 2, 1)
+        self.assertRaises(Exception, Hypergeometric, 1, 1, -1)
+        self.assertRaises(Exception, Hypergeometric, 1, 1, 2)
+        self.assertRaises(Exception, Hypergeometric, [0], np.inf, 1, 1)
+        self.assertRaises(Exception, Hypergeometric, [0], np.nan, 1, 1)
+        self.assertRaises(Exception, Hypergeometric, [0], 1, np.inf, 1)
+        self.assertRaises(Exception, Hypergeometric, [0], 1, np.nan, 1)
+        self.assertRaises(Exception, Hypergeometric, [0], 1, 1, np.inf)
+        self.assertRaises(Exception, Hypergeometric, [0], 1, 1, np.nan)
+
+        hypergeometric = Hypergeometric([0], N=500, M=100, n=50)
+        data = np.array([[5], [10], [15]])
+
+        # set parameters to None manually
+        hypergeometric.n = None
+        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
+        hypergeometric.M = None
+        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
+        hypergeometric.N = None
+        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
+
+        # invalid scope lengths
+        self.assertRaises(Exception, Hypergeometric, [], 1, 1, 1)
+        self.assertRaises(Exception, Hypergeometric, [0,1], 1, 1, 1)
+
+    def test_support(self):
+
         N = 15
         M = 10
         n = 10
@@ -59,30 +89,6 @@ class TestHypergeometric(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(all(probs[:2] == 0))
         self.assertTrue(all(probs[2:] != 0))
-
-        # ----- invalid parameters -----
-        self.assertRaises(Exception, Hypergeometric, -1, 1, 1)
-        self.assertRaises(Exception, Hypergeometric, 1, -1, 1)
-        self.assertRaises(Exception, Hypergeometric, 1, 2, 1)
-        self.assertRaises(Exception, Hypergeometric, 1, 1, -1)
-        self.assertRaises(Exception, Hypergeometric, 1, 1, 2)
-        self.assertRaises(Exception, Hypergeometric, [0], np.inf, 1, 1)
-        self.assertRaises(Exception, Hypergeometric, [0], np.nan, 1, 1)
-        self.assertRaises(Exception, Hypergeometric, [0], 1, np.inf, 1)
-        self.assertRaises(Exception, Hypergeometric, [0], 1, np.nan, 1)
-        self.assertRaises(Exception, Hypergeometric, [0], 1, 1, np.inf)
-        self.assertRaises(Exception, Hypergeometric, [0], 1, 1, np.nan)
-
-        # set parameters to None manually
-        hypergeometric.n = None
-        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
-        hypergeometric.M = None
-        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
-        hypergeometric.N = None
-        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
-
-        # invalid scope length
-        self.assertRaises(Exception, Hypergeometric, [], 1, 1, 1)
 
 
 if __name__ == "__main__":

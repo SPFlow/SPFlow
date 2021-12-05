@@ -8,7 +8,7 @@ import random
 
 
 class TestUniform(unittest.TestCase):
-    def test_uniform(self):
+    def test_likelihood(self):
 
         start = random.random()
         end = start + 1e-7 + random.random()
@@ -35,7 +35,8 @@ class TestUniform(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-        # ----- invalid parameters -----
+    def test_initialization(self):
+    
         start_end = random.random()
 
         self.assertRaises(Exception, Uniform, [0], start_end, start_end)
@@ -45,6 +46,9 @@ class TestUniform(unittest.TestCase):
         self.assertRaises(Exception, Uniform, [0], 0.0, np.inf)
         self.assertRaises(Exception, Uniform, [0], 0.0, np.nan)
 
+        uniform = Uniform([0], 0.0, 1.0)
+        data = np.random.rand(1,3)
+
         # set parameters to None manually
         uniform.end = None
         self.assertRaises(Exception, likelihood, SPN(), uniform, data)
@@ -53,6 +57,7 @@ class TestUniform(unittest.TestCase):
 
         # invalid scope length
         self.assertRaises(Exception, Uniform, [], 0.0, 1.0)
+        self.assertRaises(Exception, Uniform, [0,1], 0.0, 1.0)
 
 
 if __name__ == "__main__":

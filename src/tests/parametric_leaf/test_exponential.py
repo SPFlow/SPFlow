@@ -7,7 +7,7 @@ import unittest
 
 
 class TestExponential(unittest.TestCase):
-    def test_exponential(self):
+    def test_likelihood(self):
 
         # ----- configuration 1 -----
         l = 0.5
@@ -54,8 +54,10 @@ class TestExponential(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-        # ----- (invalid) parameters -----
-        Exponential([0], np.nextafter(0.0, 1.0))
+    def test_initialization(self):
+
+        
+        exponential = Exponential([0], np.nextafter(0.0, 1.0))
         self.assertRaises(Exception, Exponential, [0], 0.0)
         self.assertRaises(Exception, Exponential, [0], -1.0)
         self.assertRaises(Exception, Exponential, [0], np.inf)
@@ -63,19 +65,21 @@ class TestExponential(unittest.TestCase):
 
         # set parameters to None manually
         exponential.l = None
+        data = np.array([[0], [2], [5]])
         self.assertRaises(Exception, likelihood, SPN(), exponential, data)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, Exponential, [], 1.0)
+        self.assertRaises(Exception, Exponential, [0,1], 1.0)
 
-        # ----- support -----
+    def test_support(self):
+
         l = 1.5
-
-        exponential = Exponential([0], l)
 
         # create test inputs/outputs
         data = np.array([[np.nextafter(0.0, -1.0)], [0.0]])
 
+        exponential = Exponential([0], l)
         probs = likelihood(exponential, data, SPN())
         log_probs = log_likelihood(exponential, data, SPN())
 
