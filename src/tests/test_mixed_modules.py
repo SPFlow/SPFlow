@@ -8,7 +8,7 @@ from spflow.base.structure.nodes.node_module import (
 from spflow.base.structure.rat.rat_spn import RatSpn
 from spflow.base.structure.rat.region_graph import random_region_graph
 from spflow.base.structure.module import _get_node_counts
-from spflow.base.structure.network_type import SPN
+from spflow.base.structure.network_type import SPN, set_network_type
 from spflow.base.structure.nodes.validity_checks import _isvalid_spn
 from spflow.base.learning.context import RandomVariableContext  # type: ignore
 from spflow.base.structure.nodes.leaves.parametric import Gaussian
@@ -20,19 +20,16 @@ class TestMixedModules(unittest.TestCase):
         context = RandomVariableContext(
             parametric_types=[Gaussian] * (len(region_graph.root_region.random_variables) + 1)
         )
-        rat_spn_module = RatSpn(region_graph, 1, 1, 1, context)
-        _isvalid_spn(rat_spn_module)
 
-        leaf1 = rat_spn_module
-        leaf2 = LeafNode(scope=[2], network_type=SPN(), context=context)
-        prod1 = ProductNode(children=[leaf1, leaf2], scope=[0, 1, 2], network_type=SPN())
-        prod2 = ProductNode(children=[leaf1, leaf2], scope=[0, 1, 2], network_type=SPN())
-        sum = SumNode(
-            children=[prod1, prod2],
-            scope=[0, 1, 2],
-            weights=np.array([0.3, 0.7]),
-            network_type=SPN(),
-        )
+        with set_network_type(SPN()):
+            rat_spn_module = RatSpn(region_graph, 1, 1, 1, context)
+            _isvalid_spn(rat_spn_module)
+
+            leaf1 = rat_spn_module
+            leaf2 = LeafNode(scope=[2], network_type=SPN(), context=context)
+            prod1 = ProductNode(children=[leaf1, leaf2], scope=[0, 1, 2])
+            prod2 = ProductNode(children=[leaf1, leaf2], scope=[0, 1, 2])
+            sum = SumNode(children=[prod1, prod2], scope=[0, 1, 2], weights=np.array([0.3, 0.7]))
 
         _isvalid_spn(sum)
         sum_nodes, prod_nodes, leaf_nodes = _get_node_counts(sum)

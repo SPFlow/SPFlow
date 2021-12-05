@@ -16,7 +16,7 @@ from spflow.base.structure.nodes.node import _get_node_counts
 
 
 class TestMemoization(unittest.TestCase):
-    def test_memoization(self):
+    def test_memoization_torch_log_ll(self):
 
         #       [A]         (sum node)
         #       / \
@@ -131,7 +131,7 @@ class TestMemoization(unittest.TestCase):
 
         sys.settrace(tracefunc)
 
-        # compute outputs for node rat spn
+        # compute outputs for internal node graph
         likelihood(spn, np.random.randn(3, 7).reshape(-1, 7), SPN())
 
         sys.settrace(None)
@@ -164,7 +164,7 @@ class TestMemoization(unittest.TestCase):
 
         sys.settrace(tracefunc)
 
-        # compute outputs for node rat spn
+        # compute outputs for rat spn module
         likelihood(rat_spn, np.random.randn(3, 7).reshape(-1, 7))
 
         sys.settrace(None)
