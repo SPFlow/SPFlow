@@ -16,15 +16,23 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchUniform(TorchParametricLeaf):
-    """(Univariate) continuous Uniform distribution.
-    PDF(x) =
-        1 / (end - start) * 1_[start, end], where
-            - 1_[start, end] is the indicator function of the given interval (evaluating to 0 if x is not in the interval)
-    Attributes:
+    r"""(Univariate) continuous Uniform distribution.
+    
+    .. math::
+
+        \text{PDF}(x) = \frac{1}{\text{end} - \text{start}}\mathbf{1}_{[\text{start}, \text{end}]}(x)
+    
+    where
+        - :math:`x` is the input observation
+        - :math:`\mathbf{1}_{[\text{start}, \text{end}]}` is the indicator function for the given interval (evaluating to 0 if x is not in the interval)
+    
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         start:
             Start of the interval.
         end:
-            End of interval (must be larger the interval start).
+            End of interval (must be larger than start).
     """
 
     ptype = ParametricType.CONTINUOUS

@@ -17,21 +17,28 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchMultivariateGaussian(TorchParametricLeaf):
-    """Multivariate Normal distribution.
-    PDF(x) =
-        1/sqrt((2*pi)^d * det(cov)) * exp(-1/2 (x-mu)^T * cov^(-1) * (x-mu)), where
-            - d is the dimension of the distribution
-            - x is the d-dim. vector of observations
-            - mu is the d-dim. mean_vector
-            - cov is the dxd covariance_matrix
-    Attributes:
+    r"""Multivariate Normal distribution.
+    
+    .. math::
+
+        \text{PDF}(x) = \frac{1}{\sqrt{(2\pi)^d\det\Sigma}}\exp\left(-\frac{1}{2} (x-\mu)^T\Sigma^{-1}(x-\mu)\right)
+    
+    where
+        - :math:`d` is the dimension of the distribution
+        - :math:`x` is the :math:`d`-dim. vector of observations
+        - :math:`\mu` is the :math:`d`-dim. mean vector
+        - :math:`\Sigma` is the :math:`d\times d` covariance matrix
+    
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         mean_vector:
-            A list, NumPy array or a PyTorch tensor holding the means (mu) of each of the one-dimensional Normal distributions.
+            A list, NumPy array or a PyTorch tensor holding the means (:math:`\mu`) of each of the one-dimensional Normal distributions.
             Has exactly as many elements as the scope of this leaf.
         covariance_matrix:
-            A list of lists, NumPy array or PyTorch tensor (representing a two-dimensional NxN matrix, where N is the length
+            A list of lists, NumPy array or PyTorch tensor (representing a two-dimensional :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
             of the scope) describing the covariances of the distribution. The diagonal holds
-            the variances (sigma^2) of each of the one-dimensional distributions.
+            the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
     """
 
     ptype = ParametricType.POSITIVE

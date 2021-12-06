@@ -17,12 +17,21 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchPoisson(TorchParametricLeaf):
-    """(Univariate) Poisson distribution.
-    PMF(k) =
-        l^k * exp(-l) / k!
-    Attributes:
+    r"""(Univariate) Poisson distribution.
+    
+    .. math::
+        
+        \text{PMF}(k) = \lambda^k\frac{e^{-\lambda}}{k!}
+
+    where
+        - :math:`k` is the number of occurrences
+        - :math:`\lambda` is the rate parameter
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         l:
-            Expected value (& variance) of the Poisson distribution (usually denoted as lambda).
+            Rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than 0).
     """
 
     ptype = ParametricType.COUNT

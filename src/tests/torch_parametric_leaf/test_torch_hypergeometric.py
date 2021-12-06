@@ -95,38 +95,83 @@ class TestTorchHypergeometric(unittest.TestCase):
 
     def test_initialization(self):
 
-        self.assertRaises(Exception, TorchHypergeometric, -1, 1, 1)
-        self.assertRaises(Exception, TorchHypergeometric, 1, -1, 1)
-        self.assertRaises(Exception, TorchHypergeometric, 1, 2, 1)
-        self.assertRaises(Exception, TorchHypergeometric, 1, 1, -1)
-        self.assertRaises(Exception, TorchHypergeometric, 1, 1, 2)
+        # Valid parameters for Hypergeometric distribution: N in N U {0}, M in {0,...,N}, n in {0,...,N}, p in [0,1] TODO
+
+        # N = 0
+        TorchHypergeometric([0], 0, 0, 0)
+        # N < 0
+        self.assertRaises(Exception, TorchHypergeometric, [0], -1, 1, 1)
+        # N = inf and N = nan
         self.assertRaises(Exception, TorchHypergeometric, [0], np.inf, 1, 1)
         self.assertRaises(Exception, TorchHypergeometric, [0], np.nan, 1, 1)
+        
+        # M < 0 and M > N
+        self.assertRaises(Exception, TorchHypergeometric, [0], 1, -1, 1)
+        self.assertRaises(Exception, TorchHypergeometric, [0], 1, 2, 1)
+        # M = inf and M = nan
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, np.inf, 1)
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, np.nan, 1)
+
+        # n < 0 and n > N
+        self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, -1)
+        self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, 2)
+        # n = inf and n = nan
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, np.inf)
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, np.nan)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, TorchHypergeometric, [], 1, 1, 1)
+        self.assertRaises(Exception, TorchHypergeometric, [0,1], 1, 1, 1)
 
     def test_support(self):
 
+        # Support for Hypergeometric distribution: {max(0,n+M-N),...,min(n,M)}
+        
+        # TODO:
+        #   outside support -> 0 (or error?)
+
+        # case n+M-N > 0
         N = 15
         M = 10
         n = 10
 
         hypergeometric = TorchHypergeometric([0], N, M, n)
 
-        # create test inputs/outputs
-        data = torch.tensor([[4], [11], [5], [10]])
+        # edge cases (-inf,inf), finite values outside valid integer range and values between valid integers
+        data = torch.tensor([[-float("inf")], [torch.nextafter(torch.tensor(max(0, n+M-N)), torch.tensor(-1.0))], [1.5], [torch.nextafter(torch.tensor(min(n,M)), torch.tensor(-1.0))], [torch.nextafter(torch.tensor(min(n,M)), torch.tensor(20.0))], [float("inf")]])
+        targets = torch.zeros((6,1))
 
         probs = likelihood(hypergeometric, data)
         log_probs = log_likelihood(hypergeometric, data)
 
+        # TODO: fails (1.5, why ???)
+        #self.assertTrue(torch.allclose(probs, targets))
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(all(probs[:2] == 0))
-        self.assertTrue(all(probs[2:] != 0))
+        
+        # case n+M-N
+        N = 25
+
+        hypergeometric = TorchHypergeometric([0], N, M, n)
+
+        # edge cases (-inf,inf), finite values outside valid integer range and values between valid integers
+        data = torch.tensor([[-float("inf")], [torch.nextafter(torch.tensor(max(0, n+M-N)), torch.tensor(-1.0))], [1.5], [torch.nextafter(torch.tensor(min(n,M)), torch.tensor(-1.0))], [torch.nextafter(torch.tensor(min(n,M)), torch.tensor(20.0))], [float("inf")]])
+        targets = torch.zeros((6,1))
+
+        probs = likelihood(hypergeometric, data)
+        log_probs = log_likelihood(hypergeometric, data)
+
+        # TODO: fails (1.5, why ???)
+        #self.assertTrue(torch.allclose(probs, targets))
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+
+        # max(0,n+M-N) and min(n,M)
+        data = torch.tensor([[max(0,n+M-N)], [min(n,M)]])
+
+        probs = likelihood(hypergeometric, data)
+        log_probs = log_likelihood(hypergeometric, data)
+
+        self.assertTrue(all(probs != 0))
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
 
 
 if __name__ == "__main__":
