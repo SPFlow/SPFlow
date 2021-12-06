@@ -17,15 +17,24 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchNegativeBinomial(TorchParametricLeaf):
-    """(Univariate) Negative Binomial distribution.
-    PMF(k) =
-        (k+n-1)C(k) * (1-p)^n * p^k, where
-            - (n)C(k) is the binomial coefficient (n choose k)
-    Attributes:
+    r"""(Univariate) Negative Binomial distribution.
+    
+    .. math::
+
+        \text{PMF}(k) = \binom{k+n-1}{k}(1-p)^n p^k
+    
+    where
+        - :math:`k` is the number of successes
+        - :math:`n` is the maximum number of failures
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+    
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         n:
-            Number of i.i.d. trials (greater of equal to 0).
+            Number of i.i.d. trials (greater or equal to 0).
         p:
-            Probability of success of each trial in the range (0,1].
+            Probability of success for each trial in the range :math:`(0,1]`.
     """
 
     ptype = ParametricType.COUNT
@@ -89,7 +98,7 @@ class TorchNegativeBinomial(TorchParametricLeaf):
 
     def set_params(self, n: int, p: float) -> None:
 
-        if p <= 0.0 or p > 1.0 or not np.isfinite(p):
+        if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
                 f"Value of p for NegativeBinomial distribution must to be between 0.0 and 1.0, but was: {p}"
             )

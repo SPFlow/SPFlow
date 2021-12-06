@@ -17,17 +17,24 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchLogNormal(TorchParametricLeaf):
-    """(Univariate) Log-Normal distribution.
-    PDF(x) =
-        1/(x*sigma*sqrt(2*pi) * exp(-(ln(x)-mu)^2/(2*sigma^2)), where
-            - x is an observation
-            - mu is the mean
-            - sigma is the standard deviation
-    Attributes:
+    r"""(Univariate) Log-Normal distribution.
+    
+    .. math::
+    
+        \text{PDF}(x) = \frac{1}{x\sigma\sqrt{2\pi}}\exp\left(-\frac{(\ln(x)-\mu)^2}{2\sigma^2}\right)
+    
+    where
+        - :math:`x` is an observation
+        - :math:`\mu` is the mean
+        - :math:`\sigma` is the standard deviation
+    
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         mean:
-            mean (mu) of the distribution.
+            mean (:math:`\mu`) of the distribution.
         stdev:
-            standard deviation (sigma) of the distribution (must be greater than 0).
+            standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
     """
 
     ptype = ParametricType.POSITIVE

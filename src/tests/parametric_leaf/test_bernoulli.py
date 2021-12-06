@@ -35,11 +35,7 @@ class TestBernoulli(unittest.TestCase):
         data = np.array([[0.0], [1.0]])
         targets = np.array([[1.0], [0.0]])
 
-        probs = likelihood(
-            bernoulli,
-            data,
-            SPN(),
-        )
+        probs = likelihood(bernoulli, data, SPN())
         log_probs = log_likelihood(bernoulli, data, SPN())
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
@@ -77,17 +73,25 @@ class TestBernoulli(unittest.TestCase):
 
         # Support for Bernoulli distribution: {0,1}
 
+        # TODO:
+        #   likelihood:         0->0.000000001, 1.0->0.999999999
+        #   log-likelihood: -inf->fmin
+        #
+        #   outside support -> 0 (or error?)
+
         p = random.random()
 
         bernoulli = Bernoulli([0], p)
 
-        data = np.array([[np.nextafter(0.0, -1.0)], [0.5], [np.nextafter(1.0, 2.0)]])
+        # edge cases (-inf,inf), finite values outside [0,1] and values within (0,1)
+        data = np.array([[-np.inf], [-1.0], [np.nextafter(0.0, -1.0)], [0.5], [np.nextafter(1.0, 2.0)], [2.0], [np.inf]])
+        targets = np.zeros((7,1))
 
         probs = likelihood(bernoulli, data, SPN())
         log_probs = log_likelihood(bernoulli, data, SPN())
 
+        self.assertTrue(np.allclose(probs, targets))
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
-        self.assertTrue(all(probs == 0.0))
 
 
 if __name__ == "__main__":

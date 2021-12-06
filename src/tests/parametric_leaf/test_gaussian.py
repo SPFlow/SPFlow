@@ -61,15 +61,22 @@ class TestGaussian(unittest.TestCase):
 
     def test_initialization(self):
 
+        # Valid parameters for Exponential distribution: mean in R, stdev > 0
+
         mean = random.random()
 
-        self.assertRaises(Exception, Gaussian, [0], mean, 0.0)
-        self.assertRaises(Exception, Gaussian, [0], mean, np.nextafter(0.0, -1.0))
+        # mean = inf and mean = nan
         self.assertRaises(Exception, Gaussian, [0], np.inf, 1.0)
         self.assertRaises(Exception, Gaussian, [0], np.nan, 1.0)
+
+        # stdev = 0 and stdev > 0
+        self.assertRaises(Exception, Gaussian, [0], mean, 0.0)
+        self.assertRaises(Exception, Gaussian, [0], mean, np.nextafter(0.0, -1.0))
+        # stdev = inf and stdev = nan
         self.assertRaises(Exception, Gaussian, [0], mean, np.inf)
         self.assertRaises(Exception, Gaussian, [0], mean, np.nan)
 
+        # dummy distribution and data        
         gaussian = Gaussian([0], 0.0, 1.0)
         data = np.random.randn(1, 3)
 
@@ -82,3 +89,29 @@ class TestGaussian(unittest.TestCase):
         # invalid scope lengths
         self.assertRaises(Exception, Gaussian, [], 0.0, 1.0)
         self.assertRaises(Exception, Gaussian, [0,1], 0.0, 1.0)
+    
+    def test_support(self):
+        
+        # Support for Gaussian distribution: R (TODO: R or (-inf, inf)?)
+
+        # TODO:
+        #   likelihood:     None
+        #   log-likelihood: None
+        #
+        #   outside support -> 0 (or error?)
+        
+        gaussian = Gaussian([0], 0.0, 1.0)
+
+        # edge cases (-inf,inf)
+        data = np.array([[-np.inf], [np.inf]])
+        targets = np.zeros((2,1))
+
+        probs = likelihood(gaussian, data, SPN())
+        log_probs = log_likelihood(gaussian, data, SPN())
+
+        self.assertTrue(np.allclose(probs, targets))
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -57,10 +57,20 @@ class TestPoisson(unittest.TestCase):
 
     def test_initialization(self):
 
+        # Valid parameters for Poisson distribution: l in (0,inf) (TODO: 0,inf?)
+
+        # l = 0 (TODO: !?)
+        self.assertRaises(Exception, Poisson, [0], 0.0)
+        # l > 0
+        Poisson([0], np.nextafter(0.0, 1.0))
+
+        # l = -inf and l = inf
         self.assertRaises(Exception, Poisson, [0], -np.inf)
         self.assertRaises(Exception, Poisson, [0], np.inf)
+        # l = nan
         self.assertRaises(Exception, Poisson, [0], np.nan)
 
+        # dummy distribution and data
         poisson = Poisson([0], 1)
         data = np.array([[0], [2], [5]])
 
@@ -74,19 +84,27 @@ class TestPoisson(unittest.TestCase):
 
     def test_support(self):
 
+        # Support for Poisson distribution: N U {0}
+
+        # TODO:
+        #   likelihood:         0->0.000000001, 1.0->0.999999999
+        #   log-likelihood: -inf->fmin
+        #
+        #   outside support -> 0 (or error?)
+
         l = random.random()
 
         poisson = Poisson([0], l)
 
-        # create test inputs/outputs
-        data = np.array([[-1.0], [-0.5], [0.0]])
+        # edge cases (-inf,inf), integer values < 0, values between valid integers
+        data = np.array([[-np.inf], [-1.0], [np.nextafter(0.0, -1.0)], [1.5], [np.inf]])
+        targets = np.zeros((5,1))
 
         probs = likelihood(poisson, data, SPN())
         log_probs = log_likelihood(poisson, data, SPN())
 
+        self.assertTrue(np.allclose(probs, targets))
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
-        self.assertTrue(np.all(probs[:2] == 0))
-        self.assertTrue(np.all(probs[-1] != 0))
 
 
 if __name__ == "__main__":

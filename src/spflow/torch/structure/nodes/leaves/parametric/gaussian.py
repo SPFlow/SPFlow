@@ -17,17 +17,24 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchGaussian(TorchParametricLeaf):
-    """(Univariate) Normal distribution.
-    PDF(x) =
-        1/sqrt(2*pi*sigma^2) * exp(-(x-mu)^2/(2*sigma^2)), where
-            - x is an observation
-            - mu is the mean
-            - sigma is the standard deviation
-    Attributes:
+    r"""(Univariate) Normal distribution.
+    
+    .. math::
+    
+        \text{PDF}(x) = \frac{1}{\sqrt{2\pi\sigma^2}}\exp(-\frac{(x-\mu)^2}{2\sigma^2})
+    
+    where
+        - :math:`x` the observation
+        - :math:`\mu` is the mean
+        - :math:`\sigma` is the standard deviation
+    
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         mean:
-            mean (mu) of the distribution.
+            mean (:math:`\mu`) of the distribution.
         stdev:
-            standard deviation (sigma) of the distribution.
+            standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
     """
 
     ptype = ParametricType.CONTINUOUS

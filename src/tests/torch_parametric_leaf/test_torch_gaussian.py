@@ -134,17 +134,43 @@ class TestTorchGaussian(unittest.TestCase):
 
     def test_initialization(self):
 
+        # Valid parameters for Exponential distribution: mean in R, stdev > 0
+
         mean = random.random()
 
-        self.assertRaises(Exception, TorchGaussian, [0], mean, 0.0)
-        self.assertRaises(Exception, TorchGaussian, [0], mean, np.nextafter(0.0, -1.0))
+        # mean = inf and mean = nan
         self.assertRaises(Exception, TorchGaussian, [0], np.inf, 1.0)
         self.assertRaises(Exception, TorchGaussian, [0], np.nan, 1.0)
+        
+        # stdev = 0 and stdev > 0
+        self.assertRaises(Exception, TorchGaussian, [0], mean, 0.0)
+        self.assertRaises(Exception, TorchGaussian, [0], mean, np.nextafter(0.0, -1.0))
+        # stdev = inf and stdev = nan
         self.assertRaises(Exception, TorchGaussian, [0], mean, np.inf)
         self.assertRaises(Exception, TorchGaussian, [0], mean, np.nan)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, TorchGaussian, [], 0.0, 1.0)
+        self.assertRaises(Exception, TorchGaussian, [0,1], 0.0, 1.0)
+
+    def test_support(self):
+        
+        # Support for Gaussian distribution: R (TODO: R or (-inf, inf)?)
+
+        # TODO:
+        #   outside support -> 0 (or error?)
+        
+        gaussian = TorchGaussian([0], 0.0, 1.0)
+
+        # edge cases (-inf,inf)
+        data = torch.tensor([[-float("inf")], [float("inf")]])
+        targets = torch.zeros((2,1))
+
+        probs = likelihood(gaussian, data)
+        log_probs = log_likelihood(gaussian, data)
+
+        self.assertTrue(torch.allclose(probs, targets))
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
 
 
 if __name__ == "__main__":

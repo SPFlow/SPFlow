@@ -15,11 +15,21 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchHypergeometric(TorchParametricLeaf):
-    """(Univariate) Hypergeometric distribution.
-    PMF(k) =
-        (M)C(k) * (N-M)C(n-k) / (N)C(n), where
-            - (n)C(k) is the binomial coefficient (n choose k)
-    Attributes:
+    r"""(Univariate) Hypergeometric distribution.
+    
+    .. math::
+        
+        \text{PMF}(k) = \frac{\binom{M}{k}\binom{N-M}{n-k}}{\binom{N}{n}}
+    
+    where
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+        - :math:`N` is the total number of entities
+        - :math:`M` is the number of entities with property of interest
+        - :math:`k` s the number of observed entities
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         N:
             Total number of entities (in the population), greater or equal to 0.
         M:

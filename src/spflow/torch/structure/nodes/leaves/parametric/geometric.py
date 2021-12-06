@@ -17,12 +17,23 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchGeometric(TorchParametricLeaf):
-    """(Univariate) Geometric distribution.
-    PMF(k) =
-        p * (1-p)^(k-1)
-    Attributes:
+    r"""(Univariate) Geometric distribution.
+    
+    .. math::
+    
+        \text{PMF}(k) =  p(1-p)^{k-1}
+    
+    where
+        - :math:`k` is the number of trials
+        - :math:`p` is the success probability of each trial
+
+    Note, that the Geometric distribution as implemented in PyTorch uses :math:`k-1` as input.
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         p:
-            Probability of success in the range (0,1].
+            Probability of success in the range :math:`(0,1]`.
     """
 
     ptype = ParametricType.BINARY

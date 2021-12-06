@@ -17,13 +17,22 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchBernoulli(TorchParametricLeaf):
-    """(Univariate) Binomial distribution.
-    PMF(k) =
-        p   , if k=1
-        1-p , if k=0
-    Attributes:
+    r"""(Univariate) Bernoulli distribution.
+
+    .. math::
+
+        \text{PMF}(k)=\begin{cases} p   & \text{if } k=1\\
+                                    1-p & \text{if } k=0\end{cases}
+        
+    where
+        - :math:`p` is the success probability
+        - :math:`k` is the outcome of the trial (0 or 1)
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         p:
-            Probability of success in the range [0,1].
+            Probability of success in the range :math:`[0,1]`.
     """
 
     ptype = ParametricType.BINARY

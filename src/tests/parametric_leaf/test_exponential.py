@@ -56,10 +56,16 @@ class TestExponential(unittest.TestCase):
 
     def test_initialization(self):
 
+        # Valid parameters for Exponential distribution: l>0
         
+        # l > 0
         exponential = Exponential([0], np.nextafter(0.0, 1.0))
+        
+        # l = 0 and l < 0
         self.assertRaises(Exception, Exponential, [0], 0.0)
-        self.assertRaises(Exception, Exponential, [0], -1.0)
+        self.assertRaises(Exception, Exponential, [0], np.nextafter(0.0, -1.0))
+        
+        # l = inf and l = nan
         self.assertRaises(Exception, Exponential, [0], np.inf)
         self.assertRaises(Exception, Exponential, [0], np.nan)
 
@@ -74,18 +80,35 @@ class TestExponential(unittest.TestCase):
 
     def test_support(self):
 
+        # Support for Exponential distribution: [0,inf)
+
+        # TODO:
+        #   likelihood:     None
+        #   log-likelihood: None
+        #
+        #   outside support -> 0 (or error?)
+
         l = 1.5
-
-        # create test inputs/outputs
-        data = np.array([[np.nextafter(0.0, -1.0)], [0.0]])
-
         exponential = Exponential([0], l)
+
+        # edge cases (-inf,inf) and finite values < 0
+        data = np.array([[-np.inf], [np.nextafter(0.0, -1.0)], [np.inf]])
+        targets = np.zeros((3,1))
+
         probs = likelihood(exponential, data, SPN())
         log_probs = log_likelihood(exponential, data, SPN())
 
+        self.assertTrue(np.allclose(probs, targets))
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
-        self.assertTrue(all(probs[0] == 0.0))
-        self.assertTrue(all(probs[1] != 0.0))
+
+        # edge case 0
+        data = np.array([[0.0]])
+
+        probs = likelihood(exponential, data, SPN())
+        log_probs = log_likelihood(exponential, data, SPN())
+
+        self.assertTrue(all(probs != 0.0))
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
 
 
 if __name__ == "__main__":

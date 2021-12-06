@@ -41,7 +41,9 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-    def initialization(self):
+    def test_initialization(self):
+
+        # Valid parameters for Geometric distribution: p in [0,1], n>0 (TODO: n>=0?)
 
         # p = 1
         negative_binomial = NegativeBinomial([0], 1, 1.0)
@@ -56,16 +58,13 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertTrue(np.allclose(probs, targets))
 
         # p = 0
-        self.assertRaises(Exception, NegativeBinomial, [0], 1, 0.0)
-
-        # 1 >= p > 0
-        NegativeBinomial([0], 1, np.nextafter(0.0, 1.0))
+        NegativeBinomial([0], 1, 0.0)
 
         # p < 0 and p > 1
         self.assertRaises(Exception, NegativeBinomial, [0], 1, np.nextafter(1.0, 2.0))
         self.assertRaises(Exception, NegativeBinomial, [0], 1, np.nextafter(0.0, -1.0))
 
-        # p inf, nan
+        # p = inf and p = nan
         self.assertRaises(Exception, NegativeBinomial, [0], 1, np.inf)
         self.assertRaises(Exception, NegativeBinomial, [0], 1, np.nan)
 
@@ -75,7 +74,7 @@ class TestNegativeBinomial(unittest.TestCase):
         # n < 0
         self.assertRaises(Exception, NegativeBinomial, [0], np.nextafter(0.0, -1.0), 1.0)
 
-        # n inf, nan
+        # n = inf and = nan
         self.assertRaises(Exception, NegativeBinomial, [0], np.inf, 1.0)
         self.assertRaises(Exception, NegativeBinomial, [0], np.nan, 1.0)
 
@@ -92,20 +91,30 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertRaises(Exception, NegativeBinomial, [0,1], 1, 0.5)
 
     def test_support(self):
-    
+
+        # Support for Negative Binomial distribution: N U {0}
+
+        # TODO:
+        #   likelihood:         0->0.000000001, 1.0->0.999999999
+        #   log-likelihood: -inf->fmin
+        #
+        #   outside support -> 0 (or error?)
+
         n = 20
         p = 0.3
 
         negative_binomial = NegativeBinomial([0], n, p)
 
-        data = np.array([[np.nextafter(0.0, -1.0)], [0.0]])
+        # edge cases (-inf,inf), integer values < 0, values between valid integers
+        data = np.array([[-np.inf], [-1.0], [np.nextafter(0.0, -1.0)], [1.5]])#, [np.inf]])
+        targets = np.zeros((4,1))
 
         probs = likelihood(negative_binomial, data, SPN())
         log_probs = log_likelihood(negative_binomial, data, SPN())
 
+        # TODO: inf -> nan
+        self.assertTrue(np.allclose(probs, targets))
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
-        self.assertTrue(all(probs[0] == 0.0))
-        self.assertTrue(all(probs[1] != 0.0))
 
 
 if __name__ == "__main__":

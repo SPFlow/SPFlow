@@ -17,15 +17,25 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchBinomial(TorchParametricLeaf):
-    """(Univariate) Binomial distribution.
-    PMF(k) =
-        (n)C(k) * p^k * (1-p)^(n-k), where
-            - (n)C(k) is the binomial coefficient (n choose k)
-    Attributes:
+    r"""(Univariate) Binomial distribution.
+
+    .. math::
+    
+        \text{PMF}(k) = \binom{n}{k}p^k(1-p)^{n-k}
+    
+    where
+        - :math:`p` is the success probability of each trial
+        - :math:`n` is the number of total trials
+        - :math:`k` is the number of successes
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+    
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         n:
             Number of i.i.d. Bernoulli trials (greater of equal to 0).
         p:
-            Probability of success of each trial in the range [0,1].
+            Probability of success of each trial in the range :math:`[0,1]`.
     """
 
     ptype = ParametricType.COUNT
