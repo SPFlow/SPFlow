@@ -17,13 +17,22 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchExponential(TorchParametricLeaf):
-    """(Univariate) Exponential distribution.
-    PDF(x) =
-        l * exp(-l * x) , if x > 0
-        0               , if x <= 0
-    Attributes:
+    r"""(Univariate) Exponential distribution.
+
+    .. math::
+        
+        \text{PDF}(x) = \begin{cases} \lambda e^{-\lambda x} & \text{if } x > 0\\
+                                      0                      & \text{if } x <= 0\end{cases}
+    
+    where
+        - :math:`x` is the input observation
+        - :math:`\lambda` is the rate parameter
+    
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         l:
-            Rate parameter of the Exponential distribution (usually denoted as lambda, must be greater than 0).
+            Rate parameter (:math:`\lambda`) of the Exponential distribution (must be greater than 0).
     """
 
     ptype = ParametricType.POSITIVE

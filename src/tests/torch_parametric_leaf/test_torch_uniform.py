@@ -112,17 +112,44 @@ class TestTorchUniform(unittest.TestCase):
 
     def test_initialization(self):
 
-        start_end = random.random()
+        # Valid parameters for Uniform distribution: a<b
 
+        # start = end
+        start_end = random.random()
         self.assertRaises(Exception, TorchUniform, [0], start_end, start_end)
-        self.assertRaises(Exception, TorchUniform, [0], start_end, np.nextafter(start_end, -1.0))
+        # start > end
+        self.assertRaises(Exception, TorchUniform, [0], start_end, torch.nextafter(torch.tensor(start_end), torch.tensor(-1.0)))
+        # start = inf and start = nan
         self.assertRaises(Exception, TorchUniform, [0], np.inf, 0.0)
         self.assertRaises(Exception, TorchUniform, [0], np.nan, 0.0)
+        # end = inf and end = nan
         self.assertRaises(Exception, TorchUniform, [0], 0.0, np.inf)
         self.assertRaises(Exception, TorchUniform, [0], 0.0, np.nan)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, TorchUniform, [], 0.0, 1.0)
+        self.assertRaises(Exception, TorchUniform, [0,1], 0.0, 1.0)
+    
+    def test_support(self):
+
+        # Support for Uniform distribution: [a,b] (TODO: R?)
+
+        # TODO:
+        #   outside support -> 0 (or NaN?)
+
+        l = random.random()
+
+        uniform = TorchUniform([0], 1.0, 2.0)
+
+        # edge cases (-inf,inf), values outside of [1,2]
+        data = torch.tensor([[-float("inf")], [torch.nextafter(torch.tensor(1.0), torch.tensor(-float("inf")))], [torch.nextafter(torch.tensor(2.0), torch.tensor(float("inf")))], [float("inf")]])
+        targets = torch.zeros((4,1))
+
+        probs = likelihood(uniform, data)
+        log_probs = log_likelihood(uniform, data)
+
+        self.assertTrue(torch.allclose(probs, targets))
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
 
 
 if __name__ == "__main__":

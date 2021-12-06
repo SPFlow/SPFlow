@@ -130,17 +130,60 @@ class TestTorchGamma(unittest.TestCase):
 
     def test_initialization(self):
 
+        # Valid parameters for Gamma distribution: alpha>0, beta>0
+
         TorchGamma([0], torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)), 1.0)
         TorchGamma([0], 1.0, torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
+
+        # alpha < 0
         self.assertRaises(Exception, TorchGamma, [0], np.nextafter(0.0, -1.0), 1.0)
-        self.assertRaises(Exception, TorchGamma, [0], 1.0, np.nextafter(0.0, -1.0))
+        # alpha = inf and alpha = nan
         self.assertRaises(Exception, TorchGamma, [0], np.inf, 1.0)
         self.assertRaises(Exception, TorchGamma, [0], np.nan, 1.0)
+        
+        # beta = < 0
+        self.assertRaises(Exception, TorchGamma, [0], 1.0, np.nextafter(0.0, -1.0))
+        # beta = inf and beta = non
         self.assertRaises(Exception, TorchGamma, [0], 1.0, np.inf)
         self.assertRaises(Exception, TorchGamma, [0], 1.0, np.nan)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, TorchGamma, [], 1.0, 1.0)
+        self.assertRaises(Exception, TorchGamma, [0,1], 1.0, 1.0)
+
+    def test_support(self):
+        
+        # Support for Gamma distribution: (0,inf)
+
+        # TODO:
+        #   likelihood:     x=0 -> POS_EPS (?)
+        #   log-likelihood: x=0 -> POS_EPS (?)
+        #
+        #   outside support -> nan (or 0?)
+
+        gamma = TorchGamma([0], 1.0, 1.0)
+
+        # edge cases (-inf,inf) and finite values < 0
+        data = torch.tensor([[-float("inf")], [torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))], [float("inf")]])
+        targets = torch.zeros((3,1))
+
+        # TODO: fails (support, which one?)
+        probs = likelihood(gamma, data)
+        log_probs = log_likelihood(gamma, data)
+
+        self.assertTrue(torch.allclose(probs, targets))
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+
+        # finite values > 0
+        data =  torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]])
+
+        probs = likelihood(gamma, data)
+        log_probs = log_likelihood(gamma, data)
+
+        self.assertTrue(all(data != 0.0))
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+
+        # TODO: 0
 
 
 if __name__ == "__main__":

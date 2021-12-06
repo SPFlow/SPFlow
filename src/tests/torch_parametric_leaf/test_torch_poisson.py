@@ -4,6 +4,8 @@ from spflow.torch.structure.nodes.leaves.parametric import TorchPoisson, toNodes
 from spflow.torch.inference import log_likelihood, likelihood
 
 from spflow.base.structure.network_type import SPN
+from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import TorchHypergeometric
+from spflow.torch.structure.nodes.node import TorchProductNode
 
 import torch
 import numpy as np
@@ -119,28 +121,44 @@ class TestTorchPoisson(unittest.TestCase):
 
     def test_initialization(self):
 
+        # Valid parameters for Poisson distribution: l in (0,inf) (TODO: 0,inf?)
+
+        # l = 0 (TODO: !?)
+        #self.assertRaises(Exception, TorchPoisson, [0], 0.0)
+        # l > 0
+        TorchPoisson([0], torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
+        
+        # l = -inf and l = inf
         self.assertRaises(Exception, TorchPoisson, [0], -np.inf)
         self.assertRaises(Exception, TorchPoisson, [0], np.inf)
+        # l = nan
         self.assertRaises(Exception, TorchPoisson, [0], np.nan)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, TorchPoisson, [], 1)
+        self.assertRaises(Exception, TorchPoisson, [0,1], 1)
 
     def test_support(self):
+
+        # Support for Poisson distribution: N U {0}
+
+        # TODO:
+        #   outside support -> 0 (or error?)
 
         l = random.random()
 
         poisson = TorchPoisson([0], l)
 
-        # create test inputs/outputs
-        data = torch.tensor([[-1.0], [-0.5], [0.0]])
+        # edge cases (-inf,inf), integer values < 0, values between valid integers
+        data = torch.tensor([[-float("inf")], [-1.0], [torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))], [1.5], [float("inf")]])
+        targets = torch.zeros((5,1))
 
+        # TODO: support (which one?)
         probs = likelihood(poisson, data)
         log_probs = log_likelihood(poisson, data)
 
+        self.assertTrue(torch.allclose(probs, targets))
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.all(probs[:2] == 0))
-        self.assertTrue(torch.all(probs[-1] != 0))
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ class Binomial(ParametricLeaf):
 
     Attributes:
         n:
-            Number of i.i.d. Bernoulli trials (greater of equal to 0).
+            Number of i.i.d. Bernoulli trials (greater or equal to 0).
         p:
             Probability of success of each trial in the range [0,1]
     """

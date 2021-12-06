@@ -41,7 +41,7 @@ class NegativeBinomial(ParametricLeaf):
 
     def set_params(self, n: int, p: float) -> None:
 
-        if p <= 0.0 or p > 1.0 or not np.isfinite(p):
+        if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
                 f"Value of p for NegativeBinomial distribution must to be between 0.0 and 1.0, but was: {p}"
             )

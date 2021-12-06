@@ -137,36 +137,43 @@ class TestTorchLogNormal(unittest.TestCase):
 
     def test_initialization(self):
 
-        mean = random.random()
+        # Valid parameters for Log-Normal distribution: mean in R (TODO: (-inf,inf)?), std>0
 
-        self.assertRaises(Exception, TorchLogNormal, [0], mean, 0.0)
-        self.assertRaises(Exception, TorchLogNormal, [0], mean, np.nextafter(0.0, -1.0))
+        # mean = inf and mean = 0
         self.assertRaises(Exception, TorchLogNormal, [0], np.inf, 1.0)
         self.assertRaises(Exception, TorchLogNormal, [0], np.nan, 1.0)
+
+        mean = random.random()
+
+        # stdev <= 0
+        self.assertRaises(Exception, TorchLogNormal, [0], mean, 0.0)
+        self.assertRaises(Exception, TorchLogNormal, [0], mean, np.nextafter(0.0, -1.0))
+        # stdev = inf and stdev = nan
         self.assertRaises(Exception, TorchLogNormal, [0], mean, np.inf)
         self.assertRaises(Exception, TorchLogNormal, [0], mean, np.nan)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, TorchLogNormal, [], 0.0, 1.0)
+        self.assertRaises(Exception, TorchLogNormal, [0,1], 0.0, 1.0)
 
     def test_support(self):
 
-        mean = 0.0
-        stdev = 1.0
+        # Support for Log-Normal distribution: (0,inf) (TODO: 0,inf?)
 
-        log_normal = TorchLogNormal([0], mean, stdev)
+        # TODO:
+        #   outside support -> 0 (or error?)
 
-        # create test inputs testing around the boundaries
-        data = torch.tensor(
-            [[-1.0], [0.0], [float("Inf")], [torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
-        )
+        log_normal = TorchLogNormal([0], 0.0, 1.0)
+
+        # edge cases (-inf,inf) and 0.0
+        data = torch.tensor([[-float("inf")], [0.0], [float("inf")]])
+        targets = torch.zeros((3,1))
 
         probs = likelihood(log_normal, data)
         log_probs = log_likelihood(log_normal, data)
 
+        self.assertTrue(torch.allclose(probs, targets))
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(all(torch.isinf(log_probs[:3])))
-        self.assertTrue(all(~torch.isinf(log_probs[3:])))
 
 
 if __name__ == "__main__":

@@ -131,6 +131,8 @@ class TestTorchBinomial(unittest.TestCase):
 
     def test_initialization(self):
 
+        # Valid parameters for Binomial distribution: p in [0,1], n >= 0
+
         # p = 0
         binomial = TorchBinomial([0], 1, 0.0)
 
@@ -141,7 +143,7 @@ class TestTorchBinomial(unittest.TestCase):
         log_probs = log_likelihood(binomial, data)
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        # TODO (fails): self.assertTrue(torch.allclose(probs, targets))
+        self.assertTrue(torch.allclose(probs, targets))
 
         # p = 1
         binomial = TorchBinomial([0], 1, 1.0)
@@ -153,51 +155,59 @@ class TestTorchBinomial(unittest.TestCase):
         log_probs = log_likelihood(binomial, data)
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        # TODO (fails): self.assertTrue(torch.allclose(probs, targets))
+        self.assertTrue(torch.allclose(probs, targets))
 
         # p < 0 and p > 1
-        self.assertRaises(
-            Exception, TorchBinomial, [0], 1, torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))
-        )
-        self.assertRaises(
-            Exception, TorchBinomial, [0], 1, torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))
-        )
+        self.assertRaises(Exception, TorchBinomial, [0], 1, torch.nextafter(torch.tensor(1.0), torch.tensor(2.0)))
+        self.assertRaises(Exception, TorchBinomial, [0], 1, torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)))
 
+        # p = inf and p = nan
+        self.assertRaises(Exception, TorchBinomial, [0], 1, np.inf)
+        self.assertRaises(Exception, TorchBinomial, [0], 1, np.nan)
+        
         # n = 0
-        # TODO (not supported): binomial = TorchBinomial([0], 0, 0.5)
+        binomial = TorchBinomial([0], 0, 0.5)
 
-        # data = torch.tensor([[0.0], [1.0]])
-        # targets = torch.tensor([[1.0], [0.0]])
+        data = torch.tensor([[0.0], [1.0]])
+        targets = torch.tensor([[1.0], [0.0]])
 
-        # probs = likelihood(binomial, data)
-        # log_probs = log_likelihood(binomial, data)
+        probs = likelihood(binomial, data)
+        log_probs = log_likelihood(binomial, data)
 
-        # self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        # self.assertTrue(torch.allclose(probs, targets))
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(torch.allclose(probs, targets))
 
         # n < 0
         self.assertRaises(Exception, TorchBinomial, [0], -1, 0.5)
 
         # TODO: n float
 
-        # inf, nan
+        # n = inf and n = nan
         self.assertRaises(Exception, TorchBinomial, [0], np.inf, 0.5)
         self.assertRaises(Exception, TorchBinomial, [0], np.nan, 0.5)
-        self.assertRaises(Exception, TorchBinomial, [0], 1, np.inf)
-        self.assertRaises(Exception, TorchBinomial, [0], 1, np.nan)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, TorchBinomial, [], 1, 0.5)
+        self.assertRaises(Exception, TorchBinomial, [0,1], 1, 0.5)
 
     def test_support(self):
 
-        binomial = TorchBinomial([0], 1, 0.0)
+        # Support for Binomial distribution: {0,...,n}
 
-        data = torch.tensor([[-1.0], [2.0]])
+        # TODO:
+        #   outside support -> 0 (or error?)
 
+        binomial = TorchBinomial([0], 2, 0.5)
+
+        # edge cases (-inf, inf), finite values outside {0,1,2} and values within (0,2)
+        data = torch.tensor([[-float("inf")], [-1.0], [torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))], [0.5], [1.5], [torch.nextafter(torch.tensor(2.0), torch.tensor(3.0))], [3.0], [float("inf")]])
+        targets = torch.zeros((8,1))
+
+        # TODO: fails (support)
         probs = likelihood(binomial, data)
         log_probs = log_likelihood(binomial, data)
 
+        self.assertTrue(torch.allclose(probs, targets))
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(all(probs == 0))
 

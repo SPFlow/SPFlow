@@ -124,32 +124,38 @@ class TestTorchGeometric(unittest.TestCase):
 
     def test_initialiation(self):
 
+        # Valid parameters for Geometric distribution: p in [0,1]
+
         # p = 0
         self.assertRaises(Exception, TorchGeometric, [0], 0.0)
+
+        # p = inf and p = nan
         self.assertRaises(Exception, TorchGeometric, [0], np.inf)
         self.assertRaises(Exception, TorchGeometric, [0], np.nan)
 
-        # invalid scope length
+        # invalid scope lengths
         self.assertRaises(Exception, TorchGeometric, [], 0.5)
+        self.assertRaises(Exception, TorchGeometric, [0,1], 0.5)
 
     def test_support(self):
 
-        p = 0.8
+        # Support for Geometric distribution: N\{0}
 
-        geometric = TorchGeometric([0], p)
+        # TODO:
+        #   outside support -> 0 (or error?)
 
-        # create test inputs/outputs
-        data = torch.tensor(
-            [[0], [torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))], [1.5], [1]]
-        )
+        geometric = TorchGeometric([0], 0.5)
+
+        # edge cases (-inf,inf), finite values outside N\{0} and values R between the valid integers
+        data = torch.tensor([[-float("inf")], [0.0], [torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))], [1.5], [float("inf")]])
+        targets = torch.zeros((5,1))
 
         probs = likelihood(geometric, data)
         log_probs = log_likelihood(geometric, data)
 
+        self.assertTrue(torch.allclose(probs, targets))
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.all(probs[:3] == 0))
-        self.assertTrue(torch.all(probs[-1] != 0))
-
+        
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

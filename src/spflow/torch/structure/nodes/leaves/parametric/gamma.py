@@ -17,16 +17,28 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class TorchGamma(TorchParametricLeaf):
-    """(Univariate) Gamma distribution.
-    PDF(x) =
-        1/(G(beta) * alpha^beta) * x^(beta-1) * exp(-x/alpha)   , if x > 0
-        0                                                       , if x <= 0, where
-            - G(beta) is the Gamma function
-    Attributes:
+    r"""(Univariate) Gamma distribution.
+    
+    .. math::
+    
+        \text{PDF}(x) = \begin{cases} \frac{\beta^\alpha}{\Gamma(\alpha)}x^{\alpha-1}e^{-\beta x} & \text{if } x > 0\\
+                                      0 & \text{if } x <= 0\end{cases}
+
+    where
+        - :math:`x` is the input observation
+        - :math:`\Gamma` is the Gamma function
+        - :math:`\alpha` is the shape parameter
+        - :math:`\beta` is the rate parameter
+
+    TODO: check
+    
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         alpha:
-            Shape parameter, greater than 0.
+            Shape parameter (:math:`\alpha`), greater than 0.
         beta:
-            Scale parameter, greater than 0.
+            Rate parameter (:math:`\beta`), greater than 0.
     """
 
     ptype = ParametricType.POSITIVE
