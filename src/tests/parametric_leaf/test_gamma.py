@@ -48,7 +48,7 @@ class TestGamma(unittest.TestCase):
         gamma = Gamma([0], alpha, beta)
 
         # create test inputs/outputs
-        
+
         targets = np.array([[0.0904837], [0.367879], [0.149361]])
 
         probs = likelihood(gamma, data, SPN())
@@ -82,38 +82,33 @@ class TestGamma(unittest.TestCase):
 
         # set parameters to None manually
         gamma.beta = None
-        self.assertRaises(Exception, likelihood, SPN(), gamma, data)
+        self.assertRaises(Exception, likelihood, gamma, data, SPN())
         gamma.alpha = None
-        self.assertRaises(Exception, likelihood, SPN(), gamma, data)
+        self.assertRaises(Exception, likelihood, gamma, data, SPN())
 
         # invalid scope lengths
         self.assertRaises(Exception, Gamma, [], 1.0, 1.0)
-        self.assertRaises(Exception, Gamma, [0,1], 1.0, 1.0)
-    
+        self.assertRaises(Exception, Gamma, [0, 1], 1.0, 1.0)
+
     def test_support(self):
 
-        # Support for Gamma distribution: (0,inf)
+        # Support for Gamma distribution: floats (0,inf)
 
         # TODO:
         #   likelihood:     x=0 -> POS_EPS (?)
         #   log-likelihood: x=0 -> POS_EPS (?)
-        #
-        #   outside support -> 0 (or error?)
-        
+
         gamma = Gamma([0], 1.0, 1.0)
 
-        # edge cases (-inf,inf), 0 and finite values < 0, 
-        data = np.array([[-np.inf], [np.nextafter(0.0, -1.0)], [np.inf]])
-        targets = np.zeros((3,1))
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, gamma, np.array([[-np.inf]]), SPN())
+        log_likelihood(gamma, np.array([[np.inf]]), SPN())
 
-        probs = likelihood(gamma, data, SPN())
-        log_probs = log_likelihood(gamma, data, SPN())
+        # check finite values > 0
+        log_likelihood(gamma, np.array([[np.nextafter(0.0, 1.0)]]), SPN())
+        log_likelihood(gamma, np.array([[10.5]]), SPN())
 
-        self.assertTrue(np.allclose(probs, targets))
-        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
-
-        # finite values > 0
-        data =  np.array([[np.nextafter(0.0, 1.0)]])
+        data = np.array([[np.nextafter(0.0, 1.0)]])
 
         probs = likelihood(gamma, data, SPN())
         log_probs = log_likelihood(gamma, data, SPN())
@@ -121,7 +116,25 @@ class TestGamma(unittest.TestCase):
         self.assertTrue(all(data != 0.0))
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
 
+        # check invalid float values (outside range)
+        self.assertRaises(ValueError, log_likelihood, gamma, np.array([[0.0]]), SPN())
+        self.assertRaises(
+            ValueError, log_likelihood, gamma, np.array([[np.nextafter(0.0, -1.0)]]), SPN()
+        )
+
         # TODO: 0
+
+    def test_marginalization(self):
+
+        gamma = Gamma([0], 1.0, 1.0)
+        data = np.array([[np.nan]])
+
+        # should not raise and error and should return 1 (0 in log-space)
+        probs = likelihood(gamma, data, SPN())
+        log_probs = log_likelihood(gamma, data, SPN())
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, 1.0))
 
 
 if __name__ == "__main__":
