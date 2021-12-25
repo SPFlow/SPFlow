@@ -147,8 +147,20 @@ class TestTorchNegativeBinomial(unittest.TestCase):
         TorchNegativeBinomial([0], 1, 0.0)
 
         # p < 0 and p > 1
-        self.assertRaises(Exception, TorchNegativeBinomial, [0], 1, torch.nextafter(torch.tensor(1.0), torch.tensor(2.0)))
-        self.assertRaises(Exception, TorchNegativeBinomial, [0], 1, torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)))
+        self.assertRaises(
+            Exception,
+            TorchNegativeBinomial,
+            [0],
+            1,
+            torch.nextafter(torch.tensor(1.0), torch.tensor(2.0)),
+        )
+        self.assertRaises(
+            Exception,
+            TorchNegativeBinomial,
+            [0],
+            1,
+            torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)),
+        )
 
         # p = inf and p = nan
         self.assertRaises(Exception, TorchNegativeBinomial, [0], 1, np.inf)
@@ -158,7 +170,13 @@ class TestTorchNegativeBinomial(unittest.TestCase):
         TorchNegativeBinomial([0], 0.0, 1.0)
 
         # n < 0
-        self.assertRaises(Exception, TorchNegativeBinomial, [0], torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)), 1.0)
+        self.assertRaises(
+            Exception,
+            TorchNegativeBinomial,
+            [0],
+            torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)),
+            1.0,
+        )
 
         # n = inf and n = nan
         self.assertRaises(Exception, TorchNegativeBinomial, [0], np.inf, 1.0)
@@ -168,31 +186,56 @@ class TestTorchNegativeBinomial(unittest.TestCase):
 
         # invalid scope lengths
         self.assertRaises(Exception, TorchNegativeBinomial, [], 1, 1.0)
-        self.assertRaises(Exception, TorchNegativeBinomial, [0,1], 1, 1.0)
+        self.assertRaises(Exception, TorchNegativeBinomial, [0, 1], 1, 1.0)
 
     def test_support(self):
 
-        # Support for Negative Binomial distribution: N U {0}
-
-        # TODO:
-        #   outside support -> 0 (or error?)
+        # Support for Negative Binomial distribution: integers N U {0}
 
         n = 20
         p = 0.3
 
         negative_binomial = TorchNegativeBinomial([0], n, p)
 
-        # edge cases (-inf,inf), integer values < 0, values between valid integers
-        data = torch.tensor([[-float("inf")], [-1.0], [torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))], [1.5]])#, [np.inf]])
-        targets = np.zeros((4,1))
+        # check infinite values
+        self.assertRaises(
+            ValueError, log_likelihood, negative_binomial, torch.tensor([[-float("inf")]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, negative_binomial, torch.tensor([[float("inf")]])
+        )
 
-        # TODO: fails (support, which one?)
+        # check valid integers, but outside of valid range
+        self.assertRaises(ValueError, log_likelihood, negative_binomial, torch.tensor([[-1]]))
+
+        # check valid integers within valid range
+        log_likelihood(negative_binomial, torch.tensor([[0]]))
+        log_likelihood(negative_binomial, torch.tensor([[100]]))
+
+        # check invalid float values
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            negative_binomial,
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            negative_binomial,
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
+        )
+        self.assertRaises(ValueError, log_likelihood, negative_binomial, torch.tensor([[10.1]]))
+
+    def test_marginalization(self):
+
+        negative_binomial = TorchNegativeBinomial([0], 20, 0.3)
+        data = torch.tensor([[float("nan")]])
+
+        # should not raise and error and should return 1
         probs = likelihood(negative_binomial, data)
-        log_probs = log_likelihood(negative_binomial, data)
 
-        # TODO: inf -> nan
-        self.assertTrue(torch.allclose(probs, targets))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
 
 
 if __name__ == "__main__":

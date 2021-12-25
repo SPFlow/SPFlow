@@ -124,10 +124,10 @@ class TestTorchPoisson(unittest.TestCase):
         # Valid parameters for Poisson distribution: l in (0,inf) (TODO: 0,inf?)
 
         # l = 0 (TODO: !?)
-        #self.assertRaises(Exception, TorchPoisson, [0], 0.0)
+        self.assertRaises(Exception, TorchPoisson, [0], 0.0)
         # l > 0
         TorchPoisson([0], torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
-        
+
         # l = -inf and l = inf
         self.assertRaises(Exception, TorchPoisson, [0], -np.inf)
         self.assertRaises(Exception, TorchPoisson, [0], np.inf)
@@ -136,29 +136,54 @@ class TestTorchPoisson(unittest.TestCase):
 
         # invalid scope lengths
         self.assertRaises(Exception, TorchPoisson, [], 1)
-        self.assertRaises(Exception, TorchPoisson, [0,1], 1)
+        self.assertRaises(Exception, TorchPoisson, [0, 1], 1)
 
     def test_support(self):
 
-        # Support for Poisson distribution: N U {0}
-
-        # TODO:
-        #   outside support -> 0 (or error?)
+        # Support for Poisson distribution: integers N U {0}
 
         l = random.random()
 
         poisson = TorchPoisson([0], l)
 
-        # edge cases (-inf,inf), integer values < 0, values between valid integers
-        data = torch.tensor([[-float("inf")], [-1.0], [torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))], [1.5], [float("inf")]])
-        targets = torch.zeros((5,1))
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[-float("inf")]]))
+        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[float("inf")]]))
 
-        # TODO: support (which one?)
+        # check nan values (marginalization)
+        log_likelihood(poisson, torch.tensor([[float("nan")]]))
+
+        # check valid integers, but outside of valid range
+        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[-1]]))
+
+        # check valid integers within valid range
+        log_likelihood(poisson, torch.tensor([[0]]))
+        log_likelihood(poisson, torch.tensor([[100]]))
+
+        # check invalid float values
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            poisson,
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            poisson,
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
+        )
+        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[10.1]]))
+
+    def test_marginalization(self):
+
+        poisson = TorchPoisson([0], 1.0)
+        data = torch.tensor([[float("nan")]])
+
+        # should not raise and error and should return 1
         probs = likelihood(poisson, data)
-        log_probs = log_likelihood(poisson, data)
 
-        self.assertTrue(torch.allclose(probs, targets))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
 
 
 if __name__ == "__main__":

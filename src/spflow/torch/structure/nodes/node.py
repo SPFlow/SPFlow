@@ -12,6 +12,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from abc import ABC
+
 from spflow.torch.structure.module import TorchModule
 from spflow.base.structure.nodes.node import INode, ISumNode, IProductNode, ILeafNode
 
@@ -28,9 +30,11 @@ def proj_real_to_convex(x: torch.Tensor) -> torch.Tensor:
 class TorchNode(TorchModule):
     """PyTorch version of an abstract node. See INode.
 
-    Attributes:
-        children (list(TorchNode)): List of child torch nodes (defaults to empty list).
-        scope: List of integers containing the scopes of this node.
+    Args:
+        children:
+            List of child torch modules (defaults to empty list).
+        scope:
+            Non-empty list of integers containing the scopes of this node.
     """
 
     def __init__(self, children: List[TorchModule], scope: List[int]) -> None:
@@ -60,12 +64,13 @@ def toNodes(x: TorchNode) -> INode:
 class TorchSumNode(TorchNode):
     """PyTorch version of a sum node. See ISumNode.
 
-    Attributes:
-        children (list(TorchNode)): Non-empty list of child torch nodes.
-        scope: Non-empty list of integers containing the scopes of this node.
-        weights (list(float)): List of non-negative weights for each child (defaults to empty list and gets initialized
-                               to random weights in [0,1)).
-        normalize (bool): Boolean specifying whether or not to normalize the weights to sum up to one (defaults to True).
+    Args:
+        children:
+            Non-empty list of child torch modules.
+        scope:
+            Non-empty list of integers containing the scopes of this node.
+        weights (list(float)):
+            List of non-negative weights for each child (defaults to None in which case weights are initialized to random weights in (0,1)).
     """
 
     def __init__(
@@ -89,7 +94,7 @@ class TorchSumNode(TorchNode):
         # register auxiliary parameters for weights as torch parameters
         self.weights_aux = nn.Parameter()
 
-        self.weights = weights
+        self.weights = weights  # type: ignore
 
     @property
     def weights(self) -> torch.Tensor:
@@ -114,7 +119,7 @@ class TorchSumNode(TorchNode):
         inputs = torch.hstack(inputs)  # type: ignore
         # weight inputs in log-space
         weighted_inputs = inputs + self.weights.log()  # type: ignore
-        return torch.logsumexp(weighted_inputs, dim=-1, keepdims=True)
+        return torch.logsumexp(weighted_inputs, dim=-1, keepdims=True)  # type: ignore
 
 
 @dispatch(ISumNode)  # type: ignore[no-redef]
@@ -134,9 +139,11 @@ def toNodes(x: TorchSumNode) -> ISumNode:
 class TorchProductNode(TorchNode):
     """PyTorch version of a product node. See IProductNode.
 
-    Attributes:
-        children (list(TorchNode)): Non-empty list of child torch nodes.
-        scope: Non-empty list of integers containing the scopes of this node.
+    Args:
+        children:
+            Non-empty list of child torch modules.
+        scope:
+            Non-empty list of integers containing the scopes of this node.
     """
 
     def __init__(self, children: List[TorchModule], scope: List[int]) -> None:
@@ -149,7 +156,7 @@ class TorchProductNode(TorchNode):
     def forward(self, inputs: List[torch.Tensor]) -> torch.Tensor:
         inputs = torch.hstack(inputs)  # type: ignore
         # return product (sum in log space)
-        return torch.sum(inputs, dim=-1, keepdims=True)
+        return torch.sum(inputs, dim=-1, keepdims=True)  # type: ignore
 
 
 @dispatch(IProductNode)  # type: ignore[no-redef]
@@ -162,16 +169,17 @@ def toNodes(x: TorchProductNode) -> IProductNode:
     return IProductNode(children=[toNodes(child) for child in x.children()], scope=x.scope)
 
 
-class TorchLeafNode(TorchNode):
+class TorchLeafNode(TorchNode, ABC):
     def __init__(self, scope: List[int]) -> None:
         """PyTorch version of an abstract leaf node. See ILeafNode.
 
-        Attributes:
-            scope: Non-empty list of integers containing the scopes of this node.
+        Args:
+            scope:
+                Non-empty list of integers containing the scopes of this node.
         """
         super(TorchLeafNode, self).__init__([], scope)
 
-    def forward(self, inputs: torch.Tensor) -> None:
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         pass
 
 

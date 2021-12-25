@@ -118,7 +118,13 @@ class TestTorchUniform(unittest.TestCase):
         start_end = random.random()
         self.assertRaises(Exception, TorchUniform, [0], start_end, start_end)
         # start > end
-        self.assertRaises(Exception, TorchUniform, [0], start_end, torch.nextafter(torch.tensor(start_end), torch.tensor(-1.0)))
+        self.assertRaises(
+            Exception,
+            TorchUniform,
+            [0],
+            start_end,
+            torch.nextafter(torch.tensor(start_end), torch.tensor(-1.0)),
+        )
         # start = inf and start = nan
         self.assertRaises(Exception, TorchUniform, [0], np.inf, 0.0)
         self.assertRaises(Exception, TorchUniform, [0], np.nan, 0.0)
@@ -128,28 +134,75 @@ class TestTorchUniform(unittest.TestCase):
 
         # invalid scope lengths
         self.assertRaises(Exception, TorchUniform, [], 0.0, 1.0)
-        self.assertRaises(Exception, TorchUniform, [0,1], 0.0, 1.0)
-    
+        self.assertRaises(Exception, TorchUniform, [0, 1], 0.0, 1.0)
+
     def test_support(self):
 
-        # Support for Uniform distribution: [a,b] (TODO: R?)
-
-        # TODO:
-        #   outside support -> 0 (or NaN?)
+        # Support for Uniform distribution: floats [a,b] (TODO: R?)
 
         l = random.random()
 
+        # ----- with support outside the interval -----
+        uniform = TorchUniform([0], 1.0, 2.0, support_outside=True)
+
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[-float("inf")]]))
+        self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[float("inf")]]))
+
+        # check nan values (marginalization)
+        log_likelihood(uniform, torch.tensor([[float("nan")]]))
+
+        # check valid floats in [1.0, 2.0]
+        log_likelihood(uniform, torch.tensor([[1.0]]))
+        log_likelihood(uniform, torch.tensor([[1.5]]))
+        log_likelihood(uniform, torch.tensor([[2.0]]))
+
+        # check invalid float values
+        log_likelihood(
+            uniform, torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(-1.0))]])
+        )
+        log_likelihood(
+            uniform, torch.tensor([[torch.nextafter(torch.tensor(2.0), torch.tensor(3.0))]])
+        )
+
+        # ----- without support outside the interval -----
+        uniform = TorchUniform([0], 1.0, 2.0, support_outside=False)
+
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[-float("inf")]]))
+        self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[float("inf")]]))
+
+        # check nan values (marginalization)
+        log_likelihood(uniform, torch.tensor([[float("nan")]]))
+
+        # check valid floats in [1.0, 2.0]
+        log_likelihood(uniform, torch.tensor([[1.0]]))
+        log_likelihood(uniform, torch.tensor([[1.5]]))
+        log_likelihood(uniform, torch.tensor([[2.0]]))
+
+        # check invalid float values
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            uniform,
+            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(-1.0))]]),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            uniform,
+            torch.tensor([[torch.nextafter(torch.tensor(2.0), torch.tensor(3.0))]]),
+        )
+
+    def test_marginalization(self):
+
         uniform = TorchUniform([0], 1.0, 2.0)
+        data = torch.tensor([[float("nan")]])
 
-        # edge cases (-inf,inf), values outside of [1,2]
-        data = torch.tensor([[-float("inf")], [torch.nextafter(torch.tensor(1.0), torch.tensor(-float("inf")))], [torch.nextafter(torch.tensor(2.0), torch.tensor(float("inf")))], [float("inf")]])
-        targets = torch.zeros((4,1))
-
+        # should not raise and error and should return 1
         probs = likelihood(uniform, data)
-        log_probs = log_likelihood(uniform, data)
 
-        self.assertTrue(torch.allclose(probs, targets))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
 
 
 if __name__ == "__main__":

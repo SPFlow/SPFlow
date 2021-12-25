@@ -18,16 +18,16 @@ from multipledispatch import dispatch  # type: ignore
 
 class TorchLogNormal(TorchParametricLeaf):
     r"""(Univariate) Log-Normal distribution.
-    
+
     .. math::
-    
+
         \text{PDF}(x) = \frac{1}{x\sigma\sqrt{2\pi}}\exp\left(-\frac{(\ln(x)-\mu)^2}{2\sigma^2}\right)
-    
+
     where
         - :math:`x` is an observation
         - :math:`\mu` is the mean
         - :math:`\sigma` is the standard deviation
-    
+
     Args:
         scope:
             List of integers specifying the variable scope.
@@ -75,23 +75,25 @@ class TorchLogNormal(TorchParametricLeaf):
 
         # ----- marginalization -----
 
+        marg_ids = torch.isnan(scope_data).sum(dim=1) == len(self.scope)
+
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
+        log_prob[marg_ids] = 0.0
 
         # ----- log probabilities -----
 
-        # create Torch distribution with specified parameters
-        dist = D.LogNormal(loc=self.mean, scale=self.stdev)
+        # create masked based on distribution's support
+        valid_ids = self.check_support(scope_data[~marg_ids])
 
-        # test data for distribution support
-        support_mask = dist.support.check(scope_data).sum(dim=1) == scope_data.shape[1]  # type: ignore
+        if not all(valid_ids):
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the TorchLogNormal distribution."
+            )
 
-        # set probability of data outside of support to -inf
-        log_prob[~support_mask] = -float("Inf")
-
-        # compute probabilities on data samples where we have all values
-        prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask & support_mask] = dist.log_prob(scope_data[prob_mask & support_mask])
+        # compute probabilities for values inside distribution support
+        log_prob[~marg_ids] = self.dist.log_prob(
+            scope_data[~marg_ids].type(torch.get_default_dtype())
+        )
 
         return log_prob
 
@@ -99,11 +101,11 @@ class TorchLogNormal(TorchParametricLeaf):
 
         if not (np.isfinite(mean) and np.isfinite(stdev)):
             raise ValueError(
-                f"Mean and standard deviation for Gaussian distribution must be finite, but were: {mean}, {stdev}"
+                f"Mean and standard deviation for TorchGaussian distribution must be finite, but were: {mean}, {stdev}"
             )
         if stdev <= 0.0:
             raise ValueError(
-                f"Standard deviation for Gaussian distribution must be greater than 0.0, but was: {stdev}"
+                f"Standard deviation for TorchGaussian distribution must be greater than 0.0, but was: {stdev}"
             )
 
         self.mean.data = torch.tensor(float(mean))
@@ -111,6 +113,9 @@ class TorchLogNormal(TorchParametricLeaf):
 
     def get_params(self) -> Tuple[float, float]:
         return self.mean.data.cpu().numpy(), self.stdev.data.cpu().numpy()  # type: ignore
+
+    def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
+        return self.dist.support.check(scope_data)  # type: ignore
 
 
 @dispatch(LogNormal)  # type: ignore[no-redef]
