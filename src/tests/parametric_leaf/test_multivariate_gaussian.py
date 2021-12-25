@@ -65,59 +65,78 @@ class TestMultivariateGaussian(unittest.TestCase):
         # Valid parameters for Multivariate Gaussian distribution: mean vector in R^k, covariance matrix in R^(k x k) symmetric positive semi-definite (TODO: PDF only exists if p.d.?)
 
         # mean contains inf and mean contains nan
-        self.assertRaises(Exception, MultivariateGaussian, [0,1], np.array([0.0, np.inf]), np.eye(2))
-        self.assertRaises(Exception, MultivariateGaussian, [0,1], np.array([0.0, np.nan]), np.eye(2))
+        self.assertRaises(
+            Exception, MultivariateGaussian, [0, 1], np.array([0.0, np.inf]), np.eye(2)
+        )
+        self.assertRaises(
+            Exception, MultivariateGaussian, [0, 1], np.array([0.0, np.nan]), np.eye(2)
+        )
 
         # mean vector of wrong shape
-        self.assertRaises(Exception, MultivariateGaussian, [0,1], np.zeros(3), np.eye(2))
-        self.assertRaises(Exception, MultivariateGaussian, [0,1], np.zeros((1,1,2)), np.eye(2))
+        self.assertRaises(Exception, MultivariateGaussian, [0, 1], np.zeros(3), np.eye(2))
+        self.assertRaises(Exception, MultivariateGaussian, [0, 1], np.zeros((1, 1, 2)), np.eye(2))
 
         # covariance matrix of wrong shape
         M = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-        self.assertRaises(Exception, MultivariateGaussian, [0,1], np.zeros(2), M)
-        self.assertRaises(Exception, MultivariateGaussian, [0,1], np.zeros(2), M.T)
-        self.assertRaises(Exception, MultivariateGaussian, [0,1], np.zeros(2), np.eye(3))
+        self.assertRaises(Exception, MultivariateGaussian, [0, 1], np.zeros(2), M)
+        self.assertRaises(Exception, MultivariateGaussian, [0, 1], np.zeros(2), M.T)
+        self.assertRaises(Exception, MultivariateGaussian, [0, 1], np.zeros(2), np.eye(3))
         # covariance matrix not symmetric positive semi-definite
-        self.assertRaises(Exception, MultivariateGaussian, [0,1], np.array([[1.0, 0.0], [1.0, 0.0]]))
-        self.assertRaises(Exception, MultivariateGaussian, [0,1], -np.eye(2))
+        self.assertRaises(
+            Exception, MultivariateGaussian, [0, 1], np.array([[1.0, 0.0], [1.0, 0.0]])
+        )
+        self.assertRaises(Exception, MultivariateGaussian, [0, 1], -np.eye(2))
 
         # dummy distribution and data
-        multivariate_gaussian = MultivariateGaussian([0,1], np.zeros(2), np.eye(2))
+        multivariate_gaussian = MultivariateGaussian([0, 1], np.zeros(2), np.eye(2))
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
 
         # set parameters to None manually
         multivariate_gaussian.covariance_matrix = None
-        self.assertRaises(Exception, likelihood, SPN(), multivariate_gaussian, data)
+        self.assertRaises(Exception, likelihood, multivariate_gaussian, data, SPN())
         multivariate_gaussian.mean_vector = None
-        self.assertRaises(Exception, likelihood, SPN(), multivariate_gaussian, data)
+        self.assertRaises(Exception, likelihood, multivariate_gaussian, data, SPN())
 
         # invalid scope lengths
         self.assertRaises(Exception, MultivariateGaussian, [], [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
-        self.assertRaises(Exception, MultivariateGaussian, [0,1,2], [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
+        self.assertRaises(
+            Exception, MultivariateGaussian, [0, 1, 2], [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]]
+        )
 
     def test_support(self):
 
-        # Support for Multivariate Gaussian distribution: R^k
-    
+        # Support for Multivariate Gaussian distribution: floats R^k
+
         # TODO:
         #   likelihood:     None
         #   log-likelihood: None
-        #
-        #   outside support -> NaN (or 0?)
-        
-        multivariate_gaussian = MultivariateGaussian([0,1], np.zeros(2), np.eye(2))
 
-        # edge cases (-inf,inf)
-        data = np.array([[-np.inf, 0.0], [0.0, np.inf]])
-        targets = np.zeros((2,1))
+        multivariate_gaussian = MultivariateGaussian([0, 1], np.zeros(2), np.eye(2))
 
+        # check infinite values
+        self.assertRaises(
+            ValueError, log_likelihood, multivariate_gaussian, np.array([[-np.inf, 0.0]]), SPN()
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, multivariate_gaussian, np.array([[0.0, np.inf]]), SPN()
+        )
+
+    def test_marginalization(self):
+
+        multivariate_gaussian = MultivariateGaussian([0, 1], np.zeros(2), np.eye(2))
+        data = np.array([[np.nan, np.nan]])
+
+        # should not raise and error and should return 1 (0 in log-space)
         probs = likelihood(multivariate_gaussian, data, SPN())
         log_probs = log_likelihood(multivariate_gaussian, data, SPN())
 
-        # TODO: nan values!
-        self.assertTrue(np.all(np.isnan(probs)))
-        #self.assertTrue(np.allclose(probs, targets))
-        #self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, 1.0))
+
+        # check partial marginalization
+        self.assertRaises(
+            ValueError, log_likelihood, multivariate_gaussian, np.array([[np.nan, 0.0]]), SPN()
+        )
 
 
 if __name__ == "__main__":

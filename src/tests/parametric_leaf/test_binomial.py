@@ -104,8 +104,8 @@ class TestBinomial(unittest.TestCase):
         # n = 0
         binomial = Binomial([0], 0, 0.5)
 
-        data = np.array([[0.0], [1.0]])
-        targets = np.array([[1.0], [0.0]])
+        data = np.array([[0.0]])
+        targets = np.array([[1.0]])
 
         probs = likelihood(binomial, data, SPN())
         log_probs = log_likelihood(binomial, data, SPN())
@@ -124,36 +124,66 @@ class TestBinomial(unittest.TestCase):
 
         # set parameters to None manually
         binomial.p = None
-        self.assertRaises(Exception, likelihood, SPN(), binomial, data)
+        self.assertRaises(Exception, likelihood, binomial, SPN(), data)
         binomial.n = None
-        self.assertRaises(Exception, likelihood, SPN(), binomial, data)
+        self.assertRaises(Exception, likelihood, binomial, SPN(), data)
 
         # invalid scope lengths
         self.assertRaises(Exception, Binomial, [], 1, 0.5)
-        self.assertRaises(Exception, Binomial, [0,1], 1, 0.5)
+        self.assertRaises(Exception, Binomial, [0, 1], 1, 0.5)
 
     def test_support(self):
 
-        # Support for Binomial distribution: {0,...,n}
+        # Support for Binomial distribution: integers {0,...,n}
 
         # TODO:
         #   likelihood:         0->0.000000001, 1.0->0.999999999
         #   log-likelihood: -inf->fmin
-        #
-        #   outside support -> 0 (or error?)
 
-        binomial = Binomial([0], 2, 0.5)
+        binomial = Binomial([0], 5, 0.5)
 
-        # edge cases (-inf, inf), finite values outside {0,1,2} and values within (0,2)
-        data = np.array([[-np.inf], [-1.0], [np.nextafter(0.0, -1.0)], [0.5], [1.5], [np.nextafter(2.0, 3.0)], [3.0], [np.inf]])
-        targets = np.zeros((8,1))
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[-np.inf]]), SPN())
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[np.inf]]), SPN())
 
+        # check valid integers inside valid range
+        log_likelihood(binomial, np.expand_dims(np.array(list(range(binomial.n + 1))), 1), SPN())
+
+        # check valid integers, but outside of valid range
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[-1]]), SPN())
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[binomial.n + 1]]), SPN())
+
+        # check invalid float values
+        self.assertRaises(
+            ValueError, log_likelihood, binomial, np.array([[np.nextafter(0.0, -1.0)]]), SPN()
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, binomial, np.array([[np.nextafter(0.0, 1.0)]]), SPN()
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            binomial,
+            np.array([[np.nextafter(binomial.n, binomial.n + 1)]]),
+            SPN(),
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, binomial, np.array([[np.nextafter(binomial.n, 0.0)]]), SPN()
+        )
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[0.5]]), SPN())
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[3.5]]), SPN())
+
+    def test_marginalization(self):
+
+        binomial = Binomial([0], 5, 0.5)
+        data = np.array([[np.nan]])
+
+        # should not raise and error and should return 1 (0 in log-space)
         probs = likelihood(binomial, data, SPN())
         log_probs = log_likelihood(binomial, data, SPN())
 
-        self.assertTrue(np.allclose(probs, targets))
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
-        self.assertTrue(all(probs == 0))
+        self.assertTrue(np.allclose(probs, 1.0))
 
 
 if __name__ == "__main__":

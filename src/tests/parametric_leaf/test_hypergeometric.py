@@ -7,7 +7,7 @@ import unittest
 
 
 class TestHypergeometric(unittest.TestCase):
-    def test_initialization(self):
+    def test_inference(self):
 
         # ----- configuration 1 -----
         N = 500
@@ -75,25 +75,23 @@ class TestHypergeometric(unittest.TestCase):
 
         # set parameters to None manually
         hypergeometric.n = None
-        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
+        self.assertRaises(Exception, likelihood, hypergeometric, data, SPN())
         hypergeometric.M = None
-        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
+        self.assertRaises(Exception, likelihood, hypergeometric, data, SPN())
         hypergeometric.N = None
-        self.assertRaises(Exception, likelihood, SPN(), hypergeometric, data)
+        self.assertRaises(Exception, likelihood, hypergeometric, data, SPN())
 
         # invalid scope lengths
         self.assertRaises(Exception, Hypergeometric, [], 1, 1, 1)
-        self.assertRaises(Exception, Hypergeometric, [0,1], 1, 1, 1)
+        self.assertRaises(Exception, Hypergeometric, [0, 1], 1, 1, 1)
 
     def test_support(self):
 
-        # Support for Hypergeometric distribution: {max(0,n+M-N),...,min(n,M)}
+        # Support for Hypergeometric distribution: integers {max(0,n+M-N),...,min(n,M)}
 
         # TODO:
         #   likelihood:         0->0.000000001, 1.0->0.999999999
         #   log-likelihood: -inf->fmin
-        #
-        #   outside support -> 0 (or error?)
 
         # case n+M-N > 0
         N = 15
@@ -102,48 +100,94 @@ class TestHypergeometric(unittest.TestCase):
 
         hypergeometric = Hypergeometric([0], N, M, n)
 
-        # edge cases (-inf,inf), finite values outside valid integer range and values between valid integers
-        data = np.array([[-np.inf], [np.nextafter(max(0, n+M-N), -1.0)], [1.5], [np.nextafter(min(n,M), -1.0)], [np.nextafter(min(n,M), 20.0)], [np.inf]])
-        targets = np.zeros((6,1))
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[-np.inf]]), SPN())
+        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[np.inf]]), SPN())
 
-        probs = likelihood(hypergeometric, data, SPN())
-        log_probs = log_likelihood(hypergeometric, data, SPN())
-
-        self.assertTrue(np.allclose(probs, targets))
-        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
-
-        # max(0,n+M-N) and min(n,M)
-        data = np.array([[max(0,n+M-N)], [min(n,M)]])
+        # check valid integers inside valid range
+        data = np.array([[max(0, n + M - N)], [min(n, M)]])
 
         probs = likelihood(hypergeometric, data, SPN())
         log_probs = log_likelihood(hypergeometric, data, SPN())
 
         self.assertTrue(all(probs != 0))
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+
+        # check valid integers, but outside of valid range
+        self.assertRaises(
+            ValueError, log_likelihood, hypergeometric, np.array([[max(0, n + M - N) - 1]]), SPN()
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, hypergeometric, np.array([[min(n, M) + 1]]), SPN()
+        )
+
+        # check invalid float values
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            hypergeometric,
+            np.array([[np.nextafter(max(0, n + M - N), 100)]]),
+            SPN(),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            hypergeometric,
+            np.array([[np.nextafter(max(n, M), -1.0)]]),
+            SPN(),
+        )
+        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[5.5]]), SPN())
 
         # case n+M-N
         N = 25
 
         hypergeometric = Hypergeometric([0], N, M, n)
 
-        # edge cases (-inf,inf), finite values outside valid integer range and values between valid integers
-        data = np.array([[-np.inf], [np.nextafter(max(0, n+M-N), -1.0)], [1.5], [np.nextafter(min(n,M), -1.0)], [np.nextafter(min(n,M), 20.0)], [np.inf]])
-        targets = np.zeros((6,1))
-
-        probs = likelihood(hypergeometric, data, SPN())
-        log_probs = log_likelihood(hypergeometric, data, SPN())
-
-        self.assertTrue(np.allclose(probs, targets))
-        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
-
-        # max(0,n+M-N) and min(n,M)
-        data = np.array([[max(0,n+M-N)], [min(n,M)]])
+        # check valid integers within valid range
+        data = np.array([[max(0, n + M - N)], [min(n, M)]])
 
         probs = likelihood(hypergeometric, data, SPN())
         log_probs = log_likelihood(hypergeometric, data, SPN())
 
         self.assertTrue(all(probs != 0))
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+
+        # check valid integers, but outside of valid range
+        self.assertRaises(
+            ValueError, log_likelihood, hypergeometric, np.array([[max(0, n + M - N) - 1]]), SPN()
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, hypergeometric, np.array([[min(n, M) + 1]]), SPN()
+        )
+
+        # check invalid float values
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            hypergeometric,
+            np.array([[np.nextafter(max(0, n + M - N), 100)]]),
+            SPN(),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            hypergeometric,
+            np.array([[np.nextafter(max(n, M), -1.0)]]),
+            SPN(),
+        )
+        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[5.5]]), SPN())
+
+    def test_marginalization(self):
+
+        hypergeometric = Hypergeometric([0], 15, 10, 10)
+        data = np.array([[np.nan]])
+
+        # should not raise and error and should return 1 (0 in log-space)
+        probs = likelihood(hypergeometric, data, SPN())
+        log_probs = log_likelihood(hypergeometric, data, SPN())
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, 1.0))
 
 
 if __name__ == "__main__":

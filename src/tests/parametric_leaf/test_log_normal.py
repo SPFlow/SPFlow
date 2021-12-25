@@ -74,42 +74,53 @@ class TestLogNormal(unittest.TestCase):
         # stdev = inf and stdev = nan
         self.assertRaises(Exception, LogNormal, [0], mean, np.inf)
         self.assertRaises(Exception, LogNormal, [0], mean, np.nan)
-        
+
         # dummy distribution and data
         log_normal = LogNormal([0], 0.0, 1.0)
         data = np.array([[0.5], [1.0], [1.5]])
 
         # set parameters to None manually
         log_normal.stdev = None
-        self.assertRaises(Exception, likelihood, SPN(), log_normal, data)
+        self.assertRaises(Exception, likelihood, log_normal, data, SPN())
         log_normal.mean = None
-        self.assertRaises(Exception, likelihood, SPN(), log_normal, data)
+        self.assertRaises(Exception, likelihood, log_normal, data, SPN())
 
         # invalid scope lengths
         self.assertRaises(Exception, LogNormal, [], 0.0, 1.0)
-        self.assertRaises(Exception, LogNormal, [0,1], 0.0, 1.0)
+        self.assertRaises(Exception, LogNormal, [0, 1], 0.0, 1.0)
 
     def test_support(self):
 
-        # Support for Log-Normal distribution: (0,inf) (TODO: 0,inf?)
+        # Support for Log-Normal distribution: floats (0,inf) (TODO: 0,inf?)
 
         # TODO:
         #   likelihood:     None
         #   log-likelihood: None
-        #
-        #   outside support -> 0 (or error?)
 
         log_normal = LogNormal([0], 0.0, 1.0)
 
-        # edge cases (-inf,inf) and 0.0
-        data = np.array([[-np.inf], [0.0], [np.inf]])
-        targets = np.zeros((3,1))
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, log_normal, np.array([[-np.inf]]), SPN())
+        self.assertRaises(ValueError, log_likelihood, log_normal, np.array([[np.inf]]), SPN())
 
+        # invalid float values
+        self.assertRaises(ValueError, log_likelihood, log_normal, np.array([[0]]), SPN())
+
+        # valid float values
+        log_likelihood(log_normal, np.array([[np.nextafter(0.0, 1.0)]]), SPN())
+        log_likelihood(log_normal, np.array([[4.3]]), SPN())
+
+    def test_marginalization(self):
+
+        log_normal = LogNormal([0], 0.0, 1.0)
+        data = np.array([[np.nan]])
+
+        # should not raise and error and should return 1 (0 in log-space)
         probs = likelihood(log_normal, data, SPN())
         log_probs = log_likelihood(log_normal, data, SPN())
 
-        self.assertTrue(np.allclose(probs, targets))
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, 1.0))
 
 
 if __name__ == "__main__":

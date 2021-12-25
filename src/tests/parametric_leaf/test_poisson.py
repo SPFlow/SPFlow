@@ -76,35 +76,58 @@ class TestPoisson(unittest.TestCase):
 
         # set parameters to None manually
         poisson.l = None
-        self.assertRaises(Exception, likelihood, SPN(), poisson, data)
+        self.assertRaises(Exception, likelihood, poisson, data, SPN())
 
         # invalid scope length
         self.assertRaises(Exception, Poisson, [], 1)
-        self.assertRaises(Exception, Poisson, [0,1], 1)
+        self.assertRaises(Exception, Poisson, [0, 1], 1)
 
     def test_support(self):
 
-        # Support for Poisson distribution: N U {0}
+        # Support for Poisson distribution: integers N U {0}
 
         # TODO:
         #   likelihood:         0->0.000000001, 1.0->0.999999999
         #   log-likelihood: -inf->fmin
-        #
-        #   outside support -> 0 (or error?)
 
         l = random.random()
 
         poisson = Poisson([0], l)
 
-        # edge cases (-inf,inf), integer values < 0, values between valid integers
-        data = np.array([[-np.inf], [-1.0], [np.nextafter(0.0, -1.0)], [1.5], [np.inf]])
-        targets = np.zeros((5,1))
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[-np.inf]]), SPN())
+        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[np.inf]]), SPN())
 
+        # check nan values (marginalization)
+        log_likelihood(poisson, np.array([[np.nan]]), SPN())
+
+        # check valid integers, but outside of valid range
+        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[-1]]), SPN())
+
+        # check valid integers within valid range
+        log_likelihood(poisson, np.array([[0]]), SPN())
+        log_likelihood(poisson, np.array([[100]]), SPN())
+
+        # check invalid float values
+        self.assertRaises(
+            ValueError, log_likelihood, poisson, np.array([[np.nextafter(0.0, -1.0)]]), SPN()
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, poisson, np.array([[np.nextafter(0.0, 1.0)]]), SPN()
+        )
+        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[10.1]]), SPN())
+
+    def test_marginalization(self):
+
+        poisson = Poisson([0], 1.0)
+        data = np.array([[np.nan, np.nan]])
+
+        # should not raise and error and should return 1 (0 in log-space)
         probs = likelihood(poisson, data, SPN())
         log_probs = log_likelihood(poisson, data, SPN())
 
-        self.assertTrue(np.allclose(probs, targets))
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, 1.0))
 
 
 if __name__ == "__main__":
