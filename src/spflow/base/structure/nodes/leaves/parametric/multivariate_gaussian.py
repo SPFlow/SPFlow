@@ -44,12 +44,6 @@ class MultivariateGaussian(ParametricLeaf):
         covariance_matrix: Union[List[List[float]], np.ndarray],
     ) -> None:
 
-        # cast lists to numpy arrays
-        if(isinstance(mean_vector, List)):
-            mean_vector = np.array(mean_vector)
-        if(isinstance(covariance_matrix, List)):
-            covariance_matrix = np.array(covariance_matrix)
-
         super().__init__(scope)
         self.set_params(mean_vector, covariance_matrix)
 
@@ -59,36 +53,54 @@ class MultivariateGaussian(ParametricLeaf):
         covariance_matrix: Union[List[List[float]], np.ndarray],
     ) -> None:
 
+        # cast lists to numpy arrays
+        if isinstance(mean_vector, List):
+            mean_vector = np.array(mean_vector)
+        if isinstance(covariance_matrix, List):
+            covariance_matrix = np.array(covariance_matrix)
+
         # check mean vector dimensions
-        if( (mean_vector.ndim == 1 and mean_vector.shape[0] != len(self.scope)) or (mean_vector.ndim == 2 and mean_vector.shape[1] != len(self.scope)) or mean_vector.ndim > 2):
+        if (
+            (mean_vector.ndim == 1 and mean_vector.shape[0] != len(self.scope))
+            or (mean_vector.ndim == 2 and mean_vector.shape[1] != len(self.scope))
+            or mean_vector.ndim > 2
+        ):
             raise ValueError(
                 f"Dimensions of mean vector for MultivariateGaussian should match scope size {len(self.scope)}, but was: {mean_vector.shape}"
             )
 
         # check mean vector for nan or inf values
-        if(np.any(np.isinf(mean_vector))):
+        if np.any(np.isinf(mean_vector)):
             raise ValueError("Mean vector for MultivariateGaussian may not contain infinite values")
-        if(np.any(np.isnan(mean_vector))):
+        if np.any(np.isnan(mean_vector)):
             raise ValueError("Mean vector for MultivariateGaussian may not contain NaN values")
 
         # test whether or not matrix has correct shape
-        if(covariance_matrix.ndim != 2 or (covariance_matrix.ndim == 2 and (covariance_matrix.shape[0] != len(self.scope) or covariance_matrix.shape[1] != len(self.scope)))):
+        if covariance_matrix.ndim != 2 or (
+            covariance_matrix.ndim == 2
+            and (
+                covariance_matrix.shape[0] != len(self.scope)
+                or covariance_matrix.shape[1] != len(self.scope)
+            )
+        ):
             raise ValueError(
                 f"Dimensions of covariance matrix for MultivariateGaussian be appropriate for scope size {len(self.scope)}, but was: {covariance_matrix.shape}"
             )
 
         # check covariance matrix for nan or inf values
-        if(np.any(np.isinf(covariance_matrix))):
+        if np.any(np.isinf(covariance_matrix)):
             raise ValueError("Mean vector for MultivariateGaussian may not contain infinite values")
-        if(np.any(np.isnan(covariance_matrix))):
+        if np.any(np.isnan(covariance_matrix)):
             raise ValueError("Mean vector for MultivariateGaussian may not contain NaN values")
-        
+
         # test covariance matrix for symmetry
-        if(not np.allclose(covariance_matrix, covariance_matrix.T)):
+        if not np.allclose(covariance_matrix, covariance_matrix.T):
             raise ValueError("Covariance matrix for MultivariateGaussian must be symmetric")
         # test covariance matrix for positive semi-definiteness
-        if(np.any(np.linalg.eigvals(covariance_matrix) < 0)):
-            raise ValueError("Covariance matrix for MultivariateGaussian must be positive semi-definite")
+        if np.any(np.linalg.eigvals(covariance_matrix) < 0):
+            raise ValueError(
+                "Covariance matrix for MultivariateGaussian must be positive semi-definite"
+            )
 
         self.mean_vector = mean_vector
         self.covariance_matrix = covariance_matrix
@@ -97,6 +109,16 @@ class MultivariateGaussian(ParametricLeaf):
         self,
     ) -> Tuple[Union[List[float], np.ndarray], Union[List[List[float]], np.ndarray]]:
         return self.mean_vector, self.covariance_matrix
+
+    def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+
+        valid = np.ones(scope_data.shape, dtype=bool)
+
+        # check for infinite values
+        # additionally check for infinite values (may return NaNs despite support)
+        valid &= ~np.isinf(scope_data)
+
+        return valid
 
 
 @dispatch(MultivariateGaussian)  # type: ignore[no-redef]
@@ -107,7 +129,7 @@ def get_scipy_object(node: MultivariateGaussian) -> rv_continuous:
 @dispatch(MultivariateGaussian)  # type: ignore[no-redef]
 def get_scipy_object_parameters(
     node: MultivariateGaussian,
-) -> Dict[str, Union[Union[List[float], np.ndarray], Union[List[List[float]], np.ndarray]]]:
+) -> Dict[str, np.ndarray]:
     if node.mean_vector is None:
         raise InvalidParametersError(f"Parameter 'mean_vector' of {node} must not be None")
     if node.covariance_matrix is None:

@@ -62,6 +62,12 @@ class Gaussian(ParametricLeaf):
     def get_params(self) -> Tuple[float, float]:
         return self.mean, self.stdev
 
+    def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+
+        valid = np.ones(scope_data.shape, dtype=bool)
+
+        return valid
+
 
 @dispatch(Gaussian)  # type: ignore[no-redef]
 def get_scipy_object(node: Gaussian) -> rv_continuous:

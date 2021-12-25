@@ -49,6 +49,15 @@ class Exponential(ParametricLeaf):
     def get_params(self) -> Tuple[float]:
         return (self.l,)
 
+    def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+
+        valid = np.ones(scope_data.shape, dtype=bool)
+
+        # check if values are in valid range
+        valid[valid] &= scope_data[valid] >= 0
+
+        return valid
+
 
 @dispatch(Exponential)  # type: ignore[no-redef]
 def get_scipy_object(node: Exponential) -> rv_continuous:

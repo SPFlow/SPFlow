@@ -32,15 +32,17 @@ class Uniform(ParametricLeaf):
 
     type = ParametricType.CONTINUOUS
 
-    def __init__(self, scope: List[int], start: float, end: float) -> None:
+    def __init__(
+        self, scope: List[int], start: float, end: float, support_outside: bool = True
+    ) -> None:
 
         if len(scope) != 1:
             raise ValueError(f"Scope size for Poisson should be 1, but was: {len(scope)}")
 
         super().__init__(scope)
-        self.set_params(start, end)
+        self.set_params(start, end, support_outside)
 
-    def set_params(self, start: float, end: float) -> None:
+    def set_params(self, start: float, end: float, support_outside: bool = True) -> None:
 
         if not start < end:
             raise ValueError(
@@ -51,9 +53,23 @@ class Uniform(ParametricLeaf):
 
         self.start = start
         self.end = end
+        self.support_outside = support_outside
 
-    def get_params(self) -> Tuple[float, float]:
-        return self.start, self.end
+    def get_params(self) -> Tuple[float, float, bool]:
+        return self.start, self.end, self.support_outside
+
+    def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+
+        valid = np.ones(scope_data.shape, dtype=bool)
+
+        # check for infinite values
+        valid &= ~np.isinf(scope_data)
+
+        # check if values are in valid range
+        if not self.support_outside:
+            valid[valid] &= (scope_data[valid] >= self.start) & (scope_data[valid] <= self.end)
+
+        return valid
 
 
 @dispatch(Uniform)  # type: ignore[no-redef]
