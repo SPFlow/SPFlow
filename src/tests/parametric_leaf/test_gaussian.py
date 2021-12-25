@@ -10,7 +10,7 @@ import math
 
 class TestGaussian(unittest.TestCase):
     def test_likelihood(self):
-        
+
         # ----- unit variance -----
         mean = random.random()
         var = 1.0
@@ -76,7 +76,7 @@ class TestGaussian(unittest.TestCase):
         self.assertRaises(Exception, Gaussian, [0], mean, np.inf)
         self.assertRaises(Exception, Gaussian, [0], mean, np.nan)
 
-        # dummy distribution and data        
+        # dummy distribution and data
         gaussian = Gaussian([0], 0.0, 1.0)
         data = np.random.randn(1, 3)
 
@@ -88,29 +88,39 @@ class TestGaussian(unittest.TestCase):
 
         # invalid scope lengths
         self.assertRaises(Exception, Gaussian, [], 0.0, 1.0)
-        self.assertRaises(Exception, Gaussian, [0,1], 0.0, 1.0)
-    
+        self.assertRaises(Exception, Gaussian, [0, 1], 0.0, 1.0)
+
     def test_support(self):
-        
-        # Support for Gaussian distribution: R (TODO: R or (-inf, inf)?)
+
+        # Support for Gaussian distribution: floats R (TODO: R or (-inf, inf)?)
 
         # TODO:
         #   likelihood:     None
         #   log-likelihood: None
-        #
-        #   outside support -> 0 (or error?)
-        
+
         gaussian = Gaussian([0], 0.0, 1.0)
 
-        # edge cases (-inf,inf)
+        # check infinite values (TODO)
         data = np.array([[-np.inf], [np.inf]])
-        targets = np.zeros((2,1))
+        targets = np.zeros((2, 1))
 
         probs = likelihood(gaussian, data, SPN())
         log_probs = log_likelihood(gaussian, data, SPN())
 
         self.assertTrue(np.allclose(probs, targets))
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+
+    def test_marginalization(self):
+
+        gaussian = Gaussian([0], 0.0, 1.0)
+        data = np.array([[np.nan]])
+
+        # should not raise and error and should return 1 (0 in log-space)
+        probs = likelihood(gaussian, data, SPN())
+        log_probs = log_likelihood(gaussian, data, SPN())
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, 1.0))
 
 
 if __name__ == "__main__":
