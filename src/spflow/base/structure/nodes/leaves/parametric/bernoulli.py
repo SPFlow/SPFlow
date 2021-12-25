@@ -49,6 +49,22 @@ class Bernoulli(ParametricLeaf):
     def get_params(self) -> Tuple[float]:
         return (self.p,)
 
+    def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+
+        valid = np.ones(scope_data.shape, dtype=bool)
+
+        # check for infinite values
+        valid &= ~np.isinf(scope_data)
+
+        # check if all values are valid integers
+        # TODO: runtime warning due to nan values
+        valid[valid] &= np.remainder(scope_data[valid], 1) == 0
+
+        # check if values are in valid range
+        valid[valid] &= (scope_data[valid] >= 0) & (scope_data[valid] <= 1)
+
+        return valid
+
 
 @dispatch(Bernoulli)  # type: ignore[no-redef]
 def get_scipy_object(node: Bernoulli) -> rv_discrete:

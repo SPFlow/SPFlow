@@ -58,6 +58,18 @@ class LogNormal(ParametricLeaf):
     def get_params(self) -> Tuple[float, float]:
         return self.mean, self.stdev
 
+    def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+
+        valid = np.ones(scope_data.shape, dtype=bool)
+
+        # check for infinite values
+        valid &= ~np.isinf(scope_data)
+
+        # check if values are in valid range
+        valid[valid] &= scope_data[valid] > 0
+
+        return valid
+
 
 @dispatch(LogNormal)  # type: ignore[no-redef]
 def get_scipy_object(node: LogNormal) -> rv_continuous:
