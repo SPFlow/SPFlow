@@ -60,7 +60,7 @@ class TorchBernoulli(TorchParametricLeaf):
 
         if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
-                f"Value of p for Bernoulli distribution must to be between 0.0 and 1.0, but was: {p}"
+                f"Value of p for TorchBernoulli distribution must to be between 0.0 and 1.0, but was: {p}"
             )
 
         self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)
@@ -81,31 +81,36 @@ class TorchBernoulli(TorchParametricLeaf):
 
         # ----- marginalization -----
 
+        marg_ids = torch.isnan(scope_data).sum(dim=1) == len(self.scope)
+
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
+        log_prob[marg_ids] = 0.0
 
         # ----- log probabilities -----
 
-        # create Torch distribution with specified parameters
-        dist = D.Bernoulli(probs=self.p)
+        # create masked based on distribution's support
+        valid_ids = self.check_support(scope_data[~marg_ids])
 
-        # compute probabilities on data samples where we have all values
-        prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        # set probabilities of values outside of distribution support to 0 (-inf in log space)
-        support_mask = ((scope_data == 1) | (scope_data == 0)).sum(dim=1).bool()
-        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        if not all(valid_ids):
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the TorchBernoulli distribution."
+            )
+
         # compute probabilities for values inside distribution support
-        log_prob[prob_mask & support_mask] = dist.log_prob(
-            scope_data[prob_mask & support_mask].type(torch.get_default_dtype())
+        log_prob[~marg_ids] = self.dist.log_prob(
+            scope_data[~marg_ids].type(torch.get_default_dtype())
         )
 
         return log_prob
 
     def set_params(self, p: float) -> None:
-        self.p = p
+        self.p = torch.tensor(p)
 
     def get_params(self) -> Tuple[float]:
         return (self.p.data.cpu().numpy(),)  # type: ignore
+
+    def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
+        return self.dist.support.check(scope_data)  # type: ignore
 
 
 @dispatch(Bernoulli)  # type: ignore[no-redef]

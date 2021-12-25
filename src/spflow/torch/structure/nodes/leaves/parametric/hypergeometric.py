@@ -16,11 +16,11 @@ from multipledispatch import dispatch  # type: ignore
 
 class TorchHypergeometric(TorchParametricLeaf):
     r"""(Univariate) Hypergeometric distribution.
-    
+
     .. math::
-        
+
         \text{PMF}(k) = \frac{\binom{M}{k}\binom{N-M}{n-k}}{\binom{N}{n}}
-    
+
     where
         - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
         - :math:`N` is the total number of entities
@@ -108,22 +108,23 @@ class TorchHypergeometric(TorchParametricLeaf):
 
         # ----- marginalization -----
 
+        marg_ids = torch.isnan(scope_data).sum(dim=1) == len(self.scope)
+
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
+        log_prob[marg_ids] = 0.0
 
         # ----- log probabilities -----
 
-        # compute probabilities on data samples where we have all values
-        prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        # set probabilities of values outside of distribution support to 0 (-inf in log space)
-        support_mask = (
-            ((scope_data >= max(0, self.n + self.M - self.N)) & (scope_data <= min(self.n, self.M)))  # type: ignore
-            .sum(dim=1)
-            .bool()
-        )
-        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        # create masked based on distribution's support
+        valid_ids = self.check_support(scope_data[~marg_ids])
+
+        if not all(valid_ids):
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the TorchHypergeometric distribution."
+            )
+
         # compute probabilities for values inside distribution support
-        log_prob[prob_mask & support_mask] = self.log_prob(scope_data[prob_mask & support_mask])
+        log_prob[~marg_ids] = self.log_prob(scope_data[~marg_ids])
 
         return log_prob
 
@@ -131,15 +132,15 @@ class TorchHypergeometric(TorchParametricLeaf):
 
         if N < 0 or not np.isfinite(N):
             raise ValueError(
-                f"Value of N for Hypergeometric distribution must be greater of equal to 0, but was: {N}"
+                f"Value of N for TorchHypergeometric distribution must be greater of equal to 0, but was: {N}"
             )
         if M < 0 or M > N or not np.isfinite(M):
             raise ValueError(
-                f"Value of M for Hypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {M}"
+                f"Value of M for TorchHypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {M}"
             )
         if n < 0 or n > N or not np.isfinite(n):
             raise ValueError(
-                f"Value of n for Hypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {n}"
+                f"Value of n for TorchHypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {n}"
             )
 
         self.M.data = torch.tensor(int(M))
@@ -148,6 +149,26 @@ class TorchHypergeometric(TorchParametricLeaf):
 
     def get_params(self) -> Tuple[int, int, int]:
         return self.N.data.cpu().numpy(), self.M.data.cpu().numpy(), self.n.data.cpu().numpy()  # type: ignore
+
+    def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
+
+        valid = torch.ones(scope_data.shape, dtype=torch.bool)
+
+        # check for infinite values
+        valid &= ~torch.isinf(scope_data)
+
+        # check if all values are valid integers
+        # TODO: runtime warning due to nan values
+        mask = valid.clone()
+        valid[mask] &= torch.remainder(scope_data[mask], 1) == 0
+
+        # check if values are in valid range
+        mask = valid.clone()
+        valid[mask] &= (scope_data[mask] >= max(0, self.n + self.M - self.N)) & (  # type: ignore
+            scope_data[mask] <= min(self.n, self.M)  # type: ignore
+        )
+
+        return valid
 
 
 @dispatch(Hypergeometric)  # type: ignore[no-redef]

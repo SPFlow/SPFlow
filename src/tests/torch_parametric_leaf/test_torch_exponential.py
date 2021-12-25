@@ -128,7 +128,9 @@ class TestTorchExponential(unittest.TestCase):
 
         # l = 0 and l < 0
         self.assertRaises(Exception, TorchExponential, [0], 0.0)
-        self.assertRaises(Exception, TorchExponential, [0], torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)))
+        self.assertRaises(
+            Exception, TorchExponential, [0], torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))
+        )
 
         # l = inf and l = nan
         self.assertRaises(Exception, TorchExponential, [0], np.inf)
@@ -136,38 +138,53 @@ class TestTorchExponential(unittest.TestCase):
 
         # invalid scope lengths
         self.assertRaises(Exception, TorchExponential, [], 0.5)
-        self.assertRaises(Exception, TorchExponential, [0,1], 0.5)
+        self.assertRaises(Exception, TorchExponential, [0, 1], 0.5)
 
     def test_support(self):
 
-        # Support for Exponential distribution: [0,inf)
-
-        # TODO:
-        #   outside support -> 0 (or error?)
+        # Support for Exponential distribution: floats [0,inf)
 
         l = 1.5
         exponential = TorchExponential([0], l)
 
-        # edge cases (-inf,inf) and finite values < 0
-        data = torch.tensor([[-float("inf")], [torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))], [float("inf")]])
-        targets = torch.zeros((3,1))
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[-float("inf")]]))
+        log_likelihood(exponential, torch.tensor([[float("inf")]]))
 
-        probs = likelihood(exponential, data)
-        log_probs = log_likelihood(exponential, data)
+        # check valid float values (within range)
+        log_likelihood(
+            exponential, torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]])
+        )
+        log_likelihood(exponential, torch.tensor([[10.5]]))
 
-        self.assertTrue(torch.allclose(probs, targets))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        # check invalid float values (outside range)
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            exponential,
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
+        )
 
         # edge case 0
         data = torch.tensor([[0.0]])
 
-        # TODO: fails (support)
+        # TODO: fails (support, why?)
         probs = likelihood(exponential, data)
         log_probs = log_likelihood(exponential, data)
 
         self.assertTrue(all(probs != 0.0))
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         # TODO (fails): self.assertTrue(all(probs[1] != 0.0))
+
+    def test_marginalization(self):
+
+        exponential = TorchExponential([0], 1.0)
+        data = torch.tensor([[float("nan")]])
+
+        # should not raise and error and should return 1
+        probs = likelihood(exponential, data)
+
+        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
 
 
 if __name__ == "__main__":

@@ -78,7 +78,7 @@ class TestTorchGeometric(unittest.TestCase):
 
         # create dummy data
         p_target = 0.8
-        data = torch.distributions.Geometric(p_target).sample((100000, 1))
+        data = torch.distributions.Geometric(p_target).sample((100000, 1)) + 1
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_geometric.parameters(), lr=0.9, momentum=0.6)
@@ -135,27 +135,55 @@ class TestTorchGeometric(unittest.TestCase):
 
         # invalid scope lengths
         self.assertRaises(Exception, TorchGeometric, [], 0.5)
-        self.assertRaises(Exception, TorchGeometric, [0,1], 0.5)
+        self.assertRaises(Exception, TorchGeometric, [0, 1], 0.5)
 
     def test_support(self):
 
-        # Support for Geometric distribution: N\{0}
-
-        # TODO:
-        #   outside support -> 0 (or error?)
+        # Support for Geometric distribution: integers N\{0}
 
         geometric = TorchGeometric([0], 0.5)
 
-        # edge cases (-inf,inf), finite values outside N\{0} and values R between the valid integers
-        data = torch.tensor([[-float("inf")], [0.0], [torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))], [1.5], [float("inf")]])
-        targets = torch.zeros((5,1))
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[float("inf")]]))
+        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[-float("inf")]]))
+
+        # valid integers, but outside valid range
+        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[0.0]]))
+
+        # valid integers within valid range
+        data = torch.tensor([[1], [10]])
 
         probs = likelihood(geometric, data)
         log_probs = log_likelihood(geometric, data)
 
-        self.assertTrue(torch.allclose(probs, targets))
+        self.assertTrue(all(probs != 0.0))
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        
+
+        # invalid floats
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            geometric,
+            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            geometric,
+            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]),
+        )
+        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[1.5]]))
+
+    def test_marginalization(self):
+
+        geometric = TorchGeometric([0], 0.5)
+        data = torch.tensor([[float("nan")]])
+
+        # should not raise and error and should return 1
+        probs = likelihood(geometric, data)
+
+        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

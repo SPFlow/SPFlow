@@ -18,17 +18,17 @@ from multipledispatch import dispatch  # type: ignore
 
 class TorchMultivariateGaussian(TorchParametricLeaf):
     r"""Multivariate Normal distribution.
-    
+
     .. math::
 
         \text{PDF}(x) = \frac{1}{\sqrt{(2\pi)^d\det\Sigma}}\exp\left(-\frac{1}{2} (x-\mu)^T\Sigma^{-1}(x-\mu)\right)
-    
+
     where
         - :math:`d` is the dimension of the distribution
         - :math:`x` is the :math:`d`-dim. vector of observations
         - :math:`\mu` is the :math:`d`-dim. mean vector
         - :math:`\Sigma` is the :math:`d\times d` covariance matrix
-    
+
     Args:
         scope:
             List of integers specifying the variable scope.
@@ -103,17 +103,34 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
 
         # ----- marginalization -----
 
+        # check for partially marginalized instances
+        n_marg = torch.isnan(scope_data).sum(dim=1)
+
+        if torch.any((n_marg > 0) & (n_marg < len(self.scope))):
+            raise ValueError(
+                f"Partial marginalization not yet supported for TorchMultivariateGaussian."
+            )
+
+        marg_ids = n_marg == len(self.scope)
+
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
+        log_prob[marg_ids] = 0.0
 
         # ----- log probabilities -----
 
-        # create Torch distribution with specified parameters
-        dist = D.MultivariateNormal(loc=self.mean_vector, scale_tril=self.covariance_tril)
+        if len(scope_data[~marg_ids]) > 0:
+            # create masked based on distribution's support
+            valid_ids = self.check_support(scope_data[~marg_ids])
 
-        # compute probabilities on data samples where we have all values
-        prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        log_prob[prob_mask] = dist.log_prob(scope_data[prob_mask]).unsqueeze(-1)
+            if not all(valid_ids):
+                raise ValueError(
+                    f"Encountered data instances that are not in the support of the TorchMultivariateGaussian distribution."
+                )
+
+            # compute probabilities for values inside distribution support
+            log_prob[~marg_ids, 0] = self.dist.log_prob(
+                scope_data[~marg_ids].type(torch.get_default_dtype())
+            )
 
         return log_prob
 
@@ -166,6 +183,16 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
 
     def get_params(self) -> Tuple[List[float], List[List[float]]]:
         return self.mean_vector.data.cpu().tolist(), self.covariance_matrix.data.cpu().tolist()  # type: ignore
+
+    def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
+
+        valid = self.dist.support.check(scope_data)  # type: ignore
+
+        # additionally check for infinite values (may return NaNs despite support)
+        mask = valid.clone()
+        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+
+        return valid
 
 
 @dispatch(MultivariateGaussian)  # type: ignore[no-redef]

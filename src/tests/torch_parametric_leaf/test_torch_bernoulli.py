@@ -151,8 +151,12 @@ class TestTorchBernoulli(unittest.TestCase):
         self.assertTrue(torch.allclose(probs, targets))
 
         # p < 0 and p > 1
-        self.assertRaises(Exception, TorchBernoulli, [0], torch.nextafter(torch.tensor(1.0), torch.tensor(2.0)))
-        self.assertRaises(Exception, TorchBernoulli, [0], torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)))
+        self.assertRaises(
+            Exception, TorchBernoulli, [0], torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))
+        )
+        self.assertRaises(
+            Exception, TorchBernoulli, [0], torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))
+        )
 
         # inf, nan
         self.assertRaises(Exception, TorchBernoulli, [0], np.inf)
@@ -160,28 +164,62 @@ class TestTorchBernoulli(unittest.TestCase):
 
         # invalid scope lengths
         self.assertRaises(Exception, TorchBernoulli, [], 0.5)
-        self.assertRaises(Exception, TorchBernoulli, [0,1], 0.5)
+        self.assertRaises(Exception, TorchBernoulli, [0, 1], 0.5)
 
     def test_support(self):
 
-        # Support for Bernoulli distribution: {0,1}
-    
-        # TODO:
-        #   outside support -> 0 (or error?)
+        # Support for Bernoulli distribution: integers {0,1}
 
         p = random.random()
-
         bernoulli = TorchBernoulli([0], p)
 
-        # edge cases (-inf,inf), finite values outside [0,1] and values within (0,1)
-        data = torch.tensor([[-float("inf")], [-1.0], [torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))], [0.5], [torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))], [2.0], [float("inf")]])
-        targets = torch.zeros((7,1))
-        
-        probs = likelihood(bernoulli, data)
-        log_probs = log_likelihood(bernoulli, data)
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[-float("inf")]]))
+        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[float("inf")]]))
 
-        self.assertTrue(torch.allclose(probs, targets))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        # check valid integers inside valid range
+        log_likelihood(bernoulli, torch.tensor([[0.0], [1.0]]))
+
+        # check valid integers, but outside of valid range
+        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[-1]]))
+        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[2]]))
+
+        # check invalid float values
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]),
+        )
+        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[0.5]]))
+
+    def test_marginalization(self):
+
+        bernoulli = TorchBernoulli([0], random.random())
+        data = torch.tensor([[float("nan")]])
+
+        # should not raise and error and should return 1
+        probs = likelihood(bernoulli, data)
+
+        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
 
 
 if __name__ == "__main__":
