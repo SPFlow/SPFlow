@@ -18,11 +18,11 @@ from multipledispatch import dispatch  # type: ignore
 
 class TorchGeometric(TorchParametricLeaf):
     r"""(Univariate) Geometric distribution.
-    
+
     .. math::
-    
+
         \text{PMF}(k) =  p(1-p)^{k-1}
-    
+
     where
         - :math:`k` is the number of trials
         - :math:`p` is the success probability of each trial
@@ -72,21 +72,26 @@ class TorchGeometric(TorchParametricLeaf):
 
         # ----- marginalization -----
 
+        marg_ids = torch.isnan(scope_data).sum(dim=1) == len(self.scope)
+
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
+        log_prob[marg_ids] = 0.0
 
         # ----- log probabilities -----
 
-        # create Torch distribution with specified parameters
-        dist = D.Geometric(probs=self.p)
+        # create masked based on distribution's support
+        valid_ids = self.check_support(scope_data[~marg_ids])
 
-        # compute probabilities on data samples where we have all values
-        prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        # set probabilities of values outside of distribution support to 0 (-inf in log space)
-        support_mask = ((scope_data >= 1) & dist.support.check(scope_data)).sum(dim=1).bool()  # type: ignore
-        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        if not all(valid_ids):
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the TorchGeometric distribution."
+            )
+
         # compute probabilities for values inside distribution support
-        log_prob[prob_mask & support_mask] = dist.log_prob(scope_data[prob_mask & support_mask] - 1)
+        # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch
+        log_prob[~marg_ids] = self.dist.log_prob(
+            scope_data[~marg_ids].type(torch.get_default_dtype()) - 1
+        )
 
         return log_prob
 
@@ -94,13 +99,17 @@ class TorchGeometric(TorchParametricLeaf):
 
         if p <= 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
-                f"Value of p for Geometric distribution must to be greater than 0.0 and less or equal to 1.0, but was: {p}"
+                f"Value of p for TorchGeometric distribution must to be greater than 0.0 and less or equal to 1.0, but was: {p}"
             )
 
         self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)
 
     def get_params(self) -> Tuple[float]:
         return (self.p.data.cpu().numpy(),)  # type: ignore
+
+    def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
+        # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch
+        return self.dist.support.check(scope_data - 1)  # type: ignore
 
 
 @dispatch(Geometric)  # type: ignore[no-redef]

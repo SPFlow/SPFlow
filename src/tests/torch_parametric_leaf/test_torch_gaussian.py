@@ -141,7 +141,7 @@ class TestTorchGaussian(unittest.TestCase):
         # mean = inf and mean = nan
         self.assertRaises(Exception, TorchGaussian, [0], np.inf, 1.0)
         self.assertRaises(Exception, TorchGaussian, [0], np.nan, 1.0)
-        
+
         # stdev = 0 and stdev > 0
         self.assertRaises(Exception, TorchGaussian, [0], mean, 0.0)
         self.assertRaises(Exception, TorchGaussian, [0], mean, np.nextafter(0.0, -1.0))
@@ -151,26 +151,33 @@ class TestTorchGaussian(unittest.TestCase):
 
         # invalid scope lengths
         self.assertRaises(Exception, TorchGaussian, [], 0.0, 1.0)
-        self.assertRaises(Exception, TorchGaussian, [0,1], 0.0, 1.0)
+        self.assertRaises(Exception, TorchGaussian, [0, 1], 0.0, 1.0)
 
     def test_support(self):
-        
-        # Support for Gaussian distribution: R (TODO: R or (-inf, inf)?)
 
-        # TODO:
-        #   outside support -> 0 (or error?)
-        
+        # Support for Gaussian distribution: floats R (TODO: R or (-inf, inf)?)
+
         gaussian = TorchGaussian([0], 0.0, 1.0)
 
-        # edge cases (-inf,inf)
+        # edge infinite values (TODO)
         data = torch.tensor([[-float("inf")], [float("inf")]])
-        targets = torch.zeros((2,1))
+        targets = torch.zeros((2, 1))
 
         probs = likelihood(gaussian, data)
         log_probs = log_likelihood(gaussian, data)
 
         self.assertTrue(torch.allclose(probs, targets))
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+
+    def test_marginalization(self):
+
+        gaussian = TorchGaussian([0], 0.0, 1.0)
+        data = torch.tensor([[float("nan")]])
+
+        # should not raise and error and should return 1
+        probs = likelihood(gaussian, data)
+
+        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
 
 
 if __name__ == "__main__":

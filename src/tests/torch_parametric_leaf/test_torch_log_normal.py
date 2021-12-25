@@ -154,26 +154,39 @@ class TestTorchLogNormal(unittest.TestCase):
 
         # invalid scope lengths
         self.assertRaises(Exception, TorchLogNormal, [], 0.0, 1.0)
-        self.assertRaises(Exception, TorchLogNormal, [0,1], 0.0, 1.0)
+        self.assertRaises(Exception, TorchLogNormal, [0, 1], 0.0, 1.0)
 
     def test_support(self):
 
-        # Support for Log-Normal distribution: (0,inf) (TODO: 0,inf?)
-
-        # TODO:
-        #   outside support -> 0 (or error?)
+        # Support for Log-Normal distribution: floats (0,inf) (TODO: 0,inf?)
 
         log_normal = TorchLogNormal([0], 0.0, 1.0)
 
-        # edge cases (-inf,inf) and 0.0
-        data = torch.tensor([[-float("inf")], [0.0], [float("inf")]])
-        targets = torch.zeros((3,1))
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, log_normal, torch.tensor([[-float("inf")]]))
+        # TODO:
+        log_likelihood(
+            log_normal, torch.tensor([[float("inf")]])
+        )  # valid for TorchLogNormal, but NOT LogNormal
 
+        # invalid float values
+        self.assertRaises(ValueError, log_likelihood, log_normal, torch.tensor([[0]]))
+
+        # valid float values
+        log_likelihood(
+            log_normal, torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]])
+        )
+        log_likelihood(log_normal, torch.tensor([[4.3]]))
+
+    def test_marginalization(self):
+
+        log_normal = TorchLogNormal([0], 0.0, 1.0)
+        data = torch.tensor([[float("nan")]])
+
+        # should not raise and error and should return 1
         probs = likelihood(log_normal, data)
-        log_probs = log_likelihood(log_normal, data)
 
-        self.assertTrue(torch.allclose(probs, targets))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
 
 
 if __name__ == "__main__":

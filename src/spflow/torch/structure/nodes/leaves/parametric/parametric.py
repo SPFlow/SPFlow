@@ -95,6 +95,7 @@ def proj_bounded_to_real(
 
 class TorchParametricLeaf(TorchLeafNode, ABC):
     """Base class for Torch leaf nodes representing parametric probability distributions."""
+
     ptype: ParametricType
 
     def __init__(self, scope: List[int]) -> None:

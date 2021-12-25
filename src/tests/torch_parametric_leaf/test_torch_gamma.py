@@ -140,7 +140,7 @@ class TestTorchGamma(unittest.TestCase):
         # alpha = inf and alpha = nan
         self.assertRaises(Exception, TorchGamma, [0], np.inf, 1.0)
         self.assertRaises(Exception, TorchGamma, [0], np.nan, 1.0)
-        
+
         # beta = < 0
         self.assertRaises(Exception, TorchGamma, [0], 1.0, np.nextafter(0.0, -1.0))
         # beta = inf and beta = non
@@ -149,33 +149,31 @@ class TestTorchGamma(unittest.TestCase):
 
         # invalid scope lengths
         self.assertRaises(Exception, TorchGamma, [], 1.0, 1.0)
-        self.assertRaises(Exception, TorchGamma, [0,1], 1.0, 1.0)
+        self.assertRaises(Exception, TorchGamma, [0, 1], 1.0, 1.0)
 
     def test_support(self):
-        
-        # Support for Gamma distribution: (0,inf)
+
+        # Support for Gamma distribution: floats (0,inf)
 
         # TODO:
         #   likelihood:     x=0 -> POS_EPS (?)
         #   log-likelihood: x=0 -> POS_EPS (?)
-        #
-        #   outside support -> nan (or 0?)
 
         gamma = TorchGamma([0], 1.0, 1.0)
 
-        # edge cases (-inf,inf) and finite values < 0
-        data = torch.tensor([[-float("inf")], [torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))], [float("inf")]])
-        targets = torch.zeros((3,1))
+        # TODO: 0
 
-        # TODO: fails (support, which one?)
-        probs = likelihood(gamma, data)
-        log_probs = log_likelihood(gamma, data)
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[-float("inf")]]))
+        log_likelihood(gamma, torch.tensor([[float("inf")]]))
 
-        self.assertTrue(torch.allclose(probs, targets))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        # check finite values > 0
+        log_likelihood(
+            gamma, torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]])
+        )
+        log_likelihood(gamma, torch.tensor([[10.5]]))
 
-        # finite values > 0
-        data =  torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]])
+        data = torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]])
 
         probs = likelihood(gamma, data)
         log_probs = log_likelihood(gamma, data)
@@ -183,7 +181,24 @@ class TestTorchGamma(unittest.TestCase):
         self.assertTrue(all(data != 0.0))
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
 
-        # TODO: 0
+        # check invalid float values (outside range)
+        self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[0.0]]))
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            gamma,
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
+        )
+
+    def test_marginalization(self):
+
+        gamma = TorchGamma([0], 1.0, 1.0)
+        data = torch.tensor([[float("nan")]])
+
+        # should not raise and error and should return 1
+        probs = likelihood(gamma, data)
+
+        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
 
 
 if __name__ == "__main__":

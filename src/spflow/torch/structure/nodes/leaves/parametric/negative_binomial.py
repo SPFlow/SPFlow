@@ -18,16 +18,16 @@ from multipledispatch import dispatch  # type: ignore
 
 class TorchNegativeBinomial(TorchParametricLeaf):
     r"""(Univariate) Negative Binomial distribution.
-    
+
     .. math::
 
         \text{PMF}(k) = \binom{k+n-1}{k}(1-p)^n p^k
-    
+
     where
         - :math:`k` is the number of successes
         - :math:`n` is the maximum number of failures
         - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
-    
+
     Args:
         scope:
             List of integers specifying the variable scope.
@@ -79,19 +79,24 @@ class TorchNegativeBinomial(TorchParametricLeaf):
 
         # ----- marginalization -----
 
+        marg_ids = torch.isnan(scope_data).sum(dim=1) == len(self.scope)
+
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.isnan(scope_data).sum(dim=1) == len(self.scope)] = 0.0
+        log_prob[marg_ids] = 0.0
 
         # ----- log probabilities -----
 
-        # compute probabilities on data samples where we have all values
-        prob_mask = torch.isnan(scope_data).sum(dim=1) == 0
-        # set probabilities of values outside of distribution support to 0 (-inf in log space)
-        support_mask = (scope_data >= 0).sum(dim=1).bool()
-        log_prob[prob_mask & (~support_mask)] = -float("Inf")
+        # create masked based on distribution's support
+        valid_ids = self.check_support(scope_data[~marg_ids])
+
+        if not all(valid_ids):
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the TorchNegativeBinomial distribution."
+            )
+
         # compute probabilities for values inside distribution support
-        log_prob[prob_mask & support_mask] = self.dist.log_prob(
-            scope_data[prob_mask & support_mask]
+        log_prob[~marg_ids] = self.dist.log_prob(
+            scope_data[~marg_ids].type(torch.get_default_dtype())
         )
 
         return log_prob
@@ -100,11 +105,11 @@ class TorchNegativeBinomial(TorchParametricLeaf):
 
         if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
-                f"Value of p for NegativeBinomial distribution must to be between 0.0 and 1.0, but was: {p}"
+                f"Value of p for TorchNegativeBinomial distribution must to be between 0.0 and 1.0, but was: {p}"
             )
         if n < 0 or not np.isfinite(n):
             raise ValueError(
-                f"Value of n for NegativeBinomial distribution must to greater of equal to 0, but was: {n}"
+                f"Value of n for TorchNegativeBinomial distribution must to greater of equal to 0, but was: {n}"
             )
 
         self.n.data = torch.tensor(int(n))  # type: ignore
@@ -112,6 +117,9 @@ class TorchNegativeBinomial(TorchParametricLeaf):
 
     def get_params(self) -> Tuple[int, float]:
         return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
+
+    def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
+        return self.dist.support.check(scope_data)  # type: ignore
 
 
 @dispatch(NegativeBinomial)  # type: ignore[no-redef]
