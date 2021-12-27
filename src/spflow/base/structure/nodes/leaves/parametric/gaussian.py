@@ -15,19 +15,24 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class Gaussian(ParametricLeaf):
-    """(Univariate) Normal distribution.
+    r"""(Univariate) Normal distribution.
 
-    PDF(x) =
-        1/sqrt(2*pi*sigma^2) * exp(-(x-mu)^2/(2*sigma^2)), where
-            - x is an observation
-            - mu is the mean
-            - sigma is the standard deviation
+    .. math::
 
-    Attributes:
+        \text{PDF}(x) = \frac{1}{\sqrt{2\pi\sigma^2}}\exp(-\frac{(x-\mu)^2}{2\sigma^2})
+
+    where
+        - :math:`x` the observation
+        - :math:`\mu` is the mean
+        - :math:`\sigma` is the standard deviation
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         mean:
-            mean (mu) of the distribution.
+            mean (:math:`\mu`) of the distribution.
         stdev:
-            standard deviation (sigma) of the distribution.
+            standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
     """
 
     type = ParametricType.CONTINUOUS
@@ -63,8 +68,23 @@ class Gaussian(ParametricLeaf):
         return self.mean, self.stdev
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+        r"""Checks if instances are part of the support of the Gaussian distribution.
+
+        .. math::
+
+            \text{supp}(\text{Gaussian})=(-\infty,+\infty)
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = np.ones(scope_data.shape, dtype=bool)
+
+        # check for infinite values
+        valid &= ~np.isinf(scope_data)
 
         return valid
 

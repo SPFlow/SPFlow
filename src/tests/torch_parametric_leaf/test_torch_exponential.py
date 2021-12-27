@@ -23,7 +23,7 @@ class TestTorchExponential(unittest.TestCase):
 
     def test_inference(self):
 
-        l = random.random()
+        l = random.random() + 1e-7  # small offset to avoid zero
 
         torch_exponential = TorchExponential([0], l)
         node_exponential = Exponential([0], l)
@@ -142,14 +142,14 @@ class TestTorchExponential(unittest.TestCase):
 
     def test_support(self):
 
-        # Support for Exponential distribution: floats [0,inf)
+        # Support for Exponential distribution: floats [0,inf) (note: 0 excluded in pytorch support)
 
         l = 1.5
         exponential = TorchExponential([0], l)
 
         # check infinite values
         self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[-float("inf")]]))
-        log_likelihood(exponential, torch.tensor([[float("inf")]]))
+        self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[float("inf")]]))
 
         # check valid float values (within range)
         log_likelihood(
@@ -165,16 +165,8 @@ class TestTorchExponential(unittest.TestCase):
             torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
         )
 
-        # edge case 0
-        data = torch.tensor([[0.0]])
-
-        # TODO: fails (support, why?)
-        probs = likelihood(exponential, data)
-        log_probs = log_likelihood(exponential, data)
-
-        self.assertTrue(all(probs != 0.0))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        # TODO (fails): self.assertTrue(all(probs[1] != 0.0))
+        # edge case 0 (part of the support in scipy, but NOT pytorch)
+        self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[0.0]]))
 
     def test_marginalization(self):
 

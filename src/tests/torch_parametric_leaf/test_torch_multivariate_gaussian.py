@@ -207,26 +207,60 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
 
         # Valid parameters for Multivariate Gaussian distribution: mean vector in R^k, covariance matrix in R^(k x k) symmetric positive semi-definite (TODO: PDF only exists if p.d.?)
 
-        # mean contains inf and mean contains nan (TODO: exception not raised)
-        # self.assertRaises(Exception, TorchMultivariateGaussian, [0,1], torch.tensor([0.0, float("inf")]), torch.eye(2))
-        # self.assertRaises(Exception, TorchMultivariateGaussian, [0,1], torch.tensor([0.0, float("nan")]), torch.eye(2))
+        # mean contains inf and mean contains nan
+        self.assertRaises(
+            Exception,
+            TorchMultivariateGaussian,
+            [0, 1],
+            torch.tensor([0.0, float("inf")]),
+            torch.eye(2),
+        )
+        self.assertRaises(
+            Exception,
+            TorchMultivariateGaussian,
+            [0, 1],
+            torch.tensor([-float("inf"), 0.0]),
+            torch.eye(2),
+        )
+        self.assertRaises(
+            Exception,
+            TorchMultivariateGaussian,
+            [0, 1],
+            torch.tensor([0.0, float("nan")]),
+            torch.eye(2),
+        )
 
-        # mean vector of wrong shape (TODO: test where Exception is raised, second exception not raised),
+        # mean vector of wrong shape
         self.assertRaises(
             Exception, TorchMultivariateGaussian, [0, 1], torch.zeros(3), torch.eye(2)
         )
-        # self.assertRaises(Exception, TorchMultivariateGaussian, [0,1], torch.zeros((1,1,2)), torch.eye(2))
+        self.assertRaises(
+            Exception, TorchMultivariateGaussian, [0, 1], torch.zeros((1, 1, 2)), torch.eye(2)
+        )
 
-        # covariance matrix of wrong shape (TODO: test where Exception is raised)
+        # covariance matrix of wrong shape
         M = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
         self.assertRaises(Exception, TorchMultivariateGaussian, [0, 1], torch.zeros(2), M)
         self.assertRaises(Exception, TorchMultivariateGaussian, [0, 1], torch.zeros(2), M.T)
         self.assertRaises(Exception, TorchMultivariateGaussian, [0, 1], torch.zeros(2), np.eye(3))
-        # covariance matrix not symmetric positive semi-definite (TODO: test where Exception is raised)
+        # covariance matrix not symmetric positive semi-definite
         self.assertRaises(
             Exception, TorchMultivariateGaussian, [0, 1], torch.tensor([[1.0, 0.0], [1.0, 0.0]])
         )
         self.assertRaises(Exception, TorchMultivariateGaussian, [0, 1], -torch.eye(2))
+        # covariance matrix containing inf or nan
+        self.assertRaises(
+            Exception,
+            TorchMultivariateGaussian,
+            [0, 0],
+            torch.tensor([[float("inf"), 0], [0, float("inf")]]),
+        )
+        self.assertRaises(
+            Exception,
+            TorchMultivariateGaussian,
+            [0, 0],
+            torch.tensor([[float("nan"), 0], [0, float("nan")]]),
+        )
 
         # invalid scope lengths
         self.assertRaises(
@@ -244,19 +278,11 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
 
     def test_support(self):
 
-        # Support for Multivariate Gaussian distribution: floats R^k
+        # Support for Multivariate Gaussian distribution: floats (inf,+inf)^k
 
         multivariate_gaussian = TorchMultivariateGaussian([0, 1], np.zeros(2), np.eye(2))
 
-        # check for infinite values
-        # TODO
-
-        # check partial marginalization
-        self.assertRaises(
-            ValueError, log_likelihood, multivariate_gaussian, torch.tensor([[float("nan"), 0.0]])
-        )
-
-        # check infinite values (TODO: fixed in newer versions? how to handle?)
+        # check infinite values
         self.assertRaises(
             ValueError, log_likelihood, multivariate_gaussian, torch.tensor([[-float("inf"), 0.0]])
         )

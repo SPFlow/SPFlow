@@ -31,7 +31,7 @@ class TorchPoisson(TorchParametricLeaf):
         scope:
             List of integers specifying the variable scope.
         l:
-            Rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than 0).
+            Rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0).
     """
 
     ptype = ParametricType.COUNT
@@ -99,13 +99,42 @@ class TorchPoisson(TorchParametricLeaf):
                 f"Value of l for TorchPoisson distribution must be finite, but was: {l}"
             )
 
+        if l < 0:
+            raise ValueError(
+                f"Value of l for TorchPoisson distribution must be non-negative, but was: {l}"
+            )
+
         self.l_aux.data = proj_bounded_to_real(torch.tensor(float(l)), lb=0.0)
 
     def get_params(self) -> Tuple[float]:
         return (self.l.data.cpu().numpy(),)  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        return self.dist.support.check(scope_data)  # type: ignore
+        r"""Checks if instances are part of the support of the Poisson distribution.
+
+        .. math::
+
+            \text{supp}(\text{Poisson})=\mathbb{N}\cup\{0\}
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
+
+        valid = self.dist.support.check(scope_data)  # type: ignore
+
+        # check if all values are valid integers
+        # TODO: runtime warning due to nan values
+        mask = valid.clone()
+        valid[mask] &= np.remainder(scope_data[mask], 1) == 0
+
+        # check for infinite values
+        mask = valid.clone()
+        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+
+        return valid
 
 
 @dispatch(Poisson)  # type: ignore[no-redef]
