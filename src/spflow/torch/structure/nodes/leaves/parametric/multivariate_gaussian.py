@@ -154,25 +154,51 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
             # convert numpy array to torch tensor
             covariance_matrix = torch.from_numpy(covariance_matrix).type(torch.get_default_dtype())
 
+        # check mean vector for nan or inf values
+        if torch.any(torch.isinf(mean_vector)):
+            raise ValueError(
+                "Mean vector for TorchMultivariateGaussian may not contain infinite values"
+            )
+        if torch.any(torch.isnan(mean_vector)):
+            raise ValueError("Mean vector for TorchMultivariateGaussian may not contain NaN values")
+
         # dimensions
         d = mean_vector.numel()
 
         # make sure that number of dimensions matches scope length
-        if d != self.d:
+        if (
+            (mean_vector.ndim == 1 and mean_vector.shape[0] != len(self.scope))
+            or (mean_vector.ndim == 2 and mean_vector.shape[1] != len(self.scope))
+            or mean_vector.ndim > 2
+        ):
             raise ValueError(
-                f"Mean vector length {mean_vector.numel()} does not match scope length {self.d}"
+                f"Dimensions of mean vector for TorchMultivariateGaussian should match scope size {len(self.scope)}, but was: {mean_vector.shape}"
             )
 
         # make sure that dimensions of covariance matrix are correct
-        if len(covariance_matrix.shape) != 2 or any(
-            shape != d for shape in covariance_matrix.shape
+        if covariance_matrix.ndim != 2 or (
+            covariance_matrix.ndim == 2
+            and (
+                covariance_matrix.shape[0] != len(self.scope)
+                or covariance_matrix.shape[1] != len(self.scope)
+            )
         ):
             raise ValueError(
-                f"Covariance matrix has shape {covariance_matrix.shape}, but should be of shape ({d},{d})"
+                f"Covariance matrix for TorchMultivariateGaussian expected to be of shape ({len(self.scope), len(self.scope)}), but was: {covariance_matrix.shape}"
             )
 
         # set mean vector
         self.mean_vector.data = mean_vector
+
+        # check covariance matrix for nan or inf values
+        if torch.any(torch.isinf(mean_vector)):
+            raise ValueError(
+                "Covariance matrix vector for TorchMultivariateGaussian may not contain infinite values"
+            )
+        if torch.any(torch.isnan(mean_vector)):
+            raise ValueError(
+                "Covariance matrix for TorchMultivariateGaussian may not contain NaN values"
+            )
 
         # compute lower triangular matrix (also check if covariance matrix is symmetric positive definite)
         L = torch.linalg.cholesky(covariance_matrix)  # type: ignore
@@ -185,6 +211,18 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         return self.mean_vector.data.cpu().tolist(), self.covariance_matrix.data.cpu().tolist()  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
+        r"""Checks if instances are part of the support of the MultivariateGaussian distribution.
+
+        .. math::
+
+            \text{supp}(\text{MultivariateGaussian})=(-\infty,+\infty)^k
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = self.dist.support.check(scope_data)  # type: ignore
 

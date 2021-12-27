@@ -69,6 +69,9 @@ class TestMultivariateGaussian(unittest.TestCase):
             Exception, MultivariateGaussian, [0, 1], np.array([0.0, np.inf]), np.eye(2)
         )
         self.assertRaises(
+            Exception, MultivariateGaussian, [0, 1], np.array([-np.inf, 0.0]), np.eye(2)
+        )
+        self.assertRaises(
             Exception, MultivariateGaussian, [0, 1], np.array([0.0, np.nan]), np.eye(2)
         )
 
@@ -86,6 +89,13 @@ class TestMultivariateGaussian(unittest.TestCase):
             Exception, MultivariateGaussian, [0, 1], np.array([[1.0, 0.0], [1.0, 0.0]])
         )
         self.assertRaises(Exception, MultivariateGaussian, [0, 1], -np.eye(2))
+        # covariance matrix containing inf or nan
+        self.assertRaises(
+            Exception, MultivariateGaussian, [0, 0], np.array([[np.inf, 0], [0, np.inf]])
+        )
+        self.assertRaises(
+            Exception, MultivariateGaussian, [0, 0], np.array([[np.nan, 0], [0, np.nan]])
+        )
 
         # dummy distribution and data
         multivariate_gaussian = MultivariateGaussian([0, 1], np.zeros(2), np.eye(2))
@@ -105,7 +115,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
     def test_support(self):
 
-        # Support for Multivariate Gaussian distribution: floats R^k
+        # Support for Multivariate Gaussian distribution: floats (inf,+inf)^k
 
         # TODO:
         #   likelihood:     None

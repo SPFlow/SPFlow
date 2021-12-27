@@ -61,15 +61,16 @@ class TestGaussian(unittest.TestCase):
 
     def test_initialization(self):
 
-        # Valid parameters for Exponential distribution: mean in R, stdev > 0
+        # Valid parameters for Exponential distribution: mean in (-inf,inf), stdev > 0
 
         mean = random.random()
 
         # mean = inf and mean = nan
         self.assertRaises(Exception, Gaussian, [0], np.inf, 1.0)
+        self.assertRaises(Exception, Gaussian, [0], -np.inf, 1.0)
         self.assertRaises(Exception, Gaussian, [0], np.nan, 1.0)
 
-        # stdev = 0 and stdev > 0
+        # stdev = 0 and stdev < 0
         self.assertRaises(Exception, Gaussian, [0], mean, 0.0)
         self.assertRaises(Exception, Gaussian, [0], mean, np.nextafter(0.0, -1.0))
         # stdev = inf and stdev = nan
@@ -92,7 +93,7 @@ class TestGaussian(unittest.TestCase):
 
     def test_support(self):
 
-        # Support for Gaussian distribution: floats R (TODO: R or (-inf, inf)?)
+        # Support for Gaussian distribution: floats (-inf, inf)
 
         # TODO:
         #   likelihood:     None
@@ -100,15 +101,9 @@ class TestGaussian(unittest.TestCase):
 
         gaussian = Gaussian([0], 0.0, 1.0)
 
-        # check infinite values (TODO)
-        data = np.array([[-np.inf], [np.inf]])
-        targets = np.zeros((2, 1))
-
-        probs = likelihood(gaussian, data, SPN())
-        log_probs = log_likelihood(gaussian, data, SPN())
-
-        self.assertTrue(np.allclose(probs, targets))
-        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, gaussian, np.array([[np.inf]]), SPN())
+        self.assertRaises(ValueError, log_likelihood, gaussian, np.array([[-np.inf]]), SPN())
 
     def test_marginalization(self):
 

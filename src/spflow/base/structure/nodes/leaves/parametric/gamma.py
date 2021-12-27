@@ -16,18 +16,28 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class Gamma(ParametricLeaf):
-    """(Univariate) Gamma distribution.
+    r"""(Univariate) Gamma distribution.
+    
+    .. math::
+    
+        \text{PDF}(x) = \begin{cases} \frac{\beta^\alpha}{\Gamma(\alpha)}x^{\alpha-1}e^{-\beta x} & \text{if } x > 0\\
+                                      0 & \text{if } x <= 0\end{cases}
 
-    PDF(x) =
-        1/G(alpha) * beta^alpha * x^(alpha-1) * exp(-x*beta)   , if x > 0
-        0                                                      , if x <= 0, where
-            - G(beta) is the Gamma function
+    where
+        - :math:`x` is the input observation
+        - :math:`\Gamma` is the Gamma function
+        - :math:`\alpha` is the shape parameter
+        - :math:`\beta` is the rate parameter
 
-    Attributes:
+    TODO: check
+    
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         alpha:
-            Shape parameter, greater than 0.
+            Shape parameter (:math:`\alpha`), greater than 0.
         beta:
-            Scale parameter, greater than 0.
+            Rate parameter (:math:`\beta`), greater than 0.
     """
 
     type = ParametricType.POSITIVE
@@ -58,8 +68,23 @@ class Gamma(ParametricLeaf):
         return self.alpha, self.beta
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+        r"""Checks if instances are part of the support of the Gamma distribution.
+
+        .. math::
+
+            \text{supp}(\text{Gamma})=(0,+\infty)
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = np.ones(scope_data.shape, dtype=bool)
+
+        # check for infinite values
+        valid &= ~np.isinf(scope_data)
 
         # check if values are in valid range
         valid[valid] &= scope_data[valid] > 0

@@ -57,7 +57,7 @@ class TestBernoulli(unittest.TestCase):
         self.assertRaises(Exception, Bernoulli, [0], np.nextafter(1.0, 2.0))
         self.assertRaises(Exception, Bernoulli, [0], np.nextafter(0.0, -1.0))
 
-        # inf, nan
+        # p = inf and p = nan
         self.assertRaises(Exception, Bernoulli, [0], np.inf)
         self.assertRaises(Exception, Bernoulli, [0], np.nan)
 

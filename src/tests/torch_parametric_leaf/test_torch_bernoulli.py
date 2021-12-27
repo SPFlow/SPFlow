@@ -158,7 +158,7 @@ class TestTorchBernoulli(unittest.TestCase):
             Exception, TorchBernoulli, [0], torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))
         )
 
-        # inf, nan
+        # p = inf and p = nan
         self.assertRaises(Exception, TorchBernoulli, [0], np.inf)
         self.assertRaises(Exception, TorchBernoulli, [0], np.nan)
 

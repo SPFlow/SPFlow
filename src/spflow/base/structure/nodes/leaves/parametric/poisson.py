@@ -16,14 +16,21 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class Poisson(ParametricLeaf):
-    """(Univariate) Poisson distribution.
+    r"""(Univariate) Poisson distribution.
 
-    PMF(k) =
-        l^k * exp(-l) / k!
+    .. math::
 
-    Attributes:
+        \text{PMF}(k) = \lambda^k\frac{e^{-\lambda}}{k!}
+
+    where
+        - :math:`k` is the number of occurrences
+        - :math:`\lambda` is the rate parameter
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         l:
-            Expected value (& variance) of the Poisson distribution (usually denoted as lambda).
+            Rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0).
     """
 
     type = ParametricType.COUNT
@@ -41,12 +48,29 @@ class Poisson(ParametricLeaf):
         if not np.isfinite(l):
             raise ValueError(f"Value of l for Poisson distribution must be finite, but was: {l}")
 
-        self.l = l
+        if l < 0:
+            raise ValueError(
+                f"Value of l for Poisson distribution must be non-negative, but was: {l}"
+            )
+
+        self.l = float(l)
 
     def get_params(self) -> Tuple[float]:
         return (self.l,)
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+        r"""Checks if instances are part of the support of the Poisson distribution.
+
+        .. math::
+
+            \text{supp}(\text{Poisson})=\mathbb{N}\cup\{0\}
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = np.ones(scope_data.shape, dtype=bool)
 

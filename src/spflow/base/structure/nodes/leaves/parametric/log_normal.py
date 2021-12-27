@@ -16,19 +16,24 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class LogNormal(ParametricLeaf):
-    """(Univariate) Log-Normal distribution.
+    r"""(Univariate) Log-Normal distribution.
 
-    PDF(x) =
-        1/(x*sigma*sqrt(2*pi) * exp(-(ln(x)-mu)^2/(2*sigma^2)), where
-            - x is an observation
-            - mu is the mean
-            - sigma is the standard deviation
+    .. math::
 
-    Attributes:
+        \text{PDF}(x) = \frac{1}{x\sigma\sqrt{2\pi}}\exp\left(-\frac{(\ln(x)-\mu)^2}{2\sigma^2}\right)
+
+    where
+        - :math:`x` is an observation
+        - :math:`\mu` is the mean
+        - :math:`\sigma` is the standard deviation
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         mean:
-            mean (mu) of the distribution.
+            mean (:math:`\mu`) of the distribution.
         stdev:
-            standard deviation (sigma) of the distribution (must be greater than 0).
+            standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
     """
 
     type = ParametricType.POSITIVE
@@ -59,6 +64,18 @@ class LogNormal(ParametricLeaf):
         return self.mean, self.stdev
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+        r"""Checks if instances are part of the support of the LogNormal distribution.
+
+        .. math::
+
+            \text{supp}(\text{LogNormal})=(0,\infty)
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = np.ones(scope_data.shape, dtype=bool)
 

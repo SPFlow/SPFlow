@@ -129,7 +129,7 @@ class TestTorchNegativeBinomial(unittest.TestCase):
 
     def test_initialization(self):
 
-        # Valid parameters for Geometric distribution: p in [0,1], n>0 (TODO: n>=0?)
+        # Valid parameters for Negative Binomial distribution: p in [0,1], n > 0
 
         # p = 1
         negative_binomial = TorchNegativeBinomial([0], 1, 1.0)
@@ -145,6 +145,15 @@ class TestTorchNegativeBinomial(unittest.TestCase):
 
         # p = 0
         TorchNegativeBinomial([0], 1, 0.0)
+
+        data = torch.tensor([[0.0], [1.0]])
+        targets = torch.tensor([[1.0], [0.0]])
+
+        probs = likelihood(negative_binomial, data)
+        log_probs = log_likelihood(negative_binomial, data)
+
+        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        self.assertTrue(torch.allclose(probs, targets))
 
         # p < 0 and p > 1
         self.assertRaises(
@@ -162,8 +171,9 @@ class TestTorchNegativeBinomial(unittest.TestCase):
             torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)),
         )
 
-        # p = inf and p = nan
+        # p = +-inf and p = nan
         self.assertRaises(Exception, TorchNegativeBinomial, [0], 1, np.inf)
+        self.assertRaises(Exception, TorchNegativeBinomial, [0], 1, -np.inf)
         self.assertRaises(Exception, TorchNegativeBinomial, [0], 1, np.nan)
 
         # n = 0
@@ -183,6 +193,7 @@ class TestTorchNegativeBinomial(unittest.TestCase):
         self.assertRaises(Exception, TorchNegativeBinomial, [0], np.nan, 1.0)
 
         # TODO: n float
+        self.assertRaises(Exception, likelihood, negative_binomial, 0.5, SPN())
 
         # invalid scope lengths
         self.assertRaises(Exception, TorchNegativeBinomial, [], 1, 1.0)

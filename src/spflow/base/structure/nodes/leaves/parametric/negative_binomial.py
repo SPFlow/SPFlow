@@ -16,17 +16,24 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class NegativeBinomial(ParametricLeaf):
-    """(Univariate) Negative Binomial distribution.
+    r"""(Univariate) Negative Binomial distribution.
 
-    PMF(k) =
-        (k+n-1)C(k) * (1-p)^n * p^k, where
-            - (n)C(k) is the binomial coefficient (n choose k)
+    .. math::
 
-    Attributes:
+        \text{PMF}(k) = \binom{k+n-1}{k}(1-p)^n p^k
+
+    where
+        - :math:`k` is the number of successes
+        - :math:`n` is the maximum number of failures
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         n:
-            Number of i.i.d. trials (greater of equal to 0).
+            Number of i.i.d. trials (greater or equal to 0).
         p:
-            Probability of success of each trial in the range (0,1].
+            Probability of success for each trial in the range :math:`[0,1]`.
     """
 
     type = ParametricType.COUNT
@@ -50,6 +57,11 @@ class NegativeBinomial(ParametricLeaf):
                 f"Value of n for NegativeBinomial distribution must to greater of equal to 0, but was: {n}"
             )
 
+        if not (np.remainder(n, 1.0) == 0.0):
+            raise ValueError(
+                f"Value of n for NegativeBinomial distribution must be (equal to) an integer value, but was: {n}"
+            )
+
         self.n = n
         self.p = p
 
@@ -57,6 +69,18 @@ class NegativeBinomial(ParametricLeaf):
         return self.n, self.p
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+        r"""Checks if instances are part of the support of the NegativeBinomial distribution.
+
+        .. math::
+
+            \text{supp}(\text{NegativeBinomial})=\mathbb{N}\cup\{0\}
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = np.ones(scope_data.shape, dtype=bool)
 
