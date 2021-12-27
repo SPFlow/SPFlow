@@ -132,16 +132,21 @@ class TestTorchGamma(unittest.TestCase):
 
         # Valid parameters for Gamma distribution: alpha>0, beta>0
 
+        # alpha > 0
         TorchGamma([0], torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)), 1.0)
-        TorchGamma([0], 1.0, torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
-
+        # alpha = 0
+        self.assertRaises(Exception, TorchGamma, [0], 0.0, 1.0)
         # alpha < 0
         self.assertRaises(Exception, TorchGamma, [0], np.nextafter(0.0, -1.0), 1.0)
         # alpha = inf and alpha = nan
         self.assertRaises(Exception, TorchGamma, [0], np.inf, 1.0)
         self.assertRaises(Exception, TorchGamma, [0], np.nan, 1.0)
 
-        # beta = < 0
+        # beta > 0
+        TorchGamma([0], 1.0, torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
+        # beta = 0
+        self.assertRaises(Exception, TorchGamma, [0], 1.0, 0.0)
+        # beta < 0
         self.assertRaises(Exception, TorchGamma, [0], 1.0, np.nextafter(0.0, -1.0))
         # beta = inf and beta = non
         self.assertRaises(Exception, TorchGamma, [0], 1.0, np.inf)
@@ -165,7 +170,7 @@ class TestTorchGamma(unittest.TestCase):
 
         # check infinite values
         self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[-float("inf")]]))
-        log_likelihood(gamma, torch.tensor([[float("inf")]]))
+        self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[float("inf")]]))
 
         # check finite values > 0
         log_likelihood(

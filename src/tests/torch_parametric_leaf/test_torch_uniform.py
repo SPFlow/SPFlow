@@ -125,11 +125,13 @@ class TestTorchUniform(unittest.TestCase):
             start_end,
             torch.nextafter(torch.tensor(start_end), torch.tensor(-1.0)),
         )
-        # start = inf and start = nan
+        # start = +-inf and start = nan
         self.assertRaises(Exception, TorchUniform, [0], np.inf, 0.0)
+        self.assertRaises(Exception, TorchUniform, [0], -np.inf, 0.0)
         self.assertRaises(Exception, TorchUniform, [0], np.nan, 0.0)
-        # end = inf and end = nan
+        # end = +-inf and end = nan
         self.assertRaises(Exception, TorchUniform, [0], 0.0, np.inf)
+        self.assertRaises(Exception, TorchUniform, [0], 0.0, -np.inf)
         self.assertRaises(Exception, TorchUniform, [0], 0.0, np.nan)
 
         # invalid scope lengths
@@ -138,9 +140,7 @@ class TestTorchUniform(unittest.TestCase):
 
     def test_support(self):
 
-        # Support for Uniform distribution: floats [a,b] (TODO: R?)
-
-        l = random.random()
+        # Support for Uniform distribution: floats [a,b] or (-inf,inf)
 
         # ----- with support outside the interval -----
         uniform = TorchUniform([0], 1.0, 2.0, support_outside=True)
@@ -149,15 +149,12 @@ class TestTorchUniform(unittest.TestCase):
         self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[-float("inf")]]))
         self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[float("inf")]]))
 
-        # check nan values (marginalization)
-        log_likelihood(uniform, torch.tensor([[float("nan")]]))
-
-        # check valid floats in [1.0, 2.0]
+        # check valid floats in [start, end]
         log_likelihood(uniform, torch.tensor([[1.0]]))
         log_likelihood(uniform, torch.tensor([[1.5]]))
         log_likelihood(uniform, torch.tensor([[2.0]]))
 
-        # check invalid float values
+        # check valid floats outside [start, end]
         log_likelihood(
             uniform, torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(-1.0))]])
         )
@@ -172,15 +169,12 @@ class TestTorchUniform(unittest.TestCase):
         self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[-float("inf")]]))
         self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[float("inf")]]))
 
-        # check nan values (marginalization)
-        log_likelihood(uniform, torch.tensor([[float("nan")]]))
-
-        # check valid floats in [1.0, 2.0]
+        # check valid floats in [start, end]
         log_likelihood(uniform, torch.tensor([[1.0]]))
         log_likelihood(uniform, torch.tensor([[1.5]]))
         log_likelihood(uniform, torch.tensor([[2.0]]))
 
-        # check invalid float values
+        # check invalid floats outside
         self.assertRaises(
             ValueError,
             log_likelihood,

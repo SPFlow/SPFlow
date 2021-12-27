@@ -16,15 +16,22 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class Exponential(ParametricLeaf):
-    """(Univariate) Exponential distribution.
+    r"""(Univariate) Exponential distribution.
 
-    PDF(x) =
-        l * exp(-l * x) , if x > 0
-        0               , if x <= 0
-
-    Attributes:
+    .. math::
+        
+        \text{PDF}(x) = \begin{cases} \lambda e^{-\lambda x} & \text{if } x > 0\\
+                                      0                      & \text{if } x <= 0\end{cases}
+    
+    where
+        - :math:`x` is the input observation
+        - :math:`\lambda` is the rate parameter
+    
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         l:
-            Rate parameter of the Exponential distribution (usually denoted as lambda, must be greater than 0).
+            Rate parameter (:math:`\lambda`) of the Exponential distribution (must be greater than 0).
     """
 
     type = ParametricType.POSITIVE
@@ -50,8 +57,23 @@ class Exponential(ParametricLeaf):
         return (self.l,)
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+        r"""Checks if instances are part of the support of the Exponential distribution.
+
+        .. math::
+
+            \text{supp}(\text{Exponential})=[0,+\infty)
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = np.ones(scope_data.shape, dtype=bool)
+
+        # check for infinite values
+        valid &= ~np.isinf(scope_data)
 
         # check if values are in valid range
         valid[valid] &= scope_data[valid] >= 0

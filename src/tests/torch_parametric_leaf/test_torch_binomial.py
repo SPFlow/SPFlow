@@ -131,7 +131,7 @@ class TestTorchBinomial(unittest.TestCase):
 
     def test_initialization(self):
 
-        # Valid parameters for Binomial distribution: p in [0,1], n >= 0
+        # Valid parameters for Binomial distribution: p in [0,1], n in N U {0}
 
         # p = 0
         binomial = TorchBinomial([0], 1, 0.0)
@@ -184,7 +184,8 @@ class TestTorchBinomial(unittest.TestCase):
         # n < 0
         self.assertRaises(Exception, TorchBinomial, [0], -1, 0.5)
 
-        # TODO: n float
+        # n float
+        self.assertRaises(Exception, TorchBinomial, [0], 0.5, 0.5)
 
         # n = inf and n = nan
         self.assertRaises(Exception, TorchBinomial, [0], np.inf, 0.5)

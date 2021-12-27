@@ -34,7 +34,7 @@ class TorchNegativeBinomial(TorchParametricLeaf):
         n:
             Number of i.i.d. trials (greater or equal to 0).
         p:
-            Probability of success for each trial in the range :math:`(0,1]`.
+            Probability of success for each trial in the range :math:`[0,1]`.
     """
 
     ptype = ParametricType.COUNT
@@ -112,6 +112,11 @@ class TorchNegativeBinomial(TorchParametricLeaf):
                 f"Value of n for TorchNegativeBinomial distribution must to greater of equal to 0, but was: {n}"
             )
 
+        if not (torch.remainder(torch.tensor(n), 1.0) == 0.0):
+            raise ValueError(
+                f"Value of n for TorchNegativeBinomial distribution must be (equal to) an integer value, but was: {n}"
+            )
+
         self.n.data = torch.tensor(int(n))  # type: ignore
         self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)  # type: ignore
 
@@ -119,7 +124,31 @@ class TorchNegativeBinomial(TorchParametricLeaf):
         return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        return self.dist.support.check(scope_data)  # type: ignore
+        r"""Checks if instances are part of the support of the NegativeBinomial distribution.
+
+        .. math::
+
+            \text{supp}(\text{NegativeBinomial})=\mathbb{N}\cup\{0\}
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
+
+        valid = self.dist.support.check(scope_data)  # type: ignore
+
+        # check if all values are valid integers
+        # TODO: runtime warning due to nan values
+        mask = valid.clone()
+        valid[mask] &= np.remainder(scope_data[mask], 1) == 0
+
+        # check for infinite values
+        mask = valid.clone()
+        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+
+        return valid
 
 
 @dispatch(NegativeBinomial)  # type: ignore[no-redef]

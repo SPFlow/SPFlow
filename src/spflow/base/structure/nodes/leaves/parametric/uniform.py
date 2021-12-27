@@ -16,18 +16,25 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class Uniform(ParametricLeaf):
-    """(Univariate) continuous Uniform distribution.
+    r"""(Univariate) continuous Uniform distribution.
 
-    PDF(x) =
-        1 / (end - start) * 1_[start, end], where
-            - 1_[start, end] is the indicator function of the given interval (evaluating to 0 if x is not in the interval)
+    .. math::
 
+        \text{PDF}(x) = \frac{1}{\text{end} - \text{start}}\mathbf{1}_{[\text{start}, \text{end}]}(x)
 
-    Attributes:
+    where
+        - :math:`x` is the input observation
+        - :math:`\mathbf{1}_{[\text{start}, \text{end}]}` is the indicator function for the given interval (evaluating to 0 if x is not in the interval)
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         start:
-            Start of interval.
+            Start of the interval.
         end:
-            End of interval (must be larger the interval start).
+            End of interval (must be larger than start).
+        support_outside:
+            Boolean specifying whether or not values outside of the interval are part of the support (defaults to False).
     """
 
     type = ParametricType.CONTINUOUS
@@ -59,6 +66,23 @@ class Uniform(ParametricLeaf):
         return self.start, self.end, self.support_outside
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+        r"""Checks if instances are part of the support of the Uniform distribution.
+
+        .. math::
+
+            \text{supp}(\text{Uniform})=\begin{cases} [start,end] & \text{if support\_outside}=\text{false}\\
+                                                 (-\infty,\infty) & \text{if support\_outside}=\text{true} \end{cases}
+        where
+            - :math:`start` is the start of the interval
+            - :math:`end` is the end of the interval
+            - :math:`\text{support\_outside}` is a truth value indicating whether values outside of the interval are part of the support
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = np.ones(scope_data.shape, dtype=bool)
 

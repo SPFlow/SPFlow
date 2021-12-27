@@ -104,13 +104,32 @@ class TorchBernoulli(TorchParametricLeaf):
         return log_prob
 
     def set_params(self, p: float) -> None:
-        self.p = torch.tensor(p)
+        self.p = torch.tensor(float(p))
 
     def get_params(self) -> Tuple[float]:
         return (self.p.data.cpu().numpy(),)  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        return self.dist.support.check(scope_data)  # type: ignore
+        r"""Checks if instances are part of the support of the Bernoulli distribution.
+
+        .. math::
+
+            \text{supp}(\text{Bernoulli})=\{0,1\}
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
+
+        valid = self.dist.support.check(scope_data)  # type: ignore
+
+        # check for infinite values
+        mask = valid.clone()
+        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+
+        return valid
 
 
 @dispatch(Bernoulli)  # type: ignore[no-redef]

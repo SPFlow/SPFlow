@@ -121,10 +121,10 @@ class TestTorchPoisson(unittest.TestCase):
 
     def test_initialization(self):
 
-        # Valid parameters for Poisson distribution: l in (0,inf) (TODO: 0,inf?)
+        # Valid parameters for Poisson distribution: l in (0,inf) (note: 0 included in pytorch)
 
-        # l = 0 (TODO: !?)
-        self.assertRaises(Exception, TorchPoisson, [0], 0.0)
+        # l = 0
+        TorchPoisson([0], 0.0)
         # l > 0
         TorchPoisson([0], torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
 
@@ -149,9 +149,6 @@ class TestTorchPoisson(unittest.TestCase):
         # check infinite values
         self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[-float("inf")]]))
         self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[float("inf")]]))
-
-        # check nan values (marginalization)
-        log_likelihood(poisson, torch.tensor([[float("nan")]]))
 
         # check valid integers, but outside of valid range
         self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[-1]]))

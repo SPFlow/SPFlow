@@ -60,10 +60,11 @@ class TestLogNormal(unittest.TestCase):
 
     def test_initialization(self):
 
-        # Valid parameters for Log-Normal distribution: mean in R (TODO: (-inf,inf)?), std>0
+        # Valid parameters for Log-Normal distribution: mean in (-inf,inf), stdev in (0,inf)
 
-        # mean = inf and mean = nan
+        # mean = +-inf and mean = nan
         self.assertRaises(Exception, LogNormal, [0], np.inf, 1.0)
+        self.assertRaises(Exception, LogNormal, [0], -np.inf, 1.0)
         self.assertRaises(Exception, LogNormal, [0], np.nan, 1.0)
 
         mean = random.random()
@@ -71,8 +72,9 @@ class TestLogNormal(unittest.TestCase):
         # stdev <= 0
         self.assertRaises(Exception, LogNormal, [0], mean, 0.0)
         self.assertRaises(Exception, LogNormal, [0], mean, np.nextafter(0.0, -1.0))
-        # stdev = inf and stdev = nan
+        # stdev = +-inf and stdev = nan
         self.assertRaises(Exception, LogNormal, [0], mean, np.inf)
+        self.assertRaises(Exception, LogNormal, [0], mean, -np.inf)
         self.assertRaises(Exception, LogNormal, [0], mean, np.nan)
 
         # dummy distribution and data
@@ -91,7 +93,7 @@ class TestLogNormal(unittest.TestCase):
 
     def test_support(self):
 
-        # Support for Log-Normal distribution: floats (0,inf) (TODO: 0,inf?)
+        # Support for Log-Normal distribution: floats (0,inf)
 
         # TODO:
         #   likelihood:     None

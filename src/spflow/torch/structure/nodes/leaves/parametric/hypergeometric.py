@@ -25,6 +25,7 @@ class TorchHypergeometric(TorchParametricLeaf):
         - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
         - :math:`N` is the total number of entities
         - :math:`M` is the number of entities with property of interest
+        - :math:`n` is the number of draws
         - :math:`k` s the number of observed entities
 
     Args:
@@ -35,7 +36,7 @@ class TorchHypergeometric(TorchParametricLeaf):
         M:
             Number of entities with property of interest (in the population), greater or equal to zero and less than or equal to N.
         n:
-            Number of observed entities (sample size), greater or equal to zero and less than or equal to N.
+            Number of draws, greater of euqal to zero and less than or equal to N.
     """
 
     ptype = ParametricType.COUNT
@@ -134,13 +135,27 @@ class TorchHypergeometric(TorchParametricLeaf):
             raise ValueError(
                 f"Value of N for TorchHypergeometric distribution must be greater of equal to 0, but was: {N}"
             )
+        if not (torch.remainder(torch.tensor(N), 1.0) == torch.tensor(0.0)):
+            raise ValueError(
+                f"Value of N for TorchHypergeometric distribution must be (equal to) an integer value, but was: {N}"
+            )
+
         if M < 0 or M > N or not np.isfinite(M):
             raise ValueError(
                 f"Value of M for TorchHypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {M}"
             )
+        if not (torch.remainder(torch.tensor(M), 1.0) == torch.tensor(0.0)):
+            raise ValueError(
+                f"Value of M for TorchHypergeometric distribution must be (equal to) an integer value, but was: {M}"
+            )
+
         if n < 0 or n > N or not np.isfinite(n):
             raise ValueError(
                 f"Value of n for TorchHypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {n}"
+            )
+        if not (torch.remainder(torch.tensor(n), 1.0) == torch.tensor(0.0)):
+            raise ValueError(
+                f"Value of n for TorchHypergeometric distribution must be (equal to) an integer value, but was: {n}"
             )
 
         self.M.data = torch.tensor(int(M))
@@ -151,6 +166,23 @@ class TorchHypergeometric(TorchParametricLeaf):
         return self.N.data.cpu().numpy(), self.M.data.cpu().numpy(), self.n.data.cpu().numpy()  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
+        r"""Checks if instances are part of the support of the Hypergeometric distribution.
+
+        .. math::
+
+            \text{supp}(\text{Hypergeometric})={\max(0,n+M-N),...,\min(n,M)}
+
+        where
+            - :math:`N` is the total number of entities
+            - :math:`M` is the number of entities with property of interest
+            - :math:`n` is the number of draws
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = torch.ones(scope_data.shape, dtype=torch.bool)
 

@@ -108,8 +108,27 @@ class TorchGeometric(TorchParametricLeaf):
         return (self.p.data.cpu().numpy(),)  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
+        r"""Checks if instances are part of the support of the Geometric distribution.
+
+        .. math::
+
+            \text{supp}(\text{Geometric})=\mathbb{N}\setminus\{0\}
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
+
         # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch
-        return self.dist.support.check(scope_data - 1)  # type: ignore
+        valid = self.dist.support.check(scope_data - 1)  # type: ignore
+
+        # check for infinite values
+        mask = valid.clone()
+        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+
+        return valid
 
 
 @dispatch(Geometric)  # type: ignore[no-redef]

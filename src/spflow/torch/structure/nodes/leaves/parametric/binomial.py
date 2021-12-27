@@ -116,14 +116,38 @@ class TorchBinomial(TorchParametricLeaf):
                 f"Value of n for TorchBinomial distribution must to greater of equal to 0, but was: {n}"
             )
 
-        self.p = torch.tensor(p)
+        if not (torch.remainder(torch.tensor(n), 1.0) == torch.tensor(0.0)):
+            raise ValueError(
+                f"Value of n for TorchBinomial distribution must be (equal to) an integer value, but was: {n}"
+            )
+
+        self.p = torch.tensor(float(p))
         self.n.data = torch.tensor(int(n))  # type: ignore
 
     def get_params(self) -> Tuple[int, float]:
         return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        return self.dist.support.check(scope_data)  # type: ignore
+        r"""Checks if instances are part of the support of the Binomial distribution.
+
+        .. math::
+
+            \text{supp}(\text{Binomial})=\{0,\hdots,n\}
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
+
+        valid = self.dist.support.check(scope_data)  # type: ignore
+
+        # check for infinite values
+        mask = valid.clone()
+        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+
+        return valid
 
 
 @dispatch(Binomial)  # type: ignore[no-redef]

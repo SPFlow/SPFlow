@@ -33,6 +33,8 @@ class TorchUniform(TorchParametricLeaf):
             Start of the interval.
         end:
             End of interval (must be larger than start).
+        support_outside:
+            Boolean specifying whether or not values outside of the interval are part of the support (defaults to False).
     """
 
     ptype = ParametricType.CONTINUOUS
@@ -127,6 +129,23 @@ class TorchUniform(TorchParametricLeaf):
         return self.start.cpu().numpy(), self.end.cpu().numpy(), self.support_outside  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
+        r"""Checks if instances are part of the support of the Uniform distribution.
+
+        .. math::
+
+            \text{supp}(\text{Uniform})=\begin{cases} [start,end] & \text{if support\_outside}=\text{false}\\
+                                                 (-\infty,\infty) & \text{if support\_outside}=\text{true} \end{cases}
+        where
+            - :math:`start` is the start of the interval
+            - :math:`end` is the end of the interval
+            - :math:`\text{support\_outside}` is a truth value indicating whether values outside of the interval are part of the support
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         if scope_data.shape[1] != len(self.scope):
             raise ValueError(

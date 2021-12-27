@@ -124,7 +124,7 @@ class TestTorchGeometric(unittest.TestCase):
 
     def test_initialiation(self):
 
-        # Valid parameters for Geometric distribution: p in [0,1]
+        # Valid parameters for Geometric distribution: p in (0,1]
 
         # p = 0
         self.assertRaises(Exception, TorchGeometric, [0], 0.0)

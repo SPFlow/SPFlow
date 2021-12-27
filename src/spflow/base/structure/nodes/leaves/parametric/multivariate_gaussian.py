@@ -16,23 +16,28 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class MultivariateGaussian(ParametricLeaf):
-    """Multivariate Normal distribution.
+    r"""Multivariate Normal distribution.
 
-    PDF(x) =
-        1/sqrt((2*pi)^d * det(cov)) * exp(-1/2 (x-mu)^T * cov^(-1) * (x-mu)), where
-            - d is the dimension of the distribution
-            - x is the d-dim. vector of observations
-            - mu is the d-dim. mean_vector
-            - cov is the dxd covariance_matrix
+    .. math::
 
-    Attributes:
+        \text{PDF}(x) = \frac{1}{\sqrt{(2\pi)^d\det\Sigma}}\exp\left(-\frac{1}{2} (x-\mu)^T\Sigma^{-1}(x-\mu)\right)
+
+    where
+        - :math:`d` is the dimension of the distribution
+        - :math:`x` is the :math:`d`-dim. vector of observations
+        - :math:`\mu` is the :math:`d`-dim. mean vector
+        - :math:`\Sigma` is the :math:`d\times d` covariance matrix
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         mean_vector:
-            A list or NumPy array holding the means (mu) of each of the one-dimensional Normal distributions.
+            A list, NumPy array or a PyTorch tensor holding the means (:math:`\mu`) of each of the one-dimensional Normal distributions.
             Has exactly as many elements as the scope of this leaf.
         covariance_matrix:
-            A list of lists or NumPy array (representing a two-dimensional NxN matrix, where N is the length
+            A list of lists, NumPy array or PyTorch tensor (representing a two-dimensional :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
             of the scope) describing the covariances of the distribution. The diagonal holds
-            the variances (sigma^2) of each of the one-dimensional distributions.
+            the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
     """
 
     type = ParametricType.CONTINUOUS
@@ -84,14 +89,18 @@ class MultivariateGaussian(ParametricLeaf):
             )
         ):
             raise ValueError(
-                f"Dimensions of covariance matrix for MultivariateGaussian be appropriate for scope size {len(self.scope)}, but was: {covariance_matrix.shape}"
+                f"Covariance matrix for MultivariateGaussian expected to be of shape ({len(self.scope), len(self.scope)}), but was: {covariance_matrix.shape}"
             )
 
         # check covariance matrix for nan or inf values
         if np.any(np.isinf(covariance_matrix)):
-            raise ValueError("Mean vector for MultivariateGaussian may not contain infinite values")
+            raise ValueError(
+                "Covariance matrix for MultivariateGaussian may not contain infinite values"
+            )
         if np.any(np.isnan(covariance_matrix)):
-            raise ValueError("Mean vector for MultivariateGaussian may not contain NaN values")
+            raise ValueError(
+                "Covariance matrix for MultivariateGaussian may not contain NaN values"
+            )
 
         # test covariance matrix for symmetry
         if not np.allclose(covariance_matrix, covariance_matrix.T):
@@ -111,6 +120,18 @@ class MultivariateGaussian(ParametricLeaf):
         return self.mean_vector, self.covariance_matrix
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+        r"""Checks if instances are part of the support of the MultivariateGaussian distribution.
+
+        .. math::
+
+            \text{supp}(\text{MultivariateGaussian})=(-\infty,+\infty)^k
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = np.ones(scope_data.shape, dtype=bool)
 

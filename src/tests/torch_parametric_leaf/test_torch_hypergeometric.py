@@ -104,20 +104,32 @@ class TestTorchHypergeometric(unittest.TestCase):
         # N = inf and N = nan
         self.assertRaises(Exception, TorchHypergeometric, [0], np.inf, 1, 1)
         self.assertRaises(Exception, TorchHypergeometric, [0], np.nan, 1, 1)
+        # N float
+        self.assertRaises(Exception, TorchHypergeometric, [0], 1.5, 1, 1)
 
         # M < 0 and M > N
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, -1, 1)
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, 2, 1)
+        # 0 <= M <= N
+        for i in range(4):
+            TorchHypergeometric([0], 3, i, 0)
         # M = inf and M = nan
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, np.inf, 1)
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, np.nan, 1)
+        # M float
+        self.assertRaises(Exception, TorchHypergeometric, [0], 1, 0.5, 1)
 
         # n < 0 and n > N
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, -1)
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, 2)
+        # 0 <= n <= N
+        for i in range(4):
+            TorchHypergeometric([0], 3, 0, i)
         # n = inf and n = nan
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, np.inf)
         self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, np.nan)
+        # n float
+        self.assertRaises(Exception, TorchHypergeometric, [0], 1, 1, 0.5)
 
         # invalid scope lengths
         self.assertRaises(Exception, TorchHypergeometric, [], 1, 1, 1)

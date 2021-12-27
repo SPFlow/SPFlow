@@ -57,10 +57,10 @@ class TestPoisson(unittest.TestCase):
 
     def test_initialization(self):
 
-        # Valid parameters for Poisson distribution: l in (0,inf) (TODO: 0,inf?)
+        # Valid parameters for Poisson distribution: l in (0,inf) (note: 0 included in scipy)
 
-        # l = 0 (TODO: !?)
-        self.assertRaises(Exception, Poisson, [0], 0.0)
+        # l = 0
+        Poisson([0], 0.0)
         # l > 0
         Poisson([0], np.nextafter(0.0, 1.0))
 
@@ -97,9 +97,6 @@ class TestPoisson(unittest.TestCase):
         # check infinite values
         self.assertRaises(ValueError, log_likelihood, poisson, np.array([[-np.inf]]), SPN())
         self.assertRaises(ValueError, log_likelihood, poisson, np.array([[np.inf]]), SPN())
-
-        # check nan values (marginalization)
-        log_likelihood(poisson, np.array([[np.nan]]), SPN())
 
         # check valid integers, but outside of valid range
         self.assertRaises(ValueError, log_likelihood, poisson, np.array([[-1]]), SPN())

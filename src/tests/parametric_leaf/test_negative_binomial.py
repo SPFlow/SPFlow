@@ -43,7 +43,7 @@ class TestNegativeBinomial(unittest.TestCase):
 
     def test_initialization(self):
 
-        # Valid parameters for Geometric distribution: p in [0,1], n>0 (TODO: n>=0?)
+        # Valid parameters for Negative Binomial distribution: p in [0,1], n > 0
 
         # p = 1
         negative_binomial = NegativeBinomial([0], 1, 1.0)
@@ -60,12 +60,22 @@ class TestNegativeBinomial(unittest.TestCase):
         # p = 0
         NegativeBinomial([0], 1, 0.0)
 
+        data = np.array([[0.0], [1.0]])
+        targets = np.array([[1.0], [0.0]])
+
+        probs = likelihood(negative_binomial, data, SPN())
+        log_probs = log_likelihood(negative_binomial, data, SPN())
+
+        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
+        self.assertTrue(np.allclose(probs, targets))
+
         # p < 0 and p > 1
         self.assertRaises(Exception, NegativeBinomial, [0], 1, np.nextafter(1.0, 2.0))
         self.assertRaises(Exception, NegativeBinomial, [0], 1, np.nextafter(0.0, -1.0))
 
-        # p = inf and p = nan
+        # p = +-inf and p = nan
         self.assertRaises(Exception, NegativeBinomial, [0], 1, np.inf)
+        self.assertRaises(Exception, NegativeBinomial, [0], 1, -np.inf)
         self.assertRaises(Exception, NegativeBinomial, [0], 1, np.nan)
 
         # n = 0
@@ -79,6 +89,7 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertRaises(Exception, NegativeBinomial, [0], np.nan, 1.0)
 
         # TODO: n float
+        self.assertRaises(Exception, likelihood, negative_binomial, 0.5, SPN())
 
         # set parameters to None manually
         negative_binomial.p = None
@@ -97,8 +108,6 @@ class TestNegativeBinomial(unittest.TestCase):
         # TODO:
         #   likelihood:         0->0.000000001, 1.0->0.999999999
         #   log-likelihood: -inf->fmin
-        #
-        #   outside support -> 0 (or error?)
 
         n = 20
         p = 0.3
@@ -112,9 +121,6 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertRaises(
             ValueError, log_likelihood, negative_binomial, np.array([[np.inf]]), SPN()
         )
-
-        # check nan values (marginalization)
-        log_likelihood(negative_binomial, np.array([[np.nan]]), SPN())
 
         # check valid integers, but outside of valid range
         self.assertRaises(ValueError, log_likelihood, negative_binomial, np.array([[-1]]), SPN())

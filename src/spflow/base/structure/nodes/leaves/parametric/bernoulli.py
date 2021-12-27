@@ -16,15 +16,22 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class Bernoulli(ParametricLeaf):
-    """(Univariate) Binomial distribution
+    r"""(Univariate) Bernoulli distribution.
 
-    PMF(k) =
-        p   , if k=1
-        1-p , if k=0
+    .. math::
 
-    Attributes:
+        \text{PMF}(k)=\begin{cases} p   & \text{if } k=1\\
+                                    1-p & \text{if } k=0\end{cases}
+        
+    where
+        - :math:`p` is the success probability
+        - :math:`k` is the outcome of the trial (0 or 1)
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         p:
-            Probability of success in the range [0,1].
+            Probability of success in the range :math:`[0,1]`.
     """
 
     type = ParametricType.BINARY
@@ -50,6 +57,18 @@ class Bernoulli(ParametricLeaf):
         return (self.p,)
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+        r"""Checks if instances are part of the support of the Bernoulli distribution.
+
+        .. math::
+
+            \text{supp}(\text{Bernoulli})=\{0,1\}
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = np.ones(scope_data.shape, dtype=bool)
 

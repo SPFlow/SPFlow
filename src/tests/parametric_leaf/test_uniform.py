@@ -44,11 +44,13 @@ class TestUniform(unittest.TestCase):
         self.assertRaises(Exception, Uniform, [0], start_end, start_end)
         # start > end
         self.assertRaises(Exception, Uniform, [0], start_end, np.nextafter(start_end, -1.0))
-        # start = inf and start = nan
+        # start = +-inf and start = nan
         self.assertRaises(Exception, Uniform, [0], np.inf, 0.0)
+        self.assertRaises(Exception, Uniform, [0], -np.inf, 0.0)
         self.assertRaises(Exception, Uniform, [0], np.nan, 0.0)
-        # end = inf and end = nan
+        # end = +-inf and end = nan
         self.assertRaises(Exception, Uniform, [0], 0.0, np.inf)
+        self.assertRaises(Exception, Uniform, [0], 0.0, -np.inf)
         self.assertRaises(Exception, Uniform, [0], 0.0, np.nan)
 
         # dummy distribution and data
@@ -67,13 +69,11 @@ class TestUniform(unittest.TestCase):
 
     def test_support(self):
 
-        # Support for Uniform distribution: floats [a,b] (TODO: R?)
+        # Support for Uniform distribution: floats [a,b] or (-inf,inf)
 
         # TODO:
         #   likelihood:     None
         #   log-likelihood: None
-
-        l = random.random()
 
         # ----- with support outside the interval -----
         uniform = Uniform([0], 1.0, 2.0, support_outside=True)
@@ -82,15 +82,12 @@ class TestUniform(unittest.TestCase):
         self.assertRaises(ValueError, log_likelihood, uniform, np.array([[-np.inf]]), SPN())
         self.assertRaises(ValueError, log_likelihood, uniform, np.array([[np.inf]]), SPN())
 
-        # check nan values (marginalization)
-        log_likelihood(uniform, np.array([[np.nan]]), SPN())
-
-        # check valid floats in [1.0, 2.0]
+        # check valid floats in [start, end]
         log_likelihood(uniform, np.array([[1.0]]), SPN())
         log_likelihood(uniform, np.array([[1.5]]), SPN())
         log_likelihood(uniform, np.array([[2.0]]), SPN())
 
-        # check invalid float values
+        # check valid floats outside [start, end]
         log_likelihood(uniform, np.array([[np.nextafter(1.0, -1.0)]]), SPN())
         log_likelihood(uniform, np.array([[np.nextafter(2.0, 3.0)]]), SPN())
 
@@ -101,10 +98,7 @@ class TestUniform(unittest.TestCase):
         self.assertRaises(ValueError, log_likelihood, uniform, np.array([[-np.inf]]), SPN())
         self.assertRaises(ValueError, log_likelihood, uniform, np.array([[np.inf]]), SPN())
 
-        # check nan values (marginalization)
-        log_likelihood(uniform, np.array([[np.nan]]), SPN())
-
-        # check valid floats in [1.0, 2.0]
+        # check valid floats in [start, end]
         log_likelihood(uniform, np.array([[1.0]]), SPN())
         log_likelihood(uniform, np.array([[1.5]]), SPN())
         log_likelihood(uniform, np.array([[2.0]]), SPN())

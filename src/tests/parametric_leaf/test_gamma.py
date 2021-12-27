@@ -61,15 +61,20 @@ class TestGamma(unittest.TestCase):
 
         # Valid parameters for Gamma distribution: alpha>0, beta>0
 
+        # alpha > 0
         Gamma([0], np.nextafter(0.0, 1.0), 1.0)
-        Gamma([0], 1.0, np.nextafter(0.0, 1.0))
-
+        # alpha = 0
+        self.assertRaises(Exception, Gamma, [0], 0.0, 1.0)
         # alpha < 0
         self.assertRaises(Exception, Gamma, [0], np.nextafter(0.0, -1.0), 1.0)
         # alpha = inf and alpha = nan
         self.assertRaises(Exception, Gamma, [0], np.inf, 1.0)
         self.assertRaises(Exception, Gamma, [0], np.nan, 1.0)
 
+        # beta > 0
+        Gamma([0], 1.0, np.nextafter(0.0, 1.0))
+        # alpha = 0
+        self.assertRaises(Exception, Gamma, [0], 1.0, 0.0)
         # beta < 0
         self.assertRaises(Exception, Gamma, [0], 1.0, np.nextafter(0.0, -1.0))
         # beta = inf and beta = nan
@@ -102,7 +107,7 @@ class TestGamma(unittest.TestCase):
 
         # check infinite values
         self.assertRaises(ValueError, log_likelihood, gamma, np.array([[-np.inf]]), SPN())
-        log_likelihood(gamma, np.array([[np.inf]]), SPN())
+        self.assertRaises(ValueError, log_likelihood, gamma, np.array([[np.inf]]), SPN())
 
         # check finite values > 0
         log_likelihood(gamma, np.array([[np.nextafter(0.0, 1.0)]]), SPN())

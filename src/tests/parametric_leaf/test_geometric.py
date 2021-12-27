@@ -56,7 +56,7 @@ class TestGeometric(unittest.TestCase):
 
     def test_initialization(self):
 
-        # Valid parameters for Geometric distribution: p in [0,1]
+        # Valid parameters for Geometric distribution: p in (0,1]
 
         # p = 0
         self.assertRaises(Exception, Geometric, [0], 0.0)

@@ -140,9 +140,10 @@ class TestTorchGaussian(unittest.TestCase):
 
         # mean = inf and mean = nan
         self.assertRaises(Exception, TorchGaussian, [0], np.inf, 1.0)
+        self.assertRaises(Exception, TorchGaussian, [0], -np.inf, 1.0)
         self.assertRaises(Exception, TorchGaussian, [0], np.nan, 1.0)
 
-        # stdev = 0 and stdev > 0
+        # stdev = 0 and stdev < 0
         self.assertRaises(Exception, TorchGaussian, [0], mean, 0.0)
         self.assertRaises(Exception, TorchGaussian, [0], mean, np.nextafter(0.0, -1.0))
         # stdev = inf and stdev = nan
@@ -155,19 +156,13 @@ class TestTorchGaussian(unittest.TestCase):
 
     def test_support(self):
 
-        # Support for Gaussian distribution: floats R (TODO: R or (-inf, inf)?)
+        # Support for Gaussian distribution: floats (-inf, inf)
 
         gaussian = TorchGaussian([0], 0.0, 1.0)
 
-        # edge infinite values (TODO)
-        data = torch.tensor([[-float("inf")], [float("inf")]])
-        targets = torch.zeros((2, 1))
-
-        probs = likelihood(gaussian, data)
-        log_probs = log_likelihood(gaussian, data)
-
-        self.assertTrue(torch.allclose(probs, targets))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+        # check infinite values
+        self.assertRaises(ValueError, log_likelihood, gaussian, torch.tensor([[float("inf")]]))
+        self.assertRaises(ValueError, log_likelihood, gaussian, torch.tensor([[-float("inf")]]))
 
     def test_marginalization(self):
 

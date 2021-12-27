@@ -16,14 +16,23 @@ from multipledispatch import dispatch  # type: ignore
 
 
 class Geometric(ParametricLeaf):
-    """(Univariate) Geometric distribution.
+    r"""(Univariate) Geometric distribution.
 
-    PMF(k) =
-        p * (1-p)^(k-1)
+    .. math::
 
-    Attributes:
+        \text{PMF}(k) =  p(1-p)^{k-1}
+
+    where
+        - :math:`k` is the number of trials
+        - :math:`p` is the success probability of each trial
+
+    Note, that the Geometric distribution as implemented in PyTorch uses :math:`k-1` as input.
+
+    Args:
+        scope:
+            List of integers specifying the variable scope.
         p:
-            Probability of success in the range (0,1].
+            Probability of success in the range :math:`(0,1]`.
     """
 
     type = ParametricType.BINARY
@@ -49,6 +58,18 @@ class Geometric(ParametricLeaf):
         return (self.p,)
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
+        r"""Checks if instances are part of the support of the Geometric distribution.
+
+        .. math::
+
+            \text{supp}(\text{Geometric})=\mathbb{N}\setminus\{0\}
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
 
         valid = np.ones(scope_data.shape, dtype=bool)
 

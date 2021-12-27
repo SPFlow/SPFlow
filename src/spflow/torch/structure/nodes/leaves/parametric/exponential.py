@@ -106,7 +106,28 @@ class TorchExponential(TorchParametricLeaf):
         return (self.l.data.cpu().numpy(),)  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        return self.dist.support.check(scope_data)  # type: ignore
+        r"""Checks if instances are part of the support of the Exponential distribution.
+
+        .. math::
+
+            \text{supp}(\text{Exponential})=(0,+\infty)
+
+        Note: 0 is part of the support for Exponential, but not TorchExponential.
+
+        Args:
+            scope_data:
+                Torch tensor containing possible distribution instances.
+        Returns:
+            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+        """
+
+        valid = self.dist.support.check(scope_data)  # type: ignore
+
+        # check for infinite values
+        mask = valid.clone()
+        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+
+        return valid
 
 
 @dispatch(Exponential)  # type: ignore[no-redef]
