@@ -34,7 +34,8 @@ class _TorchPartitionLayer(TorchModule):
     Computes the products of all unique element-wise combinations across the child regions' outputs.
 
     Args:
-        regions (List[Union[_TorchRegionLayer, _TorchLeafLayer]]): List of (internal or leaf) child regions.
+        regions:
+            List of (internal or leaf) child region layers.
     """
 
     def __init__(
@@ -82,8 +83,10 @@ class _TorchRegionLayer(TorchModule):
     Outputs are computed as a convex sum of the inputs where each output has its own weights.
 
     Args:
-        num_nodes_region (int): number of sum nodes in the region.
-        partitions (List[_TorchPartitionLayer]): List of child partitions.
+        num_nodes_region:
+            Number of sum nodes in the region.
+        partitions:
+            List of child partition layers.
     """
 
     def __init__(
@@ -152,8 +155,10 @@ class _TorchLeafLayer(TorchModule):
     Contains a set of individual leaf nodes.
 
     Args:
-        scope (List[int]): list of integers representing the variable scope.
-        num_nodes_leaf (int): number of leaf nodes in the leaf layer.
+        scope:
+            List of integers representing the variable scope.
+        num_nodes_leaf:
+            Number of leaf nodes in the leaf layer.
     """
 
     def __init__(self, scope: List[int], num_nodes_leaf: int) -> None:
@@ -186,10 +191,14 @@ class TorchRatSpn(TorchModule):
     """Torch backend module for RAT-SPNs.
 
     Args:
-        region_graph (RegionGraph): region graph representing the high-level structure of the RAT-SPN.
-        num_nodes_root (int): number of nodes in the root region.
-        num_nodes_region (int): number of sum ndoes per internal region.
-        num_nodes_leaf (int): number of leaf nodes per leaf region.
+        region_graph:
+            Region graph representing the high-level structure of the RAT-SPN.
+        num_nodes_root:
+            Number of nodes in the root region.
+        num_nodes_region:
+            Number of sum ndoes per internal region.
+        num_nodes_leaf:
+            Number of leaf nodes per leaf region.
     """
 
     def __init__(
@@ -267,7 +276,8 @@ class TorchRatSpn(TorchModule):
         """Returns a _TorchPartitionLayer object from a region graph Partition.
 
         Args:
-            partition (Partition): Partition.
+            partition:
+                Region graph partition.
         """
         region_layers: List[Union[_TorchLeafLayer, _TorchRegionLayer]] = []
 
@@ -323,9 +333,11 @@ class TorchRatSpn(TorchModule):
 def _copy_region_parameters(src: _TorchRegionLayer, dst: List[ISumNode]) -> None:
     """Copy parameters from region layer to region sum nodes.
 
-    args:
-        src (_TorchRegionLayer): region layer to copy parameters from.
-        dst (List[ISumNode]): list of region nodes to copy parameters to.
+    Args:
+        src:
+            Region layer to copy parameters from.
+        dst:
+            List of region nodes to copy parameters to.
     """
 
     # number of sum nodes should match number of region layer outputs
@@ -351,9 +363,11 @@ def _copy_region_parameters(src: _TorchRegionLayer, dst: List[ISumNode]) -> None
 def _copy_region_parameters(src: _TorchLeafLayer, dst: List[ILeafNode]) -> None:
     """Copy parameters from leaf layer to leaf nodes.
 
-    args:
-        src (_TorchLeafLayer): leaf layer to copy parameters from.
-        dst (List[ILeafNode]): list of leaf nodes to copy parameters to.
+    Args:
+        src:
+            Leaf layer to copy parameters from.
+        dst:
+            List of leaf nodes to copy parameters to.
     """
 
     # number of sum nodes should match number of region layer outputs
@@ -375,9 +389,11 @@ def _copy_region_parameters(src: _TorchLeafLayer, dst: List[ILeafNode]) -> None:
 def _copy_region_parameters(src: List[ISumNode], dst: _TorchRegionLayer) -> None:
     """Copy parameters from region sum nodes to region layer.
 
-    args:
-        src (List[ISumNode]): list of sum nodes to copy parameters from.
-        dst (_TorchRegionLayer): region layer to copy parameters to.
+    Args:
+        src:
+            List of sum nodes to copy parameters from.
+        dst:
+            Region layer to copy parameters to.
     """
 
     # number of sum nodes should match number of region layer outputs
@@ -412,8 +428,10 @@ def _copy_region_parameters(src: List[ILeafNode], dst: _TorchLeafLayer) -> None:
     """Copy parameters from leaf nodes to leaf layer.
 
     args:
-        src (List[ILeafNode]): list of leaf nodes to copy parameters from.
-        dst (_TorchLeafLayer): leaf layer to copy parameters to.
+        src:
+            List of leaf nodes to copy parameters from.
+        dst:
+            Leaf layer to copy parameters to.
     """
 
     # there must be some sum nodes
