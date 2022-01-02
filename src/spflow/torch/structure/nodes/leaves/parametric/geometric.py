@@ -121,6 +121,11 @@ class TorchGeometric(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+            raise ValueError(
+                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+            )
+
         # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch
         valid = self.dist.support.check(scope_data - 1)  # type: ignore
 
