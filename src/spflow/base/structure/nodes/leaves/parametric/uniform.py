@@ -84,14 +84,23 @@ class Uniform(ParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        valid = np.ones(scope_data.shape, dtype=bool)
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+            raise ValueError(
+                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+            )
+
+        valid = np.ones(scope_data.shape[0], dtype=bool)
 
         # check for infinite values
-        valid &= ~np.isinf(scope_data)
+        valid &= ~np.isinf(scope_data).sum(axis=-1).astype(bool)
 
         # check if values are in valid range
         if not self.support_outside:
-            valid[valid] &= (scope_data[valid] >= self.start) & (scope_data[valid] <= self.end)
+            valid[valid] &= (
+                ((scope_data[valid] >= self.start) & (scope_data[valid] <= self.end))
+                .sum(axis=-1)
+                .astype(bool)
+            )
 
         return valid
 

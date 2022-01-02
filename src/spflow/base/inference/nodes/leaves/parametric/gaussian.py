@@ -25,7 +25,7 @@ def node_likelihood(node: Gaussian, data: np.ndarray) -> np.ndarray:
 
     # create mask based on marginalized instances (NaNs)
     # keeps default value of 1 (0 in log-space)
-    marg_ids = np.isnan(data)
+    marg_ids = np.isnan(data).sum(axis=-1).astype(bool)
 
     # create masked based on distribution's support
     valid_ids = node.check_support(data[~marg_ids])
@@ -55,7 +55,7 @@ def node_log_likelihood(node: Gaussian, data: np.ndarray) -> np.ndarray:
 
     # create mask based on marginalized instances (NaNs)
     # keeps default value of 1 (0 in log-space)
-    marg_ids = np.isnan(data)
+    marg_ids = np.isnan(data).sum(axis=-1).astype(bool)
 
     # create masked based on distribution's support
     valid_ids = node.check_support(data[~marg_ids])
