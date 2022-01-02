@@ -101,36 +101,62 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         # initialize empty tensor (number of output values matches batch_size)
         log_prob: torch.Tensor = torch.empty(batch_size, 1)
 
-        # ----- marginalization -----
+        # create copy of the data where NaNs are replaced by zeros
+        # TODO: alternative for initial validity checking without copying?
+        _scope_data = scope_data.clone()
+        _scope_data[_scope_data.isnan()] = 0.0
 
-        # check for partially marginalized instances
-        n_marg = torch.isnan(scope_data).sum(dim=1)
+        # check support
+        valid_ids = self.check_support(_scope_data)
 
-        if torch.any((n_marg > 0) & (n_marg < len(self.scope))):
+        del _scope_data  # free up memory
+
+        if not all(valid_ids):
             raise ValueError(
-                f"Partial marginalization not yet supported for TorchMultivariateGaussian."
+                f"Encountered data instances that are not in the support of the TorchMultivariateGaussian distribution."
             )
-
-        marg_ids = n_marg == len(self.scope)
-
-        # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[marg_ids] = 0.0
 
         # ----- log probabilities -----
 
-        if len(scope_data[~marg_ids]) > 0:
-            # create masked based on distribution's support
-            valid_ids = self.check_support(scope_data[~marg_ids])
+        marg = torch.isnan(scope_data)
 
-            if not all(valid_ids):
-                raise ValueError(
-                    f"Encountered data instances that are not in the support of the TorchMultivariateGaussian distribution."
+        # group instances by marginalized random variables
+        for marg_mask in marg.unique(dim=0):
+
+            # get all instances with the same (marginalized) scope
+            marg_ids = torch.where((marg == marg_mask).sum(dim=-1) == len(self.scope))[0]
+            marg_data = scope_data[marg_ids]
+
+            # all random variables are marginalized over
+            if all(marg_mask):
+                # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
+                log_prob[marg_ids, 0] = 0.0
+            # some random variables are marginalized over
+            elif any(marg_mask):
+                marg_data = marg_data[:, ~marg_mask]
+
+                # marginalize distribution and compute (log) probabilities
+                marg_mean_vector = self.mean_vector[~marg_mask]
+                marg_covariance_matrix = self.covariance_matrix[~marg_mask][
+                    :, ~marg_mask
+                ]  # TODO: better way?
+
+                # create marginalized torch distribution
+                marg_dist = D.MultivariateNormal(
+                    loc=marg_mean_vector, covariance_matrix=marg_covariance_matrix
                 )
 
-            # compute probabilities for values inside distribution support
-            log_prob[~marg_ids, 0] = self.dist.log_prob(
-                scope_data[~marg_ids].type(torch.get_default_dtype())
-            )
+                # compute probabilities for values inside distribution support
+                log_prob[marg_ids, 0] = marg_dist.log_prob(
+                    marg_data.type(torch.get_default_dtype())
+                )
+            # no random variables are marginalized over
+            else:
+                # print(marg_mask, marg_data)
+                # compute probabilities for values inside distribution support
+                log_prob[marg_ids, 0] = self.dist.log_prob(
+                    marg_data.type(torch.get_default_dtype())
+                )
 
         return log_prob
 
@@ -236,6 +262,25 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
 
         return valid
+
+    def marginalize(self, marg_rvs: List[int]) -> "TorchMultivariateGaussian":
+
+        # check if marginalized random variables are all part of the original scope
+        if not all([rv in self.scope for rv in marg_rvs]):
+            raise (
+                ValueError(
+                    f"Random variables to be marginalized {marg_rvs} not all part of the original scope {self.scope}"
+                )
+            )
+
+        # scope after marginalization
+        marg_scope = list(set(self.scope).difference(set(marg_rvs)))
+
+        # compute marginalized mean vector and covariance matrix
+        marg_mean_vector = self.mean_vector[marg_scope]
+        marg_covariance_matrix = self.covariance_matrix[marg_scope][:, marg_scope]
+
+        return TorchMultivariateGaussian(marg_scope, marg_mean_vector, marg_covariance_matrix)
 
 
 @dispatch(MultivariateGaussian)  # type: ignore[no-redef]
