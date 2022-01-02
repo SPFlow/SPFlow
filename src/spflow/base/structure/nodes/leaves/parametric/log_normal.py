@@ -77,13 +77,18 @@ class LogNormal(ParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        valid = np.ones(scope_data.shape, dtype=bool)
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+            raise ValueError(
+                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+            )
+
+        valid = np.ones(scope_data.shape[0], dtype=bool)
 
         # check for infinite values
-        valid &= ~np.isinf(scope_data)
+        valid &= ~np.isinf(scope_data).sum(axis=-1).astype(bool)
 
         # check if values are in valid range
-        valid[valid] &= scope_data[valid] > 0
+        valid[valid] &= (scope_data[valid] > 0).sum(axis=-1).astype(bool)
 
         return valid
 
