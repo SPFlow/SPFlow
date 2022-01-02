@@ -147,9 +147,9 @@ class TorchUniform(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
             raise ValueError(
-                f"Dimension 1 of scope_data is expected to match the scope length {len(self.scope)}, but was {scope_data.shape[1]} instead."
+                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
             )
 
         # torch distribution support is an interval, despite representing a distribution over a half-open interval
