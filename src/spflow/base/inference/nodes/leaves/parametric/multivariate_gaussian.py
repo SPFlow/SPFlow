@@ -31,11 +31,11 @@ def node_likelihood(node: MultivariateGaussian, data: np.ndarray) -> np.ndarray:
     n_marg = marg_ids.sum(axis=-1)
 
     # in case of partially marginalized instances
-    if any((n_marg > 0) & (n_marg.sum(axis=-1) < len(node.scope))):
+    if any((n_marg > 0) & (n_marg < len(node.scope))):
         raise ValueError(f"Partial marginalization not yet supported for MultivariateGaussian.")
 
     # create masked based on distribution's support
-    valid_ids = node.check_support(data[~marg_ids.sum(axis=-1).astype(bool)])
+    valid_ids = node.check_support(data[~n_marg.astype(bool)])
 
     if not valid_ids.all():
         raise ValueError(
@@ -68,11 +68,11 @@ def node_log_likelihood(node: MultivariateGaussian, data: np.ndarray) -> np.ndar
     n_marg = marg_ids.sum(axis=-1)
 
     # in case of partially marginalized instances
-    if any((n_marg > 0) & (n_marg.sum(axis=-1) < len(node.scope))):
+    if any((n_marg > 0) & (n_marg < len(node.scope))):
         raise ValueError(f"Partial marginalization not yet supported for MultivariateGaussian.")
 
     # create masked based on distribution's support
-    valid_ids = node.check_support(data[~marg_ids.sum(axis=-1).astype(bool)])
+    valid_ids = node.check_support(data[~n_marg.astype(bool)])
 
     if not valid_ids.all():
         raise ValueError(
