@@ -1,7 +1,9 @@
 from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian
 from spflow.base.inference import log_likelihood
+from spflow.torch.structure.nodes import TorchProductNode
 from spflow.torch.structure.nodes.leaves.parametric import (
     TorchMultivariateGaussian,
+    TorchGaussian,
     toNodes,
     toTorch,
 )
@@ -11,6 +13,8 @@ from spflow.base.structure.network_type import SPN
 
 import torch
 import numpy as np
+
+import math
 
 import unittest
 
@@ -292,18 +296,86 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
 
     def test_marginalization(self):
 
-        multivariate_gaussian = TorchMultivariateGaussian([0, 1], torch.zeros(2), torch.eye(2))
+        # ----- full marginalization -----
+
+        multivariate_gaussian = TorchMultivariateGaussian(
+            [0, 1], torch.zeros(2), torch.tensor([[2.0, 0.0], [0.0, 1.0]])
+        )
         data = torch.tensor([[float("nan"), float("nan")]])
 
-        # should not raise and error and should return 1
+        # should not raise an error and should return 1
         probs = likelihood(multivariate_gaussian, data)
 
         self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
 
-        # check partial marginalization
-        self.assertRaises(
-            ValueError, log_likelihood, multivariate_gaussian, torch.tensor([[float("nan"), 0.0]])
+        # ----- partial marginalization -----
+
+        data = torch.tensor([[0.0, float("nan")], [float("nan"), 0.0]])
+        targets = torch.tensor([[0.282095], [0.398942]])
+
+        # inference using multivariate gaussian and partial marginalization
+        mv_probs = likelihood(multivariate_gaussian, data)
+
+        self.assertTrue(torch.allclose(mv_probs, targets))
+
+        # inference using univariate gaussians for each random variable (combined via product node for convenience)
+        univariate_gaussians = TorchProductNode(
+            scope=[0, 1],
+            children=[
+                TorchGaussian(
+                    [0], 0.0, math.sqrt(2.0)
+                ),  # requires standard deviation instead of variance
+                TorchGaussian([1], 0.0, 1.0),
+            ],
         )
+
+        uv_probs = likelihood(univariate_gaussians, data)
+
+        # compare
+        self.assertTrue(torch.allclose(mv_probs, uv_probs))
+
+        # inference using "structurally" marginalized multivariate gaussians for each random variable (combined via product node for convenience)
+        marginalized_mv_gaussians = TorchProductNode(
+            scope=[0, 1],
+            children=[
+                multivariate_gaussian.marginalize([1]),
+                multivariate_gaussian.marginalize([0]),
+            ],
+        )
+
+        marg_mv_probs = likelihood(marginalized_mv_gaussians, data)
+
+        # compare
+        self.assertTrue(torch.allclose(marg_mv_probs, uv_probs))
+
+        # higher-dimensional example
+        multivariate_gaussian = TorchMultivariateGaussian(
+            [0, 1, 2, 3],
+            torch.zeros(4),
+            torch.tensor(
+                [
+                    [2.0, 0.5, 0.5, 0.25],
+                    [0.5, 1.0, 0.75, 0.5],
+                    [0.5, 0.75, 1.5, 0.5],
+                    [0.25, 0.5, 0.5, 1.25],
+                ]
+            ),
+        )
+
+        data = torch.tensor(
+            [
+                [0.0] * 4,
+                [0.0, float("nan"), float("nan"), 0.0],
+                [float("nan"), 0.0, 0.0, 0.0],
+                [float("nan")] * 4,
+            ]
+        )
+        targets = torch.tensor([[0.02004004], [0.10194075], [0.06612934], [1.0]])
+
+        # inference using multivariate gaussian and partial marginalization
+        mv_probs = likelihood(multivariate_gaussian, data)
+
+        self.assertTrue(torch.allclose(mv_probs, targets, atol=1e-6))
 
 
 if __name__ == "__main__":
