@@ -1,7 +1,7 @@
 """
 Created on November 06, 2021
 
-@authors: Kevin Huy Nguyen
+@authors: Kevin Huy Nguyen, Philipp Deibert
 """
 
 from spflow.base.structure.nodes.leaves.parametric import (
@@ -41,10 +41,6 @@ def node_likelihood(node: NegativeBinomial, data: np.ndarray) -> np.ndarray:
         k=data[~marg_ids], **get_scipy_object_parameters(node)
     )
 
-    # TODO:
-    probs[probs == 1.0] = 0.999999999
-    probs[np.isinf(probs)] = 0.000000001
-
     return probs
 
 
@@ -73,8 +69,5 @@ def node_log_likelihood(node: NegativeBinomial, data: np.ndarray) -> np.ndarray:
     probs[~marg_ids] = get_scipy_object(node).logpmf(
         k=data[~marg_ids], **get_scipy_object_parameters(node)
     )
-
-    # TODO:
-    probs[np.isinf(probs)] = MIN_NEG
 
     return probs

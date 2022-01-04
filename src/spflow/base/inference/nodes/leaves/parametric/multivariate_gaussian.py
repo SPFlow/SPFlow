@@ -1,7 +1,7 @@
 """
 Created on November 06, 2021
 
-@authors: Kevin Huy Nguyen
+@authors: Kevin Huy Nguyen, Philipp Deibert
 """
 
 from spflow.base.structure.nodes.leaves.parametric import (
@@ -47,7 +47,6 @@ def node_likelihood(node: MultivariateGaussian, data: np.ndarray) -> np.ndarray:
         x=data[~n_marg.astype(bool)], **get_scipy_object_parameters(node)
     )
 
-    # TODO:
     return probs
 
 
@@ -84,5 +83,4 @@ def node_log_likelihood(node: MultivariateGaussian, data: np.ndarray) -> np.ndar
         x=data[~n_marg.astype(bool)], **get_scipy_object_parameters(node)
     )
 
-    # TODO:
     return probs
