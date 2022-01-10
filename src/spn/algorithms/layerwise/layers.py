@@ -102,13 +102,18 @@ class Sum(AbstractLayer):
 
         # Dimensions
         n, d, ic, r = x.size()
-        oc = self.weights.size(2)
-
         x = x.unsqueeze(3)  # Shape: [n, d, ic, 1, r]
-
-        # Normalize weights in log-space along in_channel dimension
-        # Weights is of shape [d, ic, oc, r]
-        logweights = F.log_softmax(self.weights, dim=1)
+        if self.weights.dim() == 5:
+            # In CSPNs, there are separate weights for each batch element.
+            # Weights is of shape [n, d, ic, oc, r]
+            oc = self.weights.size(3)
+            # Normalize weights in log-space along in_channel dimension
+            logweights = F.log_softmax(self.weights, dim=2)
+        else:
+            oc = self.weights.size(2)
+            # Normalize weights in log-space along in_channel dimension
+            # Weights is of shape [d, ic, oc, r]
+            logweights = F.log_softmax(self.weights, dim=1)
 
         # Multiply (add in log-space) input features and weights
         x = x + logweights  # Shape: [n, d, ic, oc, r]
