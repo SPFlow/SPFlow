@@ -224,3 +224,5 @@ docs/api
 docs/_build
 docs/log.txt
 docs/cache
+/src/spn/experiments/RandomSPNs_layerwise/results*
+/src/spn/experiments/data/
