@@ -143,14 +143,21 @@ class Sum(AbstractLayer):
         # Sum weights are of shape: [D, IC, OC, R]
         # We now want to use `indices` to access one in_channel for each in_feature x out_channels block
         # index is of size in_feature
-        weights = self.weights.data
-        d, ic, oc, r = weights.shape
-        n = context.n
+        weights: torch.Tensor = self.weights.data
+        if weights.dim() == 5:
+            # This is the case for CSPNs which have separate weights for each sample
+            n, d, ic, oc, r = weights.shape
+            assert n == context.n, "The weight batch size dimension is not equal to " \
+                                   "the batch size of the sampling context!"
+        else:
+            d, ic, oc, r = weights.shape
+            n = context.n
 
         # Create sampling context if this is a root layer
         if context.is_root:
             assert oc == 1 and r == 1, "Cannot start sampling from non-root layer."
 
+            # TODO this is not adapted to the CSPN case yet!
             # Initialize rep indices
             context.repetition_indices = torch.zeros(n, dtype=int, device=self.__device)
 
@@ -164,10 +171,18 @@ class Sum(AbstractLayer):
             self._check_repetition_indices(context)
 
             tmp = torch.zeros(n, d, ic, device=self.__device)
-            for i in range(n):
-                tmp[i, :, :] = weights[
-                    range(self.in_features), :, context.parent_indices[i], context.repetition_indices[i]
-                ]
+            if weights.dim() == 5:
+                # for i in range(n):
+                #     tmp[i, :, :] = weights[
+                #         i, range(self.in_features), :, context.parent_indices[i], context.repetition_indices[i]]
+                selected_rep = weights[range(n), :, :, :, context.repetition_indices]
+                exp_par = context.parent_indices.unsqueeze(-1).expand(-1, -1, ic).unsqueeze(-1)
+                selected_parent = selected_rep.gather(dim=-1, index=exp_par).squeeze(-1)
+                tmp = selected_parent
+            else:
+                for i in range(n):
+                    tmp[i, :, :] = weights[
+                        range(self.in_features), :, context.parent_indices[i], context.repetition_indices[i]]
             weights = tmp
 
         # Check dimensions

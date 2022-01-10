@@ -468,6 +468,14 @@ class CSPN(RatSpn):
         self.compute_weights(condition)
         return super().forward(x)
 
+    def sample(self, condition, n: int = None, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False):
+        self.compute_weights(condition)
+        assert n is None or condition.shape[0] == n, "The batch size of the condition must equal n if n is given!"
+        assert class_index is None or condition.shape[0] == len(class_index), \
+            "The batch size of the condition must equal the length of the class index list if they are provided!"
+        # TODO add assert to check dimension of evidence, if given.
+        return super().sample(n, class_index, evidence, is_mpe)
+
     def compute_weights(self, feat_inp):
         batch_size = feat_inp.shape[0]
         features = self.conv_layers(feat_inp)

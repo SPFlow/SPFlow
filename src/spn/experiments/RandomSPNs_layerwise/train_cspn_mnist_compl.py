@@ -17,7 +17,7 @@ from spn.experiments.RandomSPNs_layerwise.rat_spn import RatSpn, RatSpnConfig, C
 from train_mnist import one_hot, time_delta_now, count_params, get_mnist_loaders, ensure_dir, set_seed
 
 
-def make_spn(S, I, R, D, dropout, device) -> RatSpn:
+def make_spn(S, I, R, D, dropout, device) -> CSPN:
     """Construct the RatSpn"""
 
     # Setup RatSpnConfig
@@ -63,7 +63,7 @@ def run_torch(n_epochs=100, batch_size=256):
         use_cuda = True
         torch.cuda.benchmark = True
 
-    model = make_spn(S=10, I=10, D=3, R=5, device=dev, dropout=0.0)
+    model: CSPN = make_spn(S=10, I=10, D=3, R=5, device=dev, dropout=0.0)
 
     model.train()
     print(model)
@@ -76,28 +76,31 @@ def run_torch(n_epochs=100, batch_size=256):
 
     log_interval = 100
 
-    lmbda = 0.0
+    lmbda = 1.0
 
     for epoch in range(n_epochs):
-        if epoch > 20 and False:
+        if epoch > 20:
             # lmbda = lmbda_0 + lmbda_rel * (0.95 ** (epoch - 20))
             lmbda = 0.5
         t_start = time.time()
         running_loss = 0.0
         running_loss_ce = 0.0
         running_loss_nll = 0.0
+        cond = None
+        target = None
         for batch_index, (data, target) in enumerate(train_loader):
             # Send data to correct device
-            data, target = data.to(device), target.to(device)
-            left = data[:, :, :14].to(device)
-            right = data[:, :, 14:].to(device)
-            left = left.view(data.shape[0], -1)
+            image, target = data.to(device), target.to(device)
+            cond = image[:, :, :, :14].to(device)
+            data = image[:, :, :, 14:].to(device)
+            data = data.reshape(data.shape[0], -1)
+            # samples = model.sample(cond[:30], class_index=target[:30].tolist())
 
             # Reset gradients
             optimizer.zero_grad()
 
             # Inference
-            output = model(left, right)
+            output = model(data, cond)
 
             # Compute loss
             loss_ce = loss_fn(output, target)
@@ -133,9 +136,12 @@ def run_torch(n_epochs=100, batch_size=256):
 
         with torch.no_grad():
             set_seed(0)
-            # samples = model.sample(n=25)
-            samples = model.sample(class_index=list(range(10)) * 5)
-            save_samples(samples, iteration=epoch)
+            # samples = model.sample(cond, n=30)
+            sample_cond = cond[:30]
+            sample_target = target[:30]
+            samples = model.sample(sample_cond, class_index=sample_target.tolist())
+            full_img = torch.cat((sample_cond, samples.view(-1, 1, 28, 14)), dim=3)
+            save_samples(full_img, iteration=epoch)
 
         t_delta = time_delta_now(t_start)
         print("Train Epoch: {} took {}".format(epoch, t_delta))
@@ -165,9 +171,11 @@ def evaluate_model(model: torch.nn.Module, device, loader, tag) -> float:
     criterion = nn.CrossEntropyLoss(reduction="sum")
     with torch.no_grad():
         for data, target in loader:
-            data, target = data.to(device), target.to(device)
-            data = data.view(data.shape[0], -1)
-            output = model(data)
+            image, target = data.to(device), target.to(device)
+            cond = image[:, :, :, :14].to(device)
+            data = image[:, :, :, 14:].to(device)
+            data = data.reshape(data.shape[0], -1)
+            output = model(data, cond)
             loss_ce += criterion(output, target).item()  # sum up batch loss
             loss_nll += -output.sum()
             pred = output.argmax(dim=1)

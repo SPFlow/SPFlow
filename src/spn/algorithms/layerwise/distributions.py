@@ -80,19 +80,25 @@ def dist_sample(distribution: dist.Distribution, context: SamplingContext = None
     if context.is_mpe:
         samples = _mode(distribution, context)
     else:
-        samples = distribution.sample(sample_shape=(context.n,))
+        if distribution.batch_shape[0] > 1:
+            # This is the CSPN case where there are separate dist params for each sample in the batch.
+            samples = distribution.sample()
+        else:
+            # All samples in the batch come from the same dist, so we need to sample n times.
+            samples = distribution.sample(sample_shape=(context.n,))
+            assert (
+                    samples.shape[1] == 1
+            ), "Something went wrong. First sample size dimension should be size 1 " \
+               "due to the distribution parameter dimensions. Please report this issue."
+            samples.squeeze_(1)
 
-    assert (
-        samples.shape[1] == 1
-    ), "Something went wrong. First sample size dimension should be size 1 due to the distribution parameter dimensions. Please report this issue."
-    samples.squeeze_(1)
     n, d, c, r = samples.shape
 
     # Filter each sample by its specific repetition
-    tmp = torch.zeros(n, d, c, device=context.repetition_indices.device)
-    for i in range(n):
-        tmp[i, :, :] = samples[i, :, :, context.repetition_indices[i]]
-    samples = tmp
+    # tmp = torch.zeros(n, d, c, device=context.repetition_indices.device)
+    # for i in range(n):
+        # tmp[i, :, :] = samples[i, :, :, context.repetition_indices[i]]
+    samples = samples[range(n), :, :, context.repetition_indices]
 
     # If parent index into out_channels are given
     if context.parent_indices is not None:
