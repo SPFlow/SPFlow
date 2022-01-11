@@ -12,7 +12,7 @@ from torch import nn
 from torchvision import datasets, transforms
 
 from spn.experiments.RandomSPNs_layerwise.distributions import RatNormal
-from spn.experiments.RandomSPNs_layerwise.rat_spn import RatSpn, RatSpnConfig, CSPN
+from spn.experiments.RandomSPNs_layerwise.cspn import CSPN, CspnConfig
 
 from train_mnist import one_hot, time_delta_now, count_params, get_mnist_loaders, ensure_dir, set_seed
 
@@ -21,7 +21,7 @@ def make_spn(S, I, R, D, dropout, device) -> CSPN:
     """Construct the RatSpn"""
 
     # Setup RatSpnConfig
-    config = RatSpnConfig()
+    config = CspnConfig()
     config.F = 28 * 14
     config.R = R
     config.D = D
