@@ -133,6 +133,8 @@ if __name__ == "__main__":
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
     args = parser.parse_args()
 
+    set_seed(args.seed)
+
     if args.dir != '.':
         ensure_dir(args.dir)
 
