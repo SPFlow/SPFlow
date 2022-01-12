@@ -29,7 +29,7 @@ def print_cspn_params(cspn: CSPN):
           f"{count_params(cspn.dist_mean_head) + count_params(cspn.dist_std_head)}")
 
 
-def get_stl_loaders(use_cuda, device, batch_size):
+def get_stl_loaders(dataset_dir, use_cuda, device, batch_size):
     """
     Get the STL10 pytorch data loader.
 
@@ -44,7 +44,7 @@ def get_stl_loaders(use_cuda, device, batch_size):
     transformer = transforms.Compose([transforms.ToTensor()])
     # Train data loader
     train_loader = torch.utils.data.DataLoader(
-        datasets.STL10("../data", split='train+unlabeled', download=True, transform=transformer),
+        datasets.STL10(dataset_dir, split='train+unlabeled', download=True, transform=transformer),
         batch_size=batch_size,
         shuffle=True,
         **kwargs,
@@ -52,7 +52,7 @@ def get_stl_loaders(use_cuda, device, batch_size):
 
     # Test data loader
     test_loader = torch.utils.data.DataLoader(
-        datasets.STL10("../data", split='test', transform=transformer),
+        datasets.STL10(dataset_dir, split='test', transform=transformer),
         batch_size=test_batch_size,
         shuffle=True,
         **kwargs,
@@ -124,7 +124,10 @@ if __name__ == "__main__":
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--epochs', '-ep', type=int, default=100)
     parser.add_argument('--batch_size', '-bs', type=int, default=256)
-    parser.add_argument('--dir', type=str, default='.', help='The directory to save the results dir to.')
+    parser.add_argument('--results_dir', type=str, default='.',
+                        help='The directory to save the results dir to.')
+    parser.add_argument('--dataset_dir', type=str, default='.',
+                        help='The directory to save / to load the dataset to / from.')
     parser.add_argument('--exp_name', type=str, default='stl', help='Experiment name. The results dir will contain it.')
     parser.add_argument('--repetitions', '-R', type=int, default=5, help='Number of parallel CSPNs to learn at once. ')
     parser.add_argument('--cspn_depth', '-D', type=int, default=3, help='Depth of the CSPN.')
@@ -187,7 +190,7 @@ if __name__ == "__main__":
     # Define optimizer
     # loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    train_loader, test_loader = get_stl_loaders(use_cuda, batch_size=batch_size, device=device)
+    train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
 
     log_interval = 100
 
