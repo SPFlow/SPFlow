@@ -354,7 +354,7 @@ class RatSpn(nn.Module):
             # or R * I^2 (else)).
             root_in_channels = self.root.in_channels // self.config.R
             # Obtain repetition indices
-            ctx.repetition_indices = (ctx.parent_indices // root_in_channels).squeeze(1)
+            ctx.repetition_indices = torch.div(ctx.parent_indices, root_in_channels, rounding_mode='trunc').squeeze(1)
             # Shift indices
             ctx.parent_indices = ctx.parent_indices % root_in_channels
 
