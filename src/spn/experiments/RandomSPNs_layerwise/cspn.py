@@ -19,12 +19,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class CspnConfig(RatSpnConfig):
+    F_cond: tuple = 0
     nr_conv_layers: int = 1
     conv_kernel_size: int = 5
     conv_pooling_kernel_size: int = 3
     conv_pooling_stride: int = 3
-    # fc_sum_param_layer_sizes: list = field(default_factory=list)
-    # fc_dist_param_layer_sizes: list = field(default_factory=list)
+    fc_sum_param_layers: int = 1
+    fc_dist_param_layers: int = 1
 
     def __setattr__(self, key, value):
         if hasattr(self, key):
@@ -34,7 +35,7 @@ class CspnConfig(RatSpnConfig):
 
 
 class CSPN(RatSpn):
-    def __init__(self, config: CspnConfig, feature_input_dim):
+    def __init__(self, config: CspnConfig):
         """
         Create a CSPN
 
@@ -48,9 +49,9 @@ class CSPN(RatSpn):
         self.dist_layers = None
         self.sum_param_heads = None
         self.sum_layers = None
-        self.conv_layers = None
+        self.feat_layers = None
         self.replace_layer_params()
-        self.create_feat_layers(feature_input_dim)
+        self.create_feat_layers(config.F_cond)
 
     def replace_layer_params(self):
         for layer in self._inner_layers:
@@ -68,33 +69,44 @@ class CSPN(RatSpn):
         self._leaf.base_leaf.means = placeholder
         self._leaf.base_leaf.stds = placeholder
 
-    def create_feat_layers(self, feature_input_dim: torch.Tensor):
+    def create_feat_layers(self, feature_input_dim: tuple):
         nr_conv_layers = self.config.nr_conv_layers
         conv_kernel = self.config.conv_kernel_size
         pool_kernel = self.config.conv_pooling_kernel_size
         pool_stride = self.config.conv_pooling_stride
         feature_dim = feature_input_dim
-        if True:
+        assert len(feature_dim) == 3 or len(feature_dim) == 1, \
+            f"Don't know how to construct feature extraction layers for {len(feature_dim)} features."
+        if len(feature_dim) == 3:
+            # feature_dim = (channels, rows, columns)
             conv_layers = [] if nr_conv_layers > 0 else [nn.Identity()]
             for j in range(nr_conv_layers):
-                feature_dim = [int(np.floor((n - (pool_kernel-1) - 1)/pool_stride + 1)) for n in feature_dim]
-
-                conv_layers += [nn.Conv2d(1, 1, kernel_size=(conv_kernel, conv_kernel), padding='same'),
+                # feature_dim = [int(np.floor((n - (pool_kernel-1) - 1)/pool_stride + 1)) for n in feature_dim]
+                in_channels = feature_dim[0]
+                if j == nr_conv_layers-1:
+                    out_channels = 1
+                else:
+                    out_channels = feature_dim[0]
+                conv_layers += [nn.Conv2d(in_channels, out_channels,
+                                          kernel_size=(conv_kernel, conv_kernel), padding='same'),
                                 nn.ReLU(),
                                 nn.MaxPool2d(kernel_size=pool_kernel, stride=pool_stride),
                                 nn.Dropout()]
-            self.conv_layers = nn.Sequential(*conv_layers)
-            feature_dim = int(np.prod(feature_dim))
-        elif feature_dim.dim() == 1:
+            self.feat_layers = nn.Sequential(*conv_layers)
+        elif len(feature_dim) == 1:
             conv_layers = [] if nr_conv_layers > 0 else [nn.Identity()]
             for j in range(nr_conv_layers):
                 conv_layers += [nn.Linear(feature_dim.shape[0], feature_dim.shape[0]), nn.ReLU()]
-            self.conv_layers = nn.Sequential(*conv_layers)
+            self.feat_layers = nn.Sequential(*conv_layers)
 
         activation = nn.ReLU
         output_activation = nn.Identity
 
-        sum_layer_sizes = [feature_dim]# + self.config.fc_sum_param_layer_sizes
+        feature_dim = int(np.prod(self.feat_layers(torch.ones((1, *feature_input_dim))).shape))
+        print(f"The feature extraction layer for the CSPN conditional reduce the {int(np.prod(feature_input_dim))} "
+              f"inputs (e.g. pixels in an image) down to {feature_dim} features. These are the inputs of the "
+              f"MLPs which set the sum and dist params.")
+        sum_layer_sizes = [int(feature_dim * 10 ** (-i)) for i in range(1 + self.config.fc_sum_param_layers)]
         sum_layers = []
         for j in range(len(sum_layer_sizes) - 1):
             act = activation if j < len(sum_layer_sizes) - 2 else output_activation
@@ -105,9 +117,10 @@ class CSPN(RatSpn):
         for layer in self._inner_layers:
             if isinstance(layer, Sum):
                 self.sum_param_heads.append(nn.Linear(sum_layer_sizes[-1], layer.weights.numel()))
+                print(f"Sum layer has {layer.weights.numel()} weights.")
         self.sum_param_heads.append(nn.Linear(sum_layer_sizes[-1], self.root.weights.numel()))
 
-        dist_layer_sizes = [feature_dim]# + self.config.fc_dist_param_layer_sizes
+        dist_layer_sizes = [int(feature_dim * 10 ** (-i)) for i in range(1 + self.config.fc_dist_param_layers)]
         dist_layers = []
         for j in range(len(dist_layer_sizes) - 1):
             act = activation if j < len(dist_layer_sizes) - 2 else output_activation
@@ -116,22 +129,31 @@ class CSPN(RatSpn):
 
         self.dist_mean_head = nn.Linear(dist_layer_sizes[-1], self._leaf.base_leaf.means.numel())
         self.dist_std_head = nn.Linear(dist_layer_sizes[-1], self._leaf.base_leaf.stds.numel())
+        print(f"Dist layer has {self._leaf.base_leaf.means.numel()} + {self._leaf.base_leaf.stds.numel()} weights.")
 
-    def forward(self, x: torch.Tensor, condition: torch.Tensor) -> torch.Tensor:
-        self.compute_weights(condition)
+    def forward(self, x: torch.Tensor, condition: torch.Tensor = None) -> torch.Tensor:
+        if condition is not None:
+            self.set_weights(condition)
         return super().forward(x)
 
-    def sample(self, condition, n: int = None, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False):
-        self.compute_weights(condition)
-        assert n is None or condition.shape[0] == n, "The batch size of the condition must equal n if n is given!"
+    def sample(self, condition: torch.Tensor = None, class_index=None,
+               evidence: torch.Tensor = None, is_mpe: bool = False, keep_weights: bool = False):
+        """
+        Sample from the random variable encoded by the CSPN.
+
+        Args:
+            condition (torch.Tensor): Batch of conditionals.
+        """
+        if condition is not None:
+            self.set_weights(condition)
         assert class_index is None or condition.shape[0] == len(class_index), \
             "The batch size of the condition must equal the length of the class index list if they are provided!"
         # TODO add assert to check dimension of evidence, if given.
-        return super().sample(n, class_index, evidence, is_mpe)
+        return super().sample(condition.shape[0], class_index, evidence, is_mpe)
 
-    def compute_weights(self, feat_inp):
+    def set_weights(self, feat_inp):
         batch_size = feat_inp.shape[0]
-        features = self.conv_layers(feat_inp)
+        features = self.feat_layers(feat_inp)
         features = features.flatten(start_dim=1)
         sum_weights_pre_output = self.sum_layers(features)
 
