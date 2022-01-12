@@ -124,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--epochs', '-ep', type=int, default=100)
     parser.add_argument('--batch_size', '-bs', type=int, default=256)
-    parser.add_argument('--results_dir', type=str, default='.',
+    parser.add_argument('--dir', type=str, default='.',
                         help='The directory to save the results dir to.')
     parser.add_argument('--dataset_dir', type=str, default='.',
                         help='The directory to save / to load the dataset to / from.')
