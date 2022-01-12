@@ -76,7 +76,6 @@ def evaluate_model(model: torch.nn.Module, cut_fcn, insert_fcn, save_dir, device
         float: Tuple of loss and accuracy.
     """
     model.eval()
-    set_seed(0)
     loss = 0
     with torch.no_grad():
         n = 50
