@@ -120,14 +120,14 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', '-dev', type=str, default='cuda', choices=['cpu', 'cuda'])
+    parser.add_argument('--device', '-dev', type=str, default='cpu', choices=['cpu', 'cuda'])
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--epochs', '-ep', type=int, default=100)
     parser.add_argument('--batch_size', '-bs', type=int, default=256)
-    parser.add_argument('--dir', type=str, default='.',
-                        help='The directory to save the results dir to.')
-    parser.add_argument('--dataset_dir', type=str, default='.',
-                        help='The directory to save / to load the dataset to / from.')
+    parser.add_argument('--results_dir', type=str, default='.',
+                        help='The base directory where the directory containing the results will be saved to.')
+    parser.add_argument('--dataset_dir', type=str, default='../data',
+                        help='The base directory to provide to the PyTorch Dataloader.')
     parser.add_argument('--exp_name', type=str, default='stl', help='Experiment name. The results dir will contain it.')
     parser.add_argument('--repetitions', '-R', type=int, default=5, help='Number of parallel CSPNs to learn at once. ')
     parser.add_argument('--cspn_depth', '-D', type=int, default=3, help='Depth of the CSPN.')
@@ -138,8 +138,16 @@ if __name__ == "__main__":
 
     set_seed(args.seed)
 
-    if args.dir != '.':
-        ensure_dir(args.dir)
+    if args.results_dir != '.':
+        ensure_dir(args.results_dir)
+    results_dir = os.path.join(args.results_dir, f"results_{args.exp_name}")
+    ensure_dir(results_dir)
+    model_dir = os.path.join(results_dir, "models")
+    ensure_dir(model_dir)
+    sample_dir = os.path.join(results_dir, "samples")
+    ensure_dir(sample_dir)
+    if args.dataset_dir != '.':
+        ensure_dir(args.dataset_dir)
 
     if args.device == "cpu":
         device = torch.device("cpu")
@@ -218,8 +226,7 @@ if __name__ == "__main__":
             data, cond = cut_out_center(image)
             data = data.reshape(data.shape[0], -1)
 
-            # evaluate_model(model, cut_out_center, insert_center, device, args.dir, train_loader, "Train")
-            # samples = model.sample(cond[:30], class_index=target[:30].tolist())
+            # evaluate_model(model, cut_out_center, insert_center, device, args.results_dir, train_loader, "Train")
 
             # Reset gradients
             optimizer.zero_grad()
@@ -256,8 +263,9 @@ if __name__ == "__main__":
         t_delta = time_delta_now(t_start)
         print("Train Epoch: {} took {}".format(epoch, t_delta))
         if epoch % sample_interval == (sample_interval-1):
-            print("Evaluating model ...")
-            save_dir = os.path.join(args.dir, f"results_{args.exp_name}", f"stl-{epoch:03}.png")
+            print("Saving and evaluating model ...")
+            torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}.pt"))
+            save_dir = os.path.join(sample_dir, f"epoch-{epoch:03}.png")
             evaluate_model(model, cut_out_center, insert_center, save_dir, device, train_loader, "Train")
             evaluate_model(model, cut_out_center, insert_center, save_dir, device, test_loader, "Test")
 
