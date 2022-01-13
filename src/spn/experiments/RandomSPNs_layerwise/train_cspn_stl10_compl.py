@@ -175,7 +175,7 @@ if __name__ == "__main__":
     # The CSPN needs to learn the distribution of the cut-out given the image with the cut-out part set to 0 as
     # the conditional.
     img_size = (3, 96, 96)  # 3 channels
-    center_cutout = (3, 48, 48)
+    center_cutout = (3, 32, 32)
 
     config = CspnConfig()
     # config also needed for standard RATSPN
@@ -233,6 +233,8 @@ if __name__ == "__main__":
             # Send data to correct device
             image = image.to(device)
             data, cond = cut_out_center(image)
+            # plt.imshow(data[0].permute(1, 2, 0))
+            # plt.show()
             data = data.reshape(data.shape[0], -1)
 
             # evaluate_model(model, cut_out_center, insert_center, device, args.results_dir, train_loader, "Train")
