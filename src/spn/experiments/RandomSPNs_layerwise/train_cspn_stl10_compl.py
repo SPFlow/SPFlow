@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from spn.experiments.RandomSPNs_layerwise.distributions import RatNormal
 from spn.experiments.RandomSPNs_layerwise.cspn import CSPN, CspnConfig
 
-from train_mnist import one_hot, time_delta_now, count_params, ensure_dir, set_seed
+from train_mnist import one_hot, count_params, ensure_dir, set_seed
 
 
 def print_cspn_params(cspn: CSPN):
@@ -27,6 +27,22 @@ def print_cspn_params(cspn: CSPN):
     print(f"Params in MLP for the dist params, excluding the heads: {count_params(cspn.dist_layers)}")
     print(f"Params in the heads of the dist param MLPs: "
           f"{count_params(cspn.dist_mean_head) + count_params(cspn.dist_std_head)}")
+
+
+def time_delta(t_delta: float) -> str:
+    """
+    Convert a timestamp into a human readable timestring.
+    Args:
+        t_delta (float): Difference between two timestamps of time.time()
+
+    Returns:
+        Human readable timestring.
+    """
+    hours = round(t_delta // 3600)
+    minutes = round(t_delta // 60 % 60)
+    seconds = round(t_delta % 60)
+    millisecs = round(t_delta % 1 * 1000)
+    return f"{hours} hours, {minutes} minutes, {seconds} seconds, {millisecs} milliseconds"
 
 
 def get_stl_loaders(dataset_dir, use_cuda, device, batch_size):
@@ -91,12 +107,7 @@ def evaluate_model(model: torch.nn.Module, cut_fcn, insert_fcn, save_dir, device
                 plot_samples(cond[:n], save_dir)
                 n = 0
     loss /= len(loader.dataset)
-
-    print(
-        "{} set: Average log-likelihood of samples: {:.4f}".format(
-            tag, loss_nll, len(loader.dataset)
-        )
-    )
+    print("{} set: Average log-likelihood of samples: {:.4f}".format(tag, loss))
 
 
 def plot_samples(x: torch.Tensor, path):
@@ -134,6 +145,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_dist', '-I', type=int, default=5, help='Number of Gauss dists per pixel.')
     parser.add_argument('--num_sums', '-S', type=int, default=5, help='Number of sums per RV in each sum layer.')
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
+    parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -200,8 +212,6 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
 
-    log_interval = 100
-
     cutout_rows = [img_size[1] // 2 - center_cutout[1] // 2, img_size[1] // 2 + center_cutout[1] // 2]
     cutout_cols = [img_size[2] // 2 - center_cutout[2] // 2, img_size[2] // 2 + center_cutout[2] // 2]
 
@@ -214,13 +224,12 @@ if __name__ == "__main__":
     def insert_center(sample: torch.Tensor, cond: torch.Tensor):
         cond[:, :, cutout_rows[0]:cutout_rows[1], cutout_cols[0]:cutout_cols[1]] = sample.view(-1, *center_cutout)
 
-    sample_interval = 10
+    sample_interval = 10  # number of epochs
     for epoch in range(args.epochs):
         t_start = time.time()
         running_loss = 0.0
         cond = None
         for batch_index, (image, _) in enumerate(train_loader):
-            b_start = time.time()
             # Send data to correct device
             image = image.to(device)
             data, cond = cut_out_center(image)
@@ -235,32 +244,23 @@ if __name__ == "__main__":
             output: torch.Tensor = model(data, cond)
 
             # Compute loss
-            loss_nll = -output.mean()
-            loss = loss_nll
+            loss = -output.mean()
 
             # Backprop
             loss.backward()
             optimizer.step()
             # scheduler.step()
 
-            b_delta = time_delta_now(b_start)
-            print(f"Batch {batch_index} took {b_delta}")
             # Log stuff
             running_loss += loss.item()
-            if batch_index % log_interval == (log_interval - 1):
-                print(
-                    "Train Epoch: {} [{: >5}/{: <5} ({:.0f}%)]\tLoss_nll: {:.6f}".format(
-                        epoch,
-                        batch_index * len(data),
-                        60000,
-                        100.0 * batch_index / len(train_loader),
-                        running_loss / log_interval,
-                    ),
-                    end="\r",
-                )
-                running_loss = 0.0
+            if args.verbose:
+                batch_delta = time_delta((time.time()-t_start)/(batch_index+1))
+                print(f"Epoch {epoch} ({100.0 * batch_index / len(train_loader):.1f}%) "
+                      f"Avg. loss: {running_loss/(batch_index+1):.2f} - Batch {batch_index} - "
+                      f"Avg. batch time {batch_delta}",
+                      end="\r")
 
-        t_delta = time_delta_now(t_start)
+        t_delta = time_delta(time.time()-t_start)
         print("Train Epoch: {} took {}".format(epoch, t_delta))
         if epoch % sample_interval == (sample_interval-1):
             print("Saving and evaluating model ...")
