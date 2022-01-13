@@ -150,16 +150,13 @@ if __name__ == "__main__":
 
     set_seed(args.seed)
 
-    if args.results_dir != '.':
-        ensure_dir(args.results_dir)
     results_dir = os.path.join(args.results_dir, f"results_{args.exp_name}")
-    ensure_dir(results_dir)
     model_dir = os.path.join(results_dir, "models")
-    ensure_dir(model_dir)
     sample_dir = os.path.join(results_dir, "samples")
-    ensure_dir(sample_dir)
-    if args.dataset_dir != '.':
-        ensure_dir(args.dataset_dir)
+
+    for d in [results_dir, model_dir, sample_dir, args.dataset_dir]:
+        if not os.path.exists(d):
+            os.makedirs(d)
 
     if args.device == "cpu":
         device = torch.device("cpu")
