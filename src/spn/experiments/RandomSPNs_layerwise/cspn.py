@@ -149,7 +149,9 @@ class CSPN(RatSpn):
         assert class_index is None or condition.shape[0] == len(class_index), \
             "The batch size of the condition must equal the length of the class index list if they are provided!"
         # TODO add assert to check dimension of evidence, if given.
-        return super().sample(condition.shape[0], class_index, evidence, is_mpe)
+
+        batch_size = self.root.weights.shape[0]
+        return super().sample(batch_size, class_index, evidence, is_mpe)
 
     def set_weights(self, feat_inp):
         batch_size = feat_inp.shape[0]
