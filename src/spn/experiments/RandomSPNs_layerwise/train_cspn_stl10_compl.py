@@ -92,21 +92,20 @@ def evaluate_model(model: torch.nn.Module, cut_fcn, insert_fcn, save_dir, device
         float: Tuple of loss and accuracy.
     """
     model.eval()
-    log_like = 0
+    log_like = []
     with torch.no_grad():
         n = 50
         for image, _ in loader:
             image = image.to(device)
             _, cond = cut_fcn(image)
             sample = model.sample(condition=cond)
-            log_like += model(x=sample, condition=None)
+            log_like.append(model(x=sample, condition=None).mean().tolist())
 
             if n > 0:
                 insert_fcn(sample[:n], cond[:n])
                 plot_samples(cond[:n], save_dir)
                 n = 0
-    log_like /= len(loader.dataset)
-    print("{} set: Average log-likelihood of samples: {:.4f}".format(tag, log_like))
+    print("{} set: Average log-likelihood of samples: {:.4f}".format(tag, np.mean(log_like)))
 
 
 def plot_samples(x: torch.Tensor, path):
@@ -116,9 +115,9 @@ def plot_samples(x: torch.Tensor, path):
     Args:
         x (torch.Tensor): Batch of input images. Has to be shape: [N, C, H, W].
     """
-    # Normalize in valid range
-    for i in range(x.shape[0]):
-        x[i, :] = (x[i, :] - x[i, :].min()) / (x[i, :].max() - x[i, :].min())
+    # Clip to valid range
+    x[x < 0.0] = 0.0
+    x[x > 1.0] = 1.0
 
     tensors = torchvision.utils.make_grid(x, nrow=10, padding=1).cpu()
     arr = tensors.permute(1, 2, 0).numpy()
@@ -208,8 +207,9 @@ if __name__ == "__main__":
 
     inspect = args.inspect
     if inspect:
-        stl1 = 'results_stl_1/models/epoch-059.pt'
-        model: CSPN = torch.load(stl1)
+        stl1 = 'results_stl_1/models/epoch-069.pt'
+        stl2 = 'results_stl_2/models/epoch-029.pt'
+        model: CSPN = torch.load(stl2)
         train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, batch_size=5, device=device)
         for image, _ in train_loader:
             data, cond = cut_out_center(image.clone())
@@ -268,7 +268,7 @@ if __name__ == "__main__":
             # plt.show()
             data = data.reshape(data.shape[0], -1)
 
-            # evaluate_model(model, cut_out_center, insert_center, device, args.results_dir, train_loader, "Train")
+            # evaluate_model(model, cut_out_center, insert_center, "test.png", device, train_loader, "Train")
 
             # Reset gradients
             optimizer.zero_grad()
@@ -298,8 +298,8 @@ if __name__ == "__main__":
         if epoch % sample_interval == (sample_interval-1):
             print("Saving and evaluating model ...")
             torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}.pt"))
-            save_dir = os.path.join(sample_dir, f"epoch-{epoch:03}.png")
-            evaluate_model(model, cut_out_center, insert_center, save_dir, device, train_loader, "Train")
-            evaluate_model(model, cut_out_center, insert_center, save_dir, device, test_loader, "Test")
+            save_path = os.path.join(sample_dir, f"epoch-{epoch:03}.png")
+            evaluate_model(model, cut_out_center, insert_center, save_path, device, train_loader, "Train")
+            evaluate_model(model, cut_out_center, insert_center, save_path, device, test_loader, "Test")
 
 
