@@ -92,22 +92,21 @@ def evaluate_model(model: torch.nn.Module, cut_fcn, insert_fcn, save_dir, device
         float: Tuple of loss and accuracy.
     """
     model.eval()
-    loss = 0
+    log_like = 0
     with torch.no_grad():
         n = 50
         for image, _ in loader:
             image = image.to(device)
             _, cond = cut_fcn(image)
             sample = model.sample(condition=cond)
-            log_like = model(x=sample, condition=None)
-            loss += -log_like.sum()
+            log_like += model(x=sample, condition=None)
 
             if n > 0:
                 insert_fcn(sample[:n], cond[:n])
                 plot_samples(cond[:n], save_dir)
                 n = 0
-    loss /= len(loader.dataset)
-    print("{} set: Average log-likelihood of samples: {:.4f}".format(tag, loss))
+    log_like /= len(loader.dataset)
+    print("{} set: Average log-likelihood of samples: {:.4f}".format(tag, log_like))
 
 
 def plot_samples(x: torch.Tensor, path):
@@ -146,6 +145,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_sums', '-S', type=int, default=5, help='Number of sums per RV in each sum layer.')
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
+    parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -194,21 +194,6 @@ if __name__ == "__main__":
     config.fc_sum_param_layers = 1
     config.fc_dist_param_layers = 1
 
-    # Construct Cspn from config
-    model = CSPN(config)
-    model = model.to(device)
-    model.train()
-
-    print("Using device:", device)
-    print(model)
-    print_cspn_params(model)
-    # print("Number of pytorch parameters: ", count_params(model))
-
-    # Define optimizer
-    # loss_fn = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
-
     cutout_rows = [img_size[1] // 2 - center_cutout[1] // 2, img_size[1] // 2 + center_cutout[1] // 2]
     cutout_cols = [img_size[2] // 2 - center_cutout[2] // 2, img_size[2] // 2 + center_cutout[2] // 2]
 
@@ -220,6 +205,55 @@ if __name__ == "__main__":
 
     def insert_center(sample: torch.Tensor, cond: torch.Tensor):
         cond[:, :, cutout_rows[0]:cutout_rows[1], cutout_cols[0]:cutout_cols[1]] = sample.view(-1, *center_cutout)
+
+    inspect = args.inspect
+    if inspect:
+        stl1 = 'results_stl_1/models/epoch-059.pt'
+        model: CSPN = torch.load(stl1)
+        train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, batch_size=5, device=device)
+        for image, _ in train_loader:
+            data, cond = cut_out_center(image.clone())
+            data_ll = model(x=data.flatten(start_dim=1), condition=cond)
+            sample = model.sample(condition=None)
+            sample_ll = model(x=sample, condition=None)
+            sample = sample.view(-1, *center_cutout)
+            if True:
+                # Clip
+                sample[sample < 0.0] = 0.0
+                sample[sample > 1.0] = 1.0
+            else:
+                # Normalize regarding min and max values
+                for i in range(cond.shape[0]):
+                    cond[i, :] = (cond[i, :] - cond[i, :].min()) / (cond[i, :].max() - cond[i, :].min())
+
+            insert_center(sample, cond)
+            glued = torch.cat((image, cond), dim=2)
+            tensors = torchvision.utils.make_grid(glued, nrow=image.shape[0], padding=1)
+            arr = tensors.permute(1, 2, 0).cpu().numpy()
+            arr = skimage.img_as_ubyte(arr)
+            # imageio.imwrite(path, arr)
+            plt.imshow(arr)
+            lls = [[f"{n:.2f}" for n in ll.flatten().tolist()] for ll in [data_ll, sample_ll]]
+            plt.title(f"LLs of original center boxes: [{', '.join(lls[0])}]\n"
+                      f"LLs of sampled center boxes: [{', '.join(lls[1])}]",
+                      fontdict={'fontsize': 10})
+            plt.show()
+            print("Set breakpoint here")
+    else:
+        # Construct Cspn from config
+        train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
+        model = CSPN(config)
+        model = model.to(device)
+        model.train()
+
+    print("Using device:", device)
+    print(model)
+    print_cspn_params(model)
+    # print("Number of pytorch parameters: ", count_params(model))
+
+    # Define optimizer
+    # loss_fn = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     sample_interval = 10  # number of epochs
     for epoch in range(args.epochs):
