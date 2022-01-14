@@ -76,12 +76,12 @@ def get_stl_loaders(dataset_dir, use_cuda, device, batch_size):
     return train_loader, test_loader
 
 
-def evaluate_model(model: torch.nn.Module, cut_fcn, insert_fcn, save_dir, device, loader, tag):
+def evaluate_model(model, cut_fcn, insert_fcn, save_dir, device, loader, tag):
     """
     Description for method evaluate_model.
 
     Args:
-        model (nn.Module): PyTorch module.
+        model: PyTorch module or a list of modules, one for each image channel
         cut_fcn: Function that cuts the cond out of the image
         insert_fcn: Function that inserts sample back into the image
         device: Execution device.
@@ -91,15 +91,27 @@ def evaluate_model(model: torch.nn.Module, cut_fcn, insert_fcn, save_dir, device
     Returns:
         float: Tuple of loss and accuracy.
     """
-    model.eval()
+    if isinstance(model, list):
+        [ch_model.eval() for ch_model in model]
+        spn_per_channel = True
+    else:
+        model.eval()
+        spn_per_channel = False
+
     log_like = []
     with torch.no_grad():
         n = 50
         for image, _ in loader:
             image = image.to(device)
             _, cond = cut_fcn(image)
-            sample = model.sample(condition=cond)
-            log_like.append(model(x=sample, condition=None).mean().tolist())
+            if not spn_per_channel:
+                sample = model.sample(condition=cond)
+                log_like.append(model(x=sample, condition=None).mean().tolist())
+            else:
+                sample = [model[ch].sample(condition=cond[:, [ch]]) for ch in range(len(model))]
+                log_like += [model[ch](x=sample[ch], condition=None).mean().tolist()
+                             for ch in range(len(model))]
+                sample = torch.cat(sample, dim=1)
 
             if n > 0:
                 insert_fcn(sample[:n], cond[:n])
@@ -145,6 +157,7 @@ if __name__ == "__main__":
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
+    parser.add_argument('--one_spn_per_channel', action='store_true', help='Create one SPN for each color channel.')
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -173,26 +186,6 @@ if __name__ == "__main__":
     img_size = (3, 96, 96)  # 3 channels
     center_cutout = (3, 32, 32)
 
-    config = CspnConfig()
-    # config also needed for standard RATSPN
-    config.F = int(np.prod(center_cutout))
-    config.F_cond = img_size
-    config.R = args.repetitions
-    config.D = args.cspn_depth
-    config.I = args.num_dist
-    config.S = args.num_sums
-    config.C = 1
-    config.dropout = 0.0
-    config.leaf_base_class = RatNormal
-    config.leaf_base_kwargs = {}
-    # config specific to CSPN
-    config.nr_conv_layers = 1
-    config.conv_kernel_size = 3
-    config.conv_pooling_kernel_size = 3
-    config.conv_pooling_stride = 3
-    config.fc_sum_param_layers = 1
-    config.fc_dist_param_layers = 1
-
     cutout_rows = [img_size[1] // 2 - center_cutout[1] // 2, img_size[1] // 2 + center_cutout[1] // 2]
     cutout_cols = [img_size[2] // 2 - center_cutout[2] // 2, img_size[2] // 2 + center_cutout[2] // 2]
 
@@ -207,58 +200,150 @@ if __name__ == "__main__":
 
     inspect = args.inspect
     if inspect:
-        stl1 = 'results_stl_1/models/epoch-069.pt'
-        stl2 = 'results_stl_2/models/epoch-029.pt'
-        model: CSPN = torch.load(stl2)
-        train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, batch_size=5, device=device)
-        for image, _ in train_loader:
-            data, cond = cut_out_center(image.clone())
-            data_ll = model(x=data.flatten(start_dim=1), condition=cond)
-            sample = model.sample(condition=None)
-            sample_ll = model(x=sample, condition=None)
-            sample = sample.view(-1, *center_cutout)
-            if True:
-                # Clip
-                sample[sample < 0.0] = 0.0
-                sample[sample > 1.0] = 1.0
-            else:
-                # Normalize regarding min and max values
-                for i in range(cond.shape[0]):
-                    cond[i, :] = (cond[i, :] - cond[i, :].min()) / (cond[i, :].max() - cond[i, :].min())
-
-            insert_center(sample, cond)
-            glued = torch.cat((image, cond), dim=2)
-            tensors = torchvision.utils.make_grid(glued, nrow=image.shape[0], padding=1)
+        def plot_img(image: torch.Tensor, title: str = None):
+            # Tensor shape N x channels x rows x cols
+            tensors = torchvision.utils.make_grid(image, nrow=image.shape[0], padding=1)
             arr = tensors.permute(1, 2, 0).cpu().numpy()
             arr = skimage.img_as_ubyte(arr)
             # imageio.imwrite(path, arr)
             plt.imshow(arr)
-            lls = [[f"{n:.2f}" for n in ll.flatten().tolist()] for ll in [data_ll, sample_ll]]
-            plt.title(f"LLs of original center boxes: [{', '.join(lls[0])}]\n"
-                      f"LLs of sampled center boxes: [{', '.join(lls[1])}]",
-                      fontdict={'fontsize': 10})
+            plt.title(title, fontdict={'fontsize': 10})
             plt.show()
-            print("Set breakpoint here")
-    else:
-        # Construct Cspn from config
+
+        top_5_ll = torch.ones(5) * -10e6
+        top_5_ll_img = torch.zeros(5, *img_size)
+        low_5_ll = torch.ones(5) * 10e6
+        low_5_ll_img = torch.zeros(5, *img_size)
+
+        # path = 'results_stl_1/models/epoch-069.pt'
+        # path = 'results_stl_2/models/epoch-029.pt'
+        # path = 'results_stl_3/models/epoch-049.pt'
+        path = 'results_stl_4/models/epoch-029.pt'
+        # path = [f"results_cspn_test/models/epoch-009-chan{ch}.pt" for ch in range(3)]
+
+        models = []
+        model = None
+        if isinstance(path, list):
+            models = [torch.load(p) for p in path]
+            spn_per_channel = True
+        else:
+            model = torch.load(path)
+            spn_per_channel = False
+
+        show_all = True
+        find_top_low_LL = False
+        if show_all:
+            batch_size = 5
+        else:
+            batch_size = 256
+
         train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
+        for i, (image, _) in enumerate(train_loader):
+            data, cond = cut_out_center(image.clone())
+            if spn_per_channel:
+                data = data.flatten(start_dim=2)
+                data_ll = [models[ch](x=data[:, ch], condition=cond[:, [ch]]) for ch in range(len(models))]
+                data_ll = torch.cat(data_ll, dim=1).mean(dim=1)
+                sample = [models[ch].sample(condition=None) for ch in range(len(models))]
+                sample_ll = [models[ch](x=sample[ch], condition=None) for ch in range(len(models))]
+                sample_ll = torch.cat(sample_ll, dim=1).mean(dim=1)
+                sample = torch.cat(sample, dim=1)
+            else:
+                data_ll = model(x=data.flatten(start_dim=1), condition=cond).flatten()
+                sample = model.sample(condition=None)
+                sample_ll = model(x=sample, condition=None).flatten()
+
+            sample = sample.view(-1, *center_cutout)
+            sample[sample < 0.0] = 0.0
+            sample[sample > 1.0] = 1.0
+            insert_center(sample, cond)
+
+            if find_top_low_LL:
+                top_5_ll, indices = torch.cat((top_5_ll, sample_ll), dim=0).sort(descending=True)
+                top_5_ll = top_5_ll[:5]
+                indices = indices[:5]
+                imgs = []
+                for ind in indices:
+                    img = top_5_ll_img[ind] if ind < 5 else cond[ind-5]
+                    imgs.append(img.unsqueeze(0))
+                top_5_ll_img = torch.cat(imgs, dim=0)
+
+                low_5_ll, indices = torch.cat((low_5_ll, sample_ll), dim=0).sort(descending=False)
+                low_5_ll = low_5_ll[:5]
+                indices = indices[:5]
+                imgs = []
+                for ind in indices:
+                    img = low_5_ll_img[ind] if ind < 5 else cond[ind-5]
+                    imgs.append(img.unsqueeze(0))
+                low_5_ll_img = torch.cat(imgs, dim=0)
+
+                if True:
+                    lls = [[f"{n:.2f}" for n in ll.tolist()] for ll in [top_5_ll, low_5_ll]]
+                    title = f"Samples of highest LL:\nLLs of sampled center boxes: [{', '.join(lls[0])}]"
+                    plot_img(top_5_ll_img, title)
+                    title = f"Samples of lowest LL:\nLLs of sampled center boxes: [{', '.join(lls[1])}]"
+                    plot_img(low_5_ll_img, title)
+                    print("Set breakpoint here")
+
+            if show_all:
+                glued = torch.cat((image, cond), dim=2)
+                lls = [[f"{n:.2f}" for n in ll.tolist()] for ll in [data_ll, sample_ll]]
+                title = f"LLs of original center boxes: [{', '.join(lls[0])}]\n" \
+                        f"LLs of sampled center boxes: [{', '.join(lls[1])}]"
+                plot_img(glued, title)
+                print("Set breakpoint here")
+
+            print(i)
+        exit()
+
+    # Construct Cspn from config
+    train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
+    config = CspnConfig()
+    if args.one_spn_per_channel:
+        config.F = int(np.prod(center_cutout[1:]))
+        config.F_cond = (1, *img_size[1:])
+    else:
+        config.F = int(np.prod(center_cutout))
+        config.F_cond = img_size
+    config.R = args.repetitions
+    config.D = args.cspn_depth
+    config.I = args.num_dist
+    config.S = args.num_sums
+    config.C = 1
+    config.dropout = 0.0
+    config.leaf_base_class = RatNormal
+    config.leaf_base_kwargs = {}
+
+    config.nr_conv_layers = 1
+    config.conv_kernel_size = 3
+    config.conv_pooling_kernel_size = 3
+    config.conv_pooling_stride = 3
+    config.fc_sum_param_layers = 1
+    config.fc_dist_param_layers = 1
+
+    print("Using device:", device)
+    optimizers = None
+    models = None
+    optimizer = None
+    model = None
+    if args.one_spn_per_channel:
+        models = [CSPN(config).to(device).train() for _ in range(img_size[0])]
+        optimizers = [optim.Adam(models[ch].parameters()) for ch in range(img_size[0])]
+        for ch in range(img_size[0]):
+            print(models[ch])
+            print_cspn_params(models[ch])
+    else:
         model = CSPN(config)
         model = model.to(device)
         model.train()
+        print(model)
+        print_cspn_params(model)
+        optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
-    print("Using device:", device)
-    print(model)
-    print_cspn_params(model)
-    # print("Number of pytorch parameters: ", count_params(model))
-
-    # Define optimizer
-    # loss_fn = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
-
-    sample_interval = 10  # number of epochs
+    sample_interval = 1 if args.verbose else 10  # number of epochs
     for epoch in range(args.epochs):
         t_start = time.time()
-        running_loss = 0.0
+        running_loss = []
         cond = None
         for batch_index, (image, _) in enumerate(train_loader):
             # Send data to correct device
@@ -266,30 +351,32 @@ if __name__ == "__main__":
             data, cond = cut_out_center(image)
             # plt.imshow(data[0].permute(1, 2, 0))
             # plt.show()
-            data = data.reshape(data.shape[0], -1)
-
-            # evaluate_model(model, cut_out_center, insert_center, "test.png", device, train_loader, "Train")
-
-            # Reset gradients
-            optimizer.zero_grad()
 
             # Inference
-            output: torch.Tensor = model(data, cond)
-
-            # Compute loss
-            loss = -output.mean()
-
-            # Backprop
-            loss.backward()
-            optimizer.step()
-            # scheduler.step()
+            if args.one_spn_per_channel:
+                data = data.reshape(image.shape[0], img_size[0], -1)
+                for ch in range(img_size[0]):
+                    optimizers[ch].zero_grad()
+                    output: torch.Tensor = models[ch](data[:, ch], cond[:, [ch]])
+                    loss = -output.mean()
+                    loss.backward()
+                    optimizers[ch].step()
+                    running_loss.append(loss.item())
+            else:
+                # evaluate_model(model, cut_out_center, insert_center, "test.png", device, train_loader, "Train")
+                optimizer.zero_grad()
+                data = data.reshape(image.shape[0], -1)
+                output: torch.Tensor = model(data, cond)
+                loss = -output.mean()
+                loss.backward()
+                optimizer.step()
+                running_loss.append(loss.item())
 
             # Log stuff
-            running_loss += loss.item()
             if args.verbose:
                 batch_delta = time_delta((time.time()-t_start)/(batch_index+1))
                 print(f"Epoch {epoch} ({100.0 * batch_index / len(train_loader):.1f}%) "
-                      f"Avg. loss: {running_loss/(batch_index+1):.2f} - Batch {batch_index} - "
+                      f"Avg. loss: {np.mean(running_loss):.2f} - Batch {batch_index} - "
                       f"Avg. batch time {batch_delta}",
                       end="\r")
 
@@ -297,9 +384,16 @@ if __name__ == "__main__":
         print("Train Epoch: {} took {}".format(epoch, t_delta))
         if epoch % sample_interval == (sample_interval-1):
             print("Saving and evaluating model ...")
-            torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}.pt"))
-            save_path = os.path.join(sample_dir, f"epoch-{epoch:03}.png")
-            evaluate_model(model, cut_out_center, insert_center, save_path, device, train_loader, "Train")
-            evaluate_model(model, cut_out_center, insert_center, save_path, device, test_loader, "Test")
+            if args.one_spn_per_channel:
+                for ch in range(img_size[0]):
+                    torch.save(models[ch], os.path.join(model_dir, f"epoch-{epoch:03}-chan{ch}.pt"))
+                save_path = os.path.join(sample_dir, f"epoch-{epoch:03}.png")
+                evaluate_model(models, cut_out_center, insert_center, save_path, device, train_loader, "Train")
+                evaluate_model(models, cut_out_center, insert_center, save_path, device, test_loader, "Test")
+            else:
+                torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}.pt"))
+                save_path = os.path.join(sample_dir, f"epoch-{epoch:03}.png")
+                evaluate_model(model, cut_out_center, insert_center, save_path, device, train_loader, "Train")
+                evaluate_model(model, cut_out_center, insert_center, save_path, device, test_loader, "Test")
 
 
