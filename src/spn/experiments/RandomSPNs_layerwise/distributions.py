@@ -130,6 +130,16 @@ class IndependentMultivariate(Leaf):
         x = self.prod(x)
         return x
 
+    def log_entropy(self):
+        log_ent = self.base_leaf.log_entropy()
+
+        if self._pad:
+            # Pad marginalized node
+            log_ent = F.pad(log_ent, pad=[0, 0, 0, 0, 0, self._pad], mode="constant", value=0.0)
+
+        log_ent = self.prod(log_ent)
+        return log_ent
+
     def _get_base_distribution(self):
         raise Exception("IndependentMultivariate does not have an explicit PyTorch base distribution.")
 

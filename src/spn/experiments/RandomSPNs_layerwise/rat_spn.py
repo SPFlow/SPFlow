@@ -182,6 +182,14 @@ class RatSpn(nn.Module):
 
         return x
 
+    def log_entropy(self):
+        log_ent: torch.Tensor = self._leaf.log_entropy()
+        log_ent = self._forward_layers(log_ent)
+        n, d, c, r = log_ent.shape
+        log_ent = log_ent.view(n, d, c * r, 1)
+        log_ent = self.root(log_ent)
+        return log_ent
+
     def _forward_layers(self, x):
         """
         Forward pass through the inner sum and product layers.

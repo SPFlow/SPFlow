@@ -136,6 +136,11 @@ class CSPN(RatSpn):
             self.set_weights(condition)
         return super().forward(x)
 
+    def log_entropy(self, condition: torch.Tensor = None) -> torch.Tensor:
+        if condition is not None:
+            self.set_weights(condition)
+        return super().log_entropy()
+
     def sample(self, condition: torch.Tensor = None, class_index=None,
                evidence: torch.Tensor = None, is_mpe: bool = False, keep_weights: bool = False):
         """

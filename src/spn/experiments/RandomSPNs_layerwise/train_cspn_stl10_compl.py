@@ -344,6 +344,7 @@ if __name__ == "__main__":
     for epoch in range(args.epochs):
         t_start = time.time()
         running_loss = []
+        running_ent = []
         cond = None
         for batch_index, (image, _) in enumerate(train_loader):
             # Send data to correct device
@@ -372,11 +373,15 @@ if __name__ == "__main__":
                 optimizer.step()
                 running_loss.append(loss.item())
 
+                with torch.no_grad():
+                    ent = model.log_entropy(condition=None).mean()
+                    running_ent.append(ent.item())
+
             # Log stuff
             if args.verbose:
                 batch_delta = time_delta((time.time()-t_start)/(batch_index+1))
                 print(f"Epoch {epoch} ({100.0 * batch_index / len(train_loader):.1f}%) "
-                      f"Avg. loss: {np.mean(running_loss):.2f} - Batch {batch_index} - "
+                      f"Avg. loss: {np.mean(running_loss):.2f} - Avg. ent: {np.mean(running_ent):.2f} - Batch {batch_index} - "
                       f"Avg. batch time {batch_delta}",
                       end="\r")
 

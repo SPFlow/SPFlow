@@ -165,6 +165,11 @@ class Leaf(AbstractLayer):
 
         return x
 
+    def log_entropy(self):
+        d = self._get_base_distribution()
+        log_ent = d.entropy().log()
+        return log_ent
+
     @abstractmethod
     def _get_base_distribution(self) -> dist.Distribution:
         """Get the underlying torch distribution."""
