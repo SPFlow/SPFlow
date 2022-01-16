@@ -155,6 +155,13 @@ if __name__ == "__main__":
     parser.add_argument('--num_dist', '-I', type=int, default=5, help='Number of Gauss dists per pixel.')
     parser.add_argument('--num_sums', '-S', type=int, default=5, help='Number of sums per RV in each sum layer.')
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
+    parser.add_argument('--nr_conv_layers', type=int, default=1, help='Number of conv layers')
+    parser.add_argument('--nr_sum_param_layers', type=int, default=1,
+                        help='Number of fully connected hidden layers in the MLP that '
+                             'provides the weights for the sum nodes.')
+    parser.add_argument('--nr_dist_param_layers', type=int, default=1,
+                        help='Number of fully connected hidden layers in the MLP that '
+                             'provides the params for the dist nodes')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     parser.add_argument('--one_spn_per_channel', action='store_true', help='Create one SPN for each color channel.')
@@ -218,13 +225,13 @@ if __name__ == "__main__":
         # path = 'results_stl_1/models/epoch-069.pt'
         # path = 'results_stl_2/models/epoch-029.pt'
         # path = 'results_stl_3/models/epoch-049.pt'
-        path = 'results_stl_4/models/epoch-029.pt'
-        # path = [f"results_cspn_test/models/epoch-009-chan{ch}.pt" for ch in range(3)]
+        # path = 'results_stl_4/models/epoch-029.pt'
+        path = [f"results_stl6/models/epoch-099-chan{ch}.pt" for ch in range(3)]
 
         models = []
         model = None
         if isinstance(path, list):
-            models = [torch.load(p) for p in path]
+            models = [torch.load(p).cpu() for p in path]
             spn_per_channel = True
         else:
             model = torch.load(path)
@@ -314,12 +321,12 @@ if __name__ == "__main__":
     config.leaf_base_class = RatNormal
     config.leaf_base_kwargs = {}
 
-    config.nr_conv_layers = 1
+    config.nr_conv_layers = args.nr_conv_layers
     config.conv_kernel_size = 3
     config.conv_pooling_kernel_size = 3
     config.conv_pooling_stride = 3
-    config.fc_sum_param_layers = 1
-    config.fc_dist_param_layers = 1
+    config.fc_sum_param_layers = args.nr_sum_param_layers
+    config.fc_dist_param_layers = args.nr_dist_param_layers
 
     print("Using device:", device)
     optimizers = None
@@ -373,15 +380,15 @@ if __name__ == "__main__":
                 optimizer.step()
                 running_loss.append(loss.item())
 
-                with torch.no_grad():
-                    ent = model.log_entropy(condition=None).mean()
-                    running_ent.append(ent.item())
+                # with torch.no_grad():
+                #     ent = model.log_entropy(condition=None).mean()
+                #     running_ent.append(ent.item())
 
             # Log stuff
             if args.verbose:
                 batch_delta = time_delta((time.time()-t_start)/(batch_index+1))
                 print(f"Epoch {epoch} ({100.0 * batch_index / len(train_loader):.1f}%) "
-                      f"Avg. loss: {np.mean(running_loss):.2f} - Avg. ent: {np.mean(running_ent):.2f} - Batch {batch_index} - "
+                      f"Avg. loss: {np.mean(running_loss):.2f} - Batch {batch_index} - "
                       f"Avg. batch time {batch_delta}",
                       end="\r")
 
