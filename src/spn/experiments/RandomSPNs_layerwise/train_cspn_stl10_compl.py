@@ -45,7 +45,7 @@ def time_delta(t_delta: float) -> str:
     return f"{hours} hours, {minutes} minutes, {seconds} seconds, {millisecs} milliseconds"
 
 
-def get_stl_loaders(dataset_dir, use_cuda, device, batch_size):
+def get_stl_loaders(dataset_dir, use_cuda, grayscale, device, batch_size):
     """
     Get the STL10 pytorch data loader.
 
@@ -57,7 +57,10 @@ def get_stl_loaders(dataset_dir, use_cuda, device, batch_size):
 
     test_batch_size = batch_size
 
-    transformer = transforms.Compose([transforms.ToTensor()])
+    if grayscale:
+        transformer = transforms.Compose([transforms.ToTensor(), transforms.Grayscale()])
+    else:
+        transformer = transforms.Compose([transforms.ToTensor()])
     # Train data loader
     train_loader = torch.utils.data.DataLoader(
         datasets.STL10(dataset_dir, split='train+unlabeled', download=True, transform=transformer),
@@ -165,8 +168,11 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     parser.add_argument('--one_spn_per_channel', action='store_true', help='Create one SPN for each color channel.')
+    parser.add_argument('--grayscale', action='store_true', help='Convert images to grayscale')
     args = parser.parse_args()
 
+    assert not args.one_spn_per_channel or not args.grayscale, \
+        "--one_spn_per_channel and --grayscale can't be set together!"
     set_seed(args.seed)
 
     results_dir = os.path.join(args.results_dir, f"results_{args.exp_name}")
@@ -190,8 +196,13 @@ if __name__ == "__main__":
     # The task is to do image in-painting - to fill in a cut-out square in the image.
     # The CSPN needs to learn the distribution of the cut-out given the image with the cut-out part set to 0 as
     # the conditional.
-    img_size = (3, 96, 96)  # 3 channels
-    center_cutout = (3, 32, 32)
+
+    if args.grayscale:
+        img_size = (1, 96, 96)  # 3 channels
+        center_cutout = (1, 32, 32)
+    else:
+        img_size = (3, 96, 96)  # 3 channels
+        center_cutout = (3, 32, 32)
 
     cutout_rows = [img_size[1] // 2 - center_cutout[1] // 2, img_size[1] // 2 + center_cutout[1] // 2]
     cutout_cols = [img_size[2] // 2 - center_cutout[2] // 2, img_size[2] // 2 + center_cutout[2] // 2]
@@ -305,7 +316,7 @@ if __name__ == "__main__":
         exit()
 
     # Construct Cspn from config
-    train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
+    train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, args.grayscale, batch_size=batch_size, device=device)
     config = CspnConfig()
     if args.one_spn_per_channel:
         config.F = int(np.prod(center_cutout[1:]))
