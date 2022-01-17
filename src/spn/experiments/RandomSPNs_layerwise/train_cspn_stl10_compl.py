@@ -222,11 +222,12 @@ if __name__ == "__main__":
         low_5_ll = torch.ones(5) * 10e6
         low_5_ll_img = torch.zeros(5, *img_size)
 
-        # path = 'results_stl_1/models/epoch-069.pt'
+        # path = 'results_stl_1/models/epoch-079.pt'
         # path = 'results_stl_2/models/epoch-029.pt'
         # path = 'results_stl_3/models/epoch-049.pt'
-        # path = 'results_stl_4/models/epoch-029.pt'
-        path = [f"results_stl6/models/epoch-099-chan{ch}.pt" for ch in range(3)]
+        # path = 'results_stl7/models/epoch-099.pt'
+        path = 'results_stl9/models/epoch-099.pt'
+        # path = [f"results_stl6/models/epoch-099-chan{ch}.pt" for ch in range(3)]
 
         models = []
         model = None
@@ -234,7 +235,7 @@ if __name__ == "__main__":
             models = [torch.load(p).cpu() for p in path]
             spn_per_channel = True
         else:
-            model = torch.load(path)
+            model = torch.load(path).cpu()
             spn_per_channel = False
 
         show_all = True
@@ -244,7 +245,7 @@ if __name__ == "__main__":
         else:
             batch_size = 256
 
-        train_loader, test_loader = get_stl_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
+        train_loader, test_loader = get_stl_loaders(args.dataset_dir, False, batch_size=batch_size, device=device)
         for i, (image, _) in enumerate(train_loader):
             data, cond = cut_out_center(image.clone())
             if spn_per_channel:

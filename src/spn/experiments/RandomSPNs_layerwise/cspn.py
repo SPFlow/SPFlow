@@ -106,7 +106,8 @@ class CSPN(RatSpn):
         print(f"The feature extraction layer for the CSPN conditional reduce the {int(np.prod(feature_input_dim))} "
               f"inputs (e.g. pixels in an image) down to {feature_dim} features. These are the inputs of the "
               f"MLPs which set the sum and dist params.")
-        sum_layer_sizes = [int(feature_dim * 10 ** (-i)) for i in range(1 + self.config.fc_sum_param_layers)]
+        # sum_layer_sizes = [int(feature_dim * 10 ** (-i)) for i in range(1 + self.config.fc_sum_param_layers)]
+        sum_layer_sizes = [feature_dim for _ in range(1 + self.config.fc_sum_param_layers)]
         sum_layers = []
         for j in range(len(sum_layer_sizes) - 1):
             act = activation if j < len(sum_layer_sizes) - 2 else output_activation
@@ -120,7 +121,8 @@ class CSPN(RatSpn):
                 print(f"Sum layer has {layer.weights.numel()} weights.")
         self.sum_param_heads.append(nn.Linear(sum_layer_sizes[-1], self.root.weights.numel()))
 
-        dist_layer_sizes = [int(feature_dim * 10 ** (-i)) for i in range(1 + self.config.fc_dist_param_layers)]
+        # dist_layer_sizes = [int(feature_dim * 10 ** (-i)) for i in range(1 + self.config.fc_dist_param_layers)]
+        dist_layer_sizes = [feature_dim for _ in range(1 + self.config.fc_dist_param_layers)]
         dist_layers = []
         for j in range(len(dist_layer_sizes) - 1):
             act = activation if j < len(dist_layer_sizes) - 2 else output_activation
