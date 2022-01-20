@@ -98,7 +98,7 @@ def evaluate_model(model, save_dir, device, loader, tag):
     with torch.no_grad():
         for image, label in loader:
             label = F.one_hot(label, 10).float().to(device)
-            image = image.flatten(start_dim=1)
+            image = image.flatten(start_dim=1).to(device)
             log_like.append(model(x=image, condition=label).mean().tolist())
     print("{} set: Average log-likelihood: {:.4f}".format(tag, np.mean(log_like)))
 
