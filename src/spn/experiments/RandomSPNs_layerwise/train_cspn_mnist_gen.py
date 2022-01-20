@@ -90,20 +90,17 @@ def evaluate_model(model, save_dir, device, loader, tag):
         float: Tuple of loss and accuracy.
     """
     model.eval()
-
     log_like = []
+    label = torch.as_tensor(np.arange(10)).repeat_interleave(10)
+    label = F.one_hot(label, 10).float()
+    samples = model.sample(condition=label).view(-1, *img_size[1:])
+    plot_samples(samples, save_dir)
     with torch.no_grad():
-        n = 50
-        for _, label in loader:
-            label = F.one_hot(label, model.config.F_cond[0]).float()
-            sample = model.sample(condition=label)
-            log_like.append(model(x=sample, condition=None).mean().tolist())
-            sample = sample.view(-1, *img_size[1:])
-
-            if n > 0:
-                plot_samples(sample[:n], save_dir)
-                n = 0
-    print("{} set: Average log-likelihood of samples: {:.4f}".format(tag, np.mean(log_like)))
+        for image, label in loader:
+            label = F.one_hot(label, 10).float()
+            image = image.flatten(start_dim=1)
+            log_like.append(model(x=image, condition=label).mean().tolist())
+    print("{} set: Average log-likelihood: {:.4f}".format(tag, np.mean(log_like)))
 
 
 def plot_samples(x: torch.Tensor, path):
@@ -310,8 +307,7 @@ if __name__ == "__main__":
         for batch_index, (image, label) in enumerate(train_loader):
             # Send data to correct device
             image = image.to(device)
-            label = F.one_hot(label, cond_size).float()
-            labal = label.to(device)
+            label = F.one_hot(label, cond_size).float().to(device)
             # plt.imshow(data[0].permute(1, 2, 0))
             # plt.show()
 
