@@ -3,6 +3,7 @@ from typing import Dict, Type
 
 import numpy as np
 import torch
+from torch import distributions as dist
 from dataclasses import dataclass, field
 from torch import nn
 
@@ -13,6 +14,7 @@ from spn.algorithms.layerwise.utils import provide_evidence, SamplingContext
 from spn.experiments.RandomSPNs_layerwise.distributions import IndependentMultivariate, RatNormal, truncated_normal_
 
 from rat_spn import RatSpn, RatSpnConfig
+import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CspnConfig(RatSpnConfig):
     F_cond: tuple = 0
-    nr_conv_layers: int = 1
+    nr_feat_layers: int = 1
     conv_kernel_size: int = 5
     conv_pooling_kernel_size: int = 3
     conv_pooling_stride: int = 3
@@ -42,6 +44,7 @@ class CSPN(RatSpn):
         Args:
             config (CspnConfig): Cspn configuration object.
         """
+        config.first_layer_sum = True  # This must be True so we can calculate entropy
         super().__init__(config=config)
         self.config: CspnConfig = config
         self.dist_std_head = None
@@ -70,7 +73,7 @@ class CSPN(RatSpn):
         self._leaf.base_leaf.stds = placeholder
 
     def create_feat_layers(self, feature_input_dim: tuple):
-        nr_conv_layers = self.config.nr_conv_layers
+        nr_feat_layers = self.config.nr_feat_layers
         conv_kernel = self.config.conv_kernel_size
         pool_kernel = self.config.conv_pooling_kernel_size
         pool_stride = self.config.conv_pooling_stride
@@ -79,11 +82,11 @@ class CSPN(RatSpn):
             f"Don't know how to construct feature extraction layers for {len(feature_dim)} features."
         if len(feature_dim) == 3:
             # feature_dim = (channels, rows, columns)
-            conv_layers = [] if nr_conv_layers > 0 else [nn.Identity()]
-            for j in range(nr_conv_layers):
+            conv_layers = [] if nr_feat_layers > 0 else [nn.Identity()]
+            for j in range(nr_feat_layers):
                 # feature_dim = [int(np.floor((n - (pool_kernel-1) - 1)/pool_stride + 1)) for n in feature_dim]
                 in_channels = feature_dim[0]
-                if j == nr_conv_layers-1:
+                if j == nr_feat_layers-1:
                     out_channels = 1
                 else:
                     out_channels = feature_dim[0]
@@ -94,10 +97,10 @@ class CSPN(RatSpn):
                                 nn.Dropout()]
             self.feat_layers = nn.Sequential(*conv_layers)
         elif len(feature_dim) == 1:
-            conv_layers = [] if nr_conv_layers > 0 else [nn.Identity()]
-            for j in range(nr_conv_layers):
-                conv_layers += [nn.Linear(feature_dim.shape[0], feature_dim.shape[0]), nn.ReLU()]
-            self.feat_layers = nn.Sequential(*conv_layers)
+            feat_layers = [] if nr_feat_layers > 0 else [nn.Identity()]
+            for j in range(nr_feat_layers):
+                feat_layers += [nn.Linear(feature_dim[0], feature_dim[0]), nn.ReLU()]
+            self.feat_layers = nn.Sequential(*feat_layers)
 
         activation = nn.ReLU
         output_activation = nn.Identity
@@ -120,6 +123,7 @@ class CSPN(RatSpn):
                 self.sum_param_heads.append(nn.Linear(sum_layer_sizes[-1], layer.weights.numel()))
                 print(f"Sum layer has {layer.weights.numel()} weights.")
         self.sum_param_heads.append(nn.Linear(sum_layer_sizes[-1], self.root.weights.numel()))
+        print(f"Root sum layer has {self.root.weights.numel()} weights.")
 
         # dist_layer_sizes = [int(feature_dim * 10 ** (-i)) for i in range(1 + self.config.fc_dist_param_layers)]
         dist_layer_sizes = [feature_dim for _ in range(1 + self.config.fc_dist_param_layers)]
@@ -138,10 +142,57 @@ class CSPN(RatSpn):
             self.set_weights(condition)
         return super().forward(x)
 
-    def log_entropy(self, condition: torch.Tensor = None) -> torch.Tensor:
+    def entropy_lb(self, condition=None):
+        """
+            Calculate the entropy lower bound of the first-level mixtures.
+            See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
+        """
+        assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
         if condition is not None:
             self.set_weights(condition)
-        return super().log_entropy()
+        sum_weights: torch.Tensor = self._inner_layers[0].weights
+        N, D, I, S, R = sum_weights.shape
+        # First sum layer after the leaves has weights of dim (N, D, I, S, R)
+        # We the entropy lower bound must be calculated for every sum node, then averaged over the 2**D input features
+
+        # dist weights are of size (N, F, I, R)
+        dist_means: torch.Tensor = self._leaf.base_leaf.means
+        dist_stds: torch.Tensor = self._leaf.base_leaf.stds
+        _, F, _, _ = dist_stds.shape
+
+        leaf_args = self.config.leaf_base_kwargs
+        min_mean = leaf_args['min_mean']
+        max_mean = leaf_args['max_mean']
+        min_sigma = leaf_args['min_sigma']
+        max_sigma = leaf_args['max_sigma']
+
+        sigma_ratio = torch.sigmoid(dist_stds)
+        dist_stds = min_sigma + (max_sigma - min_sigma) * sigma_ratio
+        dist_stds = torch.sqrt(dist_stds)
+        if max_mean:
+            assert min_mean is not None
+            mean_range = max_mean - min_mean
+            dist_means = torch.sigmoid(dist_means) * mean_range + min_mean
+
+        repeated_means = dist_means.repeat(1, 1, I, 1)
+        stds_outer_sum = dist_stds.unsqueeze(2) + dist_stds.unsqueeze(3)
+        stds_outer_sum = stds_outer_sum.view(N, F, I**2, R)
+
+        gauss = dist.Normal(repeated_means, stds_outer_sum)
+        points_to_eval = dist_means.repeat_interleave(I, dim=2)
+        pixel_log_probs = gauss.log_prob(points_to_eval)
+        rv_log_probs = self._leaf.prod(pixel_log_probs)
+
+        # Match sum weights to log probs
+        sum_weights = sum_weights.repeat(1, 1, I, 1, 1)
+
+        # Unsqueeze in output channel dimension so that the log_prob vector of each RV is added to the weights of
+        # the S sum nodes of that RV.
+        rv_log_probs.unsqueeze_(dim=3)
+
+        weighted_log_probs = sum_weights + rv_log_probs
+        print(1)
+
 
     def sample(self, condition: torch.Tensor = None, class_index=None,
                evidence: torch.Tensor = None, is_mpe: bool = False, keep_weights: bool = False):

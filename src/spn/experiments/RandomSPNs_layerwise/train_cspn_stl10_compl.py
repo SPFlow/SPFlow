@@ -158,7 +158,8 @@ if __name__ == "__main__":
     parser.add_argument('--num_dist', '-I', type=int, default=5, help='Number of Gauss dists per pixel.')
     parser.add_argument('--num_sums', '-S', type=int, default=5, help='Number of sums per RV in each sum layer.')
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
-    parser.add_argument('--nr_conv_layers', type=int, default=1, help='Number of conv layers')
+    parser.add_argument('--nr_conv_layers', type=int, default=1,
+                        help='Number of conv layers to apply to conditional image.')
     parser.add_argument('--nr_sum_param_layers', type=int, default=1,
                         help='Number of fully connected hidden layers in the MLP that '
                              'provides the weights for the sum nodes.')
@@ -169,6 +170,7 @@ if __name__ == "__main__":
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     parser.add_argument('--one_spn_per_channel', action='store_true', help='Create one SPN for each color channel.')
     parser.add_argument('--grayscale', action='store_true', help='Convert images to grayscale')
+    parser.add_argument('--sumfirst', action='store_true', help='Make first layer after dists a sum layer.')
     args = parser.parse_args()
 
     assert not args.one_spn_per_channel or not args.grayscale, \
@@ -218,12 +220,13 @@ if __name__ == "__main__":
 
     inspect = args.inspect
     if inspect:
-        def plot_img(image: torch.Tensor, title: str = None):
+        def plot_img(image: torch.Tensor, title: str = None, path=None):
             # Tensor shape N x channels x rows x cols
             tensors = torchvision.utils.make_grid(image, nrow=image.shape[0], padding=1)
             arr = tensors.permute(1, 2, 0).cpu().numpy()
             arr = skimage.img_as_ubyte(arr)
-            # imageio.imwrite(path, arr)
+            imageio.imwrite(path, arr)
+            return
             plt.imshow(arr)
             plt.title(title, fontdict={'fontsize': 10})
             plt.show()
@@ -237,8 +240,9 @@ if __name__ == "__main__":
         # path = 'results_stl_2/models/epoch-029.pt'
         # path = 'results_stl_3/models/epoch-049.pt'
         # path = 'results_stl7/models/epoch-099.pt'
-        path = 'results_stl9/models/epoch-099.pt'
+        path = 'results_stl10/models/epoch-099.pt'
         # path = [f"results_stl6/models/epoch-099-chan{ch}.pt" for ch in range(3)]
+        results_dir = os.path.join(args.results_dir, f"results_stl10")
 
         models = []
         model = None
@@ -256,7 +260,8 @@ if __name__ == "__main__":
         else:
             batch_size = 256
 
-        train_loader, test_loader = get_stl_loaders(args.dataset_dir, False, batch_size=batch_size, device=device)
+        train_loader, test_loader = get_stl_loaders(args.dataset_dir, False, args.grayscale,
+                                                    batch_size=batch_size, device=device)
         for i, (image, _) in enumerate(train_loader):
             data, cond = cut_out_center(image.clone())
             if spn_per_channel:
@@ -309,10 +314,12 @@ if __name__ == "__main__":
                 lls = [[f"{n:.2f}" for n in ll.tolist()] for ll in [data_ll, sample_ll]]
                 title = f"LLs of original center boxes: [{', '.join(lls[0])}]\n" \
                         f"LLs of sampled center boxes: [{', '.join(lls[1])}]"
-                plot_img(glued, title)
+                plot_img(glued, title, path=os.path.join(results_dir, f"inspect{i+1}.png"))
                 print("Set breakpoint here")
 
             print(i)
+            if i > 9:
+                exit()
         exit()
 
     # Construct Cspn from config
@@ -331,9 +338,10 @@ if __name__ == "__main__":
     config.C = 1
     config.dropout = 0.0
     config.leaf_base_class = RatNormal
-    config.leaf_base_kwargs = {}
+    config.leaf_base_kwargs = {'min_sigma': 0.1, 'max_sigma': 1.0, 'min_mean': None, 'max_mean': None}
+    config.first_layer_sum = args.sumfirst
 
-    config.nr_conv_layers = args.nr_conv_layers
+    config.nr_feat_layers = args.nr_conv_layers
     config.conv_kernel_size = 3
     config.conv_pooling_kernel_size = 3
     config.conv_pooling_stride = 3
@@ -341,6 +349,7 @@ if __name__ == "__main__":
     config.fc_dist_param_layers = args.nr_dist_param_layers
 
     print("Using device:", device)
+    print("Config:", config)
     optimizers = None
     models = None
     optimizer = None
@@ -384,6 +393,7 @@ if __name__ == "__main__":
                     running_loss.append(loss.item())
             else:
                 # evaluate_model(model, cut_out_center, insert_center, "test.png", device, train_loader, "Train")
+                model.entropy_lb(cond)
                 optimizer.zero_grad()
                 data = data.reshape(image.shape[0], -1)
                 output: torch.Tensor = model(data, cond)

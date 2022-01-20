@@ -51,6 +51,7 @@ class RatSpnConfig:
     dropout: float = None
     leaf_base_class: Type = None
     leaf_base_kwargs: Dict = None
+    first_layer_sum: bool = True
 
     @property
     def F(self):
@@ -182,14 +183,6 @@ class RatSpn(nn.Module):
 
         return x
 
-    def log_entropy(self):
-        log_ent: torch.Tensor = self._leaf.log_entropy()
-        log_ent = self._forward_layers(log_ent)
-        n, d, c, r = log_ent.shape
-        log_ent = log_ent.view(n, d, c * r, 1)
-        log_ent = self.root(log_ent)
-        return log_ent
-
     def _forward_layers(self, x):
         """
         Forward pass through the inner sum and product layers.
@@ -217,27 +210,27 @@ class RatSpn(nn.Module):
         # Construct leaf
         self._leaf = self._build_input_distribution()
 
-        # First product layer on top of leaf layer
-        prodlayer = CrossProduct(
-            in_features=2 ** self.config.D, in_channels=self.config.I, num_repetitions=self.config.R
-        )
         self._inner_layers = nn.ModuleList()
-        self._inner_layers.append(prodlayer)
+        if not self.config.first_layer_sum:
+            # First product layer on top of leaf layer
+            prodlayer = CrossProduct(
+                in_features=2 ** self.config.D, in_channels=self.config.I, num_repetitions=self.config.R
+            )
+            self._inner_layers.append(prodlayer)
+            sum_in_channels = self.config.I ** 2
+            self.config.D -= 1
+        else:
+            # Modification to the RATSPN: Let first layer be a sum layer
+            sum_in_channels = self.config.I
 
         # Sum and product layers
-        sum_in_channels = self.config.I ** 2
-        for i in np.arange(start=self.config.D - 1, stop=0, step=-1):
+        for i in np.arange(start=self.config.D, stop=0, step=-1):
             # Current in_features
             in_features = 2 ** i
 
             # Sum layer
-            sumlayer = Sum(
-                in_features=in_features,
-                in_channels=sum_in_channels,
-                out_channels=self.config.S,
-                dropout=self.config.dropout,
-                num_repetitions=self.config.R,
-            )
+            sumlayer = Sum(in_features=in_features, in_channels=sum_in_channels, num_repetitions=self.config.R,
+                           out_channels=self.config.S, dropout=self.config.dropout)
             self._inner_layers.append(sumlayer)
 
             # Product layer
