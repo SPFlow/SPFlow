@@ -92,7 +92,7 @@ def evaluate_model(model, save_dir, device, loader, tag):
     model.eval()
     log_like = []
     label = torch.as_tensor(np.arange(10)).repeat_interleave(10)
-    label = F.one_hot(label, 10).float()
+    label = F.one_hot(label, 10).float().to(device)
     samples = model.sample(condition=label).view(-1, *img_size[1:])
     plot_samples(samples, save_dir)
     with torch.no_grad():
