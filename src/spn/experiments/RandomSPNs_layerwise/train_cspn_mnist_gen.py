@@ -280,7 +280,7 @@ if __name__ == "__main__":
     config.I = args.num_dist
     config.S = args.num_sums
     config.C = 1
-    config.dropout = 0.0
+    config.dropout = args.dropout
     config.leaf_base_class = RatNormal
     config.leaf_base_kwargs = {'min_sigma': 0.1, 'max_sigma': 1.0, 'min_mean': 0.0, 'max_mean': 1.0}
     config.first_layer_sum = args.sumfirst
@@ -338,8 +338,8 @@ if __name__ == "__main__":
         print("Train Epoch: {} took {}".format(epoch, t_delta))
         if epoch % sample_interval == (sample_interval-1):
             print("Saving and evaluating model ...")
-            torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}.pt"))
-            save_path = os.path.join(sample_dir, f"epoch-{epoch:03}.png")
+            torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}_{args.exp_name}.pt"))
+            save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
             evaluate_model(model, save_path, device, train_loader, "Train")
             evaluate_model(model, save_path, device, test_loader, "Test")
 
