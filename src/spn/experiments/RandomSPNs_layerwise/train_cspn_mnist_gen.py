@@ -92,7 +92,7 @@ def evaluate_model(model, save_dir, device, loader, tag):
     """
     model.eval()
     log_like = []
-    label = torch.as_tensor(np.arange(10)).repeat_interleave(10)
+    label = torch.as_tensor(np.arange(10)).repeat_interleave(10).to(device)
     if args.ratspn:
         samples = model.sample(class_index=label.tolist())
     else:
