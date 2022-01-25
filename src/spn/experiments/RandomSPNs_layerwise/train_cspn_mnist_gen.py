@@ -160,6 +160,7 @@ if __name__ == "__main__":
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     parser.add_argument('--sumfirst', action='store_true', help='Make first layer after dists a sum layer.')
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
+    parser.add_argument('--adamw', action='store_true', help='Use AdamW optimizer (incorporates weight decay)')
     args = parser.parse_args()
 
     results_dir = os.path.join(args.results_dir, f"results_{args.exp_name}")
@@ -320,7 +321,10 @@ if __name__ == "__main__":
     model = model.to(device)
     model.train()
     print(model)
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    if args.adamw:
+        optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
+    else:
+        optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     lmbda = 1.0
     sample_interval = 1 if args.verbose else 10  # number of epochs
