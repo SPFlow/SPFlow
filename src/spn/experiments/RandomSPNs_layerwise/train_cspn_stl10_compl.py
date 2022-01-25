@@ -225,8 +225,8 @@ if __name__ == "__main__":
             tensors = torchvision.utils.make_grid(image, nrow=image.shape[0], padding=1)
             arr = tensors.permute(1, 2, 0).cpu().numpy()
             arr = skimage.img_as_ubyte(arr)
-            imageio.imwrite(path, arr)
-            return
+            # imageio.imwrite(path, arr)
+            # return
             plt.imshow(arr)
             plt.title(title, fontdict={'fontsize': 10})
             plt.show()
@@ -236,13 +236,10 @@ if __name__ == "__main__":
         low_5_ll = torch.ones(5) * 10e6
         low_5_ll_img = torch.zeros(5, *img_size)
 
-        # path = 'results_stl_1/models/epoch-079.pt'
-        # path = 'results_stl_2/models/epoch-029.pt'
-        # path = 'results_stl_3/models/epoch-049.pt'
-        # path = 'results_stl7/models/epoch-099.pt'
-        path = 'results_stl10/models/epoch-099.pt'
-        # path = [f"results_stl6/models/epoch-099-chan{ch}.pt" for ch in range(3)]
-        results_dir = os.path.join(args.results_dir, f"results_stl10")
+        i = 9
+        base_path = os.path.join('stl_compl_exp', f'results_stl{i}')
+        path = os.path.join(base_path, 'models', 'epoch-099.pt')
+        results_dir = base_path
 
         models = []
         model = None
@@ -250,13 +247,13 @@ if __name__ == "__main__":
             models = [torch.load(p).cpu() for p in path]
             spn_per_channel = True
         else:
-            model = torch.load(path).cpu()
+            model = torch.load(path, map_location=torch.device('cpu'))
             spn_per_channel = False
 
         show_all = True
         find_top_low_LL = False
         if show_all:
-            batch_size = 5
+            batch_size = 1
         else:
             batch_size = 256
 
@@ -264,6 +261,9 @@ if __name__ == "__main__":
                                                     batch_size=batch_size, device=device)
         for i, (image, _) in enumerate(train_loader):
             data, cond = cut_out_center(image.clone())
+            cond = cond.repeat(5, 1, 1, 1)
+            data = data.repeat(5, 1, 1, 1)
+            image = image.repeat(5, 1, 1, 1)
             if spn_per_channel:
                 data = data.flatten(start_dim=2)
                 data_ll = [models[ch](x=data[:, ch], condition=cond[:, [ch]]) for ch in range(len(models))]
@@ -318,8 +318,6 @@ if __name__ == "__main__":
                 print("Set breakpoint here")
 
             print(i)
-            if i > 9:
-                exit()
         exit()
 
     # Construct Cspn from config
