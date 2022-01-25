@@ -1,5 +1,5 @@
 import logging
-from typing import Dict
+from typing import Dict, Tuple
 
 import torch
 from torch import distributions as dist
@@ -54,7 +54,7 @@ class RatNormal(Leaf):
         self.min_mean = check_valid(min_mean, float, upper_bound=max_mean, allow_none=True)
         self.max_mean = check_valid(max_mean, float, min_mean, allow_none=True)
 
-    def _get_base_distribution(self) -> torch.distributions.Distribution:
+    def bounded_dist_params(self) -> Tuple[torch.Tensor, torch.Tensor]:
         if self.min_sigma < self.max_sigma:
             sigma_ratio = torch.sigmoid(self.stds)
             sigma = self.min_sigma + (self.max_sigma - self.min_sigma) * sigma_ratio
@@ -67,6 +67,10 @@ class RatNormal(Leaf):
             mean_range = self.max_mean - self.min_mean
             means = torch.sigmoid(self.means) * mean_range + self.min_mean
 
+        return means, sigma
+
+    def _get_base_distribution(self) -> torch.distributions.Distribution:
+        means, sigma = self.bounded_dist_params()
         gauss = dist.Normal(means, torch.sqrt(sigma))
         return gauss
 
