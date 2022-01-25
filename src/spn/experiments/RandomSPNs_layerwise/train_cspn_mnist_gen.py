@@ -333,6 +333,7 @@ if __name__ == "__main__":
         cond = None
         for batch_index, (image, label) in enumerate(train_loader):
             # Send data to correct device
+            label = label.to(device)
             image = image.to(device)
             # plt.imshow(data[0].permute(1, 2, 0))
             # plt.show()
