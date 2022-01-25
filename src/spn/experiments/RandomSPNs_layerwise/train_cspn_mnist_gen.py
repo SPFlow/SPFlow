@@ -77,7 +77,24 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size):
     return train_loader, test_loader
 
 
-def evaluate_model(model, save_dir, device, loader, tag):
+def evaluate_sampling(model, save_dir, device):
+    model.eval()
+    log_like = []
+    label = torch.as_tensor(np.arange(10)).repeat_interleave(10).to(device)
+    with torch.no_grad():
+        if args.ratspn:
+            samples = model.sample(class_index=label.tolist())
+            log_like = np.nan
+        else:
+            label = F.one_hot(label, 10).float().to(device)
+            samples = model.sample(condition=label)
+            log_like.append(model(x=samples, condition=label).mean().tolist())
+        samples = samples.view(-1, *img_size[1:])
+        plot_samples(samples, save_dir)
+    print("Samples: Average log-likelihood: {:.4f}".format(np.mean(log_like)))
+
+
+def evaluate_model(model, device, loader, tag):
     """
     Description for method evaluate_model.
 
@@ -92,14 +109,6 @@ def evaluate_model(model, save_dir, device, loader, tag):
     """
     model.eval()
     log_like = []
-    label = torch.as_tensor(np.arange(10)).repeat_interleave(10).to(device)
-    if args.ratspn:
-        samples = model.sample(class_index=label.tolist())
-    else:
-        label = F.one_hot(label, 10).float().to(device)
-        samples = model.sample(condition=label)
-    samples = samples.view(-1, *img_size[1:])
-    plot_samples(samples, save_dir)
     with torch.no_grad():
         for image, label in loader:
             image = image.flatten(start_dim=1).to(device)
@@ -160,6 +169,8 @@ if __name__ == "__main__":
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     parser.add_argument('--sumfirst', action='store_true', help='Make first layer after dists a sum layer.')
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
+    parser.add_argument('--sum_weight_decay', type=float, default=0.0,
+                        help='Weight decay factor for sum node weights (1e-2 is good).')
     parser.add_argument('--adamw', action='store_true', help='Use AdamW optimizer (incorporates weight decay)')
     args = parser.parse_args()
 
@@ -332,6 +343,8 @@ if __name__ == "__main__":
         if epoch > 20:
             lmbda = 0.5
         t_start = time.time()
+        running_ll_loss = []
+        running_wd_loss = []  # weight decay loss
         running_loss = []
         running_ent = []
         cond = None
@@ -347,18 +360,25 @@ if __name__ == "__main__":
             # model.entropy_lb(cond)
             optimizer.zero_grad()
             data = image.reshape(image.shape[0], -1)
+            wd_loss = torch.zeros(1)
             if args.ratspn:
                 output: torch.Tensor = model(x=data)
                 loss_ce = F.cross_entropy(output, label)
-                loss_nll = -output.mean()
-                loss = (1 - lmbda) * loss_nll + lmbda * loss_ce
+                ll_loss = -output.mean()
+                loss = (1 - lmbda) * ll_loss + lmbda * loss_ce
             else:
                 label = F.one_hot(label, cond_size).float().to(device)
                 output: torch.Tensor = model(x=data, condition=label)
-                loss = -output.mean()
+                ll_loss = -output.mean()
+                if args.sum_weight_decay > 0.0:
+                    inner_sums, root_sum = model.squared_weights(reduction='mean')
+                    wd_loss = args.sum_weight_decay * (torch.as_tensor(inner_sums).mean() + 2 * root_sum)
+                loss = ll_loss + wd_loss
 
             loss.backward()
             optimizer.step()
+            running_ll_loss.append(ll_loss.item())
+            running_wd_loss.append(wd_loss.item())
             running_loss.append(loss.item())
 
             # with torch.no_grad():
@@ -369,17 +389,19 @@ if __name__ == "__main__":
             if args.verbose:
                 batch_delta = time_delta((time.time()-t_start)/(batch_index+1))
                 print(f"Epoch {epoch} ({100.0 * batch_index / len(train_loader):.1f}%) "
-                      f"Avg. loss: {np.mean(running_loss):.2f} - Batch {batch_index} - "
+                      f"Avg. total loss: {np.mean(running_loss):.2f} - "
+                      f"Avg. weight decay loss: {np.mean(running_wd_loss):.4f} - Batch {batch_index} - "
                       f"Avg. batch time {batch_delta}",
                       end="\r")
 
         t_delta = time_delta(time.time()-t_start)
-        print("Train Epoch: {} took {}".format(epoch, t_delta))
+        print(f"Train Epoch: {epoch} took {t_delta} - Avg. weight decay loss: {np.mean(running_wd_loss):.2f}")
         if epoch % sample_interval == (sample_interval-1):
             print("Saving and evaluating model ...")
             torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}_{args.exp_name}.pt"))
             save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
-            evaluate_model(model, save_path, device, train_loader, "Train")
-            evaluate_model(model, save_path, device, test_loader, "Test")
+            evaluate_sampling(model, save_path, device)
+            evaluate_model(model, device, train_loader, "Train")
+            evaluate_model(model, device, test_loader, "Test")
 
 

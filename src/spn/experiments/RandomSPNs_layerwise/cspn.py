@@ -4,6 +4,7 @@ from typing import Dict, Type
 import numpy as np
 import torch
 from torch import distributions as dist
+import torch.nn.functional as F
 from dataclasses import dataclass, field
 from torch import nn
 
@@ -210,6 +211,24 @@ class CSPN(RatSpn):
 
         batch_size = self.root.weights.shape[0]
         return super().sample(batch_size, class_index, evidence, is_mpe)
+
+    def squared_weights(self, reduction='mean'):
+        inner_sum_weight_decay_losses = []
+        for layer in self._inner_layers:
+            if isinstance(layer, Sum):
+                # weights [N x D x IC x OC x R]
+                squared_weights = layer.weights ** 2
+                if reduction == 'mean':
+                    squared_weights = squared_weights.mean()
+                elif reduction == 'sum':
+                    squared_weights = squared_weights.sum()
+                inner_sum_weight_decay_losses.append(squared_weights)
+        root_sum_weight_decay_loss = self.root.weights ** 2
+        if reduction == 'mean':
+            root_sum_weight_decay_loss = root_sum_weight_decay_loss.mean()
+        elif reduction == 'sum':
+            root_sum_weight_decay_loss = root_sum_weight_decay_loss.sum()
+        return inner_sum_weight_decay_losses, root_sum_weight_decay_loss
 
     def set_weights(self, feat_inp):
         batch_size = feat_inp.shape[0]
