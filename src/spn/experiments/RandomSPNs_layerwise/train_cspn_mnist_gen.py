@@ -2,6 +2,7 @@ import os
 import random
 import sys
 import time
+import csv
 
 import imageio
 import numpy as np
@@ -39,11 +40,12 @@ def time_delta(t_delta: float) -> str:
     Returns:
         Human readable timestring.
     """
+    if t_delta is None:
+        return ""
     hours = round(t_delta // 3600)
     minutes = round(t_delta // 60 % 60)
     seconds = round(t_delta % 60)
-    millisecs = round(t_delta % 1 * 1000)
-    return f"{hours} hours, {minutes} minutes, {seconds} seconds, {millisecs} milliseconds"
+    return f"{hours}h, {minutes}min, {seconds}s"
 
 
 def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size):
@@ -91,7 +93,7 @@ def evaluate_sampling(model, save_dir, device):
             log_like.append(model(x=samples, condition=label).mean().tolist())
         samples = samples.view(-1, *img_size[1:])
         plot_samples(samples, save_dir)
-    print("Samples: Average log-likelihood: {:.4f}".format(np.mean(log_like)))
+    print(f"Samples: Average log-likelihood: {np.mean(log_like):.4f}")
 
 
 def evaluate_model(model, device, loader, tag):
@@ -117,7 +119,7 @@ def evaluate_model(model, device, loader, tag):
             else:
                 label = F.one_hot(label, 10).float().to(device)
                 log_like.append(model(x=image, condition=label).mean().tolist())
-    print("{} set: Average log-likelihood: {:.4f}".format(tag, np.mean(log_like)))
+    print(f"{tag} set: Average log-likelihood: {np.mean(log_like):.4f}")
 
 
 def plot_samples(x: torch.Tensor, path):
@@ -136,6 +138,61 @@ def plot_samples(x: torch.Tensor, path):
     arr = tensors.permute(1, 2, 0).numpy()
     arr = skimage.img_as_ubyte(arr)
     imageio.imwrite(path, arr)
+
+
+class CsvLogger(dict):
+    def __init__(self, path):
+        super().__init__()
+        self.path = path
+        self.other_keys = ['epoch', 'time']
+        self.keys_to_avg = ['ll_loss', 'ent_loss', 'gmm_ent', 'inner_ent', 'norm_inner_ent',
+                            'root_ent', 'norm_root_ent', 'loss']
+        self.no_log_dict = {'batch': None}
+        self.reset()
+        with open(self.path, 'w') as f:
+            w = csv.DictWriter(f, self.keys())
+            w.writeheader()
+
+    def add_to_avg_keys(self, **kwargs):
+        for k, v in kwargs.items():
+            assert k in self.keys_to_avg, f"{k} is not in keys_to_avg!"
+            if isinstance(v, torch.Tensor):
+                v = v.item()
+            self[k].append(v)
+
+    def reset(self, epoch: int = None):
+        self.update({k: None for k in self.other_keys})
+        self.update({k: [] for k in self.keys_to_avg})
+        self.no_log_dict.update({k: None for k in self.no_log_dict.keys()})
+        if epoch is not None:
+            self['epoch'] = epoch
+
+    def average(self):
+        self.update({k: np.around(np.mean(self[k]), 2) for k in self.keys_to_avg})
+
+    def write(self):
+        with open(self.path, 'a') as f:
+            w = csv.DictWriter(f, self.keys())
+            w.writerow(self)
+
+    def __str__(self):
+        if self.no_log_dict['batch'] is not None:
+            batch_str = f" @ batch {self.no_log_dict['batch']}"
+        else:
+            batch_str = ""
+        return f"Train Epoch: {self['epoch']} took {time_delta(self['time'])}{batch_str} - NLL loss: {np.mean(self['ll_loss']):.2f} - " \
+               f"Entropy of GMMs: {np.mean(self['gmm_ent']):.2f} - " \
+               f"Entropy of inner sums: {np.mean(self['inner_ent']):.2f}|{np.mean(self['norm_inner_ent']):.2f}% - " \
+               f"Entropy of root sum: {np.mean(self['root_ent']):.2f}|{np.mean(self['norm_root_ent']):.2f}% - " \
+               f"Entropy loss: {np.mean(self['ent_loss']):.2f}"
+
+    def __setitem__(self, key, value):
+        if isinstance(value, torch.Tensor):
+            value = value.item()
+        if key in self.no_log_dict.keys():
+            self.no_log_dict[key] = value
+        else:
+            super().__setitem__(key, value)
 
 
 if __name__ == "__main__":
@@ -167,10 +224,9 @@ if __name__ == "__main__":
                              'provides the params for the dist nodes')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
-    parser.add_argument('--sumfirst', action='store_true', help='Make first layer after dists a sum layer.')
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
-    parser.add_argument('--sum_weight_decay', type=float, default=0.0,
-                        help='Weight decay factor for sum node weights (1e-2 is good).')
+    parser.add_argument('--entropy_factor', '-alpha', type=float, default=0.0,
+                        help='Default: 0.0 - Factor for the entropy loss. If 0.0 entropy isn\'t calculated')
     parser.add_argument('--adamw', action='store_true', help='Use AdamW optimizer (incorporates weight decay)')
     args = parser.parse_args()
 
@@ -319,7 +375,6 @@ if __name__ == "__main__":
     config.dropout = args.dropout
     config.leaf_base_class = RatNormal
     config.leaf_base_kwargs = {'min_sigma': 0.1, 'max_sigma': 1.0, 'min_mean': 0.0, 'max_mean': 1.0}
-    config.first_layer_sum = args.sumfirst
 
     print("Using device:", device)
     print("Config:", config)
@@ -337,17 +392,16 @@ if __name__ == "__main__":
     else:
         optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
+    csv_log = os.path.join(results_dir, f"log_{args.exp_name}.csv")
+    info = CsvLogger(csv_log)
+
     lmbda = 1.0
     sample_interval = 1 if args.verbose else 10  # number of epochs
     for epoch in range(args.epochs):
         if epoch > 20:
             lmbda = 0.5
         t_start = time.time()
-        running_ll_loss = []
-        running_wd_loss = []  # weight decay loss
-        running_loss = []
-        running_ent = []
-        cond = None
+        info.reset(epoch)
         for batch_index, (image, label) in enumerate(train_loader):
             # Send data to correct device
             label = label.to(device)
@@ -357,10 +411,9 @@ if __name__ == "__main__":
 
             # Inference
             # evaluate_model(model, cut_out_center, insert_center, "test.png", device, train_loader, "Train")
-            # model.entropy_lb(cond)
             optimizer.zero_grad()
             data = image.reshape(image.shape[0], -1)
-            wd_loss = torch.zeros(1)
+            ent_loss = leaf_gmm_ent_lb = inner_ents = norm_inner_ents = root_ent = norm_root_ent = torch.zeros(1)
             if args.ratspn:
                 output: torch.Tensor = model(x=data)
                 loss_ce = F.cross_entropy(output, label)
@@ -370,32 +423,29 @@ if __name__ == "__main__":
                 label = F.one_hot(label, cond_size).float().to(device)
                 output: torch.Tensor = model(x=data, condition=label)
                 ll_loss = -output.mean()
-                if args.sum_weight_decay > 0.0:
-                    inner_sums, root_sum = model.squared_weights(reduction='mean')
-                    wd_loss = args.sum_weight_decay * (torch.as_tensor(inner_sums).mean() + 2 * root_sum)
-                loss = ll_loss + wd_loss
+                leaf_gmm_ent_lb, inner_ents, norm_inner_ents, root_ent, norm_root_ent = model.entropy_lb(condition=None, reduction='mean')
+                if args.entropy_factor > 0.0:
+                    ent_loss = - leaf_gmm_ent_lb * args.entropy_factor
+                loss = ll_loss + ent_loss
 
             loss.backward()
             optimizer.step()
-            running_ll_loss.append(ll_loss.item())
-            running_wd_loss.append(wd_loss.item())
-            running_loss.append(loss.item())
-
-            # with torch.no_grad():
-            #     ent = model.log_entropy(condition=None).mean()
-            #     running_ent.append(ent.item())
+            info.add_to_avg_keys(ll_loss=ll_loss, ent_loss=ent_loss, gmm_ent=leaf_gmm_ent_lb, inner_ent=inner_ents,
+                                 norm_inner_ent=norm_inner_ents, root_ent=root_ent, norm_root_ent=norm_root_ent,
+                                 loss=loss)
 
             # Log stuff
             if args.verbose:
-                batch_delta = time_delta((time.time()-t_start)/(batch_index+1))
-                print(f"Epoch {epoch} ({100.0 * batch_index / len(train_loader):.1f}%) "
-                      f"Avg. total loss: {np.mean(running_loss):.2f} - "
-                      f"Avg. weight decay loss: {np.mean(running_wd_loss):.4f} - Batch {batch_index} - "
-                      f"Avg. batch time {batch_delta}",
-                      end="\r")
+                info['time'] = time.time()-t_start
+                info['batch'] = batch_index
+                print(info, end="\r")
 
-        t_delta = time_delta(time.time()-t_start)
-        print(f"Train Epoch: {epoch} took {t_delta} - Avg. weight decay loss: {np.mean(running_wd_loss):.2f}")
+        t_delta = np.around(time.time()-t_start, 2)
+        info.average()
+        info['time'] = t_delta
+        info['batch'] = None
+        info.write()
+        print(info)
         if epoch % sample_interval == (sample_interval-1):
             print("Saving and evaluating model ...")
             torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}_{args.exp_name}.pt"))

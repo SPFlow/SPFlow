@@ -3,7 +3,6 @@ from typing import Dict, Type
 
 import numpy as np
 import torch
-from torch import distributions as dist
 import torch.nn.functional as F
 from dataclasses import dataclass, field
 from torch import nn
@@ -143,7 +142,7 @@ class CSPN(RatSpn):
             self.set_weights(condition)
         return super().forward(x)
 
-    def entropy_lb(self, condition=None):
+    def entropy_lb(self, condition=None, reduction='mean'):
         """
             Calculate the entropy lower bound of the first-level mixtures.
             See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
@@ -151,49 +150,7 @@ class CSPN(RatSpn):
         assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
         if condition is not None:
             self.set_weights(condition)
-        sum_weights: torch.Tensor = self._inner_layers[0].weights
-        N, D, I, S, R = sum_weights.shape
-        # First sum layer after the leaves has weights of dim (N, D, I, S, R)
-        # We the entropy lower bound must be calculated for every sum node, then averaged over the 2**D input features
-
-        # dist weights are of size (N, F, I, R)
-        dist_means: torch.Tensor = self._leaf.base_leaf.means
-        dist_stds: torch.Tensor = self._leaf.base_leaf.stds
-        _, F, _, _ = dist_stds.shape
-
-        leaf_args = self.config.leaf_base_kwargs
-        min_mean = leaf_args['min_mean']
-        max_mean = leaf_args['max_mean']
-        min_sigma = leaf_args['min_sigma']
-        max_sigma = leaf_args['max_sigma']
-
-        sigma_ratio = torch.sigmoid(dist_stds)
-        dist_stds = min_sigma + (max_sigma - min_sigma) * sigma_ratio
-        dist_stds = torch.sqrt(dist_stds)
-        if max_mean:
-            assert min_mean is not None
-            mean_range = max_mean - min_mean
-            dist_means = torch.sigmoid(dist_means) * mean_range + min_mean
-
-        repeated_means = dist_means.repeat(1, 1, I, 1)
-        stds_outer_sum = dist_stds.unsqueeze(2) + dist_stds.unsqueeze(3)
-        stds_outer_sum = stds_outer_sum.view(N, F, I**2, R)
-
-        gauss = dist.Normal(repeated_means, stds_outer_sum)
-        points_to_eval = dist_means.repeat_interleave(I, dim=2)
-        pixel_log_probs = gauss.log_prob(points_to_eval)
-        rv_log_probs = self._leaf.prod(pixel_log_probs)
-
-        # Match sum weights to log probs
-        sum_weights = sum_weights.repeat(1, 1, I, 1, 1)
-
-        # Unsqueeze in output channel dimension so that the log_prob vector of each RV is added to the weights of
-        # the S sum nodes of that RV.
-        rv_log_probs.unsqueeze_(dim=3)
-
-        weighted_log_probs = sum_weights + rv_log_probs
-        print(1)
-
+        return super().entropy_lb(reduction)
 
     def sample(self, condition: torch.Tensor = None, class_index=None,
                evidence: torch.Tensor = None, is_mpe: bool = False, keep_weights: bool = False):

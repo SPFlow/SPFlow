@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from dataclasses import dataclass
 from torch import nn
+from torch import distributions as dist
 
 from spn.algorithms.layerwise.distributions import Leaf
 from spn.algorithms.layerwise.layers import CrossProduct, Sum
@@ -348,7 +349,6 @@ class RatSpn(nn.Module):
 
             # Sample from RatSpn root layer: Results are indices into the stacked output channels of all repetitions
             ctx.repetition_indices = torch.zeros(n, dtype=int, device=self.__device)
-            # TODO ctx.is_root flag is False here!
             ctx = self.root.sample(context=ctx)
 
             # Indexes will now point to the stacked channels of all repetitions (R * S^2 (if D > 1)
@@ -358,7 +358,6 @@ class RatSpn(nn.Module):
             ctx.repetition_indices = torch.div(ctx.parent_indices, root_in_channels, rounding_mode='trunc').squeeze(1)
             # Shift indices
             ctx.parent_indices = ctx.parent_indices % root_in_channels
-
             # Now each sample in `indices` belongs to one repetition, index in `repetition_indices`
 
             # Continue at layers
@@ -385,3 +384,75 @@ class RatSpn(nn.Module):
                 return evidence
             else:
                 return samples
+
+    def entropy_lb(self, reduction='mean'):
+        """
+            Calculate the entropy lower bound of the first-level mixtures.
+            See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
+        """
+        assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
+        log_gmm_weights: torch.Tensor = self._inner_layers[0].weights
+        # Normalize sum weights in log space
+        log_gmm_weights = torch.log_softmax(log_gmm_weights, dim=2)
+        N, D, I, S, R = log_gmm_weights.shape
+        # First sum layer after the leaves has weights of dim (N, D, I, S, R)
+        # The entropy lower bound must be calculated for every sum node
+
+        # bounded mean and variance
+        # dist weights are of size (N, F, I, R)
+        means, sigma = self._leaf.base_leaf.bounded_dist_params()
+        _, F, _, _ = means.shape
+
+        repeated_means = means.repeat(1, 1, I, 1)
+        stds_outer_sum = sigma.unsqueeze(2) + sigma.unsqueeze(3)
+        stds_outer_sum = stds_outer_sum.view(N, F, I**2, R)
+        gauss = dist.Normal(repeated_means, stds_outer_sum)
+
+        means_to_eval = means.repeat_interleave(I, dim=2)
+        component_log_probs = gauss.log_prob(means_to_eval)
+        log_probs = self._leaf.prod(component_log_probs)
+
+        # Match sum weights to log probs
+        w_j = log_gmm_weights.repeat(1, 1, I, 1, 1)
+        # now N x D x I^2 x S x R
+
+        # Unsqueeze in output channel dimension so that the log_prob vector of each RV is added to the weights of
+        # the S sum nodes of that RV.
+        log_probs.unsqueeze_(dim=3)
+
+        weighted_log_probs = w_j + log_probs
+        lb_log_term = torch.logsumexp(weighted_log_probs.view(N, D, I, I, S, R), dim=2)
+        # lb_log_term is now N x D x I x S x R, the same shape as log_gmm_weights
+
+        gmm_ent_lb = -(log_gmm_weights.exp() * lb_log_term).sum(dim=2)
+
+        inner_sum_ent = []
+        norm_inner_sum_ent = []
+        for i in range(2, len(self._inner_layers)):
+            layer = self._inner_layers[i]
+            if isinstance(layer, Sum):
+                log_sum_weights: torch.Tensor = torch.log_softmax(layer.weights, dim=2)
+                nr_cat = log_sum_weights.shape[2]
+                max_categ_ent = -np.log(1/nr_cat)
+                categ_ent = -(log_sum_weights.exp() * log_sum_weights).sum(dim=2)
+                norm_categ_ent = categ_ent / max_categ_ent
+                if reduction == 'mean':
+                    categ_ent = categ_ent.mean()
+                    norm_categ_ent = norm_categ_ent.mean()
+                inner_sum_ent.append(categ_ent.unsqueeze(0))
+                norm_inner_sum_ent.append(norm_categ_ent.unsqueeze(0))
+        inner_sum_ent = torch.cat(inner_sum_ent, dim=0)
+        norm_inner_sum_ent = torch.cat(norm_inner_sum_ent, dim=0)
+        log_root_weights = torch.log_softmax(self.root.weights, dim=2)
+        nr_cat = log_root_weights.shape[2]
+        max_categ_ent = -np.log(1 / nr_cat)
+        root_categ_ent = -(log_root_weights.exp() * log_root_weights).sum(dim=2)
+        norm_root_categ_ent = root_categ_ent / max_categ_ent
+        if reduction == 'mean':
+            gmm_ent_lb = gmm_ent_lb.mean()
+            inner_sum_ent = inner_sum_ent.mean()
+            norm_inner_sum_ent = norm_inner_sum_ent.mean()
+            root_categ_ent = root_categ_ent.mean()
+            norm_root_categ_ent = norm_root_categ_ent.mean()
+
+        return gmm_ent_lb, inner_sum_ent, norm_inner_sum_ent, root_categ_ent, norm_root_categ_ent
