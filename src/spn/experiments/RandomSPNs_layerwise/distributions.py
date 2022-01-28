@@ -122,6 +122,11 @@ class IndependentMultivariate(Leaf):
         if isinstance(self.base_leaf, RatNormal):
             truncated_normal_(self.base_leaf.stds, std=0.5)
 
+    def pad_input(self, x: torch.Tensor):
+        if self._pad:
+            x = F.pad(x, pad=[0, 0, 0, 0, 0, self._pad], mode="constant", value=0.0)
+        return x
+
     def forward(self, x: torch.Tensor):
         # Pass through base leaf
         x = self.base_leaf(x)

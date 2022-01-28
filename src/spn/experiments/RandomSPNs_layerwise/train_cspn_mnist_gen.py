@@ -213,20 +213,27 @@ if __name__ == "__main__":
     parser.add_argument('--num_dist', '-I', type=int, default=5, help='Number of Gauss dists per pixel.')
     parser.add_argument('--num_sums', '-S', type=int, default=5, help='Number of sums per RV in each sum layer.')
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
-    parser.add_argument('--nr_feat_layers', type=int, default=1, help='Number of fully connected layers that take the'
+    parser.add_argument('--nr_feat_layers', type=int, default=2, help='Number of fully connected layers that take the'
                                                                       'labels as input and have the sum_param_layers'
                                                                       'and dist_param_layers as heads.')
-    parser.add_argument('--nr_sum_param_layers', type=int, default=1,
+    parser.add_argument('--nr_sum_param_layers', type=int, default=2,
                         help='Number of fully connected hidden layers in the MLP that '
                              'provides the weights for the sum nodes.')
-    parser.add_argument('--nr_dist_param_layers', type=int, default=1,
+    parser.add_argument('--nr_dist_param_layers', type=int, default=2,
                         help='Number of fully connected hidden layers in the MLP that '
                              'provides the params for the dist nodes')
+    parser.add_argument('--save_interval', type=int, default=50, help='Epoch interval to save model')
+    parser.add_argument('--eval_interval', type=int, default=10, help='Epoch interval to evaluate model')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
-    parser.add_argument('--entropy_factor', '-alpha', type=float, default=0.0,
-                        help='Default: 0.0 - Factor for the entropy loss. If 0.0 entropy isn\'t calculated')
+    parser.add_argument('--no_ent', action='store_true', help='Don\'t calculate entropy.')
+    parser.add_argument('--gmm_ent_factor', '-alpha', type=float, default=0.0,
+                        help='Factor for the entropy loss of the Gaussian mixtures at the leaves.')
+    parser.add_argument('--inner_sum_ent_factor', '-beta', type=float, default=0.0,
+                        help='Factor for the entropy loss of the other sums in the inner layers.')
+    parser.add_argument('--root_sum_ent_factor', '-gamma', type=float, default=0.0,
+                        help='Factor for the entropy loss of the root sum.')
     parser.add_argument('--adamw', action='store_true', help='Use AdamW optimizer (incorporates weight decay)')
     args = parser.parse_args()
 
@@ -257,23 +264,25 @@ if __name__ == "__main__":
 
     inspect = args.inspect
     if inspect:
-        i = 10
-        base_path = os.path.join('mnist_gen_exp', f'results_mnistgen{i}')
-        path = os.path.join(base_path, 'models', 'epoch-099.pt')
+        i = 12
+        epoch = 999
+        exp_name = f"mnistgen{i}"
+        base_path = os.path.join('mnist_gen_exp', f"results_{exp_name}")
+        model_name = f"epoch-{epoch}_{exp_name}"
+        path = os.path.join(base_path, 'models', f"{model_name}.pt")
         model = torch.load(path, map_location=torch.device('cpu'))
 
         exp = 1
         if exp == 1:
-            results_dir = os.path.join(base_path, 'override_root_sum_sample_choices')
+            results_dir = os.path.join(base_path, f'all_root_in_channels_{model_name}')
             if not os.path.exists(results_dir):
                 os.makedirs(results_dir)
             for d in range(10):
                 if not os.path.exists(os.path.join(results_dir, f'cond_{d}')):
                     os.makedirs(os.path.join(results_dir, f'cond_{d}'))
-            for d in range(10):
                 cond = torch.ones(model.config.R * model.config.S**2).long() * d
                 cond = F.one_hot(cond, cond_size).float()
-                sample = model.sample(condition=cond)
+                sample = model.sample(condition=cond, override_root=True)
                 sample[sample < 0.0] = 0.0
                 sample[sample > 1.0] = 1.0
                 # sample_ll = model(x=sample, condition=None).flatten()
@@ -396,7 +405,8 @@ if __name__ == "__main__":
     info = CsvLogger(csv_log)
 
     lmbda = 1.0
-    sample_interval = 1 if args.verbose else 10  # number of epochs
+    sample_interval = 1 if args.verbose else args.eval_interval  # number of epochs
+    save_interval = 1 if args.verbose else args.save_interval  # number of epochs
     for epoch in range(args.epochs):
         if epoch > 20:
             lmbda = 0.5
@@ -423,9 +433,12 @@ if __name__ == "__main__":
                 label = F.one_hot(label, cond_size).float().to(device)
                 output: torch.Tensor = model(x=data, condition=label)
                 ll_loss = -output.mean()
-                leaf_gmm_ent_lb, inner_ents, norm_inner_ents, root_ent, norm_root_ent = model.entropy_lb(condition=None, reduction='mean')
-                if args.entropy_factor > 0.0:
-                    ent_loss = - leaf_gmm_ent_lb * args.entropy_factor
+                if not args.no_ent:
+                    leaf_gmm_ent_lb = model.gmm_entropy_lb(reduction='mean')
+                    inner_ents, norm_inner_ents, root_ent, norm_root_ent = model.sum_node_entropies(reduction='mean')
+                    ent_mix = leaf_gmm_ent_lb * args.gmm_ent_factor + args.inner_sum_ent_factor * norm_inner_ents + \
+                              args.root_sum_ent_factor * norm_root_ent
+                    ent_loss = -ent_mix
                 loss = ll_loss + ent_loss
 
             loss.backward()
@@ -438,7 +451,8 @@ if __name__ == "__main__":
             if args.verbose:
                 info['time'] = time.time()-t_start
                 info['batch'] = batch_index
-                print(info, end="\r")
+                print(info)
+                # print(info, end="\r")
 
         t_delta = np.around(time.time()-t_start, 2)
         info.average()
@@ -446,9 +460,12 @@ if __name__ == "__main__":
         info['batch'] = None
         info.write()
         print(info)
-        if epoch % sample_interval == (sample_interval-1):
-            print("Saving and evaluating model ...")
+        if epoch % save_interval == (save_interval-1):
+            print("Saving model ...")
             torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}_{args.exp_name}.pt"))
+
+        if epoch % sample_interval == (sample_interval-1):
+            print("Evaluating model ...")
             save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
             evaluate_sampling(model, save_path, device)
             evaluate_model(model, device, train_loader, "Train")

@@ -142,7 +142,7 @@ class CSPN(RatSpn):
             self.set_weights(condition)
         return super().forward(x)
 
-    def entropy_lb(self, condition=None, reduction='mean'):
+    def gmm_entropy_lb(self, condition=None, reduction='mean'):
         """
             Calculate the entropy lower bound of the first-level mixtures.
             See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
@@ -150,10 +150,18 @@ class CSPN(RatSpn):
         assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
         if condition is not None:
             self.set_weights(condition)
-        return super().entropy_lb(reduction)
+        return super().gmm_entropy_lb(reduction)
+
+    def sum_node_entropies(self, condition=None, reduction='mean'):
+        """
+            Calculate the entropies of the hidden categorical random variables in the sum nodes
+        """
+        if condition is not None:
+            self.set_weights(condition)
+        return super().sum_node_entropies(reduction)
 
     def sample(self, condition: torch.Tensor = None, class_index=None,
-               evidence: torch.Tensor = None, is_mpe: bool = False, keep_weights: bool = False):
+               evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
         """
         Sample from the random variable encoded by the CSPN.
 
@@ -167,7 +175,7 @@ class CSPN(RatSpn):
         # TODO add assert to check dimension of evidence, if given.
 
         batch_size = self.root.weights.shape[0]
-        return super().sample(batch_size, class_index, evidence, is_mpe)
+        return super().sample(batch_size, class_index, evidence, is_mpe, **kwargs)
 
     def squared_weights(self, reduction='mean'):
         inner_sum_weight_decay_losses = []

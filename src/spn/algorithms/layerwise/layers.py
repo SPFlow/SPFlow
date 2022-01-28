@@ -176,8 +176,8 @@ class Sum(AbstractLayer):
                 #     tmp[i, :, :] = weights[
                 #         i, range(self.in_features), :, context.parent_indices[i], context.repetition_indices[i]]
                 selected_rep = weights[range(n), :, :, :, context.repetition_indices]
-                exp_par = context.parent_indices.unsqueeze(-1).expand(-1, -1, ic).unsqueeze(-1)
-                selected_parent = selected_rep.gather(dim=-1, index=exp_par).squeeze(-1)
+                parent_indices = context.parent_indices.unsqueeze(-1).expand(-1, -1, ic).unsqueeze(-1)
+                selected_parent = selected_rep.gather(dim=-1, index=parent_indices).squeeze(-1)
                 tmp = selected_parent
             else:
                 for i in range(n):

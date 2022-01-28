@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, Type
+import math
 
 import numpy as np
 import torch
@@ -293,7 +294,7 @@ class RatSpn(nn.Module):
         """
         return self.sample(evidence=evidence, is_mpe=True)
 
-    def sample(self, n: int = None, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False):
+    def sample(self, n: int = None, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
         """
         Sample from the distribution represented by this SPN.
 
@@ -396,7 +397,7 @@ class RatSpn(nn.Module):
             else:
                 return samples
 
-    def entropy_lb(self, reduction='mean'):
+    def gmm_entropy_lb(self, reduction='mean'):
         """
             Calculate the entropy lower bound of the first-level mixtures.
             See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
@@ -417,11 +418,11 @@ class RatSpn(nn.Module):
         repeated_means = means.repeat(1, 1, I, 1)
         stds_outer_sum = sigma.unsqueeze(2) + sigma.unsqueeze(3)
         stds_outer_sum = stds_outer_sum.view(N, F, I**2, R)
-        gauss = dist.Normal(repeated_means, stds_outer_sum)
-
         means_to_eval = means.repeat_interleave(I, dim=2)
-        component_log_probs = gauss.log_prob(means_to_eval)
-        log_probs = self._leaf.prod(component_log_probs)
+
+        component_log_probs = -((means_to_eval - repeated_means) ** 2) / (2 * stds_outer_sum**2) - \
+                              stds_outer_sum.log() - math.log(math.sqrt(2 * math.pi))
+        log_probs = self._leaf.prod(self._leaf.pad_input(component_log_probs))
 
         # Match sum weights to log probs
         w_j = log_gmm_weights.repeat(1, 1, I, 1, 1)
@@ -436,10 +437,14 @@ class RatSpn(nn.Module):
         # lb_log_term is now N x D x I x S x R, the same shape as log_gmm_weights
 
         gmm_ent_lb = -(log_gmm_weights.exp() * lb_log_term).sum(dim=2)
+        if reduction == 'mean':
+            gmm_ent_lb = gmm_ent_lb.mean()
+        return gmm_ent_lb
 
+    def sum_node_entropies(self, reduction='mean'):
         inner_sum_ent = []
         norm_inner_sum_ent = []
-        for i in range(2, len(self._inner_layers)):
+        for i in range(1, len(self._inner_layers)):
             layer = self._inner_layers[i]
             if isinstance(layer, Sum):
                 log_sum_weights: torch.Tensor = torch.log_softmax(layer.weights, dim=2)
@@ -460,10 +465,9 @@ class RatSpn(nn.Module):
         root_categ_ent = -(log_root_weights.exp() * log_root_weights).sum(dim=2)
         norm_root_categ_ent = root_categ_ent / max_categ_ent
         if reduction == 'mean':
-            gmm_ent_lb = gmm_ent_lb.mean()
             inner_sum_ent = inner_sum_ent.mean()
             norm_inner_sum_ent = norm_inner_sum_ent.mean()
             root_categ_ent = root_categ_ent.mean()
             norm_root_categ_ent = norm_root_categ_ent.mean()
 
-        return gmm_ent_lb, inner_sum_ent, norm_inner_sum_ent, root_categ_ent, norm_root_categ_ent
+        return inner_sum_ent, norm_inner_sum_ent, root_categ_ent, norm_root_categ_ent
