@@ -459,8 +459,9 @@ if __name__ == "__main__":
                 output: torch.Tensor = model(x=data, condition=label)
                 ll_loss = -output.mean()
                 if not args.no_ent:
-                    leaf_gmm_ent_lb = model.gmm_entropy_lb(reduction='mean')
-                    inner_ents, norm_inner_ents, root_ent, norm_root_ent = model.sum_node_entropies(reduction='mean')
+                    with torch.no_grad():
+                        leaf_gmm_ent_lb = model.gmm_entropy_lb(reduction='mean')
+                        inner_ents, norm_inner_ents, root_ent, norm_root_ent = model.sum_node_entropies(reduction='mean')
                     ent_mix = leaf_gmm_ent_lb * args.gmm_ent_factor + args.inner_sum_ent_factor * norm_inner_ents + \
                               args.root_sum_ent_factor * norm_root_ent
                     ent_loss = -ent_mix
