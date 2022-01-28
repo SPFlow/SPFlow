@@ -178,9 +178,12 @@ class CsvLogger(dict):
     def mean(self, key):
         assert key in self.keys_to_avg, f"key {key} to take mean of is not in keys_to_avg"
         val = self[key]
-        if len(val) > 0:
-            return np.mean(val)
-        return 0.0
+        if isinstance(val, list):
+            if len(val) > 0:
+                return np.mean(val)
+            else:
+                return 0.0
+        return val
 
     def __str__(self):
         if self.no_log_dict['batch'] is not None:
