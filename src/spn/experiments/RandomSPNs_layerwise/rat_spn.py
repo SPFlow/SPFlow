@@ -351,14 +351,25 @@ class RatSpn(nn.Module):
             ctx.repetition_indices = torch.zeros(n, dtype=int, device=self.__device)
             ctx = self.root.sample(context=ctx)
 
-            # Indexes will now point to the stacked channels of all repetitions (R * S^2 (if D > 1)
-            # or R * I^2 (else)).
-            root_in_channels = self.root.in_channels // self.config.R
-            # Obtain repetition indices
-            ctx.repetition_indices = torch.div(ctx.parent_indices, root_in_channels, rounding_mode='trunc').squeeze(1)
-            # Shift indices
-            ctx.parent_indices = ctx.parent_indices % root_in_channels
-            # Now each sample in `indices` belongs to one repetition, index in `repetition_indices`
+            # The weights of the root sum node represent the input channel and repetitions in this manner:
+            # The CSPN case is assumed where the weights are different for each batch index condition.
+            # Looking at one batch index, there are IC*R weights. An element of this weight vector is defined as
+            # w_{r,c}, with r and c being the repetition and channel the weight belongs to.
+            # The weight vector will then contain [w_{0,0},w_{1,0},w_{2,0},w_{0,1},w_{1,1},w_{2,1},w_{0,2},w_{1,2},...]
+            # This weight vector was used as the logits in a IC*R-categorical distribution, yielding indexes [0,C*R-1].
+            # To match the index to the correct repetition and its input channel, we do the following
+            ctx.repetition_indices = (ctx.parent_indices % self.config.R).squeeze(1)
+            ctx.parent_indices = torch.div(ctx.parent_indices, self.config.R, rounding_mode='trunc')
+
+            if kwargs.get('override_root'):
+                a = np.arange(self.root.in_channels // self.config.R)
+                b = np.arange(self.config.R)
+                a = torch.as_tensor(a)
+                b = torch.as_tensor(b)
+                a = a.repeat(self.config.R)
+                b = b.repeat_interleave(self.root.in_channels // self.config.R)
+                ctx.parent_indices = a.unsqueeze(1)
+                ctx.repetition_indices = b
 
             # Continue at layers
             # Sample inner layers in reverse order (starting from topmost)
