@@ -267,7 +267,7 @@ if __name__ == "__main__":
 
     inspect = args.inspect
     if inspect:
-        i = 12
+        i = 11
         epoch = 999
         exp_name = f"mnistgen{i}"
         base_path = os.path.join('mnist_gen_exp', f"results_{exp_name}")
@@ -297,6 +297,16 @@ if __name__ == "__main__":
                     arr = tensors.permute(1, 2, 0).cpu().numpy()
                     arr = skimage.img_as_ubyte(arr)
                     imageio.imwrite(os.path.join(results_dir, f"cond_{d}", f'rep{i}.png'), arr)
+        elif exp == 2:
+            results_dir = os.path.join(base_path, f'inspect_samples_{model_name}')
+            if not os.path.exists(results_dir):
+                os.makedirs(results_dir)
+            i = 1
+            while os.path.exists(save_path := os.path.join(results_dir, f"inspect_epoch-{epoch:03}_{exp_name}.png")):
+                i += 1
+            evaluate_sampling(model, save_path, torch.device('cpu'))
+
+
         else:
             results_dir = base_path
             def plot_img(image: torch.Tensor, title: str = None, path=None):
@@ -427,7 +437,7 @@ if __name__ == "__main__":
             # evaluate_model(model, cut_out_center, insert_center, "test.png", device, train_loader, "Train")
             optimizer.zero_grad()
             data = image.reshape(image.shape[0], -1)
-            ent_loss = leaf_gmm_ent_lb = inner_ents = norm_inner_ents = root_ent = norm_root_ent = torch.zeros(1)
+            ent_loss = leaf_gmm_ent_lb = inner_ents = norm_inner_ents = root_ent = norm_root_ent = torch.zeros(1).to(device)
             if args.ratspn:
                 output: torch.Tensor = model(x=data)
                 loss_ce = F.cross_entropy(output, label)
