@@ -44,7 +44,6 @@ class CSPN(RatSpn):
         Args:
             config (CspnConfig): Cspn configuration object.
         """
-        config.first_layer_sum = True  # This must be True so we can calculate entropy
         super().__init__(config=config)
         self.config: CspnConfig = config
         self.dist_std_head = None

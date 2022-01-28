@@ -227,6 +227,7 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
+    parser.add_argument('--first_layer_sum', action='store_true', help='Make the first layer a sum layer')
     parser.add_argument('--no_ent', action='store_true', help='Don\'t calculate entropy.')
     parser.add_argument('--gmm_ent_factor', '-alpha', type=float, default=0.0,
                         help='Factor for the entropy loss of the Gaussian mixtures at the leaves.')
@@ -236,6 +237,8 @@ if __name__ == "__main__":
                         help='Factor for the entropy loss of the root sum.')
     parser.add_argument('--adamw', action='store_true', help='Use AdamW optimizer (incorporates weight decay)')
     args = parser.parse_args()
+
+    assert args.no_ent or args.first_layer_sum, "If entropy should be calculated, the first layer must be a sum."
 
     results_dir = os.path.join(args.results_dir, f"results_{args.exp_name}")
     model_dir = os.path.join(results_dir, "models")
@@ -382,6 +385,7 @@ if __name__ == "__main__":
     config.I = args.num_dist
     config.S = args.num_sums
     config.dropout = args.dropout
+    config.first_layer_sum = args.first_layer_sum
     config.leaf_base_class = RatNormal
     config.leaf_base_kwargs = {'min_sigma': 0.1, 'max_sigma': 1.0, 'min_mean': 0.0, 'max_mean': 1.0}
 

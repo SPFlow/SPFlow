@@ -53,7 +53,7 @@ class RatSpnConfig:
     dropout: float = None
     leaf_base_class: Type = None
     leaf_base_kwargs: Dict = None
-    first_layer_sum: bool = True
+    first_layer_sum: bool = False
 
     @property
     def F(self):
