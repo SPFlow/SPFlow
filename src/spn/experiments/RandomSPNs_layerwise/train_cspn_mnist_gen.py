@@ -175,16 +175,23 @@ class CsvLogger(dict):
             w = csv.DictWriter(f, self.keys())
             w.writerow(self)
 
+    def mean(self, key):
+        assert key in self.keys_to_avg, f"key {key} to take mean of is not in keys_to_avg"
+        val = self[key]
+        if len(val) > 0:
+            return np.mean(val)
+        return 0.0
+
     def __str__(self):
         if self.no_log_dict['batch'] is not None:
             batch_str = f" @ batch {self.no_log_dict['batch']}"
         else:
             batch_str = ""
-        return f"Train Epoch: {self['epoch']} took {time_delta(self['time'])}{batch_str} - NLL loss: {np.mean(self['ll_loss']):.2f} - " \
-               f"Entropy of GMMs: {np.mean(self['gmm_ent']):.2f} - " \
-               f"Entropy of inner sums: {np.mean(self['inner_ent']):.2f}|{np.mean(self['norm_inner_ent']):.2f}% - " \
-               f"Entropy of root sum: {np.mean(self['root_ent']):.2f}|{np.mean(self['norm_root_ent']):.2f}% - " \
-               f"Entropy loss: {np.mean(self['ent_loss']):.2f}"
+        return f"Train Epoch: {self['epoch']} took {time_delta(self['time'])}{batch_str} - NLL loss: {self.mean('ll_loss'):.2f} - " \
+               f"Entropy of GMMs: {self.mean('gmm_ent'):.2f} - " \
+               f"Entropy of inner sums: {self.mean('inner_ent'):.2f}|{self.mean('norm_inner_ent'):.2f}% - " \
+               f"Entropy of root sum: {self.mean('root_ent'):.2f}|{self.mean('norm_root_ent'):.2f}% - " \
+               f"Entropy loss: {self.mean('ent_loss'):.2f}"
 
     def __setitem__(self, key, value):
         if isinstance(value, torch.Tensor):
@@ -238,7 +245,8 @@ if __name__ == "__main__":
     parser.add_argument('--adamw', action='store_true', help='Use AdamW optimizer (incorporates weight decay)')
     args = parser.parse_args()
 
-    assert args.no_ent or args.first_layer_sum, "If entropy should be calculated, the first layer must be a sum."
+    if not args.no_ent:
+        args.first_layer_sum = True
 
     results_dir = os.path.join(args.results_dir, f"results_{args.exp_name}")
     model_dir = os.path.join(results_dir, "models")
