@@ -118,6 +118,10 @@ class IndependentMultivariate(Leaf):
         self.cardinality = check_valid(cardinality, int, 1, in_features + 1)
         self.out_shape = f"(N, {self.prod._out_features}, {out_channels}, {self.num_repetitions})"
 
+    @property
+    def out_features(self):
+        return self.prod._out_features
+
     def _init_weights(self):
         if isinstance(self.base_leaf, RatNormal):
             truncated_normal_(self.base_leaf.stds, std=0.5)

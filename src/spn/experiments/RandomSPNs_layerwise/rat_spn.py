@@ -213,20 +213,24 @@ class RatSpn(nn.Module):
         self._leaf = self._build_input_distribution()
 
         self._inner_layers = nn.ModuleList()
-        if not self.config.first_layer_sum:
-            # First product layer on top of leaf layer
-            prodlayer = CrossProduct(
-                in_features=2 ** self.config.D, in_channels=self.config.I, num_repetitions=self.config.R
-            )
-            self._inner_layers.append(prodlayer)
-            sum_in_channels = self.config.I ** 2
-            self.config.D -= 1
-        else:
+        if self.config.first_layer_sum:
             # Modification to the RATSPN: Let first layer be a sum layer
-            sum_in_channels = self.config.I
+            sumlayer = Sum(in_features=self._leaf.out_features, in_channels=self.config.I, num_repetitions=self.config.R,
+                           out_channels=self.config.S, dropout=self.config.dropout)
+            self._inner_layers.append(sumlayer)
+            prod_in_channels = self.config.S
+        else:
+            prod_in_channels = self.config.I
+
+        # First product layer on top of leaf layer
+        prodlayer = CrossProduct(
+            in_features=2 ** self.config.D, in_channels=prod_in_channels, num_repetitions=self.config.R
+        )
+        self._inner_layers.append(prodlayer)
+        sum_in_channels = self.config.I ** 2
 
         # Sum and product layers
-        for i in np.arange(start=self.config.D, stop=0, step=-1):
+        for i in np.arange(start=self.config.D - 1, stop=0, step=-1):
             # Current in_features
             in_features = 2 ** i
 
