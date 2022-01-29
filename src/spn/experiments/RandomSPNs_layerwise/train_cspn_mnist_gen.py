@@ -48,7 +48,7 @@ def time_delta(t_delta: float) -> str:
     return f"{hours}h, {minutes}min, {seconds}s"
 
 
-def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size):
+def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=False):
     """
     Get the MNIST pytorch data loader.
 
@@ -60,7 +60,11 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size):
 
     test_batch_size = batch_size
 
-    transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+    if invert:
+        transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+    else:
+        transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,)),
+                                          transforms.RandomInvert(p=1.0)])
     # Train data loader
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST(dataset_dir, train=True, download=True, transform=transformer),
@@ -215,7 +219,14 @@ class CsvLogger(dict):
             batch_str = f" @ batch {self.no_log_dict['batch']}"
         else:
             batch_str = ""
-        return f"Train Epoch: {self['epoch']} took {time_delta(self['time'])}{batch_str} - NLL loss: {self.mean('ll_loss'):.2f} - " \
+        if 'inv_mnist_test_ll' in self.keys():
+            inv_str = f"LL inv mnist test set: {self.mean('inv_mnist_test_ll'):.2f} - "
+        else:
+            inv_str = ""
+        return f"Train Epoch: {self['epoch']} took {time_delta(self['time'])}{batch_str} - " \
+               f"NLL loss: {self.mean('ll_loss'):.2f} - " \
+               f"LL orig mnist test set: {self.mean('orig_mnist_test_ll'):.2f} - " \
+               f"{inv_str}" \
                f"Entropy of GMMs: {self.mean('gmm_ent'):.2f} - " \
                f"Entropy of inner sums: {self.mean('inner_ent'):.2f}|{self.mean('norm_inner_ent'):.2f}% - " \
                f"Entropy of root sum: {self.mean('root_ent'):.2f}|{self.mean('norm_root_ent'):.2f}% - " \
@@ -242,6 +253,9 @@ if __name__ == "__main__":
                         help='The base directory where the directory containing the results will be saved to.')
     parser.add_argument('--dataset_dir', type=str, default='../data',
                         help='The base directory to provide to the PyTorch Dataloader.')
+    parser.add_argument('--model_path', type=str,
+                        help='Path to the pretrained model. If it is given, '
+                             'all other SPN config parameters are ignored.')
     parser.add_argument('--exp_name', type=str, default='stl', help='Experiment name. The results dir will contain it.')
     parser.add_argument('--repetitions', '-R', type=int, default=5, help='Number of parallel CSPNs to learn at once. ')
     parser.add_argument('--cspn_depth', '-D', type=int, default=3, help='Depth of the CSPN.')
@@ -271,10 +285,13 @@ if __name__ == "__main__":
     parser.add_argument('--root_sum_ent_factor', '-gamma', type=float, default=0.0,
                         help='Factor for the entropy loss of the root sum.')
     parser.add_argument('--adamw', action='store_true', help='Use AdamW optimizer (incorporates weight decay)')
+    parser.add_argument('--invert', action='store_true', help='Invert MNIST images')
     args = parser.parse_args()
 
     if not args.no_ent:
         args.first_layer_sum = True
+
+    assert os.path.exists(args.model_path), f"The model_path doesn't exist! {args.model_path}"
 
     results_dir = os.path.join(args.results_dir, f"results_{args.exp_name}")
     model_dir = os.path.join(results_dir, "models")
@@ -291,7 +308,7 @@ if __name__ == "__main__":
         device = torch.device("cuda:0")
         use_cuda = True
         torch.cuda.benchmark = True
-
+    print("Using device:", device)
     batch_size = args.batch_size
 
     # The task is to do image in-painting - to fill in a cut-out square in the image.
@@ -318,27 +335,7 @@ if __name__ == "__main__":
             results_dir = os.path.join(base_path, f'all_root_in_channels_{model_name}')
             if not os.path.exists(results_dir):
                 os.makedirs(results_dir)
-            for d in range(10):
-                if not os.path.exists(os.path.join(results_dir, f'cond_{d}')):
-                    os.makedirs(os.path.join(results_dir, f'cond_{d}'))
-                cond = torch.ones(model.config.R * model.config.S**2).long() * d
-                with torch.no_grad():
-                    if isinstance(model, RatSpn):
-                        sample = model.sample(class_index=cond.tolist(), override_root=True)
-                    else:
-                        cond = F.one_hot(cond, cond_size).float()
-                        sample = model.sample(condition=cond, override_root=True)
-                sample[sample < 0.0] = 0.0
-                sample[sample > 1.0] = 1.0
-                # sample_ll = model(x=sample, condition=None).flatten()
-                sample = sample.view(-1, *img_size)
-
-                for i in range(model.config.R):
-                    b = sample[(i * model.config.S**2):((i + 1) * model.config.S**2), :, :, :]
-                    tensors = torchvision.utils.make_grid(b, nrow=10, padding=1)
-                    arr = tensors.permute(1, 2, 0).cpu().numpy()
-                    arr = skimage.img_as_ubyte(arr)
-                    imageio.imwrite(os.path.join(results_dir, f"cond_{d}", f'rep{i}.png'), arr)
+            eval_root_sum_override(model, results_dir, torch.device("cpu"), img_size)
         elif exp == 2:
             # Here, the sampling evaluation is redone for all model files in a given directory
             models_dir = os.path.join(base_path, 'models')
@@ -421,50 +418,76 @@ if __name__ == "__main__":
                 print("Set breakpoint here")
         exit()
 
+    csv_log = os.path.join(results_dir, f"log_{args.exp_name}.csv")
+    info = CsvLogger(csv_log)
     # Construct Cspn from config
-    train_loader, test_loader = get_mnist_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
-    if args.ratspn:
-        config = RatSpnConfig()
-        config.C = 10
+    orig_train_loader, orig_test_loader = get_mnist_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
+    if args.invert:
+        inv_train_loader, inv_test_loader = get_mnist_loaders(args.dataset_dir, use_cuda,
+                                                              batch_size=batch_size, device=device, invert=True)
+        train_loader = inv_train_loader
+        csv_log = os.path.join(results_dir, f"log_{args.exp_name}.csv")
+        info.keys_to_avg = ['inv_mnist_test_ll'] + info.keys_to_avg
+        info.reset()
     else:
-        config = CspnConfig()
-        config.F_cond = (cond_size,)
-        config.C = 1
-        config.nr_feat_layers = args.nr_feat_layers
-        config.fc_sum_param_layers = args.nr_sum_param_layers
-        config.fc_dist_param_layers = args.nr_dist_param_layers
-    config.F = int(np.prod(img_size))
-    config.R = args.repetitions
-    config.D = args.cspn_depth
-    config.I = args.num_dist
-    config.S = args.num_sums
-    config.dropout = args.dropout
-    config.first_layer_sum = args.first_layer_sum
-    config.leaf_base_class = RatNormal
-    config.leaf_base_kwargs = {'min_sigma': 0.1, 'max_sigma': 1.0, 'min_mean': 0.0, 'max_mean': 1.0}
+        inv_train_loader = inv_test_loader = None
+        train_loader = orig_train_loader
 
-    print("Using device:", device)
-    print("Config:", config)
-    if args.ratspn:
-        model = RatSpn(config)
-        count_params(model)
+    if not args.model_path:
+        if args.ratspn:
+            config = RatSpnConfig()
+            config.C = 10
+        else:
+            config = CspnConfig()
+            config.F_cond = (cond_size,)
+            config.C = 1
+            config.nr_feat_layers = args.nr_feat_layers
+            config.fc_sum_param_layers = args.nr_sum_param_layers
+            config.fc_dist_param_layers = args.nr_dist_param_layers
+        config.F = int(np.prod(img_size))
+        config.R = args.repetitions
+        config.D = args.cspn_depth
+        config.I = args.num_dist
+        config.S = args.num_sums
+        config.dropout = args.dropout
+        config.first_layer_sum = args.first_layer_sum
+        config.leaf_base_class = RatNormal
+        config.leaf_base_kwargs = {'min_sigma': 0.1, 'max_sigma': 1.0, 'min_mean': 0.0, 'max_mean': 1.0}
+        if args.ratspn:
+            model = RatSpn(config)
+            count_params(model)
+        else:
+            model = CSPN(config)
+            print_cspn_params(model)
+        model = model.to(device)
     else:
-        model = CSPN(config)
-        print_cspn_params(model)
-    model = model.to(device)
+        print(f"Using pretrained model under {args.model_path}")
+        model = torch.load(args.model_path, map_location=device)
     model.train()
+    print("Config:", model.config)
     print(model)
     if args.adamw:
         optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
     else:
         optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
-    csv_log = os.path.join(results_dir, f"log_{args.exp_name}.csv")
-    info = CsvLogger(csv_log)
-
     lmbda = 1.0
     sample_interval = 1 if args.verbose else args.eval_interval  # number of epochs
     save_interval = 1 if args.verbose else args.save_interval  # number of epochs
+
+    epoch = 0
+    print("Evaluating model ...")
+    save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
+    evaluate_sampling(model, save_path, device, img_size)
+    root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
+    eval_root_sum_override(model, root_sum_override_dir, device, img_size)
+    # evaluate_model(model, device, inv_train_loader, "Inverted MNIST train")
+    info.reset(epoch)
+    if inv_test_loader is not None:
+        info['inv_mnist_test_ll'] = evaluate_model(model, device, inv_test_loader, "Inverted MNIST test")
+    info['orig_mnist_test_ll'] = evaluate_model(model, device, orig_test_loader, "Original MNIST test")
+    info.average()
+    info.write()
     for epoch in range(args.epochs):
         if epoch > 20:
             lmbda = 0.5
@@ -513,11 +536,6 @@ if __name__ == "__main__":
                 # print(info, end="\r")
 
         t_delta = np.around(time.time()-t_start, 2)
-        info.average()
-        info['time'] = t_delta
-        info['batch'] = None
-        info.write()
-        print(info)
         if epoch % save_interval == (save_interval-1):
             print("Saving model ...")
             torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}_{args.exp_name}.pt"))
@@ -526,7 +544,17 @@ if __name__ == "__main__":
             print("Evaluating model ...")
             save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
             evaluate_sampling(model, save_path, device, img_size)
-            evaluate_model(model, device, train_loader, "Train")
-            evaluate_model(model, device, test_loader, "Test")
+            root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
+            eval_root_sum_override(model, root_sum_override_dir, device, img_size)
+            # evaluate_model(model, device, inv_train_loader, "Inverted MNIST train")
+            info['inv_mnist_test_ll'] = evaluate_model(model, device, inv_test_loader, "Inverted MNIST test")
+            info['orig_mnist_test_ll'] = evaluate_model(model, device, orig_test_loader, "Original MNIST test")
+
+        info.average()
+        info['time'] = t_delta
+        info['batch'] = None
+        info.write()
+        print(info)
+
 
 
