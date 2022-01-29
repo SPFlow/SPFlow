@@ -174,7 +174,7 @@ class CsvLogger(dict):
         super().__init__()
         self.path = path
         self.other_keys = ['epoch', 'time']
-        self.keys_to_avg = ['ll_loss', 'ent_loss', 'gmm_ent', 'inner_ent', 'norm_inner_ent',
+        self.keys_to_avg = ['mnist_test_ll', 'll_loss', 'ent_loss', 'gmm_ent', 'inner_ent', 'norm_inner_ent',
                             'root_ent', 'norm_root_ent', 'loss']
         self.no_log_dict = {'batch': None}
         self.reset()
@@ -225,7 +225,7 @@ class CsvLogger(dict):
             inv_str = ""
         return f"Train Epoch: {self['epoch']} took {time_delta(self['time'])}{batch_str} - " \
                f"NLL loss: {self.mean('ll_loss'):.2f} - " \
-               f"LL orig mnist test set: {self.mean('orig_mnist_test_ll'):.2f} - " \
+               f"LL orig mnist test set: {self.mean('mnist_test_ll'):.2f} - " \
                f"{inv_str}" \
                f"Entropy of GMMs: {self.mean('gmm_ent'):.2f} - " \
                f"Entropy of inner sums: {self.mean('inner_ent'):.2f}|{self.mean('norm_inner_ent'):.2f}% - " \
@@ -273,6 +273,8 @@ if __name__ == "__main__":
                              'provides the params for the dist nodes')
     parser.add_argument('--save_interval', type=int, default=50, help='Epoch interval to save model')
     parser.add_argument('--eval_interval', type=int, default=10, help='Epoch interval to evaluate model')
+    parser.add_argument('--override_root_interval', type=int,
+                        help='Epoch interval to sample all input channels of root sum node.')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
@@ -291,7 +293,8 @@ if __name__ == "__main__":
     if not args.no_ent:
         args.first_layer_sum = True
 
-    assert os.path.exists(args.model_path), f"The model_path doesn't exist! {args.model_path}"
+    if args.model_path:
+        assert os.path.exists(args.model_path), f"The model_path doesn't exist! {args.model_path}"
 
     results_dir = os.path.join(args.results_dir, f"results_{args.exp_name}")
     model_dir = os.path.join(results_dir, "models")
@@ -476,16 +479,17 @@ if __name__ == "__main__":
     save_interval = 1 if args.verbose else args.save_interval  # number of epochs
 
     epoch = 0
+    if args.override_root_interval:
+        print("Sampling from all input channels to root sum node ...")
+        root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
+        eval_root_sum_override(model, root_sum_override_dir, device, img_size)
     print("Evaluating model ...")
     save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
     evaluate_sampling(model, save_path, device, img_size)
-    root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
-    eval_root_sum_override(model, root_sum_override_dir, device, img_size)
-    # evaluate_model(model, device, inv_train_loader, "Inverted MNIST train")
     info.reset(epoch)
     if inv_test_loader is not None:
         info['inv_mnist_test_ll'] = evaluate_model(model, device, inv_test_loader, "Inverted MNIST test")
-    info['orig_mnist_test_ll'] = evaluate_model(model, device, orig_test_loader, "Original MNIST test")
+    info['mnist_test_ll'] = evaluate_model(model, device, orig_test_loader, "Original MNIST test")
     info.average()
     info.write()
     for epoch in range(args.epochs):
@@ -497,7 +501,7 @@ if __name__ == "__main__":
             # Send data to correct device
             label = label.to(device)
             image = image.to(device)
-            # plt.imshow(data[0].permute(1, 2, 0))
+            # plt.imshow(image[0].permute(1, 2, 0), cmap='Greys)
             # plt.show()
 
             # Inference
@@ -541,14 +545,16 @@ if __name__ == "__main__":
             torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}_{args.exp_name}.pt"))
 
         if epoch % sample_interval == (sample_interval-1):
+            if args.override_root_interval:
+                print("Sampling from all input channels to root sum node ...")
+                root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
+                eval_root_sum_override(model, root_sum_override_dir, device, img_size)
             print("Evaluating model ...")
             save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
             evaluate_sampling(model, save_path, device, img_size)
-            root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
-            eval_root_sum_override(model, root_sum_override_dir, device, img_size)
-            # evaluate_model(model, device, inv_train_loader, "Inverted MNIST train")
-            info['inv_mnist_test_ll'] = evaluate_model(model, device, inv_test_loader, "Inverted MNIST test")
-            info['orig_mnist_test_ll'] = evaluate_model(model, device, orig_test_loader, "Original MNIST test")
+            if inv_test_loader is not None:
+                info['inv_mnist_test_ll'] = evaluate_model(model, device, inv_test_loader, "Inverted MNIST test")
+            info['mnist_test_ll'] = evaluate_model(model, device, orig_test_loader, "Original MNIST test")
 
         info.average()
         info['time'] = t_delta
