@@ -84,7 +84,7 @@ def evaluate_sampling(model, save_dir, device):
     log_like = []
     label = torch.as_tensor(np.arange(10)).repeat_interleave(10).to(device)
     with torch.no_grad():
-        if args.ratspn:
+        if isinstance(model, RatSpn):
             samples = model.sample(class_index=label.tolist())
             log_like = np.nan
         else:
@@ -278,8 +278,8 @@ if __name__ == "__main__":
 
     inspect = args.inspect
     if inspect:
-        i = 11
-        epoch = 999
+        i = 5
+        epoch = '099'
         exp_name = f"mnistgen{i}"
         base_path = os.path.join('mnist_gen_exp', f"results_{exp_name}")
         model_name = f"epoch-{epoch}_{exp_name}"
@@ -288,6 +288,8 @@ if __name__ == "__main__":
 
         exp = 1
         if exp == 1:
+            # Here, the choices of the root sum node are overridden and instead all output channels of its children
+            # are sampled.
             results_dir = os.path.join(base_path, f'all_root_in_channels_{model_name}')
             if not os.path.exists(results_dir):
                 os.makedirs(results_dir)
@@ -295,8 +297,12 @@ if __name__ == "__main__":
                 if not os.path.exists(os.path.join(results_dir, f'cond_{d}')):
                     os.makedirs(os.path.join(results_dir, f'cond_{d}'))
                 cond = torch.ones(model.config.R * model.config.S**2).long() * d
-                cond = F.one_hot(cond, cond_size).float()
-                sample = model.sample(condition=cond, override_root=True)
+                with torch.no_grad():
+                    if isinstance(model, RatSpn):
+                        sample = model.sample(class_index=cond.tolist(), override_root=True)
+                    else:
+                        cond = F.one_hot(cond, cond_size).float()
+                        sample = model.sample(condition=cond, override_root=True)
                 sample[sample < 0.0] = 0.0
                 sample[sample > 1.0] = 1.0
                 # sample_ll = model(x=sample, condition=None).flatten()
@@ -309,15 +315,17 @@ if __name__ == "__main__":
                     arr = skimage.img_as_ubyte(arr)
                     imageio.imwrite(os.path.join(results_dir, f"cond_{d}", f'rep{i}.png'), arr)
         elif exp == 2:
-            results_dir = os.path.join(base_path, f'inspect_samples_{model_name}')
-            if not os.path.exists(results_dir):
-                os.makedirs(results_dir)
-            i = 1
-            while os.path.exists(save_path := os.path.join(results_dir, f"inspect_epoch-{epoch:03}_{exp_name}.png")):
-                i += 1
-            evaluate_sampling(model, save_path, torch.device('cpu'))
-
-
+            # Here, the sampling evaluation is redone for all model files in a given directory
+            models_dir = os.path.join(base_path, 'models')
+            onlyfiles = [f for f in os.listdir(models_dir) if os.path.isfile(os.path.join(models_dir, f))]
+            samples_dir = os.path.join(base_path, 'new_samples')
+            if not os.path.exists(samples_dir):
+                os.makedirs(samples_dir)
+            for f in onlyfiles:
+                model_path = os.path.join(models_dir, f)
+                save_path = os.path.join(samples_dir, f"{f.split('.')[0]}.png")
+                model = torch.load(model_path, map_location=torch.device('cpu'))
+                evaluate_sampling(model, save_path, torch.device('cpu'))
         else:
             results_dir = base_path
             def plot_img(image: torch.Tensor, title: str = None, path=None):
