@@ -273,8 +273,8 @@ if __name__ == "__main__":
                              'provides the params for the dist nodes')
     parser.add_argument('--save_interval', type=int, default=50, help='Epoch interval to save model')
     parser.add_argument('--eval_interval', type=int, default=10, help='Epoch interval to evaluate model')
-    parser.add_argument('--sample_override_root', type=int,
-                        help='Epoch interval to sample all input channels of root sum node.')
+    parser.add_argument('--sample_override_root', action='store_true',
+                        help='When evaluating, also sample all input channels of root sum node.')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
