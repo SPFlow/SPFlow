@@ -273,7 +273,7 @@ if __name__ == "__main__":
                              'provides the params for the dist nodes')
     parser.add_argument('--save_interval', type=int, default=50, help='Epoch interval to save model')
     parser.add_argument('--eval_interval', type=int, default=10, help='Epoch interval to evaluate model')
-    parser.add_argument('--override_root_interval', type=int,
+    parser.add_argument('--sample_override_root', type=int,
                         help='Epoch interval to sample all input channels of root sum node.')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
@@ -479,7 +479,7 @@ if __name__ == "__main__":
     save_interval = 1 if args.verbose else args.save_interval  # number of epochs
 
     epoch = 0
-    if args.override_root_interval:
+    if args.sample_override_root:
         print("Sampling from all input channels to root sum node ...")
         root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
         eval_root_sum_override(model, root_sum_override_dir, device, img_size)
@@ -545,7 +545,7 @@ if __name__ == "__main__":
             torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}_{args.exp_name}.pt"))
 
         if epoch % sample_interval == (sample_interval-1):
-            if args.override_root_interval:
+            if args.sample_override_root:
                 print("Sampling from all input channels to root sum node ...")
                 root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
                 eval_root_sum_override(model, root_sum_override_dir, device, img_size)
