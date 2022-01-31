@@ -366,6 +366,11 @@ class RatSpn(nn.Module):
             ctx.repetition_indices = (ctx.parent_indices % self.config.R).squeeze(1)
             ctx.parent_indices = torch.div(ctx.parent_indices, self.config.R, rounding_mode='trunc')
 
+            print(self.__device)
+            print(ctx.repetition_indices.device)
+            print(ctx.parent_indices.device)
+            print("---------------")
+
             if kwargs.get('override_root'):
                 a = np.arange(self.root.in_channels // self.config.R)
                 b = np.arange(self.config.R)
