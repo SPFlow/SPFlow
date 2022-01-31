@@ -369,8 +369,8 @@ class RatSpn(nn.Module):
             if kwargs.get('override_root'):
                 a = np.arange(self.root.in_channels // self.config.R)
                 b = np.arange(self.config.R)
-                a = torch.as_tensor(a)
-                b = torch.as_tensor(b)
+                a = torch.as_tensor(a).to(self.__device)
+                b = torch.as_tensor(b).to(self.__device)
                 a = a.repeat(self.config.R)
                 b = b.repeat_interleave(self.root.in_channels // self.config.R)
                 ctx.parent_indices = a.unsqueeze(1)
