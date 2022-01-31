@@ -48,7 +48,7 @@ def time_delta(t_delta: float) -> str:
     return f"{hours}h, {minutes}min, {seconds}s"
 
 
-def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=False):
+def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=0.0):
     """
     Get the MNIST pytorch data loader.
 
@@ -60,11 +60,8 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=False):
 
     test_batch_size = batch_size
 
-    if invert:
-        transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,)),
-                                          transforms.RandomInvert(p=1.0)])
-    else:
-        transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+    transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,)),
+                                      transforms.RandomInvert(p=invert)])
     # Train data loader
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST(dataset_dir, train=True, download=True, transform=transformer),
@@ -221,8 +218,6 @@ class CsvLogger(dict):
         return_str += f" - NLL loss: {self.mean('ll_loss'):.2f} - "
         if 'mnist_test_ll' in self.keys() and self.mean('mnist_test_ll') > 0.0:
             return_str += f"LL orig mnist test set: {self.mean('mnist_test_ll'):.2f} - "
-        if 'inv_mnist_test_ll' in self.keys() and self.mean('inv_mnist_test_ll') > 0.0:
-            return_str += f"LL inv mnist test set: {self.mean('inv_mnist_test_ll'):.2f} - "
         if 'gmm_ent' in self.keys() and self.mean('gmm_ent') > 0.0:
             return_str += f"Entropy of GMMs: {self.mean('gmm_ent'):.2f} - "
         if 'inner_ent' in self.keys() and self.mean('inner_ent') > 0.0:
@@ -288,7 +283,7 @@ if __name__ == "__main__":
     parser.add_argument('--root_sum_ent_factor', '-gamma', type=float, default=0.0,
                         help='Factor for the entropy loss of the root sum.')
     parser.add_argument('--adamw', action='store_true', help='Use AdamW optimizer (incorporates weight decay)')
-    parser.add_argument('--invert', action='store_true', help='Invert MNIST images')
+    parser.add_argument('--invert', type=float, default=0.0, help='Probability of an MNIST image being inverted.')
     args = parser.parse_args()
 
     if not args.no_ent:
@@ -425,18 +420,8 @@ if __name__ == "__main__":
     csv_log = os.path.join(results_dir, f"log_{args.exp_name}.csv")
     info = CsvLogger(csv_log)
     # Construct Cspn from config
-    orig_train_loader, orig_test_loader = get_mnist_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
-    if args.invert:
-        print("Training on inverted MNIST!")
-        inv_train_loader, inv_test_loader = get_mnist_loaders(args.dataset_dir, use_cuda,
-                                                              batch_size=batch_size, device=device, invert=True)
-        train_loader = inv_train_loader
-        csv_log = os.path.join(results_dir, f"log_{args.exp_name}.csv")
-        info.keys_to_avg = ['inv_mnist_test_ll'] + info.keys_to_avg
-        info.reset()
-    else:
-        inv_train_loader = inv_test_loader = None
-        train_loader = orig_train_loader
+    train_loader, test_loader = get_mnist_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device,
+                                                  invert=args.invert)
 
     if not args.model_path:
         if args.ratspn:
@@ -491,9 +476,7 @@ if __name__ == "__main__":
     save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
     evaluate_sampling(model, save_path, device, img_size)
     info.reset(epoch)
-    if inv_test_loader is not None:
-        info['inv_mnist_test_ll'] = evaluate_model(model, device, inv_test_loader, "Inverted MNIST test")
-    info['mnist_test_ll'] = evaluate_model(model, device, orig_test_loader, "Original MNIST test")
+    info['mnist_test_ll'] = evaluate_model(model, device, test_loader, "MNIST test")
     info.average()
     info.write()
     for epoch in range(args.epochs):
@@ -556,9 +539,7 @@ if __name__ == "__main__":
             print("Evaluating model ...")
             save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
             evaluate_sampling(model, save_path, device, img_size)
-            if inv_test_loader is not None:
-                info['inv_mnist_test_ll'] = evaluate_model(model, device, inv_test_loader, "Inverted MNIST test")
-            info['mnist_test_ll'] = evaluate_model(model, device, orig_test_loader, "Original MNIST test")
+            info['mnist_test_ll'] = evaluate_model(model, device, test_loader, "MNIST test")
 
         info.average()
         info['time'] = t_delta
