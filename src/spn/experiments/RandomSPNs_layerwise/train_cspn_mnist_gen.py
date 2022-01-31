@@ -97,7 +97,7 @@ def evaluate_sampling(model, save_dir, device, img_size):
             log_like.append(model(x=samples, condition=label).mean().tolist())
         samples = samples.view(-1, *img_size[1:])
         plot_samples(samples, save_dir)
-    print(f"Samples: Average log-likelihood: {np.mean(log_like):.4f}")
+    print(f"Samples: Average log-likelihood: {np.mean(log_like):.2f}")
 
 
 def eval_root_sum_override(model, save_dir, device, img_size):
@@ -147,7 +147,7 @@ def evaluate_model(model, device, loader, tag):
                 label = F.one_hot(label, 10).float().to(device)
                 log_like.append(model(x=image, condition=label).mean().tolist())
     mean_ll = np.mean(log_like)
-    print(f"{tag} set: Average log-likelihood: {mean_ll}")
+    print(f"{tag} set: Average log-likelihood: {mean_ll:.2f}")
     return mean_ll
 
 
@@ -215,22 +215,23 @@ class CsvLogger(dict):
         return val
 
     def __str__(self):
+        return_str = f"Train Epoch: {self['epoch']} took {time_delta(self['time'])}"
         if self.no_log_dict['batch'] is not None:
-            batch_str = f" @ batch {self.no_log_dict['batch']}"
-        else:
-            batch_str = ""
-        if 'inv_mnist_test_ll' in self.keys():
-            inv_str = f"LL inv mnist test set: {self.mean('inv_mnist_test_ll'):.2f} - "
-        else:
-            inv_str = ""
-        return f"Train Epoch: {self['epoch']} took {time_delta(self['time'])}{batch_str} - " \
-               f"NLL loss: {self.mean('ll_loss'):.2f} - " \
-               f"LL orig mnist test set: {self.mean('mnist_test_ll'):.2f} - " \
-               f"{inv_str}" \
-               f"Entropy of GMMs: {self.mean('gmm_ent'):.2f} - " \
-               f"Entropy of inner sums: {self.mean('inner_ent'):.2f}|{self.mean('norm_inner_ent'):.2f}% - " \
-               f"Entropy of root sum: {self.mean('root_ent'):.2f}|{self.mean('norm_root_ent'):.2f}% - " \
-               f"Entropy loss: {self.mean('ent_loss'):.2f}"
+            return_str += f" @ batch {self.no_log_dict['batch']}"
+        return_str += f" - NLL loss: {self.mean('ll_loss'):.2f} - "
+        if 'mnist_test_ll' in self.keys() and self.mean('mnist_test_ll') > 0.0:
+            return_str += f"LL orig mnist test set: {self.mean('mnist_test_ll'):.2f} - "
+        if 'inv_mnist_test_ll' in self.keys() and self.mean('inv_mnist_test_ll') > 0.0:
+            return_str += f"LL inv mnist test set: {self.mean('inv_mnist_test_ll'):.2f} - "
+        if 'gmm_ent' in self.keys() and self.mean('gmm_ent') > 0.0:
+            return_str += f"Entropy of GMMs: {self.mean('gmm_ent'):.2f} - "
+        if 'inner_ent' in self.keys() and self.mean('inner_ent') > 0.0:
+            return_str += f"Entropy of inner sums: {self.mean('inner_ent'):.2f}|{self.mean('norm_inner_ent'):.2f}% - "
+        if 'root_ent' in self.keys() and self.mean('root_ent') > 0.0:
+            return_str += f"Entropy of root sum: {self.mean('root_ent'):.2f}|{self.mean('norm_root_ent'):.2f}% - "
+        if 'ent_loss' in self.keys() and self.mean('ent_loss') > 0.0:
+            return_str += f"Entropy loss: {self.mean('ent_loss'):.2f}"
+        return return_str
 
     def __setitem__(self, key, value):
         if isinstance(value, torch.Tensor):
@@ -471,8 +472,10 @@ if __name__ == "__main__":
     print("Config:", model.config)
     print(model)
     if args.adamw:
+        print("Using special optimizer AdamW!")
         optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
     else:
+        print("Using regular optimizer Adam.")
         optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     lmbda = 1.0
