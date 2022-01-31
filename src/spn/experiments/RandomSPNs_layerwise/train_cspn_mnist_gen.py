@@ -104,7 +104,7 @@ def eval_root_sum_override(model, save_dir, device, img_size):
     for d in range(10):
         if not os.path.exists(os.path.join(save_dir, f'cond_{d}')):
             os.makedirs(os.path.join(save_dir, f'cond_{d}'))
-        cond = torch.ones(model.config.R * model.config.S ** 2).long() * d
+        cond = torch.ones(model.config.R * model.config.S ** 2).long().to(device) * d
         with torch.no_grad():
             if isinstance(model, RatSpn):
                 sample = model.sample(class_index=cond.tolist(), override_root=True)
