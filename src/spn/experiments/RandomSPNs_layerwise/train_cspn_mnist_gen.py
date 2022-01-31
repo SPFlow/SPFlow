@@ -61,10 +61,10 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=False):
     test_batch_size = batch_size
 
     if invert:
-        transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-    else:
         transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,)),
                                           transforms.RandomInvert(p=1.0)])
+    else:
+        transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
     # Train data loader
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST(dataset_dir, train=True, download=True, transform=transformer),
@@ -426,6 +426,7 @@ if __name__ == "__main__":
     # Construct Cspn from config
     orig_train_loader, orig_test_loader = get_mnist_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device)
     if args.invert:
+        print("Training on inverted MNIST!")
         inv_train_loader, inv_test_loader = get_mnist_loaders(args.dataset_dir, use_cuda,
                                                               batch_size=batch_size, device=device, invert=True)
         train_loader = inv_train_loader
