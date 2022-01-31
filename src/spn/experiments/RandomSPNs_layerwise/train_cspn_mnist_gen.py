@@ -110,8 +110,6 @@ def eval_root_sum_override(model, save_dir, device, img_size):
                 sample = model.sample(class_index=cond.tolist(), override_root=True)
             else:
                 cond = F.one_hot(cond, 10).float().to(device)
-                sample = model.sample(condition=cond, override_root=False)
-                print("Normal sampling worked")
                 sample = model.sample(condition=cond, override_root=True)
         sample[sample < 0.0] = 0.0
         sample[sample > 1.0] = 1.0
