@@ -1,11 +1,12 @@
 import logging
-from typing import Dict, Type
+from typing import Dict, Type, List
 import math
 
 import numpy as np
 import torch
 from dataclasses import dataclass
 from torch import nn
+from torch.nn import functional as F
 from torch import distributions as dist
 
 from spn.algorithms.layerwise.distributions import Leaf
@@ -172,6 +173,12 @@ class RatSpn(nn.Module):
         # Merge results from the different repetitions into the channel dimension
         n, d, c, r = x.size()
         assert d == 1  # number of features should be 1 at this point
+        # x = torch.as_tensor(np.arange(x.shape[-2] * x.shape[-1])).reshape(x.shape[-2], x.shape[-1]).repeat(256, 1, 1, 1)
+        # a = torch.as_tensor([-10.0, -1.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0]).log_softmax(dim=0)
+        # a = torch.as_tensor([-10.0] * c)
+        # a[1] = -1.0
+        # a = a.log_softmax(dim=0)
+        # x = a.unsqueeze(1).repeat(n, d, 1, r)
         x = x.view(n, d, c * r, 1)
 
         # Apply C sum node outputs
@@ -358,8 +365,9 @@ class RatSpn(nn.Module):
 
             # The weights of the root sum node represent the input channel and repetitions in this manner:
             # The CSPN case is assumed where the weights are different for each batch index condition.
-            # Looking at one batch index, there are IC*R weights. An element of this weight vector is defined as
-            # w_{r,c}, with r and c being the repetition and channel the weight belongs to.
+            # Looking at one batch index and one output channel, there are IC*R weights.
+            # An element of this weight vector is defined as
+            # w_{r,c}, with r and c being the repetition and channel the weight belongs to, respectively.
             # The weight vector will then contain [w_{0,0},w_{1,0},w_{2,0},w_{0,1},w_{1,1},w_{2,1},w_{0,2},w_{1,2},...]
             # This weight vector was used as the logits in a IC*R-categorical distribution, yielding indexes [0,C*R-1].
             # To match the index to the correct repetition and its input channel, we do the following
@@ -400,6 +408,180 @@ class RatSpn(nn.Module):
                 return evidence
             else:
                 return samples
+
+    def consolidate_weights(self):
+        """
+            This function calculates the weights of the network if it were a hierarchical mixture model,
+            that is, without product layers. These weights are needed for calculating the entropy.
+        """
+        current_weights: torch.Tensor = self.root.weights
+        n, d, ic, oc, _ = current_weights.shape
+        # root mean weights have shape [n, 1, S^2*R, C, 1]
+        # The sampling root weights the repetitions
+        assert oc == 1, "Check if the sampling root weights are calculated correctly for C>1."
+        s_root_weights = current_weights.softmax(dim=2).view(n, d, ic // self.config.R, oc, self.config.R)
+        s_root_weights = s_root_weights.sum(dim=2, keepdim=True)
+        self._sampling_root.consolidated_weights = s_root_weights
+        # The weights in the root are reshaped to account for the repetitions,
+        # so the product layer can make use of them.
+        current_weights = current_weights.view(n, d, ic // self.config.R, oc, self.config.R).softmax(dim=2)
+        current_sum: Sum = self.root
+        for layer in reversed(self._inner_layers):
+            if isinstance(layer, CrossProduct):
+                current_weights = layer.consolidate_weights(parent_weights=current_weights)
+                current_sum.consolidated_weights = current_weights
+            else:  # Is a sum layer
+                current_sum: Sum = layer
+                current_weights = layer.weights.softmax(dim=2)
+        current_sum.consolidated_weights = current_sum.weights.softmax(dim=2)
+
+    def consolidated_vector_forward(self, leaf_vectors: List[torch.Tensor], kernel) -> List[torch.Tensor]:
+        """
+            Performs an upward pass on vectors from the leaf layer. Such vectors have a length of 'cardinality'.
+            The upward pass calls 'kernel' at each sum node.
+            The results are given into a weighted sum, with the weights being the consolidated weights of the Sum.
+            At each product layer, the vectors are concatenated, making them twice as long and halving the number
+            of features.
+        """
+        cardinality = self._leaf.cardinality
+        features = self._leaf.out_features
+        out_channels = self._leaf.out_channels
+        r = self.config.R
+        n = self._leaf.base_leaf.means.shape[0]
+        for layer in self._inner_layers:
+            if isinstance(layer, Sum):
+                leaf_vectors = kernel(leaf_vectors, layer)
+                out_channels = layer.out_channels
+                features = layer.in_features
+                if np.log2(features) % 1 != 0.0:
+                    pad = 2 ** np.ceil(np.log2(features)).astype(np.int) - features
+                    leaf_vectors = [F.pad(g, pad=[0, 0, 0, 0, 0, 0, 0, pad], mode="constant", value=g.mean().item())
+                                    for g in leaf_vectors]
+                    features += pad
+            else:
+                if layer.in_features != features:
+                    # Concatenate grad vectors together, as the features now decrease in number
+                    leaf_vectors = [g.view(n, layer.in_features // 2, cardinality * 2, out_channels, r)
+                                    for g in leaf_vectors]
+                    features = layer.in_features // 2
+                    cardinality *= 2
+        leaf_vectors = kernel(leaf_vectors, self.root)
+        leaf_vectors = [g.view(n, 1, self.config.F + self._leaf.pad, self.config.C, self.config.R)
+                        for g in leaf_vectors]
+        if self._leaf.pad > 0:
+            leaf_vectors = [g[:, :, :-self._leaf.pad] for g in leaf_vectors]
+        for i in range(self.config.R):
+            inv_rand_indices = invert_permutation(self.rand_indices[:, i])
+            for g in leaf_vectors:
+                g[:, :, :, :, i] = g[:, :, inv_rand_indices, :, i]
+        leaf_vectors = kernel(leaf_vectors, self._sampling_root)
+        leaf_vectors = [v.sum(-1).squeeze_(1).squeeze_(-1) for v in leaf_vectors]
+        # each tensor in leaf_vectors has shape [n, 1, self.config.F, self.config.C, 1]
+        return leaf_vectors
+
+    @staticmethod
+    def weighted_sum_kernel(child_grads: torch.Tensor, layer: Sum):
+        weights = layer.consolidated_weights.unsqueeze(2)
+        # Weights is of shape [n, d, 1, ic, oc, r]
+        # The extra dimension is created so all elements of the gradient vectors are multiplied by the same
+        # weight for that feature and output channel.
+        return [(g.unsqueeze(4) * weights).sum(dim=3) for g in child_grads]
+
+    @staticmethod
+    def moment_kernel(child_moments: List[torch.Tensor], layer: Sum):
+        assert layer.consolidated_weights is not None, "No consolidated weights are set for this Sum node!"
+        weights = layer.consolidated_weights.unsqueeze(2)
+        # Weights is of shape [n, d, 1, ic, oc, r]
+        # Create an extra dimension for the mean vector so all elements of the mean vector are multiplied by the same
+        # weight for that feature and output channel.
+
+        child_mean = child_moments[0]
+        # moments have shape [n, d, cardinality, ic, r]
+        # Create an extra 'output channels' dimension, as the weights are separate for each output channel.
+        child_mean.unsqueeze_(4)
+        mean = child_mean * weights
+        # mean has shape [n, d, cardinality, ic, oc, r]
+        mean = mean.sum(dim=3)
+        # mean has shape [n, d, cardinality, oc, r]
+        moments = [mean]
+
+        centered_mean = child_var = 0
+        if len(child_moments) >= 2:
+            child_var = child_moments[1]
+            child_var.unsqueeze_(4)
+            centered_mean = child_mean - mean.unsqueeze(4)
+            var = child_var + centered_mean**2
+            var = var * weights
+            var = var.sum(dim=3)
+            moments += [var]
+
+        if len(child_moments) >= 3:
+            child_skew = child_moments[2]
+            skew = 3 * centered_mean * child_var + centered_mean ** 3
+            if child_skew is not None:
+                child_skew.unsqueeze_(4)
+                skew = skew + child_skew
+            skew = skew * weights
+            skew = skew.sum(dim=3)
+            moments += [skew]
+
+        # layer.mean, layer.var, layer.skew = mean, var, skew
+        return moments
+
+    def compute_moments(self, order=3):
+        moments = self._leaf.moments()
+        if len(moments) < order:
+            moments += [None] * (order - len(moments))
+        return self.consolidated_vector_forward(moments, RatSpn.moment_kernel)
+
+    def compute_gradients(self, x: torch.Tensor, with_log_prob_x=False, order=3):
+        x = self._randomize(x)
+        grads: List = self._leaf.gradient(x, order=order)
+        if len(grads) < order:
+            grads += [None] * (order - len(grads))
+        if with_log_prob_x:
+            log_p = self._leaf(x, reduction=None)
+            grads += [log_p]
+        return self.consolidated_vector_forward(grads, RatSpn.weighted_sum_kernel)
+
+    def iterative_gmm_entropy_lb(self, reduction='mean'):
+        """
+            Calculate the entropy lower bound of the first-level mixtures.
+            See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
+        """
+        assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
+        log_gmm_weights: torch.Tensor = self._inner_layers[0].weights
+        # Normalize sum weights in log space
+        log_gmm_weights = torch.log_softmax(log_gmm_weights, dim=2)
+        N, D, I, S, R = log_gmm_weights.shape
+        # First sum layer after the leaves has weights of dim (N, D, I, S, R)
+        # The entropy lower bound must be calculated for every sum node
+
+        # bounded mean and variance
+        # dist weights are of size (N, F, I, R)
+        means, sigma = self._leaf.base_leaf.bounded_dist_params()
+        _, F, _, _ = means.shape
+
+        lb_ent_i = []
+        for i in range(I):
+            log_probs_i = []
+            for j in range(I):
+                std = sigma[:, :, [i], :] + sigma[:, :, [j], :]
+                component_log_probs = -((means[:, :, [i], :] - means[:, :, [j], :]) ** 2) / (2 * std ** 2) - \
+                                      std.log() - math.log(math.sqrt(2 * math.pi))
+                component_log_probs = self._leaf.prod(self._leaf.pad_input(component_log_probs))
+
+                # Unsqueeze in output channel dimension so that the log_prob vector of each feature
+                # is added to the weights of the S sum nodes of that feature.
+                component_log_probs.unsqueeze_(dim=3)
+                log_probs_i.append(log_gmm_weights[:, :, [j], :, :] + component_log_probs)
+            log_probs_i = torch.cat(log_probs_i, dim=2).logsumexp(dim=2, keepdim=True)
+            lb_ent_i.append(log_gmm_weights[:, :, [i], :, :].exp() * log_probs_i)
+        lb_ent = -torch.cat(lb_ent_i, dim=2).sum(dim=2)
+
+        if reduction == 'mean':
+            lb_ent = lb_ent.mean()
+        return lb_ent
 
     def gmm_entropy_lb(self, reduction='mean'):
         """

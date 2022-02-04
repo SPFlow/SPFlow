@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import List, Union
+from typing import List, Union, Tuple
 
 import numpy as np
 import torch
@@ -66,6 +66,14 @@ class Sum(AbstractLayer):
         # Necessary for sampling with evidence: Save input during forward pass.
         self._is_input_cache_enabled = False
         self._input_cache = None
+
+        # Weights of this sum node that were propagated down through the following product layer.
+        # These weights weigh the child sum node in the layer after the product layer that follows this one.
+        # The consolidated weights are needed for moment calculation.
+        self.consolidated_weights = None
+        self.mean = None
+        self.var = None
+        self.skew = None
 
     def _enable_input_cache(self):
         """Enables the input cache. This will store the input in forward passes into `self.__input_cache`."""
@@ -222,6 +230,38 @@ class Sum(AbstractLayer):
 
         return context
 
+    def depr_forward_grad(self, child_grads):
+        weights = self.consolidated_weights.unsqueeze(2)
+        return [(g.unsqueeze_(4) * weights).sum(dim=3) for g in child_grads]
+
+    def depr_compute_moments(self, child_moments: List[torch.Tensor]):
+        assert self.consolidated_weights is not None, "No consolidated weights are set for this Sum node!"
+        # Create an extra dimension for the mean vector so all elements of the mean vector are multiplied by the same
+        # weight for that feature and output channel.
+        weights = self.consolidated_weights.unsqueeze(2)
+        # Weights is of shape [n, d, 1, ic, oc, r]
+
+        mean, var, skew = [m.unsqueeze(4) if m is not None else None for m in child_moments]
+        # moments have shape [n, d, cardinality, ic, r]
+        # Create an extra 'output channels' dimension, as the weights are separate for each output channel.
+        self._mean = mean * weights
+        # _mean has shape [n, d, cardinality, ic, oc, r]
+        self._mean = self._mean.sum(dim=3)
+        # _mean has shape [n, d, cardinality, oc, r]
+
+        centered_mean = mean - self._mean.unsqueeze(4)
+        self._var = var + centered_mean**2
+        self._var = self._var * weights
+        self._var = self._var.sum(dim=3)
+
+        self._skew = 3*centered_mean*var + centered_mean**3
+        if skew is not None:
+            self._skew = self._skew + skew
+        self._skew = self._skew * weights
+        self._skew = self._skew.sum(dim=3)
+
+        return self._mean, self._var, self._skew
+
     def _check_repetition_indices(self, context: SamplingContext):
         assert context.repetition_indices.shape[0] == context.parent_indices.shape[0]
         if self.num_repetitions > 1 and context.repetition_indices is None:
@@ -267,7 +307,7 @@ class Product(AbstractLayer):
         """Hack to obtain the current device, this layer lives on."""
         return self._conv_weights.device
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor, reduction = 'sum'):
         """
         Product layer forward pass.
 
@@ -293,14 +333,20 @@ class Product(AbstractLayer):
         n, d, c, r = x.size()
         d_out = d // self.cardinality
 
-        # Use convolution with 3D weight tensor filled with ones to simulate the product node
-        x = x.unsqueeze(1)  # Shape: [n, 1, d, c, r]
-        result = F.conv3d(x, weight=self._conv_weights, stride=(self.cardinality, 1, 1))
+        if reduction == 'sum':
+            # Use convolution with 3D weight tensor filled with ones to add the log-probs together
+            x = x.unsqueeze(1)  # Shape: [n, 1, d, c, r]
+            result = F.conv3d(x, weight=self._conv_weights, stride=(self.cardinality, 1, 1))
 
-        # Remove simulated channel
-        result = result.squeeze(1)
+            # Remove simulated channel
+            result = result.squeeze(1)
 
-        assert result.size() == (n, d_out, c, r)
+            assert result.size() == (n, d_out, c, r)
+        elif reduction is None:
+            result = x.view(n, d_out, self.cardinality, c, r)
+        else:
+            assert False, "No reduction other than sum is implemented. "
+
         return result
 
     def sample(self, n: int = None, context: SamplingContext = None) -> SamplingContext:
@@ -476,6 +522,29 @@ class CrossProduct(AbstractLayer):
 
         context.parent_indices = indices
         return context
+
+    def consolidate_weights(self, parent_weights):
+        """
+            This function takes the weights from the parent sum nodes meant for this product layer and recalculates
+            them as if they would directly weigh the child sum nodes of this product layer.
+            This turns the sum-prod-sum chain into a hierarchical mixture: sum-sum.
+        """
+        n, d, p_ic, p_oc, r = parent_weights.shape
+        assert p_ic == self.in_channels**2, \
+            "Number of parent input channels isn't the squared input channels of this product layer!"
+        assert d*2 == self.in_features, \
+            "Number of input features isn't double the output features of this product layer!"
+        parent_weights = parent_weights.softmax(dim=2)
+        parent_weights = parent_weights.view(n, d, self.in_channels, self.in_channels, p_oc, r)
+        left_sums_weights = parent_weights.sum(dim=3)
+        right_sums_weights = parent_weights.sum(dim=2)
+        # left_sums_weights contains the consolidated weights of each parent's in_feature regarding the left sets of
+        # sum nodes for that feature. right_sums_weights analogously for the right sets.
+        # We can't simply concatenate them along the 1. dimension because this would mix up the order of in_features
+        # of this layer. Along dim 1, we need left[0], right[0], left[1], right[1] => we need to interleave them
+        parent_weights = torch.stack((left_sums_weights, right_sums_weights), dim=2)
+        parent_weights = parent_weights.view(n, self.in_features, self.in_channels, p_oc, r)
+        return parent_weights
 
     def __repr__(self):
         return "CrossProduct(in_features={}, out_shape={})".format(self.in_features, self.out_shape)
