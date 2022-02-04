@@ -1,6 +1,7 @@
 import logging
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
+import math
 import torch
 from torch import distributions as dist
 from torch import nn
@@ -212,8 +213,10 @@ class GaussianMixture(IndependentMultivariate):
 
     def forward(self, x: torch.Tensor, reduction='sum'):
         x = super().forward(x=x, reduction=reduction)
-        x = self.sum(x)
-        return x
+        if reduction is None:
+            return (x.unsqueeze(4) * self.sum.weights.unsqueeze(2)).sum(dim=3)
+        else:
+            return self.sum(x)
 
     def sample(self, n: int = None, context: SamplingContext = None) -> torch.Tensor:
         context = self.sum.sample(context=context)
@@ -260,18 +263,128 @@ class GaussianMixture(IndependentMultivariate):
         # layer.mean, layer.var, layer.skew = mean, var, skew
         return moments
 
-    def gradient(self, x: torch.Tensor, order: int):
-        """Get the gradient up to the given order at the point x"""
+    def _weighted_sum(self, vector_list: List[torch.Tensor]):
         weights = self.sum.weights.unsqueeze(2)
         # Weights is of shape [n, d, 1, ic, oc, r]
         # The extra dimension is created so all elements of the gradient vectors are multiplied by the same
         # weight for that feature and output channel.
-        grads = [self.prod(self.pad_input(g), reduction=None).unsqueeze(4) * weights
-                 for g in self.base_leaf.gradient(x, order)]
-        return grads
+        return [(g.unsqueeze(4) * weights).sum(dim=3) for g in vector_list]
+
+    def gradient(self, x: torch.Tensor, order: int):
+        """Get the gradient up to the given order at the point x"""
+        grads = [self.prod(self.pad_input(g), reduction=None) for g in self.base_leaf.gradient(x, order)]
+        return self._weighted_sum(grads)
+
+    def entropy_taylor_approx(self, components=3):
+        mean, var, skew = self.moments()
+        # Gradients are all evaluated at the mean of the SPN
+        grads = self.gradient(mean, order=components)
+        log_p_mean = self(mean, reduction=None)
+        entropy = grad = inv_sq_mean_prob = ggrad = inv_mean_prob = 0  # To satisfy the IDE
+        if components >= 1:
+            H_0 = - log_p_mean
+            entropy = H_0
+        if components >= 2:
+            grad, ggrad = grads[0:2]
+            inv_mean_prob = (-log_p_mean).exp()
+            inv_sq_mean_prob = (-2 * log_p_mean).exp()
+            ggrad_log = -inv_sq_mean_prob * grad + inv_mean_prob * ggrad
+            H_2 = - (ggrad_log * var) / 2
+            entropy += H_2
+        if components >= 3:
+            gggrad = grads[2]
+            inv_cub_mean_prob = (-3 * log_p_mean).exp()
+            gggrad_log = 2 * inv_cub_mean_prob * grad - 2 * inv_sq_mean_prob * ggrad + inv_mean_prob * gggrad
+            H_3 = - (gggrad_log * skew) / 6
+            entropy += H_3
+
+        # grad_log = inv_mean_prob * grad
+        entropy = entropy.sum(dim=1)
+        return entropy
+
+    def iterative_gmm_entropy_lb(self, reduction='mean'):
+        """
+            Calculate the entropy lower bound of the first-level mixtures.
+            See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
+        """
+        log_gmm_weights: torch.Tensor = self.sum.weights
+        # Normalize sum weights in log space
+        log_gmm_weights = torch.log_softmax(log_gmm_weights, dim=2)
+        N, D, I, S, R = log_gmm_weights.shape
+        # First sum layer after the leaves has weights of dim (N, D, I, S, R)
+        # The entropy lower bound must be calculated for every sum node
+
+        # bounded mean and variance
+        # dist weights are of size (N, F, I, R)
+        means, sigma = self._leaf.base_leaf.bounded_dist_params()
+        _, F, _, _ = means.shape
+
+        lb_ent_i = []
+        for i in range(I):
+            log_probs_i = []
+            for j in range(I):
+                std = sigma[:, :, [i], :] + sigma[:, :, [j], :]
+                component_log_probs = -((means[:, :, [i], :] - means[:, :, [j], :]) ** 2) / (2 * std ** 2) - \
+                                      std.log() - math.log(math.sqrt(2 * math.pi))
+                component_log_probs = self._leaf.prod(self._leaf.pad_input(component_log_probs))
+
+                # Unsqueeze in output channel dimension so that the log_prob vector of each feature
+                # is added to the weights of the S sum nodes of that feature.
+                component_log_probs.unsqueeze_(dim=3)
+                log_probs_i.append(log_gmm_weights[:, :, [j], :, :] + component_log_probs)
+            log_probs_i = torch.cat(log_probs_i, dim=2).logsumexp(dim=2, keepdim=True)
+            lb_ent_i.append(log_gmm_weights[:, :, [i], :, :].exp() * log_probs_i)
+        lb_ent = -torch.cat(lb_ent_i, dim=2).sum(dim=2)
+
+        if reduction == 'mean':
+            lb_ent = lb_ent.mean()
+        return lb_ent
+
+    def gmm_entropy_lb(self, reduction='mean'):
+        """
+            Calculate the entropy lower bound of the first-level mixtures.
+            See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
+        """
+        log_gmm_weights: torch.Tensor = self.sum.weights
+        # Normalize sum weights in log space
+        log_gmm_weights = torch.log_softmax(log_gmm_weights, dim=2)
+        N, D, I, S, R = log_gmm_weights.shape
+        # First sum layer after the leaves has weights of dim (N, D, I, S, R)
+        # The entropy lower bound must be calculated for every sum node
+
+        # bounded mean and variance
+        # dist weights are of size (N, F, I, R)
+        means, sigma = self._leaf.base_leaf.bounded_dist_params()
+        _, F, _, _ = means.shape
+
+        repeated_means = means.repeat(1, 1, I, 1)
+        stds_outer_sum = sigma.unsqueeze(2) + sigma.unsqueeze(3)
+        stds_outer_sum = stds_outer_sum.view(N, F, I**2, R)
+        means_to_eval = means.repeat_interleave(I, dim=2)
+
+        component_log_probs = -((means_to_eval - repeated_means) ** 2) / (2 * stds_outer_sum**2) - \
+                              stds_outer_sum.log() - math.log(math.sqrt(2 * math.pi))
+        log_probs = self._leaf.prod(self._leaf.pad_input(component_log_probs))
+
+        # Match sum weights to log probs
+        w_j = log_gmm_weights.repeat(1, 1, I, 1, 1)
+        # now N x D x I^2 x S x R
+
+        # Unsqueeze in output channel dimension so that the log_prob vector of each RV is added to the weights of
+        # the S sum nodes of that RV.
+        log_probs.unsqueeze_(dim=3)
+
+        weighted_log_probs = w_j + log_probs
+        lb_log_term = torch.logsumexp(weighted_log_probs.view(N, D, I, I, S, R), dim=2)
+        # lb_log_term is now N x D x I x S x R, the same shape as log_gmm_weights
+
+        gmm_ent_lb = -(log_gmm_weights.exp() * lb_log_term).sum(dim=2)
+        if reduction == 'mean':
+            gmm_ent_lb = gmm_ent_lb.mean()
+        return gmm_ent_lb
 
     def __repr__(self):
-        return f"IndependentGMM(in_features={self.in_features}, out_channels={self.out_channels}, dropout={self.dropout}, cardinality={self.cardinality}, out_shape={self.out_shape})"
+        return f"GaussianMixture(in_features={self.in_features}, out_channels={self.out_channels}, dropout={self.dropout}, cardinality={self.cardinality}, out_shape={self.out_shape})"
 
 
 def truncated_normal_(tensor, mean=0, std=0.1):

@@ -504,8 +504,9 @@ if __name__ == "__main__":
                 output: torch.Tensor = model(x=data, condition=label)
                 ll_loss = -output.mean()
                 if not args.no_ent:
-                    entropy = model.entropy_taylor_approx(components=3).mean()
-                    leaf_gmm_ent_lb = model.gmm_entropy_lb(reduction='mean')
+                    spn_entropy = model.entropy_taylor_approx(components=3).mean()
+                    if config.gmm_leaves:
+                        leaf_gmm_ent_lb = model.gmm_entropy_lb(reduction='mean')
                     if False:
                         with torch.no_grad():
                             inner_ents, norm_inner_ents, root_ent, norm_root_ent = model.sum_node_entropies(reduction='mean')

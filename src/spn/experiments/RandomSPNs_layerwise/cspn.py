@@ -11,7 +11,7 @@ from spn.algorithms.layerwise.distributions import Leaf
 from spn.algorithms.layerwise.layers import CrossProduct, Sum
 from spn.algorithms.layerwise.type_checks import check_valid
 from spn.algorithms.layerwise.utils import provide_evidence, SamplingContext
-from spn.experiments.RandomSPNs_layerwise.distributions import IndependentMultivariate, RatNormal, truncated_normal_
+from spn.experiments.RandomSPNs_layerwise.distributions import GaussianMixture
 
 from rat_spn import RatSpn, RatSpnConfig
 import matplotlib.pyplot as plt
@@ -44,7 +44,6 @@ class CSPN(RatSpn):
         Args:
             config (CspnConfig): Cspn configuration object.
         """
-        config.first_layer_sum = False
         super().__init__(config=config)
         self.config: CspnConfig = config
         self.dist_std_head = None
@@ -56,6 +55,118 @@ class CSPN(RatSpn):
         self.replace_layer_params()
         self.create_feat_layers(config.F_cond)
 
+    def forward(self, x: torch.Tensor, condition: torch.Tensor = None) -> torch.Tensor:
+        if condition is not None:
+            self.set_weights(condition)
+        return super().forward(x)
+
+    def consolidate_weights(self, condition=None):
+        if condition is not None:
+            self.set_weights(condition)
+        return super().consolidate_weights()
+
+    def compute_moments(self, condition=None):
+        if condition is not None:
+            self.set_weights(condition)
+        return super().compute_moments()
+
+    def compute_gradients(self, x, with_log_prob_x=False, condition=None):
+        if condition is not None:
+            self.set_weights(condition)
+        return super().compute_gradients(x, with_log_prob_x)
+
+    def entropy_taylor_approx(self, condition=None, components=3):
+        """
+            Calculates the Taylor series approximation of the entropy up to a given order.
+            The first order of the approximation is zero.
+            'components' is the number of Taylor series terms that aren't zero, starting at the zero'th order.
+        """
+        # assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
+        if condition is not None:
+            self.set_weights(condition)
+        self.consolidate_weights(condition=None)
+        moments = super().compute_moments(order=components)
+        mean = moments[0]
+        # Gradients are all evaluated at the mean of the SPN
+        # grad, ggrad, gggrad, log_p_mean = super().compute_gradients(mean, with_log_prob_x=True, order=components)
+        grads = super().compute_gradients(mean, with_log_prob_x=True, order=components)
+        log_p_mean = grads[-1]
+        entropy = grad = inv_sq_mean_prob = ggrad = inv_mean_prob = 0  # To satisfy the IDE
+        if components >= 1:
+            H_0 = - log_p_mean
+            entropy = H_0
+        if components >= 2:
+            var = moments[1]
+            grad, ggrad = grads[0:2]
+            inv_mean_prob = (-log_p_mean).exp()
+            inv_sq_mean_prob = (-2 * log_p_mean).exp()
+            ggrad_log = -inv_sq_mean_prob * grad + inv_mean_prob * ggrad
+            H_2 = - (ggrad_log * var) / 2
+            entropy += H_2
+        if components >= 3:
+            skew = moments[2]
+            gggrad = grads[2]
+            inv_cub_mean_prob = (-3 * log_p_mean).exp()
+            gggrad_log = 2 * inv_cub_mean_prob * grad - 2 * inv_sq_mean_prob * ggrad + inv_mean_prob * gggrad
+            H_3 = - (gggrad_log * skew) / 6
+            entropy += H_3
+
+        # grad_log = inv_mean_prob * grad
+        entropy = entropy.sum(dim=1)
+        return entropy
+
+    def iterative_gmm_entropy_lb(self, condition=None, reduction='mean'):
+        """
+            Calculate the entropy lower bound of the first-level mixtures.
+            See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
+        """
+        if condition is not None:
+            self.set_weights(condition)
+        return self._leaf.iterative_gmm_entropy_lb(reduction)
+
+    def gmm_entropy_lb(self, condition=None, reduction='mean'):
+        """
+            Calculate the entropy lower bound of the first-level mixtures.
+            See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
+        """
+        if condition is not None:
+            self.set_weights(condition)
+        return self._leaf.gmm_entropy_lb(reduction)
+
+    def leaf_entropy_taylor_approx(self, condition=None):
+        """
+            Calculate the entropy lower bound of the first-level mixtures.
+            See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
+        """
+        if condition is not None:
+            self.set_weights(condition)
+        return self._leaf.entropy_taylor_approx()
+
+    def sum_node_entropies(self, condition=None, reduction='mean'):
+        """
+            Calculate the entropies of the hidden categorical random variables in the sum nodes
+        """
+        if condition is not None:
+            self.set_weights(condition)
+        return super().sum_node_entropies(reduction)
+
+    def sample(self, condition: torch.Tensor = None, class_index=None,
+               evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+        """
+        Sample from the random variable encoded by the CSPN.
+
+        Args:
+            condition (torch.Tensor): Batch of conditionals.
+        """
+        if condition is not None:
+            self.set_weights(condition)
+        assert class_index is None or condition.shape[0] == len(class_index), \
+            "The batch size of the condition must equal the length of the class index list if they are provided!"
+        # TODO add assert to check dimension of evidence, if given.
+
+        batch_size = self.root.weights.shape[0]
+        return super().sample(batch_size, class_index, evidence, is_mpe, **kwargs)
+
     def replace_layer_params(self):
         for layer in self._inner_layers:
             if isinstance(layer, Sum):
@@ -65,6 +176,11 @@ class CSPN(RatSpn):
         placeholder = torch.zeros_like(self.root.weights)
         del self.root.weights
         self.root.weights = placeholder
+
+        if isinstance(self._leaf, GaussianMixture):
+            placeholder = torch.zeros_like(self._leaf.sum.weights)
+            del self._leaf.sum.weights
+            self._leaf.sum.weights = placeholder
 
         placeholder = torch.zeros_like(self._leaf.base_leaf.means)
         del self._leaf.base_leaf.means
@@ -125,6 +241,11 @@ class CSPN(RatSpn):
         self.sum_param_heads.append(nn.Linear(sum_layer_sizes[-1], self.root.weights.numel()))
         print(f"Root sum layer has {self.root.weights.numel()} weights.")
 
+        if isinstance(self._leaf, GaussianMixture):
+            self.sum_param_heads.append(nn.Linear(sum_layer_sizes[-1], self._leaf.sum.weights.numel()))
+            print(f"A param head was added for the sum layer of the GaussianMixture leaves, "
+                  f"having {self._leaf.sum.weights.numel()} weights.")
+
         # dist_layer_sizes = [int(feature_dim * 10 ** (-i)) for i in range(1 + self.config.fc_dist_param_layers)]
         dist_layer_sizes = [feature_dim for _ in range(1 + self.config.fc_dist_param_layers)]
         dist_layers = []
@@ -136,114 +257,6 @@ class CSPN(RatSpn):
         self.dist_mean_head = nn.Linear(dist_layer_sizes[-1], self._leaf.base_leaf.means.numel())
         self.dist_std_head = nn.Linear(dist_layer_sizes[-1], self._leaf.base_leaf.stds.numel())
         print(f"Dist layer has {self._leaf.base_leaf.means.numel()} + {self._leaf.base_leaf.stds.numel()} weights.")
-
-    def forward(self, x: torch.Tensor, condition: torch.Tensor = None) -> torch.Tensor:
-        if condition is not None:
-            self.set_weights(condition)
-        return super().forward(x)
-
-    def consolidate_weights(self, condition=None):
-        # assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
-        if condition is not None:
-            self.set_weights(condition)
-        return super().consolidate_weights()
-
-    def compute_moments(self, condition=None):
-        # assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
-        if condition is not None:
-            self.set_weights(condition)
-        return super().compute_moments()
-
-    def compute_gradients(self, x, with_log_prob_x=False, condition=None):
-        # assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
-        if condition is not None:
-            self.set_weights(condition)
-        return super().compute_gradients(x, with_log_prob_x)
-
-    def entropy_taylor_approx(self, condition=None, components=3):
-        """
-            Calculates the Taylor series approximation of the entropy up to a given order.
-            The first order of the approximation is zero.
-            'components' is the number of Taylor series terms that aren't zero, starting at the zero'th order.
-        """
-        # assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
-        if condition is not None:
-            self.set_weights(condition)
-        self.consolidate_weights(condition=None)
-        moments = super().compute_moments(order=components)
-        mean = moments[0]
-        # Gradients are all evaluated at the mean of the SPN
-        # grad, ggrad, gggrad, log_p_mean = super().compute_gradients(mean, with_log_prob_x=True, order=components)
-        grads = super().compute_gradients(mean, with_log_prob_x=True, order=components)
-        log_p_mean = grads[-1]
-        entropy = grad = inv_sq_mean_prob = ggrad = inv_mean_prob = 0  # To satisfy the IDE
-        if components >= 1:
-            H_0 = - log_p_mean
-            entropy = H_0
-        if components >= 2:
-            var = moments[1]
-            grad, ggrad = grads[0:2]
-            inv_mean_prob = (-log_p_mean).exp()
-            inv_sq_mean_prob = (-2 * log_p_mean).exp()
-            ggrad_log = -inv_sq_mean_prob * grad + inv_mean_prob * ggrad
-            H_2 = - (ggrad_log * var) / 2
-            entropy += H_2
-        if components >= 3:
-            skew = moments[2]
-            gggrad = grads[2]
-            inv_cub_mean_prob = (-3 * log_p_mean).exp()
-            gggrad_log = 2 * inv_cub_mean_prob * grad - 2 * inv_sq_mean_prob * ggrad + inv_mean_prob * gggrad
-            H_3 = - (gggrad_log * skew) / 6
-            entropy += H_3
-
-        # grad_log = inv_mean_prob * grad
-        entropy = entropy.sum(dim=1)
-        return entropy
-
-    def iterative_gmm_entropy_lb(self, condition=None, reduction='mean'):
-        """
-            Calculate the entropy lower bound of the first-level mixtures.
-            See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
-        """
-        assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
-        if condition is not None:
-            self.set_weights(condition)
-        return super().iterative_gmm_entropy_lb(reduction)
-
-    def gmm_entropy_lb(self, condition=None, reduction='mean'):
-        """
-            Calculate the entropy lower bound of the first-level mixtures.
-            See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
-        """
-        assert isinstance(self._inner_layers[0], Sum), "First layer after the leaf layer must be a sum layer!"
-        if condition is not None:
-            self.set_weights(condition)
-        return super().gmm_entropy_lb(reduction)
-
-    def sum_node_entropies(self, condition=None, reduction='mean'):
-        """
-            Calculate the entropies of the hidden categorical random variables in the sum nodes
-        """
-        if condition is not None:
-            self.set_weights(condition)
-        return super().sum_node_entropies(reduction)
-
-    def sample(self, condition: torch.Tensor = None, class_index=None,
-               evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
-        """
-        Sample from the random variable encoded by the CSPN.
-
-        Args:
-            condition (torch.Tensor): Batch of conditionals.
-        """
-        if condition is not None:
-            self.set_weights(condition)
-        assert class_index is None or condition.shape[0] == len(class_index), \
-            "The batch size of the condition must equal the length of the class index list if they are provided!"
-        # TODO add assert to check dimension of evidence, if given.
-
-        batch_size = self.root.weights.shape[0]
-        return super().sample(batch_size, class_index, evidence, is_mpe, **kwargs)
 
     def set_weights(self, feat_inp: torch.Tensor):
         batch_size = feat_inp.shape[0]
@@ -261,6 +274,11 @@ class CSPN(RatSpn):
         weight_shape = (batch_size, self.root.in_features, self.root.in_channels, self.root.out_channels, self.root.num_repetitions)
         weights = self.sum_param_heads[i](sum_weights_pre_output).view(weight_shape)
         self.root.weights = weights
+        if isinstance(self._leaf, GaussianMixture):
+            weight_shape = (batch_size, self._leaf.sum.in_features, self._leaf.sum.in_channels,
+                            self._leaf.sum.out_channels, self._leaf.sum.num_repetitions)
+            weights = self.sum_param_heads[i+1](sum_weights_pre_output).view(weight_shape)
+            self._leaf.sum.weights = weights
 
         dist_param_shape = (batch_size, self._leaf.base_leaf.in_features, self.config.I, self.config.R)
         dist_weights_pre_output = self.dist_layers(features)
