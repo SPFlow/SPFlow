@@ -263,14 +263,15 @@ if __name__ == "__main__":
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--epochs', '-ep', type=int, default=100)
     parser.add_argument('--batch_size', '-bs', type=int, default=256)
-    parser.add_argument('--results_dir', type=str, default='.',
+    parser.add_argument('--results_dir', type=str, default='results/',
                         help='The base directory where the directory containing the results will be saved to.')
     parser.add_argument('--dataset_dir', type=str, default='../data',
                         help='The base directory to provide to the PyTorch Dataloader.')
     parser.add_argument('--model_path', type=str,
                         help='Path to the pretrained model. If it is given, '
                              'all other SPN config parameters are ignored.')
-    parser.add_argument('--exp_name', type=str, default='stl', help='Experiment name. The results dir will contain it.')
+    parser.add_argument('--exp_name', type=str, default='cspn_test',
+                        help='Experiment name. The results dir will contain it.')
     parser.add_argument('--repetitions', '-R', type=int, default=5, help='Number of parallel CSPNs to learn at once. ')
     parser.add_argument('--cspn_depth', '-D', type=int, default=3, help='Depth of the CSPN.')
     parser.add_argument('--num_dist', '-I', type=int, default=5, help='Number of Gauss dists per pixel.')
