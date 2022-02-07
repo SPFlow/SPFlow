@@ -115,16 +115,16 @@ class Sum(AbstractLayer):
             # In CSPNs, there are separate weights for each batch element.
             # Weights is of shape [n, d, ic, oc, r]
             oc = self.weights.size(3)
-            # Normalize weights in log-space along in_channel dimension
-            logweights = F.log_softmax(self.weights, dim=2)
+            # No need to normalize weights, Cspn.set_weights() already normalizes them in log space
+            log_weights = self.weights
         else:
             oc = self.weights.size(2)
             # Normalize weights in log-space along in_channel dimension
             # Weights is of shape [d, ic, oc, r]
-            logweights = F.log_softmax(self.weights, dim=1)
+            log_weights = F.log_softmax(self.weights, dim=1)
 
         # Multiply (add in log-space) input features and weights
-        x = x + logweights  # Shape: [n, d, ic, oc, r]
+        x = x + log_weights  # Shape: [n, d, ic, oc, r]
 
         # Compute sum via logsumexp along in_channels dimension
         x = torch.logsumexp(x, dim=2)  # Shape: [n, d, oc, r]
@@ -197,7 +197,11 @@ class Sum(AbstractLayer):
         assert weights.shape == (n, d, ic)
 
         # Apply softmax to ensure they are proper probabilities
-        log_weights = F.log_softmax(weights, dim=2)
+        if weights.dim() == 5:
+            # No need to normalize weights, Cspn.set_weights() already normalizes them in log space
+            log_weights = weights
+        else:
+            log_weights = F.log_softmax(weights, dim=2)
 
         # If evidence is given, adjust the weights with the likelihoods of the observed paths
         if self._is_input_cache_enabled and self._input_cache is not None:

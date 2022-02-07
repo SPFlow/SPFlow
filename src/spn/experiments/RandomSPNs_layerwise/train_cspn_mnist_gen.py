@@ -173,7 +173,7 @@ class CsvLogger(dict):
         self.other_keys = ['epoch', 'time']
         # self.keys_to_avg = ['mnist_test_ll', 'll_loss', 'ent_loss', 'gmm_ent', 'inner_ent', 'norm_inner_ent',
         #                     'root_ent', 'norm_root_ent', 'loss']
-        self.keys_to_avg = ['mnist_test_ll', 'll_loss', 'ent_loss', 'gmm_ent', 'entropy', 'loss']
+        self.keys_to_avg = ['mnist_test_ll', 'll_loss', 'ent_loss', 'gmm_ent', 'gmm_taylor_ent', 'entropy', 'loss']
         self.no_log_dict = {'batch': None}
         self.reset()
         with open(self.path, 'w') as f:
@@ -217,17 +217,19 @@ class CsvLogger(dict):
         if self.no_log_dict['batch'] is not None:
             return_str += f" @ batch {self.no_log_dict['batch']}"
         return_str += f" - NLL loss: {self.mean('ll_loss'):.2f} - "
-        if 'mnist_test_ll' in self.keys() and self.mean('mnist_test_ll') > 0.0:
+        if 'mnist_test_ll' in self.keys() and self.mean('mnist_test_ll') != 0.0:
             return_str += f"LL orig mnist test set: {self.mean('mnist_test_ll'):.2f} - "
-        if 'gmm_ent' in self.keys() and self.mean('gmm_ent') > 0.0:
-            return_str += f"Entropy of GMMs: {self.mean('gmm_ent'):.2f} - "
-        if 'entropy' in self.keys() and self.mean('entropy') > 0.0:
+        if 'gmm_ent' in self.keys() and self.mean('gmm_ent') != 0.0:
+            return_str += f"GMM ent lower bound: {self.mean('gmm_ent'):.2f} - "
+        if 'gmm_taylor_ent' in self.keys() and self.mean('gmm_taylor_ent') != 0.0:
+            return_str += f"GMM ent taylor approx.: {self.mean('gmm_taylor_ent'):.2f} - "
+        if 'entropy' in self.keys() and self.mean('entropy') != 0.0:
             return_str += f"Entropy tayl. approx.: {self.mean('entropy'):.2f} - "
-        if 'inner_ent' in self.keys() and self.mean('inner_ent') > 0.0:
+        if 'inner_ent' in self.keys() and self.mean('inner_ent') != 0.0:
             return_str += f"Entropy of inner sums: {self.mean('inner_ent'):.2f}|{self.mean('norm_inner_ent'):.2f}% - "
-        if 'root_ent' in self.keys() and self.mean('root_ent') > 0.0:
+        if 'root_ent' in self.keys() and self.mean('root_ent') != 0.0:
             return_str += f"Entropy of root sum: {self.mean('root_ent'):.2f}|{self.mean('norm_root_ent'):.2f}% - "
-        if 'ent_loss' in self.keys() and self.mean('ent_loss') > 0.0:
+        if 'ent_loss' in self.keys() and self.mean('ent_loss') != 0.0:
             return_str += f"Entropy loss: {self.mean('ent_loss'):.2f}"
         return return_str
 
@@ -506,7 +508,9 @@ if __name__ == "__main__":
                 if not args.no_ent:
                     spn_entropy = model.entropy_taylor_approx(components=3).mean()
                     if config.gmm_leaves:
+                        leaf_it_gmm_ent_lb = model.iterative_gmm_entropy_lb(reduction='mean')
                         leaf_gmm_ent_lb = model.gmm_entropy_lb(reduction='mean')
+                        leaf_entropy = model.leaf_entropy_taylor_approx().mean()
                     if False:
                         with torch.no_grad():
                             inner_ents, norm_inner_ents, root_ent, norm_root_ent = model.sum_node_entropies(reduction='mean')
@@ -517,8 +521,8 @@ if __name__ == "__main__":
 
             loss.backward()
             optimizer.step()
-            info.add_to_avg_keys(ll_loss=ll_loss, ent_loss=ent_loss, gmm_ent=leaf_gmm_ent_lb, entropy=entropy,
-                                 loss=loss)
+            info.add_to_avg_keys(ll_loss=ll_loss, ent_loss=ent_loss, loss=loss,
+                                 gmm_ent=leaf_gmm_ent_lb, gmm_taylor_ent=leaf_entropy, entropy=spn_entropy)
 
             # Log stuff
             if args.verbose:

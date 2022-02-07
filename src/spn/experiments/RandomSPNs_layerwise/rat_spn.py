@@ -409,10 +409,13 @@ class RatSpn(nn.Module):
             that is, without product layers. These weights are needed for calculating the entropy.
         """
         current_weights: torch.Tensor = self.root.weights
+        assert current_weights.dim() == 5, "This isn't adopted to the 4-dimensional RatSpn weights yet"
+
         n, d, ic, oc, _ = current_weights.shape
         # root mean weights have shape [n, 1, S^2*R, C, 1]
         # The sampling root weights the repetitions
         assert oc == 1, "Check if the sampling root weights are calculated correctly for C>1."
+
         s_root_weights = current_weights.softmax(dim=2).view(n, d, ic // self.config.R, oc, self.config.R)
         s_root_weights = s_root_weights.sum(dim=2, keepdim=True)
         self._sampling_root.consolidated_weights = s_root_weights
@@ -544,7 +547,11 @@ class RatSpn(nn.Module):
         for i in range(1, len(self._inner_layers)):
             layer = self._inner_layers[i]
             if isinstance(layer, Sum):
-                log_sum_weights: torch.Tensor = torch.log_softmax(layer.weights, dim=2)
+                log_sum_weights: torch.Tensor = layer.weights
+                if log_sum_weights.dim() == 4:
+                    # Only in the Cspn case are the weights already log-normalized
+                    log_sum_weights: torch.Tensor = torch.log_softmax(log_sum_weights, dim=2)
+                assert self.sum.weights.dim() == 5, "This isn't adopted to the 4-dimensional RatSpn weights yet"
                 nr_cat = log_sum_weights.shape[2]
                 max_categ_ent = -np.log(1/nr_cat)
                 categ_ent = -(log_sum_weights.exp() * log_sum_weights).sum(dim=2)
@@ -556,7 +563,10 @@ class RatSpn(nn.Module):
                 norm_inner_sum_ent.append(norm_categ_ent.unsqueeze(0))
         inner_sum_ent = torch.cat(inner_sum_ent, dim=0)
         norm_inner_sum_ent = torch.cat(norm_inner_sum_ent, dim=0)
-        log_root_weights = torch.log_softmax(self.root.weights, dim=2)
+        log_root_weights = self.root.weights
+        if log_root_weights.dim() == 4:
+            # Only in the Cspn case are the weights already log-normalized
+            log_root_weights: torch.Tensor = torch.log_softmax(log_root_weights, dim=2)
         nr_cat = log_root_weights.shape[2]
         max_categ_ent = -np.log(1 / nr_cat)
         root_categ_ent = -(log_root_weights.exp() * log_root_weights).sum(dim=2)

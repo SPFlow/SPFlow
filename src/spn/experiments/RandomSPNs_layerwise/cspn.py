@@ -259,30 +259,46 @@ class CSPN(RatSpn):
         print(f"Dist layer has {self._leaf.base_leaf.means.numel()} + {self._leaf.base_leaf.stds.numel()} weights.")
 
     def set_weights(self, feat_inp: torch.Tensor):
+        """
+            Sets the weights of the sum and dist nodes, using the input from the conditional passed through the
+            feature extraction layers.
+            The weights of the sum nodes are normalized in log space (log-softmaxed) over the input channel dimension.
+            The distribution parameters are bounded as well via the bounding function of the leaf layer.
+            So in the RatSpn class, any normalizing and bounding must only be done if the weights are of dimension 4,
+            meaning that it is not a Cspn.
+        """
         batch_size = feat_inp.shape[0]
         features = self.feat_layers(feat_inp)
         features = features.flatten(start_dim=1)
         sum_weights_pre_output = self.sum_layers(features)
 
+        # Set normalized sum node weights of the inner RatSpn layers
         i = 0
         for layer in self._inner_layers:
             if isinstance(layer, Sum):
                 weight_shape = (batch_size, layer.in_features, layer.in_channels, layer.out_channels, layer.num_repetitions)
                 weights = self.sum_param_heads[i](sum_weights_pre_output).view(weight_shape)
-                layer.weights = weights
+                layer.weights = F.log_softmax(weights, dim=2)
                 i += 1
+
+        # Set normalized weights of the root sum layer
         weight_shape = (batch_size, self.root.in_features, self.root.in_channels, self.root.out_channels, self.root.num_repetitions)
         weights = self.sum_param_heads[i](sum_weights_pre_output).view(weight_shape)
-        self.root.weights = weights
+        self.root.weights = F.log_softmax(weights, dim=2)
+
+        # Set normalized weights of the Gaussian Mixture leaf layer if it exists.
         if isinstance(self._leaf, GaussianMixture):
+            self._leaf.reset_moment_cache()
             weight_shape = (batch_size, self._leaf.sum.in_features, self._leaf.sum.in_channels,
                             self._leaf.sum.out_channels, self._leaf.sum.num_repetitions)
             weights = self.sum_param_heads[i+1](sum_weights_pre_output).view(weight_shape)
-            self._leaf.sum.weights = weights
+            self._leaf.sum.weights = F.log_softmax(weights, dim=2)
 
+        # Set bounded weights of the Gaussian distributions in the leaves
         dist_param_shape = (batch_size, self._leaf.base_leaf.in_features, self.config.I, self.config.R)
         dist_weights_pre_output = self.dist_layers(features)
         dist_means = self.dist_mean_head(dist_weights_pre_output).view(dist_param_shape)
         dist_stds = self.dist_std_head(dist_weights_pre_output).view(dist_param_shape)
         self._leaf.base_leaf.means = dist_means
         self._leaf.base_leaf.stds = dist_stds
+        self._leaf.base_leaf.set_bounded_dist_params()
