@@ -20,12 +20,11 @@ class AbstractLayer(nn.Module, ABC):
         self.num_repetitions = check_valid(num_repetitions, int, 1)
 
     @abstractmethod
-    def sample(self, n: int = None, context: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+    def sample(self, context: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
         """
         Sample from this layer.
         Args:
             context: Sampling context.
-            n: Number of samples.
 
         Returns:
             torch.Tensor: Generated samples.

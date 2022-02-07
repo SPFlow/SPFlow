@@ -180,7 +180,7 @@ class Leaf(AbstractLayer):
         """Get the gradient of order 1, ..., order at the point x"""
         pass
 
-    def sample(self, n: int = None, context: SamplingContext = None) -> torch.Tensor:
+    def sample(self, context: SamplingContext = None) -> torch.Tensor:
         """
         Perform sampling, given indices from the parent layer that indicate which of the multiple representations
         for each input shall be used.

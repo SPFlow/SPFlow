@@ -189,7 +189,7 @@ class IndependentMultivariate(Leaf):
     def _get_base_distribution(self):
         raise Exception("IndependentMultivariate does not have an explicit PyTorch base distribution.")
 
-    def sample(self, n: int = None, context: SamplingContext = None) -> torch.Tensor:
+    def sample(self, context: SamplingContext = None) -> torch.Tensor:
         context = self.prod.sample(context=context)
 
         # Remove padding
@@ -241,10 +241,10 @@ class GaussianMixture(IndependentMultivariate):
         else:
             return self.sum(x)
 
-    def sample(self, n: int = None, context: SamplingContext = None) -> torch.Tensor:
+    def sample(self, context: SamplingContext = None) -> torch.Tensor:
         context_overhang = context.parent_indices.size(1) - self.sum.in_features
         assert context_overhang >= 0, f"context_overhang is negative! ({context_overhang})"
-        if context_overhang >= 0:
+        if context_overhang:
             context.parent_indices = context.parent_indices[:, : -context_overhang]
         context = self.sum.sample(context=context)
         return super(GaussianMixture, self).sample(context=context)
