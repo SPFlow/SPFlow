@@ -48,7 +48,7 @@ def time_delta(t_delta: float) -> str:
     return f"{hours}h, {minutes}min, {seconds}s"
 
 
-def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=0.0):
+def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=0.0, debug_mode=False):
     """
     Get the MNIST pytorch data loader.
 
@@ -56,7 +56,7 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=0.0):
         use_cuda: Use cuda flag.
 
     """
-    kwargs = {"num_workers": 8, "pin_memory": True} if use_cuda else {}
+    kwargs = {"num_workers": 8, "pin_memory": True} if use_cuda and not debug_mode else {}
 
     test_batch_size = batch_size
 
@@ -173,7 +173,7 @@ class CsvLogger(dict):
         self.other_keys = ['epoch', 'time']
         # self.keys_to_avg = ['mnist_test_ll', 'll_loss', 'ent_loss', 'gmm_ent', 'inner_ent', 'norm_inner_ent',
         #                     'root_ent', 'norm_root_ent', 'loss']
-        self.keys_to_avg = ['mnist_test_ll', 'll_loss', 'ent_loss', 'gmm_ent', 'gmm_taylor_ent', 'entropy', 'loss']
+        self.keys_to_avg = ['mnist_test_ll']
         self.no_log_dict = {'batch': None}
         self.reset()
         with open(self.path, 'w') as f:
@@ -182,10 +182,13 @@ class CsvLogger(dict):
 
     def add_to_avg_keys(self, **kwargs):
         for k, v in kwargs.items():
-            assert k in self.keys_to_avg, f"{k} is not in keys_to_avg!"
             if isinstance(v, torch.Tensor):
                 v = v.item()
-            self[k].append(v)
+            if k not in self.keys_to_avg:
+                self.keys_to_avg += [k]
+                self[k] = [v]
+            else:
+                self[k].append(v)
 
     def reset(self, epoch: int = None):
         self.update({k: None for k in self.other_keys})
@@ -212,25 +215,34 @@ class CsvLogger(dict):
                 return 0.0
         return val
 
+    def _valid(self, key):
+        if key in self.keys() and (mean := self.mean(key)) != 0.0:
+            return mean
+
     def __str__(self):
         return_str = f"Train Epoch: {self['epoch']} took {time_delta(self['time'])}"
         if self.no_log_dict['batch'] is not None:
             return_str += f" @ batch {self.no_log_dict['batch']}"
-        return_str += f" - NLL loss: {self.mean('ll_loss'):.2f} - "
-        if 'mnist_test_ll' in self.keys() and self.mean('mnist_test_ll') != 0.0:
-            return_str += f"LL orig mnist test set: {self.mean('mnist_test_ll'):.2f} - "
-        if 'gmm_ent' in self.keys() and self.mean('gmm_ent') != 0.0:
-            return_str += f"GMM ent lower bound: {self.mean('gmm_ent'):.2f} - "
-        if 'gmm_taylor_ent' in self.keys() and self.mean('gmm_taylor_ent') != 0.0:
-            return_str += f"GMM ent taylor approx.: {self.mean('gmm_taylor_ent'):.2f} - "
-        if 'entropy' in self.keys() and self.mean('entropy') != 0.0:
-            return_str += f"Entropy tayl. approx.: {self.mean('entropy'):.2f} - "
-        if 'inner_ent' in self.keys() and self.mean('inner_ent') != 0.0:
-            return_str += f"Entropy of inner sums: {self.mean('inner_ent'):.2f}|{self.mean('norm_inner_ent'):.2f}% - "
-        if 'root_ent' in self.keys() and self.mean('root_ent') != 0.0:
-            return_str += f"Entropy of root sum: {self.mean('root_ent'):.2f}|{self.mean('norm_root_ent'):.2f}% - "
-        if 'ent_loss' in self.keys() and self.mean('ent_loss') != 0.0:
-            return_str += f"Entropy loss: {self.mean('ent_loss'):.2f}"
+        if mean := self._valid('ll_loss'):
+            return_str += f" - NLL loss: {mean:.2f}"
+        if mean := self._valid('ent_loss'):
+            return_str += f" - Entropy loss: {mean:.2f}"
+        if mean := self._valid('mnist_test_ll'):
+            return_str += f" - LL orig mnist test set: {mean:.2f}"
+        if mean := self._valid('gmm_ent_lb'):
+            return_str += f" - GMM ent lower bound: {mean:.4f}"
+        if mean := self._valid('gmm_ent_tayl_appr'):
+            return_str += f" - GMM ent taylor approx.: {mean:.4f}"
+        if mean := self._valid('gmm_H_0'):
+            return_str += f" - 1. Taylor: {mean:.4f}"
+        if mean := self._valid('gmm_H_2'):
+            return_str += f" - 2. Taylor: {mean:.4f}"
+        if mean := self._valid('gmm_H_3'):
+            return_str += f" - 3. Taylor: {mean:.4f}"
+        if mean := self._valid('inner_ent'):
+            return_str += f" - Entropy of inner sums: {mean:.4f}|{self.mean('norm_inner_ent'):.2f}%"
+        if mean := self._valid('root_ent'):
+            return_str += f" - Entropy of root sum: {mean:.4f}|{self.mean('norm_root_ent'):.2f}%"
         return return_str
 
     def __setitem__(self, key, value):
@@ -279,13 +291,9 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
-    parser.add_argument('--no_ent', action='store_true', help='Don\'t calculate entropy.')
-    parser.add_argument('--gmm_ent_factor', '-alpha', type=float, default=0.0,
-                        help='Factor for the entropy loss of the Gaussian mixtures at the leaves.')
-    parser.add_argument('--inner_sum_ent_factor', '-beta', type=float, default=0.0,
-                        help='Factor for the entropy loss of the other sums in the inner layers.')
-    parser.add_argument('--root_sum_ent_factor', '-gamma', type=float, default=0.0,
-                        help='Factor for the entropy loss of the root sum.')
+    parser.add_argument('--ent_loss_alpha', '-alpha', type=float, default=0.0,
+                        help='Factor for entropy loss at GMM leaves. Default 0.0. '
+                             'If 0.0, no gradients are calculated w.r.t. the entropy.')
     parser.add_argument('--adamw', action='store_true', help='Use AdamW optimizer (incorporates weight decay)')
     parser.add_argument('--invert', type=float, default=0.0, help='Probability of an MNIST image being inverted.')
     parser.add_argument('--no_eval_at_start', action='store_true', help='Don\'t evaluate model at the beginning')
@@ -422,7 +430,7 @@ if __name__ == "__main__":
     info = CsvLogger(csv_log)
     # Construct Cspn from config
     train_loader, test_loader = get_mnist_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device,
-                                                  invert=args.invert)
+                                                  invert=args.invert, debug_mode=args.verbose)
 
     if not args.model_path:
         if args.ratspn:
@@ -473,6 +481,8 @@ if __name__ == "__main__":
         root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
         eval_root_sum_override(model, root_sum_override_dir, device, img_size)
     if not args.no_eval_at_start:
+        if model.config.gmm_leaves:
+            leaf_entropy_lb = model.gmm_entropy_lb(reduction='mean')
         print("Evaluating model ...")
         save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
         evaluate_sampling(model, save_path, device, img_size)
@@ -495,7 +505,8 @@ if __name__ == "__main__":
             # Inference
             optimizer.zero_grad()
             data = image.reshape(image.shape[0], -1)
-            ent_loss = leaf_gmm_ent_lb = inner_ents = norm_inner_ents = root_ent = norm_root_ent = torch.zeros(1).to(device)
+            ent_loss = leaf_entropy_lb = leaf_entropy = torch.zeros(1).to(device)
+            gmm_H_0 = gmm_H_2 = gmm_H_3 = torch.zeros(1).to(device)
             if args.ratspn:
                 output: torch.Tensor = model(x=data)
                 loss_ce = F.cross_entropy(output, label)
@@ -505,24 +516,19 @@ if __name__ == "__main__":
                 label = F.one_hot(label, cond_size).float().to(device)
                 output: torch.Tensor = model(x=data, condition=label)
                 ll_loss = -output.mean()
-                if not args.no_ent:
-                    spn_entropy = model.entropy_taylor_approx(components=3).mean()
-                    if config.gmm_leaves:
-                        leaf_it_gmm_ent_lb = model.iterative_gmm_entropy_lb(reduction='mean')
-                        leaf_gmm_ent_lb = model.gmm_entropy_lb(reduction='mean')
-                        leaf_entropy = model.leaf_entropy_taylor_approx().mean()
-                    if False:
-                        with torch.no_grad():
-                            inner_ents, norm_inner_ents, root_ent, norm_root_ent = model.sum_node_entropies(reduction='mean')
-                        ent_mix = leaf_gmm_ent_lb * args.gmm_ent_factor + args.inner_sum_ent_factor * norm_inner_ents + \
-                                  args.root_sum_ent_factor * norm_root_ent
-                        ent_loss = -ent_mix
+                if model.config.gmm_leaves:
+                    leaf_entropy_lb = model.gmm_entropy_lb(reduction='mean')
+                    # leaf_entropy, (gmm_H_0, gmm_H_2, gmm_H_3) = model.leaf_entropy_taylor_approx(components=3)
+                if args.ent_loss_alpha > 0.0:
+                    ent_loss = -args.ent_loss_alpha * leaf_entropy_lb
                 loss = ll_loss + ent_loss
 
             loss.backward()
             optimizer.step()
             info.add_to_avg_keys(ll_loss=ll_loss, ent_loss=ent_loss, loss=loss,
-                                 gmm_ent=leaf_gmm_ent_lb, gmm_taylor_ent=leaf_entropy, entropy=spn_entropy)
+                                 gmm_ent_lb=leaf_entropy_lb,
+                                 # gmm_ent_tayl_appr=leaf_entropy, gmm_H_0=gmm_H_0, gmm_H_2=gmm_H_2, gmm_H_3=gmm_H_3
+                                 )
 
             # Log stuff
             if args.verbose:

@@ -189,6 +189,11 @@ class Leaf(AbstractLayer):
         samples = dist_sample(distribution=d, context=context)
         return samples
 
+    @property
+    def _device(self):
+        """Small hack to obtain the current device."""
+        return self.dropout.device
+
     def __repr__(self):
         return f"{self.__class__.__name__}(in_features={self.in_features}, out_channels={self.out_channels}, dropout={self.dropout}, out_shape={self.out_shape})"
 

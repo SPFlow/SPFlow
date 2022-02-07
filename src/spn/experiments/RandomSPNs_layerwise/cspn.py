@@ -133,14 +133,14 @@ class CSPN(RatSpn):
             self.set_weights(condition)
         return self._leaf.gmm_entropy_lb(reduction)
 
-    def leaf_entropy_taylor_approx(self, condition=None):
+    def leaf_entropy_taylor_approx(self, condition=None, components=3):
         """
             Calculate the entropy lower bound of the first-level mixtures.
             See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
         """
         if condition is not None:
             self.set_weights(condition)
-        return self._leaf.entropy_taylor_approx()
+        return self._leaf.entropy_taylor_approx(components=components)
 
     def sum_node_entropies(self, condition=None, reduction='mean'):
         """

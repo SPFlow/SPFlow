@@ -320,28 +320,45 @@ class GaussianMixture(IndependentMultivariate):
         mean_full_vec = mean.view(n, d * cardinality, oc, r)
         grads = self.gradient(mean_full_vec, order=components)
         log_p_mean = self(mean_full_vec, reduction=None)
-        entropy = grad = inv_sq_mean_prob = ggrad = inv_mean_prob = 0  # To satisfy the IDE
+        # clamp_at = -2
+        # print(f"Percent of mean log probs under clamp threshold of {clamp_at}: "
+              # f"{(log_p_mean < clamp_at).sum()/log_p_mean.numel():.5f}")
+        # log_p_mean.clamp_(min=clamp_at)
+
+        entropy = torch.zeros(1).to(self._device)
+        H_0 = torch.zeros(1).to(self._device)
+        H_2 = torch.zeros(1).to(self._device)
+        H_3 = torch.zeros(1).to(self._device)
         if components >= 1:
             H_0 = - log_p_mean
-            entropy = H_0
-        if components >= 2:
-            grad, ggrad = grads[0:2]
-            inv_mean_prob = (-log_p_mean).exp()
-            inv_sq_mean_prob = (-2 * log_p_mean).exp()
-            ggrad_log = -inv_sq_mean_prob * grad + inv_mean_prob * ggrad
-            H_2 = - (ggrad_log * var) / 2
-            entropy += H_2
-        if components >= 3:
-            gggrad = grads[2]
-            inv_cub_mean_prob = (-3 * log_p_mean).exp()
-            gggrad_log = 2 * inv_cub_mean_prob * grad - 2 * inv_sq_mean_prob * ggrad + inv_mean_prob * gggrad
-            H_3 = - (gggrad_log * skew) / 6
-            entropy += H_3
+            H_0 = H_0.sum(dim=2)
+            if reduction == 'mean':
+                H_0 = H_0.mean()
+            entropy += H_0
+            if components >= 2:
+                grad, ggrad = grads[0:2]
+                inv_mean_prob = (-log_p_mean).exp()
+                inv_sq_mean_prob = (-2 * log_p_mean).exp()
+                ggrad_log = -inv_sq_mean_prob * grad \
+                            + inv_mean_prob * ggrad
+                H_2 = - (ggrad_log * var) / 2
+                H_2 = H_2.sum(dim=2)
+                if reduction == 'mean':
+                    H_2 = H_2.mean()
+                entropy += H_2
+                if components >= 3:
+                    gggrad = grads[2]
+                    inv_cub_mean_prob = (-3 * log_p_mean).exp()
+                    gggrad_log: torch.Tensor = 2 * inv_cub_mean_prob * grad \
+                                               - 2 * inv_sq_mean_prob * ggrad \
+                                               + inv_mean_prob * gggrad
+                    H_3: torch.Tensor = - (gggrad_log * skew) / 6
+                    H_3 = H_3.sum(dim=2)
+                    if reduction == 'mean':
+                        H_3 = H_3.mean()
+                    entropy += H_3
 
-        entropy = entropy.sum(dim=2)
-        if reduction == 'mean':
-            entropy = entropy.mean()
-        return entropy
+        return entropy, (H_0.detach_(), H_2.detach_(), H_3.detach_())
 
     def iterative_gmm_entropy_lb(self, reduction='mean'):
         """
@@ -366,9 +383,9 @@ class GaussianMixture(IndependentMultivariate):
         for i in range(I):
             log_probs_i = []
             for j in range(I):
-                std = var[:, :, [i], :] + var[:, :, [j], :]
-                component_log_probs = -((means[:, :, [i], :] - means[:, :, [j], :]) ** 2) / (2 * var) - \
-                                      0.5 * var.log() - math.log(math.sqrt(2 * math.pi))
+                summed_vars = var[:, :, [i], :] + var[:, :, [j], :]
+                component_log_probs = -((means[:, :, [i], :] - means[:, :, [j], :]) ** 2) / (2 * summed_vars) - \
+                                      0.5 * summed_vars.log() - math.log(math.sqrt(2 * math.pi))
                 component_log_probs = self.prod(self.pad_input(component_log_probs))
 
                 # Unsqueeze in output channel dimension so that the log_prob vector of each feature
@@ -424,8 +441,8 @@ class GaussianMixture(IndependentMultivariate):
         # lb_log_term is now [N, D, I, S, R], the same shape as log_gmm_weights
 
         gmm_ent_lb = -(log_gmm_weights.exp() * lb_log_term)
-        gmm_ent_lb = gmm_ent_lb.sum(dim=2)
-        # gmm_ent_lb is now [N, D, OC, R]
+        gmm_ent_lb = gmm_ent_lb.sum(dim=2).sum(dim=1)
+        # The entropies of all features can be summed up => [N, OC, R]
         if reduction == 'mean':
             gmm_ent_lb = gmm_ent_lb.mean()
         return gmm_ent_lb
