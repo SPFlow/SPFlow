@@ -94,7 +94,8 @@ def evaluate_sampling(model, save_dir, device, img_size):
             log_like.append(model(x=samples, condition=label).mean().tolist())
         samples = samples.view(-1, *img_size[1:])
         plot_samples(samples, save_dir)
-    print(f"Samples: Average log-likelihood: {np.mean(log_like):.2f}")
+    result_str = f"Samples: Average log-likelihood: {np.mean(log_like):.2f}"
+    print(result_str)
 
 
 def eval_root_sum_override(model, save_dir, device, img_size):
@@ -481,8 +482,6 @@ if __name__ == "__main__":
         root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
         eval_root_sum_override(model, root_sum_override_dir, device, img_size)
     if not args.no_eval_at_start:
-        if model.config.gmm_leaves:
-            leaf_entropy_lb = model.gmm_entropy_lb(reduction='mean')
         print("Evaluating model ...")
         save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
         evaluate_sampling(model, save_path, device, img_size)
