@@ -1,6 +1,0 @@
-# Documentation-specific .gitignore, sphinx-specific configuration and build files
-
-build/
-source/generated/
-source/auto_examples/
-source/documentation/generated/
