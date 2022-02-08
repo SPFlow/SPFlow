@@ -11,10 +11,10 @@ from torch import distributions as dist
 from torch import nn
 from torch.nn import functional as F
 
-from spn.utils import SamplingContext
-from spn.clipper import DistributionClipper
-from spn.layers import AbstractLayer, Sum
-from spn.type_checks import check_valid
+from utils import SamplingContext
+from clipper import DistributionClipper
+from layers import AbstractLayer, Sum
+from type_checks import check_valid
 
 logger = logging.getLogger(__name__)
 

@@ -7,8 +7,8 @@ import torch.nn.functional as F
 from dataclasses import dataclass, field
 from torch import nn
 
-from spn.layers import CrossProduct, Sum
-from spn.distributions import GaussianMixture
+from layers import CrossProduct, Sum
+from distributions import GaussianMixture
 
 from rat_spn import RatSpn, RatSpnConfig
 import matplotlib.pyplot as plt
