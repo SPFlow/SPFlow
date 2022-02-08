@@ -172,9 +172,7 @@ class CsvLogger(dict):
         super().__init__()
         self.path = path
         self.other_keys = ['epoch', 'time']
-        # self.keys_to_avg = ['mnist_test_ll', 'll_loss', 'ent_loss', 'gmm_ent', 'inner_ent', 'norm_inner_ent',
-        #                     'root_ent', 'norm_root_ent', 'loss']
-        self.keys_to_avg = ['mnist_test_ll']
+        self.keys_to_avg = ['mnist_test_ll', 'nll_loss', 'ent_loss', 'gmm_ent_lb', 'loss']
         self.no_log_dict = {'batch': None}
         self.reset()
         with open(self.path, 'w') as f:
@@ -332,8 +330,8 @@ if __name__ == "__main__":
     inspect = args.inspect
     if inspect:
         epoch = '099'
-        exp_name = f"mnistgen5_inv"
-        base_path = os.path.join('mnist_gen_exp', f"results_{exp_name}")
+        exp_name = f"mnistgen_ent1"
+        base_path = os.path.join('results', 'mnistgen_ent', f"results_{exp_name}")
         model_name = f"epoch-{epoch}_{exp_name}"
         path = os.path.join(base_path, 'models', f"{model_name}.pt")
         model = torch.load(path, map_location=torch.device('cpu'))
@@ -525,7 +523,7 @@ if __name__ == "__main__":
 
             loss.backward()
             optimizer.step()
-            info.add_to_avg_keys(ll_loss=ll_loss, ent_loss=ent_loss, loss=loss,
+            info.add_to_avg_keys(nll_loss=ll_loss, ent_loss=ent_loss, loss=loss,
                                  gmm_ent_lb=leaf_entropy_lb,
                                  # gmm_ent_tayl_appr=leaf_entropy, gmm_H_0=gmm_H_0, gmm_H_2=gmm_H_2, gmm_H_3=gmm_H_3
                                  )
