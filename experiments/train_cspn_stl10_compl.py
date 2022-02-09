@@ -13,8 +13,8 @@ from torch import nn
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 
-from spn.distributions import RatNormal
-from spn.cspn import CSPN, CspnConfig
+from distributions import RatNormal
+from cspn import CSPN, CspnConfig
 
 from train_mnist import one_hot, count_params, ensure_dir, set_seed
 

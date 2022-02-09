@@ -14,9 +14,9 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 
-from spn.distributions import RatNormal
-from spn.cspn import CSPN, CspnConfig
-from spn.rat_spn import RatSpn, RatSpnConfig
+from distributions import RatNormal
+from cspn import CSPN, CspnConfig
+from rat_spn import RatSpn, RatSpnConfig
 
 from train_mnist import count_params, ensure_dir, set_seed
 
@@ -85,13 +85,13 @@ def evaluate_sampling(model, save_dir, device, img_size):
     log_like = []
     label = torch.as_tensor(np.arange(10)).repeat_interleave(10).to(device)
     with torch.no_grad():
-        if isinstance(model, RatSpn):
-            samples = model.sample(class_index=label.tolist())
-            log_like = np.nan
-        else:
+        if isinstance(model, CSPN):
             label = F.one_hot(label, 10).float().to(device)
             samples = model.sample(condition=label)
             log_like.append(model(x=samples, condition=label).mean().tolist())
+        else:
+            samples = model.sample(class_index=label.tolist())
+            log_like = np.nan
         samples = samples.view(-1, *img_size[1:])
         plot_samples(samples, save_dir)
     result_str = f"Samples: Average log-likelihood: {np.mean(log_like):.2f}"
@@ -104,11 +104,11 @@ def eval_root_sum_override(model, save_dir, device, img_size):
             os.makedirs(os.path.join(save_dir, f'cond_{d}'))
         cond = torch.ones(model.config.R * model.config.S ** 2).long().to(device) * d
         with torch.no_grad():
-            if isinstance(model, RatSpn):
-                sample = model.sample(class_index=cond.tolist(), override_root=True)
-            else:
+            if isinstance(model, CSPN):
                 cond = F.one_hot(cond, 10).float().to(device)
                 sample = model.sample(condition=cond, override_root=True)
+            else:
+                sample = model.sample(class_index=cond.tolist(), override_root=True)
         sample[sample < 0.0] = 0.0
         sample[sample > 1.0] = 1.0
         sample = sample.view(-1, *img_size)
@@ -139,11 +139,11 @@ def evaluate_model(model, device, loader, tag):
     with torch.no_grad():
         for image, label in loader:
             image = image.flatten(start_dim=1).to(device)
-            if isinstance(model, RatSpn):
-                log_like.append(model(x=image).mean().tolist())
-            else:
+            if isinstance(model, CSPN):
                 label = F.one_hot(label, 10).float().to(device)
                 log_like.append(model(x=image, condition=label).mean().tolist())
+            else:
+                log_like.append(model(x=image).mean().tolist())
     mean_ll = np.mean(log_like)
     print(f"{tag} set: Average log-likelihood: {mean_ll:.2f}")
     return mean_ll

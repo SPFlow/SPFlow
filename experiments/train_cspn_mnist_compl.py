@@ -11,8 +11,8 @@ import torchvision
 from torch import nn
 from torchvision import datasets, transforms
 
-from spn.distributions import RatNormal
-from spn.cspn import CSPN, CspnConfig
+from distributions import RatNormal
+from cspn import CSPN, CspnConfig
 
 from train_mnist import one_hot, time_delta_now, count_params, get_mnist_loaders, ensure_dir, set_seed
 

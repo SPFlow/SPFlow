@@ -11,8 +11,8 @@ import torchvision
 from torch import nn
 from torchvision import datasets, transforms
 
-from spn.distributions import RatNormal
-from spn.rat_spn import RatSpn, RatSpnConfig
+from distributions import RatNormal
+from rat_spn import RatSpn, RatSpnConfig
 
 
 def one_hot(vector):
