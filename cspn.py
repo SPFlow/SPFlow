@@ -4,7 +4,7 @@ from typing import Dict, Type
 import numpy as np
 import torch
 import torch.nn.functional as F
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from torch import nn
 
 from layers import CrossProduct, Sum

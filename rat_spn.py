@@ -42,7 +42,9 @@ class RatSpnConfig:
     C: int  # Number of root heads / Number of classes
     dropout: float  # Dropout probabilities for leafs and sum layers
     leaf_base_class: Type  # Type of the leaf base class (Normal, Bernoulli, etc)
-    leaf_base_kwargs: Dict  # Parameters for the leaf base class
+    leaf_base_kwargs: Dict  # Parameters for the leaf base class, such as
+    #                   tanh_factor: float  # If set, tanh will be applied to samples and taken times this factor.
+    gmm_leaves: bool  # If true, the leaves are Gaussian mixtures
     """
 
     in_features: int = None
@@ -268,9 +270,9 @@ class RatSpn(nn.Module):
                                    leaf_base_kwargs=self.config.leaf_base_kwargs)
         else:
             return IndependentMultivariate(in_features=self.config.F, out_channels=self.config.I,
-                                   num_repetitions=self.config.R, cardinality=cardinality, dropout=self.config.dropout,
-                                   leaf_base_class=self.config.leaf_base_class,
-                                   leaf_base_kwargs=self.config.leaf_base_kwargs)
+                                           num_repetitions=self.config.R, cardinality=cardinality, dropout=self.config.dropout,
+                                           leaf_base_class=self.config.leaf_base_class,
+                                           leaf_base_kwargs=self.config.leaf_base_kwargs)
 
     @property
     def __device(self):

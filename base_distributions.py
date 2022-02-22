@@ -118,7 +118,8 @@ class Leaf(AbstractLayer):
     If the input at a specific position is NaN, the variable will be marginalized.
     """
 
-    def __init__(self, in_features: int, out_channels: int, num_repetitions: int = 1, dropout=0.0):
+    def __init__(self, in_features: int, out_channels: int, num_repetitions: int = 1, dropout=0.0,
+                 tanh_factor: float = None):
         """
         Create the leaf layer.
 
@@ -127,6 +128,8 @@ class Leaf(AbstractLayer):
             out_channels: Number of parallel representations for each input feature.
             num_repetitions: Number of parallel repetitions of this layer.
             dropout: Dropout probability.
+            tanh_factor: If set, tanh will be applied to the samples and taken times this factor.
+                         Also, a correction term is applied to the log probs.
         """
         super().__init__(in_features=in_features, num_repetitions=num_repetitions)
         self.in_features = check_valid(in_features, int, 1)
@@ -142,6 +145,8 @@ class Leaf(AbstractLayer):
 
         # Dropout bernoulli
         self._bernoulli_dist = torch.distributions.Bernoulli(probs=self.dropout)
+
+        self._tanh_factor = check_valid(tanh_factor, float, 0.0, allow_none=True)
 
     def _apply_dropout(self, x: torch.Tensor) -> torch.Tensor:
         # Apply dropout sampled from a bernoulli during training (model.train() has been called)
@@ -159,6 +164,9 @@ class Leaf(AbstractLayer):
         # Forward through base distribution
         d = self._get_base_distribution()
         x = dist_forward(d, x)
+        if self._tanh_factor:
+            correction = 2 * (np.log(2) - x - F.softplus(-2 * x))
+            x -= correction
 
         x = self._marginalize_input(x)
         x = self._apply_dropout(x)
@@ -187,6 +195,8 @@ class Leaf(AbstractLayer):
         """
         d = self._get_base_distribution()
         samples = dist_sample(distribution=d, context=context)
+        if self._tanh_factor:
+            samples = torch.tanh_(samples).mul_(self._tanh_factor)
         return samples
 
     @property

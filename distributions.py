@@ -26,6 +26,7 @@ class RatNormal(Leaf):
         out_channels: int,
         num_repetitions: int = 1,
         dropout: float = 0.0,
+        tanh_factor: float = None,
         min_sigma: float = 0.1,
         max_sigma: float = 1.0,
         min_mean: float = None,
@@ -38,7 +39,7 @@ class RatNormal(Leaf):
             in_features: Number of input features.
 
         """
-        super().__init__(in_features, out_channels, num_repetitions, dropout)
+        super().__init__(in_features, out_channels, num_repetitions, dropout, tanh_factor)
 
         # Create gaussian means and stds
         self.means = nn.Parameter(torch.randn(1, in_features, out_channels, num_repetitions))
