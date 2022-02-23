@@ -356,7 +356,7 @@ class RatSpn(nn.Module):
                 ctx = self._sampling_root.sample(context=ctx)
 
             # Sample from RatSpn root layer: Results are indices into the stacked output channels of all repetitions
-            ctx.repetition_indices = torch.zeros(n, dtype=int, device=self.__device)
+            # ctx.repetition_indices = torch.zeros(n, dtype=int, device=self.__device)
             ctx = self.root.sample(context=ctx)
 
             # The weights of the root sum node represent the input channel and repetitions in this manner:
@@ -367,7 +367,7 @@ class RatSpn(nn.Module):
             # The weight vector will then contain [w_{0,0},w_{1,0},w_{2,0},w_{0,1},w_{1,1},w_{2,1},w_{0,2},w_{1,2},...]
             # This weight vector was used as the logits in a IC*R-categorical distribution, yielding indexes [0,C*R-1].
             # To match the index to the correct repetition and its input channel, we do the following
-            ctx.repetition_indices = (ctx.parent_indices % self.config.R).squeeze(1)
+            ctx.repetition_indices = (ctx.parent_indices % self.config.R).squeeze(2)
             ctx.parent_indices = torch.div(ctx.parent_indices, self.config.R, rounding_mode='trunc')
 
             if kwargs.get('override_root'):

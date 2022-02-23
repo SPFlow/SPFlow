@@ -147,7 +147,7 @@ class CSPN(RatSpn):
             self.set_weights(condition)
         return super().sum_node_entropies(reduction)
 
-    def sample(self, condition: torch.Tensor = None, class_index=None,
+    def sample(self, condition: torch.Tensor = None, n=1, class_index=None,
                evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
         """
         Sample from the random variable encoded by the CSPN.
@@ -161,8 +161,8 @@ class CSPN(RatSpn):
             "The batch size of the condition must equal the length of the class index list if they are provided!"
         # TODO add assert to check dimension of evidence, if given.
 
-        batch_size = self.root.weights.shape[0]
-        return super().sample(batch_size, class_index, evidence, is_mpe, **kwargs)
+        # batch_size = self.root.weights.shape[0]
+        return super().sample(n, class_index, evidence, is_mpe, **kwargs)
 
     def replace_layer_params(self):
         for layer in self._inner_layers:
@@ -173,6 +173,10 @@ class CSPN(RatSpn):
         placeholder = torch.zeros_like(self.root.weights)
         del self.root.weights
         self.root.weights = placeholder
+
+        placeholder = torch.zeros_like(self._sampling_root.weights)
+        del self._sampling_root.weights
+        self._sampling_root.weights = placeholder
 
         if isinstance(self._leaf, GaussianMixture):
             placeholder = torch.zeros_like(self._leaf.sum.weights)
@@ -282,6 +286,10 @@ class CSPN(RatSpn):
         weight_shape = (batch_size, self.root.in_features, self.root.in_channels, self.root.out_channels, self.root.num_repetitions)
         weights = self.sum_param_heads[i](sum_weights_pre_output).view(weight_shape)
         self.root.weights = F.log_softmax(weights, dim=2)
+
+        # Sampling root weights need to have 5 dims as well
+        self._sampling_root.weights = torch.ones((batch_size, *self._sampling_root.weights.shape))
+        self._sampling_root.weights = self._sampling_root.weights.mul_(1/self.config.C).log_()
 
         # Set normalized weights of the Gaussian Mixture leaf layer if it exists.
         if isinstance(self._leaf, GaussianMixture):
