@@ -83,15 +83,16 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=0.0, deb
 def evaluate_sampling(model, save_dir, device, img_size):
     model.eval()
     log_like = []
-    label = torch.as_tensor(np.arange(10)).repeat_interleave(10).to(device)
+    label = torch.as_tensor(np.arange(10)).to(device)
+    samples_per_label = 8
     with torch.no_grad():
         if isinstance(model, CSPN):
             label = F.one_hot(label, 10).float().to(device)
-            samples = model.sample(condition=label)
-            log_like.append(model(x=samples, condition=label).mean().tolist())
+            samples = model.sample(n=samples_per_label, condition=label)
+            log_like.append(model(x=samples, condition=None).mean().tolist())
         else:
-            samples = model.sample(class_index=label.tolist())
-            log_like = np.nan
+            samples = model.sample(n=samples_per_label, class_index=label)
+            log_like.append(model(x=samples).mean().tolist())
         samples = samples.view(-1, *img_size[1:])
         plot_samples(samples, save_dir)
     result_str = f"Samples: Average log-likelihood: {np.mean(log_like):.2f}"
@@ -172,7 +173,7 @@ class CsvLogger(dict):
         super().__init__()
         self.path = path
         self.other_keys = ['epoch', 'time']
-        self.keys_to_avg = ['mnist_test_ll', 'nll_loss', 'ent_loss', 'gmm_ent_lb', 'loss']
+        self.keys_to_avg = ['mnist_test_ll', 'nll_loss', 'ent_loss', 'vi_ent_approx', 'loss']
         self.no_log_dict = {'batch': None}
         self.reset()
         with open(self.path, 'w') as f:
@@ -222,12 +223,14 @@ class CsvLogger(dict):
         return_str = f"Train Epoch: {self['epoch']} took {time_delta(self['time'])}"
         if self.no_log_dict['batch'] is not None:
             return_str += f" @ batch {self.no_log_dict['batch']}"
-        if mean := self._valid('ll_loss'):
+        if mean := self._valid('nll_loss'):
             return_str += f" - NLL loss: {mean:.2f}"
         if mean := self._valid('ent_loss'):
             return_str += f" - Entropy loss: {mean:.2f}"
         if mean := self._valid('mnist_test_ll'):
             return_str += f" - LL orig mnist test set: {mean:.2f}"
+        if mean := self._valid('vi_ent_approx'):
+            return_str += f" - VI ent. approx.: {mean:.4f}"
         if mean := self._valid('gmm_ent_lb'):
             return_str += f" - GMM ent lower bound: {mean:.4f}"
         if mean := self._valid('gmm_ent_tayl_appr'):
@@ -261,9 +264,9 @@ if __name__ == "__main__":
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--epochs', '-ep', type=int, default=100)
     parser.add_argument('--batch_size', '-bs', type=int, default=256)
-    parser.add_argument('--results_dir', type=str, default='results/',
+    parser.add_argument('--results_dir', type=str, default='../../spn_experiments',
                         help='The base directory where the directory containing the results will be saved to.')
-    parser.add_argument('--dataset_dir', type=str, default='../data',
+    parser.add_argument('--dataset_dir', type=str, default='../../spn_experiments/data',
                         help='The base directory to provide to the PyTorch Dataloader.')
     parser.add_argument('--model_path', type=str,
                         help='Path to the pretrained model. If it is given, '
@@ -294,7 +297,6 @@ if __name__ == "__main__":
     parser.add_argument('--ent_loss_alpha', '-alpha', type=float, default=0.0,
                         help='Factor for entropy loss at GMM leaves. Default 0.0. '
                              'If 0.0, no gradients are calculated w.r.t. the entropy.')
-    parser.add_argument('--adamw', action='store_true', help='Use AdamW optimizer (incorporates weight decay)')
     parser.add_argument('--invert', type=float, default=0.0, help='Probability of an MNIST image being inverted.')
     parser.add_argument('--no_eval_at_start', action='store_true', help='Don\'t evaluate model at the beginning')
     args = parser.parse_args()
@@ -453,6 +455,7 @@ if __name__ == "__main__":
         config.leaf_base_kwargs = {'min_sigma': 0.1, 'max_sigma': 1.0, 'min_mean': 0.0, 'max_mean': 1.0}
         if args.ratspn:
             model = RatSpn(config)
+            assert False, "The log normalization of parameters in the layers themselves was removed and must be redone."
             count_params(model)
         else:
             model = CSPN(config)
@@ -464,12 +467,7 @@ if __name__ == "__main__":
     model.train()
     print("Config:", model.config)
     print(model)
-    if args.adamw:
-        print("Using special optimizer AdamW!")
-        optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
-    else:
-        print("Using regular optimizer Adam.")
-        optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     lmbda = 1.0
     sample_interval = 1 if args.verbose else args.eval_interval  # number of epochs
@@ -503,29 +501,25 @@ if __name__ == "__main__":
             # Inference
             optimizer.zero_grad()
             data = image.reshape(image.shape[0], -1)
-            ent_loss = leaf_entropy_lb = leaf_entropy = torch.zeros(1).to(device)
-            gmm_H_0 = gmm_H_2 = gmm_H_3 = torch.zeros(1).to(device)
+            ent_loss = vi_ent_approx = torch.zeros(1).to(device)
             if args.ratspn:
                 output: torch.Tensor = model(x=data)
-                loss_ce = F.cross_entropy(output, label)
+                loss_ce = F.cross_entropy(output.squeeze(1), label)
                 ll_loss = -output.mean()
                 loss = (1 - lmbda) * ll_loss + lmbda * loss_ce
+                vi_ent_approx = model.vi_entropy_approx(sample_size=10).mean()
             else:
                 label = F.one_hot(label, cond_size).float().to(device)
                 output: torch.Tensor = model(x=data, condition=label)
                 ll_loss = -output.mean()
-                if model.config.gmm_leaves:
-                    leaf_entropy_lb = model.gmm_entropy_lb(reduction='mean')
-                    # leaf_entropy, (gmm_H_0, gmm_H_2, gmm_H_3) = model.leaf_entropy_taylor_approx(components=3)
+                vi_ent_approx = model.vi_entropy_approx(sample_size=10, condition=None).mean()
                 if args.ent_loss_alpha > 0.0:
-                    ent_loss = -args.ent_loss_alpha * leaf_entropy_lb
+                    ent_loss = -args.ent_loss_alpha * vi_ent_approx
                 loss = ll_loss + ent_loss
 
             loss.backward()
             optimizer.step()
-            info.add_to_avg_keys(nll_loss=ll_loss, ent_loss=ent_loss, loss=loss,
-                                 gmm_ent_lb=leaf_entropy_lb,
-                                 # gmm_ent_tayl_appr=leaf_entropy, gmm_H_0=gmm_H_0, gmm_H_2=gmm_H_2, gmm_H_3=gmm_H_3
+            info.add_to_avg_keys(nll_loss=ll_loss, ent_loss=ent_loss, loss=loss, vi_ent_approx=vi_ent_approx,
                                  )
 
             # Log stuff

@@ -91,10 +91,11 @@ class Sum(AbstractLayer):
 
     def forward(self, x: torch.Tensor):
         """
-        Sum layer foward pass.
+        Sum layer forward pass.
 
         Args:
-            x: Input of shape [batch, in_features, in_channels].
+            x: Input of shape [batch, weight_sets, in_features, in_channels].
+                weight_sets: In CSPNs, there are separate weights for each batch element.
 
         Returns:
             torch.Tensor: Output of shape [batch, in_features, out_channels]
@@ -109,28 +110,26 @@ class Sum(AbstractLayer):
             x[dropout_indices] = np.NINF
 
         # Dimensions
-        n, d, ic, r = x.size()
-        x = x.unsqueeze(3)  # Shape: [n, d, ic, 1, r]
-        if self.weights.dim() == 5:
-            # In CSPNs, there are separate weights for each batch element.
-            # Weights is of shape [n, d, ic, oc, r]
-            oc = self.weights.size(3)
-            # No need to normalize weights, Cspn.set_weights() already normalizes them in log space
-            log_weights = self.weights
+        n, w, d, ic, r = x.size()
+        x = x.unsqueeze(4)  # Shape: [n, w, d, ic, 1, r]
+        if self.weights.dim() == 4:
+            # RatSpns only have one set of weights, so we must augment the weight_set dimension
+            weights = self.weights.unsqueeze(0)
         else:
-            oc = self.weights.size(2)
-            # Normalize weights in log-space along in_channel dimension
-            # Weights is of shape [d, ic, oc, r]
-            log_weights = F.log_softmax(self.weights, dim=1)
+            weights = self.weights
+        # Weights is of shape [n, d, ic, oc, r]
+        oc = weights.size(3)
+        # The weights must be expanded by the batch dimension so all samples of one conditional see the same weights.
+        log_weights = weights.unsqueeze(0)
 
         # Multiply (add in log-space) input features and weights
-        x = x + log_weights  # Shape: [n, d, ic, oc, r]
+        x = x + log_weights  # Shape: [n, w, d, ic, oc, r]
 
         # Compute sum via logsumexp along in_channels dimension
-        x = torch.logsumexp(x, dim=2)  # Shape: [n, d, oc, r]
+        x = torch.logsumexp(x, dim=3)  # Shape: [n, w, d, oc, r]
 
         # Assert correct dimensions
-        assert x.size() == (n, d, oc, r)
+        assert x.size() == (n, w, d, oc, r)
 
         return x
 
@@ -153,7 +152,8 @@ class Sum(AbstractLayer):
         # We now want to use `indices` to access one in_channel for each in_feature x out_channels block
         # index is of size in_feature
         weights: torch.Tensor = self.weights.data
-        # This is the case for CSPNs which have separate weights for each sample.
+        if weights.dim() == 4:
+            weights = weights.unsqueeze(0)
         # w is the number of weight sets
         w, d, ic, oc, r = weights.shape
         sample_size = context.n
@@ -164,7 +164,7 @@ class Sum(AbstractLayer):
 
             # Initialize rep indices
             context.repetition_indices = torch.zeros(sample_size, w, dtype=int, device=self.__device)
-            weights = weights[:, :, :, 0, 0].unsqueeze(0).expand(sample_size, -1, -1, -1)
+            weights = weights[:, :, :, 0, 0].unsqueeze(0).repeat(sample_size, 1, 1, 1)
 
             # Select weights, repeat bs times along the last dimension
             # weights = weights[:, :, [0] * w, 0]  # Shape: [D, IC, N]
@@ -181,13 +181,13 @@ class Sum(AbstractLayer):
             parent_selected_weights = []
             for i in range(sample_size):
                 selected_rep = weights[range(w), :, :, :, context.repetition_indices[i]]
-                parent_indices = context.parent_indices[i].unsqueeze(-1).expand(-1, -1, ic).unsqueeze(-1)
+                parent_indices = context.parent_indices[i].unsqueeze(-1).repeat(1, 1, ic).unsqueeze(-1)
                 selected_parent = selected_rep.gather(dim=-1, index=parent_indices).squeeze(-1)
                 parent_selected_weights.append(selected_parent)
             weights = torch.stack(parent_selected_weights, dim=0)
 
         # Check dimensions
-        assert weights.shape == (sample_size, w, d, ic)
+        assert weights.shape == (sample_size, context.repetition_indices.shape[1], d, ic)
 
         # If evidence is given, adjust the weights with the likelihoods of the observed paths
         if self._is_input_cache_enabled and self._input_cache is not None:
@@ -288,30 +288,33 @@ class Product(AbstractLayer):
         self.cardinality = check_valid(cardinality, int, 1, in_features + 1)
 
         # Implement product as convolution
-        self._conv_weights = nn.Parameter(torch.ones(1, 1, cardinality, 1, 1), requires_grad=False)
+        # self._conv_weights = nn.Parameter(torch.ones(1, 1, cardinality, 1, 1), requires_grad=False)
         self._pad = (self.cardinality - self.in_features % self.cardinality) % self.cardinality
 
         self._out_features = np.ceil(self.in_features / self.cardinality).astype(int)
         self.out_shape = f"(N, {self._out_features}, in_channels, {self.num_repetitions})"
 
-    @property
-    def __device(self):
-        """Hack to obtain the current device, this layer lives on."""
-        return self._conv_weights.device
+    # @property
+    # def __device(self):
+        # """Hack to obtain the current device, this layer lives on."""
+        # return self._conv_weights.device
 
     def forward(self, x: torch.Tensor, reduction = 'sum'):
         """
         Product layer forward pass.
 
         Args:
-            x: Input of shape [batch, in_features, channel].
+            x: Input of shape [batch, weight_sets, in_features, channel, repetitions].
 
         Returns:
             torch.Tensor: Output of shape [batch, ceil(in_features/cardinality), channel].
         """
         # Only one product node
-        if self.cardinality == x.shape[1]:
-            return x.sum(1, keepdim=True)
+        if self.cardinality == x.shape[2]:
+            if reduction == 'sum':
+                return x.sum(2, keepdim=True)
+            else:
+                return x
 
         # Special case: if cardinality is 1 (one child per product node), this is a no-op
         if self.cardinality == 1:
@@ -322,24 +325,27 @@ class Product(AbstractLayer):
             x = F.pad(x, pad=(0, 0, 0, 0, 0, self._pad), value=0)
 
         # Dimensions
-        n, d, c, r = x.size()
+        n, w, d, c, r = x.size()
         d_out = d // self.cardinality
 
-        if reduction == 'sum':
-            # Use convolution with 3D weight tensor filled with ones to add the log-probs together
-            x = x.unsqueeze(1)  # Shape: [n, 1, d, c, r]
-            result = F.conv3d(x, weight=self._conv_weights, stride=(self.cardinality, 1, 1))
+        if reduction is None:
+            return x.view(n, w, d_out, self.cardinality, c, r)
+        elif reduction == 'sum':
+            batch_result = []
+            for i in range(n):
+                # Use convolution with 3D weight tensor filled with ones to add the log-probs together
+                x_batch = x[i].unsqueeze(1)  # Shape: [w, 1, d, c, r]
+                result = F.conv3d(x_batch,
+                                  weight=torch.ones(1, 1, self.cardinality, 1, 1, device=x.device),
+                                  stride=(self.cardinality, 1, 1))
 
-            # Remove simulated channel
-            result = result.squeeze(1)
-
-            assert result.size() == (n, d_out, c, r)
-        elif reduction is None:
-            result = x.view(n, d_out, self.cardinality, c, r)
+                # Remove simulated channel
+                result = result.squeeze(1)
+                assert result.size() == (w, d_out, c, r)
+                batch_result.append(result)
+            return torch.stack(batch_result)
         else:
             assert False, "No reduction other than sum is implemented. "
-
-        return result
 
     def sample(self, n: int = None, context: SamplingContext = None) -> SamplingContext:
         """Method to sample from this layer, based on the parents output.
@@ -366,11 +372,11 @@ class Product(AbstractLayer):
                 )
         else:
             # Repeat the parent indices, e.g. [0, 2, 3] -> [0, 0, 2, 2, 3, 3] depending on the cardinality
-            indices = torch.repeat_interleave(context.parent_indices, repeats=self.cardinality, dim=1)
+            indices = torch.repeat_interleave(context.parent_indices, repeats=self.cardinality, dim=2)
 
             # Remove padding
             if self._pad:
-                indices = indices[:, : -self._pad]
+                indices = indices[:, :, : -self._pad]
 
             context.parent_indices = indices
             return context
@@ -430,55 +436,54 @@ class CrossProduct(AbstractLayer):
         self._scopes = np.array(self._scopes)
 
         # Create index map from flattened to coordinates (only needed in sampling)
-        self.unraveled_channel_indices = nn.Parameter(
-            torch.tensor([(i, j) for i in range(self.in_channels) for j in range(self.in_channels)]),
-            requires_grad=False,
-        )
+        self.unraveled_channel_indices = torch.tensor([(i, j) for i in range(self.in_channels)
+                                                       for j in range(self.in_channels)])
 
         self.out_shape = f"(N, {self._out_features}, {self.in_channels ** 2}, {self.num_repetitions})"
 
-    @property
-    def __device(self):
-        """Hack to obtain the current device, this layer lives on."""
-        return self.unraveled_channel_indices.device
+    # @property
+    # def __device(self):
+        # """Hack to obtain the current device, this layer lives on."""
+        # return self.unraveled_channel_indices.device
 
     def forward(self, x: torch.Tensor):
         """
         Product layer forward pass.
 
         Args:
-            x: Input of shape [batch, in_features, channel].
+            x: Input of shape [batch, weight_sets, in_features, channel].
+                weight_sets: In CSPNs, there are separate weights for each batch element.
 
         Returns:
             torch.Tensor: Output of shape [batch, ceil(in_features/2), channel * channel].
         """
         # Check if padding to next power of 2 is necessary
-        if self.in_features != x.shape[1]:
+        if self.in_features != x.shape[2]:
             # Compute necessary padding to the next power of 2
-            self._pad = 2 ** np.ceil(np.log2(x.shape[1])).astype(np.int) - x.shape[1]
+            self._pad = 2 ** np.ceil(np.log2(x.shape[2])).astype(np.int) - x.shape[2]
 
             # Pad marginalized node
             x = F.pad(x, pad=[0, 0, 0, 0, 0, self._pad], mode="constant", value=0.0)
 
         # Dimensions
-        n, d, c, r = x.size()
+        n, w, d, c, r = x.size()
         d_out = d // self.cardinality
 
         # Build outer sum, using broadcasting, this can be done with
         # modifying the tensor dimensions:
         # left: [n, d/2, c, r] -> [n, d/2, c, 1, r]
         # right: [n, d/2, c, r] -> [n, d/2, 1, c, r]
-        left = x[:, self._scopes[0, :], :, :].unsqueeze(3)
-        right = x[:, self._scopes[1, :], :, :].unsqueeze(2)
+        left = x[:, :, self._scopes[0, :], :, :].unsqueeze(4)
+        right = x[:, :, self._scopes[1, :], :, :].unsqueeze(3)
 
         # left + right with broadcasting: [n, d/2, c, 1, r] + [n, d/2, 1, c, r] -> [n, d/2, c, c, r]
         result = left + right
 
         # Put the two channel dimensions from the outer sum into one single dimension:
         # [n, d/2, c, c, r] -> [n, d/2, c * c, r]
-        result = result.view(n, d_out, c * c, r)
+        result = result.view(n, w, d_out, c * c, r)
 
-        assert result.size() == (n, d_out, c * c, r)
+        assert result.size() == (n, w, d_out, c * c, r)
         return result
 
     def sample(self, n: int = None, context: SamplingContext = None) -> SamplingContext:
@@ -505,12 +510,12 @@ class CrossProduct(AbstractLayer):
                 )
 
         # Map flattened indexes back to coordinates to obtain the chosen input_channel for each feature
-        indices = self.unraveled_channel_indices[context.parent_indices]
+        indices = self.unraveled_channel_indices[context.parent_indices].to(context.parent_indices.device)
         indices = indices.view(indices.shape[0], indices.shape[1], -1)
 
         # Remove padding
         if self._pad:
-            indices = indices[:, : -self._pad]
+            indices = indices[:, :, : -self._pad]
 
         context.parent_indices = indices
         return context

@@ -53,9 +53,38 @@ class CSPN(RatSpn):
         self.create_feat_layers(config.F_cond)
 
     def forward(self, x: torch.Tensor, condition: torch.Tensor = None) -> torch.Tensor:
+        """
+        Forward pass through RatSpn. Computes the conditional log-likelihood P(X | C).
+
+        Args:
+            x: Input of shape [batch, weight_sets, in_features, channel].
+                batch: Number of samples per weight set (= per conditional in the CSPN sense).
+                weight_sets: In CSPNs, weights are different for each conditional. In RatSpn, this is 1.
+
+        Returns:
+            torch.Tensor: Conditional log-likelihood P(X | C) of the input.
+        """
         if condition is not None:
             self.set_weights(condition)
+        weight_sets = self._leaf.base_leaf.means.shape[0]
+        if x.dim() == 3:
+            assert x.shape[1] == weight_sets, \
+                f"The input data shape says there are {x.shape[1]} samples of each conditional. " \
+                f"But there are only samples of {x.shape[1]} conditionals, " \
+                f"while the CSPN weights expect {weight_sets} conditionals! " \
+                f"Did you forget to set the weights of the CSPN?"
+        elif x.dim() == 2:
+            assert x.shape[0] == weight_sets, \
+                f"Dim of input is 2. This means that each input sample belongs to one conditional. " \
+                f"But the number of samples ({x.shape[0]}) doesn't match the number of conditionals ({weight_sets})!"
+            x = x.unsqueeze(0)
+
         return super().forward(x)
+
+    def vi_entropy_approx(self, sample_size, condition: torch.Tensor = None) -> torch.Tensor:
+        if condition is not None:
+            self.set_weights(condition)
+        return super().vi_entropy_approx(sample_size)
 
     def consolidate_weights(self, condition=None):
         if condition is not None:
@@ -288,7 +317,8 @@ class CSPN(RatSpn):
         self.root.weights = F.log_softmax(weights, dim=2)
 
         # Sampling root weights need to have 5 dims as well
-        self._sampling_root.weights = torch.ones((batch_size, *self._sampling_root.weights.shape))
+        weight_shape = (batch_size, 1, 1, 1, 1)
+        self._sampling_root.weights = torch.ones(weight_shape).to(self.root.weights.device)
         self._sampling_root.weights = self._sampling_root.weights.mul_(1/self.config.C).log_()
 
         # Set normalized weights of the Gaussian Mixture leaf layer if it exists.

@@ -2,6 +2,7 @@ import logging
 from typing import Dict, Tuple, List
 
 import math
+import numpy as np
 import torch
 from torch import distributions as dist
 from torch import nn
@@ -57,6 +58,23 @@ class RatNormal(Leaf):
         self.max_mean = check_valid(max_mean, float, min_mean, allow_none=True)
 
         self._dist_params_are_bounded = False
+
+    def forward(self, x):
+        # Forward through base distribution
+        d = self._get_base_distribution()
+        if x.dim() == 4:
+            # Create extra output-channel dimension
+            x = x.unsqueeze(3)
+        # Compute log-likelihood
+        x = d.log_prob(x)  # Shape: [n, w, d, oc, r]
+        if self._tanh_factor:
+            correction = 2 * (np.log(2) - x - F.softplus(-2 * x))
+            x -= correction
+
+        x = self._marginalize_input(x)
+        x = self._apply_dropout(x)
+
+        return x
 
     def set_bounded_dist_params(self):
         """
@@ -187,6 +205,12 @@ class IndependentMultivariate(Leaf):
         x = self.prod(x, reduction=reduction)
         return x
 
+    def entropy(self):
+        ent = self.base_leaf.entropy().unsqueeze(0)
+        ent = self.pad_input(ent)
+        ent = self.prod(ent, reduction='sum')
+        return ent
+
     def _get_base_distribution(self):
         raise Exception("IndependentMultivariate does not have an explicit PyTorch base distribution.")
 
@@ -195,7 +219,7 @@ class IndependentMultivariate(Leaf):
 
         # Remove padding
         if self._pad:
-            context.parent_indices = context.parent_indices[:, : -self._pad]
+            context.parent_indices = context.parent_indices[:, :, :-self._pad]
 
         samples = self.base_leaf.sample(context=context)
         return samples

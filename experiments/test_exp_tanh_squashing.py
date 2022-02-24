@@ -276,18 +276,6 @@ if __name__ == "__main__":
     save_interval = 1 if args.verbose else args.save_interval  # number of epochs
 
     epoch = 0
-    if args.sample_override_root:
-        print("Sampling from all input channels to root sum node ...")
-        root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
-        eval_root_sum_override(model, root_sum_override_dir, device, img_size)
-    if not args.no_eval_at_start:
-        print("Evaluating model ...")
-        save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
-        evaluate_sampling(model, save_path, device, img_size)
-        info.reset(epoch)
-        info['mnist_test_ll'] = evaluate_model(model, device, test_loader, "MNIST test")
-        info.average()
-        info.write()
     for epoch in range(args.epochs):
         if epoch > 20:
             lmbda = 0.5
@@ -312,11 +300,10 @@ if __name__ == "__main__":
                 loss = (1 - lmbda) * ll_loss + lmbda * loss_ce
             else:
                 label = F.one_hot(label, cond_size).float().to(device)
+                model.vi_entropy_approx(sample_size=10, condition=label)
                 output: torch.Tensor = model(x=data, condition=label)
                 ll_loss = -output.mean()
-                if model.config.gmm_leaves:
-                    leaf_entropy_lb = model.gmm_entropy_lb(reduction='mean')
-                    # leaf_entropy, (gmm_H_0, gmm_H_2, gmm_H_3) = model.leaf_entropy_taylor_approx(components=3)
+                model.sample(n=3)
                 if args.ent_loss_alpha > 0.0:
                     ent_loss = -args.ent_loss_alpha * leaf_entropy_lb
                 loss = ll_loss + ent_loss

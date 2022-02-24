@@ -56,7 +56,7 @@ class RatSpnConfig:
     dropout: float = None
     leaf_base_class: Type = None
     leaf_base_kwargs: Dict = None
-    gmm_leaves: bool = True
+    gmm_leaves: bool = False
 
     @property
     def F(self):
@@ -140,8 +140,8 @@ class RatSpn(nn.Module):
             torch.Tensor: Randomized input along feature axis. Each repetition has its own permutation.
         """
         # Expand input to the number of repetitions
-        x = x.unsqueeze(2)  # Make space for repetition axis
-        x = x.repeat((1, 1, self.config.R))  # Repeat R times
+        x = x.unsqueeze(3)  # Make space for repetition axis
+        x = x.repeat((1, 1, 1, self.config.R))  # Repeat R times
 
         # Random permutation
         for r in range(self.config.R):
@@ -149,7 +149,7 @@ class RatSpn(nn.Module):
             perm_indices = self.rand_indices[:, r]
 
             # Permute the features of the r-th version of x using the indices
-            x[:, :, r] = x[:, perm_indices, r]
+            x[:, :, :, r] = x[:, :, perm_indices, r]
 
         return x
 
@@ -158,11 +158,15 @@ class RatSpn(nn.Module):
         Forward pass through RatSpn. Computes the conditional log-likelihood P(X | C).
 
         Args:
-            x: Input.
+            x: Input of shape [batch, weight_sets, in_features, channel].
+                batch: Number of samples per weight set (= per conditional in the CSPN sense).
+                weight_sets: In CSPNs, weights are different for each conditional. In RatSpn, this is 1.
 
         Returns:
             torch.Tensor: Conditional log-likelihood P(X | C) of the input.
         """
+        if x.dim() == 2:
+            x = x.unsqueeze(1)
         # Apply feature randomization for each repetition
         x = self._randomize(x)
 
@@ -173,24 +177,24 @@ class RatSpn(nn.Module):
         x = self._forward_layers(x)
 
         # Merge results from the different repetitions into the channel dimension
-        n, d, c, r = x.size()
+        n, w, d, c, r = x.size()
         assert d == 1  # number of features should be 1 at this point
         # x = torch.as_tensor(np.arange(x.shape[-2] * x.shape[-1])).reshape(x.shape[-2], x.shape[-1]).repeat(256, 1, 1, 1)
         # a = torch.as_tensor([-10.0, -1.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0]).log_softmax(dim=0)
         # a = torch.as_tensor([-10.0] * c)
         # a[1] = -1.0
         # a = a.log_softmax(dim=0)
-        # x = a.unsqueeze(1).repeat(n, d, 1, r)
-        x = x.view(n, d, c * r, 1)
+        # x = a.unsqueeze(2).repeat(n, w, d, 1, r)
+        x = x.view(n, w, d, c * r, 1)
 
         # Apply C sum node outputs
         x = self.root(x)
 
         # Remove repetition dimension
-        x = x.squeeze(3)
+        x = x.squeeze(4)
 
         # Remove in_features dimension
-        x = x.squeeze(1)
+        x = x.squeeze(2)
 
         return x
 
@@ -341,15 +345,11 @@ class RatSpn(nn.Module):
         with provide_evidence(self, evidence):  # May be None but that's ok
             # If class is given, use it as base index
             if class_index is not None:
-                if isinstance(class_index, list):
-                    indices = torch.tensor(class_index, device=self.__device).view(-1, 1)
-                    n = indices.shape[0]
-                else:
-                    indices = torch.empty(size=(n, 1), device=self.__device)
-                    indices.fill_(class_index)
-
                 # Create new sampling context
-                ctx = SamplingContext(n=n, parent_indices=indices, repetition_indices=None, is_mpe=is_mpe)
+                ctx = SamplingContext(n=n,
+                                      parent_indices=class_index.repeat(n, 1).unsqueeze(-1).to(self.__device),
+                                      repetition_indices=torch.zeros((n, class_index.shape[0]), dtype=int, device=self.__device),
+                                      is_mpe=is_mpe)
             else:
                 # Start sampling one of the C root nodes TODO: check what happens if C=1
                 ctx = SamplingContext(n=n, is_mpe=is_mpe)
@@ -390,9 +390,10 @@ class RatSpn(nn.Module):
 
             # Invert permutation
             for i in range(n):
-                rep_index = ctx.repetition_indices[i]
-                inv_rand_indices = invert_permutation(self.rand_indices[:, rep_index])
-                samples[i, :] = samples[i, inv_rand_indices]
+                for j in range(samples.shape[1]):
+                    rep_index = ctx.repetition_indices[i, j]
+                    inv_rand_indices = invert_permutation(self.rand_indices[:, rep_index])
+                    samples[i, j, :] = samples[i, j, inv_rand_indices]
 
             if evidence is not None:
                 # Update NaN entries in evidence with the sampled values
@@ -404,6 +405,58 @@ class RatSpn(nn.Module):
                 return evidence
             else:
                 return samples
+
+    @staticmethod
+    def calc_aux_responsibility(layer, child_entropies, sample_ll):
+        if layer.weights.dim() == 4:
+            # RatSpns only have one set of weights, so we must augment the weight_set dimension
+            weights = layer.weights.unsqueeze(0)
+        else:
+            weights = layer.weights
+        log_weights = weights.unsqueeze(0)
+        weights = log_weights.exp()
+        weight_entropy = -(weights * log_weights).sum(dim=3)
+        weighted_ch_ents = torch.sum(child_entropies.unsqueeze(4) * weights, dim=3)
+        aux_resp_ent = log_weights + sample_ll.unsqueeze(4)
+        sample_ll = layer(sample_ll)
+        aux_resp_ent -= sample_ll.unsqueeze(3)
+        aux_resp_ent = aux_resp_ent.mean(dim=0, keepdim=True)
+        aux_resp_ent = torch.sum(weights * aux_resp_ent, dim=3)
+        entropy = weight_entropy + weighted_ch_ents + aux_resp_ent
+        return entropy, sample_ll
+
+    def vi_entropy_approx(self, sample_size):
+        """
+        Approximate the entropy of the root sum node via variational inference,
+        as done in the Variational Inference by Policy Search paper.
+
+        Args:
+            sample_size: Number of samples to approximate the expected entropy of the responsibility with.
+        """
+        assert not self.config.gmm_leaves, "VI entropy not tested on GMM leaves yet."
+
+        # To calculate the entropies layer by layer, starting from the leaves.
+        # We repurpose the samples of the leaves when moving up through the layers.
+        ctx = SamplingContext(n=sample_size, is_mpe=False)
+        sample = self._leaf.base_leaf.sample(ctx)
+        sample_ll = self._leaf(sample)
+        del sample
+
+        child_entropies = self._leaf.entropy()
+        for layer in self._inner_layers:
+            if isinstance(layer, CrossProduct):
+                child_entropies = layer(child_entropies)
+                sample_ll = layer(sample_ll)
+            else:
+                child_entropies, sample_ll = self.calc_aux_responsibility(layer, child_entropies, sample_ll)
+
+        n, w, d, c, r = sample_ll.size()
+        assert d == 1  # number of features should be 1 at this point
+        child_entropies = child_entropies.view(1, w, d, c * r, 1)
+        sample_ll = sample_ll.view(n, w, d, c * r, 1)
+        child_entropies, sample_ll = self.calc_aux_responsibility(self.root, child_entropies, sample_ll)
+        child_entropies = child_entropies.flatten()
+        return child_entropies
 
     def consolidate_weights(self):
         """
