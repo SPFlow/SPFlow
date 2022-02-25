@@ -33,17 +33,21 @@ class RatNormal(Leaf):
         min_mean: float = None,
         max_mean: float = None,
     ):
-        """Creat a gaussian layer.
+        """Create a gaussian layer.
 
         Args:
-            out_channels: Number of parallel representations for each input feature.
             in_features: Number of input features.
+            out_channels: Number of parallel representations for each input feature.
+            tanh_factor: If set, tanh will be applied to the samples and taken times this factor.
+                         Also, a correction term is applied to the log probs.
 
         """
-        super().__init__(in_features, out_channels, num_repetitions, dropout, tanh_factor)
+        super().__init__(in_features, out_channels, num_repetitions, dropout)
 
         # Create gaussian means and stds
         self.means = nn.Parameter(torch.randn(1, in_features, out_channels, num_repetitions))
+
+        self._tanh_factor = check_valid(tanh_factor, float, 0.0, allow_none=True)
 
         if min_sigma is not None and max_sigma is not None:
             # Init from normal
@@ -75,6 +79,16 @@ class RatNormal(Leaf):
         x = self._apply_dropout(x)
 
         return x
+
+    def sample(self, context: SamplingContext = None) -> torch.Tensor:
+        """
+        Perform sampling, given indices from the parent layer that indicate which of the multiple representations
+        for each input shall be used.
+        """
+        samples = super().sample(context)
+        if self._tanh_factor:
+            samples = torch.tanh_(samples).mul_(self._tanh_factor)
+        return samples
 
     def set_bounded_dist_params(self):
         """

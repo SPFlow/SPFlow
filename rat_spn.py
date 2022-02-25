@@ -442,7 +442,8 @@ class RatSpn(nn.Module):
         sample_ll = self._leaf(sample)
         del sample
 
-        child_entropies = self._leaf.entropy()
+        # child_entropies = self._leaf.entropy()
+        child_entropies = -sample_ll.mean(dim=0, keepdim=True)
         for layer in self._inner_layers:
             if isinstance(layer, CrossProduct):
                 child_entropies = layer(child_entropies)
