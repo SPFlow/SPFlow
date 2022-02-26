@@ -27,9 +27,9 @@ class RatNormal(Leaf):
         out_channels: int,
         num_repetitions: int = 1,
         dropout: float = 0.0,
-        tanh_factor: float = None,
-        min_sigma: float = 0.1,
-        max_sigma: float = 1.0,
+        tanh_bounds: tuple = None,
+        min_sigma: float = None,
+        max_sigma: float = None,
         min_mean: float = None,
         max_mean: float = None,
     ):
@@ -38,7 +38,7 @@ class RatNormal(Leaf):
         Args:
             in_features: Number of input features.
             out_channels: Number of parallel representations for each input feature.
-            tanh_factor: If set, tanh will be applied to the samples and taken times this factor.
+            tanh_bounds: If set, tanh will be applied to the samples and stretched and moved into this interval.
                          Also, a correction term is applied to the log probs.
 
         """
@@ -47,7 +47,15 @@ class RatNormal(Leaf):
         # Create gaussian means and stds
         self.means = nn.Parameter(torch.randn(1, in_features, out_channels, num_repetitions))
 
-        self._tanh_factor = check_valid(tanh_factor, float, 0.0, allow_none=True)
+        if tanh_bounds:
+            assert isinstance(tanh_bounds, tuple) and len(tanh_bounds) == 2, "tanh_bounds must be a 2-element tuple!"
+            lower_tanh_bound = check_valid(tanh_bounds[0], float)
+            upper_tanh_bound = check_valid(tanh_bounds[1], float, lower_bound=lower_tanh_bound)
+            self._tanh_translate = (lower_tanh_bound + upper_tanh_bound)/2
+            self._tanh_stretch = (upper_tanh_bound - lower_tanh_bound)/2
+        else:
+            self._tanh_translate = None
+            self._tanh_stretch = None
 
         if min_sigma is not None and max_sigma is not None:
             # Init from normal
@@ -56,23 +64,27 @@ class RatNormal(Leaf):
             # Init uniform between 0 and 1
             self.stds = nn.Parameter(torch.rand(1, in_features, out_channels, num_repetitions))
 
-        self.min_sigma = check_valid(min_sigma, float, 0.0, max_sigma)
-        self.max_sigma = check_valid(max_sigma, float, min_sigma)
+        self.min_sigma = check_valid(min_sigma, float, 0.0, max_sigma, allow_none=True)
+        self.max_sigma = check_valid(max_sigma, float, min_sigma, allow_none=True)
         self.min_mean = check_valid(min_mean, float, upper_bound=max_mean, allow_none=True)
         self.max_mean = check_valid(max_mean, float, min_mean, allow_none=True)
 
         self._dist_params_are_bounded = False
 
     def forward(self, x):
-        # Forward through base distribution
-        d = self._get_base_distribution()
         if x.dim() == 4:
             # Create extra output-channel dimension
             x = x.unsqueeze(3)
-        # Compute log-likelihood
-        x = d.log_prob(x)  # Shape: [n, w, d, oc, r]
-        if self._tanh_factor:
+
+        correction = None
+        if self._tanh_stretch:
+            x = x.sub(self._tanh_translate).div(self._tanh_stretch)
             correction = 2 * (np.log(2) - x - F.softplus(-2 * x))
+
+        d = self._get_base_distribution()
+        x = d.log_prob(x)  # Shape: [n, w, d, oc, r]
+
+        if self._tanh_stretch:
             x -= correction
 
         x = self._marginalize_input(x)
@@ -86,8 +98,8 @@ class RatNormal(Leaf):
         for each input shall be used.
         """
         samples = super().sample(context)
-        if self._tanh_factor:
-            samples = torch.tanh_(samples).mul_(self._tanh_factor)
+        if self._tanh_stretch:
+            samples = torch.tanh_(samples).mul_(self._tanh_stretch).add(self._tanh_translate)
         return samples
 
     def set_bounded_dist_params(self):
@@ -101,11 +113,14 @@ class RatNormal(Leaf):
 
     def bounded_dist_params(self) -> Tuple[torch.Tensor, torch.Tensor]:
         if not self._dist_params_are_bounded:
-            if self.min_sigma < self.max_sigma:
-                sigma_ratio = torch.sigmoid(self.stds)
-                sigma = self.min_sigma + (self.max_sigma - self.min_sigma) * sigma_ratio
+            if self.min_sigma:
+                if self.min_sigma < self.max_sigma:
+                    sigma_ratio = torch.sigmoid(self.stds)
+                    sigma = self.min_sigma + (self.max_sigma - self.min_sigma) * sigma_ratio
+                else:
+                    sigma = 1.0
             else:
-                sigma = 1.0
+                sigma = self.stds
 
             means = self.means
             if self.max_mean:

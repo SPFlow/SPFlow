@@ -84,7 +84,7 @@ def evaluate_sampling(model, save_dir, device, img_size):
     model.eval()
     log_like = []
     label = torch.as_tensor(np.arange(10)).to(device)
-    samples_per_label = 8
+    samples_per_label = 10
     with torch.no_grad():
         if isinstance(model, CSPN):
             label = F.one_hot(label, 10).float().to(device)
@@ -452,7 +452,8 @@ if __name__ == "__main__":
         config.S = args.num_sums
         config.dropout = args.dropout
         config.leaf_base_class = RatNormal
-        config.leaf_base_kwargs = {'min_sigma': 0.1, 'max_sigma': 1.0, 'min_mean': 0.0, 'max_mean': 1.0}
+        config.leaf_base_kwargs = {'tanh_bounds': (0.0, 1.0)}
+        # config.leaf_base_kwargs = {'min_sigma': 0.1, 'max_sigma': 1.0, 'min_mean': 0.0, 'max_mean': 1.0}
         if args.ratspn:
             model = RatSpn(config)
             assert False, "The log normalization of parameters in the layers themselves was removed and must be redone."
@@ -512,7 +513,7 @@ if __name__ == "__main__":
                 label = F.one_hot(label, cond_size).float().to(device)
                 output: torch.Tensor = model(x=data, condition=label)
                 ll_loss = -output.mean()
-                vi_ent_approx = model.vi_entropy_approx(sample_size=10, condition=None).mean()
+                vi_ent_approx = model.vi_entropy_approx(sample_size=5, condition=None).mean()
                 if args.ent_loss_alpha > 0.0:
                     ent_loss = -args.ent_loss_alpha * vi_ent_approx
                 loss = ll_loss + ent_loss

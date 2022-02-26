@@ -420,8 +420,21 @@ class RatSpn(nn.Module):
         aux_resp_ent = log_weights + sample_ll.unsqueeze(4)
         sample_ll = layer(sample_ll)
         aux_resp_ent -= sample_ll.unsqueeze(3)
+
+        # aux_dev_5samples = aux_resp_ent[:5].mean(dim=0, keepdim=True)
+        # aux_dev_5samples = torch.sum(weights * aux_dev_5samples, dim=3)
+        # aux_dev_1sample = aux_resp_ent[:1].mean(dim=0, keepdim=True)
+        # aux_dev_1sample = torch.sum(weights * aux_dev_1sample, dim=3)
+
         aux_resp_ent = aux_resp_ent.mean(dim=0, keepdim=True)
         aux_resp_ent = torch.sum(weights * aux_resp_ent, dim=3)
+
+        # aux_dev_5samples = (aux_dev_5samples - aux_resp_ent).abs()
+        # aux_dev_1sample = (aux_dev_1sample - aux_resp_ent).abs()
+        # print(f"Abs. dev. of aux. resp. ent. {aux_resp_ent.mean():.4f} from {aux_resp_ent.shape[0]} samples: "
+              # f"5 samples -> {aux_dev_5samples.mean():.4f}, "
+              # f"1 sample -> {aux_dev_1sample.mean():.4f}")
+
         entropy = weight_entropy + weighted_ch_ents + aux_resp_ent
         return entropy, sample_ll
 
@@ -444,6 +457,11 @@ class RatSpn(nn.Module):
 
         # child_entropies = self._leaf.entropy()
         child_entropies = -sample_ll.mean(dim=0, keepdim=True)
+        # deviation_5samples = (child_entropies + sample_ll[:5].mean(dim=0, keepdim=True)).abs()
+        # deviation_1sample = (child_entropies + sample_ll[:1].mean(dim=0, keepdim=True)).abs()
+        # print(f"Abs. dev. of child_ents {child_entropies.mean():.4f} from {sample_size} samples: "
+              # f"5 samples -> {deviation_5samples.mean():.4f}, "
+              # f"1 sample -> {deviation_1sample.mean():.4f}")
         for layer in self._inner_layers:
             if isinstance(layer, CrossProduct):
                 child_entropies = layer(child_entropies)

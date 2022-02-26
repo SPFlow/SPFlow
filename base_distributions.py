@@ -80,7 +80,10 @@ def dist_sample(distribution: dist.Distribution, context: SamplingContext = None
     if context.is_mpe:
         samples = _mode(distribution, context)
     else:
-        samples = distribution.sample(sample_shape=(context.n,))
+        if distribution.has_rsample:
+            samples = distribution.rsample(sample_shape=(context.n,))
+        else:
+            samples = distribution.sample(sample_shape=(context.n,))
 
     # w is the "weight sets" dimension. In the CSPN case, the weights are different for each conditional.
     # In the RatSpn case, w=1.
