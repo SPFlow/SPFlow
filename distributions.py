@@ -120,7 +120,9 @@ class RatNormal(Leaf):
                 else:
                     sigma = 1.0
             else:
-                sigma = self.stds
+                LOG_STD_MAX = 2
+                LOG_STD_MIN = -20
+                sigma = torch.clamp(self.stds, LOG_STD_MIN, LOG_STD_MAX).exp()
 
             means = self.means
             if self.max_mean:

@@ -335,8 +335,5 @@ class CSPN(RatSpn):
         dist_means = self.dist_mean_head(dist_weights_pre_output).view(dist_param_shape)
         dist_stds = self.dist_std_head(dist_weights_pre_output).view(dist_param_shape)
         self._leaf.base_leaf.means = dist_means
-        LOG_STD_MAX = 2
-        LOG_STD_MIN = -20
-        dist_stds = torch.clamp(dist_stds, LOG_STD_MIN, LOG_STD_MAX).exp()
         self._leaf.base_leaf.stds = dist_stds
         self._leaf.base_leaf.set_bounded_dist_params()

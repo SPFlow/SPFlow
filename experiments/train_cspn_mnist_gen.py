@@ -60,7 +60,8 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=0.0, deb
 
     test_batch_size = batch_size
 
-    transformer = transforms.Compose([transforms.ToTensor(), # transforms.Normalize((0.1307,), (0.3081,)),
+    # Transform from interval (0.0, 1.0) to (0.01, 0.99) so tanh squash experiments converge better
+    transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize((-0.010204,), (1.0204,)),
                                       transforms.RandomInvert(p=invert)])
     # Train data loader
     train_loader = torch.utils.data.DataLoader(
@@ -299,6 +300,8 @@ if __name__ == "__main__":
                              'If 0.0, no gradients are calculated w.r.t. the entropy.')
     parser.add_argument('--invert', type=float, default=0.0, help='Probability of an MNIST image being inverted.')
     parser.add_argument('--no_eval_at_start', action='store_true', help='Don\'t evaluate model at the beginning')
+    parser.add_argument('--tanh', action='store_true', help='Apply tanh squashing to leaves.')
+    parser.add_argument('--sigmoid_std', action='store_true', help='Use sigmoid to set std.')
     args = parser.parse_args()
 
     if args.model_path:
@@ -452,8 +455,13 @@ if __name__ == "__main__":
         config.S = args.num_sums
         config.dropout = args.dropout
         config.leaf_base_class = RatNormal
-        config.leaf_base_kwargs = {'tanh_bounds': (0.0, 1.0)}
-        # config.leaf_base_kwargs = {'min_sigma': 0.1, 'max_sigma': 1.0, 'min_mean': 0.0, 'max_mean': 1.0}
+        if args.tanh:
+            config.leaf_base_kwargs = {'tanh_bounds': (0.0, 1.0)}
+        else:
+            config.leaf_base_kwargs = {'min_mean': 0.0, 'max_mean': 1.0}
+        if args.sigmoid_std:
+            config.leaf_base_kwargs['min_sigma'] = 0.1
+            config.leaf_base_kwargs['max_sigma'] = 1.0
         if args.ratspn:
             model = RatSpn(config)
             assert False, "The log normalization of parameters in the layers themselves was removed and must be redone."
