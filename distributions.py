@@ -99,7 +99,7 @@ class RatNormal(Leaf):
         """
         samples = super().sample(context)
         if self._tanh_stretch:
-            samples = torch.tanh_(samples).mul_(self._tanh_stretch).add(self._tanh_translate)
+            samples = torch.tanh(samples).mul(self._tanh_stretch).add(self._tanh_translate)
         return samples
 
     def set_bounded_dist_params(self):
