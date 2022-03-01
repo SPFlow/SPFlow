@@ -408,12 +408,14 @@ class CrossProduct(AbstractLayer):
             in_channels (int): Number of input channels. This is only needed for the sampling pass.
         """
 
-        super().__init__(in_features, num_repetitions)
+        # Check if padding to next power of 2 is necessary
+        self._pad = 2 ** np.ceil(np.log2(in_features)).astype(np.int) - in_features
+        super().__init__(2 ** np.ceil(np.log2(in_features)).astype(np.int), num_repetitions)
+
         self.in_channels = check_valid(in_channels, int, 1)
         cardinality = 2  # Fixed to binary graphs for now
         self.cardinality = check_valid(cardinality, int, 2, in_features + 1)
         self._out_features = np.ceil(self.in_features / self.cardinality).astype(int)
-        self._pad = 0
 
         # Collect scopes for each product child
         self._scopes = [[] for _ in range(self.cardinality)]
@@ -424,13 +426,14 @@ class CrossProduct(AbstractLayer):
         # For two consecutive scopes
         for i in range(0, self.in_features, self.cardinality):
             for j in range(cardinality):
-                if i + j < in_features:
-                    self._scopes[j].append(scopes[i + j])
-                else:
+                self._scopes[j].append(scopes[i + j])
+                # if i + j < in_features:
+                    # self._scopes[j].append(scopes[i + j])
+                # else:
                     # Case: d mod cardinality != 0 => Create marginalized nodes with prob 1.0
                     # Pad x in forward pass on the right: [n, d, c] -> [n, d+1, c] where index
                     # d+1 is the marginalized node (index "in_features")
-                    self._scopes[j].append(self.in_features)
+                    # self._scopes[j].append(self.in_features)
 
         # Transform into numpy array for easier indexing
         self._scopes = np.array(self._scopes)
@@ -457,11 +460,7 @@ class CrossProduct(AbstractLayer):
         Returns:
             torch.Tensor: Output of shape [batch, ceil(in_features/2), channel * channel].
         """
-        # Check if padding to next power of 2 is necessary
-        if self.in_features != x.shape[2]:
-            # Compute necessary padding to the next power of 2
-            self._pad = 2 ** np.ceil(np.log2(x.shape[2])).astype(np.int) - x.shape[2]
-
+        if self._pad:
             # Pad marginalized node
             x = F.pad(x, pad=[0, 0, 0, 0, 0, self._pad], mode="constant", value=0.0)
 

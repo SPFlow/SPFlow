@@ -228,9 +228,10 @@ class RatSpn(nn.Module):
         self._inner_layers = nn.ModuleList()
         prod_in_channels = self.config.I
 
-        # First product layer on top of leaf layer
+        # First product layer on top of leaf layer.
+        # May pad output features of leaf layer is their number is not a power of 2.
         prodlayer = CrossProduct(
-            in_features=2 ** self.config.D, in_channels=prod_in_channels, num_repetitions=self.config.R
+            in_features=self._leaf.out_features, in_channels=prod_in_channels, num_repetitions=self.config.R
         )
         self._inner_layers.append(prodlayer)
         sum_in_channels = self.config.I ** 2
