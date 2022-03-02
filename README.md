@@ -5,8 +5,6 @@
 
 # SPFlow: An Easy and Extensible Library for Sum-Product Networks
 
-⚠ **Notice of Development** ⚠ *We are currently working on the release of SPFlow 1.0.0 in our [development](https://github.com/SPFlow/SPFlow/tree/development) branch. This version is under heavy construction and includes a complete rewrite of the package structure and code with the goal of maximum flexibility to construct, evaluate and learn probabilistic circuits. Our goal is to additionally offer all functionality in the most commonly used computational graph frameworks such as PyTorch, TensorFlow and Jax.* 
-
 SPFlow, an open-source Python library providing a simple interface to inference,
 learning  and  manipulation  routines  for  deep  and  tractable  probabilistic  models called Sum-Product Networks (SPNs).
 The library allows one to quickly create SPNs both from data and through a domain specific language (DSL).
