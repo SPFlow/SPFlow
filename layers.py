@@ -187,7 +187,7 @@ class Sum(AbstractLayer):
             weights = torch.stack(parent_selected_weights, dim=0)
 
         # Check dimensions
-        assert weights.shape == (sample_size, context.repetition_indices.shape[1], d, ic)
+        assert weights.shape == (sample_size, context.repetition_indices.shape[1], d, ic)  # [n, w, d, ic]
 
         # If evidence is given, adjust the weights with the likelihoods of the observed paths
         if self._is_input_cache_enabled and self._input_cache is not None:
@@ -199,7 +199,7 @@ class Sum(AbstractLayer):
         # If sampling context is MPE, set max weight to 1 and rest to zero, such that the maximum index will be sampled
         if context.is_mpe:
             # Get index of largest weight along in-channel dimension
-            indices = weights.argmax(dim=2)
+            indices = weights.argmax(dim=3)
         else:
             # Create categorical distribution and use weights as logits.
             #
