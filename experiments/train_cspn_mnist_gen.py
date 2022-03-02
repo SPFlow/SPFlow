@@ -15,20 +15,8 @@ from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 
 from distributions import RatNormal
-from cspn import CSPN, CspnConfig
+from cspn import CSPN, CspnConfig, print_cspn_params
 from rat_spn import RatSpn, RatSpnConfig
-
-from train_mnist import count_params, ensure_dir, set_seed
-
-
-def print_cspn_params(cspn: CSPN):
-    print(f"Total params in CSPN: {count_params(cspn)}")
-    print(f"Params to extract features from the conditional: {count_params(cspn.feat_layers)}")
-    print(f"Params in MLP for the sum params, excluding the heads: {count_params(cspn.sum_layers)}")
-    print(f"Params in the heads of the sum param MLPs: {sum([count_params(head) for head in cspn.sum_param_heads])}")
-    print(f"Params in MLP for the dist params, excluding the heads: {count_params(cspn.dist_layers)}")
-    print(f"Params in the heads of the dist param MLPs: "
-          f"{count_params(cspn.dist_mean_head) + count_params(cspn.dist_std_head)}")
 
 
 def time_delta(t_delta: float) -> str:

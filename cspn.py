@@ -16,6 +16,18 @@ import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
 
 
+def print_cspn_params(cspn):
+    def count_params(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total params in CSPN: {count_params(cspn)}")
+    print(f"Params to extract features from the conditional: {count_params(cspn.feat_layers)}")
+    print(f"Params in MLP for the sum params, excluding the heads: {count_params(cspn.sum_layers)}")
+    print(f"Params in the heads of the sum param MLPs: {sum([count_params(head) for head in cspn.sum_param_heads])}")
+    print(f"Params in MLP for the dist params, excluding the heads: {count_params(cspn.dist_layers)}")
+    print(f"Params in the heads of the dist param MLPs: "
+          f"{count_params(cspn.dist_mean_head) + count_params(cspn.dist_std_head)}")
+
+
 @dataclass
 class CspnConfig(RatSpnConfig):
     F_cond: tuple = 0
