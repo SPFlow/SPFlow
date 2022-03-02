@@ -81,7 +81,7 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=0.0, deb
     return train_loader, test_loader
 
 
-def evaluate_sampling(model, save_dir, device, img_size):
+def evaluate_sampling(model, save_dir, device, img_size, mpe=False):
     model.eval()
     log_like = []
     label = torch.as_tensor(np.arange(10)).to(device)
@@ -89,7 +89,7 @@ def evaluate_sampling(model, save_dir, device, img_size):
     with torch.no_grad():
         if isinstance(model, CSPN):
             label = F.one_hot(label, 10).float().to(device)
-            samples = model.sample(n=samples_per_label, condition=label)
+            samples = model.sample(n=samples_per_label, condition=label, is_mpe=mpe)
             log_like.append(model(x=samples, condition=None).mean().tolist())
         else:
             samples = model.sample(n=samples_per_label, class_index=label)
@@ -167,6 +167,17 @@ def plot_samples(x: torch.Tensor, path):
     arr = tensors.permute(1, 2, 0).numpy()
     arr = skimage.img_as_ubyte(arr)
     imageio.imwrite(path, arr)
+
+
+def plot_img(image: torch.Tensor, batch_size: int, title: str = None):
+    # Tensor shape N x channels x rows x cols
+    tensors = torchvision.utils.make_grid(image, nrow=int(np.sqrt(batch_size)), padding=1)
+    arr = tensors.permute(1, 2, 0).cpu().numpy()
+    arr = skimage.img_as_ubyte(arr)
+    plt.imshow(arr)
+    if title:
+        plt.title(title, fontdict={'fontsize': 10})
+    plt.show()
 
 
 class CsvLogger(dict):
@@ -334,15 +345,20 @@ if __name__ == "__main__":
 
     inspect = args.inspect
     if inspect:
-        epoch = '099'
-        exp_name = f"mnistgen_ent1"
-        base_path = os.path.join('results', 'mnistgen_ent', f"results_{exp_name}")
+        epoch = '999'
+        exp_name = f"vi_ent_log_1"
+        base_path = os.path.join('..', '..', 'spn_experiments', 'vi_ent_approx', f"results_{exp_name}")
         model_name = f"epoch-{epoch}_{exp_name}"
         path = os.path.join(base_path, 'models', f"{model_name}.pt")
         model = torch.load(path, map_location=torch.device('cpu'))
 
-        exp = 1
-        if exp == 1:
+        exp = 0
+        if exp == 0:
+            samples_dir = os.path.join(base_path, 'new_samples')
+            save_path = os.path.join(samples_dir, f"sample.png")
+            evaluate_sampling(model, save_path, torch.device('cpu'), img_size)
+            print(1)
+        elif exp == 1:
             # Here, the choices of the root sum node are overridden and instead all output channels of its children
             # are sampled.
             results_dir = os.path.join(base_path, f'all_root_in_channels_{model_name}')
@@ -363,16 +379,6 @@ if __name__ == "__main__":
                 evaluate_sampling(model, save_path, torch.device('cpu'), img_size)
         else:
             results_dir = base_path
-            def plot_img(image: torch.Tensor, title: str = None, path=None):
-                # Tensor shape N x channels x rows x cols
-                tensors = torchvision.utils.make_grid(image, nrow=5, padding=1)
-                arr = tensors.permute(1, 2, 0).cpu().numpy()
-                arr = skimage.img_as_ubyte(arr)
-                # imageio.imwrite(path, arr)
-                # return
-                plt.imshow(arr)
-                plt.title(title, fontdict={'fontsize': 10})
-                plt.show()
 
             top_5_ll = torch.ones(5) * -10e6
             top_5_ll_img = torch.zeros(5, *img_size)
@@ -551,6 +557,8 @@ if __name__ == "__main__":
             print("Evaluating model ...")
             save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
             evaluate_sampling(model, save_path, device, img_size)
+            save_path = os.path.join(sample_dir, f"mpe-epoch-{epoch:03}_{args.exp_name}.png")
+            evaluate_sampling(model, save_path, device, img_size, mpe=True)
             info['mnist_test_ll'] = evaluate_model(model, device, test_loader, "MNIST test")
 
         info.average()
