@@ -31,12 +31,12 @@ def print_cspn_params(cspn):
 @dataclass
 class CspnConfig(RatSpnConfig):
     F_cond: tuple = 0
-    nr_feat_layers: int = 1
+    feat_layers: list = None
     conv_kernel_size: int = 5
     conv_pooling_kernel_size: int = 3
     conv_pooling_stride: int = 3
-    fc_sum_param_layers: int = 1
-    fc_dist_param_layers: int = 1
+    sum_param_layers: list = None
+    dist_param_layers: list = None
 
     def __setattr__(self, key, value):
         if hasattr(self, key):
@@ -230,16 +230,16 @@ class CSPN(RatSpn):
         self._leaf.base_leaf.means = placeholder
         self._leaf.base_leaf.stds = placeholder
 
-    def create_feat_layers(self, feature_input_dim: tuple):
-        nr_feat_layers = self.config.nr_feat_layers
-        conv_kernel = self.config.conv_kernel_size
-        pool_kernel = self.config.conv_pooling_kernel_size
-        pool_stride = self.config.conv_pooling_stride
-        feature_dim = feature_input_dim
+    def create_feat_layers(self, feature_dim: tuple, inner_activation: nn.Module = nn.ReLU):
         assert len(feature_dim) == 3 or len(feature_dim) == 1, \
-            f"Don't know how to construct feature extraction layers for {len(feature_dim)} features."
+            f"Don't know how to construct feature extraction layers for features of dim {len(feature_dim)}."
         if len(feature_dim) == 3:
             # feature_dim = (channels, rows, columns)
+            assert False, "Adapt conv layer feat extraction to config.feat_layer_sizes"
+            conv_kernel = self.config.conv_kernel_size
+            pool_kernel = self.config.conv_pooling_kernel_size
+            pool_stride = self.config.conv_pooling_stride
+            nr_feat_layers = 0
             conv_layers = [] if nr_feat_layers > 0 else [nn.Identity()]
             for j in range(nr_feat_layers):
                 # feature_dim = [int(np.floor((n - (pool_kernel-1) - 1)/pool_stride + 1)) for n in feature_dim]
@@ -255,24 +255,32 @@ class CSPN(RatSpn):
                                 nn.Dropout()]
             self.feat_layers = nn.Sequential(*conv_layers)
         elif len(feature_dim) == 1:
-            feat_layers = [] if nr_feat_layers > 0 else [nn.Identity()]
-            for j in range(nr_feat_layers):
-                feat_layers += [nn.Linear(feature_dim[0], feature_dim[0]), nn.ReLU()]
+            if self.config.feat_layers:
+                feat_layers = []
+                layer_sizes = [feature_dim[0]] + self.config.feat_layers
+                for j in range(len(layer_sizes) - 1):
+                    feat_layers += [nn.Linear(layer_sizes[j], layer_sizes[j+1]),
+                                    inner_activation()]
+            else:
+                feat_layers = [nn.Identity()]
             self.feat_layers = nn.Sequential(*feat_layers)
 
-        activation = nn.ReLU
         output_activation = nn.Identity
 
-        feature_dim = int(np.prod(self.feat_layers(torch.ones((1, *feature_input_dim))).shape))
-        print(f"The feature extraction layer for the CSPN conditional reduce the {int(np.prod(feature_input_dim))} "
+        feature_dim = int(np.prod(self.feat_layers(torch.ones((1, *feature_dim))).shape))
+        print(f"The feature extraction layer for the CSPN conditional reduce the {int(np.prod(feature_dim))} "
               f"inputs (e.g. pixels in an image) down to {feature_dim} features. These are the inputs of the "
               f"MLPs which set the sum and dist params.")
         # sum_layer_sizes = [int(feature_dim * 10 ** (-i)) for i in range(1 + self.config.fc_sum_param_layers)]
-        sum_layer_sizes = [feature_dim for _ in range(1 + self.config.fc_sum_param_layers)]
-        sum_layers = []
-        for j in range(len(sum_layer_sizes) - 1):
-            act = activation if j < len(sum_layer_sizes) - 2 else output_activation
-            sum_layers += [nn.Linear(sum_layer_sizes[j], sum_layer_sizes[j + 1]), act()]
+        sum_layer_sizes = [feature_dim]
+        if self.config.sum_param_layers:
+            sum_layers = []
+            sum_layer_sizes += self.config.sum_param_layers
+            for j in range(len(sum_layer_sizes) - 1):
+                act = inner_activation if j < len(sum_layer_sizes) - 2 else output_activation
+                sum_layers += [nn.Linear(sum_layer_sizes[j], sum_layer_sizes[j + 1]), act()]
+        else:
+            sum_layers = [nn.Identity()]
         self.sum_layers = nn.Sequential(*sum_layers)
 
         self.sum_param_heads = nn.ModuleList()
@@ -289,11 +297,15 @@ class CSPN(RatSpn):
                   f"having {self._leaf.sum.weights.numel()} weights.")
 
         # dist_layer_sizes = [int(feature_dim * 10 ** (-i)) for i in range(1 + self.config.fc_dist_param_layers)]
-        dist_layer_sizes = [feature_dim for _ in range(1 + self.config.fc_dist_param_layers)]
-        dist_layers = []
-        for j in range(len(dist_layer_sizes) - 1):
-            act = activation if j < len(dist_layer_sizes) - 2 else output_activation
-            dist_layers += [nn.Linear(dist_layer_sizes[j], dist_layer_sizes[j + 1]), act()]
+        dist_layer_sizes = [feature_dim]
+        if self.config.dist_param_layers:
+            dist_layers = []
+            dist_layer_sizes += self.config.dist_param_layers
+            for j in range(len(dist_layer_sizes) - 1):
+                act = activation if j < len(dist_layer_sizes) - 2 else output_activation
+                dist_layers += [nn.Linear(dist_layer_sizes[j], dist_layer_sizes[j + 1]), act()]
+        else:
+            dist_layers = [nn.Identity()]
         self.dist_layers = nn.Sequential(*dist_layers)
 
         self.dist_mean_head = nn.Linear(dist_layer_sizes[-1], self._leaf.base_leaf.means.numel())

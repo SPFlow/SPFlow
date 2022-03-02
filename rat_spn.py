@@ -457,7 +457,7 @@ class RatSpn(nn.Module):
         del sample
 
         # Apply permutation
-        sample_ll = self._randomize(sample_ll)
+        # sample_ll = self._randomize(sample_ll)
         child_entropies = -sample_ll.mean(dim=0, keepdim=True)
         # deviation_5samples = (child_entropies + sample_ll[:5].mean(dim=0, keepdim=True)).abs()
         # deviation_1sample = (child_entropies + sample_ll[:1].mean(dim=0, keepdim=True)).abs()

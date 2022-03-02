@@ -26,6 +26,19 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     # SAC arguments
     parser.add_argument('--ent_coef', type=float, default=0.1, help='Entropy temperature')
+    # CSPN arguments
+    parser.add_argument('--repetitions', '-R', type=int, default=5, help='Number of parallel CSPNs to learn at once. ')
+    parser.add_argument('--cspn_depth', '-D', type=int,
+                        help='Depth of the CSPN. If not provided, maximum will be used (ceil of log2(inputs)).')
+    parser.add_argument('--num_dist', '-I', type=int, default=5, help='Number of Gauss dists per pixel.')
+    parser.add_argument('--num_sums', '-S', type=int, default=5, help='Number of sums per RV in each sum layer.')
+    parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
+    parser.add_argument('--feat_layers', type=int, nargs='+',
+                        help='List of sizes of the CSPN feature layers.')
+    parser.add_argument('--sum_param_layers', type=int, nargs='+',
+                        help='List of sizes of the CSPN sum param layers.')
+    parser.add_argument('--dist_param_layers', type=int, nargs='+',
+                        help='List of sizes of the CSPN dist param layers.')
     args = parser.parse_args()
 
     # args.cspn = True
@@ -53,11 +66,24 @@ if __name__ == "__main__":
             'device': args.device,
         }
         if args.cspn:
+            cspn_args = {
+                'R': args.repetitions,
+                'D': args.cspn_depth,
+                'I': args.num_dist,
+                'S': args.num_sums,
+                'dropout': args.dropout,
+                'feat_layers': args.feat_layers,
+                'sum_param_layers': args.sum_param_layers,
+                'dist_param_layers': args.dist_param_layers,
+            }
+            sac_kwargs['policy_kwargs'] = {'cspn_args': cspn_args}
             model = SAC("CspnPolicy", env, **sac_kwargs)
         else:
             model = SAC("MlpPolicy", env, **sac_kwargs)
         model_name = f"sac_{'cspn' if args.cspn else 'mlp'}_{args.env}_{args.exp_name}"
 
+    print(model.actor)
+    print(model.critic)
     if isinstance(model.actor, CspnActor):
         print_cspn_params(model.actor.cspn)
     else:

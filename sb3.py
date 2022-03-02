@@ -51,8 +51,9 @@ class CspnActor(BasePolicy):
             I: int,
             S: int,
             dropout: float,
-            sum_layers: int,
-            dist_layers: int,
+            feat_layers: int,
+            sum_param_layers: int,
+            dist_param_layers: int,
             activation_fn: Type[nn.Module] = nn.ReLU,
             normalize_images: bool = True,
             **kwargs
@@ -74,9 +75,9 @@ class CspnActor(BasePolicy):
         config = CspnConfig()
         config.F_cond = (features_dim,)
         config.C = 1
-        config.nr_feat_layers = 0
-        config.fc_sum_param_layers = sum_layers
-        config.fc_dist_param_layers = dist_layers
+        config.feat_layers = feat_layers
+        config.sum_param_layers = sum_param_layers
+        config.dist_param_layers = dist_param_layers
         config.F = action_dim
         config.R = R
         config.D = D if D is not None else int(np.log2(action_dim))
@@ -84,7 +85,6 @@ class CspnActor(BasePolicy):
         config.S = S
         config.dropout = dropout
         config.leaf_base_class = RatNormal
-        # TODO are actions tanh_bounded somewhere else? What about the correction term?
         config.leaf_base_kwargs = {'tanh_bounds': (-1.0, 1.0)}
         # config.leaf_base_kwargs = {'min_mean': 0.0, 'max_mean': 1.0}
         if False:
@@ -193,17 +193,8 @@ class CspnPolicy(SACPolicy):
             "normalize_images": normalize_images,
         }
         self.actor_kwargs = self.net_args.copy()
-        self.actor_kwargs.update(
-            {
-                'R': 3,
-                'D': None,  # Set to None to make D == log2(action_dim)
-                'I': 5,
-                'S': 5,
-                'dropout': 0.0,
-                'sum_layers': 2,
-                'dist_layers': 2,
-            }
-        )
+        if 'cspn_args' in kwargs.keys():
+            self.actor_kwargs.update(kwargs['cspn_args'])
 
         self.critic_kwargs = self.net_args.copy()
         self.critic_kwargs.update(
