@@ -16,6 +16,7 @@ if __name__ == "__main__":
     parser.add_argument('--render_after_done', action='store_true', help='Don\' set this when running remotely')
     parser.add_argument('--timesteps', type=int, default=int(1e6), help='Total timesteps to train model.')
     parser.add_argument('--save_interval', type=int, default=int(1e4), help='Save model every save_interval timesteps.')
+    parser.add_argument('--log_interval', type=int, default=4, help='Log interval')
     parser.add_argument('--env', type=str, default='HalfCheetah-v2', help='Gym environment to train on.')
     parser.add_argument('--device', type=str, default='cuda', help='Device to run on. cpu or cuda.')
     parser.add_argument('--exp_name', type=str, default='test',
@@ -90,7 +91,7 @@ if __name__ == "__main__":
         print(f"Actor MLP has {sum(p.numel() for p in model.actor.parameters() if p.requires_grad)} parameters.")
     num_epochs = int(args.timesteps // args.save_interval)
     for i in range(num_epochs):
-        model.learn(total_timesteps=args.save_interval, log_interval=1 if args.verbose else 4)
+        model.learn(total_timesteps=args.save_interval, log_interval=args.log_interval)
         model.save(os.path.join(args.save_dir, f"{model_name}_{(i+1)*args.save_interval}steps"))
 
     if args.render_after_done:
