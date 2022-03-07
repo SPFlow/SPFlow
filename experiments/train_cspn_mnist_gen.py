@@ -278,15 +278,12 @@ if __name__ == "__main__":
     parser.add_argument('--num_dist', '-I', type=int, default=5, help='Number of Gauss dists per pixel.')
     parser.add_argument('--num_sums', '-S', type=int, default=5, help='Number of sums per RV in each sum layer.')
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
-    parser.add_argument('--nr_feat_layers', type=int, default=2, help='Number of fully connected layers that take the'
-                                                                      'labels as input and have the sum_param_layers'
-                                                                      'and dist_param_layers as heads.')
-    parser.add_argument('--nr_sum_param_layers', type=int, default=2,
-                        help='Number of fully connected hidden layers in the MLP that '
-                             'provides the weights for the sum nodes.')
-    parser.add_argument('--nr_dist_param_layers', type=int, default=2,
-                        help='Number of fully connected hidden layers in the MLP that '
-                             'provides the params for the dist nodes')
+    parser.add_argument('--feat_layers', type=int, nargs='+',
+                        help='List of sizes of the CSPN feature layers.')
+    parser.add_argument('--sum_param_layers', type=int, nargs='+',
+                        help='List of sizes of the CSPN sum param layers.')
+    parser.add_argument('--dist_param_layers', type=int, nargs='+',
+                        help='List of sizes of the CSPN dist param layers.')
     parser.add_argument('--save_interval', type=int, default=50, help='Epoch interval to save model')
     parser.add_argument('--eval_interval', type=int, default=10, help='Epoch interval to evaluate model')
     parser.add_argument('--sample_override_root', action='store_true',
@@ -439,9 +436,9 @@ if __name__ == "__main__":
             config = CspnConfig()
             config.F_cond = (cond_size,)
             config.C = 1
-            config.nr_feat_layers = args.nr_feat_layers
-            config.fc_sum_param_layers = args.nr_sum_param_layers
-            config.fc_dist_param_layers = args.nr_dist_param_layers
+            config.feat_layers = args.feat_layers
+            config.sum_param_layers = args.sum_param_layers
+            config.dist_param_layers = args.dist_param_layers
         config.F = int(np.prod(img_size))
         config.R = args.repetitions
         config.D = args.cspn_depth
@@ -513,9 +510,10 @@ if __name__ == "__main__":
                 vi_ent_approx = model.vi_entropy_approx(sample_size=10).mean()
             else:
                 label = F.one_hot(label, cond_size).float().to(device)
+                vi_ent_approx = model.vi_entropy_approx(sample_size=7, condition=label).mean()
                 output: torch.Tensor = model(x=data, condition=label)
                 ll_loss = -output.mean()
-                vi_ent_approx = model.vi_entropy_approx(sample_size=5, condition=None).mean()
+                # sample = model.sample(n=3, condition=None)
                 if args.ent_loss_alpha > 0.0:
                     ent_loss = -args.ent_loss_alpha * vi_ent_approx
                 loss = ll_loss + ent_loss
