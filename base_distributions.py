@@ -80,33 +80,39 @@ def dist_sample(distribution: dist.Distribution, context: SamplingContext = None
     if context.is_mpe:
         samples = _mode(distribution, context)
     else:
+        nr_sampled_nodes, n = context.parent_indices.shape[:2]
         if distribution.has_rsample:
-            samples = distribution.rsample(sample_shape=(context.n,))
+            samples = distribution.rsample(sample_shape=(nr_sampled_nodes, n))
         else:
-            samples = distribution.sample(sample_shape=(context.n,))
+            samples = distribution.sample(sample_shape=(nr_sampled_nodes, n))
 
     # w is the "weight sets" dimension. In the CSPN case, the weights are different for each conditional.
     # In the RatSpn case, w=1.
-    n, w, d, c, r = samples.shape
+    nr_sampled_nodes, n, w, d, oc, r = samples.shape
 
     # Filter each sample by its specific repetition
+    if context.repetition_indices is not None:
+        rep_ind = context.repetition_indices.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, -1, -1, d, oc, -1)
+        samples = torch.gather(samples, dim=-1, index=rep_ind).squeeze(-1)
     # tmp = torch.zeros(n, d, c, device=context.repetition_indices.device)
     # for i in range(n):
         # tmp[i, :, :] = samples[i, :, :, context.repetition_indices[i]]
-    if context.repetition_indices is not None:
-        rep_selections = []
-        for i in range(n):
-            rep_selections.append(samples[i, range(w), :, :, context.repetition_indices[i]])
-        samples = torch.stack(rep_selections)
+    # if context.repetition_indices is not None:
+        # rep_selections = []
+        # for i in range(n):
+            # rep_selections.append(samples[i, range(w), :, :, context.repetition_indices[i]])
+        # samples = torch.stack(rep_selections)
 
     # If parent index into out_channels are given
     if context.parent_indices is not None:
-        par_selected = []
-        for i in range(n):
+        par_ind = context.parent_indices.unsqueeze(-1)
+        samples = torch.gather(samples, dim=-1, index=par_ind).squeeze(-1)
+        # par_selected = []
+        # for i in range(n):
             # Choose only specific samples for each feature/scope
-            par_selected.append(torch.gather(samples[i], dim=2,
-                                             index=context.parent_indices[i].unsqueeze(-1)).squeeze(-1))
-        samples = torch.stack(par_selected)
+            # par_selected.append(torch.gather(samples[i], dim=2,
+                                             # index=context.parent_indices[i].unsqueeze(-1)).squeeze(-1))
+        # samples = torch.stack(par_selected)
 
     return samples
 
