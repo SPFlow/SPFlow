@@ -15,7 +15,7 @@ if __name__ == "__main__":
     parser.add_argument('--cspn', action='store_true', help='Use a CSPN actor')
     parser.add_argument('--render_after_done', action='store_true', help='Don\' set this when running remotely')
     parser.add_argument('--timesteps', type=int, default=int(1e6), help='Total timesteps to train model.')
-    parser.add_argument('--save_interval', type=int, default=int(1e4), help='Save model every save_interval timesteps.')
+    parser.add_argument('--save_interval', type=int, help='Save model every save_interval timesteps.')
     parser.add_argument('--log_interval', type=int, default=4, help='Log interval')
     parser.add_argument('--env', type=str, default='HalfCheetah-v2', help='Gym environment to train on.')
     parser.add_argument('--device', type=str, default='cuda', help='Device to run on. cpu or cuda.')
@@ -47,17 +47,31 @@ if __name__ == "__main__":
     # args.save_interval = args.timesteps
     # args.verbose = True
 
-    assert args.timesteps >= args.save_interval, "Total timesteps cannot be lower than save_interval!"
-    assert args.timesteps % args.save_interval == 0, "save_interval must be a divisor of total timesteps."
+    if not args.save_interval:
+        args.save_interval = args.timesteps
+
+    if args.timesteps == 0:
+        learn = False
+    else:
+        learn = True
+        assert args.timesteps >= args.save_interval, "Total timesteps cannot be lower than save_interval!"
+        assert args.timesteps % args.save_interval == 0, "save_interval must be a divisor of total timesteps."
 
     if args.save_dir:
         assert os.path.exists(args.save_dir), f"The save_dir doesn't exist! {args.save_dir}"
     if args.model_path:
         assert os.path.exists(args.model_path), f"The model_path doesn't exist! {args.model_path}"
 
+    args.save_dir = os.path.join(args.save_dir, f"results_{args.exp_name}")
+    for d in [args.save_dir]:
+        if not os.path.exists(d):
+            os.makedirs(d)
+
     env = gym.make(args.env)
+
+    args.model_path = '/home/fritz/PycharmProjects/spn_experiments/sac_test/cspn/sac_cspn_HalfCheetah-v2_test02Mar22_800000steps.zip'
     if args.model_path:
-        model = SAC.load(args.model_path)
+        model = SAC.load(args.model_path, env)
         model_name = f"sac_loadedpretrained_{args.env}_{args.exp_name}"
     else:
         sac_kwargs = {
@@ -89,10 +103,11 @@ if __name__ == "__main__":
         print_cspn_params(model.actor.cspn)
     else:
         print(f"Actor MLP has {sum(p.numel() for p in model.actor.parameters() if p.requires_grad)} parameters.")
-    num_epochs = int(args.timesteps // args.save_interval)
-    for i in range(num_epochs):
-        model.learn(total_timesteps=args.save_interval, log_interval=args.log_interval)
-        model.save(os.path.join(args.save_dir, f"{model_name}_{(i+1)*args.save_interval}steps"))
+    if learn:
+        num_epochs = int(args.timesteps // args.save_interval)
+        for i in range(num_epochs):
+            model.learn(total_timesteps=args.save_interval, log_interval=args.log_interval)
+            model.save(os.path.join(args.save_dir, f"{model_name}_{(i+1)*args.save_interval}steps"))
 
     if args.render_after_done:
         obs = env.reset()
