@@ -280,7 +280,7 @@ class RatSpn(nn.Module):
                                            leaf_base_kwargs=self.config.leaf_base_kwargs)
 
     @property
-    def __device(self):
+    def _device(self):
         """Small hack to obtain the current device."""
         return self._sampling_root.weights.device
 
@@ -348,8 +348,8 @@ class RatSpn(nn.Module):
             if class_index is not None:
                 # Create new sampling context
                 ctx = SamplingContext(n=n,
-                                      parent_indices=class_index.repeat(n, 1).unsqueeze(-1).to(self.__device),
-                                      repetition_indices=torch.zeros((n, class_index.shape[0]), dtype=int, device=self.__device),
+                                      parent_indices=class_index.repeat(n, 1).unsqueeze(-1).to(self._device),
+                                      repetition_indices=torch.zeros((n, class_index.shape[0]), dtype=int, device=self._device),
                                       is_mpe=is_mpe)
             else:
                 # Start sampling one of the C root nodes TODO: check what happens if C=1
@@ -357,7 +357,7 @@ class RatSpn(nn.Module):
                 ctx = self._sampling_root.sample(context=ctx)
 
             # Sample from RatSpn root layer: Results are indices into the stacked output channels of all repetitions
-            # ctx.repetition_indices = torch.zeros(n, dtype=int, device=self.__device)
+            # ctx.repetition_indices = torch.zeros(n, dtype=int, device=self._device)
             ctx = self.root.sample(context=ctx)
 
             # The weights of the root sum node represent the input channel and repetitions in this manner:
@@ -370,16 +370,6 @@ class RatSpn(nn.Module):
             # To match the index to the correct repetition and its input channel, we do the following
             ctx.repetition_indices = (ctx.parent_indices % self.config.R).squeeze(2)
             ctx.parent_indices = torch.div(ctx.parent_indices, self.config.R, rounding_mode='trunc')
-
-            if kwargs.get('override_root'):
-                a = np.arange(self.root.in_channels // self.config.R)
-                b = np.arange(self.config.R)
-                a = torch.as_tensor(a).to(self.__device)
-                b = torch.as_tensor(b).to(self.__device)
-                a = a.repeat(self.config.R)
-                b = b.repeat_interleave(self.root.in_channels // self.config.R)
-                ctx.parent_indices = a.unsqueeze(1)
-                ctx.repetition_indices = b
 
             # Continue at layers
             # Sample inner layers in reverse order (starting from topmost)
@@ -448,7 +438,29 @@ class RatSpn(nn.Module):
             sample_size: Number of samples to approximate the expected entropy of the responsibility with.
         """
         assert not self.config.gmm_leaves, "VI entropy not tested on GMM leaves yet."
+        assert self.config.C == 1, "For C > 1, we must calculate starting from self._sampling_root!"
 
+        contexts = []
+        for layer in reversed(self._inner_layers):
+            # Process sampling contexts from parent layer
+            [layer.sample(ctx['idx']) for ctx in contexts]
+            # Sample all nodes of this layer
+            info = {
+                'layer': layer.__class__.__name__,
+                'idx': layer.sample(SamplingContext(n=sample_size, is_mpe=False)),
+            }
+            contexts.append(info)
+        contexts = [{'layer': ctx['layer'], 'samples': self._leaf.sample(ctx['idx'])} for ctx in contexts]
+        info = {
+            'layer': 'leaf',
+            'samples': self._leaf.sample(SamplingContext(n=sample_size, is_mpe=False)),
+        }
+        contexts.append(info)
+        ll = self._leaf(contexts[-1]['samples'])
+        print(1)
+
+    def old_vi_entropy_approx(self, sample_size):
+        assert not self.config.gmm_leaves, "VI entropy not tested on GMM leaves yet."
         # To calculate the entropies layer by layer, starting from the leaves.
         # We repurpose the samples of the leaves when moving up through the layers.
         ctx = SamplingContext(n=sample_size, is_mpe=False)

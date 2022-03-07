@@ -160,38 +160,73 @@ class Sum(AbstractLayer):
 
         # Create sampling context if this is a root layer
         if context.is_root:
-            assert oc == 1 and r == 1, "Cannot start sampling from non-root layer."
+            if False:
+                # Initialize rep indices
+                context.repetition_indices = torch.zeros(sample_size, w, dtype=int, device=self.__device)
+                weights = weights[:, :, :, 0, 0].unsqueeze(0).repeat(sample_size, 1, 1, 1)
 
-            # Initialize rep indices
-            context.repetition_indices = torch.zeros(sample_size, w, dtype=int, device=self.__device)
-            weights = weights[:, :, :, 0, 0].unsqueeze(0).repeat(sample_size, 1, 1, 1)
+                # Select weights, repeat bs times along the last dimension
+                # weights = weights[:, :, [0] * w, 0]  # Shape: [D, IC, N]
 
-            # Select weights, repeat bs times along the last dimension
-            # weights = weights[:, :, [0] * w, 0]  # Shape: [D, IC, N]
+                # Move sample dimension to the first axis: [feat, channels, batch] -> [batch, feat, channels]
+                # weights = weights.permute(2, 0, 1)  # Shape: [N, D, IC]
+            else:
+                weights = weights.unsqueeze(0).expand(sample_size, -1, -1, -1, -1, -1)
+                # weights from selected repetition with shape [n, w, d, ic, oc, r]
+                # In this sum layer there are oc * r nodes per feature. oc * r is our nr_nodes.
+                weights = weights.permute(5, 4, 0, 1, 2, 3)
+                # weights from selected repetition with shape [r, oc, n, w, d, ic]
+                # Reshape weights to [oc * r, n, w, d, ic]
+                # The nodes in the first dimension are taken from the first two weight dimensions [r, oc] like this:
+                # [0, 0], ..., [0, oc-1], [1, 0], ..., [1, oc-1], [2, 0], ..., [r-1, oc-1]
+                # This means the weights for the first oc nodes are the weights for repetition 0.
+                # This must coincide with the repetition indices.
+                weights = weights.reshape(oc * r, sample_size, w, d, ic)
 
-            # Move sample dimension to the first axis: [feat, channels, batch] -> [batch, feat, channels]
-            # weights = weights.permute(2, 0, 1)  # Shape: [N, D, IC]
+                context.repetition_indices = torch.arange(r).to(self.__device).repeat_interleave(oc)
+                context.repetition_indices = context.repetition_indices.unsqueeze(-1).unsqueeze(-1).repeat(
+                    1, context.n, w
+                )
         else:
             # If this is not the root node, use the paths (out channels), specified by the parent layer
             self._check_repetition_indices(context)
 
-            # for i in range(w):
-            #     tmp[i, :, :] = weights[
-            #         i, range(self.in_features), :, context.parent_indices[i], context.repetition_indices[i]]
-            parent_selected_weights = []
-            for i in range(sample_size):
-                selected_rep = weights[range(w), :, :, :, context.repetition_indices[i]]
-                parent_indices = context.parent_indices[i].unsqueeze(-1).repeat(1, 1, ic).unsqueeze(-1)
-                selected_parent = selected_rep.gather(dim=-1, index=parent_indices).squeeze(-1)
-                parent_selected_weights.append(selected_parent)
-            weights = torch.stack(parent_selected_weights, dim=0)
+            # Iterative version that might be easier to understand. The iterative version is a lot slower.
+            # Iterative: timeit 1000 iterations: 9.53s on CPU, 20.4s on GPU
+            # Tensorized: timeit 1000 iterations: 1.85s on CPU, 0.44s on GPU
+            # node_selected_weights = []
+            # for n in range(context.parent_indices.size(0)):
+            #     # Iterate over the sampling contexts of each node
+            #     parent_selected_weights = []
+            #     for i in range(sample_size):
+            #         # Each node is sampled sample_size times
+            #         # Select the weights at the requested repetitions. This eliminates the rep dimension of weights
+            #         selected_weights = weights[range(w), :, :, :, context.repetition_indices[n, i]]
+            #         # weights from selected rep with shape [w, d, ic, oc]
+            #         parent_indices = context.parent_indices[n, i].unsqueeze(-1).expand(-1, -1, ic).unsqueeze(-1)
+            #         # parent_indices [w, d, ic, 1]
+            #         selected_weights = selected_weights.gather(dim=-1, index=parent_indices).squeeze(-1)
+            #         # weights from selected parent with shape [w, d, ic]
+            #
+            #         parent_selected_weights.append(selected_weights)
+            #     node_selected_weights.append(torch.stack(parent_selected_weights, dim=0))
+
+            weights = weights.unsqueeze(0).unsqueeze(0)
+            rep_ind = context.repetition_indices.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+            weights = weights.expand(rep_ind.shape[0], sample_size, -1, -1, -1, -1, -1)
+            rep_ind = rep_ind.expand(-1, -1, -1, d, ic, oc, -1)
+            weights = torch.gather(weights, dim=-1, index=rep_ind).squeeze(-1)
+            # weights from selected repetition with shape [nr_nodes, n, w, d, ic, oc]
+            parent_indices = context.parent_indices.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, -1, -1, ic, -1)
+            weights = torch.gather(weights, dim=-1, index=parent_indices).squeeze(-1)
+            # weights from selected parent with shape [nr_nodes, n, w, d, ic]
 
         # Check dimensions
-        assert weights.shape == (sample_size, context.repetition_indices.shape[1], d, ic)  # [n, w, d, ic]
+        assert weights.shape[1:] == (sample_size, w, d, ic)  # [n, w, d, ic]
 
         # If evidence is given, adjust the weights with the likelihoods of the observed paths
         if self._is_input_cache_enabled and self._input_cache is not None:
-            assert weights.dim() == 4, "Providing evidence is not implemented for the CSPN case!"
+            raise NotImplementedError("Not yet adapted to new sampling method")
             for i in range(w):
                 # Reweight the i-th samples weights by its likelihood values at the correct repetition
                 weights[i, :, :] += self._input_cache[i, :, :, context.repetition_indices[i]]
@@ -199,7 +234,7 @@ class Sum(AbstractLayer):
         # If sampling context is MPE, set max weight to 1 and rest to zero, such that the maximum index will be sampled
         if context.is_mpe:
             # Get index of largest weight along in-channel dimension
-            indices = weights.argmax(dim=3)
+            indices = weights.argmax(dim=-1)
         else:
             # Create categorical distribution and use weights as logits.
             #
@@ -372,11 +407,11 @@ class Product(AbstractLayer):
                 )
         else:
             # Repeat the parent indices, e.g. [0, 2, 3] -> [0, 0, 2, 2, 3, 3] depending on the cardinality
-            indices = torch.repeat_interleave(context.parent_indices, repeats=self.cardinality, dim=2)
+            indices = torch.repeat_interleave(context.parent_indices, repeats=self.cardinality, dim=3)
 
             # Remove padding
             if self._pad:
-                indices = indices[:, :, : -self._pad]
+                indices = indices[:, :, :, : -self._pad]
 
             context.parent_indices = indices
             return context
@@ -439,15 +474,23 @@ class CrossProduct(AbstractLayer):
         self._scopes = np.array(self._scopes)
 
         # Create index map from flattened to coordinates (only needed in sampling)
-        self.unraveled_channel_indices = torch.tensor([(i, j) for i in range(self.in_channels)
-                                                       for j in range(self.in_channels)])
+        self.unraveled_channel_indices = nn.Parameter(
+            torch.tensor([(i, j) for i in range(self.in_channels)
+                          for j in range(self.in_channels)]),
+            requires_grad=False
+        )
+        # Number of conditionals (= number of different weight sets) in the CSPN.
+        # This is only needed when sampling this layer as root.
+        # It is initialized as 1, which would also be the RatSpn case.
+        # It is only set in the CSPN.set_weights() function.
+        self.num_conditionals = 1
 
         self.out_shape = f"(N, {self._out_features}, {self.in_channels ** 2}, {self.num_repetitions})"
 
-    # @property
-    # def __device(self):
-        # """Hack to obtain the current device, this layer lives on."""
-        # return self.unraveled_channel_indices.device
+    @property
+    def __device(self):
+        """Hack to obtain the current device, this layer lives on."""
+        return self.unraveled_channel_indices.device
 
     def forward(self, x: torch.Tensor):
         """
@@ -485,12 +528,14 @@ class CrossProduct(AbstractLayer):
         assert result.size() == (n, w, d_out, c * c, r)
         return result
 
-    def sample(self, n: int = None, context: SamplingContext = None) -> SamplingContext:
+    def sample(self, context: SamplingContext = None) -> SamplingContext:
         """Method to sample from this layer, based on the parents output.
 
         Args:
-            n: Number of samples.
-            indices (torch.Tensor): Parent sampling output
+            context (SamplingContext):
+                n: Number of samples.
+                parent_indices (torch.Tensor): Nodes selected by parent layer
+                repetition_indices (torch.Tensor): Repetitions selected by parent layer
         Returns:
             torch.Tensor: Index into tensor which paths should be followed.
                           Output should be of size: in_features, out_channels.
@@ -498,19 +543,37 @@ class CrossProduct(AbstractLayer):
 
         # If this is a root node
         if context.is_root:
-            if self.num_repetitions == 1:
-                # If there is only a single repetition, create new sampling context
-                context.parent_indices = torch.zeros(context.n, 1, dtype=int, device=self.__device)
-                context.repetition_indices = torch.zeros(context.n, dtype=int, device=self.__device)
-                return context
-            else:
-                raise Exception(
-                    "Cannot start sampling from CrossProduct layer with num_repetitions > 1 and no context given."
-                )
+            # Sampling starting at a CrossProduct layer means sampling each node in the layer.
 
-        # Map flattened indexes back to coordinates to obtain the chosen input_channel for each feature
-        indices = self.unraveled_channel_indices[context.parent_indices].to(context.parent_indices.device)
-        indices = indices.view(indices.shape[0], indices.shape[1], -1)
+            # Thus, there are oc*r*out_features sets of SamplingContexts.
+            # oc*r of the nodes are represented by the size of the first
+            # dimension in parent_indices and repetition indices.
+            # The nodes over all 'out_features', for a given oc and r, are collected in the
+            # last dimension of parent_indices.
+            # The first product nodes across all features are in parent_indices[0,0,0,:]
+            # The individual nodes per in_feature can be taken out of parent_indices by splitting it in half
+            # in the last dimension.
+
+            # The parent and repetition indices are also repeated by the number of samples requested
+            # and by the number of conditionals the CSPN weights have been set to.
+            # In the RatSpn case, the number of conditionals (abbreviated by w) is 1.
+            indices = self.unraveled_channel_indices.data.unsqueeze(1).unsqueeze(1)
+            # indices is [oc, 1, 1, cardinality]
+            indices = indices.repeat(
+                self.num_repetitions, context.n, self.num_conditionals, self.in_features//self.cardinality
+            )
+            # indices is [oc*r, n, w, in_features]
+            oc, _ = self.unraveled_channel_indices.shape
+            # Repetition indices say for which repetition(s) the parent_indices should be applied
+            context.repetition_indices = torch.arange(self.num_repetitions).to(self.__device).repeat_interleave(oc)
+            context.repetition_indices = context.repetition_indices.unsqueeze(-1).unsqueeze(-1).repeat(
+                1, context.n, self.num_conditionals
+            )
+        else:
+            nr_nodes, n, w, d = context.parent_indices.shape
+            # Map flattened indexes back to coordinates to obtain the chosen input_channel for each feature
+            indices = self.unraveled_channel_indices[context.parent_indices].to(context.parent_indices.device)
+            indices = indices.view(nr_nodes, n, w, -1)
 
         # Remove padding
         if self._pad:

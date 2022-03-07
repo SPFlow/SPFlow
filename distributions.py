@@ -97,7 +97,23 @@ class RatNormal(Leaf):
         Perform sampling, given indices from the parent layer that indicate which of the multiple representations
         for each input shall be used.
         """
-        samples = super().sample(context)
+        if context.is_root:
+            gauss = dist.Normal(self.means, self.stds)
+            samples: torch.Tensor = gauss.rsample(sample_shape=(context.n,))
+        else:
+            nr_nodes, n, w = context.repetition_indices.shape
+            _, d, i, r = self.means.shape
+            selected_means = self.means.unsqueeze(0).unsqueeze(0).expand(nr_nodes, n, -1, -1, -1, -1)
+            selected_stds = self.stds.unsqueeze(0).unsqueeze(0).expand(nr_nodes, n, -1, -1, -1, -1)
+            rep_ind = context.repetition_indices.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, -1, -1, d, i, -1)
+            selected_means = torch.gather(selected_means, dim=-1, index=rep_ind).squeeze(-1)
+            selected_stds = torch.gather(selected_stds, dim=-1, index=rep_ind).squeeze(-1)
+            par_ind = context.parent_indices.unsqueeze(-1)
+            selected_means = torch.gather(selected_means, dim=-1, index=par_ind).squeeze(-1)
+            selected_stds = torch.gather(selected_stds, dim=-1, index=par_ind).squeeze(-1)
+            gauss = dist.Normal(selected_means, selected_stds)
+            samples = gauss.rsample()
+
         if self._tanh_stretch:
             samples = torch.tanh(samples).mul(self._tanh_stretch).add(self._tanh_translate)
         return samples
@@ -246,11 +262,12 @@ class IndependentMultivariate(Leaf):
         raise Exception("IndependentMultivariate does not have an explicit PyTorch base distribution.")
 
     def sample(self, context: SamplingContext = None) -> torch.Tensor:
-        context = self.prod.sample(context=context)
+        if not context.is_root:
+            context = self.prod.sample(context=context)
 
-        # Remove padding
-        if self._pad:
-            context.parent_indices = context.parent_indices[:, :, :-self._pad]
+            # Remove padding
+            if self._pad:
+                context.parent_indices = context.parent_indices[:, :, :-self._pad]
 
         samples = self.base_leaf.sample(context=context)
         return samples
