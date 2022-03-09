@@ -93,10 +93,10 @@ class CSPN(RatSpn):
 
         return super().forward(x)
 
-    def vi_entropy_approx(self, sample_size, condition: torch.Tensor = None) -> torch.Tensor:
+    def vi_entropy_approx(self, sample_size, condition: torch.Tensor = None, verbose=False) -> torch.Tensor:
         if condition is not None:
             self.set_weights(condition)
-        return super().vi_entropy_approx(sample_size)
+        return super().vi_entropy_approx(sample_size, verbose)
 
     def consolidate_weights(self, condition=None):
         if condition is not None:

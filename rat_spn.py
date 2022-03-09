@@ -57,6 +57,7 @@ class RatSpnConfig:
     leaf_base_class: Type = None
     leaf_base_kwargs: Dict = None
     gmm_leaves: bool = False
+    tanh_squash: bool = False
 
     @property
     def F(self):
@@ -99,6 +100,7 @@ class RatSpn(nn.Module):
     See also:
     https://arxiv.org/abs/1806.01910
     """
+    _inner_layers: nn.ModuleList
 
     def __init__(self, config: RatSpnConfig):
         """
@@ -122,16 +124,19 @@ class RatSpn(nn.Module):
 
     def _make_random_repetition_permutation_indices(self):
         """Create random permutation indices for each repetition."""
-        self.rand_indices = torch.empty(size=(self.config.F, self.config.R))
+        permutation = []
+        inv_permutation = []
         for r in range(self.config.R):
-            # Each repetition has its own randomization
-            self.rand_indices[:, r] = torch.tensor(np.random.permutation(self.config.F))
-
-        self.rand_indices = self.rand_indices.long()
+            permutation.append(torch.tensor(np.random.permutation(self.config.F)))
+            inv_permutation.append(invert_permutation(permutation[-1]))
+        # self.permutation: torch.Tensor = torch.stack(self.permutation, dim=-1)
+        # self.inv_permutation: torch.Tensor = torch.stack(self.inv_permutation, dim=-1)
+        self.permutation = nn.Parameter(torch.stack(permutation, dim=-1), requires_grad=False)
+        self.inv_permutation = nn.Parameter(torch.stack(inv_permutation, dim=-1), requires_grad=False)
 
     def _randomize(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Randomize the input at each repetition according to `self.rand_indices`.
+        Randomize the input at each repetition according to `self.permutation`.
 
         Args:
             x: Input.
@@ -140,16 +145,13 @@ class RatSpn(nn.Module):
             torch.Tensor: Randomized input along feature axis. Each repetition has its own permutation.
         """
         # Expand input to the number of repetitions
+        n, w = x.shape[:2]
         x = x.unsqueeze(3)  # Make space for repetition axis
         x = x.repeat((1, 1, 1, self.config.R))  # Repeat R times
 
         # Random permutation
-        for r in range(self.config.R):
-            # Get permutation indices for the r-th repetition
-            perm_indices = self.rand_indices[:, r]
-
-            # Permute the features of the r-th version of x using the indices
-            x[:, :, :, r] = x[:, :, perm_indices, r]
+        perm_indices = self.permutation.unsqueeze(0).unsqueeze(0).expand(n, w, -1, -1)
+        x = torch.gather(x, dim=-2, index=perm_indices)
 
         return x
 
@@ -271,13 +273,17 @@ class RatSpn(nn.Module):
         if gmm_leaves:
             return GaussianMixture(in_features=self.config.F, out_channels=self.config.I, gmm_modes=self.config.S,
                                    num_repetitions=self.config.R, cardinality=cardinality, dropout=self.config.dropout,
+                                   tanh_squash=self.config.tanh_squash,
                                    leaf_base_class=self.config.leaf_base_class,
                                    leaf_base_kwargs=self.config.leaf_base_kwargs)
         else:
-            return IndependentMultivariate(in_features=self.config.F, out_channels=self.config.I,
-                                           num_repetitions=self.config.R, cardinality=cardinality, dropout=self.config.dropout,
-                                           leaf_base_class=self.config.leaf_base_class,
-                                           leaf_base_kwargs=self.config.leaf_base_kwargs)
+            return IndependentMultivariate(
+                in_features=self.config.F, out_channels=self.config.I,
+                num_repetitions=self.config.R, cardinality=cardinality, dropout=self.config.dropout,
+                tanh_squash=self.config.tanh_squash,
+                leaf_base_class=self.config.leaf_base_class,
+                leaf_base_kwargs=self.config.leaf_base_kwargs
+            )
 
     @property
     def _device(self):
@@ -368,7 +374,7 @@ class RatSpn(nn.Module):
             # The weight vector will then contain [w_{0,0},w_{1,0},w_{2,0},w_{0,1},w_{1,1},w_{2,1},w_{0,2},w_{1,2},...]
             # This weight vector was used as the logits in a IC*R-categorical distribution, yielding indexes [0,C*R-1].
             # To match the index to the correct repetition and its input channel, we do the following
-            ctx.repetition_indices = (ctx.parent_indices % self.config.R).squeeze(2)
+            ctx.repetition_indices = (ctx.parent_indices % self.config.R).squeeze(3)
             ctx.parent_indices = torch.div(ctx.parent_indices, self.config.R, rounding_mode='trunc')
 
             # Continue at layers
@@ -378,13 +384,15 @@ class RatSpn(nn.Module):
 
             # Sample leaf
             samples = self._leaf.sample(context=ctx)
+            if self.config.tanh_squash:
+                samples = samples.tanh()
 
             # Invert permutation
-            for i in range(n):
-                for j in range(samples.shape[1]):
-                    rep_index = ctx.repetition_indices[i, j]
-                    inv_rand_indices = invert_permutation(self.rand_indices[:, rep_index])
-                    samples[i, j, :] = samples[i, j, inv_rand_indices]
+            rep_selected_inv_permutation = self.inv_permutation.T[ctx.repetition_indices]
+            samples = torch.gather(samples, dim=-1, index=rep_selected_inv_permutation)
+
+            # The first dimension is the nodes which are sampled. Here, it is always 1 as there is one root node.
+            samples.squeeze_(0)
 
             if evidence is not None:
                 # Update NaN entries in evidence with the sampled values
@@ -429,42 +437,136 @@ class RatSpn(nn.Module):
         entropy = weight_entropy + weighted_ch_ents + aux_resp_ent
         return entropy, sample_ll
 
-    def vi_entropy_approx(self, sample_size):
+    def vi_entropy_approx(self, sample_size, verbose=False):
         """
         Approximate the entropy of the root sum node via variational inference,
         as done in the Variational Inference by Policy Search paper.
 
         Args:
             sample_size: Number of samples to approximate the expected entropy of the responsibility with.
+            verbose: Return logging data
         """
         assert not self.config.gmm_leaves, "VI entropy not tested on GMM leaves yet."
         assert self.config.C == 1, "For C > 1, we must calculate starting from self._sampling_root!"
+        root_weights_over_rep = torch.empty(1)  # For PyCharm
+        log_weights = torch.empty(1)
+        logging = {}
 
-        contexts = []
-        for layer in reversed(self._inner_layers):
-            # Process sampling contexts from parent layer
-            [layer.sample(ctx['idx']) for ctx in contexts]
-            # Sample all nodes of this layer
-            info = {
-                'layer': layer.__class__.__name__,
-                'idx': layer.sample(SamplingContext(n=sample_size, is_mpe=False)),
-            }
-            contexts.append(info)
-        contexts = [{'layer': ctx['layer'], 'samples': self._leaf.sample(ctx['idx'])} for ctx in contexts]
-        info = {
-            'layer': 'leaf',
-            'samples': self._leaf.sample(SamplingContext(n=sample_size, is_mpe=False)),
-        }
-        contexts.append(info)
-        ll = self._leaf(contexts[-1]['samples'])
-        print(1)
+        child_ll = self._leaf.sample(SamplingContext(n=sample_size, is_mpe=False))
+        child_ll = self._leaf(child_ll)
+        child_entropies = -child_ll.mean(dim=0, keepdim=True)
+
+        for i in range(len(self._inner_layers) + 1):
+            if i < len(self._inner_layers):
+                layer = self._inner_layers[i]
+            else:
+                layer = self.root
+
+            if isinstance(layer, CrossProduct):
+                child_entropies = layer(child_entropies)
+            else:
+                ctx = SamplingContext(n=sample_size, is_mpe=False)
+                # noinspection PyTypeChecker
+                for child_layer in reversed(self._inner_layers[:i]):
+                    ctx = child_layer.sample(ctx)
+                child_sample = self._leaf.sample(ctx)
+
+                # The nr_nodes is the number of input channels (ic) to the
+                # current layer - we sampled all its input channels.
+                ic, n, w, d, r = child_sample.shape
+
+                # Combine first two dims of child_ll.
+                # child_ll [0,0] -> [0], ..., [0, n-1] -> [n-1], [1, 0] -> [n], ...
+                child_sample = child_sample.view(ic * n, w, d, r)
+                child_ll = self._leaf(child_sample)
+                _, w, d, leaf_oc, r = child_ll.shape
+                child_ll = child_ll.view(ic, n, w, d, leaf_oc, r)
+
+                # We can average over the sample_size dimension with size 'n' here already.
+                child_ll = child_ll.mean(dim=1)
+
+                # noinspection PyTypeChecker
+                for child_layer in self._inner_layers[:i]:
+                    child_ll = child_layer(child_ll)
+
+                if i == len(self._inner_layers):
+                    # Now we are dealing with a log-likelihood tensor with the shape [ic, w, 1, ic, r],
+                    # where child_ll[0,0,:,:,0] are the log-likelihoods of the ic nodes in the first repetition
+                    # given the samples from the first node of that repetition.
+                    # The problem is that the weights of the root sum node don't recognize different, separated
+                    # repetitions, so we reshape the weights to make the repetition dimension explicit again.
+                    # This is equivalent to splitting up the root sum node into one sum node per repetition,
+                    # with another sum node sitting on top.
+                    root_weights_over_rep = layer.weights.view(w, 1, r, ic).permute(0, 1, 3, 2).unsqueeze(-2)
+                    log_weights = torch.log_softmax(root_weights_over_rep, dim=2)
+                    # child_ll and the weights are log-scaled, so we add them together.
+                    ll = child_ll.unsqueeze(-2) + log_weights.unsqueeze(0)
+                    # ll shape [ic, w, 1, ic, r]
+                    ll = torch.logsumexp(ll, dim=3)
+
+                    # first reshape the tensor to get the nodes over which we sampled into
+                    # the first dimension.
+                    # ll = child_ll.permute(0, 4, 1, 2, 3).reshape(ic * r, w, 1, ic)
+                    # ll[0,0,:,:] are the log-likelihoods of the samples from the first node computed among the 'ic'
+                    # other nodes within that repetition. But the root sum nodes wants the log-likelihoods of the
+                    # other 'ic*(r-1)' nodes w.r.t. to that same sample as well! They are all zero.
+
+                else:
+                    ll = layer(child_ll)
+
+                    # We have the log-likelihood of the current sum layer w.r.t. the samples from its children.
+                    # We permute the dims so this tensor is of shape [w, d, ic, oc, r]
+                ll = ll.permute(1, 2, 0, 3, 4)
+
+                # child_ll now contains the log-likelihood of the samples from all of its 'ic' nodes per feature and
+                # repetition - ic * d * r in total.
+                # child_ll contains the LL of the samples of each node evaluated among all other nodes - separated
+                # by repetition and feature.
+                # The tensor shape is [ic, w, d, ic, r]. Looking at one weight set, one feature and one repetition,
+                # we are looking at the slice [:, 0, 0, :, 0].
+                # The first dimension is the dimension of the samples - there are 'ic' of them.
+                # The 4th dimension is the dimension of the LLs of the nodes for those samples.
+                # So [4, 0, 0, :, 0] contains the LLs of all nodes given the sample from the fifth node.
+                # Likewise, [:, 0, 0, 2, 0] contains the LLs of the samples of all nodes, evaluated at the third node.
+                # We needed the full child_ll tensor to compute the LLs of the current layer, but now we only
+                # require the LLs of each node's own samples.
+                child_ll = child_ll[range(ic), :, :, range(ic), :]  # [ic, w, d, r]
+                child_ll = child_ll.permute(1, 2, 0, 3)
+                child_ll = child_ll.unsqueeze(3)  # [w, d, ic, 1, r]
+
+                if not i == len(self._inner_layers):
+                    log_weights = layer.weights
+                weights = log_weights.exp()
+                weight_entropy = -(weights * log_weights).sum(dim=2)
+                child_entropies.squeeze_(0)
+                weighted_ch_ents = torch.sum(child_entropies.unsqueeze(3) * weights, dim=2)
+                avg_responsibility = log_weights + child_ll - ll
+                responsibility_ent = torch.sum(weights * avg_responsibility, dim=2)
+                child_entropies = weight_entropy + weighted_ch_ents + responsibility_ent
+                if i == len(self._inner_layers):
+                    weights = root_weights_over_rep.exp().sum(dim=2).softmax(dim=-1)
+                    child_entropies = (child_entropies * weights).sum(dim=-1)
+                child_entropies.unsqueeze_(0)
+                if verbose:
+                    logging[i] = {
+                        'weight_ent': weight_entropy.mean().item(), 'weighted_ch_ents': weighted_ch_ents.mean().item(),
+                        'resp_ent': responsibility_ent.mean().item()
+                    }
+                    # print(
+                        # f"Entropies at layer {i}:\n"
+                        # f"weight_ent:       Min {weight_entropy.min():6.2f} - Mean {weight_entropy.mean():6.2f} - Max {weight_entropy.max():6.2f}\n"
+                        # f"weighted_ch_ents: Min {weighted_ch_ents.min():6.2f} - Mean {weighted_ch_ents.mean():6.2f} - Max {weighted_ch_ents.max():6.2f}\n"
+                        # f"entropy of resp.: Min {avg_responsibility.min():6.2f} - Mean {avg_responsibility.mean():6.2f} - Max {avg_responsibility.max():6.2f}\n"
+                    # )
+
+        return child_entropies.flatten(), logging
 
     def old_vi_entropy_approx(self, sample_size):
         assert not self.config.gmm_leaves, "VI entropy not tested on GMM leaves yet."
         # To calculate the entropies layer by layer, starting from the leaves.
         # We repurpose the samples of the leaves when moving up through the layers.
         ctx = SamplingContext(n=sample_size, is_mpe=False)
-        sample = self._leaf.base_leaf.sample(ctx)
+        sample = self._leaf.sample(ctx)
         sample_ll = self._leaf(sample)
         del sample
 
@@ -556,7 +658,7 @@ class RatSpn(nn.Module):
         if leaf_vectors[0].size(2) != self.config.F:
             leaf_vectors = [g[:, :, :self.config.F] for g in leaf_vectors]
         for i in range(self.config.R):
-            inv_rand_indices = invert_permutation(self.rand_indices[:, i])
+            inv_rand_indices = invert_permutation(self.permutation[:, i])
             for g in leaf_vectors:
                 g[:, :, :, :, i] = g[:, :, inv_rand_indices, :, i]
         leaf_vectors = kernel(leaf_vectors, self._sampling_root)

@@ -82,6 +82,8 @@ def evaluate_sampling(model, save_dir, device, img_size, mpe=False):
         else:
             samples = model.sample(n=samples_per_label, class_index=label)
             log_like.append(model(x=samples).mean().tolist())
+        if model.config.tanh_squash:
+            samples.mul_(0.5).add_(0.5)
         samples = samples.view(-1, *img_size[1:])
         plot_samples(samples, save_dir)
     result_str = f"Samples: Average log-likelihood: {np.mean(log_like):.2f}"
@@ -129,6 +131,8 @@ def evaluate_model(model, device, loader, tag):
     with torch.no_grad():
         for image, label in loader:
             image = image.flatten(start_dim=1).to(device)
+            if model.config.tanh_squash:
+                image.sub_(0.5).mul_(2).atanh_()
             if isinstance(model, CSPN):
                 label = F.one_hot(label, 10).float().to(device)
                 log_like.append(model(x=image, condition=label).mean().tolist())
@@ -447,7 +451,7 @@ if __name__ == "__main__":
         config.dropout = args.dropout
         config.leaf_base_class = RatNormal
         if args.tanh:
-            config.leaf_base_kwargs = {'tanh_bounds': (0.0, 1.0)}
+            config.tanh_squash = True
         else:
             config.leaf_base_kwargs = {'min_mean': 0.0, 'max_mean': 1.0}
         if args.sigmoid_std:
@@ -491,10 +495,13 @@ if __name__ == "__main__":
             lmbda = 0.5
         t_start = time.time()
         info.reset(epoch)
+        temp_log = []
         for batch_index, (image, label) in enumerate(train_loader):
             # Send data to correct device
             label = label.to(device)
             image = image.to(device)
+            if model.config.tanh_squash:
+                image.sub_(0.5).mul_(2).atanh_()
             # plt.imshow(image[0].permute(1, 2, 0), cmap='Greys)
             # plt.show()
 
@@ -510,9 +517,12 @@ if __name__ == "__main__":
                 vi_ent_approx = model.vi_entropy_approx(sample_size=10).mean()
             else:
                 label = F.one_hot(label, cond_size).float().to(device)
-                vi_ent_approx = model.vi_entropy_approx(sample_size=7, condition=label).mean()
                 output: torch.Tensor = model(x=data, condition=label)
                 ll_loss = -output.mean()
+                vi_ent_approx, batch_ent_log = model.vi_entropy_approx(sample_size=5, condition=None,
+                                                                       verbose=False)
+                vi_ent_approx = vi_ent_approx.mean()
+                temp_log.append(batch_ent_log)
                 # sample = model.sample(n=3, condition=None)
                 if args.ent_loss_alpha > 0.0:
                     ent_loss = -args.ent_loss_alpha * vi_ent_approx

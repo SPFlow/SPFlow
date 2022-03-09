@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 
 import math
 import numpy as np
@@ -27,7 +27,7 @@ class RatNormal(Leaf):
         out_channels: int,
         num_repetitions: int = 1,
         dropout: float = 0.0,
-        tanh_bounds: tuple = None,
+        tanh_squash: bool = False,
         min_sigma: float = None,
         max_sigma: float = None,
         min_mean: float = None,
@@ -38,24 +38,14 @@ class RatNormal(Leaf):
         Args:
             in_features: Number of input features.
             out_channels: Number of parallel representations for each input feature.
-            tanh_bounds: If set, tanh will be applied to the samples and stretched and moved into this interval.
-                         Also, a correction term is applied to the log probs.
-
+            tanh_bounds: If set, a correction term is applied to the log probs.
         """
         super().__init__(in_features, out_channels, num_repetitions, dropout)
 
         # Create gaussian means and stds
         self.means = nn.Parameter(torch.randn(1, in_features, out_channels, num_repetitions))
 
-        if tanh_bounds:
-            assert isinstance(tanh_bounds, tuple) and len(tanh_bounds) == 2, "tanh_bounds must be a 2-element tuple!"
-            lower_tanh_bound = check_valid(tanh_bounds[0], float)
-            upper_tanh_bound = check_valid(tanh_bounds[1], float, lower_bound=lower_tanh_bound)
-            self._tanh_translate = (lower_tanh_bound + upper_tanh_bound)/2
-            self._tanh_stretch = (upper_tanh_bound - lower_tanh_bound)/2
-        else:
-            self._tanh_translate = None
-            self._tanh_stretch = None
+        self._tanh_squash = tanh_squash
 
         if min_sigma is not None and max_sigma is not None:
             # Init from normal
@@ -77,14 +67,16 @@ class RatNormal(Leaf):
             x = x.unsqueeze(3)
 
         correction = None
-        if self._tanh_stretch:
-            x = x.sub(self._tanh_translate).div(self._tanh_stretch)
+        if self._tanh_squash:
+            # This correction term assumes that the input is from a distribution with infinite support
             correction = 2 * (np.log(2) - x - F.softplus(-2 * x))
+            # This correction term assumes the input to be squashed already
+            # correction = torch.log(1 - x**2 + 1e-6)
 
         d = self._get_base_distribution()
         x = d.log_prob(x)  # Shape: [n, w, d, oc, r]
 
-        if self._tanh_stretch:
+        if self._tanh_squash:
             x -= correction
 
         x = self._marginalize_input(x)
@@ -101,21 +93,24 @@ class RatNormal(Leaf):
             gauss = dist.Normal(self.means, self.stds)
             samples: torch.Tensor = gauss.rsample(sample_shape=(context.n,))
         else:
-            nr_nodes, n, w = context.repetition_indices.shape
+            nr_nodes, n, w = context.parent_indices.shape[:3]
             _, d, i, r = self.means.shape
             selected_means = self.means.unsqueeze(0).unsqueeze(0).expand(nr_nodes, n, -1, -1, -1, -1)
             selected_stds = self.stds.unsqueeze(0).unsqueeze(0).expand(nr_nodes, n, -1, -1, -1, -1)
-            rep_ind = context.repetition_indices.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, -1, -1, d, i, -1)
-            selected_means = torch.gather(selected_means, dim=-1, index=rep_ind).squeeze(-1)
-            selected_stds = torch.gather(selected_stds, dim=-1, index=rep_ind).squeeze(-1)
-            par_ind = context.parent_indices.unsqueeze(-1)
-            selected_means = torch.gather(selected_means, dim=-1, index=par_ind).squeeze(-1)
-            selected_stds = torch.gather(selected_stds, dim=-1, index=par_ind).squeeze(-1)
+
+            if context.repetition_indices is not None:
+                rep_ind = context.repetition_indices.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+                rep_ind = rep_ind.expand(-1, -1, -1, d, i, -1)
+                selected_means = torch.gather(selected_means, dim=-1, index=rep_ind).squeeze(-1)
+                selected_stds = torch.gather(selected_stds, dim=-1, index=rep_ind).squeeze(-1)
+
+            # Select means and std in the output_channel dimension
+            par_ind = context.parent_indices.unsqueeze(4)
+            selected_means = torch.gather(selected_means, dim=4, index=par_ind).squeeze(4)
+            selected_stds = torch.gather(selected_stds, dim=4, index=par_ind).squeeze(4)
+
             gauss = dist.Normal(selected_means, selected_stds)
             samples = gauss.rsample()
-
-        if self._tanh_stretch:
-            samples = torch.tanh(samples).mul(self._tanh_stretch).add(self._tanh_translate)
         return samples
 
     def set_bounded_dist_params(self):
@@ -191,6 +186,7 @@ class IndependentMultivariate(Leaf):
         cardinality: int,
         num_repetitions: int = 1,
         dropout: float = 0.0,
+        tanh_squash: bool = False,
         leaf_base_class: Leaf = RatNormal,
         leaf_base_kwargs: Dict = None,
     ):
@@ -214,6 +210,7 @@ class IndependentMultivariate(Leaf):
             in_features=in_features,
             dropout=dropout,
             num_repetitions=num_repetitions,
+            tanh_squash=tanh_squash,
             **leaf_base_kwargs,
         )
         self._pad = (cardinality - self.in_features % cardinality) % cardinality
@@ -267,7 +264,7 @@ class IndependentMultivariate(Leaf):
 
             # Remove padding
             if self._pad:
-                context.parent_indices = context.parent_indices[:, :, :-self._pad]
+                context.parent_indices = context.parent_indices[:, :, :, :-self._pad]
 
         samples = self.base_leaf.sample(context=context)
         return samples
