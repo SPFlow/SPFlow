@@ -71,7 +71,7 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, img_side_len, i
     return train_loader, test_loader
 
 
-def evaluate_sampling(model, save_dir, device, img_size, mpe=False):
+def evaluate_sampling(model, save_dir, device, img_size, mpe=False, eval_ll=True):
     model.eval()
     log_like = []
     label = torch.as_tensor(np.arange(10)).to(device)
@@ -80,10 +80,12 @@ def evaluate_sampling(model, save_dir, device, img_size, mpe=False):
         if isinstance(model, CSPN):
             label = F.one_hot(label, 10).float().to(device)
             samples = model.sample(n=samples_per_label, condition=label, is_mpe=mpe)
-            log_like.append(model(x=samples, condition=None).mean().tolist())
+            if eval_ll:
+                log_like.append(model(x=samples, condition=None).mean().tolist())
         else:
             samples = model.sample(n=samples_per_label, class_index=label)
-            log_like.append(model(x=samples).mean().tolist())
+            if eval_ll:
+                log_like.append(model(x=samples).mean().tolist())
         if model.config.tanh_squash:
             samples.mul_(0.5).add_(0.5)
         samples = samples.view(-1, *img_size[1:])
@@ -339,16 +341,21 @@ if __name__ == "__main__":
 
     inspect = args.inspect
     if inspect:
-        epoch = '999'
-        exp_name = f"vi_ent_log_1"
-        base_path = os.path.join('..', '..', 'spn_experiments', 'vi_ent_approx', f"results_{exp_name}")
-        model_name = f"epoch-{epoch}_{exp_name}"
+        epoch = '049'
+        exp_name = f"09Mar_ent_log__mean_bound"
+        base_path = os.path.join('..', '..', 'spn_experiments', 'vi_ent_approx_Mar22', f"results_{exp_name}")
+        # model_name = f"epoch-{epoch}_{exp_name}"
+        model_name = f"epoch-{epoch}_09Mar_ent_log"
         path = os.path.join(base_path, 'models', f"{model_name}.pt")
         model = torch.load(path, map_location=torch.device('cpu'))
 
         exp = 0
         if exp == 0:
             samples_dir = os.path.join(base_path, 'new_samples')
+            if not os.path.exists(samples_dir):
+                os.makedirs(samples_dir)
+            save_path = os.path.join(samples_dir, f"sample_mpe.png")
+            evaluate_sampling(model, save_path, torch.device('cpu'), img_size, mpe=True)
             save_path = os.path.join(samples_dir, f"sample.png")
             evaluate_sampling(model, save_path, torch.device('cpu'), img_size)
             print(1)
@@ -464,7 +471,8 @@ if __name__ == "__main__":
             config.leaf_base_kwargs['max_sigma'] = 1.0
         if args.ratspn:
             model = RatSpn(config)
-            assert False, "The log normalization of parameters in the layers themselves was removed and must be redone."
+            raise NotImplementedError("The log normalization of parameters in the layers "
+                                      "themselves was removed and must be redone.")
             count_params(model)
         else:
             model = CSPN(config)

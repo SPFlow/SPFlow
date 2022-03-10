@@ -365,6 +365,14 @@ class RatSpn(nn.Module):
             # Sample from RatSpn root layer: Results are indices into the stacked output channels of all repetitions
             # ctx.repetition_indices = torch.zeros(n, dtype=int, device=self._device)
             ctx = self.root.sample(context=ctx)
+            # parent_indices and repetition indices both have the same shape in the first three dimensions:
+            # [nr_nodes, n, w]
+            # nr_nodes is the number of nodes which are sampled in the current SamplingContext.
+            # In RatSpn.sample() it will always be 1 as we are sampling the root node.
+            # In the variational inference entropy approximation, nr_nodes will be different.
+            # n is the number of samples drawn per node and per weight set.
+            # w is the number of weight sets i.e. the number of conditionals that are given.
+            # This applies only to the Cspn, in the RatSpn this will always be 1.
 
             # The weights of the root sum node represent the input channel and repetitions in this manner:
             # The CSPN case is assumed where the weights are different for each batch index condition.
@@ -570,12 +578,6 @@ class RatSpn(nn.Module):
                         },
                         'entropy': child_entropies.mean().item()
                     }
-                    # print(
-                        # f"Entropies at layer {i}:\n"
-                        # f"weight_ent:       Min {weight_entropy.min():6.2f} - Mean {weight_entropy.mean():6.2f} - Max {weight_entropy.max():6.2f}\n"
-                        # f"weighted_ch_ents: Min {weighted_ch_ents.min():6.2f} - Mean {weighted_ch_ents.mean():6.2f} - Max {weighted_ch_ents.max():6.2f}\n"
-                        # f"entropy of resp.: Min {avg_responsibility.min():6.2f} - Mean {avg_responsibility.mean():6.2f} - Max {avg_responsibility.max():6.2f}\n"
-                    # )
 
         return child_entropies.flatten(), logging
 
