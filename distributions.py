@@ -90,8 +90,11 @@ class RatNormal(Leaf):
         for each input shall be used.
         """
         if context.is_root:
-            gauss = dist.Normal(self.means, self.stds)
-            samples: torch.Tensor = gauss.rsample(sample_shape=(context.n,))
+            if context.is_mpe:
+                samples: torch.Tensor = self.means.unsqueeze(0).expand(context.n, -1, -1, -1, -1)
+            else:
+                gauss = dist.Normal(self.means, self.stds)
+                samples: torch.Tensor = gauss.rsample(sample_shape=(context.n,))
         else:
             nr_nodes, n, w = context.parent_indices.shape[:3]
             _, d, i, r = self.means.shape
@@ -109,8 +112,11 @@ class RatNormal(Leaf):
             selected_means = torch.gather(selected_means, dim=4, index=par_ind).squeeze(4)
             selected_stds = torch.gather(selected_stds, dim=4, index=par_ind).squeeze(4)
 
-            gauss = dist.Normal(selected_means, selected_stds)
-            samples = gauss.rsample()
+            if context.is_mpe:
+                samples = selected_means
+            else:
+                gauss = dist.Normal(selected_means, selected_stds)
+                samples = gauss.rsample()
         return samples
 
     def set_bounded_dist_params(self):
