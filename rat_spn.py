@@ -537,20 +537,38 @@ class RatSpn(nn.Module):
                 if not i == len(self._inner_layers):
                     log_weights = layer.weights
                 weights = log_weights.exp()
-                weight_entropy = -(weights * log_weights).sum(dim=2)
                 child_entropies.squeeze_(0)
                 weighted_ch_ents = torch.sum(child_entropies.unsqueeze(3) * weights, dim=2)
-                avg_responsibility = log_weights + child_ll - ll
-                responsibility_ent = torch.sum(weights * avg_responsibility, dim=2)
-                child_entropies = weight_entropy + weighted_ch_ents + responsibility_ent
+                weighted_ch_ll = torch.sum(weights * child_ll, dim=2)
+                neg_weighted_ll = -torch.sum(weights * ll, dim=2)
+                # aux_weight_ent = torch.sum(weights * log_weights, dim=2)
+                # responsibility_ent = aux_weight_ent + weighted_ch_ll + neg_weighted_ll
+                # weight_entropy = -(weights * log_weights).sum(dim=2)
+                # child_entropies = weight_entropy + weighted_ch_ents + responsibility_ent
                 if i == len(self._inner_layers):
                     weights = root_weights_over_rep.exp().sum(dim=2).softmax(dim=-1)
-                    child_entropies = (child_entropies * weights).sum(dim=-1)
+                    weighted_ch_ents = torch.sum(weighted_ch_ents * weights, dim=-1)
+                    weighted_ch_ll = torch.sum(weighted_ch_ll * weights, dim=-1)
+                    neg_weighted_ll = torch.sum(neg_weighted_ll * weights, dim=-1)
+
+                # The weight entropy term cancels anyway, so we omit it.
+                ll_difference = weighted_ch_ll + neg_weighted_ll
+                child_entropies = weighted_ch_ents + ll_difference
                 child_entropies.unsqueeze_(0)
                 if verbose:
+                    weight_entropy = -(layer.weights.exp() * layer.weights).sum(dim=2)
                     logging[i] = {
-                        'weight_ent': weight_entropy.mean().item(), 'weighted_ch_ents': weighted_ch_ents.mean().item(),
-                        'resp_ent': responsibility_ent.mean().item()
+                        'weight_ent_per_node': weight_entropy.mean().item(),
+                        # We sum over all features (dim=1)
+                        'weighted_child_entropies_per_node': {
+                            'mean': weighted_ch_ents.mean().item(),
+                            'std': weighted_ch_ents.std().item()
+                        },
+                        'entropy_contribution_per_node': {
+                            'mean': ll_difference.mean().item(),
+                            'std': ll_difference.std().item()
+                        },
+                        'entropy': child_entropies.mean().item()
                     }
                     # print(
                         # f"Entropies at layer {i}:\n"

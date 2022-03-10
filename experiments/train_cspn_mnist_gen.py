@@ -36,7 +36,7 @@ def time_delta(t_delta: float) -> str:
     return f"{hours}h, {minutes}min, {seconds}s"
 
 
-def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=0.0, debug_mode=False):
+def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, img_side_len, invert=0.0, debug_mode=False):
     """
     Get the MNIST pytorch data loader.
 
@@ -49,7 +49,9 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, invert=0.0, deb
     test_batch_size = batch_size
 
     # Transform from interval (0.0, 1.0) to (0.01, 0.99) so tanh squash experiments converge better
-    transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize((-0.010204,), (1.0204,)),
+    transformer = transforms.Compose([transforms.ToTensor(),
+                                      transforms.Resize(img_side_len, antialias=False),
+                                      transforms.Normalize((-0.010204,), (1.0204,)),
                                       transforms.RandomInvert(p=invert)])
     # Train data loader
     train_loader = torch.utils.data.DataLoader(
@@ -302,6 +304,9 @@ if __name__ == "__main__":
     parser.add_argument('--no_eval_at_start', action='store_true', help='Don\'t evaluate model at the beginning')
     parser.add_argument('--tanh', action='store_true', help='Apply tanh squashing to leaves.')
     parser.add_argument('--sigmoid_std', action='store_true', help='Use sigmoid to set std.')
+    parser.add_argument('--plot_vi_log', action='store_true',
+                        help='Collect information from variational inference entropy '
+                             'approx. and plot it at the end of the epoch.')
     args = parser.parse_args()
 
     if args.model_path:
@@ -430,7 +435,7 @@ if __name__ == "__main__":
     info = CsvLogger(csv_log)
     # Construct Cspn from config
     train_loader, test_loader = get_mnist_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device,
-                                                  invert=args.invert, debug_mode=args.verbose)
+                                                  img_side_len=img_size[1], invert=args.invert, debug_mode=args.verbose)
 
     if not args.model_path:
         if args.ratspn:
@@ -519,8 +524,24 @@ if __name__ == "__main__":
                 label = F.one_hot(label, cond_size).float().to(device)
                 output: torch.Tensor = model(x=data, condition=label)
                 ll_loss = -output.mean()
-                vi_ent_approx, batch_ent_log = model.vi_entropy_approx(sample_size=5, condition=None,
-                                                                       verbose=False)
+                if False:
+                    with torch.profiler.profile(
+                        activities=[
+                            torch.profiler.ProfilerActivity.CPU,
+                            torch.profiler.ProfilerActivity.CUDA,
+                        ],
+                        record_shapes=True,
+                        profile_memory=True,
+                        with_stack=True,
+                    ) as p:
+                        vi_ent_approx, batch_ent_log = model.vi_entropy_approx(sample_size=5, condition=None,
+                                                                               verbose=False)
+                    print(p.key_averages(group_by_input_shape=True).table(sort_by="self_cuda_time_total", row_limit=20))
+                    print(p.key_averages(group_by_input_shape=True).table(sort_by="self_cuda_memory_usage", row_limit=20))
+                else:
+                    vi_ent_approx, batch_ent_log = model.vi_entropy_approx(
+                        sample_size=5, condition=None, verbose=args.plot_vi_log,
+                    )
                 vi_ent_approx = vi_ent_approx.mean()
                 temp_log.append(batch_ent_log)
                 # sample = model.sample(n=3, condition=None)
@@ -533,6 +554,11 @@ if __name__ == "__main__":
             info.add_to_avg_keys(nll_loss=ll_loss, ent_loss=ent_loss, loss=loss, vi_ent_approx=vi_ent_approx,
                                  )
 
+            if False and batch_index > 0 and batch_index % 1000 == 0:
+                exit()
+                info['time'] = time.time() - t_start
+                info['batch'] = batch_index
+                print(info)
             # Log stuff
             if args.verbose:
                 info['time'] = time.time()-t_start
@@ -562,6 +588,96 @@ if __name__ == "__main__":
         info['batch'] = None
         info.write()
         print(info)
+
+        if args.plot_vi_log:  # epoch level
+            print("Plotting log data from variational inference entropy approximation...")
+            save_dir = os.path.join(results_dir, f"plots_epoch{epoch}")
+            os.makedirs(save_dir)
+            def make_data_struct(source_struct, target_struct):
+                for key, item in source_struct.items():
+                    if isinstance(item, dict):
+                        if key in target_struct.keys():
+                            target_struct[key] = make_data_struct(item, target_struct[key])
+                        else:
+                            target_struct[key] = make_data_struct(item, {})
+                    else:
+                        if key in target_struct.keys():
+                            target_struct[key] = np.concatenate((target_struct[key], np.asarray(item)),
+                                                                axis=None)
+                        else:
+                            target_struct[key] = np.asarray(item)
+                return target_struct
+
+            log_struct = {}
+            for i in range(len(temp_log)):
+                log_struct: dict = make_data_struct(temp_log[i], log_struct)
+
+            for log_key in log_struct[1].keys():
+                plt.figure()
+                title_str = f"{log_key} over all sum layers (5 is root)"
+                plt.title(title_str)
+                color_counter = 0
+                for lay_nr, lay_dict in reversed(log_struct.items()):
+                    log_item = lay_dict[log_key]
+                    if isinstance(log_item, dict):
+                        plt.plot(
+                            range(len(log_item['mean'])),
+                            log_item['mean'],
+                            label=f"Sum layer {(lay_nr+1)//2}",
+                            color=f'C{color_counter}',
+                        )
+                        plt.fill_between(
+                            range(len(log_item['mean'])),
+                            log_item['mean'] - log_item['std'],
+                            log_item['mean'] + log_item['std'],
+                            color=f'C{color_counter}',
+                            alpha=0.2,
+                            )
+                    else:
+                        plt.plot(
+                            range(len(log_item)),
+                            log_item,
+                            label=f"Sum layer {(lay_nr+1)//2}",
+                            color=f'C{color_counter}',
+                        )
+                    color_counter += 1
+                plt.legend()
+                plt.savefig(os.path.join(save_dir, f"{log_key}_over_all_sum_layers.png"))
+
+            color_counter = 0
+            for lay_nr, lay_dict in reversed(log_struct.items()):
+                for log_key, log_item in lay_dict.items():
+                    if log_key in [
+                        'weight_ent', 'weighted_child_entropies', 'entropy',
+                    ]:
+                        continue
+                    plt.figure()
+                    title_str = f"Sum layer #{(lay_nr+1)//2} of {len(log_struct.keys())} (5 is root)"
+                    plt.title(title_str)
+                    if isinstance(log_item, dict):
+                        plt.plot(
+                            range(len(log_item['mean'])),
+                            log_item['mean'],
+                            label=log_key,
+                            color=f'C{color_counter}',
+                        )
+                        plt.fill_between(
+                            range(len(log_item['mean'])),
+                            log_item['mean'] - log_item['std'],
+                            log_item['mean'] + log_item['std'],
+                            color=f'C{color_counter}',
+                            alpha=0.2,
+                            )
+                    else:
+                        plt.plot(
+                            range(len(log_item)),
+                            log_item,
+                            label=log_key,
+                            color=f'C{color_counter}',
+                        )
+                    plt.legend()
+                    plt.savefig(os.path.join(save_dir, f"{log_key}_sum_layer_{lay_nr}.png"))
+                color_counter += 1
 
 
 
