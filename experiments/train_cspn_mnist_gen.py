@@ -308,6 +308,7 @@ if __name__ == "__main__":
     parser.add_argument('--no_eval_at_start', action='store_true', help='Don\'t evaluate model at the beginning')
     parser.add_argument('--tanh', action='store_true', help='Apply tanh squashing to leaves.')
     parser.add_argument('--sigmoid_std', action='store_true', help='Use sigmoid to set std.')
+    parser.add_argument('--no_correction_term', action='store_true', help='Don\'t apply tanh correction term to logprob')
     parser.add_argument('--plot_vi_log', action='store_true',
                         help='Collect information from variational inference entropy '
                              'approx. and plot it at the end of the epoch.')
@@ -467,6 +468,7 @@ if __name__ == "__main__":
         config.leaf_base_class = RatNormal
         if args.tanh:
             config.tanh_squash = True
+            config.leaf_base_kwargs = {'no_tanh_log_prob_correction': args.no_correction_term}
         else:
             config.leaf_base_kwargs = {'min_mean': 0.0, 'max_mean': 1.0}
         if args.sigmoid_std:

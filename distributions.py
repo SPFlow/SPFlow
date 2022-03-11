@@ -32,6 +32,7 @@ class RatNormal(Leaf):
         max_sigma: float = None,
         min_mean: float = None,
         max_mean: float = None,
+        no_tanh_log_prob_correction: bool = False,
     ):
         """Create a gaussian layer.
 
@@ -46,6 +47,7 @@ class RatNormal(Leaf):
         self.means = nn.Parameter(torch.randn(1, in_features, out_channels, num_repetitions))
 
         self._tanh_squash = tanh_squash
+        self._no_tanh_log_prob_correction = no_tanh_log_prob_correction
 
         if min_sigma is not None and max_sigma is not None:
             # Init from normal
@@ -67,7 +69,7 @@ class RatNormal(Leaf):
             x = x.unsqueeze(3)
 
         correction = None
-        if self._tanh_squash:
+        if self._tanh_squash and not self._no_tanh_log_prob_correction:
             # This correction term assumes that the input is from a distribution with infinite support
             correction = 2 * (np.log(2) - x - F.softplus(-2 * x))
             # This correction term assumes the input to be squashed already
@@ -76,7 +78,7 @@ class RatNormal(Leaf):
         d = self._get_base_distribution()
         x = d.log_prob(x)  # Shape: [n, w, d, oc, r]
 
-        if self._tanh_squash:
+        if self._tanh_squash and not self._no_tanh_log_prob_correction:
             x -= correction
 
         x = self._marginalize_input(x)
