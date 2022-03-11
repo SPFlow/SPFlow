@@ -7,6 +7,8 @@ import os
 from cspn import CSPN, print_cspn_params
 
 from stable_baselines3 import SAC
+from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.env_util import make_vec_env
 
 if __name__ == "__main__":
     import argparse
@@ -21,7 +23,8 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, default='cuda', help='Device to run on. cpu or cuda.')
     parser.add_argument('--exp_name', type=str, default='test',
                         help='Experiment name. Will appear in name of saved model.')
-    parser.add_argument('--save_dir', type=str, default='.', help='Directory to save the model to.')
+    parser.add_argument('--save_dir', type=str, default='../../cspn_rl_experiments',
+                        help='Directory to save the model to.')
     parser.add_argument('--model_path', type=str,
                         help='Path to the pretrained model.')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
@@ -40,6 +43,9 @@ if __name__ == "__main__":
                         help='List of sizes of the CSPN sum param layers.')
     parser.add_argument('--dist_param_layers', type=int, nargs='+',
                         help='List of sizes of the CSPN dist param layers.')
+    parser.add_argument('--plot_vi_log', action='store_true',
+                        help='Collect information from variational inference entropy '
+                             'approx. and plot it at the end of the epoch.')
     args = parser.parse_args()
 
     # args.cspn = True
@@ -67,9 +73,15 @@ if __name__ == "__main__":
         if not os.path.exists(d):
             os.makedirs(d)
 
-    env = gym.make(args.env)
+    env = make_vec_env(
+        env_id='HalfCheetah-v2',
+        n_envs=1,
+        monitor_dir=args.save_dir,
+        # monitor_dir=os.path.join(args.save_dir, f"log_{args.exp_name}.txt"),
+        # vec_env_cls=SubprocVecEnv,
+        # vec_env_kwargs={'start_method': 'fork'},
+    )
 
-    args.model_path = '/home/fritz/PycharmProjects/spn_experiments/sac_test/cspn/sac_cspn_HalfCheetah-v2_test02Mar22_800000steps.zip'
     if args.model_path:
         model = SAC.load(args.model_path, env)
         model_name = f"sac_loadedpretrained_{args.env}_{args.exp_name}"
@@ -90,6 +102,7 @@ if __name__ == "__main__":
                 'feat_layers': args.feat_layers,
                 'sum_param_layers': args.sum_param_layers,
                 'dist_param_layers': args.dist_param_layers,
+                'log_vi_ent_approx': args.plot_vi_log,
             }
             sac_kwargs['policy_kwargs'] = {'cspn_args': cspn_args}
             model = SAC("CspnPolicy", env, **sac_kwargs)

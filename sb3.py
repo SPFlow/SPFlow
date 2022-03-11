@@ -56,6 +56,7 @@ class CspnActor(BasePolicy):
             dist_param_layers: int,
             activation_fn: Type[nn.Module] = nn.ReLU,
             normalize_images: bool = True,
+            log_vi_ent_approx: bool = False,
             **kwargs
     ):
         super(CspnActor, self).__init__(
@@ -69,6 +70,8 @@ class CspnActor(BasePolicy):
         # Save arguments to re-create object at loading
         self.features_dim = features_dim
         self.activation_fn = activation_fn
+        self.log_vi_ent_approx = log_vi_ent_approx
+        self.vi_ent_log = []
 
         action_dim = get_action_dim(self.action_space)
 
@@ -85,7 +88,7 @@ class CspnActor(BasePolicy):
         config.S = S
         config.dropout = dropout
         config.leaf_base_class = RatNormal
-        config.leaf_base_kwargs = {'tanh_bounds': (-1.0, 1.0)}
+        config.tanh_squash = True
         # config.leaf_base_kwargs = {'min_mean': 0.0, 'max_mean': 1.0}
         if False:
             config.leaf_base_kwargs['min_sigma'] = 0.1
@@ -116,7 +119,11 @@ class CspnActor(BasePolicy):
         # return action and entropy
         features = self.extract_features(obs)
         action = self.cspn.sample(condition=features, is_mpe=False).squeeze(0)
-        entropy = self.cspn.vi_entropy_approx(sample_size=5, condition=None)
+        entropy, vi_ent_log = self.cspn.vi_entropy_approx(
+            sample_size=5, condition=None, verbose=self.log_vi_ent_approx
+        )
+        if self.log_vi_ent_approx:
+            self.vi_ent_log.append(vi_ent_log)
         return action, entropy
 
     def _predict(self, observation: th.Tensor, deterministic: bool = False) -> th.Tensor:

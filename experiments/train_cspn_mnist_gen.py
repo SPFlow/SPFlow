@@ -81,7 +81,7 @@ def evaluate_sampling(model, save_dir, device, img_size, mpe=False, eval_ll=True
             label = F.one_hot(label, 10).float().to(device)
             samples = model.sample(n=samples_per_label, condition=label, is_mpe=mpe)
             if eval_ll:
-                log_like.append(model(x=samples, condition=None).mean().tolist())
+                log_like.append(model(x=samples.atanh(), condition=None).mean().tolist())
         else:
             samples = model.sample(n=samples_per_label, class_index=label)
             if eval_ll:
@@ -181,7 +181,7 @@ class CsvLogger(dict):
         super().__init__()
         self.path = path
         self.other_keys = ['epoch', 'time']
-        self.keys_to_avg = ['mnist_test_ll', 'nll_loss', 'ent_loss', 'vi_ent_approx', 'loss']
+        self.keys_to_avg = ['mnist_test_ll', 'nll_loss', 'ent_loss', 'vi_ent_approx_separate_samples', 'vi_ent_approx', 'loss']
         self.no_log_dict = {'batch': None}
         self.reset()
         with open(self.path, 'w') as f:
@@ -237,6 +237,8 @@ class CsvLogger(dict):
             return_str += f" - Entropy loss: {mean:.2f}"
         if mean := self._valid('mnist_test_ll'):
             return_str += f" - LL orig mnist test set: {mean:.2f}"
+        if mean := self._valid('vi_ent_approx_separate_samples'):
+            return_str += f" - VI ent. approx. separate samples: {mean:.4f}"
         if mean := self._valid('vi_ent_approx'):
             return_str += f" - VI ent. approx.: {mean:.4f}"
         if mean := self._valid('gmm_ent_lb'):
@@ -443,6 +445,7 @@ if __name__ == "__main__":
     # Construct Cspn from config
     train_loader, test_loader = get_mnist_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device,
                                                   img_side_len=img_size[1], invert=args.invert, debug_mode=args.verbose)
+    print(f"There are {len(train_loader)} batches per epoch")
 
     if not args.model_path:
         if args.ratspn:
@@ -509,6 +512,7 @@ if __name__ == "__main__":
         t_start = time.time()
         info.reset(epoch)
         temp_log = []
+        temp_log_separate_samples = []
         for batch_index, (image, label) in enumerate(train_loader):
             # Send data to correct device
             label = label.to(device)
@@ -521,7 +525,7 @@ if __name__ == "__main__":
             # Inference
             optimizer.zero_grad()
             data = image.reshape(image.shape[0], -1)
-            ent_loss = vi_ent_approx = torch.zeros(1).to(device)
+            ent_loss = vi_ent_approx_separate_samples = vi_ent_approx = torch.zeros(1).to(device)
             if args.ratspn:
                 output: torch.Tensor = model(x=data)
                 loss_ce = F.cross_entropy(output.squeeze(1), label)
@@ -547,11 +551,18 @@ if __name__ == "__main__":
                     print(p.key_averages(group_by_input_shape=True).table(sort_by="self_cuda_time_total", row_limit=20))
                     print(p.key_averages(group_by_input_shape=True).table(sort_by="self_cuda_memory_usage", row_limit=20))
                 else:
-                    vi_ent_approx, batch_ent_log = model.vi_entropy_approx(
-                        sample_size=5, condition=None, verbose=args.plot_vi_log,
-                    )
+                    with torch.no_grad():
+                        vi_ent_approx, batch_ent_log = model.vi_entropy_approx(
+                            sample_size=5, condition=None, verbose=args.plot_vi_log,
+                        )
+                        # vi_ent_approx_separate_samples, batch_ent_log_separate_samples = model.vi_entropy_approx(
+                        #     sample_size=5, condition=None, verbose=args.plot_vi_log,
+                        #     share_ch_samples_among_nodes=False,
+                        # )
                 vi_ent_approx = vi_ent_approx.mean()
+                # vi_ent_approx_separate_samples = vi_ent_approx_separate_samples.mean()
                 temp_log.append(batch_ent_log)
+                # temp_log_separate_samples.append(batch_ent_log_separate_samples)
                 # sample = model.sample(n=3, condition=None)
                 if args.ent_loss_alpha > 0.0:
                     ent_loss = -args.ent_loss_alpha * vi_ent_approx
@@ -560,6 +571,7 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
             info.add_to_avg_keys(nll_loss=ll_loss, ent_loss=ent_loss, loss=loss, vi_ent_approx=vi_ent_approx,
+                                 # vi_ent_approx_separate_samples=vi_ent_approx_separate_samples,
                                  )
 
             if False and batch_index > 0 and batch_index % 1000 == 0:
@@ -616,76 +628,83 @@ if __name__ == "__main__":
                             target_struct[key] = np.asarray(item)
                 return target_struct
 
-            log_struct = {}
-            for i in range(len(temp_log)):
-                log_struct: dict = make_data_struct(temp_log[i], log_struct)
+            # for tag, log in {'no_shared_samples': temp_log, 'separate_samples': temp_log_separate_samples}.items():
+            for tag, log in {' ': temp_log}.items():
+                log_struct = {}
+                for i in range(len(log)):
+                    log_struct: dict = make_data_struct(log[i], log_struct)
 
-            for log_key in log_struct[1].keys():
-                plt.figure()
-                title_str = f"{log_key} over all sum layers (5 is root)"
-                plt.title(title_str)
+                for log_key in log_struct[1].keys():
+                    plt.figure()
+                    title_str = f"{log_key} over all sum layers ({len(log_struct.keys())} is root) - {tag}"
+                    plt.title(title_str)
+                    color_counter = 0
+                    for lay_nr, lay_dict in reversed(log_struct.items()):
+                        log_item = lay_dict[log_key]
+                        if isinstance(log_item, dict):
+                            plt.plot(
+                                range(len(log_item['mean'])),
+                                log_item['mean'],
+                                label=f"Sum layer {(lay_nr+1)//2}",
+                                color=f'C{color_counter}',
+                            )
+                            plt.fill_between(
+                                range(len(log_item['mean'])),
+                                log_item['min'],
+                                log_item['max'],
+                                # log_item['mean'] - log_item['std'],
+                                # log_item['mean'] + log_item['std'],
+                                color=f'C{color_counter}',
+                                alpha=0.2,
+                                )
+                        else:
+                            plt.plot(
+                                range(len(log_item)),
+                                log_item,
+                                label=f"Sum layer {(lay_nr+1)//2}",
+                                color=f'C{color_counter}',
+                            )
+                        color_counter += 1
+                    plt.legend()
+                    plt.savefig(os.path.join(save_dir, f"{tag}_{log_key}_over_all_sum_layers.png"))
+
                 color_counter = 0
                 for lay_nr, lay_dict in reversed(log_struct.items()):
-                    log_item = lay_dict[log_key]
-                    if isinstance(log_item, dict):
-                        plt.plot(
-                            range(len(log_item['mean'])),
-                            log_item['mean'],
-                            label=f"Sum layer {(lay_nr+1)//2}",
-                            color=f'C{color_counter}',
-                        )
-                        plt.fill_between(
-                            range(len(log_item['mean'])),
-                            log_item['mean'] - log_item['std'],
-                            log_item['mean'] + log_item['std'],
-                            color=f'C{color_counter}',
-                            alpha=0.2,
+                    for log_key, log_item in lay_dict.items():
+                        if log_key in [
+                            'weight_ent', 'weighted_child_entropies', 'entropy',
+                        ]:
+                            continue
+                        plt.figure()
+                        title_str = f"Sum layer #{(lay_nr+1)//2} of {len(log_struct.keys())} " \
+                                    f"({len(log_struct.keys())} is root) - {tag}"
+                        plt.title(title_str)
+                        if isinstance(log_item, dict):
+                            plt.plot(
+                                range(len(log_item['mean'])),
+                                log_item['mean'],
+                                label=log_key,
+                                color=f'C{color_counter}',
                             )
-                    else:
-                        plt.plot(
-                            range(len(log_item)),
-                            log_item,
-                            label=f"Sum layer {(lay_nr+1)//2}",
-                            color=f'C{color_counter}',
-                        )
+                            plt.fill_between(
+                                range(len(log_item['mean'])),
+                                log_item['min'],
+                                log_item['max'],
+                                # log_item['mean'] - log_item['std'],
+                                # log_item['mean'] + log_item['std'],
+                                color=f'C{color_counter}',
+                                alpha=0.2,
+                                )
+                        else:
+                            plt.plot(
+                                range(len(log_item)),
+                                log_item,
+                                label=log_key,
+                                color=f'C{color_counter}',
+                            )
+                        plt.legend()
+                        plt.savefig(os.path.join(save_dir, f"{tag}_{log_key}_sum_layer_{(lay_nr+1)//2}.png"))
                     color_counter += 1
-                plt.legend()
-                plt.savefig(os.path.join(save_dir, f"{log_key}_over_all_sum_layers.png"))
-
-            color_counter = 0
-            for lay_nr, lay_dict in reversed(log_struct.items()):
-                for log_key, log_item in lay_dict.items():
-                    if log_key in [
-                        'weight_ent', 'weighted_child_entropies', 'entropy',
-                    ]:
-                        continue
-                    plt.figure()
-                    title_str = f"Sum layer #{(lay_nr+1)//2} of {len(log_struct.keys())} (5 is root)"
-                    plt.title(title_str)
-                    if isinstance(log_item, dict):
-                        plt.plot(
-                            range(len(log_item['mean'])),
-                            log_item['mean'],
-                            label=log_key,
-                            color=f'C{color_counter}',
-                        )
-                        plt.fill_between(
-                            range(len(log_item['mean'])),
-                            log_item['mean'] - log_item['std'],
-                            log_item['mean'] + log_item['std'],
-                            color=f'C{color_counter}',
-                            alpha=0.2,
-                            )
-                    else:
-                        plt.plot(
-                            range(len(log_item)),
-                            log_item,
-                            label=log_key,
-                            color=f'C{color_counter}',
-                        )
-                    plt.legend()
-                    plt.savefig(os.path.join(save_dir, f"{log_key}_sum_layer_{lay_nr}.png"))
-                color_counter += 1
 
 
 
