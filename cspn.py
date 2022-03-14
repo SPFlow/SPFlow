@@ -230,7 +230,7 @@ class CSPN(RatSpn):
         self._leaf.base_leaf.means = placeholder
         self._leaf.base_leaf.stds = placeholder
 
-    def create_feat_layers(self, feature_dim: tuple, inner_activation: nn.Module = nn.ReLU):
+    def create_feat_layers(self, feature_dim: tuple, inner_activation: nn.Module = nn.Identity):
         assert len(feature_dim) == 3 or len(feature_dim) == 1, \
             f"Don't know how to construct feature extraction layers for features of dim {len(feature_dim)}."
         if len(feature_dim) == 3:
