@@ -46,7 +46,7 @@ class CspnConfig(RatSpnConfig):
 
 
 class CSPN(RatSpn):
-    def __init__(self, config: CspnConfig):
+    def __init__(self, config: CspnConfig, conditional_layers_inner_activation=nn.ReLU):
         """
         Create a CSPN
 
@@ -62,7 +62,7 @@ class CSPN(RatSpn):
         self.sum_layers = None
         self.feat_layers = None
         self.replace_layer_params()
-        self.create_feat_layers(config.F_cond)
+        self.create_feat_layers(config.F_cond, inner_activation=conditional_layers_inner_activation)
 
     def forward(self, x: torch.Tensor, condition: torch.Tensor = None) -> torch.Tensor:
         """
@@ -230,7 +230,7 @@ class CSPN(RatSpn):
         self._leaf.base_leaf.means = placeholder
         self._leaf.base_leaf.stds = placeholder
 
-    def create_feat_layers(self, feature_dim: tuple, inner_activation: nn.Module = nn.Identity):
+    def create_feat_layers(self, feature_dim: tuple, inner_activation=nn.ReLU):
         assert len(feature_dim) == 3 or len(feature_dim) == 1, \
             f"Don't know how to construct feature extraction layers for features of dim {len(feature_dim)}."
         if len(feature_dim) == 3:
@@ -302,7 +302,7 @@ class CSPN(RatSpn):
             dist_layers = []
             dist_layer_sizes += self.config.dist_param_layers
             for j in range(len(dist_layer_sizes) - 1):
-                act = activation if j < len(dist_layer_sizes) - 2 else output_activation
+                act = innter_activation if j < len(dist_layer_sizes) - 2 else output_activation
                 dist_layers += [nn.Linear(dist_layer_sizes[j], dist_layer_sizes[j + 1]), act()]
         else:
             dist_layers = [nn.Identity()]

@@ -38,7 +38,7 @@ class CspnActor(BasePolicy):
     :param features_extractor: Network to extract features
         (a CNN when using images, a nn.Flatten() layer otherwise)
     :param features_dim: Number of features
-    :param activation_fn: Activation function
+    :param Critic activation_fn: Inner activation function of the critic
     :param normalize_images: Whether to normalize images or not,
          dividing by 255.0 (True by default)
     """
@@ -57,8 +57,8 @@ class CspnActor(BasePolicy):
             feat_layers: int,
             sum_param_layers: int,
             dist_param_layers: int,
-            activation_fn: Type[nn.Module] = nn.ReLU,
             normalize_images: bool = True,
+            mlp_inner_act: Type[nn.Module] = nn.ReLU,
             **kwargs
     ):
         super(CspnActor, self).__init__(
@@ -71,7 +71,7 @@ class CspnActor(BasePolicy):
 
         # Save arguments to re-create object at loading
         self.features_dim = features_dim
-        self.activation_fn = activation_fn
+        self.mlp_inner_act = mlp_inner_act
 
         action_dim = get_action_dim(self.action_space)
 
@@ -94,7 +94,7 @@ class CspnActor(BasePolicy):
             config.leaf_base_kwargs['min_sigma'] = 0.1
             config.leaf_base_kwargs['max_sigma'] = 1.0
         self.config = config
-        self.cspn = CSPN(config)
+        self.cspn = CSPN(config, conditional_layers_inner_activation=mlp_inner_act)
 
     def _get_constructor_parameters(self) -> Dict[str, Any]:
         data = super()._get_constructor_parameters()
@@ -103,7 +103,7 @@ class CspnActor(BasePolicy):
             dict(
                 net_arch=self.net_arch,
                 features_dim=self.features_dim,
-                activation_fn=self.activation_fn,
+                mlp_inner_act=self.mlp_inner_act,
                 log_std_init=self.log_std_init,
                 features_extractor=self.features_extractor,
             )
@@ -113,7 +113,7 @@ class CspnActor(BasePolicy):
     def forward(self, obs: th.Tensor, deterministic: bool = False) -> th.Tensor:
         # Note: the action is squashed
         features = self.extract_features(obs)
-        return self.cspn.sample(condition=features, is_mpe=deterministic)
+        return self.cspn.sample(condition=features, is_mpe=deterministic).squeeze(0)
 
     def action_entropy(self, obs: th.Tensor) -> Tuple[th.Tensor, th.Tensor, dict]:
         # return action and entropy
@@ -136,7 +136,7 @@ class CspnPolicy(SACPolicy):
     :param action_space: Action space
     :param lr_schedule: Learning rate schedule (could be constant)
     :param critic_arch: The specification of the value networks.
-    :param activation_fn: Activation function
+    :param mlp_inner_act: Activation function
     :param log_std_init: Initial value for the log standard deviation
     :param features_extractor_class: Features extractor to use.
     :param features_extractor_kwargs: Keyword arguments
@@ -158,7 +158,7 @@ class CspnPolicy(SACPolicy):
             action_space: gym.spaces.Space,
             lr_schedule: Schedule,
             net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
-            activation_fn: Type[nn.Module] = nn.ReLU,
+            critic_activation_fn: Type[nn.Module] = nn.ReLU,
             log_std_init: float = -3,
             features_extractor_class: Type[BaseFeaturesExtractor] = FlattenExtractor,
             features_extractor_kwargs: Optional[Dict[str, Any]] = None,
@@ -190,11 +190,11 @@ class CspnPolicy(SACPolicy):
         _, critic_arch = get_actor_critic_arch(net_arch)
 
         self.critic_arch = critic_arch
-        self.activation_fn = activation_fn
+        self.critic_activation_fn = critic_activation_fn
         self.net_args = {
             "observation_space": self.observation_space,
             "action_space": self.action_space,
-            "activation_fn": self.activation_fn,
+            "activation_fn": self.critic_activation_fn,
             "normalize_images": normalize_images,
         }
         self.actor_kwargs = self.net_args.copy()

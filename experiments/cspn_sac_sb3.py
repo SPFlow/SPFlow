@@ -5,6 +5,8 @@ from sb3 import CspnActor, CspnSAC
 import os
 import platform
 
+import torch.nn as nn
+
 from cspn import CSPN, print_cspn_params
 
 from stable_baselines3 import SAC
@@ -33,6 +35,7 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     # SAC arguments
     parser.add_argument('--ent_coef', type=float, default=0.1, help='Entropy temperature')
+    parser.add_argument('--learning_rate', '-lr', type=float, default=3e-4, help='Learning rate')
     # CSPN arguments
     parser.add_argument('--repetitions', '-R', type=int, default=5, help='Number of parallel CSPNs to learn at once. ')
     parser.add_argument('--cspn_depth', '-D', type=int,
@@ -40,7 +43,9 @@ if __name__ == "__main__":
     parser.add_argument('--num_dist', '-I', type=int, default=5, help='Number of Gauss dists per pixel.')
     parser.add_argument('--num_sums', '-S', type=int, default=5, help='Number of sums per RV in each sum layer.')
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
-    parser.add_argument('--learning_rate', '-lr', type=float, default=3e-4, help='Learning rate')
+    parser.add_argument('--no_relu', action='store_true',
+                        help='Don\'t use inner ReLU activations in the layers providing '
+                             'the CSPN parameters from the conditional.')
     parser.add_argument('--feat_layers', type=int, nargs='+',
                         help='List of sizes of the CSPN feature layers.')
     parser.add_argument('--sum_param_layers', type=int, nargs='+',
@@ -108,6 +113,7 @@ if __name__ == "__main__":
                 'sum_param_layers': args.sum_param_layers,
                 'dist_param_layers': args.dist_param_layers,
                 'log_vi_ent_approx': args.plot_vi_log,
+                'mlp_inner_act': nn.Identity if args.no_relu else nn.ReLU,
             }
             sac_kwargs['policy_kwargs'] = {'cspn_args': cspn_args}
             model = CspnSAC("CspnPolicy", env, **sac_kwargs)
