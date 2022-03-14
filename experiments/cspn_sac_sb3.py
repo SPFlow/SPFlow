@@ -1,8 +1,9 @@
 import gym
 import numpy as np
 import sb3
-from sb3 import CspnActor
+from sb3 import CspnActor, CspnSAC
 import os
+import platform
 
 from cspn import CSPN, print_cspn_params
 
@@ -25,6 +26,8 @@ if __name__ == "__main__":
                         help='Experiment name. Will appear in name of saved model.')
     parser.add_argument('--save_dir', type=str, default='../../cspn_rl_experiments',
                         help='Directory to save the model to.')
+    parser.add_argument('--tensorboard_dir', '-tb', type=str, default='../../cspn_rl_experiments/tb',
+                        help='Directory to save the model to.')
     parser.add_argument('--model_path', type=str,
                         help='Path to the pretrained model.')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
@@ -37,6 +40,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_dist', '-I', type=int, default=5, help='Number of Gauss dists per pixel.')
     parser.add_argument('--num_sums', '-S', type=int, default=5, help='Number of sums per RV in each sum layer.')
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
+    parser.add_argument('--learning_rate', '-lr', type=float, default=3e-4, help='Learning rate')
     parser.add_argument('--feat_layers', type=int, nargs='+',
                         help='List of sizes of the CSPN feature layers.')
     parser.add_argument('--sum_param_layers', type=int, nargs='+',
@@ -47,11 +51,6 @@ if __name__ == "__main__":
                         help='Collect information from variational inference entropy '
                              'approx. and plot it at the end of the epoch.')
     args = parser.parse_args()
-
-    # args.cspn = True
-    # args.timesteps = 2000
-    # args.save_interval = args.timesteps
-    # args.verbose = True
 
     if not args.save_interval:
         args.save_interval = args.timesteps
@@ -67,17 +66,21 @@ if __name__ == "__main__":
         assert os.path.exists(args.save_dir), f"The save_dir doesn't exist! {args.save_dir}"
     if args.model_path:
         assert os.path.exists(args.model_path), f"The model_path doesn't exist! {args.model_path}"
+    if args.tensorboard_dir:
+        assert os.path.exists(args.tensorboard_dir), f"The tensorboard_dir doesn't exist! {args.tensorboard_dir}"
 
-    args.save_dir = os.path.join(args.save_dir, f"results_{args.exp_name}")
-    for d in [args.save_dir]:
+    env_name = 'HalfCheetah-v2'
+    results_dir = f"{platform.node()}_SAC_{args.exp_name}_{env_name}"
+    results_path = os.path.join(args.save_dir, results_dir)
+    for d in [results_path]:
         if not os.path.exists(d):
             os.makedirs(d)
 
     env = make_vec_env(
-        env_id='HalfCheetah-v2',
+        env_id=env_name,
         n_envs=1,
-        monitor_dir=args.save_dir,
-        # monitor_dir=os.path.join(args.save_dir, f"log_{args.exp_name}.txt"),
+        monitor_dir=results_path,
+        # monitor_dir=os.path.join(results_path, f"log_{args.exp_name}.txt"),
         # vec_env_cls=SubprocVecEnv,
         # vec_env_kwargs={'start_method': 'fork'},
     )
@@ -91,6 +94,8 @@ if __name__ == "__main__":
             'ent_coef': args.ent_coef,
             'learning_starts': 1000,
             'device': args.device,
+            'tensorboard_log': args.tensorboard_dir,
+            'learning_rate': args.learning_rate,
         }
         if args.cspn:
             cspn_args = {
@@ -105,7 +110,7 @@ if __name__ == "__main__":
                 'log_vi_ent_approx': args.plot_vi_log,
             }
             sac_kwargs['policy_kwargs'] = {'cspn_args': cspn_args}
-            model = SAC("CspnPolicy", env, **sac_kwargs)
+            model = CspnSAC("CspnPolicy", env, **sac_kwargs)
         else:
             model = SAC("MlpPolicy", env, **sac_kwargs)
         model_name = f"sac_{'cspn' if args.cspn else 'mlp'}_{args.env}_{args.exp_name}"
@@ -119,8 +124,13 @@ if __name__ == "__main__":
     if learn:
         num_epochs = int(args.timesteps // args.save_interval)
         for i in range(num_epochs):
-            model.learn(total_timesteps=args.save_interval, log_interval=args.log_interval)
-            model.save(os.path.join(args.save_dir, f"{model_name}_{(i+1)*args.save_interval}steps"))
+            model.learn(
+                total_timesteps=args.save_interval,
+                log_interval=args.log_interval,
+                reset_num_timesteps=False,
+                tb_log_name=results_dir,
+            )
+            model.save(os.path.join(results_path, f"{model_name}_{(i+1)*args.save_interval}steps"))
 
     if args.render_after_done:
         obs = env.reset()

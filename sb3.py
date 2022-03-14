@@ -1,11 +1,14 @@
 import stable_baselines3 as sb3
 import gym
 from stable_baselines3.sac.policies import SACPolicy
+from stable_baselines3.sac.sac import SAC
+from stable_baselines3.common.utils import polyak_update
 import warnings
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gym
 import torch as th
+import torch.nn.functional as F
 from torch import nn
 import numpy as np
 
@@ -56,7 +59,6 @@ class CspnActor(BasePolicy):
             dist_param_layers: int,
             activation_fn: Type[nn.Module] = nn.ReLU,
             normalize_images: bool = True,
-            log_vi_ent_approx: bool = False,
             **kwargs
     ):
         super(CspnActor, self).__init__(
@@ -70,8 +72,6 @@ class CspnActor(BasePolicy):
         # Save arguments to re-create object at loading
         self.features_dim = features_dim
         self.activation_fn = activation_fn
-        self.log_vi_ent_approx = log_vi_ent_approx
-        self.vi_ent_log = []
 
         action_dim = get_action_dim(self.action_space)
 
@@ -115,16 +115,14 @@ class CspnActor(BasePolicy):
         features = self.extract_features(obs)
         return self.cspn.sample(condition=features, is_mpe=deterministic)
 
-    def action_log_prob(self, obs: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+    def action_entropy(self, obs: th.Tensor) -> Tuple[th.Tensor, th.Tensor, dict]:
         # return action and entropy
         features = self.extract_features(obs)
         action = self.cspn.sample(condition=features, is_mpe=False).squeeze(0)
         entropy, vi_ent_log = self.cspn.vi_entropy_approx(
-            sample_size=5, condition=None, verbose=self.log_vi_ent_approx
+            sample_size=5, condition=None, verbose=True,
         )
-        if self.log_vi_ent_approx:
-            self.vi_ent_log.append(vi_ent_log)
-        return action, entropy
+        return action, entropy, vi_ent_log
 
     def _predict(self, observation: th.Tensor, deterministic: bool = False) -> th.Tensor:
         return self(observation, deterministic)
@@ -224,3 +222,116 @@ class CspnPolicy(SACPolicy):
 
 
 register_policy("CspnPolicy", CspnPolicy)
+
+
+class CspnSAC(SAC):
+    """
+    Soft Actor-Critic (SAC) modified for a CSPN actor
+    """
+
+    def train(self, gradient_steps: int, batch_size: int = 64) -> None:
+        # Switch to train mode (this affects batch norm / dropout)
+        self.policy.set_training_mode(True)
+        # Update optimizers learning rate
+        optimizers = [self.actor.optimizer, self.critic.optimizer]
+        if self.ent_coef_optimizer is not None:
+            optimizers += [self.ent_coef_optimizer]
+
+        # Update learning rate according to lr schedule
+        self._update_learning_rate(optimizers)
+
+        ent_coef_losses, ent_coefs = [], []
+        actor_losses, critic_losses = [], []
+        ent = []
+        vi_ent_log = None
+
+        for gradient_step in range(gradient_steps):
+            # Sample replay buffer
+            replay_data = self.replay_buffer.sample(batch_size, env=self._vec_normalize_env)
+
+            # We need to sample because `log_std` may have changed between two gradient steps
+            if self.use_sde:
+                self.actor.reset_noise()
+
+            # Action by the current actor for the sampled state
+            actions_pi, entropy, vi_ent_log = self.actor.action_entropy(replay_data.observations)
+            entropy = entropy.reshape(-1, 1)
+            ent.append(entropy.mean().item())
+
+            ent_coef_loss = None
+            if self.ent_coef_optimizer is not None:
+                # Important: detach the variable from the graph
+                # so we don't change it with other losses
+                # see https://github.com/rail-berkeley/softlearning/issues/60
+                ent_coef = th.exp(self.log_ent_coef.detach())
+                ent_coef_loss = -(self.log_ent_coef * (self.target_entropy - entropy).detach()).mean()
+                ent_coef_losses.append(ent_coef_loss.item())
+            else:
+                ent_coef = self.ent_coef_tensor
+
+            ent_coefs.append(ent_coef.item())
+
+            # Optimize entropy coefficient, also called
+            # entropy temperature or alpha in the paper
+            if ent_coef_loss is not None:
+                self.ent_coef_optimizer.zero_grad()
+                ent_coef_loss.backward()
+                self.ent_coef_optimizer.step()
+
+            with th.no_grad():
+                # Select action according to policy
+                next_actions, next_entropy, _ = self.actor.action_entropy(replay_data.next_observations)
+                # Compute the next Q values: min over all critics targets
+                next_q_values = th.cat(self.critic_target(replay_data.next_observations, next_actions), dim=1)
+                next_q_values, _ = th.min(next_q_values, dim=1, keepdim=True)
+                # add entropy term
+                next_q_values = next_q_values + ent_coef * next_entropy.reshape(-1, 1)
+                # td error + entropy term
+                target_q_values = replay_data.rewards + (1 - replay_data.dones) * self.gamma * next_q_values
+
+            # Get current Q-values estimates for each critic network
+            # using action from the replay buffer
+            current_q_values = self.critic(replay_data.observations, replay_data.actions)
+
+            # Compute critic loss
+            critic_loss = 0.5 * sum([F.mse_loss(current_q, target_q_values) for current_q in current_q_values])
+            critic_losses.append(critic_loss.item())
+
+            # Optimize the critic
+            self.critic.optimizer.zero_grad()
+            critic_loss.backward()
+            self.critic.optimizer.step()
+
+            # Compute actor loss
+            # Alternative: actor_loss = th.mean(entropy - qf1_pi)
+            # Mean over all critic networks
+            q_values_pi = th.cat(self.critic(replay_data.observations, actions_pi), dim=1)
+            min_qf_pi, _ = th.min(q_values_pi, dim=1, keepdim=True)
+            actor_loss = -(ent_coef * entropy + min_qf_pi).mean()
+            actor_losses.append(actor_loss.item())
+
+            # Optimize the actor
+            self.actor.optimizer.zero_grad()
+            actor_loss.backward()
+            # for lay in [*self.actor.cspn.feat_layers, *self.actor.cspn.dist_layers, *self.actor.cspn.sum_layers]:
+            #     if isinstance(lay, th.nn.Linear) and lay.weight.grad.isnan().any():
+            #         print(2)
+            self.actor.optimizer.step()
+
+            # Update target networks
+            if gradient_step % self.target_update_interval == 0:
+                polyak_update(self.critic.parameters(), self.critic_target.parameters(), self.tau)
+
+        self._n_updates += gradient_steps
+
+        self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
+        self.logger.record("train/ent_coef", np.mean(ent_coefs))
+        self.logger.record("train/entropy", np.mean(ent))
+        self.logger.record("train/actor_loss", np.mean(actor_losses))
+        self.logger.record("train/critic_loss", np.mean(critic_losses))
+        if len(ent_coef_losses) > 0:
+            self.logger.record("train/ent_coef_loss", np.mean(ent_coef_losses))
+        if vi_ent_log is not None:
+            for layer_id, layer_dict in vi_ent_log.items():
+                for key, val in layer_dict.items():
+                    self.logger.record(f"vi_ent_approx/sum_layer{layer_id}_{key}", np.mean(val))

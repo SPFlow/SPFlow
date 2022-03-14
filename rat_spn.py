@@ -660,19 +660,21 @@ class RatSpn(nn.Module):
                     logging[i] = {
                         'weight_ent_per_node': weight_entropy.mean().item(),
                         # We sum over all features (dim=1)
-                        'weighted_child_entropies_per_node': {
-                            'mean': weighted_ch_ents.mean().item(),
+                        # 'weighted_child_entropies_per_node': weighted_ch_ents.mean().item(),
+                        # {
+                            # 'mean': weighted_ch_ents.mean().item(),
                             # 'std': weighted_ch_ents.std().item()
-                            'min': weighted_ch_ents.min().item(),
-                            'max': weighted_ch_ents.max().item(),
-                        },
-                        'entropy_contribution_per_node': {
-                            'mean': ll_difference.mean().item(),
+                            # 'min': weighted_ch_ents.min().item(),
+                            # 'max': weighted_ch_ents.max().item(),
+                        # },
+                        'entropy_contribution_per_node': ll_difference.mean().item(),
+                        # {
+                            # 'mean': ll_difference.mean().item(),
                             # 'std': ll_difference.std().item(),
-                            'min': ll_difference.min().item(),
-                            'max': ll_difference.max().item(),
-                        },
-                        'entropy': child_entropies.mean().item()
+                            # 'min': ll_difference.min().item(),
+                            # 'max': ll_difference.max().item(),
+                        # },
+                        # 'entropy': child_entropies.mean().item()
                     }
 
         return child_entropies.flatten(), logging
