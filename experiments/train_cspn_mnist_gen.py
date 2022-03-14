@@ -90,7 +90,7 @@ def evaluate_sampling(model, save_dir, device, img_size, mpe=False, eval_ll=True
             samples.mul_(0.5).add_(0.5)
         samples = samples.view(-1, *img_size[1:])
         plot_samples(samples, save_dir)
-    result_str = f"Samples: Average log-likelihood: {np.mean(log_like):.2f}"
+    result_str = f"{'MPE sample' if mpe else 'Sample'} average log-likelihood: {np.mean(log_like):.2f}"
     print(result_str)
 
 
@@ -344,11 +344,11 @@ if __name__ == "__main__":
 
     inspect = args.inspect
     if inspect:
-        epoch = '049'
-        exp_name = f"09Mar_ent_log__mean_bound"
+        epoch = '099'
+        exp_name = f"10Mar_ent_log__tanh"
+        # exp_name = f"11Mar_ent_log__tanh__no_correction_term"
         base_path = os.path.join('..', '..', 'spn_experiments', 'vi_ent_approx_Mar22', f"results_{exp_name}")
-        # model_name = f"epoch-{epoch}_{exp_name}"
-        model_name = f"epoch-{epoch}_09Mar_ent_log"
+        model_name = f"epoch-{epoch}_{exp_name}"
         path = os.path.join(base_path, 'models', f"{model_name}.pt")
         model = torch.load(path, map_location=torch.device('cpu'))
 
