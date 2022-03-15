@@ -303,7 +303,7 @@ class CSPN(RatSpn):
             dist_layers = []
             dist_layer_sizes += self.config.dist_param_layers
             for j in range(len(dist_layer_sizes) - 1):
-                act = inner_activation if j < len(dist_layer_sizes) - 2 else output_activation
+                act = self.config.cond_layers_inner_act if j < len(dist_layer_sizes) - 2 else output_activation
                 dist_layers += [nn.Linear(dist_layer_sizes[j], dist_layer_sizes[j + 1]), act()]
         else:
             dist_layers = [nn.Identity()]
