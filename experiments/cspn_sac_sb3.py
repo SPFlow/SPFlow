@@ -91,9 +91,6 @@ if __name__ == "__main__":
 
     if args.model_path:
         model = SAC.load(args.model_path, env)
-        for i in range(len(model.actor.cspn.feat_layers)):
-            if isinstance(model.actor.cspn.feat_layers[i], nn.ReLU):
-                model.actor.cspn.feat_layers[i] = nn.Identity()
         model_name = f"sac_loadedpretrained_{args.env}_{args.exp_name}"
     else:
         sac_kwargs = {
