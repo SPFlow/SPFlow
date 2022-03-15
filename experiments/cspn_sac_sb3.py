@@ -36,6 +36,8 @@ if __name__ == "__main__":
     # SAC arguments
     parser.add_argument('--ent_coef', type=float, default=0.1, help='Entropy temperature')
     parser.add_argument('--learning_rate', '-lr', type=float, default=3e-4, help='Learning rate')
+    parser.add_argument('--learning_starts', type=int, default=1000,
+                        help='Nr. of steps to act randomly in the beginning.')
     # CSPN arguments
     parser.add_argument('--repetitions', '-R', type=int, default=5, help='Number of parallel CSPNs to learn at once. ')
     parser.add_argument('--cspn_depth', '-D', type=int,
@@ -53,6 +55,9 @@ if __name__ == "__main__":
     parser.add_argument('--dist_param_layers', type=int, nargs='+',
                         help='List of sizes of the CSPN dist param layers.')
     args = parser.parse_args()
+
+    # args.model_path = '/home/fritz/PycharmProjects/cspn_rl_experiments/beagle_SAC_feat_layer_ReLU_1_HalfCheetah-v2/sac_cspn_HalfCheetah-v2_feat_layer_ReLU_1_100000steps.zip'
+    args.model_path = '/home/fritz/PycharmProjects/cspn_rl_experiments/beagle_SAC_default_lr_no_ReLU_HalfCheetah-v2/sac_cspn_HalfCheetah-v2_default_lr_no_ReLU_800000steps.zip'
 
     if not args.save_interval:
         args.save_interval = args.timesteps
@@ -89,12 +94,15 @@ if __name__ == "__main__":
 
     if args.model_path:
         model = SAC.load(args.model_path, env)
+        for i in range(len(model.actor.cspn.feat_layers)):
+            if isinstance(model.actor.cspn.feat_layers[i], nn.ReLU):
+                model.actor.cspn.feat_layers[i] = nn.Identity()
         model_name = f"sac_loadedpretrained_{args.env}_{args.exp_name}"
     else:
         sac_kwargs = {
             'verbose': 2*args.verbose,
             'ent_coef': args.ent_coef,
-            'learning_starts': 1000,
+            'learning_starts': args.learning_starts,
             'device': args.device,
             'tensorboard_log': args.tensorboard_dir,
             'learning_rate': args.learning_rate,
