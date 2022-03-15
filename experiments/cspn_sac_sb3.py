@@ -52,9 +52,6 @@ if __name__ == "__main__":
                         help='List of sizes of the CSPN sum param layers.')
     parser.add_argument('--dist_param_layers', type=int, nargs='+',
                         help='List of sizes of the CSPN dist param layers.')
-    parser.add_argument('--plot_vi_log', action='store_true',
-                        help='Collect information from variational inference entropy '
-                             'approx. and plot it at the end of the epoch.')
     args = parser.parse_args()
 
     if not args.save_interval:
@@ -112,8 +109,7 @@ if __name__ == "__main__":
                 'feat_layers': args.feat_layers,
                 'sum_param_layers': args.sum_param_layers,
                 'dist_param_layers': args.dist_param_layers,
-                'log_vi_ent_approx': args.plot_vi_log,
-                'mlp_inner_act': nn.Identity if args.no_relu else nn.ReLU,
+                'cond_layers_inner_act': nn.Identity if args.no_relu else nn.ReLU,
             }
             sac_kwargs['policy_kwargs'] = {'cspn_args': cspn_args}
             model = CspnSAC("CspnPolicy", env, **sac_kwargs)

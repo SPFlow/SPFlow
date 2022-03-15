@@ -58,7 +58,7 @@ class CspnActor(BasePolicy):
             sum_param_layers: int,
             dist_param_layers: int,
             normalize_images: bool = True,
-            mlp_inner_act: Type[nn.Module] = nn.ReLU,
+            cond_layers_inner_act: Type[nn.Module] = nn.ReLU,
             **kwargs
     ):
         super(CspnActor, self).__init__(
@@ -71,7 +71,6 @@ class CspnActor(BasePolicy):
 
         # Save arguments to re-create object at loading
         self.features_dim = features_dim
-        self.mlp_inner_act = mlp_inner_act
 
         action_dim = get_action_dim(self.action_space)
 
@@ -89,12 +88,13 @@ class CspnActor(BasePolicy):
         config.dropout = dropout
         config.leaf_base_class = RatNormal
         config.tanh_squash = True
+        config.cond_layers_inner_act = cond_layers_inner_act
         # config.leaf_base_kwargs = {'min_mean': 0.0, 'max_mean': 1.0}
         if False:
             config.leaf_base_kwargs['min_sigma'] = 0.1
             config.leaf_base_kwargs['max_sigma'] = 1.0
         self.config = config
-        self.cspn = CSPN(config, conditional_layers_inner_activation=mlp_inner_act)
+        self.cspn = CSPN(config)
 
     def _get_constructor_parameters(self) -> Dict[str, Any]:
         data = super()._get_constructor_parameters()

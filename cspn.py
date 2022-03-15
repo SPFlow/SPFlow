@@ -37,6 +37,7 @@ class CspnConfig(RatSpnConfig):
     conv_pooling_stride: int = 3
     sum_param_layers: list = None
     dist_param_layers: list = None
+    cond_layers_inner_act: Type[nn.Module] = nn.ReLU
 
     def __setattr__(self, key, value):
         if hasattr(self, key):
@@ -46,7 +47,7 @@ class CspnConfig(RatSpnConfig):
 
 
 class CSPN(RatSpn):
-    def __init__(self, config: CspnConfig, conditional_layers_inner_activation=nn.ReLU):
+    def __init__(self, config: CspnConfig):
         """
         Create a CSPN
 
@@ -62,7 +63,7 @@ class CSPN(RatSpn):
         self.sum_layers = None
         self.feat_layers = None
         self.replace_layer_params()
-        self.create_feat_layers(config.F_cond, inner_activation=conditional_layers_inner_activation)
+        self.create_feat_layers(config.F_cond)
 
     def forward(self, x: torch.Tensor, condition: torch.Tensor = None) -> torch.Tensor:
         """
@@ -230,7 +231,7 @@ class CSPN(RatSpn):
         self._leaf.base_leaf.means = placeholder
         self._leaf.base_leaf.stds = placeholder
 
-    def create_feat_layers(self, feature_dim: tuple, inner_activation=nn.ReLU):
+    def create_feat_layers(self, feature_dim: tuple):
         assert len(feature_dim) == 3 or len(feature_dim) == 1, \
             f"Don't know how to construct feature extraction layers for features of dim {len(feature_dim)}."
         if len(feature_dim) == 3:
@@ -260,7 +261,7 @@ class CSPN(RatSpn):
                 layer_sizes = [feature_dim[0]] + self.config.feat_layers
                 for j in range(len(layer_sizes) - 1):
                     feat_layers += [nn.Linear(layer_sizes[j], layer_sizes[j+1]),
-                                    inner_activation()]
+                                    self.config.cond_layers_inner_act()]
             else:
                 feat_layers = [nn.Identity()]
             self.feat_layers = nn.Sequential(*feat_layers)
@@ -277,7 +278,7 @@ class CSPN(RatSpn):
             sum_layers = []
             sum_layer_sizes += self.config.sum_param_layers
             for j in range(len(sum_layer_sizes) - 1):
-                act = inner_activation if j < len(sum_layer_sizes) - 2 else output_activation
+                act = self.config.cond_layers_inner_act if j < len(sum_layer_sizes) - 2 else output_activation
                 sum_layers += [nn.Linear(sum_layer_sizes[j], sum_layer_sizes[j + 1]), act()]
         else:
             sum_layers = [nn.Identity()]
