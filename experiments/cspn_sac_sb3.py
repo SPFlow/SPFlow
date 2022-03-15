@@ -56,9 +56,6 @@ if __name__ == "__main__":
                         help='List of sizes of the CSPN dist param layers.')
     args = parser.parse_args()
 
-    # args.model_path = '/home/fritz/PycharmProjects/cspn_rl_experiments/beagle_SAC_feat_layer_ReLU_1_HalfCheetah-v2/sac_cspn_HalfCheetah-v2_feat_layer_ReLU_1_100000steps.zip'
-    args.model_path = '/home/fritz/PycharmProjects/cspn_rl_experiments/beagle_SAC_default_lr_no_ReLU_HalfCheetah-v2/sac_cspn_HalfCheetah-v2_default_lr_no_ReLU_800000steps.zip'
-
     if not args.save_interval:
         args.save_interval = args.timesteps
 
