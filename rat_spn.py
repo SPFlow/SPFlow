@@ -349,7 +349,7 @@ class RatSpn(nn.Module):
             # Set n to the number of samples in the evidence
             n = evidence.shape[0]
 
-        with provide_evidence(self, evidence):  # May be None but that's ok
+        with provide_evidence(self, evidence, requires_grad=True):  # May be None but that's ok
             # If class is given, use it as base index
             if class_index is not None:
                 # Create new sampling context

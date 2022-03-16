@@ -151,7 +151,7 @@ class Sum(AbstractLayer):
         # Sum weights are of shape: [N, D, IC, OC, R]
         # We now want to use `indices` to access one in_channel for each in_feature x out_channels block
         # index is of size in_feature
-        weights: torch.Tensor = self.weights.data
+        weights: torch.Tensor = self.weights
         if weights.dim() == 4:
             weights = weights.unsqueeze(0)
         # w is the number of weight sets
