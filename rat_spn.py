@@ -370,7 +370,7 @@ class RatSpn(nn.Module):
 
             # Sample from RatSpn root layer: Results are indices into the stacked output channels of all repetitions
             # ctx.repetition_indices = torch.zeros(n, dtype=int, device=self._device)
-            ctx = self.root.sample_index_style(context=ctx)
+            ctx = self.root.sample_index_style(ctx=ctx)
             # parent_indices and repetition indices both have the same shape in the first three dimensions:
             # [nr_nodes, n, w]
             # nr_nodes is the number of nodes which are sampled in the current SamplingContext.
@@ -394,10 +394,10 @@ class RatSpn(nn.Module):
             # Continue at layers
             # Sample inner layers in reverse order (starting from topmost)
             for layer in reversed(self._inner_layers):
-                ctx = layer.sample_index_style(context=ctx)
+                ctx = layer.sample_index_style(ctx=ctx)
 
             # Sample leaf
-            samples = self._leaf.sample_index_style(context=ctx)
+            samples = self._leaf.sample_index_style(ctx=ctx)
             if self.config.tanh_squash:
                 samples = samples.tanh()
 
@@ -473,7 +473,7 @@ class RatSpn(nn.Module):
 
             # Sample from RatSpn root layer: Results are one-hot vectors of the indices
             # into the stacked output channels of all repetitions
-            ctx = self.root.sample_onehot_style(context=ctx)
+            ctx = self.root.sample_onehot_style(ctx=ctx)
 
             # The weights of the root sum node represent the input channel and repetitions in this manner:
             # The CSPN case is assumed where the weights are different for each batch index condition.
@@ -490,11 +490,11 @@ class RatSpn(nn.Module):
             # Continue at layers
             # Sample inner layers in reverse order (starting from topmost)
             for layer in reversed(self._inner_layers):
-                ctx = layer.sample_onehot_style(context=ctx)
+                ctx = layer.sample_onehot_style(ctx=ctx)
             assert ctx.parent_indices.shape == (nr_nodes, n, w, self._leaf.out_features,
                                                 self._leaf.out_channels, self.config.R)
             # Sample leaf
-            samples = self._leaf.sample_onehot_style(context=ctx)
+            samples = self._leaf.sample_onehot_style(ctx=ctx)
             if self.config.tanh_squash:
                 samples = samples.tanh()
 

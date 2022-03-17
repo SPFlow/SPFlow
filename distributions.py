@@ -86,39 +86,39 @@ class RatNormal(Leaf):
 
         return x
 
-    def sample(self, context: SamplingContext = None):
+    def sample(self, ctx: SamplingContext = None):
         raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
                                   "Please choose one.")
 
-    def sample_index_style(self, context: SamplingContext = None) -> torch.Tensor:
+    def sample_index_style(self, ctx: SamplingContext = None) -> torch.Tensor:
         """
         Perform sampling, given indices from the parent layer that indicate which of the multiple representations
         for each input shall be used.
         """
-        if context.is_root:
-            if context.is_mpe:
-                samples: torch.Tensor = self.means.unsqueeze(0).expand(context.n, -1, -1, -1, -1)
+        if ctx.is_root:
+            if ctx.is_mpe:
+                samples: torch.Tensor = self.means.unsqueeze(0).expand(ctx.n, -1, -1, -1, -1)
             else:
                 gauss = dist.Normal(self.means, self.stds)
-                samples: torch.Tensor = gauss.rsample(sample_shape=(context.n,))
+                samples: torch.Tensor = gauss.rsample(sample_shape=(ctx.n,))
         else:
-            nr_nodes, n, w = context.parent_indices.shape[:3]
+            nr_nodes, n, w = ctx.parent_indices.shape[:3]
             _, d, i, r = self.means.shape
             selected_means = self.means.unsqueeze(0).unsqueeze(0).expand(nr_nodes, n, -1, -1, -1, -1)
             selected_stds = self.stds.unsqueeze(0).unsqueeze(0).expand(nr_nodes, n, -1, -1, -1, -1)
 
-            if context.repetition_indices is not None:
-                rep_ind = context.repetition_indices.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+            if ctx.repetition_indices is not None:
+                rep_ind = ctx.repetition_indices.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
                 rep_ind = rep_ind.expand(-1, -1, -1, d, i, -1)
                 selected_means = torch.gather(selected_means, dim=-1, index=rep_ind).squeeze(-1)
                 selected_stds = torch.gather(selected_stds, dim=-1, index=rep_ind).squeeze(-1)
 
             # Select means and std in the output_channel dimension
-            par_ind = context.parent_indices.unsqueeze(4)
+            par_ind = ctx.parent_indices.unsqueeze(4)
             selected_means = torch.gather(selected_means, dim=4, index=par_ind).squeeze(4)
             selected_stds = torch.gather(selected_stds, dim=4, index=par_ind).squeeze(4)
 
-            if context.is_mpe:
+            if ctx.is_mpe:
                 samples = selected_means
             else:
                 gauss = dist.Normal(selected_means, selected_stds)
@@ -126,31 +126,31 @@ class RatNormal(Leaf):
 
         return samples
 
-    def sample_onehot_style(self, context: SamplingContext = None) -> torch.Tensor:
+    def sample_onehot_style(self, ctx: SamplingContext = None) -> torch.Tensor:
         """
         Perform sampling, given indices from the parent layer that indicate which of the multiple representations
         for each input shall be used.
         """
-        if context.is_root:
-            if context.is_mpe:
-                samples: torch.Tensor = self.means.unsqueeze(0).expand(context.n, -1, -1, -1, -1)
+        if ctx.is_root:
+            if ctx.is_mpe:
+                samples: torch.Tensor = self.means.unsqueeze(0).expand(ctx.n, -1, -1, -1, -1)
             else:
                 gauss = dist.Normal(self.means, self.stds)
-                samples: torch.Tensor = gauss.rsample(sample_shape=(context.n,))
+                samples: torch.Tensor = gauss.rsample(sample_shape=(ctx.n,))
         else:
-            selected_means = self.means * context.parent_indices
-            assert context.parent_indices.detach().sum(4).max().item() == 1.0
+            selected_means = self.means * ctx.parent_indices
+            assert ctx.parent_indices.detach().sum(4).max().item() == 1.0
             selected_means = selected_means.sum(4)
-            if context.parent_indices.detach()[0, 0, 0, 0, :, :].sum().item() == 1.0:
+            if ctx.parent_indices.detach()[0, 0, 0, 0, :, :].sum().item() == 1.0:
                 # Only one repetition is selected, remove repetition dim of parameters
                 selected_means = selected_means.sum(-1)
 
-            if context.is_mpe:
+            if ctx.is_mpe:
                 samples = selected_means
             else:
-                selected_stds = self.stds * context.parent_indices
+                selected_stds = self.stds * ctx.parent_indices
                 selected_stds = selected_stds.sum(4)
-                if context.parent_indices.detach()[0, 0, 0, 0, :, :].sum().item() == 1.0:
+                if ctx.parent_indices.detach()[0, 0, 0, 0, :, :].sum().item() == 1.0:
                     # Only one repetition is selected, remove repetition dim of parameters
                     selected_stds = selected_stds.sum(-1)
 
@@ -304,30 +304,30 @@ class IndependentMultivariate(Leaf):
     def _get_base_distribution(self):
         raise Exception("IndependentMultivariate does not have an explicit PyTorch base distribution.")
 
-    def sample(self, context: SamplingContext = None):
+    def sample(self, ctx: SamplingContext = None):
         raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
                                   "Please choose one.")
 
-    def sample_index_style(self, context: SamplingContext = None) -> torch.Tensor:
-        if not context.is_root:
-            context = self.prod.sample(context=context)
+    def sample_index_style(self, ctx: SamplingContext = None) -> torch.Tensor:
+        if not ctx.is_root:
+            ctx = self.prod.sample(ctx=ctx)
 
             # Remove padding
             if self._pad:
-                context.parent_indices = context.parent_indices[:, :, :, :-self._pad]
+                ctx.parent_indices = ctx.parent_indices[:, :, :, :-self._pad]
 
-        samples = self.base_leaf.sample_index_style(context=context)
+        samples = self.base_leaf.sample_index_style(ctx=ctx)
         return samples
 
-    def sample_onehot_style(self, context: SamplingContext = None) -> torch.Tensor:
-        if not context.is_root:
-            context = self.prod.sample(context=context)
+    def sample_onehot_style(self, ctx: SamplingContext = None) -> torch.Tensor:
+        if not ctx.is_root:
+            ctx = self.prod.sample(ctx=ctx)
 
             # Remove padding
             if self._pad:
-                context.parent_indices = context.parent_indices[:, :, :, :-self._pad]
+                ctx.parent_indices = ctx.parent_indices[:, :, :, :-self._pad]
 
-        samples = self.base_leaf.sample_onehot_style(context=context)
+        samples = self.base_leaf.sample_onehot_style(ctx=ctx)
         return samples
 
     def moments(self):
@@ -372,13 +372,13 @@ class GaussianMixture(IndependentMultivariate):
         else:
             return self.sum(x)
 
-    def sample(self, context: SamplingContext = None) -> torch.Tensor:
-        context_overhang = context.parent_indices.size(1) - self.sum.in_features
+    def sample(self, ctx: SamplingContext = None) -> torch.Tensor:
+        context_overhang = ctx.parent_indices.size(1) - self.sum.in_features
         assert context_overhang >= 0, f"context_overhang is negative! ({context_overhang})"
         if context_overhang:
-            context.parent_indices = context.parent_indices[:, : -context_overhang]
-        context = self.sum.sample(context=context)
-        return super(GaussianMixture, self).sample(context=context)
+            ctx.parent_indices = ctx.parent_indices[:, : -context_overhang]
+        ctx = self.sum.sample(ctx=ctx)
+        return super(GaussianMixture, self).sample(ctx=ctx)
 
     def moments(self):
         """Get the mean, variance and third central moment (unnormalized skew)"""
