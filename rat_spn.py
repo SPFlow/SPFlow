@@ -312,9 +312,15 @@ class RatSpn(nn.Module):
         """
         return self.sample(evidence=evidence, is_mpe=True)
 
-    def sample(self, n: int = None, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample(self, n=1, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+        raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
+                                  "Please choose one.")
+
+    def sample_index_style(self, n: int = None, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
         """
         Sample from the distribution represented by this SPN.
+
+        This sampling mechanism works with indexes, which are non-differentiable.
 
         Possible valid inputs:
 
@@ -360,11 +366,11 @@ class RatSpn(nn.Module):
             else:
                 # Start sampling one of the C root nodes TODO: check what happens if C=1
                 ctx = SamplingContext(n=n, is_mpe=is_mpe)
-                ctx = self._sampling_root.sample(context=ctx)
+                # ctx = self._sampling_root.sample(context=ctx)
 
             # Sample from RatSpn root layer: Results are indices into the stacked output channels of all repetitions
             # ctx.repetition_indices = torch.zeros(n, dtype=int, device=self._device)
-            ctx = self.root.sample(context=ctx)
+            ctx = self.root.sample_index_style(context=ctx)
             # parent_indices and repetition indices both have the same shape in the first three dimensions:
             # [nr_nodes, n, w]
             # nr_nodes is the number of nodes which are sampled in the current SamplingContext.
@@ -388,15 +394,113 @@ class RatSpn(nn.Module):
             # Continue at layers
             # Sample inner layers in reverse order (starting from topmost)
             for layer in reversed(self._inner_layers):
-                ctx = layer.sample(context=ctx)
+                ctx = layer.sample_index_style(context=ctx)
 
             # Sample leaf
-            samples = self._leaf.sample(context=ctx)
+            samples = self._leaf.sample_index_style(context=ctx)
             if self.config.tanh_squash:
                 samples = samples.tanh()
 
             # Invert permutation
             rep_selected_inv_permutation = self.inv_permutation.T[ctx.repetition_indices]
+            samples = torch.gather(samples, dim=-1, index=rep_selected_inv_permutation)
+
+            # The first dimension is the nodes which are sampled. Here, it is always 1 as there is one root node.
+            samples.squeeze_(0)
+
+            if evidence is not None:
+                # Update NaN entries in evidence with the sampled values
+                nan_indices = torch.isnan(evidence)
+
+                # First make a copy such that the original object is not changed
+                evidence = evidence.clone()
+                evidence[nan_indices] = samples[nan_indices]
+                return evidence
+            else:
+                return samples
+
+    def sample_onehot_style(self, n: int = None, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+        """
+        Sample from the distribution represented by this SPN.
+
+        This sampling mechanism work with one-hot vectors, grouped into tensors.
+        This way of sampling is differentiable, but also takes almost twice as long.
+
+        Possible valid inputs:
+
+        - `n`: Generates `n` samples.
+        - `n` and `class_index (int)`: Generates `n` samples from P(X | C = class_index).
+        - `class_index (List[int])`: Generates `len(class_index)` samples. Each index `c_i` in `class_index` is mapped
+            to a sample from P(X | C = c_i)
+        - `evidence`: If evidence is given, samples conditionally and fill NaN values.
+
+        Args:
+            n: Number of samples to generate.
+            class_index: Class index. Can be either an int in combination with a value for `n` which will result in `n`
+                samples from P(X | C = class_index). Or can be a list of ints which will map each index `c_i` in the
+                list to a sample from P(X | C = c_i).
+            evidence: Evidence that can be provided to condition the samples. If evidence is given, `n` and
+                `class_index` must be `None`. Evidence must contain NaN values which will be imputed according to the
+                distribution represented by the SPN. The result will contain the evidence and replace all NaNs with the
+                sampled values.
+            is_mpe: Flag to perform max sampling (MPE).
+
+        Returns:
+            torch.Tensor: Samples generated according to the distribution specified by the SPN.
+
+        """
+        assert class_index is None or evidence is None, "Cannot provide both, evidence and class indices."
+        assert n is None or evidence is None, "Cannot provide both, number of samples to generate (n) and evidence."
+
+        # Check if evidence contains nans
+        if evidence is not None:
+            assert (evidence != evidence).any(), "Evidence has no NaN values."
+
+            # Set n to the number of samples in the evidence
+            n = evidence.shape[0]
+
+        with provide_evidence(self, evidence, requires_grad=True):  # May be None but that's ok
+            # If class is given, use it as base index
+            if class_index is not None:
+                # Create new sampling context
+                ctx = SamplingContext(n=n,
+                                      parent_indices=class_index.repeat(n, 1).unsqueeze(-1).to(self._device),
+                                      repetition_indices=torch.zeros((n, class_index.shape[0]), dtype=int, device=self._device),
+                                      is_mpe=is_mpe)
+            else:
+                # Start sampling one of the C root nodes TODO: check what happens if C=1
+                ctx = SamplingContext(n=n, is_mpe=is_mpe)
+
+            # Sample from RatSpn root layer: Results are one-hot vectors of the indices
+            # into the stacked output channels of all repetitions
+            ctx = self.root.sample_onehot_style(context=ctx)
+
+            # The weights of the root sum node represent the input channel and repetitions in this manner:
+            # The CSPN case is assumed where the weights are different for each batch index condition.
+            # Looking at one batch index and one output channel, there are IC*R weights.
+            # An element of this weight vector is defined as
+            # w_{r,c}, with r and c being the repetition and channel the weight belongs to, respectively.
+            # The weight vector will then contain [w_{0,0},w_{1,0},w_{2,0},w_{0,1},w_{1,1},w_{2,1},w_{0,2},w_{1,2},...]
+            # This weight vector was used as the logits in a IC*R-categorical distribution, yielding indexes [0,C*R-1].
+            assert ctx.parent_indices.shape == (1, ctx.n, self.root.weights.size(0), 1,
+                                                self.root.weights.size(2), 1)
+            nr_nodes, n, w, _, _, _ = ctx.parent_indices.shape
+            ctx.parent_indices = ctx.parent_indices.view(nr_nodes, n, w, 1, -1, self.config.R)
+
+            # Continue at layers
+            # Sample inner layers in reverse order (starting from topmost)
+            for layer in reversed(self._inner_layers):
+                ctx = layer.sample_onehot_style(context=ctx)
+            assert ctx.parent_indices.shape == (nr_nodes, n, w, self._leaf.out_features,
+                                                self._leaf.out_channels, self.config.R)
+            # Sample leaf
+            samples = self._leaf.sample_onehot_style(context=ctx)
+            if self.config.tanh_squash:
+                samples = samples.tanh()
+
+            # Invert permutation
+            rep_selected_inv_permutation = self.inv_permutation * ctx.parent_indices.detach().sum(-2).long()
+            rep_selected_inv_permutation = rep_selected_inv_permutation.sum(-1)
             samples = torch.gather(samples, dim=-1, index=rep_selected_inv_permutation)
 
             # The first dimension is the nodes which are sampled. Here, it is always 1 as there is one root node.

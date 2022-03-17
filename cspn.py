@@ -191,6 +191,11 @@ class CSPN(RatSpn):
 
     def sample(self, condition: torch.Tensor = None, n=1, class_index=None,
                evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+        raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
+                                  "Please choose one.")
+
+    def sample_index_style(self, condition: torch.Tensor = None, n=1, class_index=None,
+               evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
         """
         Sample from the random variable encoded by the CSPN.
 
@@ -204,7 +209,24 @@ class CSPN(RatSpn):
         # TODO add assert to check dimension of evidence, if given.
 
         # batch_size = self.root.weights.shape[0]
-        return super().sample(n, class_index, evidence, is_mpe, **kwargs)
+        return super().sample_index_style(n, class_index, evidence, is_mpe, **kwargs)
+
+    def sample_onehot_style(self, condition: torch.Tensor = None, n=1, class_index=None,
+               evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+        """
+        Sample from the random variable encoded by the CSPN.
+
+        Args:
+            condition (torch.Tensor): Batch of conditionals.
+        """
+        if condition is not None:
+            self.set_weights(condition)
+        assert class_index is None or condition.shape[0] == len(class_index), \
+            "The batch size of the condition must equal the length of the class index list if they are provided!"
+        # TODO add assert to check dimension of evidence, if given.
+
+        # batch_size = self.root.weights.shape[0]
+        return super().sample_onehot_style(n, class_index, evidence, is_mpe, **kwargs)
 
     def replace_layer_params(self):
         for layer in self._inner_layers:

@@ -32,6 +32,14 @@ class AbstractLayer(nn.Module, ABC):
         """
         pass
 
+    @abstractmethod
+    def sample_index_style(self, context: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+        pass
+
+    @abstractmethod
+    def sample_onehot_style(self, context: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+        pass
+
 
 class Sum(AbstractLayer):
     def __init__(
@@ -133,7 +141,11 @@ class Sum(AbstractLayer):
 
         return x
 
-    def sample(self, context: SamplingContext = None) -> SamplingContext:
+    def sample(self, context: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+        raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
+                                  "Please choose one.")
+
+    def sample_index_style(self, context: SamplingContext = None) -> SamplingContext:
         """Method to sample from this layer, based on the parents output.
 
         Output is always a vector of indices into the channels.
@@ -160,27 +172,23 @@ class Sum(AbstractLayer):
 
         # Create sampling context if this is a root layer
         if context.is_root:
-            if False:
-                # Initialize rep indices
-                context.repetition_indices = torch.zeros(sample_size, w, dtype=int, device=self.__device)
-                weights = weights[:, :, :, 0, 0].unsqueeze(0).repeat(sample_size, 1, 1, 1)
-            else:
-                weights = weights.unsqueeze(0).expand(sample_size, -1, -1, -1, -1, -1)
-                # weights from selected repetition with shape [n, w, d, ic, oc, r]
-                # In this sum layer there are oc * r nodes per feature. oc * r is our nr_nodes.
-                weights = weights.permute(5, 4, 0, 1, 2, 3)
-                # weights from selected repetition with shape [r, oc, n, w, d, ic]
-                # Reshape weights to [oc * r, n, w, d, ic]
-                # The nodes in the first dimension are taken from the first two weight dimensions [r, oc] like this:
-                # [0, 0], ..., [0, oc-1], [1, 0], ..., [1, oc-1], [2, 0], ..., [r-1, oc-1]
-                # This means the weights for the first oc nodes are the weights for repetition 0.
-                # This must coincide with the repetition indices.
-                weights = weights.reshape(oc * r, sample_size, w, d, ic)
+            weights = weights.unsqueeze(0).expand(sample_size, -1, -1, -1, -1, -1)
+            # weights from selected repetition with shape [n, w, d, ic, oc, r]
+            # In this sum layer there are oc * r nodes per feature. oc * r is our nr_nodes.
+            weights = weights.permute(5, 4, 0, 1, 2, 3)
+            # weights from selected repetition with shape [r, oc, n, w, d, ic]
+            # Reshape weights to [oc * r, n, w, d, ic]
+            # The nodes in the first dimension are taken from the first two weight dimensions [r, oc] like this:
+            # [0, 0], ..., [0, oc-1], [1, 0], ..., [1, oc-1], [2, 0], ..., [r-1, oc-1]
+            # This means the weights for the first oc nodes are the weights for repetition 0.
+            # This must coincide with the repetition indices.
+            weights = weights.reshape(oc * r, sample_size, w, d, ic)
 
-                context.repetition_indices = torch.arange(r).to(self.__device).repeat_interleave(oc)
-                context.repetition_indices = context.repetition_indices.unsqueeze(-1).unsqueeze(-1).repeat(
-                    1, context.n, w
-                )
+            context.repetition_indices = torch.arange(r).to(self.__device).repeat_interleave(oc)
+            context.repetition_indices = context.repetition_indices.unsqueeze(-1).unsqueeze(-1).repeat(
+                1, context.n, w
+            )
+
         else:
             # If this is not the root node, use the paths (out channels), specified by the parent layer
             if context.repetition_indices is not None:
@@ -222,14 +230,91 @@ class Sum(AbstractLayer):
             # >> dist = torch.distributions.Categorical(logits=weights)
             # >> indices = dist.sample()
 
+            one_hot = F.gumbel_softmax(logits=weights, hard=True, dim=4)
             cats = torch.arange(ic, device=weights.device)
             if weights.dim() == 6:
                 cats = cats.unsqueeze_(-1).expand(-1, r)
-            one_hot = F.gumbel_softmax(logits=weights, hard=True, dim=4)
             indices = (one_hot * cats).sum(4).long()
 
         # Update parent indices
         context.parent_indices = indices
+
+        return context
+
+    def sample_onehot_style(self, context: SamplingContext = None) -> SamplingContext:
+        """Method to sample from this layer, based on the parents output.
+
+        Output is always a one-hot vector of indices into the channels.
+
+        Args:
+            context: Contains
+                repetition_indices (List[int]): An index into the repetition axis for each sample.
+                    Can be None if `num_repetitions==1`.
+                parent_indices (torch.Tensor): Parent sampling output.
+                n: Number of samples to draw for each set of weights.
+        Returns:
+            torch.Tensor: Index into tensor which paths should be followed.
+        """
+
+        # Sum weights are of shape: [N, D, IC, OC, R]
+        # We now want to use the "hot" indices to access one in_channel for each in_feature x out_channels block
+        weights: torch.Tensor = self.weights
+        if weights.dim() == 4:
+            weights = weights.unsqueeze(0)
+        # w is the number of weight sets
+        w, d, ic, oc, r = weights.shape
+        sample_size = context.n
+
+        # Create sampling context if this is a root layer
+        if context.is_root:
+            weights = weights.unsqueeze(0).expand(sample_size, -1, -1, -1, -1, -1)
+            # Shape [n, w, d, ic, oc, r]
+            weights = weights.permute(4, 0, 1, 2, 3, 5)
+            # oc is our nr_nodes: [nr_nodes, n, w, d, ic, r]
+        else:
+            weights = weights * context.parent_indices.unsqueeze(4)
+            # [nr_nodes, n, w, d, ic, oc, r]
+            weights = weights.sum(5)  # Sum out output_channel dimension
+            if context.parent_indices.detach()[0, 0, 0, 0, :, :].sum().item() == 1.0:
+                # Only one repetition is selected, remove repetition dim of weights
+                weights = weights.sum(-1)
+
+        # If evidence is given, adjust the weights with the likelihoods of the observed paths
+        if self._is_input_cache_enabled and self._input_cache is not None:
+            raise NotImplementedError("Not yet adapted to new sampling method")
+            for i in range(w):
+                # Reweight the i-th samples weights by its likelihood values at the correct repetition
+                weights[i, :, :] += self._input_cache[i, :, :, context.repetition_indices[i]]
+
+        # If sampling context is MPE, set max weight to 1 and rest to zero, such that the maximum index will be sampled
+        if context.is_mpe:
+            # Get index of largest weight along in-channel dimension
+            indices = weights.argmax(dim=4)
+            one_hot = F.one_hot(indices, num_classes=ic)
+            if one_hot.dim() == 6:
+                # F.one_hot() expands the last dim, which is the ic dim. It must come before the repetition dim.
+                one_hot = one_hot.permute(0, 1, 2, 3, 5, 4)
+        else:
+            # Create categorical distribution and use weights as logits.
+            #
+            # Use the Gumble-Softmax trick to obtain one-hot indices of the categorical distribution
+            # represented by the given logits. (Use Gumble-Softmax instead of Categorical
+            # to allow for gradients).
+            #
+            # The code below is an approximation of:
+            #
+            # >> dist = torch.distributions.Categorical(logits=weights)
+            # >> indices = dist.sample()
+
+            one_hot = F.gumbel_softmax(logits=weights, hard=True, dim=4)
+
+        if one_hot.dim() == 5:
+            # Weights didn't have repetition dim, so re-instantiate it again.
+            one_hot = context.parent_indices.detach().sum(4).unsqueeze(4) * one_hot.unsqueeze(-1)
+        assert one_hot.detach().sum(4).max().item() == 1.0
+
+        # Update one-hot vectors to select the input channels of this layer.
+        context.parent_indices = one_hot
 
         return context
 
@@ -350,6 +435,12 @@ class Product(AbstractLayer):
         else:
             raise NotImplementedError("No reduction other than sum is implemented. ")
 
+    def sample_onehot_style(self, context: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+        return self.sample(context)
+
+    def sample_index_style(self, context: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+        return self.sample(context)
+
     def sample(self, n: int = None, context: SamplingContext = None) -> SamplingContext:
         """Method to sample from this layer, based on the parents output.
 
@@ -447,6 +538,8 @@ class CrossProduct(AbstractLayer):
                           for j in range(self.in_channels)]),
             requires_grad=False
         )
+        self.one_hot_in_channel_mapping = nn.Parameter(F.one_hot(self.unraveled_channel_indices).float(),
+                                                       requires_grad=False)
         # Number of conditionals (= number of different weight sets) in the CSPN.
         # This is only needed when sampling this layer as root.
         # It is initialized as 1, which would also be the RatSpn case.
@@ -496,7 +589,11 @@ class CrossProduct(AbstractLayer):
         assert result.size() == (n, w, d_out, c * c, r)
         return result
 
-    def sample(self, context: SamplingContext = None) -> SamplingContext:
+    def sample(self, context: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+        raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
+                                  "Please choose one.")
+
+    def sample_index_style(self, context: SamplingContext = None) -> SamplingContext:
         """Method to sample from this layer, based on the parents output.
 
         Args:
@@ -537,6 +634,56 @@ class CrossProduct(AbstractLayer):
                 indices = indices.permute(0, 1, 2, 3, 5, 4).reshape(nr_nodes, n, w, d * self.cardinality, r)
             else:
                 indices = indices.view(nr_nodes, n, w, -1)
+
+        # Remove padding
+        if self._pad:
+            indices = indices[:, :, :, : -self._pad]
+
+        context.parent_indices = indices
+        return context
+
+    def sample_onehot_style(self, context: SamplingContext = None) -> SamplingContext:
+        """Method to sample from this layer, based on the parents output.
+
+        Args:
+            context (SamplingContext):
+                n: Number of samples.
+                parent_indices (torch.Tensor): Nodes selected by parent layer
+                repetition_indices (torch.Tensor): Repetitions selected by parent layer
+        Returns:
+            torch.Tensor: Index into tensor which paths should be followed.
+                          Output should be of size: in_features, out_channels.
+        """
+
+        # If this is a root node
+        if context.is_root:
+            raise NotImplementedError("This isn't adapted to the one-hot sampling style")
+            # Sampling starting at a CrossProduct layer means sampling each node in the layer.
+
+            # There are oc * r * out_features nodes in this layer.
+            # We sample across all repetitions at the same time, so the parent_indices tensor has a repetition dim.
+
+            # The parent and repetition indices are also repeated by the number of samples requested
+            # and by the number of conditionals the CSPN weights have been set to.
+            # In the RatSpn case, the number of conditionals (abbreviated by w) is 1.
+            indices = self.unraveled_channel_indices.data.unsqueeze(1).unsqueeze(1).unsqueeze(-1)
+            # indices is [nr_nodes=oc, 1, 1, cardinality, 1]
+            indices = indices.repeat(
+                1, context.n, self.num_conditionals, self.in_features//self.cardinality, self.num_repetitions
+            )
+            # indices is [nr_nodes=oc, n, w, in_features, r]
+            oc, _ = self.unraveled_channel_indices.shape
+
+            # repetition indices are left empty because they are implicitly given in parent_indices
+        else:
+            nr_nodes, n, w, d, oc, r = context.parent_indices.shape
+            indices = context.parent_indices.permute(0, 1, 2, 3, 5, 4).unsqueeze(-1).unsqueeze(-1)
+            indices = indices * self.one_hot_in_channel_mapping
+            # Shape [nr_nodes, n, w, d, r, oc, 2, ic]
+            indices = indices.sum(dim=5)
+            # Shape [nr_nodes, n, w, d, r, 2, ic]
+            indices = indices.permute(0, 1, 2, 3, 5, 6, 4)  # [nr_nodes, n, w, d, 2, ic, r]
+            indices = indices.reshape(nr_nodes, n, w, d * self.cardinality, self.in_channels, r)
 
         # Remove padding
         if self._pad:

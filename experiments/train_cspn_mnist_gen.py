@@ -10,6 +10,7 @@ import skimage
 import torch
 import torchvision
 from torch import optim
+import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
@@ -71,7 +72,7 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, img_side_len, i
     return train_loader, test_loader
 
 
-def evaluate_sampling(model, save_dir, device, img_size, mpe=False, eval_ll=True):
+def evaluate_sampling(model, save_dir, device, img_size, mpe=False, eval_ll=True, style='index'):
     model.eval()
     log_like = []
     label = torch.as_tensor(np.arange(10)).to(device)
@@ -79,7 +80,10 @@ def evaluate_sampling(model, save_dir, device, img_size, mpe=False, eval_ll=True
     with torch.no_grad():
         if isinstance(model, CSPN):
             label = F.one_hot(label, 10).float().to(device)
-            samples = model.sample(n=samples_per_label, condition=label, is_mpe=mpe)
+            if style == 'index':
+                samples = model.sample_index_style(n=samples_per_label, condition=label, is_mpe=mpe)
+            else:
+                samples = model.sample_onehot_style(n=samples_per_label, condition=label, is_mpe=mpe)
             if eval_ll:
                 log_like.append(model(x=samples.atanh(), condition=None).mean().tolist())
         else:
@@ -335,10 +339,6 @@ if __name__ == "__main__":
     print("Using device:", device)
     batch_size = args.batch_size
 
-    # The task is to do image in-painting - to fill in a cut-out square in the image.
-    # The CSPN needs to learn the distribution of the cut-out given the image with the cut-out part set to 0 as
-    # the conditional.
-
     img_size = (1, 28, 28)  # 3 channels
     cond_size = 10
 
@@ -350,17 +350,48 @@ if __name__ == "__main__":
         base_path = os.path.join('..', '..', 'spn_experiments', 'vi_ent_approx_Mar22', f"results_{exp_name}")
         model_name = f"epoch-{epoch}_{exp_name}"
         path = os.path.join(base_path, 'models', f"{model_name}.pt")
-        model = torch.load(path, map_location=torch.device('cpu'))
+        model = torch.load(path, map_location=device)
 
-        exp = 0
-        if exp == 0:
+        exp = -1
+        if exp == -1:
+            label = torch.as_tensor(np.arange(10)).to(device)
+            label = F.one_hot(label, 10).float().to(device)
+            # sample = model.sample_index_style(condition=label, is_mpe=False)
+            sample = model.sample_onehot_style(condition=label, is_mpe=False)
+            sample.mean().backward()
+            print(f"dist std head weight grads max {model.dist_std_head.weight.grad.max()}")
+            print(f"dist std head bias grads max {model.dist_std_head.bias.grad.max()}")
+            print(
+                f"sum param heads weight grads max {[lay.weight.grad.max() if lay.weight.grad is not None else 0 for lay in model.sum_param_heads]}")
+            print(
+                f"sum param heads bias grads max {[lay.bias.grad.max() if lay.bias.grad is not None else 0 for lay in model.sum_param_heads]}")
+            for lay in model.dist_layers:
+                if isinstance(lay, nn.Linear):
+                    print(f"Dist layer weight grads max {lay.weight.grad.max()}")
+                    print(f"Dist layer bias grads max {lay.bias.grad.max()}")
+            for lay in model.sum_layers:
+                if isinstance(lay, nn.Linear):
+                    print(
+                        f"Sum layer weight grads max {lay.weight.grad.max() if lay.weight.grad is not None else 0}")
+                    print(f"Sum layer bias grads max {lay.bias.grad.max() if lay.bias.grad is not None else 0}")
+            for lay in model.feat_layers:
+                if isinstance(lay, nn.Linear):
+                    print(f"Feat layer weight grads max {lay.weight.grad.max()}")
+                    print(f"Feat layer bias grads max {lay.bias.grad.max()}")
+            print('done')
+
+        elif exp == 0:
             samples_dir = os.path.join(base_path, 'new_samples')
             if not os.path.exists(samples_dir):
                 os.makedirs(samples_dir)
-            save_path = os.path.join(samples_dir, f"sample_mpe.png")
-            evaluate_sampling(model, save_path, torch.device('cpu'), img_size, mpe=True)
-            save_path = os.path.join(samples_dir, f"sample.png")
-            evaluate_sampling(model, save_path, torch.device('cpu'), img_size)
+            save_path = os.path.join(samples_dir, f"sample_mpe_index_style.png")
+            evaluate_sampling(model, save_path, device, img_size, mpe=True, style='index')
+            save_path = os.path.join(samples_dir, f"sample_mpe_onehot_style.png")
+            evaluate_sampling(model, save_path, device, img_size, mpe=True, style='onehot')
+            save_path = os.path.join(samples_dir, f"sample_index_style.png")
+            evaluate_sampling(model, save_path, device, img_size, style='index')
+            save_path = os.path.join(samples_dir, f"sample_onehot_style.png")
+            evaluate_sampling(model, save_path, device, img_size, style='onehot')
             print(1)
         elif exp == 1:
             # Here, the choices of the root sum node are overridden and instead all output channels of its children
@@ -388,7 +419,6 @@ if __name__ == "__main__":
             top_5_ll_img = torch.zeros(5, *img_size)
             low_5_ll = torch.ones(5) * 10e6
             low_5_ll_img = torch.zeros(5, *img_size)
-
 
             show_all = True
             find_top_low_LL = False
@@ -504,6 +534,8 @@ if __name__ == "__main__":
         print("Evaluating model ...")
         save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
         evaluate_sampling(model, save_path, device, img_size)
+        save_path = os.path.join(sample_dir, f"mpe-epoch-{epoch:03}_{args.exp_name}.png")
+        evaluate_sampling(model, save_path, device, img_size, mpe=True)
         info.reset(epoch)
         info['mnist_test_ll'] = evaluate_model(model, device, test_loader, "MNIST test")
         info.average()
@@ -552,7 +584,7 @@ if __name__ == "__main__":
                                                                                verbose=False)
                     print(p.key_averages(group_by_input_shape=True).table(sort_by="self_cuda_time_total", row_limit=20))
                     print(p.key_averages(group_by_input_shape=True).table(sort_by="self_cuda_memory_usage", row_limit=20))
-                else:
+                elif False:
                     with torch.no_grad():
                         vi_ent_approx, batch_ent_log = model.vi_entropy_approx(
                             sample_size=5, condition=None, verbose=args.plot_vi_log,
@@ -563,7 +595,8 @@ if __name__ == "__main__":
                         # )
                 vi_ent_approx = vi_ent_approx.mean()
                 # vi_ent_approx_separate_samples = vi_ent_approx_separate_samples.mean()
-                temp_log.append(batch_ent_log)
+                if args.plot_vi_log:
+                    temp_log.append(batch_ent_log)
                 # temp_log_separate_samples.append(batch_ent_log_separate_samples)
                 # sample = model.sample(n=3, condition=None)
                 if args.ent_loss_alpha > 0.0:
