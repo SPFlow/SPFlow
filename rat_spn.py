@@ -565,7 +565,8 @@ class RatSpn(nn.Module):
         log_weights = torch.empty(1)
         logging = {}
 
-        child_ll = self._leaf.sample(SamplingContext(n=sample_size, is_mpe=False))
+        with torch.no_grad():
+            child_ll = self._leaf.sample_index_style(SamplingContext(n=sample_size, is_mpe=False))
         child_ll = self._leaf(child_ll)
         child_entropies = -child_ll.mean(dim=0, keepdim=True)
 
@@ -589,10 +590,11 @@ class RatSpn(nn.Module):
                 if not share_ch_samples_among_nodes:
                     oc = layer.out_channels
                     ctx = SamplingContext(n=sample_size * oc, is_mpe=False)
-                    # noinspection PyTypeChecker
-                    for child_layer in reversed(self._inner_layers[:i]):
-                        ctx = child_layer.sample(ctx)
-                    child_sample = self._leaf.sample(ctx)
+                    with torch.no_grad():
+                        # noinspection PyTypeChecker
+                        for child_layer in reversed(self._inner_layers[:i]):
+                            ctx = child_layer.sample(ctx)
+                        child_sample = self._leaf.sample(ctx)
 
                     # The nr_nodes is the number of input channels (ic) to the
                     # current layer - we sampled all its input channels.
@@ -670,10 +672,11 @@ class RatSpn(nn.Module):
                     child_ll = child_ll.permute(2, 3, 0, 1, 4)
                 else:
                     ctx = SamplingContext(n=sample_size, is_mpe=False)
-                    # noinspection PyTypeChecker
-                    for child_layer in reversed(self._inner_layers[:i]):
-                        ctx = child_layer.sample(ctx)
-                    child_sample = self._leaf.sample(ctx)
+                    with torch.no_grad():
+                        # noinspection PyTypeChecker
+                        for child_layer in reversed(self._inner_layers[:i]):
+                            ctx = child_layer.sample(ctx)
+                        child_sample = self._leaf.sample(ctx)
 
                     # The nr_nodes is the number of input channels (ic) to the
                     # current layer - we sampled all its input channels.
