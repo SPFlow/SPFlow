@@ -607,8 +607,8 @@ if __name__ == "__main__":
                     temp_log.append(batch_ent_log)
                 # temp_log_separate_samples.append(batch_ent_log_separate_samples)
                 # sample = model.sample(n=3, condition=None)
-                if args.ent_loss_alpha > 0.0:
-                    ent_loss = -args.ent_loss_alpha * vi_ent_approx
+                if args.ent_loss_coef > 0.0:
+                    ent_loss = -args.ent_loss_coef * vi_ent_approx
                 loss = mse_loss + ll_loss + ent_loss
 
             loss.backward()
