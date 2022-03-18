@@ -519,7 +519,7 @@ if __name__ == "__main__":
         if args.tanh:
             config.tanh_squash = True
             config.leaf_base_kwargs = {'no_tanh_log_prob_correction': args.no_correction_term}
-            config.leaf_base_kwargs = {'min_mean': -5.0, 'max_mean': 5.0}
+            # config.leaf_base_kwargs = {'min_mean': -5.0, 'max_mean': 5.0}
         else:
             config.leaf_base_kwargs = {'min_mean': 0.0, 'max_mean': 1.0}
         if args.sigmoid_std:
