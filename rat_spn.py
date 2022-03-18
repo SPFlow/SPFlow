@@ -482,8 +482,7 @@ class RatSpn(nn.Module):
             # w_{r,c}, with r and c being the repetition and channel the weight belongs to, respectively.
             # The weight vector will then contain [w_{0,0},w_{1,0},w_{2,0},w_{0,1},w_{1,1},w_{2,1},w_{0,2},w_{1,2},...]
             # This weight vector was used as the logits in a IC*R-categorical distribution, yielding indexes [0,C*R-1].
-            assert ctx.parent_indices.shape == (1, ctx.n, self.root.weights.size(0), 1,
-                                                self.root.weights.size(2), 1)
+            assert ctx.parent_indices.shape == (1, ctx.n, self.root.weights.size(0), 1, self.root.weights.size(2), 1)
             nr_nodes, n, w, _, _, _ = ctx.parent_indices.shape
             ctx.parent_indices = ctx.parent_indices.view(nr_nodes, n, w, 1, -1, self.config.R)
 
@@ -549,7 +548,8 @@ class RatSpn(nn.Module):
         entropy = weight_entropy + weighted_ch_ents + aux_resp_ent
         return entropy, sample_ll
 
-    def vi_entropy_approx(self, sample_size, verbose=False, share_ch_samples_among_nodes=True):
+    def vi_entropy_approx(self, sample_size, verbose=False, share_ch_samples_among_nodes=True,
+                          sample_children_with_grad=False):
         """
         Approximate the entropy of the root sum node via variational inference,
         as done in the Variational Inference by Policy Search paper.
@@ -558,6 +558,7 @@ class RatSpn(nn.Module):
             sample_size: Number of samples to approximate the expected entropy of the responsibility with.
             verbose: Return logging data
             share_ch_samples_among_nodes: See comment before if-else branch of this flag.
+            sample_children_with_grad: Sample child nodes in a differentiable way.
         """
         assert not self.config.gmm_leaves, "VI entropy not tested on GMM leaves yet."
         assert self.config.C == 1, "For C > 1, we must calculate starting from self._sampling_root!"
@@ -565,8 +566,11 @@ class RatSpn(nn.Module):
         log_weights = torch.empty(1)
         logging = {}
 
-        with torch.no_grad():
-            child_ll = self._leaf.sample_index_style(SamplingContext(n=sample_size, is_mpe=False))
+        if sample_children_with_grad:
+            child_ll = self._leaf.sample_onehot_style(SamplingContext(n=sample_size, is_mpe=False))
+        else:
+            with torch.no_grad():
+                child_ll = self._leaf.sample_index_style(SamplingContext(n=sample_size, is_mpe=False))
         child_ll = self._leaf(child_ll)
         child_entropies = -child_ll.mean(dim=0, keepdim=True)
 
@@ -590,11 +594,18 @@ class RatSpn(nn.Module):
                 if not share_ch_samples_among_nodes:
                     oc = layer.out_channels
                     ctx = SamplingContext(n=sample_size * oc, is_mpe=False)
-                    with torch.no_grad():
-                        # noinspection PyTypeChecker
-                        for child_layer in reversed(self._inner_layers[:i]):
-                            ctx = child_layer.sample(ctx)
-                        child_sample = self._leaf.sample(ctx)
+                    if sample_children_with_grad:
+                        with torch.no_grad():
+                            # noinspection PyTypeChecker
+                            for child_layer in reversed(self._inner_layers[:i]):
+                                ctx = child_layer.sample_onehot_style(ctx)
+                            child_sample = self._leaf.sample_onehot_style(ctx)
+                    else:
+                        with torch.no_grad():
+                            # noinspection PyTypeChecker
+                            for child_layer in reversed(self._inner_layers[:i]):
+                                ctx = child_layer.sample_index_style(ctx)
+                            child_sample = self._leaf.sample_index_style(ctx)
 
                     # The nr_nodes is the number of input channels (ic) to the
                     # current layer - we sampled all its input channels.
@@ -672,11 +683,17 @@ class RatSpn(nn.Module):
                     child_ll = child_ll.permute(2, 3, 0, 1, 4)
                 else:
                     ctx = SamplingContext(n=sample_size, is_mpe=False)
-                    with torch.no_grad():
+                    if sample_children_with_grad:
                         # noinspection PyTypeChecker
                         for child_layer in reversed(self._inner_layers[:i]):
-                            ctx = child_layer.sample(ctx)
-                        child_sample = self._leaf.sample(ctx)
+                            ctx = child_layer.sample_onehot_style(ctx)
+                        child_sample = self._leaf.sample_onehot_style(ctx)
+                    else:
+                        with torch.no_grad():
+                            # noinspection PyTypeChecker
+                            for child_layer in reversed(self._inner_layers[:i]):
+                                ctx = child_layer.sample_index_style(ctx)
+                            child_sample = self._leaf.sample_index_style(ctx)
 
                     # The nr_nodes is the number of input channels (ic) to the
                     # current layer - we sampled all its input channels.

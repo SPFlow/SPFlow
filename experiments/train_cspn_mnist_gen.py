@@ -185,7 +185,13 @@ class CsvLogger(dict):
         super().__init__()
         self.path = path
         self.other_keys = ['epoch', 'time']
-        self.keys_to_avg = ['mnist_test_ll', 'nll_loss', 'ent_loss', 'vi_ent_approx_separate_samples', 'vi_ent_approx', 'loss']
+        self.keys_to_avg = [
+            'mnist_test_ll', 'nll_loss', 'mse_loss', 'ent_loss',
+            'vi_ent_approx', 'loss'
+        ]
+        for i in range(10):
+            self.keys_to_avg.append(f"{i}/weight_ent_per_node")
+            self.keys_to_avg.append(f"{i}/entropy_contribution_per_node")
         self.no_log_dict = {'batch': None}
         self.reset()
         with open(self.path, 'w') as f:
@@ -197,6 +203,7 @@ class CsvLogger(dict):
             if isinstance(v, torch.Tensor):
                 v = v.item()
             if k not in self.keys_to_avg:
+                raise KeyError(f"{k} not in keys_to_avg")
                 self.keys_to_avg += [k]
                 self[k] = [v]
             else:
@@ -237,12 +244,12 @@ class CsvLogger(dict):
             return_str += f" @ batch {self.no_log_dict['batch']}"
         if mean := self._valid('nll_loss'):
             return_str += f" - NLL loss: {mean:.2f}"
+        if mean := self._valid('mse_loss'):
+            return_str += f" - MSE loss: {mean:.4f}"
         if mean := self._valid('ent_loss'):
             return_str += f" - Entropy loss: {mean:.2f}"
         if mean := self._valid('mnist_test_ll'):
             return_str += f" - LL orig mnist test set: {mean:.2f}"
-        if mean := self._valid('vi_ent_approx_separate_samples'):
-            return_str += f" - VI ent. approx. separate samples: {mean:.4f}"
         if mean := self._valid('vi_ent_approx'):
             return_str += f" - VI ent. approx.: {mean:.4f}"
         if mean := self._valid('gmm_ent_lb'):
@@ -259,6 +266,12 @@ class CsvLogger(dict):
             return_str += f" - Entropy of inner sums: {mean:.4f}|{self.mean('norm_inner_ent'):.2f}%"
         if mean := self._valid('root_ent'):
             return_str += f" - Entropy of root sum: {mean:.4f}|{self.mean('norm_root_ent'):.2f}%"
+        for i in range(10):
+            if mean := self._valid(f'{i}/weight_ent_per_node'):
+                return_str += f" - Sum layer {i}: Ent. of weights {mean:.4f}"
+            if mean := self._valid(f'{i}/entropy_contribution_per_node'):
+                return_str += f", Ent. contrib. per node {mean:.4f}"
+
         return return_str
 
     def __setitem__(self, key, value):
@@ -305,11 +318,18 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--inspect', action='store_true', help='Enter inspection mode')
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
-    parser.add_argument('--ent_loss_alpha', '-alpha', type=float, default=0.0,
+    parser.add_argument('--ent_approx_separate_samples', action='store_true',
+                        help='When approximating the entropy, don\'t share child samples for each sum in a layer.')
+    parser.add_argument('--ent_approx_sample_with_grad', action='store_true',
+                        help='When approximating the entropy, sample children in a differentiable way.')
+    parser.add_argument('--ent_loss_coef', type=float, default=0.0,
                         help='Factor for entropy loss at GMM leaves. Default 0.0. '
                              'If 0.0, no gradients are calculated w.r.t. the entropy.')
     parser.add_argument('--invert', type=float, default=0.0, help='Probability of an MNIST image being inverted.')
     parser.add_argument('--no_eval_at_start', action='store_true', help='Don\'t evaluate model at the beginning')
+    parser.add_argument('--learn_by_sampling', action='store_true', help='Learn in sampling mode.')
+    parser.add_argument('--learn_by_sampling__sample_size', '-n', type=int, default=10,
+                        help='When learning by sampling, this arg sets the number of samples generated for each label.')
     parser.add_argument('--tanh', action='store_true', help='Apply tanh squashing to leaves.')
     parser.add_argument('--sigmoid_std', action='store_true', help='Use sigmoid to set std.')
     parser.add_argument('--no_correction_term', action='store_true', help='Don\'t apply tanh correction term to logprob')
@@ -472,7 +492,7 @@ if __name__ == "__main__":
         exit()
 
     csv_log = os.path.join(results_dir, f"log_{args.exp_name}.csv")
-    info = CsvLogger(csv_log)
+    logger = CsvLogger(csv_log)
     # Construct Cspn from config
     train_loader, test_loader = get_mnist_loaders(args.dataset_dir, use_cuda, batch_size=batch_size, device=device,
                                                   img_side_len=img_size[1], invert=args.invert, debug_mode=args.verbose)
@@ -536,15 +556,15 @@ if __name__ == "__main__":
         evaluate_sampling(model, save_path, device, img_size)
         save_path = os.path.join(sample_dir, f"mpe-epoch-{epoch:03}_{args.exp_name}.png")
         evaluate_sampling(model, save_path, device, img_size, mpe=True)
-        info.reset(epoch)
-        info['mnist_test_ll'] = evaluate_model(model, device, test_loader, "MNIST test")
-        info.average()
-        info.write()
+        logger.reset(epoch)
+        logger['mnist_test_ll'] = evaluate_model(model, device, test_loader, "MNIST test")
+        logger.average()
+        logger.write()
     for epoch in range(args.epochs):
         if epoch > 20:
             lmbda = 0.5
         t_start = time.time()
-        info.reset(epoch)
+        logger.reset(epoch)
         temp_log = []
         temp_log_separate_samples = []
         for batch_index, (image, label) in enumerate(train_loader):
@@ -559,7 +579,7 @@ if __name__ == "__main__":
             # Inference
             optimizer.zero_grad()
             data = image.reshape(image.shape[0], -1)
-            ent_loss = vi_ent_approx_separate_samples = vi_ent_approx = torch.zeros(1).to(device)
+            mse_loss = ll_loss = ent_loss = vi_ent_approx_separate_samples = vi_ent_approx = torch.zeros(1).to(device)
             if args.ratspn:
                 output: torch.Tensor = model(x=data)
                 loss_ce = F.cross_entropy(output.squeeze(1), label)
@@ -568,31 +588,19 @@ if __name__ == "__main__":
                 vi_ent_approx = model.vi_entropy_approx(sample_size=10).mean()
             else:
                 label = F.one_hot(label, cond_size).float().to(device)
-                output: torch.Tensor = model(x=data, condition=label)
-                ll_loss = -output.mean()
-                if False:
-                    with torch.profiler.profile(
-                        activities=[
-                            torch.profiler.ProfilerActivity.CPU,
-                            torch.profiler.ProfilerActivity.CUDA,
-                        ],
-                        record_shapes=True,
-                        profile_memory=True,
-                        with_stack=True,
-                    ) as p:
-                        vi_ent_approx, batch_ent_log = model.vi_entropy_approx(sample_size=5, condition=None,
-                                                                               verbose=False)
-                    print(p.key_averages(group_by_input_shape=True).table(sort_by="self_cuda_time_total", row_limit=20))
-                    print(p.key_averages(group_by_input_shape=True).table(sort_by="self_cuda_memory_usage", row_limit=20))
-                elif False:
-                    with torch.no_grad():
-                        vi_ent_approx, batch_ent_log = model.vi_entropy_approx(
-                            sample_size=5, condition=None, verbose=args.plot_vi_log,
-                        )
-                        # vi_ent_approx_separate_samples, batch_ent_log_separate_samples = model.vi_entropy_approx(
-                        #     sample_size=5, condition=None, verbose=args.plot_vi_log,
-                        #     share_ch_samples_among_nodes=False,
-                        # )
+                if args.learn_by_sampling:
+                    sample = model.sample_onehot_style(condition=label, n=args.learn_by_sampling__sample_size)
+                    if model.config.tanh_squash:
+                        sample = sample.atanh()
+                    mse_loss = ((data - sample) ** 2).mean()
+                else:
+                    output: torch.Tensor = model(x=data, condition=label)
+                    ll_loss = -output.mean()
+                vi_ent_approx, batch_ent_log = model.vi_entropy_approx(
+                    sample_size=5, condition=None, verbose=True,
+                    share_ch_samples_among_nodes=not args.ent_approx_separate_samples,
+                    sample_children_with_grad=args.ent_approx_sample_with_grad,
+                )
                 vi_ent_approx = vi_ent_approx.mean()
                 # vi_ent_approx_separate_samples = vi_ent_approx_separate_samples.mean()
                 if args.plot_vi_log:
@@ -601,25 +609,29 @@ if __name__ == "__main__":
                 # sample = model.sample(n=3, condition=None)
                 if args.ent_loss_alpha > 0.0:
                     ent_loss = -args.ent_loss_alpha * vi_ent_approx
-                loss = ll_loss + ent_loss
+                loss = mse_loss + ll_loss + ent_loss
 
             loss.backward()
             optimizer.step()
-            info.add_to_avg_keys(nll_loss=ll_loss, ent_loss=ent_loss, loss=loss, vi_ent_approx=vi_ent_approx,
-                                 # vi_ent_approx_separate_samples=vi_ent_approx_separate_samples,
-                                 )
+            logger.add_to_avg_keys(
+                nll_loss=ll_loss, mse_loss=mse_loss, ent_loss=ent_loss, loss=loss,
+                vi_ent_approx=vi_ent_approx,
+            )
+            for lay_nr, lay_dict in batch_ent_log.items():
+                for key, val in lay_dict.items():
+                    logger.add_to_avg_keys(**{f"{lay_nr}/{key}": val})
 
             if False and batch_index > 0 and batch_index % 1000 == 0:
                 exit()
-                info['time'] = time.time() - t_start
-                info['batch'] = batch_index
-                print(info)
+                logger['time'] = time.time() - t_start
+                logger['batch'] = batch_index
+                print(logger)
             # Log stuff
             if args.verbose:
-                info['time'] = time.time()-t_start
-                info['batch'] = batch_index
-                print(info)
-                # print(info, end="\r")
+                logger['time'] = time.time()-t_start
+                logger['batch'] = batch_index
+                print(logger)
+                # print(logger, end="\r")
 
         t_delta = np.around(time.time()-t_start, 2)
         if epoch % save_interval == (save_interval-1):
@@ -636,13 +648,13 @@ if __name__ == "__main__":
             evaluate_sampling(model, save_path, device, img_size)
             save_path = os.path.join(sample_dir, f"mpe-epoch-{epoch:03}_{args.exp_name}.png")
             evaluate_sampling(model, save_path, device, img_size, mpe=True)
-            info['mnist_test_ll'] = evaluate_model(model, device, test_loader, "MNIST test")
+            logger['mnist_test_ll'] = evaluate_model(model, device, test_loader, "MNIST test")
 
-        info.average()
-        info['time'] = t_delta
-        info['batch'] = None
-        info.write()
-        print(info)
+        logger.average()
+        logger['time'] = t_delta
+        logger['batch'] = None
+        logger.write()
+        print(logger)
 
         if args.plot_vi_log:  # epoch level
             print("Plotting log data from variational inference entropy approximation...")
