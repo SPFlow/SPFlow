@@ -590,9 +590,9 @@ if __name__ == "__main__":
             else:
                 label = F.one_hot(label, cond_size).float().to(device)
                 if args.learn_by_sampling:
-                    sample = model.sample_onehot_style(condition=label, n=args.learn_by_sampling__sample_size)
+                    sample: torch.Tensor = model.sample_onehot_style(condition=label, n=args.learn_by_sampling__sample_size)
                     if model.config.tanh_squash:
-                        sample = sample.atanh()
+                        sample = sample.clamp(-0.99999, 0.99999).atanh()
                     mse_loss: torch.Tensor = ((data - sample) ** 2).mean()
                 else:
                     output: torch.Tensor = model(x=data, condition=label)
