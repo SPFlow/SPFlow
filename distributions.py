@@ -184,12 +184,12 @@ class RatNormal(Leaf):
             means = self.means
             if self.max_mean:
                 assert self.min_mean is not None
-                mean_range = self.max_mean - self.min_mean
-                means = torch.sigmoid(self.means) * mean_range + self.min_mean
+                # mean_range = self.max_mean - self.min_mean
+                # means = torch.sigmoid(self.means) * mean_range + self.min_mean
+                means = torch.clamp(means, self.min_mean, self.max_mean)
 
             return means, sigma
         else:
-            # In the CSPN case, the dist parameters have already been bounded in Cspn.set_weights()
             return self.means, self.stds
 
     def _get_base_distribution(self) -> torch.distributions.Distribution:

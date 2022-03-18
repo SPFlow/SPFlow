@@ -323,7 +323,7 @@ if __name__ == "__main__":
     parser.add_argument('--ent_approx_sample_with_grad', action='store_true',
                         help='When approximating the entropy, sample children in a differentiable way.')
     parser.add_argument('--ent_loss_coef', type=float, default=0.0,
-                        help='Factor for entropy loss at GMM leaves. Default 0.0. '
+                        help='Factor for entropy loss. Default 0.0. '
                              'If 0.0, no gradients are calculated w.r.t. the entropy.')
     parser.add_argument('--invert', type=float, default=0.0, help='Probability of an MNIST image being inverted.')
     parser.add_argument('--no_eval_at_start', action='store_true', help='Don\'t evaluate model at the beginning')
@@ -519,6 +519,7 @@ if __name__ == "__main__":
         if args.tanh:
             config.tanh_squash = True
             config.leaf_base_kwargs = {'no_tanh_log_prob_correction': args.no_correction_term}
+            config.leaf_base_kwargs = {'min_mean': -5.0, 'max_mean': 5.0}
         else:
             config.leaf_base_kwargs = {'min_mean': 0.0, 'max_mean': 1.0}
         if args.sigmoid_std:
@@ -592,7 +593,7 @@ if __name__ == "__main__":
                     sample = model.sample_onehot_style(condition=label, n=args.learn_by_sampling__sample_size)
                     if model.config.tanh_squash:
                         sample = sample.atanh()
-                    mse_loss = ((data - sample) ** 2).mean()
+                    mse_loss: torch.Tensor = ((data - sample) ** 2).mean()
                 else:
                     output: torch.Tensor = model(x=data, condition=label)
                     ll_loss = -output.mean()
