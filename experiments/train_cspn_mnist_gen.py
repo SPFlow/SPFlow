@@ -190,8 +190,9 @@ class CsvLogger(dict):
             'vi_ent_approx', 'loss'
         ]
         for i in range(10):
-            self.keys_to_avg.append(f"{i}/weight_ent_per_node")
-            self.keys_to_avg.append(f"{i}/entropy_contribution_per_node")
+            self.keys_to_avg.append(f"{i}/weight_entropy")
+            self.keys_to_avg.append(f"{i}/weighted_child_ent")
+            self.keys_to_avg.append(f"{i}/weighted_aux_resp")
         self.no_log_dict = {'batch': None}
         self.reset()
         with open(self.path, 'w') as f:
@@ -267,10 +268,15 @@ class CsvLogger(dict):
         if mean := self._valid('root_ent'):
             return_str += f" - Entropy of root sum: {mean:.4f}|{self.mean('norm_root_ent'):.2f}%"
         for i in range(10):
-            if mean := self._valid(f'{i}/weight_ent_per_node'):
-                return_str += f" - Sum layer {i}: Ent. of weights {mean:.4f}"
-            if mean := self._valid(f'{i}/entropy_contribution_per_node'):
-                return_str += f", Ent. contrib. per node {mean:.4f}"
+            if self._valid(f'{i}/weight_entropy') or self._valid(f'{i}/weighted_child_ent') \
+                    or self._valid(f'{i}/weighted_aux_resp'):
+                return_str += f" - Sum layer {i}: "
+                if mean := self._valid(f'{i}/weight_entropy'):
+                    return_str += f"Weight ent {mean:.4f} "
+                if mean := self._valid(f'{i}/weighted_child_ent'):
+                    return_str += f"Weighted child ent {mean:.4f} "
+                if mean := self._valid(f'{i}/weighted_aux_resp'):
+                    return_str += f"Weighted aux. responsib. {mean:.4f}"
 
         return return_str
 
@@ -320,6 +326,8 @@ if __name__ == "__main__":
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
     parser.add_argument('--ent_approx_separate_samples', action='store_true',
                         help='When approximating the entropy, don\'t share child samples for each sum in a layer.')
+    parser.add_argument('--ent_approx__sample_size', type=int, default=5,
+                        help='When approximating entropy, use this sample size. ')
     parser.add_argument('--ent_approx_sample_with_grad', action='store_true',
                         help='When approximating the entropy, sample children in a differentiable way.')
     parser.add_argument('--ent_loss_coef', type=float, default=0.0,
@@ -328,7 +336,7 @@ if __name__ == "__main__":
     parser.add_argument('--invert', type=float, default=0.0, help='Probability of an MNIST image being inverted.')
     parser.add_argument('--no_eval_at_start', action='store_true', help='Don\'t evaluate model at the beginning')
     parser.add_argument('--learn_by_sampling', action='store_true', help='Learn in sampling mode.')
-    parser.add_argument('--learn_by_sampling__sample_size', '-n', type=int, default=10,
+    parser.add_argument('--learn_by_sampling__sample_size', type=int, default=10,
                         help='When learning by sampling, this arg sets the number of samples generated for each label.')
     parser.add_argument('--tanh', action='store_true', help='Apply tanh squashing to leaves.')
     parser.add_argument('--sigmoid_std', action='store_true', help='Use sigmoid to set std.')
@@ -598,7 +606,7 @@ if __name__ == "__main__":
                     output: torch.Tensor = model(x=data, condition=label)
                     ll_loss = -output.mean()
                 vi_ent_approx, batch_ent_log = model.vi_entropy_approx(
-                    sample_size=5, condition=None, verbose=True,
+                    sample_size=args.ent_approx__sample_size, condition=label, verbose=True,
                     share_ch_samples_among_nodes=not args.ent_approx_separate_samples,
                     sample_children_with_grad=args.ent_approx_sample_with_grad,
                 )
