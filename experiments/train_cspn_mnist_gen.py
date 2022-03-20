@@ -296,6 +296,7 @@ if __name__ == "__main__":
     parser.add_argument('--device', '-dev', type=str, default='cpu', choices=['cpu', 'cuda'])
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--epochs', '-ep', type=int, default=100)
+    parser.add_argument('--learning_rate', '-lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('--batch_size', '-bs', type=int, default=256)
     parser.add_argument('--results_dir', type=str, default='../../spn_experiments',
                         help='The base directory where the directory containing the results will be saved to.')
@@ -548,7 +549,7 @@ if __name__ == "__main__":
     model.train()
     print("Config:", model.config)
     print(model)
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
     lmbda = 1.0
     sample_interval = 1 if args.verbose else args.eval_interval  # number of epochs
