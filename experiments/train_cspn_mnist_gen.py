@@ -550,6 +550,7 @@ if __name__ == "__main__":
     print("Config:", model.config)
     print(model)
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    print(f"Optimizer: {optimizer}")
 
     lmbda = 1.0
     sample_interval = 1 if args.verbose else args.eval_interval  # number of epochs
