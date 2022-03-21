@@ -316,19 +316,12 @@ class RatSpn(nn.Module):
         raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
                                   "Please choose one.")
 
-    def sample_index_style(self, n: int = None, class_index=None, evidence: th.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample_index_style(self, n: int = None, class_index=None, evidence: th.Tensor = None, is_mpe: bool = False,
+                           start_at_layer: int = 0):
         """
         Sample from the distribution represented by this SPN.
 
         This sampling mechanism works with indexes, which are non-differentiable.
-
-        Possible valid inputs:
-
-        - `n`: Generates `n` samples.
-        - `n` and `class_index (int)`: Generates `n` samples from P(X | C = class_index).
-        - `class_index (List[int])`: Generates `len(class_index)` samples. Each index `c_i` in `class_index` is mapped
-            to a sample from P(X | C = c_i)
-        - `evidence`: If evidence is given, samples conditionally and fill NaN values.
 
         Args:
             n: Number of samples to generate.
@@ -340,6 +333,7 @@ class RatSpn(nn.Module):
                 distribution represented by the SPN. The result will contain the evidence and replace all NaNs with the
                 sampled values.
             is_mpe: Flag to perform max sampling (MPE).
+            start_at_layer: Layer to start sampling from. 0 = Root layer, 1 = Child layer of root layer, ...
 
         Returns:
             th.Tensor: Samples generated according to the distribution specified by the SPN.
@@ -368,32 +362,34 @@ class RatSpn(nn.Module):
                 ctx = SamplingContext(n=n, is_mpe=is_mpe)
                 # ctx = self._sampling_root.sample(context=ctx)
 
-            # Sample from RatSpn root layer: Results are indices into the stacked output channels of all repetitions
-            # ctx.repetition_indices = th.zeros(n, dtype=int, device=self._device)
-            ctx = self.root.sample_index_style(ctx=ctx)
-            # parent_indices and repetition indices both have the same shape in the first three dimensions:
-            # [nr_nodes, n, w]
-            # nr_nodes is the number of nodes which are sampled in the current SamplingContext.
-            # In RatSpn.sample() it will always be 1 as we are sampling the root node.
-            # In the variational inference entropy approximation, nr_nodes will be different.
-            # n is the number of samples drawn per node and per weight set.
-            # w is the number of weight sets i.e. the number of conditionals that are given.
-            # This applies only to the Cspn, in the RatSpn this will always be 1.
+            if start_at_layer == 0:
+                # Sample from RatSpn root layer: Results are indices into the stacked output channels of all repetitions
+                # ctx.repetition_indices = th.zeros(n, dtype=int, device=self._device)
+                ctx = self.root.sample_index_style(ctx=ctx)
+                # parent_indices and repetition indices both have the same shape in the first three dimensions:
+                # [nr_nodes, n, w]
+                # nr_nodes is the number of nodes which are sampled in the current SamplingContext.
+                # In RatSpn.sample() it will always be 1 as we are sampling the root node.
+                # In the variational inference entropy approximation, nr_nodes will be different.
+                # n is the number of samples drawn per node and per weight set.
+                # w is the number of weight sets i.e. the number of conditionals that are given.
+                # This applies only to the Cspn, in the RatSpn this will always be 1.
 
-            # The weights of the root sum node represent the input channel and repetitions in this manner:
-            # The CSPN case is assumed where the weights are different for each batch index condition.
-            # Looking at one batch index and one output channel, there are IC*R weights.
-            # An element of this weight vector is defined as
-            # w_{r,c}, with r and c being the repetition and channel the weight belongs to, respectively.
-            # The weight vector will then contain [w_{0,0},w_{1,0},w_{2,0},w_{0,1},w_{1,1},w_{2,1},w_{0,2},w_{1,2},...]
-            # This weight vector was used as the logits in a IC*R-categorical distribution, yielding indexes [0,C*R-1].
-            # To match the index to the correct repetition and its input channel, we do the following
-            ctx.repetition_indices = (ctx.parent_indices % self.config.R).squeeze(3)
-            ctx.parent_indices = th.div(ctx.parent_indices, self.config.R, rounding_mode='trunc')
+                # The weights of the root sum node represent the input channel and repetitions in this manner:
+                # The CSPN case is assumed where the weights are different for each batch index condition.
+                # Looking at one batch index and one output channel, there are IC*R weights.
+                # An element of this weight vector is defined as
+                # w_{r,c}, with r and c being the repetition and channel the weight belongs to, respectively.
+                # The weight vector will then contain [w_{0,0},w_{1,0},w_{2,0},w_{0,1},w_{1,1},w_{2,1},w_{0,2},w_{1,2},...]
+                # This weight vector was used as the logits in a IC*R-categorical distribution, yielding indexes [0,C*R-1].
+                # To match the index to the correct repetition and its input channel, we do the following
+                ctx.repetition_indices = (ctx.parent_indices % self.config.R).squeeze(3)
+                ctx.parent_indices = th.div(ctx.parent_indices, self.config.R, rounding_mode='trunc')
+                start_at_layer += 1  # otherwise list index would be out of bounds
 
             # Continue at layers
             # Sample inner layers in reverse order (starting from topmost)
-            for layer in reversed(self._inner_layers):
+            for layer in reversed(self._inner_layers[:(len(self._inner_layers)-start_at_layer+1)]):
                 ctx = layer.sample_index_style(ctx=ctx)
 
             # Sample leaf
@@ -402,8 +398,14 @@ class RatSpn(nn.Module):
                 samples = samples.tanh()
 
             # Invert permutation
-            rep_selected_inv_permutation = self.inv_permutation.T[ctx.repetition_indices]
-            samples = th.gather(samples, dim=-1, index=rep_selected_inv_permutation)
+            if ctx.repetition_indices is not None:
+                rep_selected_inv_perm = self.inv_permutation.T[ctx.repetition_indices]
+                samples = th.gather(samples, dim=-1, index=rep_selected_inv_perm)
+            else:
+                rep_selected_inv_perm = self.inv_permutation.unsqueeze(0).unsqueeze(0).unsqueeze(0)
+                nr_nodes, n, w, f, r = samples.shape
+                rep_selected_inv_perm = rep_selected_inv_perm.expand(nr_nodes, n, w, -1, -1)
+                samples = th.gather(samples, dim=-2, index=rep_selected_inv_perm)
 
             # The first dimension is the nodes which are sampled. Here, it is always 1 as there is one root node.
             samples.squeeze_(0)
