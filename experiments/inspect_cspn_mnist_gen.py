@@ -50,19 +50,20 @@ if __name__ == "__main__":
     img_size = (1, 28, 28)  # 3 channels
     cond_size = 10
 
-    exp_name = f"learn_by_sampling_1_low_lr"
-    # exp_name = f"learn_by_sampling_large"
+    # exp_name = f"learn_by_sampling_1_low_lr"
+    exp_name = f"learn_by_sampling_large"
+    epoch = '049'
     base_path = "."
     path_parts = ['..', '..', 'spn_experiments', 'sample_learning_leaf_ent_closed_form', f"results_{exp_name}"]
     for part in path_parts:
         base_path = os.path.join(base_path, part)
         assert os.path.exists(base_path), f"Path {base_path} doesn't exist!"
 
-    model_name = f"epoch-349_{exp_name}"
+    model_name = f"epoch-{epoch}_{exp_name}"
     path = os.path.join(base_path, 'models', f"{model_name}.pt")
     model: CSPN = th.load(path, map_location=device)
 
-    def means_of_RVs(model):
+    def means_of_RVs(model, save_dir: str = None):
         with th.no_grad():
             label = th.as_tensor(np.arange(10)).to(device)
             label = F.one_hot(label, 10).float().to(device)
@@ -84,10 +85,13 @@ if __name__ == "__main__":
                 plot_img(
                     means_to_plot[:, :, :, i].unsqueeze(1),
                     nrow=oc, title=f"Means of repetition {i}", x_label="Digits 0-9", y_label="Output channels",
+                    save_dir=save_dir,
+                    normalize=True,
                 )
                 plot_img(
                     stds_to_plot[:, :, :, i].unsqueeze(1),
                     nrow=oc, title=f"Stds of repetition {i}", x_label="Digits 0-9", y_label="Output channels",
+                    save_dir=save_dir,
                     normalize=True,
                 )
 
@@ -110,9 +114,12 @@ if __name__ == "__main__":
                     save_dir=save_dir,
                 )
 
-    exp = 1
+    exp = -2
     if exp == -2:
-        means_of_RVs(model)
+        results_dir = os.path.join(base_path, f'means_and_stds_{model_name}')
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
+        means_of_RVs(model, results_dir)
     elif exp == -1:
         # Sample grad test
         label = th.as_tensor(np.arange(10)).to(device)
