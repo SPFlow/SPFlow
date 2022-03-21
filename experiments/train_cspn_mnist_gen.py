@@ -155,7 +155,7 @@ class CsvLogger(dict):
             'mnist_test_ll', 'nll_loss', 'mse_loss', 'ent_loss',
             'vi_ent_approx', 'loss'
         ]
-        for i in range(10):
+        for i in range(15):
             self.keys_to_avg.append(f"{i}/weight_entropy")
             self.keys_to_avg.append(f"{i}/weighted_child_ent")
             self.keys_to_avg.append(f"{i}/weighted_aux_resp")
