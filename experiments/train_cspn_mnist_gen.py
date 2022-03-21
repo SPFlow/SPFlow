@@ -98,29 +98,6 @@ def evaluate_sampling(model, save_dir, device, img_size, mpe=False, eval_ll=True
     print(result_str)
 
 
-def eval_root_sum_override(model, save_dir, device, img_size):
-    for d in range(10):
-        if not os.path.exists(os.path.join(save_dir, f'cond_{d}')):
-            os.makedirs(os.path.join(save_dir, f'cond_{d}'))
-        cond = th.ones(model.config.R * model.config.S ** 2).long().to(device) * d
-        with th.no_grad():
-            if isinstance(model, CSPN):
-                cond = F.one_hot(cond, 10).float().to(device)
-                sample = model.sample(condition=cond, override_root=True)
-            else:
-                sample = model.sample(class_index=cond.tolist(), override_root=True)
-        sample[sample < 0.0] = 0.0
-        sample[sample > 1.0] = 1.0
-        sample = sample.view(-1, *img_size)
-
-        for i in range(model.config.R):
-            b = sample[(i * model.config.S ** 2):((i + 1) * model.config.S ** 2), :, :, :]
-            tensors = torchvision.utils.make_grid(b, nrow=10, padding=1)
-            arr = tensors.permute(1, 2, 0).cpu().numpy()
-            arr = skimage.img_as_ubyte(arr)
-            imageio.imwrite(os.path.join(save_dir, f"cond_{d}", f'rep{i}.png'), arr)
-
-
 def evaluate_model(model, device, loader, tag):
     """
     Description for method evaluate_model.
@@ -167,17 +144,6 @@ def plot_samples(x: th.Tensor, path):
     arr = tensors.permute(1, 2, 0).numpy()
     arr = skimage.img_as_ubyte(arr)
     imageio.imwrite(path, arr)
-
-
-def plot_img(image: th.Tensor, batch_size: int, title: str = None):
-    # Tensor shape N x channels x rows x cols
-    tensors = torchvision.utils.make_grid(image, nrow=int(np.sqrt(batch_size)), padding=1)
-    arr = tensors.permute(1, 2, 0).cpu().numpy()
-    arr = skimage.img_as_ubyte(arr)
-    plt.imshow(arr)
-    if title:
-        plt.title(title, fontdict={'fontsize': 10})
-    plt.show()
 
 
 class CsvLogger(dict):
@@ -320,8 +286,6 @@ if __name__ == "__main__":
                         help='List of sizes of the CSPN dist param layers.')
     parser.add_argument('--save_interval', type=int, default=50, help='Epoch interval to save model')
     parser.add_argument('--eval_interval', type=int, default=10, help='Epoch interval to evaluate model')
-    parser.add_argument('--sample_override_root', action='store_true',
-                        help='When evaluating, also sample all input channels of root sum node.')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
     parser.add_argument('--ent_approx_separate_samples', action='store_true',
@@ -429,10 +393,6 @@ if __name__ == "__main__":
     save_interval = 1 if args.verbose else args.save_interval  # number of epochs
 
     epoch = 0
-    if args.sample_override_root:
-        print("Sampling from all input channels to root sum node ...")
-        root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
-        eval_root_sum_override(model, root_sum_override_dir, device, img_size)
     if not args.no_eval_at_start:
         print("Evaluating model ...")
         save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
@@ -522,10 +482,6 @@ if __name__ == "__main__":
             th.save(model, os.path.join(model_dir, f"epoch-{epoch:03}_{args.exp_name}.pt"))
 
         if epoch % sample_interval == (sample_interval-1):
-            if args.sample_override_root:
-                print("Sampling from all input channels to root sum node ...")
-                root_sum_override_dir = os.path.join(sample_dir, f"epoch-{epoch:03}_root_sum_override")
-                eval_root_sum_override(model, root_sum_override_dir, device, img_size)
             print("Evaluating model ...")
             save_path = os.path.join(sample_dir, f"epoch-{epoch:03}_{args.exp_name}.png")
             evaluate_sampling(model, save_path, device, img_size)
