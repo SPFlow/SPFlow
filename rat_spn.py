@@ -550,7 +550,7 @@ class RatSpn(nn.Module):
         entropy = weight_entropy + weighted_ch_ents + aux_resp_ent
         return entropy, sample_ll
 
-    def vi_entropy_approx(self, sample_size, verbose=False, share_ch_samples_among_nodes=True, **kwargs):
+    def vi_entropy_approx(self, sample_size=10, verbose=False, share_ch_samples_among_nodes=True, approx_leaf_ent=True):
         """
         Approximate the entropy of the root sum node via variational inference,
         as done in the Variational Inference by Policy Search paper.
@@ -559,6 +559,7 @@ class RatSpn(nn.Module):
             sample_size: Number of samples to approximate the expected entropy of the responsibility with.
             verbose: Return logging data
             share_ch_samples_among_nodes: See comment before if-else branch of this flag.
+            approx_leaf_ent: Approximate leaf entropies from samples. If False, these are calculated in closed form.
         """
         assert not self.config.gmm_leaves, "VI entropy not tested on GMM leaves yet."
         assert self.config.C == 1, "For C > 1, we must calculate starting from self._sampling_root!"
@@ -566,7 +567,7 @@ class RatSpn(nn.Module):
         log_weights = th.empty(1)
         logging = {}
 
-        if False:
+        if approx_leaf_ent:
             with th.no_grad():
                 child_ll = self._leaf.sample_index_style(SamplingContext(n=sample_size, is_mpe=False))
                 child_ll = self._leaf(child_ll)

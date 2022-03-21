@@ -290,6 +290,8 @@ if __name__ == "__main__":
     parser.add_argument('--ratspn', action='store_true', help='Use a RATSPN and not a CSPN')
     parser.add_argument('--ent_approx_separate_samples', action='store_true',
                         help='When approximating the entropy, don\'t share child samples for each sum in a layer.')
+    parser.add_argument('--ent_approx__leaf_ent_closed_form', action='store_true',
+                        help='Approximate the leaf entropies in closed form instead of approximating it.')
     parser.add_argument('--ent_approx__sample_size', type=int, default=5,
                         help='When approximating entropy, use this sample size. ')
     parser.add_argument('--ent_approx_sample_with_grad', action='store_true',
@@ -442,7 +444,7 @@ if __name__ == "__main__":
                 vi_ent_approx, batch_ent_log = model.vi_entropy_approx(
                     sample_size=args.ent_approx__sample_size, condition=label, verbose=True,
                     share_ch_samples_among_nodes=not args.ent_approx_separate_samples,
-                    sample_children_with_grad=args.ent_approx_sample_with_grad,
+                    approx_leaf_ent=not args.ent_approx__leaf_ent_closed_form,
                 )
                 vi_ent_approx = vi_ent_approx.mean()
                 # vi_ent_approx_separate_samples = vi_ent_approx_separate_samples.mean()
