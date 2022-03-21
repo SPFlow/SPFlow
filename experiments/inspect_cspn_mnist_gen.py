@@ -75,19 +75,29 @@ if __name__ == "__main__":
             inv_perm = inv_perm.expand(label.size(0), -1, means.size(2), -1)
             means = th.gather(means, dim=1, index=inv_perm)
             stds = th.gather(stds, dim=1, index=inv_perm)
-            means = means.tanh()
+            means = means.tanh().add_(1.0).div_(2.0)
 
             means_to_plot = means.permute(0, 2, 1, 3).reshape(w * oc, np.sqrt(f).astype(int), np.sqrt(f).astype(int), r)
             means_to_plot = means_to_plot.permute(0, 2, 1, 3)
             stds_to_plot = stds.permute(0, 2, 1, 3).reshape(w * oc, np.sqrt(f).astype(int), np.sqrt(f).astype(int), r)
             stds_to_plot = stds_to_plot.permute(0, 2, 1, 3)
+            plot_img(
+                means_to_plot.max(dim=-1).values.unsqueeze(1),
+                nrow=oc, title=f"Max of means", x_label="Digits 0-9", y_label="Output channels",
+                save_dir=save_dir,
+            )
+            plot_img(
+                means_to_plot.min(dim=-1).values.unsqueeze(1),
+                nrow=oc, title=f"Min of means", x_label="Digits 0-9", y_label="Output channels",
+                save_dir=save_dir,
+            )
             for i in range(r):
-                plot_img(
-                    means_to_plot[:, :, :, i].unsqueeze(1),
-                    nrow=oc, title=f"Means of repetition {i}", x_label="Digits 0-9", y_label="Output channels",
-                    save_dir=save_dir,
-                    normalize=True,
-                )
+                if False:
+                    plot_img(
+                        means_to_plot[:, :, :, i].unsqueeze(1),
+                        nrow=oc, title=f"Means of repetition {i}", x_label="Digits 0-9", y_label="Output channels",
+                        save_dir=save_dir,
+                    )
                 plot_img(
                     stds_to_plot[:, :, :, i].unsqueeze(1),
                     nrow=oc, title=f"Stds of repetition {i}", x_label="Digits 0-9", y_label="Output channels",
