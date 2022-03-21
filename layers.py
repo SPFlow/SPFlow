@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import List, Union, Tuple
 
 import numpy as np
-import torch
+import torch as th
 from torch import nn
 from torch.nn import functional as F
 import torch.distributions as dist
@@ -21,23 +21,23 @@ class AbstractLayer(nn.Module, ABC):
         self.num_repetitions = check_valid(num_repetitions, int, 1)
 
     @abstractmethod
-    def sample(self, ctx: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+    def sample(self, ctx: SamplingContext = None) -> Union[SamplingContext, th.Tensor]:
         """
         Sample from this layer.
         Args:
             ctx: Sampling context.
 
         Returns:
-            torch.Tensor: Generated samples.
+            th.Tensor: Generated samples.
         """
         pass
 
     @abstractmethod
-    def sample_index_style(self, ctx: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+    def sample_index_style(self, ctx: SamplingContext = None) -> Union[SamplingContext, th.Tensor]:
         pass
 
     @abstractmethod
-    def sample_onehot_style(self, ctx: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+    def sample_onehot_style(self, ctx: SamplingContext = None) -> Union[SamplingContext, th.Tensor]:
         pass
 
 
@@ -62,12 +62,12 @@ class Sum(AbstractLayer):
 
         self.in_channels = check_valid(in_channels, int, 1)
         self.out_channels = check_valid(out_channels, int, 1)
-        self.dropout = nn.Parameter(torch.tensor(check_valid(dropout, float, 0.0, 1.0)), requires_grad=False)
+        self.dropout = nn.Parameter(th.tensor(check_valid(dropout, float, 0.0, 1.0)), requires_grad=False)
 
         # Weights, such that each sumnode has its own weights
-        ws = torch.randn(self.in_features, self.in_channels, self.out_channels, self.num_repetitions)
+        ws = th.randn(self.in_features, self.in_channels, self.out_channels, self.num_repetitions)
         self.weights = nn.Parameter(ws)
-        self._bernoulli_dist = torch.distributions.Bernoulli(probs=self.dropout)
+        self._bernoulli_dist = th.distributions.Bernoulli(probs=self.dropout)
 
         self.out_shape = f"(N, {self.in_features}, {self.out_channels}, {self.num_repetitions})"
 
@@ -97,7 +97,7 @@ class Sum(AbstractLayer):
         """Hack to obtain the current device, this layer lives on."""
         return self.weights.device
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: th.Tensor):
         """
         Sum layer forward pass.
 
@@ -106,7 +106,7 @@ class Sum(AbstractLayer):
                 weight_sets: In CSPNs, there are separate weights for each batch element.
 
         Returns:
-            torch.Tensor: Output of shape [batch, in_features, out_channels]
+            th.Tensor: Output of shape [batch, in_features, out_channels]
         """
         # Save input if input cache is enabled
         if self._is_input_cache_enabled:
@@ -134,14 +134,14 @@ class Sum(AbstractLayer):
         x = x + log_weights  # Shape: [n, w, d, ic, oc, r]
 
         # Compute sum via logsumexp along in_channels dimension
-        x = torch.logsumexp(x, dim=3)  # Shape: [n, w, d, oc, r]
+        x = th.logsumexp(x, dim=3)  # Shape: [n, w, d, oc, r]
 
         # Assert correct dimensions
         assert x.size() == (n, w, d, oc, r)
 
         return x
 
-    def sample(self, ctx: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+    def sample(self, ctx: SamplingContext = None) -> Union[SamplingContext, th.Tensor]:
         raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
                                   "Please choose one.")
 
@@ -154,16 +154,16 @@ class Sum(AbstractLayer):
             ctx: Contains
                 repetition_indices (List[int]): An index into the repetition axis for each sample.
                     Can be None if `num_repetitions==1`.
-                parent_indices (torch.Tensor): Parent sampling output.
+                parent_indices (th.Tensor): Parent sampling output.
                 n: Number of samples to draw for each set of weights.
         Returns:
-            torch.Tensor: Index into tensor which paths should be followed.
+            th.Tensor: Index into tensor which paths should be followed.
         """
 
         # Sum weights are of shape: [N, D, IC, OC, R]
         # We now want to use `indices` to access one in_channel for each in_feature x out_channels block
         # index is of size in_feature
-        weights: torch.Tensor = self.weights
+        weights: th.Tensor = self.weights
         if weights.dim() == 4:
             weights = weights.unsqueeze(0)
         # w is the number of weight sets
@@ -184,7 +184,7 @@ class Sum(AbstractLayer):
             # This must coincide with the repetition indices.
             weights = weights.reshape(oc * r, sample_size, w, d, ic)
 
-            ctx.repetition_indices = torch.arange(r).to(self.__device).repeat_interleave(oc)
+            ctx.repetition_indices = th.arange(r).to(self.__device).repeat_interleave(oc)
             ctx.repetition_indices = ctx.repetition_indices.unsqueeze(-1).unsqueeze(-1).repeat(
                 1, ctx.n, w
             )
@@ -199,12 +199,12 @@ class Sum(AbstractLayer):
             if ctx.repetition_indices is not None:
                 rep_ind = ctx.repetition_indices.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
                 rep_ind = rep_ind.expand(-1, -1, -1, d, ic, oc, -1)
-                weights = torch.gather(weights, dim=-1, index=rep_ind).squeeze(-1)
+                weights = th.gather(weights, dim=-1, index=rep_ind).squeeze(-1)
                 # weights from selected repetition with shape [nr_nodes, n, w, d, ic, oc]
                 parent_indices = parent_indices.expand(-1, -1, -1, -1, ic, -1)
             else:
                 parent_indices = parent_indices.expand(-1, -1, -1, -1, ic, -1, -1)
-            weights = torch.gather(weights, dim=5, index=parent_indices).squeeze(5)
+            weights = th.gather(weights, dim=5, index=parent_indices).squeeze(5)
             # weights from selected parent with shape [nr_nodes, n, w, d, ic]
 
         # If evidence is given, adjust the weights with the likelihoods of the observed paths
@@ -227,11 +227,11 @@ class Sum(AbstractLayer):
             #
             # The code below is an approximation of:
             #
-            # >> dist = torch.distributions.Categorical(logits=weights)
+            # >> dist = th.distributions.Categorical(logits=weights)
             # >> indices = dist.sample()
 
             one_hot = F.gumbel_softmax(logits=weights, hard=True, dim=4)
-            cats = torch.arange(ic, device=weights.device)
+            cats = th.arange(ic, device=weights.device)
             if weights.dim() == 6:
                 cats = cats.unsqueeze_(-1).expand(-1, r)
             indices = (one_hot * cats).sum(4).long()
@@ -250,15 +250,15 @@ class Sum(AbstractLayer):
             ctx: Contains
                 repetition_indices (List[int]): An index into the repetition axis for each sample.
                     Can be None if `num_repetitions==1`.
-                parent_indices (torch.Tensor): Parent sampling output.
+                parent_indices (th.Tensor): Parent sampling output.
                 n: Number of samples to draw for each set of weights.
         Returns:
-            torch.Tensor: Index into tensor which paths should be followed.
+            th.Tensor: Index into tensor which paths should be followed.
         """
 
         # Sum weights are of shape: [N, D, IC, OC, R]
         # We now want to use the "hot" indices to access one in_channel for each in_feature x out_channels block
-        weights: torch.Tensor = self.weights
+        weights: th.Tensor = self.weights
         if weights.dim() == 4:
             weights = weights.unsqueeze(0)
         # w is the number of weight sets
@@ -303,7 +303,7 @@ class Sum(AbstractLayer):
             #
             # The code below is an approximation of:
             #
-            # >> dist = torch.distributions.Categorical(logits=weights)
+            # >> dist = th.distributions.Categorical(logits=weights)
             # >> indices = dist.sample()
 
             one_hot = F.gumbel_softmax(logits=weights, hard=True, dim=4)
@@ -322,7 +322,7 @@ class Sum(AbstractLayer):
         weights = self.consolidated_weights.unsqueeze(2)
         return [(g.unsqueeze_(4) * weights).sum(dim=3) for g in child_grads]
 
-    def depr_compute_moments(self, child_moments: List[torch.Tensor]):
+    def depr_compute_moments(self, child_moments: List[th.Tensor]):
         assert self.consolidated_weights is not None, "No consolidated weights are set for this Sum node!"
         # Create an extra dimension for the mean vector so all elements of the mean vector are multiplied by the same
         # weight for that feature and output channel.
@@ -358,7 +358,7 @@ class Sum(AbstractLayer):
                 f"Sum layer has multiple repetitions (num_repetitions=={self.num_repetitions}) but repetition_indices argument was None, expected a Long tensor size #samples."
             )
         if self.num_repetitions == 1 and ctx.repetition_indices is None:
-            ctx.repetition_indices = torch.zeros(ctx.n, dtype=int, device=self.__device)
+            ctx.repetition_indices = th.zeros(ctx.n, dtype=int, device=self.__device)
 
     def __repr__(self):
         return "Sum(in_channels={}, in_features={}, out_channels={}, dropout={}, out_shape={})".format(
@@ -385,7 +385,7 @@ class Product(AbstractLayer):
         self.cardinality = check_valid(cardinality, int, 1, in_features + 1)
 
         # Implement product as convolution
-        # self._conv_weights = nn.Parameter(torch.ones(1, 1, cardinality, 1, 1), requires_grad=False)
+        # self._conv_weights = nn.Parameter(th.ones(1, 1, cardinality, 1, 1), requires_grad=False)
         self._pad = (self.cardinality - self.in_features % self.cardinality) % self.cardinality
 
         self._out_features = np.ceil(self.in_features / self.cardinality).astype(int)
@@ -396,7 +396,7 @@ class Product(AbstractLayer):
         # """Hack to obtain the current device, this layer lives on."""
         # return self._conv_weights.device
 
-    def forward(self, x: torch.Tensor, reduction = 'sum'):
+    def forward(self, x: th.Tensor, reduction = 'sum'):
         """
         Product layer forward pass.
 
@@ -404,7 +404,7 @@ class Product(AbstractLayer):
             x: Input of shape [batch, weight_sets, in_features, channel, repetitions].
 
         Returns:
-            torch.Tensor: Output of shape [batch, ceil(in_features/cardinality), channel].
+            th.Tensor: Output of shape [batch, ceil(in_features/cardinality), channel].
         """
         # Only one product node
         if self.cardinality == x.shape[2]:
@@ -429,16 +429,16 @@ class Product(AbstractLayer):
             return x.view(n, w, d_out, self.cardinality, c, r)
         elif reduction == 'sum':
             x = x.view(n * w, d, c, r)
-            x = F.conv3d(x.unsqueeze(1), weight=torch.ones(1, 1, self.cardinality, 1, 1, device=x.device),
+            x = F.conv3d(x.unsqueeze(1), weight=th.ones(1, 1, self.cardinality, 1, 1, device=x.device),
                          stride=(self.cardinality, 1, 1))
             return x.view(n, w, d_out, c, r)
         else:
             raise NotImplementedError("No reduction other than sum is implemented. ")
 
-    def sample_onehot_style(self, ctx: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+    def sample_onehot_style(self, ctx: SamplingContext = None) -> Union[SamplingContext, th.Tensor]:
         return self.sample(ctx)
 
-    def sample_index_style(self, ctx: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+    def sample_index_style(self, ctx: SamplingContext = None) -> Union[SamplingContext, th.Tensor]:
         return self.sample(ctx)
 
     def sample(self, n: int = None, ctx: SamplingContext = None) -> SamplingContext:
@@ -446,9 +446,9 @@ class Product(AbstractLayer):
 
         Args:
             n (int): Number of instances to sample.
-            indices (torch.Tensor): Parent sampling output.
+            indices (th.Tensor): Parent sampling output.
         Returns:
-            torch.Tensor: Index into tensor which paths should be followed.
+            th.Tensor: Index into tensor which paths should be followed.
                           Output should be of size: in_features, out_channels.
         """
 
@@ -457,8 +457,8 @@ class Product(AbstractLayer):
 
             if self.num_repetitions == 1:
                 # If there is only a single repetition, create new sampling context
-                ctx.parent_indices = torch.zeros(ctx.n, 1, dtype=int, device=self.__device)
-                ctx.repetition_indices = torch.zeros(ctx.n, dtype=int, device=self.__device)
+                ctx.parent_indices = th.zeros(ctx.n, 1, dtype=int, device=self.__device)
+                ctx.repetition_indices = th.zeros(ctx.n, dtype=int, device=self.__device)
                 return ctx
             else:
                 raise Exception(
@@ -466,7 +466,7 @@ class Product(AbstractLayer):
                 )
         else:
             # Repeat the parent indices, e.g. [0, 2, 3] -> [0, 0, 2, 2, 3, 3] depending on the cardinality
-            indices = torch.repeat_interleave(ctx.parent_indices, repeats=self.cardinality, dim=3)
+            indices = th.repeat_interleave(ctx.parent_indices, repeats=self.cardinality, dim=3)
 
             # Remove padding
             if self._pad:
@@ -534,7 +534,7 @@ class CrossProduct(AbstractLayer):
 
         # Create index map from flattened to coordinates (only needed in sampling)
         self.unraveled_channel_indices = nn.Parameter(
-            torch.tensor([(i, j) for i in range(self.in_channels)
+            th.tensor([(i, j) for i in range(self.in_channels)
                           for j in range(self.in_channels)]),
             requires_grad=False
         )
@@ -553,7 +553,7 @@ class CrossProduct(AbstractLayer):
         """Hack to obtain the current device, this layer lives on."""
         return self.unraveled_channel_indices.device
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: th.Tensor):
         """
         Product layer forward pass.
 
@@ -562,7 +562,7 @@ class CrossProduct(AbstractLayer):
                 weight_sets: In CSPNs, there are separate weights for each batch element.
 
         Returns:
-            torch.Tensor: Output of shape [batch, ceil(in_features/2), channel * channel].
+            th.Tensor: Output of shape [batch, ceil(in_features/2), channel * channel].
         """
         if self._pad:
             # Pad marginalized node
@@ -589,7 +589,7 @@ class CrossProduct(AbstractLayer):
         assert result.size() == (n, w, d_out, c * c, r)
         return result
 
-    def sample(self, ctx: SamplingContext = None) -> Union[SamplingContext, torch.Tensor]:
+    def sample(self, ctx: SamplingContext = None) -> Union[SamplingContext, th.Tensor]:
         raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
                                   "Please choose one.")
 
@@ -599,10 +599,10 @@ class CrossProduct(AbstractLayer):
         Args:
             ctx (SamplingContext):
                 n: Number of samples.
-                parent_indices (torch.Tensor): Nodes selected by parent layer
-                repetition_indices (torch.Tensor): Repetitions selected by parent layer
+                parent_indices (th.Tensor): Nodes selected by parent layer
+                repetition_indices (th.Tensor): Repetitions selected by parent layer
         Returns:
-            torch.Tensor: Index into tensor which paths should be followed.
+            th.Tensor: Index into tensor which paths should be followed.
                           Output should be of size: in_features, out_channels.
         """
 
@@ -648,16 +648,15 @@ class CrossProduct(AbstractLayer):
         Args:
             ctx (SamplingContext):
                 n: Number of samples.
-                parent_indices (torch.Tensor): Nodes selected by parent layer
-                repetition_indices (torch.Tensor): Repetitions selected by parent layer
+                parent_indices (th.Tensor): Nodes selected by parent layer
+                repetition_indices (th.Tensor): Repetitions selected by parent layer
         Returns:
-            torch.Tensor: Index into tensor which paths should be followed.
+            th.Tensor: Index into tensor which paths should be followed.
                           Output should be of size: in_features, out_channels.
         """
 
         # If this is a root node
         if ctx.is_root:
-            raise NotImplementedError("This isn't adapted to the one-hot sampling style")
             # Sampling starting at a CrossProduct layer means sampling each node in the layer.
 
             # There are oc * r * out_features nodes in this layer.
@@ -666,15 +665,12 @@ class CrossProduct(AbstractLayer):
             # The parent and repetition indices are also repeated by the number of samples requested
             # and by the number of conditionals the CSPN weights have been set to.
             # In the RatSpn case, the number of conditionals (abbreviated by w) is 1.
-            indices = self.unraveled_channel_indices.data.unsqueeze(1).unsqueeze(1).unsqueeze(-1)
+            indices = self.one_hot_in_channel_mapping.data.unsqueeze(1).unsqueeze(1).unsqueeze(-1)
             # indices is [nr_nodes=oc, 1, 1, cardinality, 1]
             indices = indices.repeat(
                 1, ctx.n, self.num_conditionals, self.in_features//self.cardinality, self.num_repetitions
             )
             # indices is [nr_nodes=oc, n, w, in_features, r]
-            oc, _ = self.unraveled_channel_indices.shape
-
-            # repetition indices are left empty because they are implicitly given in parent_indices
         else:
             nr_nodes, n, w, d, oc, r = ctx.parent_indices.shape
             indices = ctx.parent_indices.permute(0, 1, 2, 3, 5, 4).unsqueeze(-1).unsqueeze(-1)
@@ -711,7 +707,7 @@ class CrossProduct(AbstractLayer):
         # sum nodes for that feature. right_sums_weights analogously for the right sets.
         # We can't simply concatenate them along the 1. dimension because this would mix up the order of in_features
         # of this layer. Along dim 1, we need left[0], right[0], left[1], right[1] => we need to interleave them
-        parent_weights = torch.stack((left_sums_weights, right_sums_weights), dim=2)
+        parent_weights = th.stack((left_sums_weights, right_sums_weights), dim=2)
         parent_weights = parent_weights.view(n, self.in_features, self.in_channels, p_oc, r)
         return parent_weights
 

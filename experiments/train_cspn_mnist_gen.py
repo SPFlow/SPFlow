@@ -7,7 +7,7 @@ import csv
 import imageio
 import numpy as np
 import skimage
-import torch
+import torch as th
 import torchvision
 from torch import optim
 import torch.nn as nn
@@ -55,7 +55,7 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, img_side_len, i
                                       transforms.Normalize((-0.010204,), (1.0204,)),
                                       transforms.RandomInvert(p=invert)])
     # Train data loader
-    train_loader = torch.utils.data.DataLoader(
+    train_loader = th.utils.data.DataLoader(
         datasets.MNIST(dataset_dir, train=True, download=True, transform=transformer),
         batch_size=batch_size,
         shuffle=True,
@@ -63,7 +63,7 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, img_side_len, i
     )
 
     # Test data loader
-    test_loader = torch.utils.data.DataLoader(
+    test_loader = th.utils.data.DataLoader(
         datasets.MNIST(dataset_dir, train=False, transform=transformer),
         batch_size=test_batch_size,
         shuffle=True,
@@ -75,9 +75,9 @@ def get_mnist_loaders(dataset_dir, use_cuda, device, batch_size, img_side_len, i
 def evaluate_sampling(model, save_dir, device, img_size, mpe=False, eval_ll=True, style='index'):
     model.eval()
     log_like = []
-    label = torch.as_tensor(np.arange(10)).to(device)
+    label = th.as_tensor(np.arange(10)).to(device)
     samples_per_label = 10
-    with torch.no_grad():
+    with th.no_grad():
         if isinstance(model, CSPN):
             label = F.one_hot(label, 10).float().to(device)
             if style == 'index':
@@ -102,8 +102,8 @@ def eval_root_sum_override(model, save_dir, device, img_size):
     for d in range(10):
         if not os.path.exists(os.path.join(save_dir, f'cond_{d}')):
             os.makedirs(os.path.join(save_dir, f'cond_{d}'))
-        cond = torch.ones(model.config.R * model.config.S ** 2).long().to(device) * d
-        with torch.no_grad():
+        cond = th.ones(model.config.R * model.config.S ** 2).long().to(device) * d
+        with th.no_grad():
             if isinstance(model, CSPN):
                 cond = F.one_hot(cond, 10).float().to(device)
                 sample = model.sample(condition=cond, override_root=True)
@@ -136,7 +136,7 @@ def evaluate_model(model, device, loader, tag):
     """
     model.eval()
     log_like = []
-    with torch.no_grad():
+    with th.no_grad():
         for image, label in loader:
             image = image.flatten(start_dim=1).to(device)
             if model.config.tanh_squash:
@@ -151,12 +151,12 @@ def evaluate_model(model, device, loader, tag):
     return mean_ll
 
 
-def plot_samples(x: torch.Tensor, path):
+def plot_samples(x: th.Tensor, path):
     """
     Plot a single sample with the target and prediction in the title.
 
     Args:
-        x (torch.Tensor): Batch of input images. Has to be shape: [N, C, H, W].
+        x (th.Tensor): Batch of input images. Has to be shape: [N, C, H, W].
     """
     x.unsqueeze_(1)
     # Clip to valid range
@@ -169,7 +169,7 @@ def plot_samples(x: torch.Tensor, path):
     imageio.imwrite(path, arr)
 
 
-def plot_img(image: torch.Tensor, batch_size: int, title: str = None):
+def plot_img(image: th.Tensor, batch_size: int, title: str = None):
     # Tensor shape N x channels x rows x cols
     tensors = torchvision.utils.make_grid(image, nrow=int(np.sqrt(batch_size)), padding=1)
     arr = tensors.permute(1, 2, 0).cpu().numpy()
@@ -201,7 +201,7 @@ class CsvLogger(dict):
 
     def add_to_avg_keys(self, **kwargs):
         for k, v in kwargs.items():
-            if isinstance(v, torch.Tensor):
+            if isinstance(v, th.Tensor):
                 v = v.item()
             if k not in self.keys_to_avg:
                 raise KeyError(f"{k} not in keys_to_avg")
@@ -281,7 +281,7 @@ class CsvLogger(dict):
         return return_str
 
     def __setitem__(self, key, value):
-        if isinstance(value, torch.Tensor):
+        if isinstance(value, th.Tensor):
             value = value.item()
         if key in self.no_log_dict.keys():
             self.no_log_dict[key] = value
@@ -359,12 +359,12 @@ if __name__ == "__main__":
             os.makedirs(d)
 
     if args.device == "cpu":
-        device = torch.device("cpu")
+        device = th.device("cpu")
         use_cuda = False
     else:
-        device = torch.device("cuda:0")
+        device = th.device("cuda:0")
         use_cuda = True
-        torch.cuda.benchmark = True
+        th.cuda.benchmark = True
     print("Using device:", device)
     batch_size = args.batch_size
 
@@ -379,11 +379,11 @@ if __name__ == "__main__":
         base_path = os.path.join('..', '..', 'spn_experiments', 'vi_ent_approx_Mar22', f"results_{exp_name}")
         model_name = f"epoch-{epoch}_{exp_name}"
         path = os.path.join(base_path, 'models', f"{model_name}.pt")
-        model = torch.load(path, map_location=device)
+        model = th.load(path, map_location=device)
 
         exp = -1
         if exp == -1:
-            label = torch.as_tensor(np.arange(10)).to(device)
+            label = th.as_tensor(np.arange(10)).to(device)
             label = F.one_hot(label, 10).float().to(device)
             # sample = model.sample_index_style(condition=label, is_mpe=False)
             sample = model.sample_onehot_style(condition=label, is_mpe=False)
@@ -428,7 +428,7 @@ if __name__ == "__main__":
             results_dir = os.path.join(base_path, f'all_root_in_channels_{model_name}')
             if not os.path.exists(results_dir):
                 os.makedirs(results_dir)
-            eval_root_sum_override(model, results_dir, torch.device("cpu"), img_size)
+            eval_root_sum_override(model, results_dir, th.device("cpu"), img_size)
         elif exp == 2:
             # Here, the sampling evaluation is redone for all model files in a given directory
             models_dir = os.path.join(base_path, 'models')
@@ -439,15 +439,15 @@ if __name__ == "__main__":
             for f in onlyfiles:
                 model_path = os.path.join(models_dir, f)
                 save_path = os.path.join(samples_dir, f"{f.split('.')[0]}.png")
-                model = torch.load(model_path, map_location=torch.device('cpu'))
-                evaluate_sampling(model, save_path, torch.device('cpu'), img_size)
+                model = th.load(model_path, map_location=th.device('cpu'))
+                evaluate_sampling(model, save_path, th.device('cpu'), img_size)
         else:
             results_dir = base_path
 
-            top_5_ll = torch.ones(5) * -10e6
-            top_5_ll_img = torch.zeros(5, *img_size)
-            low_5_ll = torch.ones(5) * 10e6
-            low_5_ll_img = torch.zeros(5, *img_size)
+            top_5_ll = th.ones(5) * -10e6
+            top_5_ll_img = th.zeros(5, *img_size)
+            low_5_ll = th.ones(5) * 10e6
+            low_5_ll_img = th.zeros(5, *img_size)
 
             show_all = True
             find_top_low_LL = False
@@ -458,7 +458,7 @@ if __name__ == "__main__":
 
             # train_loader, test_loader = get_mnist_loaders(args.dataset_dir, args.grayscale, batch_size=batch_size, device=device)
             for cond in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:
-                cond = torch.ones(1000).long() * cond
+                cond = th.ones(1000).long() * cond
                 cond = F.one_hot(cond, cond_size).float()
                 sample = model.sample(condition=cond)
                 sample[sample < 0.0] = 0.0
@@ -467,23 +467,23 @@ if __name__ == "__main__":
                 sample = sample.view(-1, *img_size)
 
                 if find_top_low_LL:
-                    top_5_ll, indices = torch.cat((top_5_ll, sample_ll), dim=0).sort(descending=True)
+                    top_5_ll, indices = th.cat((top_5_ll, sample_ll), dim=0).sort(descending=True)
                     top_5_ll = top_5_ll[:5]
                     indices = indices[:5]
                     imgs = []
                     for ind in indices:
                         img = top_5_ll_img[ind] if ind < 5 else cond[ind-5]
                         imgs.append(img.unsqueeze(0))
-                        top_5_ll_img = torch.cat(imgs, dim=0)
+                        top_5_ll_img = th.cat(imgs, dim=0)
 
-                    low_5_ll, indices = torch.cat((low_5_ll, sample_ll), dim=0).sort(descending=False)
+                    low_5_ll, indices = th.cat((low_5_ll, sample_ll), dim=0).sort(descending=False)
                     low_5_ll = low_5_ll[:5]
                     indices = indices[:5]
                     imgs = []
                     for ind in indices:
                         img = low_5_ll_img[ind] if ind < 5 else cond[ind-5]
                         imgs.append(img.unsqueeze(0))
-                        low_5_ll_img = torch.cat(imgs, dim=0)
+                        low_5_ll_img = th.cat(imgs, dim=0)
 
                     if True:
                         lls = [[f"{n:.2f}" for n in ll.tolist()] for ll in [top_5_ll, low_5_ll]]
@@ -545,7 +545,9 @@ if __name__ == "__main__":
         model = model.to(device)
     else:
         print(f"Using pretrained model under {args.model_path}")
-        model = torch.load(args.model_path, map_location=device)
+        model = th.load(args.model_path, map_location=device)
+        model.create_one_hot_in_channel_mapping()
+        model.set_no_tanh_log_prob_correction()
     model.train()
     print("Config:", model.config)
     print(model)
@@ -590,9 +592,9 @@ if __name__ == "__main__":
             # Inference
             optimizer.zero_grad()
             data = image.reshape(image.shape[0], -1)
-            mse_loss = ll_loss = ent_loss = vi_ent_approx_separate_samples = vi_ent_approx = torch.zeros(1).to(device)
+            mse_loss = ll_loss = ent_loss = vi_ent_approx_separate_samples = vi_ent_approx = th.zeros(1).to(device)
             if args.ratspn:
-                output: torch.Tensor = model(x=data)
+                output: th.Tensor = model(x=data)
                 loss_ce = F.cross_entropy(output.squeeze(1), label)
                 ll_loss = -output.mean()
                 loss = (1 - lmbda) * ll_loss + lmbda * loss_ce
@@ -600,12 +602,12 @@ if __name__ == "__main__":
             else:
                 label = F.one_hot(label, cond_size).float().to(device)
                 if args.learn_by_sampling:
-                    sample: torch.Tensor = model.sample_onehot_style(condition=label, n=args.learn_by_sampling__sample_size)
+                    sample: th.Tensor = model.sample_onehot_style(condition=label, n=args.learn_by_sampling__sample_size)
                     if model.config.tanh_squash:
                         sample = sample.clamp(-0.99999, 0.99999).atanh()
-                    mse_loss: torch.Tensor = ((data - sample) ** 2).mean()
+                    mse_loss: th.Tensor = ((data - sample) ** 2).mean()
                 else:
-                    output: torch.Tensor = model(x=data, condition=label)
+                    output: th.Tensor = model(x=data, condition=label)
                     ll_loss = -output.mean()
                 vi_ent_approx, batch_ent_log = model.vi_entropy_approx(
                     sample_size=args.ent_approx__sample_size, condition=label, verbose=True,
@@ -647,7 +649,7 @@ if __name__ == "__main__":
         t_delta = np.around(time.time()-t_start, 2)
         if epoch % save_interval == (save_interval-1):
             print("Saving model ...")
-            torch.save(model, os.path.join(model_dir, f"epoch-{epoch:03}_{args.exp_name}.pt"))
+            th.save(model, os.path.join(model_dir, f"epoch-{epoch:03}_{args.exp_name}.pt"))
 
         if epoch % sample_interval == (sample_interval-1):
             if args.sample_override_root:

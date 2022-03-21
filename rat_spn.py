@@ -3,7 +3,7 @@ from typing import Dict, Type, List
 import math
 
 import numpy as np
-import torch
+import torch as th
 from dataclasses import dataclass
 from torch import nn
 from torch.nn import functional as F
@@ -18,14 +18,14 @@ from distributions import IndependentMultivariate, GaussianMixture, truncated_no
 logger = logging.getLogger(__name__)
 
 
-def invert_permutation(p: torch.Tensor):
+def invert_permutation(p: th.Tensor):
     """
     The argument p is assumed to be some permutation of 0, 1, ..., len(p)-1. 
     Returns an array s, where s[i] gives the index of i in p.
     Taken from: https://stackoverflow.com/a/25535723, adapted to PyTorch.
     """
-    s = torch.empty(p.shape[0], dtype=p.dtype, device=p.device)
-    s[p] = torch.arange(p.shape[0]).to(p.device)
+    s = th.empty(p.shape[0], dtype=p.dtype, device=p.device)
+    s[p] = th.arange(p.shape[0]).to(p.device)
     return s
 
 
@@ -127,14 +127,14 @@ class RatSpn(nn.Module):
         permutation = []
         inv_permutation = []
         for r in range(self.config.R):
-            permutation.append(torch.tensor(np.random.permutation(self.config.F)))
+            permutation.append(th.tensor(np.random.permutation(self.config.F)))
             inv_permutation.append(invert_permutation(permutation[-1]))
-        # self.permutation: torch.Tensor = torch.stack(self.permutation, dim=-1)
-        # self.inv_permutation: torch.Tensor = torch.stack(self.inv_permutation, dim=-1)
-        self.permutation = nn.Parameter(torch.stack(permutation, dim=-1), requires_grad=False)
-        self.inv_permutation = nn.Parameter(torch.stack(inv_permutation, dim=-1), requires_grad=False)
+        # self.permutation: th.Tensor = th.stack(self.permutation, dim=-1)
+        # self.inv_permutation: th.Tensor = th.stack(self.inv_permutation, dim=-1)
+        self.permutation = nn.Parameter(th.stack(permutation, dim=-1), requires_grad=False)
+        self.inv_permutation = nn.Parameter(th.stack(inv_permutation, dim=-1), requires_grad=False)
 
-    def _randomize(self, x: torch.Tensor) -> torch.Tensor:
+    def _randomize(self, x: th.Tensor) -> th.Tensor:
         """
         Randomize the input at each repetition according to `self.permutation`.
 
@@ -142,7 +142,7 @@ class RatSpn(nn.Module):
             x: Input.
 
         Returns:
-            torch.Tensor: Randomized input along feature axis. Each repetition has its own permutation.
+            th.Tensor: Randomized input along feature axis. Each repetition has its own permutation.
         """
         # Expand input to the number of repetitions
         n, w = x.shape[:2]
@@ -151,11 +151,11 @@ class RatSpn(nn.Module):
 
         # Random permutation
         perm_indices = self.permutation.unsqueeze(0).unsqueeze(0).expand(n, w, -1, -1)
-        x = torch.gather(x, dim=-2, index=perm_indices)
+        x = th.gather(x, dim=-2, index=perm_indices)
 
         return x
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: th.Tensor) -> th.Tensor:
         """
         Forward pass through RatSpn. Computes the conditional log-likelihood P(X | C).
 
@@ -165,7 +165,7 @@ class RatSpn(nn.Module):
                 weight_sets: In CSPNs, weights are different for each conditional. In RatSpn, this is 1.
 
         Returns:
-            torch.Tensor: Conditional log-likelihood P(X | C) of the input.
+            th.Tensor: Conditional log-likelihood P(X | C) of the input.
         """
         if x.dim() == 2:
             x = x.unsqueeze(1)
@@ -181,9 +181,9 @@ class RatSpn(nn.Module):
         # Merge results from the different repetitions into the channel dimension
         n, w, d, c, r = x.size()
         assert d == 1  # number of features should be 1 at this point
-        # x = torch.as_tensor(np.arange(x.shape[-2] * x.shape[-1])).reshape(x.shape[-2], x.shape[-1]).repeat(256, 1, 1, 1)
-        # a = torch.as_tensor([-10.0, -1.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0]).log_softmax(dim=0)
-        # a = torch.as_tensor([-10.0] * c)
+        # x = th.as_tensor(np.arange(x.shape[-2] * x.shape[-1])).reshape(x.shape[-2], x.shape[-1]).repeat(256, 1, 1, 1)
+        # a = th.as_tensor([-10.0, -1.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0]).log_softmax(dim=0)
+        # a = th.as_tensor([-10.0] * c)
         # a[1] = -1.0
         # a = a.log_softmax(dim=0)
         # x = a.unsqueeze(2).repeat(n, w, d, 1, r)
@@ -208,7 +208,7 @@ class RatSpn(nn.Module):
             x: Input.
 
         Returns:
-            torch.Tensor: Output of the last layer before the root layer.
+            th.Tensor: Output of the last layer before the root layer.
         """
         # Forward to inner product and sum layers
         for layer in self._inner_layers:
@@ -263,7 +263,7 @@ class RatSpn(nn.Module):
         # Construct sampling root with weights according to priors for sampling
         self._sampling_root = Sum(in_channels=self.config.C, in_features=1, out_channels=1, num_repetitions=1)
         self._sampling_root.weights = nn.Parameter(
-            torch.ones(size=(1, self.config.C, 1, 1)) * torch.tensor(1 / self.config.C), requires_grad=False
+            th.ones(size=(1, self.config.C, 1, 1)) * th.tensor(1 / self.config.C), requires_grad=False
         )
 
     def _build_input_distribution(self, gmm_leaves):
@@ -301,22 +301,22 @@ class RatSpn(nn.Module):
                 truncated_normal_(module.weights, std=0.5)
                 continue
 
-    def mpe(self, evidence: torch.Tensor) -> torch.Tensor:
+    def mpe(self, evidence: th.Tensor) -> th.Tensor:
         """
         Perform MPE given some evidence.
 
         Args:
             evidence: Input evidence. Must contain some NaN values.
         Returns:
-            torch.Tensor: Clone of input tensor with NaNs replaced by MPE estimates.
+            th.Tensor: Clone of input tensor with NaNs replaced by MPE estimates.
         """
         return self.sample(evidence=evidence, is_mpe=True)
 
-    def sample(self, n=1, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample(self, n=1, class_index=None, evidence: th.Tensor = None, is_mpe: bool = False, **kwargs):
         raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
                                   "Please choose one.")
 
-    def sample_index_style(self, n: int = None, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample_index_style(self, n: int = None, class_index=None, evidence: th.Tensor = None, is_mpe: bool = False, **kwargs):
         """
         Sample from the distribution represented by this SPN.
 
@@ -342,7 +342,7 @@ class RatSpn(nn.Module):
             is_mpe: Flag to perform max sampling (MPE).
 
         Returns:
-            torch.Tensor: Samples generated according to the distribution specified by the SPN.
+            th.Tensor: Samples generated according to the distribution specified by the SPN.
 
         """
         assert class_index is None or evidence is None, "Cannot provide both, evidence and class indices."
@@ -361,7 +361,7 @@ class RatSpn(nn.Module):
                 # Create new sampling context
                 ctx = SamplingContext(n=n,
                                       parent_indices=class_index.repeat(n, 1).unsqueeze(-1).to(self._device),
-                                      repetition_indices=torch.zeros((n, class_index.shape[0]), dtype=int, device=self._device),
+                                      repetition_indices=th.zeros((n, class_index.shape[0]), dtype=int, device=self._device),
                                       is_mpe=is_mpe)
             else:
                 # Start sampling one of the C root nodes TODO: check what happens if C=1
@@ -369,7 +369,7 @@ class RatSpn(nn.Module):
                 # ctx = self._sampling_root.sample(context=ctx)
 
             # Sample from RatSpn root layer: Results are indices into the stacked output channels of all repetitions
-            # ctx.repetition_indices = torch.zeros(n, dtype=int, device=self._device)
+            # ctx.repetition_indices = th.zeros(n, dtype=int, device=self._device)
             ctx = self.root.sample_index_style(ctx=ctx)
             # parent_indices and repetition indices both have the same shape in the first three dimensions:
             # [nr_nodes, n, w]
@@ -389,7 +389,7 @@ class RatSpn(nn.Module):
             # This weight vector was used as the logits in a IC*R-categorical distribution, yielding indexes [0,C*R-1].
             # To match the index to the correct repetition and its input channel, we do the following
             ctx.repetition_indices = (ctx.parent_indices % self.config.R).squeeze(3)
-            ctx.parent_indices = torch.div(ctx.parent_indices, self.config.R, rounding_mode='trunc')
+            ctx.parent_indices = th.div(ctx.parent_indices, self.config.R, rounding_mode='trunc')
 
             # Continue at layers
             # Sample inner layers in reverse order (starting from topmost)
@@ -403,14 +403,14 @@ class RatSpn(nn.Module):
 
             # Invert permutation
             rep_selected_inv_permutation = self.inv_permutation.T[ctx.repetition_indices]
-            samples = torch.gather(samples, dim=-1, index=rep_selected_inv_permutation)
+            samples = th.gather(samples, dim=-1, index=rep_selected_inv_permutation)
 
             # The first dimension is the nodes which are sampled. Here, it is always 1 as there is one root node.
             samples.squeeze_(0)
 
             if evidence is not None:
                 # Update NaN entries in evidence with the sampled values
-                nan_indices = torch.isnan(evidence)
+                nan_indices = th.isnan(evidence)
 
                 # First make a copy such that the original object is not changed
                 evidence = evidence.clone()
@@ -419,7 +419,7 @@ class RatSpn(nn.Module):
             else:
                 return samples
 
-    def sample_onehot_style(self, n: int = None, class_index=None, evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample_onehot_style(self, n: int = None, class_index=None, evidence: th.Tensor = None, is_mpe: bool = False, **kwargs):
         """
         Sample from the distribution represented by this SPN.
 
@@ -446,7 +446,7 @@ class RatSpn(nn.Module):
             is_mpe: Flag to perform max sampling (MPE).
 
         Returns:
-            torch.Tensor: Samples generated according to the distribution specified by the SPN.
+            th.Tensor: Samples generated according to the distribution specified by the SPN.
 
         """
         assert class_index is None or evidence is None, "Cannot provide both, evidence and class indices."
@@ -465,7 +465,7 @@ class RatSpn(nn.Module):
                 # Create new sampling context
                 ctx = SamplingContext(n=n,
                                       parent_indices=class_index.repeat(n, 1).unsqueeze(-1).to(self._device),
-                                      repetition_indices=torch.zeros((n, class_index.shape[0]), dtype=int, device=self._device),
+                                      repetition_indices=th.zeros((n, class_index.shape[0]), dtype=int, device=self._device),
                                       is_mpe=is_mpe)
             else:
                 # Start sampling one of the C root nodes TODO: check what happens if C=1
@@ -500,14 +500,14 @@ class RatSpn(nn.Module):
             # Invert permutation
             rep_selected_inv_permutation = self.inv_permutation * ctx.parent_indices.detach().sum(-2).long()
             rep_selected_inv_permutation = rep_selected_inv_permutation.sum(-1)
-            samples = torch.gather(samples, dim=-1, index=rep_selected_inv_permutation)
+            samples = th.gather(samples, dim=-1, index=rep_selected_inv_permutation)
 
             # The first dimension is the nodes which are sampled. Here, it is always 1 as there is one root node.
             samples.squeeze_(0)
 
             if evidence is not None:
                 # Update NaN entries in evidence with the sampled values
-                nan_indices = torch.isnan(evidence)
+                nan_indices = th.isnan(evidence)
 
                 # First make a copy such that the original object is not changed
                 evidence = evidence.clone()
@@ -526,18 +526,18 @@ class RatSpn(nn.Module):
         log_weights = weights.unsqueeze(0)
         weights = log_weights.exp()
         weight_entropy = -(weights * log_weights).sum(dim=3)
-        weighted_ch_ents = torch.sum(child_entropies.unsqueeze(4) * weights, dim=3)
+        weighted_ch_ents = th.sum(child_entropies.unsqueeze(4) * weights, dim=3)
         aux_resp_ent = log_weights + sample_ll.unsqueeze(4)
         sample_ll = layer(sample_ll)
         aux_resp_ent -= sample_ll.unsqueeze(3)
 
         # aux_dev_5samples = aux_resp_ent[:5].mean(dim=0, keepdim=True)
-        # aux_dev_5samples = torch.sum(weights * aux_dev_5samples, dim=3)
+        # aux_dev_5samples = th.sum(weights * aux_dev_5samples, dim=3)
         # aux_dev_1sample = aux_resp_ent[:1].mean(dim=0, keepdim=True)
-        # aux_dev_1sample = torch.sum(weights * aux_dev_1sample, dim=3)
+        # aux_dev_1sample = th.sum(weights * aux_dev_1sample, dim=3)
 
         aux_resp_ent = aux_resp_ent.mean(dim=0, keepdim=True)
-        aux_resp_ent = torch.sum(weights * aux_resp_ent, dim=3)
+        aux_resp_ent = th.sum(weights * aux_resp_ent, dim=3)
 
         # aux_dev_5samples = (aux_dev_5samples - aux_resp_ent).abs()
         # aux_dev_1sample = (aux_dev_1sample - aux_resp_ent).abs()
@@ -560,12 +560,12 @@ class RatSpn(nn.Module):
         """
         assert not self.config.gmm_leaves, "VI entropy not tested on GMM leaves yet."
         assert self.config.C == 1, "For C > 1, we must calculate starting from self._sampling_root!"
-        root_weights_over_rep = torch.empty(1)  # For PyCharm
-        log_weights = torch.empty(1)
+        root_weights_over_rep = th.empty(1)  # For PyCharm
+        log_weights = th.empty(1)
         logging = {}
 
         if False:
-            with torch.no_grad():
+            with th.no_grad():
                 child_ll = self._leaf.sample_index_style(SamplingContext(n=sample_size, is_mpe=False))
                 child_ll = self._leaf(child_ll)
             child_entropies = -child_ll.mean(dim=0, keepdim=True)
@@ -589,7 +589,7 @@ class RatSpn(nn.Module):
                 # order of magnitude more samples, which makes the approximation process much more computationally
                 # intensive. In experiments, this showed to not substantially influence the results.
                 # So we can save this expense.
-                with torch.no_grad():
+                with th.no_grad():
                     if not share_ch_samples_among_nodes:
                         oc = layer.out_channels
                         ctx = SamplingContext(n=sample_size * oc, is_mpe=False)
@@ -628,11 +628,11 @@ class RatSpn(nn.Module):
                             # This is equivalent to splitting up the root sum node into one sum node per repetition,
                             # with another sum node sitting on top.
                             root_weights_over_rep = layer.weights.view(w, 1, r, ic).permute(0, 1, 3, 2).unsqueeze(-2)
-                            log_weights = torch.log_softmax(root_weights_over_rep, dim=2)
+                            log_weights = th.log_softmax(root_weights_over_rep, dim=2)
                             # child_ll and the weights are log-scaled, so we add them together.
                             ll = child_ll.unsqueeze(-2) + log_weights.unsqueeze(0)
                             # ll shape [ic, w, 1, ic, r]
-                            ll = torch.logsumexp(ll, dim=3)
+                            ll = th.logsumexp(ll, dim=3)
 
                             # first reshape the tensor to get the nodes over which we sampled into
                             # the first dimension.
@@ -706,11 +706,11 @@ class RatSpn(nn.Module):
                             # This is equivalent to splitting up the root sum node into one sum node per repetition,
                             # with another sum node sitting on top.
                             root_weights_over_rep = layer.weights.view(w, 1, r, ic).permute(0, 1, 3, 2).unsqueeze(-2)
-                            log_weights = torch.log_softmax(root_weights_over_rep, dim=2)
+                            log_weights = th.log_softmax(root_weights_over_rep, dim=2)
                             # child_ll and the weights are log-scaled, so we add them together.
                             ll = child_ll.unsqueeze(-2) + log_weights.unsqueeze(0)
                             # ll shape [ic, w, 1, ic, r]
-                            ll = torch.logsumexp(ll, dim=3)
+                            ll = th.logsumexp(ll, dim=3)
 
                             # first reshape the tensor to get the nodes over which we sampled into
                             # the first dimension.
@@ -747,13 +747,13 @@ class RatSpn(nn.Module):
                     log_weights = layer.weights
                 weights = log_weights.exp()
                 child_entropies.squeeze_(0)
-                weighted_ch_ents = torch.sum(child_entropies.unsqueeze(3) * weights, dim=2)
+                weighted_ch_ents = th.sum(child_entropies.unsqueeze(3) * weights, dim=2)
                 aux_responsibility = log_weights.detach() + child_ll - ll
-                weighted_aux_responsibility = torch.sum(weights * aux_responsibility, dim=2)
+                weighted_aux_responsibility = th.sum(weights * aux_responsibility, dim=2)
                 if i == len(self._inner_layers):
                     weights = root_weights_over_rep.exp().sum(dim=2).softmax(dim=-1)
-                    weighted_ch_ents = torch.sum(weighted_ch_ents * weights, dim=-1)
-                    weighted_aux_responsibility = torch.sum(weights * weighted_aux_responsibility, dim=-1)
+                    weighted_ch_ents = th.sum(weighted_ch_ents * weights, dim=-1)
+                    weighted_aux_responsibility = th.sum(weights * weighted_aux_responsibility, dim=-1)
                 child_entropies = weight_entropy + weighted_ch_ents + weighted_aux_responsibility
                 child_entropies.unsqueeze_(0)
                 if verbose:
@@ -803,7 +803,7 @@ class RatSpn(nn.Module):
             This function calculates the weights of the network if it were a hierarchical mixture model,
             that is, without product layers. These weights are needed for calculating the entropy.
         """
-        current_weights: torch.Tensor = self.root.weights
+        current_weights: th.Tensor = self.root.weights
         assert current_weights.dim() == 5, "This isn't adopted to the 4-dimensional RatSpn weights yet"
 
         n, d, ic, oc, _ = current_weights.shape
@@ -826,7 +826,7 @@ class RatSpn(nn.Module):
                 current_sum: Sum = layer
                 current_weights = layer.weights.softmax(dim=2)
 
-    def consolidated_vector_forward(self, leaf_vectors: List[torch.Tensor], kernel) -> List[torch.Tensor]:
+    def consolidated_vector_forward(self, leaf_vectors: List[th.Tensor], kernel) -> List[th.Tensor]:
         """
             Performs an upward pass on vectors from the leaf layer. Such vectors have a length of 'cardinality'.
             The upward pass calls 'kernel' at each sum node.
@@ -872,7 +872,7 @@ class RatSpn(nn.Module):
         return leaf_vectors
 
     @staticmethod
-    def weighted_sum_kernel(child_grads: torch.Tensor, layer: Sum):
+    def weighted_sum_kernel(child_grads: th.Tensor, layer: Sum):
         weights = layer.consolidated_weights.unsqueeze(2)
         # Weights is of shape [n, d, 1, ic, oc, r]
         # The extra dimension is created so all elements of the gradient vectors are multiplied by the same
@@ -880,7 +880,7 @@ class RatSpn(nn.Module):
         return [(g.unsqueeze(4) * weights).sum(dim=3) for g in child_grads]
 
     @staticmethod
-    def moment_kernel(child_moments: List[torch.Tensor], layer: Sum):
+    def moment_kernel(child_moments: List[th.Tensor], layer: Sum):
         assert layer.consolidated_weights is not None, "No consolidated weights are set for this Sum node!"
         weights = layer.consolidated_weights.unsqueeze(2)
         # Weights is of shape [n, d, 1, ic, oc, r]
@@ -926,7 +926,7 @@ class RatSpn(nn.Module):
             moments += [None] * (order - len(moments))
         return self.consolidated_vector_forward(moments, RatSpn.moment_kernel)
 
-    def compute_gradients(self, x: torch.Tensor, with_log_prob_x=False, order=3):
+    def compute_gradients(self, x: th.Tensor, with_log_prob_x=False, order=3):
         x = self._randomize(x)
         grads: List = self._leaf.gradient(x, order=order)
         if len(grads) < order:
@@ -942,10 +942,10 @@ class RatSpn(nn.Module):
         for i in range(1, len(self._inner_layers)):
             layer = self._inner_layers[i]
             if isinstance(layer, Sum):
-                log_sum_weights: torch.Tensor = layer.weights
+                log_sum_weights: th.Tensor = layer.weights
                 if log_sum_weights.dim() == 4:
                     # Only in the Cspn case are the weights already log-normalized
-                    log_sum_weights: torch.Tensor = torch.log_softmax(log_sum_weights, dim=2)
+                    log_sum_weights: th.Tensor = th.log_softmax(log_sum_weights, dim=2)
                 assert self.sum.weights.dim() == 5, "This isn't adopted to the 4-dimensional RatSpn weights yet"
                 nr_cat = log_sum_weights.shape[2]
                 max_categ_ent = -np.log(1/nr_cat)
@@ -956,12 +956,12 @@ class RatSpn(nn.Module):
                     norm_categ_ent = norm_categ_ent.mean()
                 inner_sum_ent.append(categ_ent.unsqueeze(0))
                 norm_inner_sum_ent.append(norm_categ_ent.unsqueeze(0))
-        inner_sum_ent = torch.cat(inner_sum_ent, dim=0)
-        norm_inner_sum_ent = torch.cat(norm_inner_sum_ent, dim=0)
+        inner_sum_ent = th.cat(inner_sum_ent, dim=0)
+        norm_inner_sum_ent = th.cat(norm_inner_sum_ent, dim=0)
         log_root_weights = self.root.weights
         if log_root_weights.dim() == 4:
             # Only in the Cspn case are the weights already log-normalized
-            log_root_weights: torch.Tensor = torch.log_softmax(log_root_weights, dim=2)
+            log_root_weights: th.Tensor = th.log_softmax(log_root_weights, dim=2)
         nr_cat = log_root_weights.shape[2]
         max_categ_ent = -np.log(1 / nr_cat)
         root_categ_ent = -(log_root_weights.exp() * log_root_weights).sum(dim=2)

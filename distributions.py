@@ -3,7 +3,7 @@ from typing import Dict, Tuple, List, Optional
 
 import math
 import numpy as np
-import torch
+import torch as th
 from torch import distributions as dist
 from torch import nn
 from torch.nn import functional as F
@@ -44,17 +44,17 @@ class RatNormal(Leaf):
         super().__init__(in_features, out_channels, num_repetitions, dropout)
 
         # Create gaussian means and stds
-        self.means = nn.Parameter(torch.randn(1, in_features, out_channels, num_repetitions))
+        self.means = nn.Parameter(th.randn(1, in_features, out_channels, num_repetitions))
 
         self._tanh_squash = tanh_squash
         self._no_tanh_log_prob_correction = no_tanh_log_prob_correction
 
         if min_sigma is not None and max_sigma is not None:
             # Init from normal
-            self.stds = nn.Parameter(torch.randn(1, in_features, out_channels, num_repetitions))
+            self.stds = nn.Parameter(th.randn(1, in_features, out_channels, num_repetitions))
         else:
             # Init uniform between 0 and 1
-            self.stds = nn.Parameter(torch.rand(1, in_features, out_channels, num_repetitions))
+            self.stds = nn.Parameter(th.rand(1, in_features, out_channels, num_repetitions))
 
         self.min_sigma = check_valid(min_sigma, float, 0.0, max_sigma, allow_none=True)
         self.max_sigma = check_valid(max_sigma, float, min_sigma, allow_none=True)
@@ -62,6 +62,9 @@ class RatNormal(Leaf):
         self.max_mean = check_valid(max_mean, float, min_mean, allow_none=True)
 
         self._dist_params_are_bounded = False
+
+    def set_no_tanh_log_prob_correction(self):
+        self._no_tanh_log_prob_correction = False
 
     def forward(self, x):
         if x.dim() == 4:
@@ -73,7 +76,7 @@ class RatNormal(Leaf):
             # This correction term assumes that the input is from a distribution with infinite support
             correction = 2 * (np.log(2) - x - F.softplus(-2 * x))
             # This correction term assumes the input to be squashed already
-            # correction = torch.log(1 - x**2 + 1e-6)
+            # correction = th.log(1 - x**2 + 1e-6)
 
         d = self._get_base_distribution()
         x = d.log_prob(x)  # Shape: [n, w, d, oc, r]
@@ -90,17 +93,17 @@ class RatNormal(Leaf):
         raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
                                   "Please choose one.")
 
-    def sample_index_style(self, ctx: SamplingContext = None) -> torch.Tensor:
+    def sample_index_style(self, ctx: SamplingContext = None) -> th.Tensor:
         """
         Perform sampling, given indices from the parent layer that indicate which of the multiple representations
         for each input shall be used.
         """
         if ctx.is_root:
             if ctx.is_mpe:
-                samples: torch.Tensor = self.means.unsqueeze(0).expand(ctx.n, -1, -1, -1, -1)
+                samples: th.Tensor = self.means.unsqueeze(0).expand(ctx.n, -1, -1, -1, -1)
             else:
                 gauss = dist.Normal(self.means, self.stds)
-                samples: torch.Tensor = gauss.rsample(sample_shape=(ctx.n,))
+                samples: th.Tensor = gauss.rsample(sample_shape=(ctx.n,))
         else:
             nr_nodes, n, w = ctx.parent_indices.shape[:3]
             _, d, i, r = self.means.shape
@@ -110,13 +113,13 @@ class RatNormal(Leaf):
             if ctx.repetition_indices is not None:
                 rep_ind = ctx.repetition_indices.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
                 rep_ind = rep_ind.expand(-1, -1, -1, d, i, -1)
-                selected_means = torch.gather(selected_means, dim=-1, index=rep_ind).squeeze(-1)
-                selected_stds = torch.gather(selected_stds, dim=-1, index=rep_ind).squeeze(-1)
+                selected_means = th.gather(selected_means, dim=-1, index=rep_ind).squeeze(-1)
+                selected_stds = th.gather(selected_stds, dim=-1, index=rep_ind).squeeze(-1)
 
             # Select means and std in the output_channel dimension
             par_ind = ctx.parent_indices.unsqueeze(4)
-            selected_means = torch.gather(selected_means, dim=4, index=par_ind).squeeze(4)
-            selected_stds = torch.gather(selected_stds, dim=4, index=par_ind).squeeze(4)
+            selected_means = th.gather(selected_means, dim=4, index=par_ind).squeeze(4)
+            selected_stds = th.gather(selected_stds, dim=4, index=par_ind).squeeze(4)
 
             if ctx.is_mpe:
                 samples = selected_means
@@ -126,17 +129,17 @@ class RatNormal(Leaf):
 
         return samples
 
-    def sample_onehot_style(self, ctx: SamplingContext = None) -> torch.Tensor:
+    def sample_onehot_style(self, ctx: SamplingContext = None) -> th.Tensor:
         """
         Perform sampling, given indices from the parent layer that indicate which of the multiple representations
         for each input shall be used.
         """
         if ctx.is_root:
             if ctx.is_mpe:
-                samples: torch.Tensor = self.means.unsqueeze(0).expand(ctx.n, -1, -1, -1, -1)
+                samples: th.Tensor = self.means.unsqueeze(0).expand(ctx.n, -1, -1, -1, -1)
             else:
                 gauss = dist.Normal(self.means, self.stds)
-                samples: torch.Tensor = gauss.rsample(sample_shape=(ctx.n,))
+                samples: th.Tensor = gauss.rsample(sample_shape=(ctx.n,))
         else:
             selected_means = self.means * ctx.parent_indices
             assert ctx.parent_indices.detach().sum(4).max().item() == 1.0
@@ -168,31 +171,31 @@ class RatNormal(Leaf):
         self.means, self.stds = self.bounded_dist_params()
         self._dist_params_are_bounded = True
 
-    def bounded_dist_params(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def bounded_dist_params(self) -> Tuple[th.Tensor, th.Tensor]:
         if not self._dist_params_are_bounded:
             if self.min_sigma:
                 if self.min_sigma < self.max_sigma:
-                    sigma_ratio = torch.sigmoid(self.stds)
+                    sigma_ratio = th.sigmoid(self.stds)
                     sigma = self.min_sigma + (self.max_sigma - self.min_sigma) * sigma_ratio
                 else:
                     sigma = 1.0
             else:
                 LOG_STD_MAX = 2
                 LOG_STD_MIN = -20
-                sigma = torch.clamp(self.stds, LOG_STD_MIN, LOG_STD_MAX).exp()
+                sigma = th.clamp(self.stds, LOG_STD_MIN, LOG_STD_MAX).exp()
 
             means = self.means
             if self.max_mean:
                 assert self.min_mean is not None
                 # mean_range = self.max_mean - self.min_mean
-                # means = torch.sigmoid(self.means) * mean_range + self.min_mean
-                means = torch.clamp(means, self.min_mean, self.max_mean)
+                # means = th.sigmoid(self.means) * mean_range + self.min_mean
+                means = th.clamp(means, self.min_mean, self.max_mean)
 
             return means, sigma
         else:
             return self.means, self.stds
 
-    def _get_base_distribution(self) -> torch.distributions.Distribution:
+    def _get_base_distribution(self) -> th.distributions.Distribution:
         means, sigma = self.bounded_dist_params()
         gauss = dist.Normal(means, sigma)
         return gauss
@@ -202,7 +205,7 @@ class RatNormal(Leaf):
         means, sigma = self.bounded_dist_params()
         return means, sigma.pow(2)
 
-    def gradient(self, x: torch.Tensor, order: int):
+    def gradient(self, x: th.Tensor, order: int):
         """Get the gradient up to a given order at the point x"""
         assert order <= 3, "Gradient only implemented up to the third order!"
 
@@ -277,7 +280,7 @@ class IndependentMultivariate(Leaf):
         if isinstance(self.base_leaf, RatNormal):
             truncated_normal_(self.base_leaf.stds, std=0.5)
 
-    def pad_input(self, x: torch.Tensor):
+    def pad_input(self, x: th.Tensor):
         if self._pad:
             x = F.pad(x, pad=[0, 0, 0, 0, 0, self._pad], mode="constant", value=0.0)
         return x
@@ -286,7 +289,7 @@ class IndependentMultivariate(Leaf):
     def pad(self):
         return self._pad
 
-    def forward(self, x: torch.Tensor, reduction='sum'):
+    def forward(self, x: th.Tensor, reduction='sum'):
         # Pass through base leaf
         x = self.base_leaf(x)
         x = self.pad_input(x)
@@ -308,7 +311,7 @@ class IndependentMultivariate(Leaf):
         raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
                                   "Please choose one.")
 
-    def sample_index_style(self, ctx: SamplingContext = None) -> torch.Tensor:
+    def sample_index_style(self, ctx: SamplingContext = None) -> th.Tensor:
         if not ctx.is_root:
             ctx = self.prod.sample(ctx=ctx)
 
@@ -319,7 +322,7 @@ class IndependentMultivariate(Leaf):
         samples = self.base_leaf.sample_index_style(ctx=ctx)
         return samples
 
-    def sample_onehot_style(self, ctx: SamplingContext = None) -> torch.Tensor:
+    def sample_onehot_style(self, ctx: SamplingContext = None) -> th.Tensor:
         if not ctx.is_root:
             ctx = self.prod.sample(ctx=ctx)
 
@@ -334,7 +337,7 @@ class IndependentMultivariate(Leaf):
         """Get the mean, variance and third central moment (unnormalized skew)"""
         return [self.prod(self.pad_input(m), reduction=None) for m in self.base_leaf.moments()]
 
-    def gradient(self, x: torch.Tensor, order: int):
+    def gradient(self, x: th.Tensor, order: int):
         """Get the gradient up to the given order at the point x"""
         return [self.prod(self.pad_input(g), reduction=None) for g in self.base_leaf.gradient(x, order)]
 
@@ -364,7 +367,7 @@ class GaussianMixture(IndependentMultivariate):
     def reset_moment_cache(self):
         self._cached_moments = None
 
-    def forward(self, x: torch.Tensor, reduction='sum'):
+    def forward(self, x: th.Tensor, reduction='sum'):
         x = super().forward(x=x, reduction=reduction)
         if reduction is None:
             x = self._weighted_sum(x)
@@ -372,7 +375,7 @@ class GaussianMixture(IndependentMultivariate):
         else:
             return self.sum(x)
 
-    def sample(self, ctx: SamplingContext = None) -> torch.Tensor:
+    def sample(self, ctx: SamplingContext = None) -> th.Tensor:
         context_overhang = ctx.parent_indices.size(1) - self.sum.in_features
         assert context_overhang >= 0, f"context_overhang is negative! ({context_overhang})"
         if context_overhang:
@@ -390,7 +393,7 @@ class GaussianMixture(IndependentMultivariate):
             # Only in the Cspn case are the weights already log-normalized
             weights = weights.exp()
         else:
-            weights = torch.softmax(weights, dim=2)
+            weights = th.softmax(weights, dim=2)
         assert self.sum.weights.dim() == 5, "This isn't adopted to the 4-dimensional RatSpn weights yet"
         weights = weights.unsqueeze(2)
         # Weights is of shape [n, d, 1, ic, oc, r]
@@ -428,7 +431,7 @@ class GaussianMixture(IndependentMultivariate):
         self._cached_moments = moments
         return moments
 
-    def _weighted_sum(self, x: torch.Tensor):
+    def _weighted_sum(self, x: th.Tensor):
         weights = self.sum.weights
         if weights.dim() == 5:
             # Only in the Cspn case are the weights already log-normalized
@@ -441,7 +444,7 @@ class GaussianMixture(IndependentMultivariate):
         # weight for that feature and output channel.
         return (x.unsqueeze(4) * weights.unsqueeze(2)).sum(dim=3)
 
-    def gradient(self, x: torch.Tensor, order: int):
+    def gradient(self, x: th.Tensor, order: int):
         """Get the gradient up to the given order at the point x"""
         grads = self.base_leaf.gradient(x, order)
         grads = [self.prod(self.pad_input(g), reduction=None) for g in grads]
@@ -460,10 +463,10 @@ class GaussianMixture(IndependentMultivariate):
               # f"{(log_p_mean < clamp_at).sum()/log_p_mean.numel():.5f}")
         # log_p_mean.clamp_(min=clamp_at)
 
-        entropy = torch.zeros(1).to(self._device)
-        H_0 = torch.zeros(1).to(self._device)
-        H_2 = torch.zeros(1).to(self._device)
-        H_3 = torch.zeros(1).to(self._device)
+        entropy = th.zeros(1).to(self._device)
+        H_0 = th.zeros(1).to(self._device)
+        H_2 = th.zeros(1).to(self._device)
+        H_3 = th.zeros(1).to(self._device)
         if components >= 1:
             H_0 = - log_p_mean
             H_0 = H_0.sum(dim=2)
@@ -484,10 +487,10 @@ class GaussianMixture(IndependentMultivariate):
                 if components >= 3:
                     gggrad = grads[2]
                     inv_cub_mean_prob = (-3 * log_p_mean).exp()
-                    gggrad_log: torch.Tensor = 2 * inv_cub_mean_prob * grad \
+                    gggrad_log: th.Tensor = 2 * inv_cub_mean_prob * grad \
                                                - 2 * inv_sq_mean_prob * ggrad \
                                                + inv_mean_prob * gggrad
-                    H_3: torch.Tensor = - (gggrad_log * skew) / 6
+                    H_3: th.Tensor = - (gggrad_log * skew) / 6
                     H_3 = H_3.sum(dim=2)
                     if reduction == 'mean':
                         H_3 = H_3.mean()
@@ -500,10 +503,10 @@ class GaussianMixture(IndependentMultivariate):
             Calculate the entropy lower bound of the first-level mixtures.
             See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
         """
-        log_gmm_weights: torch.Tensor = self.sum.weights
+        log_gmm_weights: th.Tensor = self.sum.weights
         if log_gmm_weights.dim() == 4:
             # Only in the Cspn case are the weights already log-normalized
-            log_gmm_weights = torch.log_softmax(log_gmm_weights, dim=2)
+            log_gmm_weights = th.log_softmax(log_gmm_weights, dim=2)
         assert self.sum.weights.dim() == 5, "This isn't adopted to the 4-dimensional RatSpn weights yet"
         N, D, I, S, R = log_gmm_weights.shape
         # First sum layer after the leaves has weights of dim (N, D, I, S, R)
@@ -527,9 +530,9 @@ class GaussianMixture(IndependentMultivariate):
                 # is added to the weights of the S sum nodes of that feature.
                 component_log_probs.unsqueeze_(dim=3)
                 log_probs_i.append(log_gmm_weights[:, :, [j], :, :] + component_log_probs)
-            log_probs_i = torch.cat(log_probs_i, dim=2).logsumexp(dim=2, keepdim=True)
+            log_probs_i = th.cat(log_probs_i, dim=2).logsumexp(dim=2, keepdim=True)
             lb_ent_i.append(log_gmm_weights[:, :, [i], :, :].exp() * log_probs_i)
-        lb_ent = -torch.cat(lb_ent_i, dim=2).sum(dim=2)
+        lb_ent = -th.cat(lb_ent_i, dim=2).sum(dim=2)
 
         if reduction == 'mean':
             lb_ent = lb_ent.mean()
@@ -540,10 +543,10 @@ class GaussianMixture(IndependentMultivariate):
             Calculate the entropy lower bound of the first-level mixtures.
             See "On Entropy Approximation for Gaussian Mixture Random Vectors" Huber et al. 2008, Theorem 2
         """
-        log_gmm_weights: torch.Tensor = self.sum.weights
+        log_gmm_weights: th.Tensor = self.sum.weights
         if log_gmm_weights.dim() == 4:
             # Only in the Cspn case are the weights already log-normalized
-            log_gmm_weights = torch.log_softmax(log_gmm_weights, dim=2)
+            log_gmm_weights = th.log_softmax(log_gmm_weights, dim=2)
         assert self.sum.weights.dim() == 5, "This isn't adopted to the 4-dimensional RatSpn weights yet"
         N, D, I, S, R = log_gmm_weights.shape
         # First sum layer after the leaves has weights of dim (N, D, I, S, R)
@@ -572,7 +575,7 @@ class GaussianMixture(IndependentMultivariate):
         log_probs.unsqueeze_(dim=3)
 
         weighted_log_probs = w_j + log_probs
-        lb_log_term = torch.logsumexp(weighted_log_probs.view(N, D, I, I, S, R), dim=2)
+        lb_log_term = th.logsumexp(weighted_log_probs.view(N, D, I, I, S, R), dim=2)
         # lb_log_term is now [N, D, I, S, R], the same shape as log_gmm_weights
 
         gmm_ent_lb = -(log_gmm_weights.exp() * lb_log_term)

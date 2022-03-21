@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Type
 
 import numpy as np
-import torch
+import torch as th
 import torch.nn.functional as F
 from dataclasses import dataclass
 from torch import nn
@@ -65,7 +65,7 @@ class CSPN(RatSpn):
         self.replace_layer_params()
         self.create_feat_layers(config.F_cond)
 
-    def forward(self, x: torch.Tensor, condition: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, x: th.Tensor, condition: th.Tensor = None) -> th.Tensor:
         """
         Forward pass through RatSpn. Computes the conditional log-likelihood P(X | C).
 
@@ -75,7 +75,7 @@ class CSPN(RatSpn):
                 weight_sets: In CSPNs, weights are different for each conditional. In RatSpn, this is 1.
 
         Returns:
-            torch.Tensor: Conditional log-likelihood P(X | C) of the input.
+            th.Tensor: Conditional log-likelihood P(X | C) of the input.
         """
         if condition is not None:
             self.set_weights(condition)
@@ -94,7 +94,7 @@ class CSPN(RatSpn):
 
         return super().forward(x)
 
-    def vi_entropy_approx(self, sample_size, condition: torch.Tensor = None, **kwargs) -> torch.Tensor:
+    def vi_entropy_approx(self, sample_size, condition: th.Tensor = None, **kwargs) -> th.Tensor:
         if condition is not None:
             self.set_weights(condition)
         return super().vi_entropy_approx(sample_size, **kwargs)
@@ -189,18 +189,18 @@ class CSPN(RatSpn):
             self.set_weights(condition)
         return super().sum_node_entropies(reduction)
 
-    def sample(self, condition: torch.Tensor = None, n=1, class_index=None,
-               evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample(self, condition: th.Tensor = None, n=1, class_index=None,
+               evidence: th.Tensor = None, is_mpe: bool = False, **kwargs):
         raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
                                   "Please choose one.")
 
-    def sample_index_style(self, condition: torch.Tensor = None, n=1, class_index=None,
-               evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample_index_style(self, condition: th.Tensor = None, n=1, class_index=None,
+               evidence: th.Tensor = None, is_mpe: bool = False, **kwargs):
         """
         Sample from the random variable encoded by the CSPN.
 
         Args:
-            condition (torch.Tensor): Batch of conditionals.
+            condition (th.Tensor): Batch of conditionals.
         """
         if condition is not None:
             self.set_weights(condition)
@@ -211,13 +211,13 @@ class CSPN(RatSpn):
         # batch_size = self.root.weights.shape[0]
         return super().sample_index_style(n, class_index, evidence, is_mpe, **kwargs)
 
-    def sample_onehot_style(self, condition: torch.Tensor = None, n=1, class_index=None,
-               evidence: torch.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample_onehot_style(self, condition: th.Tensor = None, n=1, class_index=None,
+               evidence: th.Tensor = None, is_mpe: bool = False, **kwargs):
         """
         Sample from the random variable encoded by the CSPN.
 
         Args:
-            condition (torch.Tensor): Batch of conditionals.
+            condition (th.Tensor): Batch of conditionals.
         """
         if condition is not None:
             self.set_weights(condition)
@@ -231,23 +231,23 @@ class CSPN(RatSpn):
     def replace_layer_params(self):
         for layer in self._inner_layers:
             if isinstance(layer, Sum):
-                placeholder = torch.zeros_like(layer.weights)
+                placeholder = th.zeros_like(layer.weights)
                 del layer.weights
                 layer.weights = placeholder
-        placeholder = torch.zeros_like(self.root.weights)
+        placeholder = th.zeros_like(self.root.weights)
         del self.root.weights
         self.root.weights = placeholder
 
-        placeholder = torch.zeros_like(self._sampling_root.weights)
+        placeholder = th.zeros_like(self._sampling_root.weights)
         del self._sampling_root.weights
         self._sampling_root.weights = placeholder
 
         if isinstance(self._leaf, GaussianMixture):
-            placeholder = torch.zeros_like(self._leaf.sum.weights)
+            placeholder = th.zeros_like(self._leaf.sum.weights)
             del self._leaf.sum.weights
             self._leaf.sum.weights = placeholder
 
-        placeholder = torch.zeros_like(self._leaf.base_leaf.means)
+        placeholder = th.zeros_like(self._leaf.base_leaf.means)
         del self._leaf.base_leaf.means
         del self._leaf.base_leaf.stds
         self._leaf.base_leaf.means = placeholder
@@ -290,7 +290,7 @@ class CSPN(RatSpn):
 
         output_activation = nn.Identity
 
-        feature_dim = int(np.prod(self.feat_layers(torch.ones((1, *feature_dim))).shape))
+        feature_dim = int(np.prod(self.feat_layers(th.ones((1, *feature_dim))).shape))
         print(f"The feature extraction layer for the CSPN conditional reduce the {int(np.prod(feature_dim))} "
               f"inputs (e.g. pixels in an image) down to {feature_dim} features. These are the inputs of the "
               f"MLPs which set the sum and dist params.")
@@ -335,7 +335,15 @@ class CSPN(RatSpn):
         self.dist_std_head = nn.Linear(dist_layer_sizes[-1], self._leaf.base_leaf.stds.numel())
         print(f"Dist layer has {self._leaf.base_leaf.means.numel()} + {self._leaf.base_leaf.stds.numel()} weights.")
 
-    def set_weights(self, feat_inp: torch.Tensor):
+    def create_one_hot_in_channel_mapping(self):
+        for lay in self._inner_layers:
+            if isinstance(lay, CrossProduct):
+                lay.one_hot_in_channel_mapping = F.one_hot(lay.unraveled_channel_indices).float().requires_grad_(False)
+
+    def set_no_tanh_log_prob_correction(self):
+        self._leaf.base_leaf.set_no_tanh_log_prob_correction()
+
+    def set_weights(self, feat_inp: th.Tensor):
         """
             Sets the weights of the sum and dist nodes, using the input from the conditional passed through the
             feature extraction layers.
@@ -347,6 +355,8 @@ class CSPN(RatSpn):
         num_conditionals = feat_inp.shape[0]
         features = self.feat_layers(feat_inp)
         features = features.flatten(start_dim=1)
+        if (features.detach() == 0.0).all():
+            print("FEATURE LAYERS DRIED UP")
         sum_weights_pre_output = self.sum_layers(features)
 
         # Set normalized sum node weights of the inner RatSpn layers
@@ -367,7 +377,7 @@ class CSPN(RatSpn):
 
         # Sampling root weights need to have 5 dims as well
         weight_shape = (num_conditionals, 1, 1, 1, 1)
-        self._sampling_root.weights = torch.ones(weight_shape).to(self.root.weights.device)
+        self._sampling_root.weights = th.ones(weight_shape).to(self.root.weights.device)
         self._sampling_root.weights = self._sampling_root.weights.mul_(1/self.config.C).log_()
 
         # Set normalized weights of the Gaussian Mixture leaf layer if it exists.
