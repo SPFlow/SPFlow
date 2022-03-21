@@ -9,29 +9,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', '-dev', type=str, default='cpu', choices=['cpu', 'cuda'])
-    parser.add_argument('--seed', '-s', type=int, default=0)
-    parser.add_argument('--epochs', '-ep', type=int, default=100)
-    parser.add_argument('--learning_rate', '-lr', type=float, default=1e-3, help='Learning rate')
-    parser.add_argument('--batch_size', '-bs', type=int, default=256)
-    parser.add_argument('--results_dir', type=str, default='../../spn_experiments',
-                        help='The base directory where the directory containing the results will be saved to.')
-    parser.add_argument('--dataset_dir', type=str, default='../../spn_experiments/data',
-                        help='The base directory to provide to the PyTorch Dataloader.')
-    parser.add_argument('--model_path', type=str,
-                        help='Path to the pretrained model. If it is given, '
-                             'all other SPN config parameters are ignored.')
     args = parser.parse_args()
-
-    if args.model_path:
-        assert os.path.exists(args.model_path), f"The model_path doesn't exist! {args.model_path}"
-
-    results_dir = os.path.join(args.results_dir, f"results_{args.exp_name}")
-    model_dir = os.path.join(results_dir, "models")
-    sample_dir = os.path.join(results_dir, "samples")
-
-    for d in [results_dir, model_dir, sample_dir, args.dataset_dir]:
-        if not os.path.exists(d):
-            os.makedirs(d)
 
     if args.device == "cpu":
         device = th.device("cpu")
@@ -41,21 +19,27 @@ if __name__ == "__main__":
         use_cuda = True
         th.cuda.benchmark = True
     print("Using device:", device)
-    batch_size = args.batch_size
 
     img_size = (1, 28, 28)  # 3 channels
     cond_size = 10
 
-    epoch = '099'
-    exp_name = f"10Mar_ent_log__tanh"
+    # /home/fritz/PycharmProjects/spn_experiments/sample_learning_leaf_ent_closed_form/results_learn_by_sampling_large/models/epoch-049_learn_by_sampling_large.pt
+    spn_exp_path = os.path.join('..', '..', 'spn_experiments')
+    exp_directory = 'sample_learning_leaf_ent_closed_form'
+    exp_name = f"learn_by_sampling_largs"
+    results_dir = f"results_{exp_name}"
     # exp_name = f"11Mar_ent_log__tanh__no_correction_term"
-    base_path = os.path.join('..', '..', 'spn_experiments', 'vi_ent_approx_Mar22', f"results_{exp_name}")
-    model_name = f"epoch-{epoch}_{exp_name}"
+
+    # base_path = os.path.join('..', '..', 'spn_experiments', 'vi_ent_approx_Mar22', f"results_{exp_name}")
+    base_path = os.path.join(spn_exp_path, exp_directory, results_dir)
+
+    model_name = f"epoch-049_{exp_name}"
     path = os.path.join(base_path, 'models', f"{model_name}.pt")
     model = th.load(path, map_location=device)
 
     exp = -1
     if exp == -1:
+        # Sample grad test
         label = th.as_tensor(np.arange(10)).to(device)
         label = F.one_hot(label, 10).float().to(device)
         # sample = model.sample_index_style(condition=label, is_mpe=False)
