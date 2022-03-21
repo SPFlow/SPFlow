@@ -1,9 +1,36 @@
+import math
 import os
+import imageio
 import torch as th
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from experiments.train_cspn_mnist_gen import evaluate_sampling, eval_root_sum_override, plot_img
+import torchvision
+import skimage
+from experiments.train_cspn_mnist_gen import evaluate_sampling
+from cspn import CSPN
+from utils import SamplingContext
+import matplotlib.pyplot as plt
+
+
+def plot_img(image: th.Tensor, nrow: int, title: str = None, x_label: str = None, y_label: str = None,
+             normalize: bool = False, save_dir: str = None):
+    # Tensor shape N x channels x rows x cols
+    tensors = torchvision.utils.make_grid(image, nrow=nrow, padding=1, normalize=normalize)
+    arr = tensors.T.cpu().numpy()
+    # arr = tensors.permute(1, 2, 0).cpu().numpy()
+    arr = skimage.img_as_ubyte(arr)
+    plt.imshow(arr)
+    if title:
+        plt.title(title, fontdict={'fontsize': 10})
+    if x_label:
+        plt.xlabel(x_label)
+    if y_label:
+        plt.ylabel(y_label)
+    if save_dir is not None:
+        plt.savefig(os.path.join(save_dir, f"{title.replace(' ', '_').lower()}.png"))
+    plt.show()
+
 
 if __name__ == "__main__":
     import argparse
@@ -23,22 +50,70 @@ if __name__ == "__main__":
     img_size = (1, 28, 28)  # 3 channels
     cond_size = 10
 
-    # /home/fritz/PycharmProjects/spn_experiments/sample_learning_leaf_ent_closed_form/results_learn_by_sampling_large/models/epoch-049_learn_by_sampling_large.pt
-    spn_exp_path = os.path.join('..', '..', 'spn_experiments')
-    exp_directory = 'sample_learning_leaf_ent_closed_form'
-    exp_name = f"learn_by_sampling_largs"
-    results_dir = f"results_{exp_name}"
-    # exp_name = f"11Mar_ent_log__tanh__no_correction_term"
+    exp_name = f"learn_by_sampling_1_low_lr"
+    # exp_name = f"learn_by_sampling_large"
+    base_path = "."
+    path_parts = ['..', '..', 'spn_experiments', 'sample_learning_leaf_ent_closed_form', f"results_{exp_name}"]
+    for part in path_parts:
+        base_path = os.path.join(base_path, part)
+        assert os.path.exists(base_path), f"Path {base_path} doesn't exist!"
 
-    # base_path = os.path.join('..', '..', 'spn_experiments', 'vi_ent_approx_Mar22', f"results_{exp_name}")
-    base_path = os.path.join(spn_exp_path, exp_directory, results_dir)
-
-    model_name = f"epoch-049_{exp_name}"
+    model_name = f"epoch-349_{exp_name}"
     path = os.path.join(base_path, 'models', f"{model_name}.pt")
-    model = th.load(path, map_location=device)
+    model: CSPN = th.load(path, map_location=device)
 
-    exp = -1
-    if exp == -1:
+    def means_of_RVs(model):
+        with th.no_grad():
+            label = th.as_tensor(np.arange(10)).to(device)
+            label = F.one_hot(label, 10).float().to(device)
+            model.set_weights(label)
+            means = model._leaf.base_leaf.means
+            stds = model._leaf.base_leaf.stds
+            w, f, oc, r = means.shape
+            inv_perm = model.inv_permutation.unsqueeze(1).unsqueeze(0)
+            inv_perm = inv_perm.expand(label.size(0), -1, means.size(2), -1)
+            means = th.gather(means, dim=1, index=inv_perm)
+            stds = th.gather(stds, dim=1, index=inv_perm)
+            means = means.tanh()
+
+            means_to_plot = means.permute(0, 2, 1, 3).reshape(w * oc, np.sqrt(f).astype(int), np.sqrt(f).astype(int), r)
+            means_to_plot = means_to_plot.permute(0, 2, 1, 3)
+            stds_to_plot = stds.permute(0, 2, 1, 3).reshape(w * oc, np.sqrt(f).astype(int), np.sqrt(f).astype(int), r)
+            stds_to_plot = stds_to_plot.permute(0, 2, 1, 3)
+            for i in range(r):
+                plot_img(
+                    means_to_plot[:, :, :, i].unsqueeze(1),
+                    nrow=oc, title=f"Means of repetition {i}", x_label="Digits 0-9", y_label="Output channels",
+                )
+                plot_img(
+                    stds_to_plot[:, :, :, i].unsqueeze(1),
+                    nrow=oc, title=f"Stds of repetition {i}", x_label="Digits 0-9", y_label="Output channels",
+                    normalize=True,
+                )
+
+    def eval_root_sum_override(model, save_dir, device):
+        with th.no_grad():
+            label = th.as_tensor(np.arange(10)).to(device)
+            label = F.one_hot(label, 10).float().to(device)
+            samples = model.sample_index_style(condition=label, start_at_layer=1)
+            samples.add_(1.0).div_(2.0).squeeze_(1)
+            nr_nodes, w, f, r = samples.shape
+            samples = samples.view(nr_nodes * w, np.sqrt(f).astype(int), np.sqrt(f).astype(int), r)
+            samples = samples.permute(0, 2, 1, 3)
+            for i in range(model.config.R):
+                plot_img(
+                    samples[:, :, :, i].unsqueeze(1),
+                    nrow=w,
+                    title=f"Samples of repetition {i}",
+                    x_label="Product nodes in this rep",
+                    y_label="Digits 0-9",
+                    save_dir=save_dir,
+                )
+
+    exp = 1
+    if exp == -2:
+        means_of_RVs(model)
+    elif exp == -1:
         # Sample grad test
         label = th.as_tensor(np.arange(10)).to(device)
         label = F.one_hot(label, 10).float().to(device)
@@ -85,7 +160,7 @@ if __name__ == "__main__":
         results_dir = os.path.join(base_path, f'all_root_in_channels_{model_name}')
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
-        eval_root_sum_override(model, results_dir, th.device("cpu"), img_size)
+        eval_root_sum_override(model, results_dir, th.device("cpu"))
     elif exp == 2:
         # Here, the sampling evaluation is redone for all model files in a given directory
         models_dir = os.path.join(base_path, 'models')
