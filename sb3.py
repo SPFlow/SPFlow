@@ -113,12 +113,12 @@ class CspnActor(BasePolicy):
     def forward(self, obs: th.Tensor, deterministic: bool = False) -> th.Tensor:
         # Note: the action is squashed
         features = self.extract_features(obs)
-        return self.cspn.sample(condition=features, is_mpe=deterministic).squeeze(0)
+        return self.cspn.sample_onehot_style(condition=features, is_mpe=deterministic).squeeze(0)
 
     def action_entropy(self, obs: th.Tensor) -> Tuple[th.Tensor, th.Tensor, dict]:
         # return action and entropy
         features = self.extract_features(obs)
-        action = self.cspn.sample(condition=features, is_mpe=False).squeeze(0)
+        action = self.cspn.sample_onehot_style(condition=features, is_mpe=False).squeeze(0)
         entropy, vi_ent_log = self.cspn.vi_entropy_approx(
             sample_size=5, condition=None, verbose=True,
         )
