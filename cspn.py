@@ -94,10 +94,10 @@ class CSPN(RatSpn):
 
         return super().forward(x)
 
-    def vi_entropy_approx(self, sample_size, condition: th.Tensor = None, **kwargs) -> th.Tensor:
+    def vi_entropy_approx(self, condition: th.Tensor = None, **kwargs) -> th.Tensor:
         if condition is not None:
             self.set_weights(condition)
-        return super().vi_entropy_approx(sample_size, **kwargs)
+        return super().vi_entropy_approx(**kwargs)
 
     def consolidate_weights(self, condition=None):
         if condition is not None:
@@ -189,18 +189,18 @@ class CSPN(RatSpn):
             self.set_weights(condition)
         return super().sum_node_entropies(reduction)
 
-    def sample(self, condition: th.Tensor = None, n=1, class_index=None,
-               evidence: th.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample(self, **kwargs):
         raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
                                   "Please choose one.")
 
-    def sample_index_style(self, condition: th.Tensor = None, n=1, class_index=None,
-               evidence: th.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample_index_style(self, condition: th.Tensor = None, class_index=None, evidence: th.Tensor = None, **kwargs):
         """
         Sample from the random variable encoded by the CSPN.
 
         Args:
             condition (th.Tensor): Batch of conditionals.
+            class_index: See doc of RatSpn.sample_index_style()
+            evidence: See doc of RatSpn.sample_index_style()
         """
         if condition is not None:
             self.set_weights(condition)
@@ -209,15 +209,16 @@ class CSPN(RatSpn):
         # TODO add assert to check dimension of evidence, if given.
 
         # batch_size = self.root.weights.shape[0]
-        return super().sample_index_style(n, class_index, evidence, is_mpe, **kwargs)
+        return super().sample_index_style(class_index=class_index, evidence=evidence, **kwargs)
 
-    def sample_onehot_style(self, condition: th.Tensor = None, n=1, class_index=None,
-               evidence: th.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample_onehot_style(self, condition: th.Tensor = None, class_index=None, evidence: th.Tensor = None, **kwargs):
         """
         Sample from the random variable encoded by the CSPN.
 
         Args:
             condition (th.Tensor): Batch of conditionals.
+            class_index: See doc of RatSpn.sample_index_style()
+            evidence: See doc of RatSpn.sample_index_style()
         """
         if condition is not None:
             self.set_weights(condition)
@@ -226,7 +227,7 @@ class CSPN(RatSpn):
         # TODO add assert to check dimension of evidence, if given.
 
         # batch_size = self.root.weights.shape[0]
-        return super().sample_onehot_style(n, class_index, evidence, is_mpe, **kwargs)
+        return super().sample_onehot_style(class_index=class_index, evidence=evidence, **kwargs)
 
     def replace_layer_params(self):
         for layer in self._inner_layers:
