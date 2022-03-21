@@ -421,7 +421,7 @@ class RatSpn(nn.Module):
             else:
                 return samples
 
-    def sample_onehot_style(self, n: int = None, class_index=None, evidence: th.Tensor = None, is_mpe: bool = False, **kwargs):
+    def sample_onehot_style(self, n=1, class_index=None, evidence: th.Tensor = None, is_mpe: bool = False):
         """
         Sample from the distribution represented by this SPN.
 
@@ -754,6 +754,7 @@ class RatSpn(nn.Module):
                 aux_responsibility = log_weights.detach() + child_ll - ll
                 weighted_aux_responsibility = th.sum(weights * aux_responsibility, dim=2)
                 if i == len(self._inner_layers):
+                    weight_entropy = weight_entropy.squeeze(-1)
                     weights = root_weights_over_rep.exp().sum(dim=2).softmax(dim=-1)
                     weighted_ch_ents = th.sum(weighted_ch_ents * weights, dim=-1)
                     weighted_aux_responsibility = th.sum(weights * weighted_aux_responsibility, dim=-1)
