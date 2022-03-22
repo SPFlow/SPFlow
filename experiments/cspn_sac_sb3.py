@@ -17,6 +17,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--seed', '-s', type=int, nargs='+', required=True)
     parser.add_argument('--cspn', action='store_true', help='Use a CSPN actor')
     parser.add_argument('--render_after_done', action='store_true', help='Don\' set this when running remotely')
     parser.add_argument('--timesteps', type=int, default=int(1e6), help='Total timesteps to train model.')
@@ -54,6 +55,12 @@ if __name__ == "__main__":
                         help='List of sizes of the CSPN sum param layers.')
     parser.add_argument('--dist_param_layers', type=int, nargs='+',
                         help='List of sizes of the CSPN dist param layers.')
+    # VI entropy arguments
+    parser.add_argument('--vi_aux_resp_grad_mode', '-ent_grad_mode', type=int, required=True,
+                        help='Set gradient mode for auxiliary responsibility in variational inference '
+                             'entropy approximation. 0: No grad, '
+                             '1: Grad only for LL computation of child node samples, '
+                             '2: Grad also for child node sampling.')
     args = parser.parse_args()
 
     if not args.save_interval:
@@ -74,73 +81,77 @@ if __name__ == "__main__":
         assert os.path.exists(args.tensorboard_dir), f"The tensorboard_dir doesn't exist! {args.tensorboard_dir}"
 
     env_name = 'HalfCheetah-v2'
-    results_dir = f"{platform.node()}_SAC_{args.exp_name}_{env_name}"
-    results_path = os.path.join(args.save_dir, results_dir)
-    for d in [results_path]:
-        if not os.path.exists(d):
-            os.makedirs(d)
+    for seed in args.seed:
+        print(f"Seed: {seed}")
+        results_dir = f"{platform.node()}_SAC_{args.exp_name}_{env_name}_s{seed}"
+        results_path = os.path.join(args.save_dir, results_dir)
+        for d in [results_path]:
+            if not os.path.exists(d):
+                os.makedirs(d)
 
-    env = make_vec_env(
-        env_id=env_name,
-        n_envs=1,
-        monitor_dir=results_path,
-        # monitor_dir=os.path.join(results_path, f"log_{args.exp_name}.txt"),
-        # vec_env_cls=SubprocVecEnv,
-        # vec_env_kwargs={'start_method': 'fork'},
-    )
+        env = make_vec_env(
+            env_id=env_name,
+            n_envs=1,
+            monitor_dir=results_path,
+            # monitor_dir=os.path.join(results_path, f"log_{args.exp_name}.txt"),
+            # vec_env_cls=SubprocVecEnv,
+            # vec_env_kwargs={'start_method': 'fork'},
+        )
 
-    if args.model_path:
-        model = SAC.load(args.model_path, env)
-        model_name = f"sac_loadedpretrained_{args.env}_{args.exp_name}"
-    else:
-        sac_kwargs = {
-            'verbose': 2*args.verbose,
-            'ent_coef': args.ent_coef,
-            'learning_starts': args.learning_starts,
-            'device': args.device,
-            'tensorboard_log': args.tensorboard_dir,
-            'learning_rate': args.learning_rate,
-        }
-        if args.cspn:
-            cspn_args = {
-                'R': args.repetitions,
-                'D': args.cspn_depth,
-                'I': args.num_dist,
-                'S': args.num_sums,
-                'dropout': args.dropout,
-                'feat_layers': args.feat_layers,
-                'sum_param_layers': args.sum_param_layers,
-                'dist_param_layers': args.dist_param_layers,
-                'cond_layers_inner_act': nn.Identity if args.no_relu else nn.ReLU,
-            }
-            sac_kwargs['policy_kwargs'] = {'cspn_args': cspn_args}
-            model = CspnSAC("CspnPolicy", env, **sac_kwargs)
+        if args.model_path:
+            model = SAC.load(args.model_path, env)
+            model_name = f"sac_loadedpretrained_{args.env}_{args.exp_name}"
         else:
-            model = SAC("MlpPolicy", env, **sac_kwargs)
-        model_name = f"sac_{'cspn' if args.cspn else 'mlp'}_{args.env}_{args.exp_name}"
+            sac_kwargs = {
+                'env': env,
+                'seed': seed,
+                'verbose': 2*args.verbose,
+                'ent_coef': args.ent_coef,
+                'learning_starts': args.learning_starts,
+                'device': args.device,
+                'tensorboard_log': args.tensorboard_dir,
+                'learning_rate': args.learning_rate,
+            }
+            if args.cspn:
+                cspn_args = {
+                    'R': args.repetitions,
+                    'D': args.cspn_depth,
+                    'I': args.num_dist,
+                    'S': args.num_sums,
+                    'dropout': args.dropout,
+                    'feat_layers': args.feat_layers,
+                    'sum_param_layers': args.sum_param_layers,
+                    'dist_param_layers': args.dist_param_layers,
+                    'cond_layers_inner_act': nn.Identity if args.no_relu else nn.ReLU,
+                }
+                sac_kwargs['policy_kwargs'] = {'cspn_args': cspn_args}
+                model = CspnSAC(vi_aux_resp_grad_mode=args.vi_aux_resp_grad_mode, policy="CspnPolicy", **sac_kwargs)
+            else:
+                model = SAC("MlpPolicy", env, **sac_kwargs)
+            model_name = f"sac_{'cspn' if args.cspn else 'mlp'}_{args.env}_{args.exp_name}_s{seed}"
 
-    print(model.actor)
-    print(model.critic)
-    if isinstance(model.actor, CspnActor):
-        print_cspn_params(model.actor.cspn)
-    else:
-        print(f"Actor MLP has {sum(p.numel() for p in model.actor.parameters() if p.requires_grad)} parameters.")
-    if learn:
-        num_epochs = int(args.timesteps // args.save_interval)
-        for i in range(num_epochs):
-            model.learn(
-                total_timesteps=args.save_interval,
-                log_interval=args.log_interval,
-                reset_num_timesteps=False,
-                tb_log_name=results_dir,
-            )
-            model.save(os.path.join(results_path, f"{model_name}_{(i+1)*args.save_interval}steps"))
+        print(model.actor)
+        print(model.critic)
+        if isinstance(model.actor, CspnActor):
+            print_cspn_params(model.actor.cspn)
+        else:
+            print(f"Actor MLP has {sum(p.numel() for p in model.actor.parameters() if p.requires_grad)} parameters.")
+        if learn:
+            num_epochs = int(args.timesteps // args.save_interval)
+            for i in range(num_epochs):
+                model.learn(
+                    total_timesteps=args.save_interval,
+                    log_interval=args.log_interval,
+                    reset_num_timesteps=False,
+                    tb_log_name=results_dir,
+                )
+                model.save(os.path.join(results_path, f"{model_name}_{(i+1)*args.save_interval}steps"))
 
-    if args.render_after_done:
-        obs = env.reset()
-        while True:
-            action, _states = model.predict(obs, deterministic=True)
-            obs, reward, done, info = env.step(action)
-            env.render()
-            if done:
-                obs = env.reset()
+        if args.render_after_done:
+            obs = env.reset()
+            while True:
+                action, _states = model.predict(obs, deterministic=True)
+                obs, reward, done, info = env.step(action)
+                env.render()
+                if done:
+                    obs = env.reset()

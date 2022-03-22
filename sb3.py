@@ -115,12 +115,14 @@ class CspnActor(BasePolicy):
         features = self.extract_features(obs)
         return self.cspn.sample_onehot_style(condition=features, is_mpe=deterministic).squeeze(0)
 
-    def action_entropy(self, obs: th.Tensor) -> Tuple[th.Tensor, th.Tensor, dict]:
+    def action_entropy(self, obs: th.Tensor, vi_aux_resp_grad_mode: int) -> Tuple[th.Tensor, th.Tensor, dict]:
         # return action and entropy
         features = self.extract_features(obs)
         action = self.cspn.sample_onehot_style(condition=features, is_mpe=False).squeeze(0)
         entropy, vi_ent_log = self.cspn.vi_entropy_approx(
             sample_size=5, condition=None, verbose=True,
+            aux_resp_ll_with_grad=vi_aux_resp_grad_mode >= 1,
+            aux_resp_sample_with_grad=vi_aux_resp_grad_mode == 2,
         )
         return action, entropy, vi_ent_log
 
@@ -228,6 +230,9 @@ class CspnSAC(SAC):
     """
     Soft Actor-Critic (SAC) modified for a CSPN actor
     """
+    def __init__(self, vi_aux_resp_grad_mode, **kwargs):
+        super(CspnSAC, self).__init__(**kwargs)
+        self._vi_aux_resp_grad_mode = vi_aux_resp_grad_mode
 
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
         # Switch to train mode (this affects batch norm / dropout)
@@ -254,7 +259,10 @@ class CspnSAC(SAC):
                 self.actor.reset_noise()
 
             # Action by the current actor for the sampled state
-            actions_pi, entropy, vi_ent_log = self.actor.action_entropy(replay_data.observations)
+            actions_pi, entropy, vi_ent_log = self.actor.action_entropy(
+                replay_data.observations,
+                vi_aux_resp_grad_mode=self._vi_aux_resp_grad_mode
+            )
             entropy = entropy.reshape(-1, 1)
             ent.append(entropy.mean().item())
 
@@ -271,8 +279,7 @@ class CspnSAC(SAC):
 
             ent_coefs.append(ent_coef.item())
 
-            # Optimize entropy coefficient, also called
-            # entropy temperature or alpha in the paper
+            # Optimize entropy coefficient, also called entropy temperature or alpha in the paper
             if ent_coef_loss is not None:
                 self.ent_coef_optimizer.zero_grad()
                 ent_coef_loss.backward()
@@ -280,7 +287,10 @@ class CspnSAC(SAC):
 
             with th.no_grad():
                 # Select action according to policy
-                next_actions, next_entropy, _ = self.actor.action_entropy(replay_data.next_observations)
+                next_actions, next_entropy, _ = self.actor.action_entropy(
+                    replay_data.next_observations,
+                    vi_aux_resp_grad_mode=0
+                )
                 # Compute the next Q values: min over all critics targets
                 next_q_values = th.cat(self.critic_target(replay_data.next_observations, next_actions), dim=1)
                 next_q_values, _ = th.min(next_q_values, dim=1, keepdim=True)
