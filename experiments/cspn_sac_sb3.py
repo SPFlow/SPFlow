@@ -19,7 +19,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', '-s', type=int, nargs='+', required=True)
     parser.add_argument('--cspn', action='store_true', help='Use a CSPN actor')
-    parser.add_argument('--render_after_done', action='store_true', help='Don\' set this when running remotely')
     parser.add_argument('--timesteps', type=int, default=int(1e6), help='Total timesteps to train model.')
     parser.add_argument('--save_interval', type=int, help='Save model every save_interval timesteps.')
     parser.add_argument('--log_interval', type=int, default=4, help='Log interval')
@@ -146,12 +145,3 @@ if __name__ == "__main__":
                     tb_log_name=results_dir,
                 )
                 model.save(os.path.join(results_path, f"{model_name}_{(i+1)*args.save_interval}steps"))
-
-        if args.render_after_done:
-            obs = env.reset()
-            while True:
-                action, _states = model.predict(obs, deterministic=True)
-                obs, reward, done, info = env.step(action)
-                env.render()
-                if done:
-                    obs = env.reset()
