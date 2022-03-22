@@ -550,7 +550,7 @@ class RatSpn(nn.Module):
         entropy = weight_entropy + weighted_ch_ents + aux_resp_ent
         return entropy, sample_ll
 
-    def vi_entropy_approx(self, sample_size=10, verbose=False, share_ch_samples_among_nodes=True):
+    def vi_entropy_approx(self, sample_size=10, verbose=False):
         """
         Approximate the entropy of the root sum node via variational inference,
         as done in the Variational Inference by Policy Search paper.
@@ -558,7 +558,6 @@ class RatSpn(nn.Module):
         Args:
             sample_size: Number of samples to approximate the expected entropy of the responsibility with.
             verbose: Return logging data
-            share_ch_samples_among_nodes: See comment before if-else branch of this flag.
         """
         assert not self.config.gmm_leaves, "VI entropy not tested on GMM leaves yet."
         assert self.config.C == 1, "For C > 1, we must calculate starting from self._sampling_root!"
@@ -580,166 +579,75 @@ class RatSpn(nn.Module):
             if isinstance(layer, CrossProduct):
                 child_entropies = layer(child_entropies)
             else:
-                # Explanation of share_child_samples_among_nodes:
-                # When approximating the entropy of the nodes in a sum layer, all their children need to be sampled.
-                # These children are product nodes, and all sum nodes in one repetition and feature have the same
-                # children. This begs the question: Do we need to sample all product nodes for each sum node
-                # separately? If we do (share_ch_samples_among_nodes==False), this means we need to draw an
-                # order of magnitude more samples, which makes the approximation process much more computationally
-                # intensive. In experiments, this showed to not substantially influence the results.
-                # So we can save this expense.
                 with th.no_grad():
-                    if not share_ch_samples_among_nodes:
-                        oc = layer.out_channels
-                        ctx = SamplingContext(n=sample_size * oc, is_mpe=False)
-                        # noinspection PyTypeChecker
-                        for child_layer in reversed(self._inner_layers[:i]):
-                            ctx = child_layer.sample_index_style(ctx)
-                        child_sample = self._leaf.sample_index_style(ctx)
+                    ctx = SamplingContext(n=sample_size, is_mpe=False)
+                    # noinspection PyTypeChecker
+                    for child_layer in reversed(self._inner_layers[:i]):
+                        ctx = child_layer.sample_index_style(ctx)
+                    child_sample = self._leaf.sample_index_style(ctx)
 
-                        # The nr_nodes is the number of input channels (ic) to the
-                        # current layer - we sampled all its input channels.
-                        ic, n_oc, w, leaf_d, r = child_sample.shape
+                    # The nr_nodes is the number of input channels (ic) to the
+                    # current layer - we sampled all its input channels.
+                    ic, n, w, d, r = child_sample.shape
 
-                        # Combine first two dims of child_ll.
-                        # child_ll [0,0] -> [0], ..., [0, n-1] -> [n-1], [1, 0] -> [n], ...
-                        child_sample = child_sample.view(ic * n_oc, w, leaf_d, r)
-                        child_ll = self._leaf(child_sample)
-                        _, w, leaf_d, leaf_oc, r = child_ll.shape
-                        child_ll = child_ll.view(ic, sample_size, oc, w, leaf_d, leaf_oc, r)
+                    # Combine first two dims of child_ll.
+                    # child_ll [0,0] -> [0], ..., [0, n-1] -> [n-1], [1, 0] -> [n], ...
+                    child_sample = child_sample.view(ic * n, w, d, r)
+                    child_ll = self._leaf(child_sample)
+                    _, w, d, leaf_oc, r = child_ll.shape
+                    child_ll = child_ll.view(ic, n, w, d, leaf_oc, r)
 
-                        # We can average over the sample_size dimension with size 'n' here already.
-                        child_ll = child_ll.mean(dim=1)
+                    # We can average over the sample_size dimension with size 'n' here already.
+                    child_ll = child_ll.mean(dim=1)
 
-                        child_ll = child_ll.view(ic * oc, w, leaf_d, leaf_oc, r)
+                    # noinspection PyTypeChecker
+                    for child_layer in self._inner_layers[:i]:
+                        child_ll = child_layer(child_ll)
 
-                        # noinspection PyTypeChecker
-                        for child_layer in self._inner_layers[:i]:
-                            child_ll = child_layer(child_ll)
-                        d = child_ll.size(2)
+                    if i == len(self._inner_layers):
+                        # Now we are dealing with a log-likelihood tensor with the shape [ic, w, 1, ic, r],
+                        # where child_ll[0,0,:,:,0] are the log-likelihoods of the ic nodes in the first repetition
+                        # given the samples from the first node of that repetition.
+                        # The problem is that the weights of the root sum node don't recognize different, separated
+                        # repetitions, so we reshape the weights to make the repetition dimension explicit again.
+                        # This is equivalent to splitting up the root sum node into one sum node per repetition,
+                        # with another sum node sitting on top.
+                        root_weights_over_rep = layer.weights.view(w, 1, r, ic).permute(0, 1, 3, 2).unsqueeze(-2)
+                        log_weights = th.log_softmax(root_weights_over_rep, dim=2)
+                        # child_ll and the weights are log-scaled, so we add them together.
+                        ll = child_ll.unsqueeze(-2) + log_weights.unsqueeze(0)
+                        # ll shape [ic, w, 1, ic, r]
+                        ll = th.logsumexp(ll, dim=3)
 
-                        if i == len(self._inner_layers):
-                            # Now we are dealing with a log-likelihood tensor with the shape [ic, w, 1, ic, r],
-                            # where child_ll[0,0,:,:,0] are the log-likelihoods of the ic nodes in the first repetition
-                            # given the samples from the first node of that repetition.
-                            # The problem is that the weights of the root sum node don't recognize different, separated
-                            # repetitions, so we reshape the weights to make the repetition dimension explicit again.
-                            # This is equivalent to splitting up the root sum node into one sum node per repetition,
-                            # with another sum node sitting on top.
-                            root_weights_over_rep = layer.weights.view(w, 1, r, ic).permute(0, 1, 3, 2).unsqueeze(-2)
-                            log_weights = th.log_softmax(root_weights_over_rep, dim=2)
-                            # child_ll and the weights are log-scaled, so we add them together.
-                            ll = child_ll.unsqueeze(-2) + log_weights.unsqueeze(0)
-                            # ll shape [ic, w, 1, ic, r]
-                            ll = th.logsumexp(ll, dim=3)
+                        # first reshape the tensor to get the nodes over which we sampled into
+                        # the first dimension.
+                        # ll = child_ll.permute(0, 4, 1, 2, 3).reshape(ic * r, w, 1, ic)
+                        # ll[0,0,:,:] are the log-likelihoods of the samples from the first node computed among the 'ic'
+                        # other nodes within that repetition. But the root sum nodes wants the log-likelihoods of the
+                        # other 'ic*(r-1)' nodes w.r.t. to that same sample as well! They are all zero.
 
-                            # first reshape the tensor to get the nodes over which we sampled into
-                            # the first dimension.
-                            # ll = child_ll.permute(0, 4, 1, 2, 3).reshape(ic * r, w, 1, ic)
-                            # ll[0,0,:,:] are the log-likelihoods of the samples from the first node computed among the 'ic'
-                            # other nodes within that repetition. But the root sum nodes wants the log-likelihoods of the
-                            # other 'ic*(r-1)' nodes w.r.t. to that same sample as well! They are all zero.
+                    else:
+                        ll = layer(child_ll)
 
-                        else:
-                            ll = layer(child_ll)
-
-                        ll = ll.view(ic, oc, w, d, oc, r)
-                        # ll contains the LLs of the samples of the 'ic' nodes of the child layer, for each repetition.
-                        # 'oc * sample_size' samples were drawn from the child nodes, and the LLs of those samples
-                        # have already been averaged over the sample_size. We are left with 'oc' samples LLs,
-                        # which are split up among the 'oc' nodes of this layer (over each repetition), so that
-                        # each node in this layer has had its own samples that weren't shared with the others.
-                        ll = ll[:, range(oc), :, :, range(oc), :]
-                        # ll is now [oc, ic, w, d, r]
                         # We have the log-likelihood of the current sum layer w.r.t. the samples from its children.
                         # We permute the dims so this tensor is of shape [w, d, ic, oc, r]
-                        ll = ll.permute(2, 3, 1, 0, 4)
+                    ll = ll.permute(1, 2, 0, 3, 4)
 
-                        # child_ll now contains the log-likelihood of the samples from all of its 'ic' nodes per feature and
-                        # repetition - for each of its parent nodes.
-                        # child_ll contains the LL of the samples of each node evaluated among all other nodes.
-                        # The tensor shape is [ic, oc, w, d, ic, r].
-                        # Looking at the LLs for one parent node, one weight set, one feature and one repetition,
-                        # we are looking at the slice [:, 0, 0, 0, :, 0].
-                        # The first dimension is the dimension of the samples - there are 'ic' of them.
-                        # The 4th dimension is the dimension of the LLs of the nodes for those samples.
-                        # So [4, 0, 0, 0, :, 0] contains the LLs of all nodes given the sample from the fifth node.
-                        # Likewise, [:, 0, 0, 0, 2, 0] contains the LLs of the samples of all nodes,
-                        # evaluated at the third node.
-                        # We needed the full child_ll tensor to compute the LLs of the current layer, but now we only
-                        # require the LLs of each node's own samples.
-                        child_ll = child_ll.view(ic, oc, w, d, ic, r)
-                        child_ll = child_ll[range(ic), :, :, :, range(ic), :]  # [ic, oc, w, d, r]
-                        child_ll = child_ll.permute(2, 3, 0, 1, 4)
-                    else:
-                        ctx = SamplingContext(n=sample_size, is_mpe=False)
-                        # noinspection PyTypeChecker
-                        for child_layer in reversed(self._inner_layers[:i]):
-                            ctx = child_layer.sample_index_style(ctx)
-                        child_sample = self._leaf.sample_index_style(ctx)
-
-                        # The nr_nodes is the number of input channels (ic) to the
-                        # current layer - we sampled all its input channels.
-                        ic, n, w, d, r = child_sample.shape
-
-                        # Combine first two dims of child_ll.
-                        # child_ll [0,0] -> [0], ..., [0, n-1] -> [n-1], [1, 0] -> [n], ...
-                        child_sample = child_sample.view(ic * n, w, d, r)
-                        child_ll = self._leaf(child_sample)
-                        _, w, d, leaf_oc, r = child_ll.shape
-                        child_ll = child_ll.view(ic, n, w, d, leaf_oc, r)
-
-                        # We can average over the sample_size dimension with size 'n' here already.
-                        child_ll = child_ll.mean(dim=1)
-
-                        # noinspection PyTypeChecker
-                        for child_layer in self._inner_layers[:i]:
-                            child_ll = child_layer(child_ll)
-
-                        if i == len(self._inner_layers):
-                            # Now we are dealing with a log-likelihood tensor with the shape [ic, w, 1, ic, r],
-                            # where child_ll[0,0,:,:,0] are the log-likelihoods of the ic nodes in the first repetition
-                            # given the samples from the first node of that repetition.
-                            # The problem is that the weights of the root sum node don't recognize different, separated
-                            # repetitions, so we reshape the weights to make the repetition dimension explicit again.
-                            # This is equivalent to splitting up the root sum node into one sum node per repetition,
-                            # with another sum node sitting on top.
-                            root_weights_over_rep = layer.weights.view(w, 1, r, ic).permute(0, 1, 3, 2).unsqueeze(-2)
-                            log_weights = th.log_softmax(root_weights_over_rep, dim=2)
-                            # child_ll and the weights are log-scaled, so we add them together.
-                            ll = child_ll.unsqueeze(-2) + log_weights.unsqueeze(0)
-                            # ll shape [ic, w, 1, ic, r]
-                            ll = th.logsumexp(ll, dim=3)
-
-                            # first reshape the tensor to get the nodes over which we sampled into
-                            # the first dimension.
-                            # ll = child_ll.permute(0, 4, 1, 2, 3).reshape(ic * r, w, 1, ic)
-                            # ll[0,0,:,:] are the log-likelihoods of the samples from the first node computed among the 'ic'
-                            # other nodes within that repetition. But the root sum nodes wants the log-likelihoods of the
-                            # other 'ic*(r-1)' nodes w.r.t. to that same sample as well! They are all zero.
-
-                        else:
-                            ll = layer(child_ll)
-
-                            # We have the log-likelihood of the current sum layer w.r.t. the samples from its children.
-                            # We permute the dims so this tensor is of shape [w, d, ic, oc, r]
-                        ll = ll.permute(1, 2, 0, 3, 4)
-
-                        # child_ll now contains the log-likelihood of the samples from all of its 'ic' nodes per feature and
-                        # repetition - ic * d * r in total.
-                        # child_ll contains the LL of the samples of each node evaluated among all other nodes - separated
-                        # by repetition and feature.
-                        # The tensor shape is [ic, w, d, ic, r]. Looking at one weight set, one feature and one repetition,
-                        # we are looking at the slice [:, 0, 0, :, 0].
-                        # The first dimension is the dimension of the samples - there are 'ic' of them.
-                        # The 4th dimension is the dimension of the LLs of the nodes for those samples.
-                        # So [4, 0, 0, :, 0] contains the LLs of all nodes given the sample from the fifth node.
-                        # Likewise, [:, 0, 0, 2, 0] contains the LLs of the samples of all nodes, evaluated at the third node.
-                        # We needed the full child_ll tensor to compute the LLs of the current layer, but now we only
-                        # require the LLs of each node's own samples.
-                        child_ll = child_ll[range(ic), :, :, range(ic), :]  # [ic, w, d, r]
-                        child_ll = child_ll.permute(1, 2, 0, 3)
-                        child_ll = child_ll.unsqueeze(3)  # [w, d, ic, 1, r]
+                    # child_ll now contains the log-likelihood of the samples from all of its 'ic' nodes per feature and
+                    # repetition - ic * d * r in total.
+                    # child_ll contains the LL of the samples of each node evaluated among all other nodes - separated
+                    # by repetition and feature.
+                    # The tensor shape is [ic, w, d, ic, r]. Looking at one weight set, one feature and one repetition,
+                    # we are looking at the slice [:, 0, 0, :, 0].
+                    # The first dimension is the dimension of the samples - there are 'ic' of them.
+                    # The 4th dimension is the dimension of the LLs of the nodes for those samples.
+                    # So [4, 0, 0, :, 0] contains the LLs of all nodes given the sample from the fifth node.
+                    # Likewise, [:, 0, 0, 2, 0] contains the LLs of the samples of all nodes, evaluated at the third node.
+                    # We needed the full child_ll tensor to compute the LLs of the current layer, but now we only
+                    # require the LLs of each node's own samples.
+                    child_ll = child_ll[range(ic), :, :, range(ic), :]  # [ic, w, d, r]
+                    child_ll = child_ll.permute(1, 2, 0, 3)
+                    child_ll = child_ll.unsqueeze(3)  # [w, d, ic, 1, r]
 
                 weight_entropy = -(layer.weights.exp() * layer.weights).sum(dim=2)
                 if not i == len(self._inner_layers):

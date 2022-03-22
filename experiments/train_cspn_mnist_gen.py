@@ -443,8 +443,6 @@ if __name__ == "__main__":
                     ll_loss = -output.mean()
                 vi_ent_approx, batch_ent_log = model.vi_entropy_approx(
                     sample_size=args.ent_approx__sample_size, condition=label, verbose=True,
-                    share_ch_samples_among_nodes=not args.ent_approx_separate_samples,
-                    approx_leaf_ent=not args.ent_approx__leaf_ent_closed_form,
                 )
                 vi_ent_approx = vi_ent_approx.mean()
                 # vi_ent_approx_separate_samples = vi_ent_approx_separate_samples.mean()
