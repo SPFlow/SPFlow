@@ -550,7 +550,8 @@ class RatSpn(nn.Module):
         entropy = weight_entropy + weighted_ch_ents + aux_resp_ent
         return entropy, sample_ll
 
-    def vi_entropy_approx(self, sample_size=10, verbose=False):
+    def vi_entropy_approx(self, sample_size=10, verbose=False, aux_resp_ll_with_grad=False,
+                          aux_resp_sample_with_grad=False):
         """
         Approximate the entropy of the root sum node via variational inference,
         as done in the Variational Inference by Policy Search paper.
@@ -558,16 +559,21 @@ class RatSpn(nn.Module):
         Args:
             sample_size: Number of samples to approximate the expected entropy of the responsibility with.
             verbose: Return logging data
+            aux_resp_ll_with_grad: When approximating the auxiliary responsibility from log-likelihoods
+                of child samples, backpropagate the gradient through the LL calculation.
+            aux_resp_sample_with_grad: May only be True if aux_resp_ll_with_grad is True too. Backpropagate through
+                the sampling of the child nodes as well.
         """
         assert not self.config.gmm_leaves, "VI entropy not tested on GMM leaves yet."
         assert self.config.C == 1, "For C > 1, we must calculate starting from self._sampling_root!"
+        assert not aux_resp_sample_with_grad or (aux_resp_sample_with_grad and aux_resp_ll_with_grad), \
+            "aux_resp_sample_with_grad may only be True if aux_resp_ll_with_grad is True as well."
         root_weights_over_rep = th.empty(1)  # For PyCharm
         log_weights = th.empty(1)
         logging = {}
 
-        with th.no_grad():
-            child_ll = self._leaf.sample_index_style(SamplingContext(n=sample_size, is_mpe=False))
-            child_ll = self._leaf(child_ll)
+        child_ll = self._leaf.sample_onehot_style(SamplingContext(n=sample_size, is_mpe=False))
+        child_ll = self._leaf(child_ll)
         child_entropies = -child_ll.mean(dim=0, keepdim=True)
 
         for i in range(len(self._inner_layers) + 1):
@@ -579,12 +585,19 @@ class RatSpn(nn.Module):
             if isinstance(layer, CrossProduct):
                 child_entropies = layer(child_entropies)
             else:
-                with th.no_grad():
+                with th.set_grad_enabled(aux_resp_ll_with_grad):
                     ctx = SamplingContext(n=sample_size, is_mpe=False)
-                    # noinspection PyTypeChecker
-                    for child_layer in reversed(self._inner_layers[:i]):
-                        ctx = child_layer.sample_index_style(ctx)
-                    child_sample = self._leaf.sample_index_style(ctx)
+                    if aux_resp_sample_with_grad:
+                        # noinspection PyTypeChecker
+                        for child_layer in reversed(self._inner_layers[:i]):
+                            ctx = child_layer.sample_onehot_style(ctx)
+                        child_sample = self._leaf.sample_onehot_style(ctx)
+                    else:
+                        with th.no_grad():
+                            # noinspection PyTypeChecker
+                            for child_layer in reversed(self._inner_layers[:i]):
+                                ctx = child_layer.sample_index_style(ctx)
+                            child_sample = self._leaf.sample_index_style(ctx)
 
                     # The nr_nodes is the number of input channels (ic) to the
                     # current layer - we sampled all its input channels.

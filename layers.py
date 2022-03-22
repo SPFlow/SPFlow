@@ -272,6 +272,7 @@ class Sum(AbstractLayer):
             weights = weights.permute(4, 0, 1, 2, 3, 5)
             # oc is our nr_nodes: [nr_nodes, n, w, d, ic, r]
         else:
+            assert ctx.parent_indices.detach().sum(4).max().item() == 1.0
             weights = weights * ctx.parent_indices.unsqueeze(4)
             # [nr_nodes, n, w, d, ic, oc, r]
             weights = weights.sum(5)  # Sum out output_channel dimension
@@ -668,7 +669,7 @@ class CrossProduct(AbstractLayer):
             indices = self.one_hot_in_channel_mapping.data.unsqueeze(1).unsqueeze(1).unsqueeze(-1)
             # indices is [nr_nodes=oc, 1, 1, cardinality, 1]
             indices = indices.repeat(
-                1, ctx.n, self.num_conditionals, self.in_features//self.cardinality, self.num_repetitions
+                1, ctx.n, self.num_conditionals, self.in_features//self.cardinality, 1, self.num_repetitions
             )
             # indices is [nr_nodes=oc, n, w, in_features, r]
         else:

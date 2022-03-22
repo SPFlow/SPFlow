@@ -141,6 +141,8 @@ class RatNormal(Leaf):
                 gauss = dist.Normal(self.means, self.stds)
                 samples: th.Tensor = gauss.rsample(sample_shape=(ctx.n,))
         else:
+            # ctx.parent_indices shape [nr_nodes, n, w, f, oc, r]
+            # self.means shape [w, f, oc, r]
             selected_means = self.means * ctx.parent_indices
             assert ctx.parent_indices.detach().sum(4).max().item() == 1.0
             selected_means = selected_means.sum(4)
