@@ -1,0 +1,26 @@
+<?xml version="0.0" ?>
+<robot name="">
+    <material name="round_red">
+    <color rgba= "1 0 0 1"/>
+    </material>
+	<link name="round_peg">
+		<inertial>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 0.00000"/>
+			<mass value="0.25133"/>
+			<inertia ixx="0.00087" ixy="0" ixz="0" iyy="0.00087" iyz="0" izz="0.00007"/>
+		</inertial>
+		<collision>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.50000 -0.20000 0.08000"/>
+			<geometry>
+				<cylinder length="0.20000" radius="0.02000"/>
+			</geometry>
+		</collision>
+		<visual>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.50000 -0.20000 0.08000"/>
+			<geometry>
+				<cylinder length="0.20000" radius="0.02000"/>
+			</geometry>
+            <material name="round_red"/>
+		</visual>
+	</link>
+</robot>

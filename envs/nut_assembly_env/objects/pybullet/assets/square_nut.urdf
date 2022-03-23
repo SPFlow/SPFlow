@@ -1,0 +1,79 @@
+<?xml version="0.0" ?>
+<robot name="">
+    <material name="square_blue">
+    <color rgba= "0 0 1 1"/>
+    </material>
+	<link name="square_nut">
+		<inertial>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 0.00000"/>
+			<mass value="0.15807"/>
+			<inertia ixx="0.00011" ixy="0" ixz="0" iyy="0.00020" iyz="0" izz="0.00030"/>
+		</inertial>
+		<collision>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="-0.03325 0.00000 0.00000"/>
+			<geometry>
+				<box size="0.02100 0.08750 0.02000"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.03325 0.00000"/>
+			<geometry>
+				<box size="0.06250 0.02100 0.02000"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 -0.03325 0.00000"/>
+			<geometry>
+				<box size="0.06250 0.02100 0.02000"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.03325 0.00000 0.00000"/>
+			<geometry>
+				<box size="0.02100 0.08750 0.02000"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.05400 0.00000 0.00000"/>
+			<geometry>
+				<box size="0.05050 0.03175 0.02000"/>
+			</geometry>
+		</collision>
+		
+		<visual>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="-0.03325 0.00000 0.00000"/>
+			<geometry>
+				<box size="0.02100 0.08750 0.02000"/>
+			</geometry>
+			<material name="square_blue"/>
+		</visual>
+		<visual>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.03325 0.00000"/>
+			<geometry>
+				<box size="0.06250 0.02100 0.02000"/>
+			</geometry>
+			<material name="square_blue"/>
+		</visual>
+		<visual>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 -0.03325 0.00000"/>
+			<geometry>
+				<box size="0.06250 0.02100 0.02000"/>
+			</geometry>
+			<material name="square_blue"/>
+		</visual>
+		<visual>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.03325 0.00000 0.00000"/>
+			<geometry>
+				<box size="0.02100 0.08750 0.02000"/>
+			</geometry>
+			<material name="square_blue"/>
+		</visual>
+		<visual>
+			<origin rpy="0.00000 -0.00000 0.00000" xyz="0.05400 0.00000 0.00000"/>
+			<geometry>
+				<box size="0.05050 0.03175 0.02000"/>
+			</geometry>
+			<material name="square_blue"/>
+		</visual>
+	</link>
+</robot>

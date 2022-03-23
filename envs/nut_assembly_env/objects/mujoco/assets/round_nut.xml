@@ -1,0 +1,19 @@
+<mujoco model="round-nut">
+  <worldbody>
+    <body name="round_nut" pos="0.35 -0.2 0." quat="0 0 0 1">
+        <joint type="free" />
+        <geom condim="4" density="100" friction="1.95 0.3 0.1" group="1" pos="-0.04245 0 0.0" rgba="1 0 0 1" size="0.01125 0.0225 0.01" solimp="0.998 0.998 0.001" solref="0.02 1" type="box" />
+        <geom condim="4" density="100" friction="1.95 0.3 0.1" group="1" pos="0.04245 0 0.0" rgba="1 0 0 1" size="0.01125 0.0225 0.01" solimp="0.998 0.998 0.001" solref="0.02 1" type="box" />
+        <geom condim="4" density="100" friction="1.95 0.3 0.1" group="1" pos="0 -0.04245 0.0" rgba="1 0 0 1" size="0.0225 0.01125 0.01" solimp="0.998 0.998 0.001" solref="0.02 1" type="box" />
+        <geom condim="4" density="100" friction="1.95 0.3 0.1" group="1" pos="0 0.04245 0.0" rgba="1 0 0 1" size="0.0225 0.01125 0.01" solimp="0.998 0.998 0.001" solref="0.02 1" type="box" />
+        <geom axisangle="0 0 1 0.785398" condim="4" density="100" friction="0.95 0.3 0.1" group="1" pos="-0.03 -0.03 0.0" rgba="1 0 0 1" size="0.01125 0.0225 0.01" solimp="0.998 0.998 0.001" solref="0.02 1" type="box" />
+        <geom axisangle="0 0 1 0.785398" condim="4" density="100" friction="0.95 0.3 0.1" group="1" pos="0.03 0.03 0.0" rgba="1 0 0 1" size="0.01125 0.0225 0.01" solimp="0.998 0.998 0.001" solref="0.02 1" type="box" />
+        <geom axisangle="0 0 1 0.785398" condim="4" density="100" friction="0.95 0.3 0.1" group="1" pos="0.03 -0.03 0.0" rgba="1 0 0 1" size="0.0225 0.01125 0.01" solimp="0.998 0.998 0.001" solref="0.02 1" type="box" />
+        <geom axisangle="0 0 1 0.785398" condim="4" density="100" friction="0.95 0.3 0.1" group="1" pos="-0.03 0.03 0.0" rgba="1 0 0 1" size="0.0225 0.01125 0.01" solimp="0.998 0.998 0.001" solref="0.02 1" type="box" />
+        <geom condim="4" density="100" friction="10 10 10" group="1" pos="0.06 0 0.0" rgba="1 0 0 1" size="0.02525 0.015875 0.01" solimp="0.998 0.998 0.001" solref="0.02 1" type="box" />
+        <site name="round_nut:bottom_site" pos="0 0 -0.05" rgba="0 0 0 0" size="0.005" />
+        <site name="round_nut:top_site" pos="0 0 0.025" rgba="0 0 0 0" size="0.005" />
+        <site name="round_nut:horizontal_radius_site" pos="0.11 0.05 0" rgba="0 0 0 0" size="0.005" />
+    </body>
+  </worldbody>
+</mujoco>

@@ -1,0 +1,7 @@
+<mujoco model="round_peg">
+  <worldbody>
+    <body name="round_peg" pos="0. 0. 0." >
+        <geom pos="0.5 -0.2 0.08" size="0.02 0.1" type="cylinder" rgba="1 0 0 1"/>
+    </body>
+  </worldbody>
+</mujoco>

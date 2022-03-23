@@ -1,0 +1,7 @@
+<mujoco model="square_peg">
+  <worldbody>
+    <body name="square_peg" pos="0. 0. 0." >
+        <geom pos="0.5 0.2 0.08" size="0.016 0.016 0.1" type="box" rgba="0 0 1 1"/>
+    </body>
+  </worldbody>
+</mujoco>
