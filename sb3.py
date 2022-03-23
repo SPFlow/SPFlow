@@ -230,9 +230,10 @@ class CspnSAC(SAC):
     """
     Soft Actor-Critic (SAC) modified for a CSPN actor
     """
-    def __init__(self, vi_aux_resp_grad_mode, **kwargs):
+    def __init__(self, **kwargs):
         super(CspnSAC, self).__init__(**kwargs)
-        self._vi_aux_resp_grad_mode = vi_aux_resp_grad_mode
+        self.vi_aux_resp_grad_mode = kwargs.get('vi_aux_resp_grad_mode', 0)
+        self._vi_aux_resp_grad_mode = self.vi_aux_resp_grad_mode
 
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
         # Switch to train mode (this affects batch norm / dropout)

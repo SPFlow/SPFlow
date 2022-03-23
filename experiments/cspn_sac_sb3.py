@@ -6,6 +6,7 @@ import os
 import platform
 
 import torch.nn as nn
+from torch import autograd
 
 from cspn import CSPN, print_cspn_params
 
@@ -33,6 +34,8 @@ if __name__ == "__main__":
     parser.add_argument('--model_path', type=str,
                         help='Path to the pretrained model.')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
+    parser.add_argument('--autograd_detect_anomaly', action='store_true',
+                        help='Turn on Torch autograd anomaly detection.')
     # SAC arguments
     parser.add_argument('--ent_coef', type=float, default=0.1, help='Entropy temperature')
     parser.add_argument('--learning_rate', '-lr', type=float, default=3e-4, help='Learning rate')
@@ -79,6 +82,7 @@ if __name__ == "__main__":
     if args.tensorboard_dir:
         assert os.path.exists(args.tensorboard_dir), f"The tensorboard_dir doesn't exist! {args.tensorboard_dir}"
 
+    args.model_path = '/home/fritz/PycharmProjects/cspn_rl_experiments/labrador_SAC_grad_mode_exp__sample_grad_HalfCheetah-v2_s20/sac_cspn_HalfCheetah-v2_grad_mode_exp__sample_grad_s20_300000steps.zip'
     env_name = 'HalfCheetah-v2'
     for seed in args.seed:
         print(f"Seed: {seed}")
@@ -98,7 +102,9 @@ if __name__ == "__main__":
         )
 
         if args.model_path:
-            model = SAC.load(args.model_path, env)
+            model = CspnSAC.load(args.model_path, env)
+            model.tensorboard_log = None
+            model.vi_aux_resp_grad_mode = args.vi_aux_resp_grad_mode
             model_name = f"sac_loadedpretrained_{args.env}_{args.exp_name}"
         else:
             sac_kwargs = {
@@ -122,9 +128,10 @@ if __name__ == "__main__":
                     'sum_param_layers': args.sum_param_layers,
                     'dist_param_layers': args.dist_param_layers,
                     'cond_layers_inner_act': nn.Identity if args.no_relu else nn.ReLU,
+                    'vi_aux_resp_grad_mode':  args.vi_aux_resp_grad_mode,
                 }
                 sac_kwargs['policy_kwargs'] = {'cspn_args': cspn_args}
-                model = CspnSAC(vi_aux_resp_grad_mode=args.vi_aux_resp_grad_mode, policy="CspnPolicy", **sac_kwargs)
+                model = CspnSAC(policy="CspnPolicy", **sac_kwargs)
             else:
                 model = SAC("MlpPolicy", env, **sac_kwargs)
             model_name = f"sac_{'cspn' if args.cspn else 'mlp'}_{args.env}_{args.exp_name}_s{seed}"
@@ -136,6 +143,7 @@ if __name__ == "__main__":
         else:
             print(f"Actor MLP has {sum(p.numel() for p in model.actor.parameters() if p.requires_grad)} parameters.")
         if learn:
+            autograd.set_detect_anomaly(args.autograd_detect_anomaly)
             num_epochs = int(args.timesteps // args.save_interval)
             for i in range(num_epochs):
                 model.learn(
