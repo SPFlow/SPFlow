@@ -189,15 +189,16 @@ class CSPN(RatSpn):
             self.set_weights(condition)
         return super().sum_node_entropies(reduction)
 
-    def sample(self, **kwargs):
-        raise NotImplementedError("sample() has been split up into sample_index_style() and sample_onehot_style()!"
-                                  "Please choose one.")
-
-    def sample_index_style(self, condition: th.Tensor = None, class_index=None, evidence: th.Tensor = None, **kwargs):
+    def sample(self, mode: str = None, condition: th.Tensor = None, class_index=None,
+               evidence: th.Tensor = None, **kwargs):
         """
         Sample from the random variable encoded by the CSPN.
 
         Args:
+            mode: Two sampling modes are supported:
+                'index': Sampling mechanism with indexes, which are non-differentiable.
+                'onehot': This sampling mechanism work with one-hot vectors, grouped into tensors.
+                          This way of sampling is differentiable, but also takes almost twice as long.
             condition (th.Tensor): Batch of conditionals.
             class_index: See doc of RatSpn.sample_index_style()
             evidence: See doc of RatSpn.sample_index_style()
@@ -208,26 +209,13 @@ class CSPN(RatSpn):
             "The batch size of the condition must equal the length of the class index list if they are provided!"
         # TODO add assert to check dimension of evidence, if given.
 
-        # batch_size = self.root.weights.shape[0]
-        return super().sample_index_style(class_index=class_index, evidence=evidence, **kwargs)
+        return super().sample(mode=mode, class_index=class_index, evidence=evidence, **kwargs)
 
-    def sample_onehot_style(self, condition: th.Tensor = None, class_index=None, evidence: th.Tensor = None, **kwargs):
-        """
-        Sample from the random variable encoded by the CSPN.
+    def sample_index_style(self, **kwargs):
+        return self.sample(mode='index', **kwargs)
 
-        Args:
-            condition (th.Tensor): Batch of conditionals.
-            class_index: See doc of RatSpn.sample_index_style()
-            evidence: See doc of RatSpn.sample_index_style()
-        """
-        if condition is not None:
-            self.set_weights(condition)
-        assert class_index is None or condition.shape[0] == len(class_index), \
-            "The batch size of the condition must equal the length of the class index list if they are provided!"
-        # TODO add assert to check dimension of evidence, if given.
-
-        # batch_size = self.root.weights.shape[0]
-        return super().sample_onehot_style(class_index=class_index, evidence=evidence, **kwargs)
+    def sample_onehot_style(self, **kwargs):
+        return self.sample(mode='onehot', **kwargs)
 
     def replace_layer_params(self):
         for layer in self._inner_layers:
