@@ -82,7 +82,6 @@ if __name__ == "__main__":
     if args.tensorboard_dir:
         assert os.path.exists(args.tensorboard_dir), f"The tensorboard_dir doesn't exist! {args.tensorboard_dir}"
 
-    args.model_path = '/home/fritz/PycharmProjects/cspn_rl_experiments/labrador_SAC_grad_mode_exp__sample_grad_HalfCheetah-v2_s20/sac_cspn_HalfCheetah-v2_grad_mode_exp__sample_grad_s20_300000steps.zip'
     env_name = 'HalfCheetah-v2'
     for seed in args.seed:
         print(f"Seed: {seed}")
