@@ -22,7 +22,7 @@ if __name__ == "__main__":
     parser.add_argument('--timesteps', type=int, default=int(1e6), help='Total timesteps to train model.')
     parser.add_argument('--save_interval', type=int, help='Save model every save_interval timesteps.')
     parser.add_argument('--log_interval', type=int, default=4, help='Log interval')
-    parser.add_argument('--env', type=str, default='HalfCheetah-v2', help='Gym environment to train on.')
+    parser.add_argument('--env_name', '-env', type=str, default='HalfCheetah-v2', help='Gym environment to train on.')
     parser.add_argument('--device', type=str, default='cuda', help='Device to run on. cpu or cuda.')
     parser.add_argument('--exp_name', type=str, default='test',
                         help='Experiment name. Will appear in name of saved model.')
@@ -79,17 +79,16 @@ if __name__ == "__main__":
     if args.tensorboard_dir:
         assert os.path.exists(args.tensorboard_dir), f"The tensorboard_dir doesn't exist! {args.tensorboard_dir}"
 
-    env_name = 'HalfCheetah-v2'
     for seed in args.seed:
         print(f"Seed: {seed}")
-        results_dir = f"{platform.node()}_SAC_{args.exp_name}_{env_name}_s{seed}"
+        results_dir = f"{platform.node()}_SAC_{args.exp_name}_{args.env_name}_s{seed}"
         results_path = os.path.join(args.save_dir, results_dir)
         for d in [results_path]:
             if not os.path.exists(d):
                 os.makedirs(d)
 
         env = make_vec_env(
-            env_id=env_name,
+            env_id=args.env_name,
             n_envs=1,
             monitor_dir=results_path,
             # monitor_dir=os.path.join(results_path, f"log_{args.exp_name}.txt"),
@@ -130,7 +129,7 @@ if __name__ == "__main__":
                 model = CspnSAC(policy="CspnPolicy", **sac_kwargs)
             else:
                 model = SAC("MlpPolicy", env, **sac_kwargs)
-            model_name = f"sac_{'cspn' if args.cspn else 'mlp'}_{args.env}_{args.exp_name}_s{seed}"
+            model_name = f"sac_{'cspn' if args.cspn else 'mlp'}_{args.env_name}_{args.exp_name}_s{seed}"
 
         print(model.actor)
         print(model.critic)
