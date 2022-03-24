@@ -6,7 +6,6 @@ import os
 import platform
 
 import torch.nn as nn
-from torch import autograd
 
 from cspn import CSPN, print_cspn_params
 
@@ -34,8 +33,6 @@ if __name__ == "__main__":
     parser.add_argument('--model_path', type=str,
                         help='Path to the pretrained model.')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
-    parser.add_argument('--autograd_detect_anomaly', action='store_true',
-                        help='Turn on Torch autograd anomaly detection.')
     # SAC arguments
     parser.add_argument('--ent_coef', type=float, default=0.1, help='Entropy temperature')
     parser.add_argument('--learning_rate', '-lr', type=float, default=3e-4, help='Learning rate')
@@ -142,7 +139,6 @@ if __name__ == "__main__":
         else:
             print(f"Actor MLP has {sum(p.numel() for p in model.actor.parameters() if p.requires_grad)} parameters.")
         if learn:
-            autograd.set_detect_anomaly(args.autograd_detect_anomaly)
             num_epochs = int(args.timesteps // args.save_interval)
             for i in range(num_epochs):
                 model.learn(
