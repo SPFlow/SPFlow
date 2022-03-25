@@ -12,6 +12,7 @@ from cspn import CSPN, print_cspn_params
 from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.logger import configure
 
 if __name__ == "__main__":
     import argparse
@@ -29,7 +30,7 @@ if __name__ == "__main__":
                         help='Experiment name. Will appear in name of saved model.')
     parser.add_argument('--save_dir', type=str, default='../../cspn_rl_experiments',
                         help='Directory to save the model to.')
-    parser.add_argument('--tensorboard_dir', '-tb', type=str, default='../../cspn_rl_experiments/tb',
+    parser.add_argument('--log_dir', type=str, default='../../cspn_rl_experiments/log',
                         help='Directory to save the model to.')
     parser.add_argument('--model_path', type=str,
                         help='Path to the pretrained model.')
@@ -40,11 +41,11 @@ if __name__ == "__main__":
     parser.add_argument('--learning_starts', type=int, default=1000,
                         help='Nr. of steps to act randomly in the beginning.')
     # CSPN arguments
-    parser.add_argument('--repetitions', '-R', type=int, default=5, help='Number of parallel CSPNs to learn at once. ')
+    parser.add_argument('--repetitions', '-R', type=int, default=3, help='Number of parallel CSPNs to learn at once. ')
     parser.add_argument('--cspn_depth', '-D', type=int,
                         help='Depth of the CSPN. If not provided, maximum will be used (ceil of log2(inputs)).')
-    parser.add_argument('--num_dist', '-I', type=int, default=5, help='Number of Gauss dists per pixel.')
-    parser.add_argument('--num_sums', '-S', type=int, default=5, help='Number of sums per RV in each sum layer.')
+    parser.add_argument('--num_dist', '-I', type=int, default=3, help='Number of Gauss dists per pixel.')
+    parser.add_argument('--num_sums', '-S', type=int, default=3, help='Number of sums per RV in each sum layer.')
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout to apply')
     parser.add_argument('--no_relu', action='store_true',
                         help='Don\'t use inner ReLU activations in the layers providing '
@@ -80,22 +81,23 @@ if __name__ == "__main__":
         assert os.path.exists(args.save_dir), f"The save_dir doesn't exist! {args.save_dir}"
     if args.model_path:
         assert os.path.exists(args.model_path), f"The model_path doesn't exist! {args.model_path}"
-    if args.tensorboard_dir:
-        assert os.path.exists(args.tensorboard_dir), f"The tensorboard_dir doesn't exist! {args.tensorboard_dir}"
+    if args.log_dir:
+        assert os.path.exists(args.log_dir), f"The log_dir doesn't exist! {args.log_dir}"
 
     for seed in args.seed:
         print(f"Seed: {seed}")
-        results_dir = f"{platform.node()}_SAC_{args.exp_name}_{args.env_name}_s{seed}"
-        results_path = os.path.join(args.save_dir, results_dir)
-        for d in [results_path]:
+        folder_name = f"{platform.node()}_SAC_{args.exp_name}_{args.env_name}_s{seed}"
+        save_path = os.path.join(args.save_dir, folder_name)
+        log_path = os.path.join(args.log_dir, folder_name)
+        monitor_path = os.path.join(log_path, "monitor")
+        for d in [save_path, log_path, monitor_path]:
             if not os.path.exists(d):
                 os.makedirs(d)
 
         env = make_vec_env(
             env_id=args.env_name,
             n_envs=args.num_envs,
-            monitor_dir=results_path,
-            # monitor_dir=os.path.join(results_path, f"log_{args.exp_name}.txt"),
+            monitor_dir=monitor_path,
             # vec_env_cls=SubprocVecEnv,
             # vec_env_kwargs={'start_method': 'fork'},
         )
@@ -113,7 +115,6 @@ if __name__ == "__main__":
                 'ent_coef': args.ent_coef,
                 'learning_starts': args.learning_starts,
                 'device': args.device,
-                'tensorboard_log': args.tensorboard_dir,
                 'learning_rate': args.learning_rate,
             }
             if args.mlp:
@@ -137,6 +138,8 @@ if __name__ == "__main__":
                 }
                 model = CspnSAC(policy="CspnPolicy", **sac_kwargs)
             model_name = f"sac_{'mlp' if args.mlp else 'cspn'}_{args.env_name}_{args.exp_name}_s{seed}"
+            logger = configure(log_path, ["stdout", "csv", "tensorboard"])
+            model.set_logger(logger)
 
         print(model.actor)
         print(model.critic)
@@ -151,6 +154,6 @@ if __name__ == "__main__":
                     total_timesteps=args.save_interval,
                     log_interval=args.log_interval,
                     reset_num_timesteps=False,
-                    tb_log_name=results_dir,
+                    tb_log_name=folder_name,
                 )
-                model.save(os.path.join(results_path, f"{model_name}_{(i+1)*args.save_interval}steps"))
+                model.save(os.path.join(save_path, f"{model_name}_{(i+1)*args.save_interval}steps"))
