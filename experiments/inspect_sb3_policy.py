@@ -23,8 +23,9 @@ if __name__ == "__main__":
                         help='Experiment name. Will appear in name of saved model.')
     parser.add_argument('--save_dir', type=str, default='../../cspn_rl_experiments',
                         help='Directory to save the model to.')
-    parser.add_argument('--model_paths', '-models', nargs='+', type=str, required=True,
+    parser.add_argument('--model_paths', '-models', nargs='+', type=str,
                         help='Absolute path to the pretrained model.')
+    parser.add_argument('--episode_len', type=int, default=200, help='Reset env after this many steps.')
     parser.add_argument('--video', action='store_true',
                         help="Record a video of the agent. Env will not render for you to see.")
     args = parser.parse_args()
@@ -41,7 +42,7 @@ if __name__ == "__main__":
 
         model_dir = os.path.join('/', *model_path.split("/")[:-1])
         model_name = model_path.split("/")[-1].split(".")[0]
-        for env_name in ['HalfCheetah-v2', None]:
+        for env_name in ['HalfCheetah-v2', 'Humanoid-v3', None]:
             assert env_name is not None, "None of the environment names were contained in the model name!"
             if env_name in model_name:
                 break
@@ -75,17 +76,20 @@ if __name__ == "__main__":
             env.metadata['video.frames_per_second'] = 5
             env.metadata['video.output_frames_per_second'] = 30
             env = VecVideoRecorder(env, results_path,
-                                   record_video_trigger=lambda x: x == 0, video_length=100,
+                                   record_video_trigger=lambda x: x == 0, video_length=args.episode_len,
                                    name_prefix=f"{model_name}")
 
         env.reset()
+        step = 0
         while True:
             action, _states = model.predict(obs, deterministic=True)
             obs, reward, done, info = env.step(action)
+            step += 1
             if not args.video:
                 env.render()
-            if done:
+            if done or step > args.episode_len:
                 if args.video:
                     break
                 obs = env.reset()
+                step = 0
         env.close()
