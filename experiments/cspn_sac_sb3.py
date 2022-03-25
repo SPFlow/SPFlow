@@ -4,6 +4,8 @@ import sb3
 from sb3 import CspnActor, CspnSAC
 import os
 import platform
+import wandb
+from wandb.integration.sb3 import WandbCallback
 
 import torch.nn as nn
 
@@ -12,6 +14,7 @@ from cspn import CSPN, print_cspn_params
 from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import VecVideoRecorder
 from stable_baselines3.common.logger import configure
 
 if __name__ == "__main__":
@@ -90,7 +93,10 @@ if __name__ == "__main__":
         save_path = os.path.join(args.save_dir, folder_name)
         log_path = os.path.join(args.log_dir, folder_name)
         monitor_path = os.path.join(log_path, "monitor")
-        for d in [save_path, log_path, monitor_path]:
+        model_path = os.path.join(log_path, "models")
+        video_path = os.path.join(log_path, "video")
+        wandb_path = os.path.join(log_path, "wandb")
+        for d in [save_path, log_path, monitor_path, video_path, wandb_path]:
             if not os.path.exists(d):
                 os.makedirs(d)
 
@@ -101,6 +107,18 @@ if __name__ == "__main__":
             # vec_env_cls=SubprocVecEnv,
             # vec_env_kwargs={'start_method': 'fork'},
         )
+        env = VecVideoRecorder(env, video_path, record_video_trigger=lambda x: x % args.save_interval == 0,
+                               video_length=200)
+
+        sac_kwargs = {
+            'env': env,
+            'seed': seed,
+            'verbose': 2 * args.verbose,
+            'ent_coef': args.ent_coef,
+            'learning_starts': args.learning_starts,
+            'device': args.device,
+            'learning_rate': args.learning_rate,
+        }
 
         if args.model_path:
             model = CspnSAC.load(args.model_path, env)
@@ -108,15 +126,6 @@ if __name__ == "__main__":
             model.vi_aux_resp_grad_mode = args.vi_aux_resp_grad_mode
             model_name = f"sac_loadedpretrained_{args.env}_{args.exp_name}"
         else:
-            sac_kwargs = {
-                'env': env,
-                'seed': seed,
-                'verbose': 2*args.verbose,
-                'ent_coef': args.ent_coef,
-                'learning_starts': args.learning_starts,
-                'device': args.device,
-                'learning_rate': args.learning_rate,
-            }
             if args.mlp:
                 model = SAC("MlpPolicy", env, **sac_kwargs)
             else:
@@ -141,19 +150,32 @@ if __name__ == "__main__":
             logger = configure(log_path, ["stdout", "csv", "tensorboard"])
             model.set_logger(logger)
 
+        wandb.login(key=os.environ['WANDB_API_KEY'])
+        run = wandb.init(
+            dir=wandb_path,
+            project=model_name,
+            config=sac_kwargs,
+            sync_tensorboard=True,
+            monitor_gym=True,
+        )
+
         print(model.actor)
         print(model.critic)
         if isinstance(model.actor, CspnActor):
             print_cspn_params(model.actor.cspn)
         else:
             print(f"Actor MLP has {sum(p.numel() for p in model.actor.parameters() if p.requires_grad)} parameters.")
-        if learn:
-            num_epochs = int(args.timesteps // args.save_interval)
-            for i in range(num_epochs):
-                model.learn(
-                    total_timesteps=args.save_interval,
-                    log_interval=args.log_interval,
-                    reset_num_timesteps=False,
-                    tb_log_name=folder_name,
-                )
-                model.save(os.path.join(save_path, f"{model_name}_{(i+1)*args.save_interval}steps"))
+        # noinspection PyTypeChecker
+        model.learn(
+            total_timesteps=args.save_interval,
+            log_interval=args.log_interval,
+            reset_num_timesteps=False,
+            tb_log_name=folder_name,
+            callback=WandbCallback(
+                gradient_save_freq=100,
+                model_save_path=model_path,
+                model_save_freq=args.save_interval,
+                verbose=2,
+            ),
+        )
+        run.finish()
