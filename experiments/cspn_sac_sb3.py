@@ -55,11 +55,14 @@ if __name__ == "__main__":
     parser.add_argument('--dist_param_layers', type=int, nargs='+',
                         help='List of sizes of the CSPN dist param layers.')
     # VI entropy arguments
-    parser.add_argument('--vi_aux_resp_grad_mode', '-ent_grad_mode', type=int, required=True,
+    parser.add_argument('--vi_aux_resp_grad_mode', '-ent_grad_mode', type=int, default=0,
                         help='Set gradient mode for auxiliary responsibility in variational inference '
                              'entropy approximation. 0: No grad, '
                              '1: Grad only for LL computation of child node samples, '
                              '2: Grad also for child node sampling.')
+    parser.add_argument('--vi_ent_sample_size', '-ent_sample_size', type=int, default=5,
+                        help='Number of samples to approximate entropy with. ')
+
     args = parser.parse_args()
 
     if not args.save_interval:
@@ -123,9 +126,12 @@ if __name__ == "__main__":
                     'sum_param_layers': args.sum_param_layers,
                     'dist_param_layers': args.dist_param_layers,
                     'cond_layers_inner_act': nn.Identity if args.no_relu else nn.ReLU,
-                    'vi_aux_resp_grad_mode':  args.vi_aux_resp_grad_mode,
+                    'vi_aux_resp_grad_mode': args.vi_aux_resp_grad_mode,
+                    'vi_ent_approx_sample_size': args.vi_ent_sample_size,
                 }
-                sac_kwargs['policy_kwargs'] = {'cspn_args': cspn_args}
+                sac_kwargs['policy_kwargs'] = {
+                    'cspn_args': cspn_args,
+                }
                 model = CspnSAC(policy="CspnPolicy", **sac_kwargs)
             else:
                 model = SAC("MlpPolicy", env, **sac_kwargs)

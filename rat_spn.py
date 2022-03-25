@@ -497,8 +497,10 @@ class RatSpn(nn.Module):
             verbose: Return logging data
             aux_resp_ll_with_grad: When approximating the auxiliary responsibility from log-likelihoods
                 of child samples, backpropagate the gradient through the LL calculation.
+                This argument will be ignored if this function is called in a th.no_grad() context.
             aux_resp_sample_with_grad: May only be True if aux_resp_ll_with_grad is True too. Backpropagate through
                 the sampling of the child nodes as well.
+                This argument will be ignored if this function is called in a th.no_grad() context.
         """
         assert not self.config.gmm_leaves, "VI entropy not tested on GMM leaves yet."
         assert self.config.C == 1, "For C > 1, we must calculate starting from self._sampling_root!"
@@ -521,9 +523,9 @@ class RatSpn(nn.Module):
             if isinstance(layer, CrossProduct):
                 child_entropies = layer(child_entropies)
             else:
-                with th.set_grad_enabled(aux_resp_ll_with_grad):
+                with th.set_grad_enabled(aux_resp_ll_with_grad and th.is_grad_enabled()):
                     ctx = SamplingContext(n=sample_size, is_mpe=False)
-                    if aux_resp_sample_with_grad:
+                    if aux_resp_sample_with_grad and th.is_grad_enabled():
                         # noinspection PyTypeChecker
                         for child_layer in reversed(self._inner_layers[:i]):
                             ctx = child_layer.sample_onehot_style(ctx)

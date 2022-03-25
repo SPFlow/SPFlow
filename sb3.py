@@ -59,6 +59,8 @@ class CspnActor(BasePolicy):
             dist_param_layers: int,
             normalize_images: bool = True,
             cond_layers_inner_act: Type[nn.Module] = nn.ReLU,
+            vi_aux_resp_grad_mode: int = 0,
+            vi_ent_approx_sample_size: int = 5,
             **kwargs
     ):
         super(CspnActor, self).__init__(
@@ -71,6 +73,9 @@ class CspnActor(BasePolicy):
 
         # Save arguments to re-create object at loading
         self.features_dim = features_dim
+        self.vi_ent_approx_sample_size = vi_ent_approx_sample_size
+        self.vi_aux_resp_ll_with_grad = vi_aux_resp_grad_mode >= 1
+        self.vi_aux_resp_sample_with_grad = vi_aux_resp_grad_mode == 2
 
         action_dim = get_action_dim(self.action_space)
 
@@ -111,18 +116,22 @@ class CspnActor(BasePolicy):
         return data
 
     def forward(self, obs: th.Tensor, deterministic: bool = False) -> th.Tensor:
-        # Note: the action is squashed
         features = self.extract_features(obs)
-        return self.cspn.sample_onehot_style(condition=features, is_mpe=deterministic).squeeze(0)
+        if th.is_grad_enabled():
+            action = self.cspn.sample_onehot_style(condition=features, is_mpe=deterministic)
+        else:
+            action = self.cspn.sample_index_style(condition=features, is_mpe=deterministic)
+        return action.squeeze(0)
 
-    def action_entropy(self, obs: th.Tensor, vi_aux_resp_grad_mode: int) -> Tuple[th.Tensor, th.Tensor, dict]:
+    def action_entropy(self, obs: th.Tensor) -> Tuple[th.Tensor, th.Tensor, dict]:
         # return action and entropy
         features = self.extract_features(obs)
         action = self.cspn.sample_onehot_style(condition=features, is_mpe=False).squeeze(0)
         entropy, vi_ent_log = self.cspn.vi_entropy_approx(
-            sample_size=5, condition=None, verbose=True,
-            aux_resp_ll_with_grad=vi_aux_resp_grad_mode >= 1,
-            aux_resp_sample_with_grad=vi_aux_resp_grad_mode == 2,
+            condition=None, verbose=True,
+            sample_size=self.vi_ent_approx_sample_size,
+            aux_resp_ll_with_grad=self.vi_aux_resp_ll_with_grad,
+            aux_resp_sample_with_grad=self.vi_aux_resp_sample_with_grad,
         )
         return action, entropy, vi_ent_log
 
@@ -232,8 +241,6 @@ class CspnSAC(SAC):
     """
     def __init__(self, **kwargs):
         super(CspnSAC, self).__init__(**kwargs)
-        self.vi_aux_resp_grad_mode = kwargs.get('vi_aux_resp_grad_mode', 0)
-        self._vi_aux_resp_grad_mode = self.vi_aux_resp_grad_mode
 
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
         # Switch to train mode (this affects batch norm / dropout)
@@ -260,10 +267,7 @@ class CspnSAC(SAC):
                 self.actor.reset_noise()
 
             # Action by the current actor for the sampled state
-            actions_pi, entropy, vi_ent_log = self.actor.action_entropy(
-                replay_data.observations,
-                vi_aux_resp_grad_mode=self._vi_aux_resp_grad_mode
-            )
+            actions_pi, entropy, vi_ent_log = self.actor.action_entropy(replay_data.observations)
             entropy = entropy.reshape(-1, 1)
             ent.append(entropy.mean().item())
 
@@ -288,10 +292,7 @@ class CspnSAC(SAC):
 
             with th.no_grad():
                 # Select action according to policy
-                next_actions, next_entropy, _ = self.actor.action_entropy(
-                    replay_data.next_observations,
-                    vi_aux_resp_grad_mode=0
-                )
+                next_actions, next_entropy, _ = self.actor.action_entropy(replay_data.next_observations)
                 # Compute the next Q values: min over all critics targets
                 next_q_values = th.cat(self.critic_target(replay_data.next_observations, next_actions), dim=1)
                 next_q_values, _ = th.min(next_q_values, dim=1, keepdim=True)
