@@ -18,11 +18,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', '-s', type=int, nargs='+', required=True)
-    parser.add_argument('--cspn', action='store_true', help='Use a CSPN actor')
+    parser.add_argument('--mlp', action='store_true', help='Use a MLP actor')
+    parser.add_argument('--num_envs', type=int, default=1, help='Number of parallel environments to run.')
     parser.add_argument('--timesteps', type=int, default=int(1e6), help='Total timesteps to train model.')
     parser.add_argument('--save_interval', type=int, help='Save model every save_interval timesteps.')
     parser.add_argument('--log_interval', type=int, default=4, help='Log interval')
-    parser.add_argument('--env_name', '-env', type=str, default='HalfCheetah-v2', help='Gym environment to train on.')
+    parser.add_argument('--env_name', '-env', type=str, required=True, help='Gym environment to train on.')
     parser.add_argument('--device', type=str, default='cuda', help='Device to run on. cpu or cuda.')
     parser.add_argument('--exp_name', type=str, default='test',
                         help='Experiment name. Will appear in name of saved model.')
@@ -92,7 +93,7 @@ if __name__ == "__main__":
 
         env = make_vec_env(
             env_id=args.env_name,
-            n_envs=1,
+            n_envs=args.num_envs,
             monitor_dir=results_path,
             # monitor_dir=os.path.join(results_path, f"log_{args.exp_name}.txt"),
             # vec_env_cls=SubprocVecEnv,
@@ -115,7 +116,9 @@ if __name__ == "__main__":
                 'tensorboard_log': args.tensorboard_dir,
                 'learning_rate': args.learning_rate,
             }
-            if args.cspn:
+            if args.mlp:
+                model = SAC("MlpPolicy", env, **sac_kwargs)
+            else:
                 cspn_args = {
                     'R': args.repetitions,
                     'D': args.cspn_depth,
@@ -133,9 +136,7 @@ if __name__ == "__main__":
                     'cspn_args': cspn_args,
                 }
                 model = CspnSAC(policy="CspnPolicy", **sac_kwargs)
-            else:
-                model = SAC("MlpPolicy", env, **sac_kwargs)
-            model_name = f"sac_{'cspn' if args.cspn else 'mlp'}_{args.env_name}_{args.exp_name}_s{seed}"
+            model_name = f"sac_{'mlp' if args.mlp else 'cspn'}_{args.env_name}_{args.exp_name}_s{seed}"
 
         print(model.actor)
         print(model.critic)
