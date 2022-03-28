@@ -118,7 +118,7 @@ if __name__ == "__main__":
                 'learning_rate': args.learning_rate,
             }
             if args.mlp:
-                model = SAC("MlpPolicy", env, **sac_kwargs)
+                model = SAC("MlpPolicy", **sac_kwargs)
             else:
                 cspn_args = {
                     'R': args.repetitions,
