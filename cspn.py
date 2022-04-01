@@ -344,9 +344,10 @@ class CSPN(RatSpn):
         num_conditionals = feat_inp.shape[0]
         features = self.feat_layers(feat_inp)
         features = features.flatten(start_dim=1)
-        if (features.detach() == 0.0).all():
-            print("FEATURE LAYERS DRIED UP")
         sum_weights_pre_output = self.sum_layers(features)
+
+        LOG_STD_MAX = 2
+        LOG_STD_MIN = -20
 
         # Set normalized sum node weights of the inner RatSpn layers
         i = 0
@@ -354,6 +355,7 @@ class CSPN(RatSpn):
             if isinstance(layer, Sum):
                 weight_shape = (num_conditionals, layer.in_features, layer.in_channels, layer.out_channels, layer.num_repetitions)
                 weights = self.sum_param_heads[i](sum_weights_pre_output).view(weight_shape)
+                weights = th.clamp(weights, LOG_STD_MIN, LOG_STD_MAX)
                 layer.weights = F.log_softmax(weights, dim=2)
                 i += 1
             else:
@@ -362,6 +364,7 @@ class CSPN(RatSpn):
         # Set normalized weights of the root sum layer
         weight_shape = (num_conditionals, self.root.in_features, self.root.in_channels, self.root.out_channels, self.root.num_repetitions)
         weights = self.sum_param_heads[i](sum_weights_pre_output).view(weight_shape)
+        weights = th.clamp(weights, LOG_STD_MIN, LOG_STD_MAX)
         self.root.weights = F.log_softmax(weights, dim=2)
 
         # Sampling root weights need to have 5 dims as well
@@ -375,6 +378,7 @@ class CSPN(RatSpn):
             weight_shape = (num_conditionals, self._leaf.sum.in_features, self._leaf.sum.in_channels,
                             self._leaf.sum.out_channels, self._leaf.sum.num_repetitions)
             weights = self.sum_param_heads[i+1](sum_weights_pre_output).view(weight_shape)
+            weights = th.clamp(weights, LOG_STD_MIN, LOG_STD_MAX)
             self._leaf.sum.weights = F.log_softmax(weights, dim=2)
 
         # Set bounded weights of the Gaussian distributions in the leaves
