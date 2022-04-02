@@ -31,8 +31,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.model_paths = [
-        '/home/fritz/PycharmProjects/cspn_rl_experiments/corgi_SAC_21Mar_HalfCheetah-v2/sac_cspn_HalfCheetah-v2_21Mar_800000steps.zip',
-        '/home/fritz/PycharmProjects/cspn_rl_experiments/labrador_SAC_mlp_baseline_HalfCheetah-v2/sac_mlp_HalfCheetah-v2_mlp_baseline_1000000steps.zip',
+        # Ant-v3 experiments
+        # '/home/fritz/PycharmProjects/cspn_rl_experiments/labrador_SAC_aux_resp__no_grad_Ant-v3_s10/sac_cspn_Ant-v3_aux_resp__no_grad_s10_1000000steps.zip',
+        # '/home/fritz/PycharmProjects/cspn_rl_experiments/labrador_SAC_aux_resp__ll_grad_Ant-v3_s10/sac_cspn_Ant-v3_aux_resp__ll_grad_s10_1000000steps.zip',
+        # '/home/fritz/PycharmProjects/cspn_rl_experiments/labrador_SAC_aux_resp__sample_grad_Ant-v3_s10/sac_cspn_Ant-v3_aux_resp__sample_grad_s10_1000000steps.zip',
+        # HalfCheetah experiments
+        # '/home/fritz/PycharmProjects/cspn_rl_experiments/labrador_SAC_grad_mode_exp__no_grad_HalfCheetah-v2_s10/sac_cspn_HalfCheetah-v2_grad_mode_exp__no_grad_s10_1000000steps.zip',
+        # '/home/fritz/PycharmProjects/cspn_rl_experiments/labrador_SAC_grad_mode_exp__ll_grad_HalfCheetah-v2_s10/sac_cspn_HalfCheetah-v2_grad_mode_exp__ll_grad_s10_500000steps.zip',
+        # '/home/fritz/PycharmProjects/cspn_rl_experiments/labrador_SAC_grad_mode_exp__sample_grad_HalfCheetah-v2_s10/sac_cspn_HalfCheetah-v2_grad_mode_exp__sample_grad_s10_1000000steps.zip',
     ]
 
     for model_path in args.model_paths:
@@ -42,7 +48,7 @@ if __name__ == "__main__":
 
         model_dir = os.path.join('/', *model_path.split("/")[:-1])
         model_name = model_path.split("/")[-1].split(".")[0]
-        for env_name in ['HalfCheetah-v2', 'Humanoid-v3', None]:
+        for env_name in ['HalfCheetah-v2', 'Humanoid-v3', 'Ant-v3', None]:
             assert env_name is not None, "None of the environment names were contained in the model name!"
             if env_name in model_name:
                 break
