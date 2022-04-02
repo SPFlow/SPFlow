@@ -617,11 +617,22 @@ class RatSpn(nn.Module):
                 child_entropies.unsqueeze_(0)
                 if verbose:
                     weight_entropy = -(layer.weights.exp() * layer.weights).sum(dim=2)
-                    logging[i] = {
-                        'weight_entropy': weight_entropy.mean().item(),
-                        'weighted_child_ent': weighted_ch_ents.mean().item(),
-                        'weighted_aux_resp': weighted_aux_responsibility.mean().item(),
+                    metrics = {
+                        'weight_entropy': weight_entropy.detach(),
+                        'weighted_child_ent': weighted_ch_ents.detach(),
+                        'weighted_aux_resp': weighted_aux_responsibility.detach(),
                     }
+                    logging[i] = {}
+                    for rep in range(weight_entropy.size(-1)):
+                        rep_key = f"rep{rep}"
+                        rep = th.as_tensor(rep, device=self._device)
+                        for key, metric in metrics.items():
+                            logging[i].update({
+                                f"{rep_key}/{key}/min": metric.index_select(-1, rep).min().item(),
+                                f"{rep_key}/{key}/max": metric.index_select(-1, rep).max().item(),
+                                f"{rep_key}/{key}/mean": metric.index_select(-1, rep).mean().item(),
+                                f"{rep_key}/{key}/std": metric.index_select(-1, rep).std(dim=0).mean().item(),
+                            })
 
         return child_entropies.flatten(), logging
 

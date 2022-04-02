@@ -24,19 +24,17 @@ if __name__ == "__main__":
     parser.add_argument('--mlp', action='store_true', help='Use a MLP actor')
     parser.add_argument('--num_envs', type=int, default=1, help='Number of parallel environments to run.')
     parser.add_argument('--timesteps', type=int, default=int(1e6), help='Total timesteps to train model.')
-    parser.add_argument('--save_interval', type=int, help='Save model every save_interval timesteps.')
+    parser.add_argument('--save_interval', type=int, help='Save model and a video every save_interval timesteps.')
     parser.add_argument('--log_interval', type=int, default=4, help='Log interval')
     parser.add_argument('--env_name', '-env', type=str, required=True, help='Gym environment to train on.')
     parser.add_argument('--device', type=str, default='cuda', help='Device to run on. cpu or cuda.')
     parser.add_argument('--proj_name', '-proj', type=str, default='test_proj', help='Project name for WandB')
-    parser.add_argument('--run_name', '-name', type=str, default='test_run', help='Name of this run for WandB')
-    parser.add_argument('--save_dir', type=str, default='../../cspn_rl_experiments',
-                        help='Directory to save the model to.')
-    parser.add_argument('--log_dir', type=str, default='../../cspn_rl_experiments/log',
+    parser.add_argument('--run_name', '-name', type=str, default='test_run',
+                        help='Name of this run for WandB. The seed will be automatically appended. ')
+    parser.add_argument('--log_dir', type=str, default='../../cspn_rl_experiments',
                         help='Directory to save logs to.')
     parser.add_argument('--model_path', type=str,
                         help='Path to the pretrained model.')
-    parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
     # SAC arguments
     parser.add_argument('--ent_coef', type=float, default=0.1, help='Entropy temperature')
     parser.add_argument('--learning_rate', '-lr', type=float, default=3e-4, help='Learning rate')
@@ -79,23 +77,31 @@ if __name__ == "__main__":
         assert args.timesteps >= args.save_interval, "Total timesteps cannot be lower than save_interval!"
         assert args.timesteps % args.save_interval == 0, "save_interval must be a divisor of total timesteps."
 
-    if args.save_dir:
-        assert os.path.exists(args.save_dir), f"The save_dir doesn't exist! {args.save_dir}"
     if args.model_path:
         assert os.path.exists(args.model_path), f"The model_path doesn't exist! {args.model_path}"
     if args.log_dir:
         assert os.path.exists(args.log_dir), f"The log_dir doesn't exist! {args.log_dir}"
 
+    log_path = os.path.join(args.log_dir, args.proj_name)
+
     for seed in args.seed:
         print(f"Seed: {seed}")
-        save_path = os.path.join(args.save_dir, args.proj_name)
-        log_path = os.path.join(args.log_dir, args.proj_name)
-        monitor_path = os.path.join(log_path, "monitor")
-        model_path = os.path.join(log_path, "models")
-        video_path = os.path.join(log_path, "video")
-        wandb_path = os.path.join(log_path, "wandb")
-        for d in [save_path, log_path, monitor_path, video_path, wandb_path]:
+        args.run_name = f"{args.run_name}_s{seed}"
+        monitor_path = os.path.join(log_path, args.run_name, "monitor")
+        model_path = os.path.join(log_path, args.run_name, "models")
+        video_path = os.path.join(log_path, args.run_name, "video")
+        for d in [log_path, monitor_path, model_path, video_path]:
             os.makedirs(d, exist_ok=True)
+
+        wandb.login(key=os.environ['WANDB_API_KEY'])
+        run = wandb.init(
+            dir=log_path,
+            project=args.proj_name,
+            name=args.run_name,
+            sync_tensorboard=True,
+            monitor_gym=True,
+            force=True,
+        )
 
         env = make_vec_env(
             env_id=args.env_name,
@@ -104,18 +110,21 @@ if __name__ == "__main__":
             # vec_env_cls=SubprocVecEnv,
             # vec_env_kwargs={'start_method': 'fork'},
         )
+        # Without env as a VecVideoRecorder we need LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so;
+        env = VecVideoRecorder(env, video_folder=video_path,
+                               record_video_trigger=lambda x: x % args.save_interval == 0, video_length=200)
 
         if args.model_path:
             model = CspnSAC.load(args.model_path, env)
             model.tensorboard_log = None
             model.vi_aux_resp_grad_mode = args.vi_aux_resp_grad_mode
-            model_name = f"sac_loadedpretrained_{args.env}_{args.exp_name}"
+            # model_name = f"sac_loadedpretrained_{args.env}_{args.proj_name}_{args.run_name}"
             sac_kwargs = None
         else:
             sac_kwargs = {
                 'env': env,
                 'seed': seed,
-                'verbose': 2*args.verbose,
+                'verbose': 2,
                 'ent_coef': args.ent_coef,
                 'learning_starts': args.learning_starts,
                 'device': args.device,
@@ -141,23 +150,16 @@ if __name__ == "__main__":
                     'cspn_args': cspn_args,
                 }
                 model = CspnSAC(policy="CspnPolicy", **sac_kwargs)
-            model_name = f"sac_{'mlp' if args.mlp else 'cspn'}_{args.env_name}_{args.exp_name}_s{seed}"
-            logger = configure(log_path, ["stdout", "csv", "tensorboard"])
-            model.set_logger(logger)
+            # model_name = f"sac_{'mlp' if args.mlp else 'cspn'}_{args.env_name}_{args.exp_name}_s{seed}"
 
-        wandb.login(key=os.environ['WANDB_API_KEY'])
-        run = wandb.init(
-            dir=wandb_path,
-            project=args.proj_name,
-            name=args.run_name,
-            config={
+            run.config.update({
                 **sac_kwargs,
                 'machine': platform.node(),
-            },
-            sync_tensorboard=True,
-            monitor_gym=True,
-            force=True,
-        )
+            })
+
+            logger = configure(log_path, ["stdout", "csv", "tensorboard"])
+            logger.output_formats[0].max_length = 50
+            model.set_logger(logger)
 
         print(model.actor)
         print(model.critic)
@@ -168,12 +170,12 @@ if __name__ == "__main__":
 
         # noinspection PyTypeChecker
         model.learn(
-            total_timesteps=args.save_interval,
+            total_timesteps=args.timesteps,
             log_interval=args.log_interval,
-            reset_num_timesteps=False,
+            reset_num_timesteps=not args.model_path,
             tb_log_name=f"{args.proj_name}/{args.run_name}",
             callback=WandbCallback(
-                gradient_save_freq=100,
+                gradient_save_freq=10000,
                 model_save_path=model_path,
                 model_save_freq=args.save_interval,
                 verbose=2,

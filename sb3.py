@@ -346,4 +346,4 @@ class CspnSAC(SAC):
         if vi_ent_log is not None:
             for layer_id, layer_dict in vi_ent_log.items():
                 for key, val in layer_dict.items():
-                    self.logger.record(f"vi_ent_approx/sum_layer{layer_id}_{key}", np.mean(val))
+                    self.logger.record(f"vi_ent_approx/sum_layer{layer_id}/{key}", np.mean(val))
