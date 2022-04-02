@@ -1,20 +1,20 @@
 import gym
 import numpy as np
-import sb3
-from sb3 import CspnActor, CspnSAC
 import os
 import platform
-import wandb
-from wandb.integration.sb3 import WandbCallback
 
 import torch.nn as nn
 
-from cspn import CSPN, print_cspn_params
+import wandb
+from wandb.integration.sb3 import WandbCallback
 
-from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecVideoRecorder
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.logger import configure
+
+from cspn import CSPN, print_cspn_params
+from sb3 import CspnActor, CspnSAC, EntropyLoggingSAC
+
 
 if __name__ == "__main__":
     import argparse
@@ -82,14 +82,13 @@ if __name__ == "__main__":
     if args.log_dir:
         assert os.path.exists(args.log_dir), f"The log_dir doesn't exist! {args.log_dir}"
 
-    log_path = os.path.join(args.log_dir, args.proj_name)
-
     for seed in args.seed:
         print(f"Seed: {seed}")
         args.run_name = f"{args.run_name}_s{seed}"
-        monitor_path = os.path.join(log_path, args.run_name, "monitor")
-        model_path = os.path.join(log_path, args.run_name, "models")
-        video_path = os.path.join(log_path, args.run_name, "video")
+        log_path = os.path.join(args.log_dir, args.proj_name, args.run_name)
+        monitor_path = os.path.join(log_path, "monitor")
+        model_path = os.path.join(log_path, "models")
+        video_path = os.path.join(log_path, "video")
         for d in [log_path, monitor_path, model_path, video_path]:
             os.makedirs(d, exist_ok=True)
 
@@ -131,7 +130,7 @@ if __name__ == "__main__":
                 'learning_rate': args.learning_rate,
             }
             if args.mlp:
-                model = SAC("MlpPolicy", **sac_kwargs)
+                model = EntropyLoggingSAC("MlpPolicy", **sac_kwargs)
             else:
                 cspn_args = {
                     'R': args.repetitions,

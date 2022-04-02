@@ -14,3 +14,12 @@ PyQt5
 arff
 pytest
 dataclasses
+
+gym
+pybullet
+torch
+imageio
+scikit-image
+torchvision
+wandb
+pandas
