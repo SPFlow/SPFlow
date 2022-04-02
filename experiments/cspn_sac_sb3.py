@@ -4,13 +4,15 @@ import sb3
 from sb3 import CspnActor, CspnSAC
 import os
 import platform
+import wandb
+from wandb.integration.sb3 import WandbCallback
 
 import torch.nn as nn
 
 from cspn import CSPN, print_cspn_params
 
 from stable_baselines3 import SAC
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecVideoRecorder
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.logger import configure
 
@@ -26,12 +28,12 @@ if __name__ == "__main__":
     parser.add_argument('--log_interval', type=int, default=4, help='Log interval')
     parser.add_argument('--env_name', '-env', type=str, required=True, help='Gym environment to train on.')
     parser.add_argument('--device', type=str, default='cuda', help='Device to run on. cpu or cuda.')
-    parser.add_argument('--exp_name', type=str, default='test',
-                        help='Experiment name. Will appear in name of saved model.')
+    parser.add_argument('--proj_name', '-proj', type=str, default='test_proj', help='Project name for WandB')
+    parser.add_argument('--run_name', '-name', type=str, default='test_run', help='Name of this run for WandB')
     parser.add_argument('--save_dir', type=str, default='../../cspn_rl_experiments',
                         help='Directory to save the model to.')
     parser.add_argument('--log_dir', type=str, default='../../cspn_rl_experiments/log',
-                        help='Directory to save the model to.')
+                        help='Directory to save logs to.')
     parser.add_argument('--model_path', type=str,
                         help='Path to the pretrained model.')
     parser.add_argument('--verbose', '-V', action='store_true', help='Output more debugging information when running.')
@@ -86,13 +88,14 @@ if __name__ == "__main__":
 
     for seed in args.seed:
         print(f"Seed: {seed}")
-        folder_name = f"{platform.node()}_SAC_{args.exp_name}_{args.env_name}_s{seed}"
-        save_path = os.path.join(args.save_dir, folder_name)
-        log_path = os.path.join(args.log_dir, folder_name)
+        save_path = os.path.join(args.save_dir, args.proj_name)
+        log_path = os.path.join(args.log_dir, args.proj_name)
         monitor_path = os.path.join(log_path, "monitor")
-        for d in [save_path, log_path, monitor_path]:
-            if not os.path.exists(d):
-                os.makedirs(d)
+        model_path = os.path.join(log_path, "models")
+        video_path = os.path.join(log_path, "video")
+        wandb_path = os.path.join(log_path, "wandb")
+        for d in [save_path, log_path, monitor_path, video_path, wandb_path]:
+            os.makedirs(d, exist_ok=True)
 
         env = make_vec_env(
             env_id=args.env_name,
@@ -107,6 +110,7 @@ if __name__ == "__main__":
             model.tensorboard_log = None
             model.vi_aux_resp_grad_mode = args.vi_aux_resp_grad_mode
             model_name = f"sac_loadedpretrained_{args.env}_{args.exp_name}"
+            sac_kwargs = None
         else:
             sac_kwargs = {
                 'env': env,
@@ -141,19 +145,38 @@ if __name__ == "__main__":
             logger = configure(log_path, ["stdout", "csv", "tensorboard"])
             model.set_logger(logger)
 
+        wandb.login(key=os.environ['WANDB_API_KEY'])
+        run = wandb.init(
+            dir=wandb_path,
+            project=args.proj_name,
+            name=args.run_name,
+            config={
+                **sac_kwargs,
+                'machine': platform.node(),
+            },
+            sync_tensorboard=True,
+            monitor_gym=True,
+            force=True,
+        )
+
         print(model.actor)
         print(model.critic)
         if isinstance(model.actor, CspnActor):
             print_cspn_params(model.actor.cspn)
         else:
             print(f"Actor MLP has {sum(p.numel() for p in model.actor.parameters() if p.requires_grad)} parameters.")
-        if learn:
-            num_epochs = int(args.timesteps // args.save_interval)
-            for i in range(num_epochs):
-                model.learn(
-                    total_timesteps=args.save_interval,
-                    log_interval=args.log_interval,
-                    reset_num_timesteps=False,
-                    tb_log_name=folder_name,
-                )
-                model.save(os.path.join(save_path, f"{model_name}_{(i+1)*args.save_interval}steps"))
+
+        # noinspection PyTypeChecker
+        model.learn(
+            total_timesteps=args.save_interval,
+            log_interval=args.log_interval,
+            reset_num_timesteps=False,
+            tb_log_name=f"{args.proj_name}/{args.run_name}",
+            callback=WandbCallback(
+                gradient_save_freq=100,
+                model_save_path=model_path,
+                model_save_freq=args.save_interval,
+                verbose=2,
+            ),
+        )
+        run.finish()
