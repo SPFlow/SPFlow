@@ -1,0 +1,35 @@
+@startuml
+
+abstract class Module
+
+class LeafLayer {
+  nodes : List[LeafNode]
+}
+
+class LeafNode
+
+Module <|-- LeafLayer
+LeafLayer --> LeafNode
+
+abstract class NestingModule
+
+class ProductLayer {
+  nodes : List[ProductNode]
+}
+
+class SumLayer {
+  nodes : List[SumNode]
+}
+
+class SumNode
+
+Module <|-- NestingModule
+NestingModule <|-- SumLayer
+SumLayer --> SumNode
+
+class ProductNode
+
+NestingModule <|-- ProductLayer
+ProductLayer --> ProductNode
+
+@enduml
