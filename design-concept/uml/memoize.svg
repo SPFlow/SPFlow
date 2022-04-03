@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="77px" preserveAspectRatio="none" style="width:121px;height:77px;background:#FFFFFF;" version="1.1" viewBox="0 0 121 77" width="121px" zoomAndPan="magnify"><defs/><g><!--MD5=[c80d19ca10cda00fedcacb92bfb8352d]
+class memoize--><g id="elem_memoize"><rect codeLine="1" fill="#F1F1F1" height="56.2656" id="memoize" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="100" x="7" y="7"/><ellipse cx="22" cy="27.1328" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/><path d="M24.3438,22.8047 C23.4063,22.3672 22.8125,22.2266 21.9375,22.2266 C19.3125,22.2266 17.3125,24.3047 17.3125,27.0234 L17.3125,28.1484 C17.3125,30.7266 19.4219,32.6172 22.3125,32.6172 C23.5313,32.6172 24.6875,32.3203 25.4375,31.7734 C26.0156,31.3672 26.3438,30.9141 26.3438,30.5234 C26.3438,30.0703 25.9531,29.6797 25.4844,29.6797 C25.2656,29.6797 25.0625,29.7578 24.875,29.9453 C24.4219,30.4297 24.4219,30.4297 24.2344,30.5234 C23.8125,30.7891 23.125,30.9141 22.3594,30.9141 C20.3125,30.9141 19.0156,29.8203 19.0156,28.1172 L19.0156,27.0234 C19.0156,25.2422 20.2656,23.9297 22,23.9297 C22.5781,23.9297 23.1875,24.0859 23.6563,24.3359 C24.1406,24.6172 24.3125,24.8359 24.4063,25.2422 C24.4688,25.6484 24.5,25.7734 24.6406,25.8984 C24.7813,26.0391 25.0156,26.1484 25.2344,26.1484 C25.5,26.1484 25.7656,26.0078 25.9375,25.7891 C26.0469,25.6328 26.0781,25.4453 26.0781,25.0234 L26.0781,23.6016 C26.0781,23.1641 26.0625,23.0391 25.9688,22.8828 C25.8125,22.6172 25.5313,22.4766 25.2344,22.4766 C24.9375,22.4766 24.7344,22.5703 24.5156,22.8828 L24.3438,22.8047 Z " fill="#000000"/><text fill="#000000" font-family="sans-serif" font-size="12" font-style="italic" lengthAdjust="spacing" textLength="72" x="34" y="23.1387">«decorator»</text><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="67" x="36.5" y="38.9639">memoize</text><line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="106" y1="47.2656" y2="47.2656"/><line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="106" y1="55.2656" y2="55.2656"/></g><!--MD5=[a53d6f48aef3440d3f159626a6e7a3a2]
+@startuml
+class memoize << decorator >>
+@enduml
+
+PlantUML version 1.2022.3beta2(Unknown compile time)
+(GPL source distribution)
+Java Runtime: Java(TM) SE Runtime Environment
+JVM: Java HotSpot(TM) 64-Bit Server VM
+Default Encoding: UTF-8
+Language: en
+Country: US
+--></g></svg>

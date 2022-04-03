@@ -1,0 +1,27 @@
+@startuml
+
+class Scope
+
+abstract class Module{
+  children : List[Module]
+  n_out : int
+}
+
+abstract class Node{
+  children : List[Module]
+}
+
+Module <|-- Node
+
+class SumNode
+class ProductNode
+class LeafNode {
+  scope : Scope
+}
+
+LeafNode --> Scope
+Node <|-- SumNode
+Node <|-- ProductNode
+Node <|-- LeafNode
+
+@enduml

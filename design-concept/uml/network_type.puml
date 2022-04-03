@@ -1,0 +1,5 @@
+@startuml network_type
+abstract class  NetworkType
+NetworkType <|-- SPN
+NetworkType <|-- BN
+@enduml
