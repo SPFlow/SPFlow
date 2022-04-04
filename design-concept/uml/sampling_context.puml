@@ -1,0 +1,8 @@
+@startuml sampling_context
+
+class SamplingContext {
+  instance_ids : List[int]
+  output_ids : List[List[int]]
+}
+
+@enduml
