@@ -1,0 +1,6 @@
+@startuml
+abstract class Module{
+  children : List[Module]
+  n_out : int
+}
+@enduml
