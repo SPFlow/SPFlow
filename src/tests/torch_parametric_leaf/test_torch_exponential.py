@@ -11,6 +11,7 @@ import numpy as np
 import random
 import unittest
 
+from packaging import version
 
 class TestTorchExponential(unittest.TestCase):
     @classmethod
@@ -165,8 +166,13 @@ class TestTorchExponential(unittest.TestCase):
             torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
         )
 
-        # edge case 0 (part of the support in scipy, but NOT pytorch)
-        self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[0.0]]))
+        if(version.parse(torch.__version__) < version.parse('1.11.0')):
+            # edge case 0 (part of the support in scipy, but NOT pytorch)
+            self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[0.0]]))
+        else:
+            # edge case 0
+            log_likelihood(exponential, torch.tensor([[0.0]]))
+
 
     def test_marginalization(self):
 
