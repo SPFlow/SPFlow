@@ -112,7 +112,7 @@ class TorchExponential(TorchParametricLeaf):
 
             \text{supp}(\text{Exponential})=(0,+\infty)
 
-        Note: 0 is part of the support for Exponential, but not TorchExponential.
+        Note: for PyTorch version < 1.11.0 zero is not part of the support TorchExponential, even though it is for Exponential.
 
         Args:
             scope_data:
