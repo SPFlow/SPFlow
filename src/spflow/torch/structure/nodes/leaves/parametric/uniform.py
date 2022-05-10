@@ -55,57 +55,6 @@ class TorchUniform(TorchParametricLeaf):
         # set parameters
         self.set_params(start, end, support_outside)
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-
-        batch_size: int = data.shape[0]
-
-        # get information relevant for the scope
-        scope_data = data[:, list(self.scope)]
-
-        # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
-
-        # ----- marginalization -----
-
-        marg_ids = torch.isnan(scope_data).sum(dim=1) == len(self.scope)
-
-        # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[marg_ids] = 0.0
-
-        # ----- log probabilities -----
-
-        # create masked based on distribution's support
-        valid_ids = self.check_support(scope_data[~marg_ids])
-
-        if not all(valid_ids):
-            raise ValueError(
-                f"Encountered data instances that are not in the support of the TorchUniform distribution."
-            )
-
-        if self.support_outside:
-            torch_valid_ids = torch.zeros(len(marg_ids), dtype=torch.bool)
-            torch_valid_ids[~marg_ids] |= self.dist.support.check(scope_data[~marg_ids]).squeeze(1)
-            # TODO: torch_valid_ids does not necessarily have the same dimension as marg_ids
-            # try:
-            log_prob[~marg_ids & ~torch_valid_ids] = -float("inf")
-            # except:
-            #    print(marg_ids, torch_valid_ids)
-            #    print(err)
-
-            # compute probabilities for values inside distribution support
-            log_prob[~marg_ids & torch_valid_ids] = self.dist.log_prob(
-                scope_data[~marg_ids & torch_valid_ids].type(torch.get_default_dtype())
-            )
-        else:
-            # compute probabilities for values inside distribution support
-            log_prob[~marg_ids] = self.dist.log_prob(
-                scope_data[~marg_ids].type(torch.get_default_dtype())
-            )
-
-        return log_prob
-
-        return log_prob
-
     def set_params(self, start: float, end: float, support_outside: bool = True) -> None:
 
         if not start < end:

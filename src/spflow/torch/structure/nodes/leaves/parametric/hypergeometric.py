@@ -84,7 +84,7 @@ class TorchHypergeometric(TorchParametricLeaf):
             + torch.lgamma(self.N - self.n + 1)  # type: ignore
             + torch.lgamma(self.n + 1)  # type: ignore
             - torch.lgamma(self.N + 2)  # type: ignore
-            - torch.lgamma(k + 1)
+            - torch.lgamma(k + 1) # .float()
             - torch.lgamma(self.M - k + 1)
             + torch.lgamma(self.M + 2)  # type: ignore
             - torch.lgamma(n_minus_k + 1)
@@ -96,38 +96,6 @@ class TorchHypergeometric(TorchParametricLeaf):
         )
 
         return result
-
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-
-        batch_size: int = data.shape[0]
-
-        # get information relevant for the scope
-        scope_data = data[:, list(self.scope)]
-
-        # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
-
-        # ----- marginalization -----
-
-        marg_ids = torch.isnan(scope_data).sum(dim=1) == len(self.scope)
-
-        # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[marg_ids] = 0.0
-
-        # ----- log probabilities -----
-
-        # create masked based on distribution's support
-        valid_ids = self.check_support(scope_data[~marg_ids])
-
-        if not all(valid_ids):
-            raise ValueError(
-                f"Encountered data instances that are not in the support of the TorchHypergeometric distribution."
-            )
-
-        # compute probabilities for values inside distribution support
-        log_prob[~marg_ids] = self.log_prob(scope_data[~marg_ids])
-
-        return log_prob
 
     def set_params(self, N: int, M: int, n: int) -> None:
 
@@ -158,9 +126,9 @@ class TorchHypergeometric(TorchParametricLeaf):
                 f"Value of n for TorchHypergeometric distribution must be (equal to) an integer value, but was: {n}"
             )
 
-        self.M.data = torch.tensor(int(M))
-        self.N.data = torch.tensor(int(N))
-        self.n.data = torch.tensor(int(n))
+        self.M.data = torch.tensor(int(M)) # float(M)
+        self.N.data = torch.tensor(int(N)) # float(N)
+        self.n.data = torch.tensor(int(n)) # float(n)
 
     def get_params(self) -> Tuple[int, int, int]:
         return self.N.data.cpu().numpy(), self.M.data.cpu().numpy(), self.n.data.cpu().numpy()  # type: ignore
