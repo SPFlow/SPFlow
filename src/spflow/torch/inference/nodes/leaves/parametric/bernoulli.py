@@ -13,5 +13,5 @@ from spflow.torch.structure.nodes.leaves.parametric import TorchBernoulli
 
 @dispatch(TorchBernoulli, torch.Tensor, cache=dict)
 @memoize(TorchBernoulli)
-def log_likelihood(leaf: TorchBernoulli, data: torch.Tensor, cache: Dict = {}):
+def log_likelihood(leaf: TorchBernoulli, data: torch.Tensor, cache: Dict):
     return leaf(data)

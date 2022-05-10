@@ -13,5 +13,5 @@ from spflow.torch.structure.nodes.leaves.parametric import TorchGaussian
 
 @dispatch(TorchGaussian, torch.Tensor, cache=dict)
 @memoize(TorchGaussian)
-def log_likelihood(leaf: TorchGaussian, data: torch.Tensor, cache: Dict = {}):
+def log_likelihood(leaf: TorchGaussian, data: torch.Tensor, cache: Dict) -> torch.Tensor:
     return leaf(data)

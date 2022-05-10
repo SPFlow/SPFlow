@@ -13,5 +13,5 @@ from spflow.torch.structure.nodes.leaves.parametric import TorchGeometric
 
 @dispatch(TorchGeometric, torch.Tensor, cache=dict)
 @memoize(TorchGeometric)
-def log_likelihood(leaf: TorchGeometric, data: torch.Tensor, cache: Dict = {}):
+def log_likelihood(leaf: TorchGeometric, data: torch.Tensor, cache: Dict) -> torch.Tensor:
     return leaf(data)
