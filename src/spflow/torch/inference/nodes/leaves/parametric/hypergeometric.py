@@ -13,5 +13,5 @@ from spflow.torch.structure.nodes.leaves.parametric import TorchHypergeometric
 
 @dispatch(TorchHypergeometric, torch.Tensor, cache=dict)
 @memoize(TorchHypergeometric)
-def log_likelihood(leaf: TorchHypergeometric, data: torch.Tensor, cache: Dict = {}):
+def log_likelihood(leaf: TorchHypergeometric, data: torch.Tensor, cache: Dict) -> torch.Tensor:
     return leaf(data)
