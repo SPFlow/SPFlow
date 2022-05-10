@@ -67,40 +67,6 @@ class TorchNegativeBinomial(TorchParametricLeaf):
         # note: the distribution is not stored as an attribute due to mismatching parameters after gradient updates (gradients don't flow back to p when initializing with 1.0-p)
         return D.NegativeBinomial(total_count=self.n, probs=torch.ones(1) - self.p)
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-
-        batch_size: int = data.shape[0]
-
-        # get information relevant for the scope
-        scope_data = data[:, list(self.scope)]
-
-        # initialize empty tensor (number of output values matches batch_size)
-        log_prob: torch.Tensor = torch.empty(batch_size, 1)
-
-        # ----- marginalization -----
-
-        marg_ids = torch.isnan(scope_data).sum(dim=1) == len(self.scope)
-
-        # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[marg_ids] = 0.0
-
-        # ----- log probabilities -----
-
-        # create masked based on distribution's support
-        valid_ids = self.check_support(scope_data[~marg_ids])
-
-        if not all(valid_ids):
-            raise ValueError(
-                f"Encountered data instances that are not in the support of the TorchNegativeBinomial distribution."
-            )
-
-        # compute probabilities for values inside distribution support
-        log_prob[~marg_ids] = self.dist.log_prob(
-            scope_data[~marg_ids].type(torch.get_default_dtype())
-        )
-
-        return log_prob
-
     def set_params(self, n: int, p: float) -> None:
 
         if p < 0.0 or p > 1.0 or not np.isfinite(p):
