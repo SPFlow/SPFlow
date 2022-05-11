@@ -13,7 +13,7 @@ from spflow.torch.structure.nodes.node import (
     proj_real_to_convex,
     proj_convex_to_real,
 )
-from spflow.torch.structure.nodes.leaves.parametric import TorchGaussian
+from spflow.torch.structure.nodes.leaves.parametric import TorchGaussian, TorchMultivariateGaussian
 from spflow.torch.structure.module import TorchModule
 
 import torch
@@ -171,9 +171,16 @@ class _TorchLeafLayer(TorchModule):
 
         # TODO: set correct distributions
         # generate leaf nodes
-        self.leaf_nodes: List[TorchLeafNode] = [
-            TorchGaussian(scope, 0.0, 1.0) for i in range(num_nodes_leaf)
-        ]
+        if(len(scope) == 1):
+            self.leaf_nodes: List[TorchLeafNode] = [
+                TorchGaussian(scope, 0.0, 1.0) for i in range(num_nodes_leaf)
+            ]
+        elif(len(scope) > 1):
+            self.leaf_nodes: List[TorchLeafNode] = [
+                TorchMultivariateGaussian(scope, torch.zeros(len(scope)), torch.eye(len(scope)))
+            ]
+        else:
+            raise ValueError("Scope for _TorchLeafLayer of invalid size 0.")
 
         # register leaf nodes as child modules
         for i, leaf in enumerate(self.leaf_nodes, start=1):
