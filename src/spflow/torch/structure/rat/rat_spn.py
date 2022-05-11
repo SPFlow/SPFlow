@@ -13,6 +13,7 @@ from spflow.torch.structure.nodes.node import (
     proj_real_to_convex,
     proj_convex_to_real,
 )
+from spflow.torch.structure.nodes import TorchProductNode
 from spflow.torch.structure.nodes.leaves.parametric import TorchGaussian, TorchMultivariateGaussian
 from spflow.torch.structure.module import TorchModule
 
@@ -176,11 +177,12 @@ class _TorchLeafLayer(TorchModule):
                 TorchGaussian(scope, 0.0, 1.0) for i in range(num_nodes_leaf)
             ]
         elif(len(scope) > 1):
+            # create isotropic multivariate Gaussian (univariate Gaussians connected via product node)
             self.leaf_nodes: List[TorchLeafNode] = [
-                TorchMultivariateGaussian(scope, torch.zeros(len(scope)), torch.eye(len(scope)))
+                TorchProductNode(scope=scope, children=[TorchGaussian([v], 0.0, 1.0) for v in scope])
             ]
         else:
-            raise ValueError("Scope for _TorchLeafLayer of invalid size 0.")
+            raise ValueError(f"Scope for _TorchLeafLayer of invalid size {len(scope)}.")
 
         # register leaf nodes as child modules
         for i, leaf in enumerate(self.leaf_nodes, start=1):
