@@ -2,10 +2,9 @@ from spflow.base.structure.nodes.leaves.parametric import Poisson
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchPoisson, toNodes, toTorch
 from spflow.torch.inference import log_likelihood, likelihood
+from spflow.torch.sampling import sample
 
 from spflow.base.structure.network_type import SPN
-from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import TorchHypergeometric
-from spflow.torch.structure.nodes.node import TorchProductNode
 
 import torch
 import numpy as np
@@ -181,6 +180,34 @@ class TestTorchPoisson(unittest.TestCase):
         probs = likelihood(poisson, data)
 
         self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+
+    def test_sampling(self):
+
+        # ----- l = 1.0 -----
+
+        poisson = TorchPoisson([0], 1.0)
+        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
+
+        samples = sample(poisson, data, ll_cache={}, instance_ids=[0, 2])
+
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
+
+        samples = sample(poisson, 1000)
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0), rtol=0.1))
+
+        # ----- l = 0.5 -----
+
+        poisson = TorchPoisson([0], 0.5)
+
+        samples = sample(poisson, 1000)
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(0.5), rtol=0.1))
+
+        # ----- l = 2.5 -----
+
+        poisson = TorchPoisson([0], 2.5)
+
+        samples = sample(poisson, 1000)
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(2.5), rtol=0.1))
 
 
 if __name__ == "__main__":

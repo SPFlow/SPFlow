@@ -2,6 +2,7 @@ from spflow.base.structure.nodes.leaves.parametric import Binomial
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchBinomial, toNodes, toTorch
 from spflow.torch.inference import log_likelihood, likelihood
+from spflow.torch.sampling import sample
 
 from spflow.base.structure.network_type import SPN
 
@@ -259,6 +260,37 @@ class TestTorchBinomial(unittest.TestCase):
         probs = likelihood(binomial, data)
 
         self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+
+    def test_sampling(self):
+
+        # ----- p = 0 -----
+
+        binomial = TorchBinomial([0], 10, 0.0)
+
+        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
+
+        samples = sample(binomial, data, ll_cache={}, instance_ids=[0, 2])
+
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
+        self.assertTrue(all(samples[~samples.isnan()] == 0.0))
+
+        # ----- p = 1 -----
+
+        binomial = TorchBinomial([0], 10, 1.0)
+
+        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
+
+        samples = sample(binomial, data, ll_cache={}, instance_ids=[0, 2])
+
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
+        self.assertTrue(all(samples[~samples.isnan()] == 10))
+
+        # ----- p = 0.5 -----
+
+        binomial = TorchBinomial([0], 10, 0.5)
+
+        samples = sample(binomial, 1000)
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(5.0), rtol=0.01))
 
 
 if __name__ == "__main__":

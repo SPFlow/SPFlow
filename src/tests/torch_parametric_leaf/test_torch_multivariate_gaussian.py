@@ -8,6 +8,7 @@ from spflow.torch.structure.nodes.leaves.parametric import (
     toTorch,
 )
 from spflow.torch.inference import log_likelihood, likelihood
+from spflow.torch.sampling import sample
 
 from spflow.base.structure.network_type import SPN
 
@@ -376,6 +377,12 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
         mv_probs = likelihood(multivariate_gaussian, data)
 
         self.assertTrue(torch.allclose(mv_probs, targets, atol=1e-6))
+
+    def test_sampling(self):
+
+        multivariate_gaussian = TorchMultivariateGaussian([0, 1], np.zeros(2), np.eye(2))
+
+        self.assertRaises(NotImplementedError, sample, multivariate_gaussian)
 
 
 if __name__ == "__main__":
