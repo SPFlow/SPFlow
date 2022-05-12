@@ -2,6 +2,7 @@ from spflow.base.structure.nodes.leaves.parametric import Hypergeometric
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchHypergeometric, toNodes, toTorch
 from spflow.torch.inference import log_likelihood, likelihood
+from spflow.torch.sampling import sample
 
 from spflow.base.structure.network_type import SPN
 
@@ -236,6 +237,12 @@ class TestTorchHypergeometric(unittest.TestCase):
         probs = likelihood(hypergeometric, data)
 
         self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+
+    def test_sampling(self):
+
+        hypergeometric = TorchHypergeometric([0], 10, 10, 10)
+
+        self.assertRaises(NotImplementedError, sample, hypergeometric)
 
 
 if __name__ == "__main__":

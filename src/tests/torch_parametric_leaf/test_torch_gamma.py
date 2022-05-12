@@ -2,6 +2,7 @@ from spflow.base.structure.nodes.leaves.parametric import Gamma
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchGamma, toNodes, toTorch
 from spflow.torch.inference import log_likelihood, likelihood
+from spflow.torch.sampling import sample
 
 from spflow.base.structure.network_type import SPN
 
@@ -204,6 +205,35 @@ class TestTorchGamma(unittest.TestCase):
         probs = likelihood(gamma, data)
 
         self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+
+    def test_sampling(self):
+
+        # ----- alpha = 1, beta = 1 -----
+
+        gamma = TorchGamma([0], 1.0, 1.0)
+
+        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
+
+        samples = sample(gamma, data, ll_cache={}, instance_ids=[0, 2])
+
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
+
+        samples = sample(gamma, 1000)
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0 / 1.0), rtol=0.1))
+
+        # ----- alpha = 0.5, beta = 1.5 -----
+
+        gamma = TorchGamma([0], 0.5, 1.5)
+
+        samples = sample(gamma, 1000)
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(0.5 / 1.5), rtol=0.1))
+
+        # ----- alpha = 1.5, beta = 0.5 -----
+
+        gamma = TorchGamma([0], 1.5, 0.5)
+
+        samples = sample(gamma, 1000)
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.5 / 0.5), rtol=0.1))
 
 
 if __name__ == "__main__":

@@ -10,8 +10,9 @@ from spflow.torch.structure.nodes import (
     proj_real_to_convex,
 )
 from spflow.torch.inference.nodes.node import log_likelihood
-import torch
+from spflow.torch.sampling import sample
 from spflow.base.structure.nodes.validity_checks import _isvalid_spn
+import torch
 import unittest
 import numpy as np
 
@@ -185,6 +186,86 @@ class TestTorchNode(unittest.TestCase):
                 children=None,
                 scope=[1, 2],
             )
+
+    def test_sum_node_sampling(self):
+
+        l1 = TorchGaussian([0], -5.0, 1.0)
+        l2 = TorchGaussian([0], 5.0, 1.0)
+
+        # ----- weights 0, 1 -----
+
+        s = TorchSumNode([l1, l2], [0], weights=[0.0, 1.0])
+
+        samples = sample(s, 1000)
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(5.0), rtol=0.1))
+
+        # ----- weights 1, 0 -----
+
+        s = TorchSumNode([l1, l2], [0], weights=[1.0, 0.0])
+
+        samples = sample(s, 1000)
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(-5.0), rtol=0.1))
+
+        # ----- weights 0.2, 0.8 -----
+
+        s = TorchSumNode([l1, l2], [0], weights=[0.2, 0.8])
+
+        samples = sample(s, 1000)
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(3.0), rtol=0.1))
+
+    def test_product_node_sampling(self):
+
+        l1 = TorchGaussian([0], -5.0, 1.0)
+        l2 = TorchGaussian([1], 5.0, 1.0)
+
+        p = TorchProductNode([l1, l2], [0, 1])
+
+        samples = sample(p, 1000)
+        self.assertTrue(torch.allclose(samples.mean(dim=0), torch.tensor([-5.0, 5.0]), rtol=0.1))
+
+    def test_sampling(self):
+
+        s = TorchSumNode(
+            weights=[0.7, 0.3],
+            scope=[0, 1],
+            children=[
+                TorchSumNode(
+                    weights=[0.2, 0.8],
+                    scope=[0, 1],
+                    children=[
+                        TorchProductNode(
+                            scope=[0, 1],
+                            children=[TorchGaussian([0], -7.0, 1.0), TorchGaussian([1], 7.0, 1.0)],
+                        ),
+                        TorchProductNode(
+                            scope=[0, 1],
+                            children=[TorchGaussian([0], -5.0, 1.0), TorchGaussian([1], 5.0, 1.0)],
+                        ),
+                    ],
+                ),
+                TorchSumNode(
+                    weights=[0.6, 0.4],
+                    scope=[0, 1],
+                    children=[
+                        TorchProductNode(
+                            scope=[0, 1],
+                            children=[TorchGaussian([0], -3.0, 1.0), TorchGaussian([1], 3.0, 1.0)],
+                        ),
+                        TorchProductNode(
+                            scope=[0, 1],
+                            children=[TorchGaussian([0], -1.0, 1.0), TorchGaussian([1], 1.0, 1.0)],
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        samples = sample(s, 1000)
+        expected_mean = 0.7 * (0.2 * torch.tensor([-7, 7]) + 0.8 * torch.tensor([-5, 5])) + 0.3 * (
+            0.6 * torch.tensor([-3, 3]) + 0.4 * torch.tensor([-1, 1])
+        )
+
+        self.assertTrue(torch.allclose(samples.mean(dim=0), expected_mean, rtol=0.1))
 
 
 if __name__ == "__main__":

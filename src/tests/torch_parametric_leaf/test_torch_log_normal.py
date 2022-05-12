@@ -1,7 +1,9 @@
+from cmath import log
 from spflow.base.structure.nodes.leaves.parametric import LogNormal
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchLogNormal, toNodes, toTorch
 from spflow.torch.inference import log_likelihood, likelihood
+from spflow.torch.sampling import sample
 
 from spflow.base.structure.network_type import SPN
 
@@ -186,6 +188,32 @@ class TestTorchLogNormal(unittest.TestCase):
         probs = likelihood(log_normal, data)
 
         self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+
+    def test_sampling(self):
+
+        # ----- mean = 0.0, stdev = 1.0 -----
+
+        log_normal = TorchLogNormal([0], 0.0, 1.0)
+
+        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
+
+        samples = sample(log_normal, data, ll_cache={}, instance_ids=[0, 2])
+
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
+
+        samples = sample(log_normal, 1000)
+        self.assertTrue(
+            torch.isclose(samples.mean(), torch.exp(torch.tensor(0.0 + (1.0 ** 2 / 2.0))), rtol=0.1)
+        )
+
+        # ----- mean = 1.0, stdev = 0.5 -----
+
+        log_normal = TorchLogNormal([0], 1.0, 0.5)
+
+        samples = sample(log_normal, 1000)
+        self.assertTrue(
+            torch.isclose(samples.mean(), torch.exp(torch.tensor(1.0 + (0.5 ** 2 / 2.0))), rtol=0.1)
+        )
 
 
 if __name__ == "__main__":

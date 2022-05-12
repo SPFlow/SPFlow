@@ -2,6 +2,7 @@ from spflow.base.structure.nodes.leaves.parametric import Uniform
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchUniform, toNodes, toTorch
 from spflow.torch.inference import log_likelihood, likelihood
+from spflow.torch.sampling import sample
 
 from spflow.base.structure.network_type import SPN
 
@@ -197,6 +198,20 @@ class TestTorchUniform(unittest.TestCase):
         probs = likelihood(uniform, data)
 
         self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+
+    def test_sampling(self):
+
+        # ----- a = -1.0, b = 2.5 -----
+
+        uniform = TorchUniform([0], -1.0, 2.5)
+        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
+
+        samples = sample(uniform, data, ll_cache={}, instance_ids=[0, 2])
+
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
+
+        samples = sample(uniform, 1000)
+        self.assertTrue(all((samples >= -1.0) & (samples <= 2.5)))
 
 
 if __name__ == "__main__":
