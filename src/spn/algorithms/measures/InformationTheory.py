@@ -138,12 +138,10 @@ def print_debug_info(ds_context, X, Y, cond_Z):
                shows the entropy which is on calculation.
     !!!
     """
-    v4print = " "
     c_Z = np.array(list(cond_Z))
     x = np.array(list(X))
     y = np.array(list(Y))
-    for index in c_Z:
-        v4print = v4print + str(ds_context.domains[index].size) + " * "
+    v4print = " " + " * ".join([str(ds_context.domains[index].size) for index in c_Z])
     logger.info(
         "Number of permutation in CMI: n1(",
         ds_context.domains[x[0]].size,
