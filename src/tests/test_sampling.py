@@ -147,15 +147,15 @@ class TestSampling(unittest.TestCase):
             children=[
                 IProductNode(
                     children=[
-                        Gaussian(scope=[0], mean=1, stdev=1.0),
-                        Gaussian(scope=[1], mean=2, stdev=2.0),
+                        Gaussian(scope=[0], mean=1, stdev=0.01),
+                        Gaussian(scope=[1], mean=2, stdev=0.01),
                     ],
                     scope=[0, 1],
                 ),
                 IProductNode(
                     children=[
-                        Gaussian(scope=[0], mean=3, stdev=3.0),
-                        Gaussian(scope=[1], mean=4, stdev=4.0),
+                        Gaussian(scope=[0], mean=3, stdev=0.01),
+                        Gaussian(scope=[1], mean=4, stdev=0.01),
                     ],
                     scope=[0, 1],
                 ),
@@ -166,10 +166,12 @@ class TestSampling(unittest.TestCase):
 
         result = np.mean(
             sample_instances(
-                SPN(), spn, np.array([np.nan, np.nan] * 1000000).reshape(-1, 2), RandomState(123)
+                SPN(), spn, np.array([np.nan, np.nan] * 10000).reshape(-1, 2), RandomState(123)
             ),
             axis=0,
         )
+
+        print(result, np.array([0.3 * 1 + 0.7 * 3, 0.3 * 2 + 0.7 * 4]))
 
         self.assertTrue(
             np.allclose(result, np.array([0.3 * 1 + 0.7 * 3, 0.3 * 2 + 0.7 * 4]), atol=0.01),

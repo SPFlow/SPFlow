@@ -1,3 +1,5 @@
+from spflow.base import sampling
+from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.base.structure.nodes.leaves.parametric import Poisson
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchPoisson, toNodes, toTorch
@@ -188,7 +190,7 @@ class TestTorchPoisson(unittest.TestCase):
         poisson = TorchPoisson([0], 1.0)
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
-        samples = sample(poisson, data, ll_cache={}, instance_ids=[0, 2])
+        samples = sample(poisson, data, ll_cache={}, sampling_ctx=SamplingContext([0, 2]))
 
         self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
 

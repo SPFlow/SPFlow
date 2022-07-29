@@ -1,3 +1,4 @@
+from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.base.structure.nodes.leaves.parametric import Gamma
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchGamma, toNodes, toTorch
@@ -214,7 +215,7 @@ class TestTorchGamma(unittest.TestCase):
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
-        samples = sample(gamma, data, ll_cache={}, instance_ids=[0, 2])
+        samples = sample(gamma, data, ll_cache={}, sampling_ctx=SamplingContext([0, 2]))
 
         self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
 

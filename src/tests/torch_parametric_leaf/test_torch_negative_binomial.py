@@ -1,3 +1,4 @@
+from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.base.structure.nodes.leaves.parametric import NegativeBinomial
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchNegativeBinomial, toNodes, toTorch
@@ -256,7 +257,7 @@ class TestTorchNegativeBinomial(unittest.TestCase):
         negative_binomial = TorchNegativeBinomial([0], 1, 1.0)
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
-        samples = sample(negative_binomial, data, ll_cache={}, instance_ids=[0, 2])
+        samples = sample(negative_binomial, data, ll_cache={}, sampling_ctx=SamplingContext([0, 2]))
 
         self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
         self.assertTrue(all(samples[~samples.isnan()] == 0.0))
