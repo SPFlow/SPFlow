@@ -80,9 +80,7 @@ def sample_sum(
 
     conc_input_vals: np.ndarray = np.concatenate(input_vals)
 
-    w_children_log_probs: np.ndarray = np.zeros((len(conc_input_vals), len(node.weights)))
-    for i, c in enumerate(node.children):
-        w_children_log_probs[:, i] = np.log(node.weights[i])
+    w_children_log_probs: np.ndarray = np.broadcast_to(node.weights, (len(conc_input_vals), node.weights.size))
 
     z_gumbels: np.ndarray = rand_gen.gumbel(
         loc=0,

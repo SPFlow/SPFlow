@@ -84,7 +84,7 @@ class ISumNode(INode):
         if weights is None:
             weights = np.random.rand(sum(len(child) for child in children)) + 1e-08  # avoid zeros
             weights /= weights.sum()
-            weights = cast(np.ndarray, weights)
+        weights = np.array(weights)
 
         self.weights = weights
 
