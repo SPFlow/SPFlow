@@ -149,10 +149,9 @@ def construct_spn(
             rg_nodes[region] = [
                 context.parametric_types[region_scope[0]](scope=region_scope)
                 if len(region_scope) == 1
-                else MultivariateGaussian(
-                    scope=region_scope,
-                    mean_vector=np.zeros(len(region_scope)),
-                    covariance_matrix=np.eye(len(region_scope)),
+                else IProductNode(
+                    children=[context.parametric_types[region_scope[i]](scope=[region_scope[i]]) for i in range(len(region_scope))],
+                    scope=region_scope
                 )
                 for i in range(num_nodes_leaf)
             ]

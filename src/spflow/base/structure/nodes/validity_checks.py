@@ -29,9 +29,8 @@ def _isvalid_spn(root_nodes: List[INode]) -> None:
             assert None not in node.children
             assert node.weights is not None
             assert None not in node.weights
-            assert node.weights.shape == node.weights.shape
-            assert np.array(node.children).shape == node.weights.shape
-            assert np.isclose(sum(node.weights), 1.0)
+            assert len(node.children) == node.weights.size
+            assert np.isclose(np.sum(node.weights), 1.0)
             for child in node.children:
                 assert child.scope == node.scope
         # assert that IProductNodes are decomposable
