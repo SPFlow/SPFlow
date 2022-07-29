@@ -21,7 +21,7 @@ def log_likelihood(leaf: TorchGaussian, data: torch.Tensor, cache: Dict) -> torc
     scope_data = data[:, list(leaf.scope)]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, 1)
+    log_prob: torch.Tensor = torch.empty(batch_size, 1).to(leaf.mean.device)
 
     # ----- marginalization -----
 
@@ -32,7 +32,7 @@ def log_likelihood(leaf: TorchGaussian, data: torch.Tensor, cache: Dict) -> torc
 
     # ----- log probabilities -----
 
-    # create masked based on distribution's support
+    # create mask based on distribution's support
     valid_ids = leaf.check_support(scope_data[~marg_ids])
 
     if not all(valid_ids):
@@ -44,5 +44,4 @@ def log_likelihood(leaf: TorchGaussian, data: torch.Tensor, cache: Dict) -> torc
     log_prob[~marg_ids] = leaf.dist.log_prob(
         scope_data[~marg_ids].type(torch.get_default_dtype())
     )
-
     return log_prob
