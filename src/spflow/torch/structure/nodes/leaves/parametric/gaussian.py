@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
 from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
 from spflow.base.structure.nodes.leaves.parametric import Gaussian
@@ -32,14 +32,14 @@ class TorchGaussian(TorchParametricLeaf):
         scope:
             List of integers specifying the variable scope.
         mean:
-            mean (:math:`\mu`) of the distribution.
+            mean (:math:`\mu`) of the distribution (default 0.0).
         stdev:
-            standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
+            standard deviation (:math:`\sigma`) of the distribution (must be greater than 0; default 1.0).
     """
 
     ptype = ParametricType.CONTINUOUS
 
-    def __init__(self, scope: List[int], mean: float, stdev: float) -> None:
+    def __init__(self, scope: List[int], mean: Optional[float]=0.0, stdev: Optional[float]=1.0) -> None:
 
         if len(scope) != 1:
             raise ValueError(f"Scope size for TorchGaussian should be 1, but was: {len(scope)}")

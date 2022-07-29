@@ -7,7 +7,7 @@ Created on November 6, 2021
 from .parametric import ParametricLeaf
 from .statistical_types import ParametricType
 from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Optional
 import numpy as np
 from scipy.stats import geom  # type: ignore
 from scipy.stats._distn_infrastructure import rv_discrete  # type: ignore
@@ -32,12 +32,12 @@ class Geometric(ParametricLeaf):
         scope:
             List of integers specifying the variable scope.
         p:
-            Probability of success in the range :math:`(0,1]`.
+            Probability of success in the range :math:`(0,1]` (default 0.5).
     """
 
     type = ParametricType.BINARY
 
-    def __init__(self, scope: List[int], p: float) -> None:
+    def __init__(self, scope: List[int], p: Optional[float]=0.5) -> None:
 
         if len(scope) != 1:
             raise ValueError(f"Scope size for Geometric should be 1, but was: {len(scope)}")

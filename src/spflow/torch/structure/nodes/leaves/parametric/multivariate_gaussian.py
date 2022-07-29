@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Optional
 from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
 from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
 from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian
@@ -33,11 +33,11 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         scope:
             List of integers specifying the variable scope.
         mean_vector:
-            A list, NumPy array or a PyTorch tensor holding the means (:math:`\mu`) of each of the one-dimensional Normal distributions.
+            A list, NumPy array or a PyTorch tensor holding the means (:math:`\mu`) of each of the one-dimensional Normal distributions (defaults to all zeros).
             Has exactly as many elements as the scope of this leaf.
         covariance_matrix:
             A list of lists, NumPy array or PyTorch tensor (representing a two-dimensional :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
-            of the scope) describing the covariances of the distribution. The diagonal holds
+            of the scope) describing the covariances of the distribution (defaults to the identity matrix). The diagonal holds
             the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
     """
 
@@ -46,11 +46,20 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
     def __init__(
         self,
         scope: List[int],
-        mean_vector: Union[List[float], torch.Tensor, np.ndarray],
-        covariance_matrix: Union[List[List[float]], torch.Tensor, np.ndarray],
+        mean_vector: Optional[Union[List[float], torch.Tensor, np.ndarray]]=None,
+        covariance_matrix: Optional[Union[List[List[float]], torch.Tensor, np.ndarray]]=None,
     ) -> None:
 
+        # check if scope contains duplicates
+        if(len(set(scope)) != len(scope)):
+            raise ValueError("Scope for TorchMultivariateGaussian contains duplicate variables.")
+
         super(TorchMultivariateGaussian, self).__init__(scope)
+
+        if(mean_vector is None):
+            mean_vector = torch.zeros((1,len(scope)))
+        if(covariance_matrix is None):
+            covariance_matrix = torch.eye(len(scope))
 
         # dimensions
         self.d = len(scope)
@@ -148,11 +157,11 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         self.mean_vector.data = mean_vector
 
         # check covariance matrix for nan or inf values
-        if torch.any(torch.isinf(mean_vector)):
+        if torch.any(torch.isinf(covariance_matrix)):
             raise ValueError(
                 "Covariance matrix vector for TorchMultivariateGaussian may not contain infinite values"
             )
-        if torch.any(torch.isnan(mean_vector)):
+        if torch.any(torch.isnan(covariance_matrix)):
             raise ValueError(
                 "Covariance matrix for TorchMultivariateGaussian may not contain NaN values"
             )

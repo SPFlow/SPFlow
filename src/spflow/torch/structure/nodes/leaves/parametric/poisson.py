@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
 from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
 from spflow.base.structure.nodes.leaves.parametric import Poisson
@@ -31,12 +31,12 @@ class TorchPoisson(TorchParametricLeaf):
         scope:
             List of integers specifying the variable scope.
         l:
-            Rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0).
+            Rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0; default 1.0).
     """
 
     ptype = ParametricType.COUNT
 
-    def __init__(self, scope: List[int], l: float) -> None:
+    def __init__(self, scope: List[int], l: Optional[float]=1.0) -> None:
 
         if len(scope) != 1:
             raise ValueError(f"Scope size for TorchPoisson should be 1, but was: {len(scope)}")

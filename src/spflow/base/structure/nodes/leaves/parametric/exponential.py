@@ -7,7 +7,7 @@ Created on November 6, 2021
 from .parametric import ParametricLeaf
 from .statistical_types import ParametricType
 from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Optional
 import numpy as np
 from scipy.stats import expon  # type: ignore
 from scipy.stats._distn_infrastructure import rv_continuous  # type: ignore
@@ -31,12 +31,12 @@ class Exponential(ParametricLeaf):
         scope:
             List of integers specifying the variable scope.
         l:
-            Rate parameter (:math:`\lambda`) of the Exponential distribution (must be greater than 0).
+            Rate parameter (:math:`\lambda`) of the Exponential distribution (must be greater than 0; default 1.0).
     """
 
     type = ParametricType.POSITIVE
 
-    def __init__(self, scope: List[int], l: float) -> None:
+    def __init__(self, scope: List[int], l: Optional[float]=1.0) -> None:
 
         if len(scope) != 1:
             raise ValueError(f"Scope size for Exponential should be 1, but was: {len(scope)}")

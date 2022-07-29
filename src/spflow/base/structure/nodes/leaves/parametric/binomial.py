@@ -7,7 +7,7 @@ Created on November 6, 2021
 from .parametric import ParametricLeaf
 from .statistical_types import ParametricType
 from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List, Union
+from typing import Tuple, Dict, List, Union, Optional
 import numpy as np
 from scipy.stats import binom  # type: ignore
 from scipy.stats._distn_infrastructure import rv_discrete  # type: ignore
@@ -34,12 +34,12 @@ class Binomial(ParametricLeaf):
         n:
             Number of i.i.d. Bernoulli trials (greater of equal to 0).
         p:
-            Probability of success of each trial in the range :math:`[0,1]`.
+            Probability of success of each trial in the range :math:`[0,1]` (default 0.5).
     """
 
     type = ParametricType.COUNT
 
-    def __init__(self, scope: List[int], n: int, p: float) -> None:
+    def __init__(self, scope: List[int], n: int, p: Optional[float]=0.5) -> None:
 
         if len(scope) != 1:
             raise ValueError(f"Scope size for Binomial should be 1, but was: {len(scope)}")

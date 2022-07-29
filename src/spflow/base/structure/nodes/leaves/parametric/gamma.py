@@ -7,7 +7,7 @@ Created on November 6, 2021
 from .parametric import ParametricLeaf
 from .statistical_types import ParametricType
 from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Optional
 import numpy as np
 from scipy.stats import gamma  # type: ignore
 from scipy.stats._distn_infrastructure import rv_continuous  # type: ignore
@@ -35,14 +35,13 @@ class Gamma(ParametricLeaf):
         scope:
             List of integers specifying the variable scope.
         alpha:
-            Shape parameter (:math:`\alpha`), greater than 0.
+            Shape parameter (:math:`\alpha`), greater than 0 (default 1.0).
         beta:
-            Rate parameter (:math:`\beta`), greater than 0.
+            Rate parameter (:math:`\beta`), greater than 0 (default 1.0).
     """
-
     type = ParametricType.POSITIVE
 
-    def __init__(self, scope: List[int], alpha: float, beta: float) -> None:
+    def __init__(self, scope: List[int], alpha: Optional[float]=1.0, beta: Optional[float]=1.0) -> None:
 
         if len(scope) != 1:
             raise ValueError(f"Scope size for Gamma should be 1, but was: {len(scope)}")
