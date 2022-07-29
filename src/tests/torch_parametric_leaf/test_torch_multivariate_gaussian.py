@@ -250,21 +250,28 @@ class TestTorchMultivariateGaussian(unittest.TestCase):
         self.assertRaises(Exception, TorchMultivariateGaussian, [0, 1], torch.zeros(2), np.eye(3))
         # covariance matrix not symmetric positive semi-definite
         self.assertRaises(
-            Exception, TorchMultivariateGaussian, [0, 1], torch.tensor([[1.0, 0.0], [1.0, 0.0]])
+            Exception, TorchMultivariateGaussian, [0, 1], torch.zeros(2), torch.tensor([[1.0, 0.0], [1.0, 0.0]])
         )
-        self.assertRaises(Exception, TorchMultivariateGaussian, [0, 1], -torch.eye(2))
+        self.assertRaises(Exception, TorchMultivariateGaussian, [0, 1], torch.zeros(2), -torch.eye(2))
         # covariance matrix containing inf or nan
         self.assertRaises(
             Exception,
             TorchMultivariateGaussian,
-            [0, 0],
+            [0, 1],
+            torch.zeros(2),
             torch.tensor([[float("inf"), 0], [0, float("inf")]]),
         )
         self.assertRaises(
             Exception,
             TorchMultivariateGaussian,
-            [0, 0],
+            [0, 1],
+            torch.zeros(2),
             torch.tensor([[float("nan"), 0], [0, float("nan")]]),
+        )
+
+        # duplicate scope variables
+        self.assertRaises(
+            Exception, TorchMultivariateGaussian, [0, 0], np.zeros(2), np.eye(2)
         )
 
         # invalid scope lengths

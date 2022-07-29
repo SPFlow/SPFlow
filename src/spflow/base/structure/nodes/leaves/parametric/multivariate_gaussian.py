@@ -7,7 +7,7 @@ Created on November 6, 2021
 from .parametric import ParametricLeaf
 from .statistical_types import ParametricType
 from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List, Union
+from typing import Tuple, Dict, List, Union, Optional
 import numpy as np
 from scipy.stats import multivariate_normal  # type: ignore
 from scipy.stats._distn_infrastructure import rv_continuous  # type: ignore
@@ -32,11 +32,11 @@ class MultivariateGaussian(ParametricLeaf):
         scope:
             List of integers specifying the variable scope.
         mean_vector:
-            A list, NumPy array or a PyTorch tensor holding the means (:math:`\mu`) of each of the one-dimensional Normal distributions.
+            A list, NumPy array or a PyTorch tensor holding the means (:math:`\mu`) of each of the one-dimensional Normal distributions (defaults to all zeros).
             Has exactly as many elements as the scope of this leaf.
         covariance_matrix:
             A list of lists, NumPy array or PyTorch tensor (representing a two-dimensional :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
-            of the scope) describing the covariances of the distribution. The diagonal holds
+            of the scope) describing the covariances of the distribution (defaults to the identity matrix). The diagonal holds
             the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
     """
 
@@ -45,11 +45,21 @@ class MultivariateGaussian(ParametricLeaf):
     def __init__(
         self,
         scope: List[int],
-        mean_vector: Union[List[float], np.ndarray],
-        covariance_matrix: Union[List[List[float]], np.ndarray],
+        mean_vector: Optional[Union[List[float], np.ndarray]]=None,
+        covariance_matrix: Optional[Union[List[List[float]], np.ndarray]]=None,
     ) -> None:
 
+        # check if scope contains duplicates
+        if(len(set(scope)) != len(scope)):
+            raise ValueError("Scope for MultivariateGaussian contains duplicate variables.")
+
         super().__init__(scope)
+
+        if(mean_vector is None):
+            mean_vector = np.zeros((1,len(scope)))
+        if(covariance_matrix is None):
+            covariance_matrix = np.eye(len(scope))
+
         self.set_params(mean_vector, covariance_matrix)
 
     def set_params(

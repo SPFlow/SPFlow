@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
 from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
 from spflow.base.structure.nodes.leaves.parametric import Gamma
@@ -36,14 +36,14 @@ class TorchGamma(TorchParametricLeaf):
         scope:
             List of integers specifying the variable scope.
         alpha:
-            Shape parameter (:math:`\alpha`), greater than 0.
+            Shape parameter (:math:`\alpha`), greater than 0 (default 1.0).
         beta:
-            Rate parameter (:math:`\beta`), greater than 0.
+            Rate parameter (:math:`\beta`), greater than 0 (default 1.0).
     """
 
     ptype = ParametricType.POSITIVE
 
-    def __init__(self, scope: List[int], alpha: float, beta: float) -> None:
+    def __init__(self, scope: List[int], alpha: Optional[float]=1.0, beta: Optional[float]=1.0) -> None:
 
         if len(scope) != 1:
             raise ValueError(f"Scope size for TorchGamma should be 1, but was: {len(scope)}")

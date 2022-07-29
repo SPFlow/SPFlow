@@ -7,7 +7,7 @@ Created on November 6, 2021
 from .parametric import ParametricLeaf
 from .statistical_types import ParametricType
 from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Optional
 import numpy as np
 from scipy.stats import poisson  # type: ignore
 from scipy.stats._distn_infrastructure import rv_discrete  # type: ignore
@@ -30,12 +30,12 @@ class Poisson(ParametricLeaf):
         scope:
             List of integers specifying the variable scope.
         l:
-            Rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0).
+            Rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0; default 1.0).
     """
 
     type = ParametricType.COUNT
 
-    def __init__(self, scope: List[int], l: float) -> None:
+    def __init__(self, scope: List[int], l: Optional[float]=1.0) -> None:
 
         if len(scope) != 1:
             raise ValueError(f"Scope size for Poisson should be 1, but was: {len(scope)}")

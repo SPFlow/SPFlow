@@ -7,7 +7,7 @@ Created on November 6, 2021
 from .parametric import ParametricLeaf
 from .statistical_types import ParametricType
 from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Optional
 import numpy as np
 from scipy.stats import norm  # type: ignore
 from scipy.stats._distn_infrastructure import rv_continuous  # type: ignore
@@ -30,9 +30,9 @@ class Gaussian(ParametricLeaf):
         scope:
             List of integers specifying the variable scope.
         mean:
-            mean (:math:`\mu`) of the distribution.
+            mean (:math:`\mu`) of the distribution (default 0.0).
         stdev:
-            standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
+            standard deviation (:math:`\sigma`) of the distribution (must be greater than 0; default 0.0).
     """
 
     type = ParametricType.CONTINUOUS
@@ -50,7 +50,7 @@ class Gaussian(ParametricLeaf):
         self.stdev = stdev if stdev is not None else np.random.uniform(0, 1)
         self.set_params(self.mean, self.stdev)
 
-    def set_params(self, mean: float, stdev: float) -> None:
+    def set_params(self, mean: Optional[float]=0.0, stdev: Optional[float]=1.0) -> None:
 
         if not (np.isfinite(mean) and np.isfinite(stdev)):
             raise ValueError(
