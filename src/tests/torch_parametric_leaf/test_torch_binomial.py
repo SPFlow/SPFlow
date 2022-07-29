@@ -1,3 +1,4 @@
+from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.base.structure.nodes.leaves.parametric import Binomial
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchBinomial, toNodes, toTorch
@@ -269,7 +270,7 @@ class TestTorchBinomial(unittest.TestCase):
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
-        samples = sample(binomial, data, ll_cache={}, instance_ids=[0, 2])
+        samples = sample(binomial, data, ll_cache={}, sampling_ctx=SamplingContext([0, 2]))
 
         self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
         self.assertTrue(all(samples[~samples.isnan()] == 0.0))
@@ -280,7 +281,7 @@ class TestTorchBinomial(unittest.TestCase):
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
-        samples = sample(binomial, data, ll_cache={}, instance_ids=[0, 2])
+        samples = sample(binomial, data, ll_cache={}, sampling_ctx=SamplingContext([0, 2]))
 
         self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
         self.assertTrue(all(samples[~samples.isnan()] == 10))
@@ -290,7 +291,7 @@ class TestTorchBinomial(unittest.TestCase):
         binomial = TorchBinomial([0], 10, 0.5)
 
         samples = sample(binomial, 1000)
-        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(5.0), rtol=0.01))
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(5.0), rtol=0.1))
 
 
 if __name__ == "__main__":

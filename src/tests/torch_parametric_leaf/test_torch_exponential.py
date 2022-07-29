@@ -1,3 +1,4 @@
+from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.base.structure.nodes.leaves.parametric import Exponential
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchExponential, toNodes, toTorch
@@ -193,7 +194,7 @@ class TestTorchExponential(unittest.TestCase):
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
-        samples = sample(exponential, data, ll_cache={}, instance_ids=[0, 2])
+        samples = sample(exponential, data, ll_cache={}, sampling_ctx=SamplingContext([0, 2]))
 
         self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
 

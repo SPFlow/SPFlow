@@ -6,12 +6,14 @@ Created on May 10, 2022
 
 import torch
 from multipledispatch import dispatch  # type: ignore
+from spflow.base.sampling.sampling_context import SamplingContext
+from spflow.torch.structure.module import TorchModule
 from spflow.torch.structure.nodes.leaves.parametric import TorchHypergeometric
-from typing import Dict, List
+from typing import Dict
 
 
-@dispatch(TorchHypergeometric, torch.Tensor, ll_cache=dict, instance_ids=list)  # type: ignore[no-redef]
+@dispatch(TorchHypergeometric, torch.Tensor, ll_cache=dict, sampling_ctx=SamplingContext)  # type: ignore[no-redef]
 def sample(
-    leaf: TorchHypergeometric, data: torch.Tensor, ll_cache: Dict, instance_ids: List[int]
+    leaf: TorchHypergeometric, data: torch.Tensor, ll_cache: Dict[TorchModule, torch.Tensor], sampling_ctx: SamplingContext
 ) -> torch.Tensor:
     raise NotImplementedError

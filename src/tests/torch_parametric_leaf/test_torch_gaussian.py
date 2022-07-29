@@ -1,3 +1,4 @@
+from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.base.structure.nodes.leaves.parametric import Gaussian
 from spflow.base.inference import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric import TorchGaussian, toNodes, toTorch
@@ -181,13 +182,13 @@ class TestTorchGaussian(unittest.TestCase):
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
-        samples = sample(gaussian, data, ll_cache={}, instance_ids=[0, 2])
+        samples = sample(gaussian, data, ll_cache={}, sampling_ctx=SamplingContext([0, 2]))
 
         self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
 
         # ----- verify samples -----
         samples = sample(gaussian, 1000)
-        self.assertTrue(torch.isclose(samples.mean(), torch.Tensor([0.0]), atol=0.001))
+        self.assertTrue(torch.isclose(samples.mean(), torch.Tensor([0.0]), atol=0.01))
 
 
 if __name__ == "__main__":
