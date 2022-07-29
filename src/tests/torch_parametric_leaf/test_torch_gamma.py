@@ -13,6 +13,8 @@ import numpy as np
 import random
 import unittest
 
+from packaging import version
+
 
 class TestTorchGamma(unittest.TestCase):
     @classmethod
@@ -189,7 +191,13 @@ class TestTorchGamma(unittest.TestCase):
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
 
         # check invalid float values (outside range)
-        self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[0.0]]))
+        if version.parse(torch.__version__) < version.parse("1.12.0"):
+            # edge case 0
+            self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[0.0]]))
+        else:
+            # edge case 0
+            log_likelihood(gamma, torch.tensor([[0.0]]))
+
         self.assertRaises(
             ValueError,
             log_likelihood,
