@@ -18,10 +18,9 @@ from spflow.torch.structure.nodes.leaves.parametric import TorchGaussian, TorchM
 from spflow.torch.structure.module import TorchModule
 
 import torch
-import torch.nn as nn
 from torch.nn.parameter import Parameter
 
-import numpy as np
+import itertools
 from typing import List, Union, Dict
 
 from multipledispatch import dispatch  # type: ignore
@@ -51,31 +50,12 @@ class _TorchPartitionLayer(TorchModule):
             self.add_module(f"region_{i}", region)
 
         # compute number of outputs
-        self.num_out = np.prod([len(region) for region in self.children()])
+        self.input_ids = list(itertools.product(*[range(len(region)) for region in self.children()]))
+        self.num_out = len(self.input_ids)
 
     def __len__(self) -> int:
         # return number of outputs
         return self.num_out
-
-    def forward(self, inputs: List[torch.Tensor]) -> torch.Tensor:
-
-        batch_size = inputs[0].shape[0]
-
-        out_batch = []
-        input_batch = [[inp[i] for inp in inputs] for i in range(batch_size)]
-
-        # multiply cartesian products (sum in log space) for each entry in batch
-        for inputs_batch in input_batch:
-            # try:
-            out_batch.append(torch.cartesian_prod(*inputs_batch).sum(dim=1))
-            # except:
-            #    print(inputs_batch)
-            #    input()
-            #    raise Exception()
-
-        out = torch.vstack(out_batch)  # type: ignore
-
-        return out
 
 
 class _TorchRegionLayer(TorchModule):
@@ -141,14 +121,6 @@ class _TorchRegionLayer(TorchModule):
         # return number of outputs
         return self.num_out
 
-    def forward(self, inputs: List[torch.Tensor]) -> torch.Tensor:
-
-        inputs = torch.hstack(inputs)  # type: ignore
-        # broadcast inputs per output node and weight them in log-space
-        weighted_inputs = inputs.unsqueeze(1) + self.weights.log()  # type: ignore
-
-        return torch.logsumexp(weighted_inputs, dim=-1)
-
 
 class _TorchLeafLayer(TorchModule):
     """torch.nn.Module representing a RAT-SPN leaf layer
@@ -179,7 +151,7 @@ class _TorchLeafLayer(TorchModule):
         elif(len(scope) > 1):
             # create isotropic multivariate Gaussian (univariate Gaussians connected via product node)
             self.leaf_nodes: List[TorchLeafNode] = [
-                TorchProductNode(scope=scope, children=[TorchGaussian([v], 0.0, 1.0) for v in scope])
+                TorchProductNode(scope=scope, children=[TorchGaussian([v], 0.0, 1.0) for v in scope]) for i in range(num_nodes_leaf)
             ]
         else:
             raise ValueError(f"Scope for _TorchLeafLayer of invalid size {len(scope)}.")
@@ -191,9 +163,6 @@ class _TorchLeafLayer(TorchModule):
     def __len__(self) -> int:
         # return number of outputs
         return self.num_out
-
-    def forward(self, inputs: List[torch.Tensor]) -> torch.Tensor:
-        return torch.hstack(inputs)  # type: ignore
 
 
 class TorchRatSpn(TorchModule):
@@ -331,12 +300,6 @@ class TorchRatSpn(TorchModule):
         # return number of outputs
         return 1
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        # broadcast inputs per output node and weight them
-        weighted_inputs = inputs.unsqueeze(1) + self.root_node_weights.log()  # type: ignore
-
-        return torch.logsumexp(weighted_inputs, dim=-1)
-
 
 @dispatch(_TorchRegionLayer, list)  # type: ignore[no-redef]
 def _copy_region_parameters(src: _TorchRegionLayer, dst: List[ISumNode]) -> None:
@@ -365,7 +328,7 @@ def _copy_region_parameters(src: _TorchRegionLayer, dst: List[ISumNode]) -> None
             )
 
         # assign region weight slice to node weights
-        node.weights = src.weights.data[i, :].detach().cpu().tolist()
+        node.weights = src.weights.data[i, :].detach().cpu().numpy()
 
 
 @dispatch(_TorchLeafLayer, list)  # type: ignore[no-redef]

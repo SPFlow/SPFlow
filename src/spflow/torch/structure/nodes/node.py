@@ -115,12 +115,6 @@ class TorchSumNode(TorchNode):
 
         self.weights_aux.data = proj_convex_to_real(value)  # type: ignore
 
-    def forward(self, inputs: List[torch.Tensor]) -> torch.Tensor:
-        inputs = torch.hstack(inputs)  # type: ignore
-        # weight inputs in log-space
-        weighted_inputs = inputs + self.weights.log()  # type: ignore
-        return torch.logsumexp(weighted_inputs, dim=-1, keepdims=True)  # type: ignore
-
 
 @dispatch(ISumNode)  # type: ignore[no-redef]
 def toTorch(x: ISumNode) -> TorchSumNode:
@@ -153,11 +147,6 @@ class TorchProductNode(TorchNode):
 
         super(TorchProductNode, self).__init__(children, scope)
 
-    def forward(self, inputs: List[torch.Tensor]) -> torch.Tensor:
-        inputs = torch.hstack(inputs)  # type: ignore
-        # return product (sum in log space)
-        return torch.sum(inputs, dim=-1, keepdims=True)  # type: ignore
-
 
 @dispatch(IProductNode)  # type: ignore[no-redef]
 def toTorch(x: IProductNode) -> TorchProductNode:
@@ -178,9 +167,6 @@ class TorchLeafNode(TorchNode, ABC):
                 Non-empty list of integers containing the scopes of this node.
         """
         super(TorchLeafNode, self).__init__([], scope)
-
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        pass
 
 
 @dispatch(ILeafNode)  # type: ignore[no-redef]
