@@ -6,54 +6,47 @@ Created on June 10, 2021
 This file provides the abstract Module class for building graph structures.
 """
 from abc import ABC, abstractmethod
-import spflow
-from spflow.base.structure.nodes.node import INode, _get_node_counts
-from spflow.base.structure.network_type import NetworkType
-from typing import List, Tuple, Optional, cast
-from multipledispatch import dispatch  # type: ignore
+from typing import List, Tuple, Optional
+import numpy as np
+from spflow.meta.structure.module import MetaModule
 
 
-class Module(ABC):
+class Module(MetaModule, ABC):
     """Abstract module class for building graph structures.
 
     Attributes:
         children:
-            List of child modules to form a graph of modules.
-        nodes:
-            List of INodes representing all Inodes encapsulated by this module.
-        network_type:
-            Network Type defining methods to use on this module.
-        output_nodes:
-            List of INodes representing the root nodes of the module to connect it to other modules.
-        scope:
-            List of ints representing the scope of all nodes in this module.
+            List of child modules to form a directed graph of modules.
     """
+    def __init__(self, children: Optional[List["Module"]]=None) -> None:
 
-    def __init__(
-        self,
-        children: List["Module"],
-        scope: List[int],
-        network_type: Optional[NetworkType] = None,
-    ) -> None:
-        self.nodes: List[INode] = []
+        if children is None:
+            children = []
 
-        # Set network type - if none is specified, get default global network type
-        if network_type is None:
-            self.network_type = spflow.get_network_type()
-        else:
-            self.network_type = network_type
-            self.network_type = cast(NetworkType, self.network_type)
-        self.output_nodes: List[INode] = []
-        self.children: List["Module"] = children
-        self.scope: List[int] = scope
+        if any(not isinstance(child, Module) for child in children):
+            raise ValueError("Children must all be of type 'Module'.")
+        
+        self.children = children
 
+    def input_to_output_id(self, input_ids: List[int]) -> List[Tuple[int, int]]:
+
+        # infer number of inputs from children (and their numbers of outputs)
+        child_num_outputs = [len(child) for child in self.children]
+        child_cum_outputs = np.cumsum(child_num_outputs)
+
+        output_ids = []
+
+        for input_id in input_ids:
+
+            # get child module for corresponding input
+            child_id = np.sum(child_cum_outputs <= input_id, axis=0).tolist()
+            # get output id of child module for corresponding input
+            output_id = input_id-(child_cum_outputs[child_id]-child_num_outputs[child_id])
+
+            output_ids.append((child_id, output_id))
+
+        return output_ids
+    
     @abstractmethod
-    def __len__(self):
+    def n_out(self):
         pass
-
-
-# multiple output nodes?
-@dispatch(Module)  # type: ignore[no-redef]
-def _get_node_counts(module: Module) -> Tuple[int, int, int]:
-    """Wrapper for Modules"""
-    return _get_node_counts(module.output_nodes)

@@ -1,57 +1,28 @@
 """
-Created on November 06, 2021
+Created on August 05, 2022
 
-@authors: Kevin Huy Nguyen, Philipp Deibert
+@authors: Philipp Deibert
 """
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.base.structure.nodes.leaves.parametric.negative_binomial import NegativeBinomial
 
-from spflow.base.structure.nodes.leaves.parametric import (
-    NegativeBinomial,
-    get_scipy_object,
-    get_scipy_object_parameters,
-)
-from .parametric import MIN_NEG
-from multipledispatch import dispatch  # type: ignore
-
+from typing import Optional
 import numpy as np
+from scipy.stats import nbinom
 
 
-@dispatch(NegativeBinomial, data=np.ndarray)  # type: ignore[no-redef]
-def node_likelihood(node: NegativeBinomial, data: np.ndarray) -> np.ndarray:
-
-    # initialize probabilities
-    probs = np.ones((data.shape[0], 1))
-
-    # select relevant data based on node's scope
-    data = data[:, node.scope]
-
-    # create mask based on marginalized instances (NaNs)
-    # keeps default value of 1 (0 in log-space)
-    marg_ids = np.isnan(data).sum(axis=-1).astype(bool)
-
-    # create masked based on distribution's support
-    valid_ids = node.check_support(data[~marg_ids])
-
-    if not all(valid_ids):
-        raise ValueError(
-            f"Encountered data instances that are not in the support of the Gaussian distribution."
-        )
-
-    # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = get_scipy_object(node).pmf(
-        k=data[~marg_ids], **get_scipy_object_parameters(node)
-    )
-
-    return probs
-
-
-@dispatch(NegativeBinomial, data=np.ndarray)  # type: ignore[no-redef]
-def node_log_likelihood(node: NegativeBinomial, data: np.ndarray) -> np.ndarray:
+@dispatch(memoize=True)
+def log_likelihood(node: NegativeBinomial, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+    """TODO"""
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # initialize probabilities
     probs = np.zeros((data.shape[0], 1))
 
     # select relevant data based on node's scope
-    data = data[:, node.scope]
+    data = data[:, node.scope.query]
 
     # create mask based on marginalized instances (NaNs)
     # keeps default value of 1 (0 in log-space)
@@ -60,14 +31,13 @@ def node_log_likelihood(node: NegativeBinomial, data: np.ndarray) -> np.ndarray:
     # create masked based on distribution's support
     valid_ids = node.check_support(data[~marg_ids])
 
+    # TODO: suppress checks
     if not all(valid_ids):
         raise ValueError(
             f"Encountered data instances that are not in the support of the NegativeBinomial distribution."
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = get_scipy_object(node).logpmf(
-        k=data[~marg_ids], **get_scipy_object_parameters(node)
-    )
+    probs[~marg_ids] = nbinom.logpmf(k=data[~marg_ids], n=node.n, p=node.p)
 
     return probs

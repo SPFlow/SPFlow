@@ -9,15 +9,15 @@ import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
 from typing import List, Tuple, Optional
-from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
-from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
-from spflow.base.structure.nodes.leaves.parametric import Binomial
+from .projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.torch.structure.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial as BaseBinomial
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class TorchBinomial(TorchParametricLeaf):
-    r"""(Univariate) Binomial distribution.
+class Binomial(LeafNode):
+    r"""(Univariate) Binomial distribution for Torch backend.
 
     .. math::
 
@@ -37,15 +37,14 @@ class TorchBinomial(TorchParametricLeaf):
         p:
             Probability of success of each trial in the range :math:`[0,1]` (default 0.5).
     """
+    def __init__(self, scope: Scope, n: int, p: Optional[float]=0.5) -> None:
 
-    ptype = ParametricType.COUNT
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Binomial should be 1, but was {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Binomial should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], n: int, p: Optional[float]=0.5) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for TorchBinomial should be 1, but was: {len(scope)}")
-
-        super(TorchBinomial, self).__init__(scope)
+        super(Binomial, self).__init__(scope=scope)
 
         # register number of trials n as torch buffer (should not be changed)
         self.register_buffer("n", torch.empty(size=[]))
@@ -66,7 +65,7 @@ class TorchBinomial(TorchParametricLeaf):
 
         if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
-                f"Value of p for TorchBinomial distribution must to be between 0.0 and 1.0, but was: {p}"
+                f"Value of p for Binomial distribution must to be between 0.0 and 1.0, but was: {p}"
             )
 
         self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)  # type: ignore
@@ -79,12 +78,12 @@ class TorchBinomial(TorchParametricLeaf):
 
         if n < 0 or not np.isfinite(n):
             raise ValueError(
-                f"Value of n for TorchBinomial distribution must to greater of equal to 0, but was: {n}"
+                f"Value of n for Binomial distribution must to greater of equal to 0, but was: {n}"
             )
 
         if not (torch.remainder(torch.tensor(n), 1.0) == torch.tensor(0.0)):
             raise ValueError(
-                f"Value of n for TorchBinomial distribution must be (equal to) an integer value, but was: {n}"
+                f"Value of n for Binomial distribution must be (equal to) an integer value, but was: {n}"
             )
 
         self.p = torch.tensor(float(p))
@@ -107,9 +106,9 @@ class TorchBinomial(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = self.dist.support.check(scope_data)  # type: ignore
@@ -121,11 +120,11 @@ class TorchBinomial(TorchParametricLeaf):
         return valid
 
 
-@dispatch(Binomial)  # type: ignore[no-redef]
-def toTorch(node: Binomial) -> TorchBinomial:
-    return TorchBinomial(node.scope, *node.get_params())
+@dispatch(memoize=True)
+def toTorch(node: BaseBinomial) -> Binomial:
+    return Binomial(node.scope, *node.get_params())
 
 
-@dispatch(TorchBinomial)  # type: ignore[no-redef]
-def toNodes(torch_node: TorchBinomial) -> Binomial:
-    return Binomial(torch_node.scope, *torch_node.get_params())
+@dispatch(memoize=True)
+def toBase(torch_node: Binomial) -> BaseBinomial:
+    return BaseBinomial(torch_node.scope, *torch_node.get_params())

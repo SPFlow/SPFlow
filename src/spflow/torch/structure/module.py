@@ -6,18 +6,32 @@ Created on June 10, 2021
 This file provides the abstract Module class for building graph structures with the PyTorch backend.
 """
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import numpy as np
-import torch
 import torch.nn as nn
+from spflow.meta.structure.module import MetaModule
 
 
-class TorchModule(ABC, nn.Module):
-    """Abstract module class for building graph structures with the PyTorch backend."""
+class Module(MetaModule, nn.Module, ABC):
+    """Abstract module class for building graph structures with the PyTorch backend.
 
-    @abstractmethod
-    def __len__(self):
-        pass
+    Attributes:
+        children:
+            List of child modules to form a directed graph of modules.
+    """
+    def __init__(self, children: Optional[List["Module"]]) -> None:
+
+        super(Module, self).__init__()
+
+        if children is None:
+            children = []
+
+        if any(not isinstance(child, Module) for child in children):
+            raise ValueError("Children must all be of type 'Module'.")
+
+        # register children
+        for i, child in enumerate(children):
+            self.add_module("child_{}".format(i + 1), child)
 
     def input_to_output_id(self, input_ids: List[int]) -> List[Tuple[int, int]]:
 
@@ -37,3 +51,7 @@ class TorchModule(ABC, nn.Module):
             output_ids.append((child_id, output_id))
 
         return output_ids
+    
+    @abstractmethod
+    def n_out(self):
+        pass

@@ -1,18 +1,15 @@
-"""
-Created on October 21, 2021
-
-@authors: Philipp Deibert
-"""
-
-from multipledispatch import dispatch  # type: ignore
 import torch
-from typing import Dict
-from spflow.base.memoize import memoize
-from spflow.base.inference import log_likelihood
-from spflow.torch.structure.module import TorchModule
+from typing import Optional
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.torch.structure.module import Module
 
 
-@dispatch(TorchModule, torch.Tensor, cache=dict)
-@memoize(TorchModule)
-def likelihood(module: TorchModule, data: torch.Tensor, cache: Dict = {}) -> torch.Tensor:
-    return torch.exp(log_likelihood(module, data, cache=cache))
+@dispatch(memoize=True)
+def log_likelihood(module: Module, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+    raise NotImplementedError()
+
+
+@dispatch
+def likelihood(module: Module, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+    return torch.exp(log_likelihood(module, data, dispatch_ctx=dispatch_ctx))

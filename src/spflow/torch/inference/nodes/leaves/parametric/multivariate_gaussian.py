@@ -3,26 +3,24 @@ Created on November 26, 2021
 
 @authors: Philipp Deibert
 """
-
 import torch
 import torch.distributions as D
-from multipledispatch import dispatch  # type: ignore
-from typing import Dict
-from spflow.base.memoize import memoize
-from spflow.torch.structure.nodes.leaves.parametric import TorchMultivariateGaussian
+from typing import Optional
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian
 
 
-@dispatch(TorchMultivariateGaussian, torch.Tensor, cache=dict)
-@memoize(TorchMultivariateGaussian)
-def log_likelihood(leaf: TorchMultivariateGaussian, data: torch.Tensor, cache: Dict) -> torch.Tensor:
+@dispatch(memoize=True)
+def log_likelihood(leaf: MultivariateGaussian, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     
     batch_size: int = data.shape[0]
 
     # get information relevant for the scope
-    scope_data = data[:, list(leaf.scope)]
+    scope_data = data[:, leaf.scope.query]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, 1)
+    log_prob: torch.Tensor = torch.empty(batch_size, 1).to(leaf.mean.device)
 
     # create copy of the data where NaNs are replaced by zeros
     # TODO: alternative for initial validity checking without copying?
@@ -34,6 +32,7 @@ def log_likelihood(leaf: TorchMultivariateGaussian, data: torch.Tensor, cache: D
 
     del _scope_data  # free up memory
 
+    # TODO: suppress checks
     if not all(valid_ids):
         raise ValueError(
             f"Encountered data instances that are not in the support of the TorchMultivariateGaussian distribution."
@@ -47,7 +46,7 @@ def log_likelihood(leaf: TorchMultivariateGaussian, data: torch.Tensor, cache: D
     for marg_mask in marg.unique(dim=0):
 
         # get all instances with the same (marginalized) scope
-        marg_ids = torch.where((marg == marg_mask).sum(dim=-1) == len(leaf.scope))[0]
+        marg_ids = torch.where((marg == marg_mask).sum(dim=-1) == len(leaf.scope.query))[0]
         marg_data = scope_data[marg_ids]
 
         # all random variables are marginalized over
@@ -59,14 +58,14 @@ def log_likelihood(leaf: TorchMultivariateGaussian, data: torch.Tensor, cache: D
             marg_data = marg_data[:, ~marg_mask]
 
             # marginalize distribution and compute (log) probabilities
-            marg_mean_vector = leaf.mean_vector[~marg_mask]
-            marg_covariance_matrix = leaf.covariance_matrix[~marg_mask][
+            marg_mean = leaf.mean[~marg_mask]
+            marg_cov = leaf.cov[~marg_mask][
                 :, ~marg_mask
             ]  # TODO: better way?
 
             # create marginalized torch distribution
             marg_dist = D.MultivariateNormal(
-                loc=marg_mean_vector, covariance_matrix=marg_covariance_matrix
+                loc=marg_mean, covariance_matrix=marg_cov
             )
 
             # compute probabilities for values inside distribution support

@@ -7,15 +7,14 @@ Created on November 06, 2021
 import numpy as np
 import torch
 from typing import List, Tuple
-from .parametric import TorchParametricLeaf
-from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
-from spflow.base.structure.nodes.leaves.parametric import Hypergeometric
+from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.torch.structure.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric as BaseHypergeometric
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class TorchHypergeometric(TorchParametricLeaf):
-    r"""(Univariate) Hypergeometric distribution.
+class Hypergeometric(LeafNode):
+    r"""(Univariate) Hypergeometric distribution for Torch backend.
 
     .. math::
 
@@ -38,17 +37,14 @@ class TorchHypergeometric(TorchParametricLeaf):
         n:
             Number of draws, greater of euqal to zero and less than or equal to N.
     """
+    def __init__(self, scope: Scope, N: int, M: int, n: int) -> None:
 
-    ptype = ParametricType.COUNT
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Hypergeometric should be 1, but was: {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Hypergeometric should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], N: int, M: int, n: int) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(
-                f"Scope size for TorchHypergeometric should be 1, but was: {len(scope)}"
-            )
-
-        super(TorchHypergeometric, self).__init__(scope)
+        super(Hypergeometric, self).__init__(scope=scope)
 
         # register parameters as torch buffers (should not be changed)
         self.register_buffer("N", torch.empty(size=[]))
@@ -101,29 +97,29 @@ class TorchHypergeometric(TorchParametricLeaf):
 
         if N < 0 or not np.isfinite(N):
             raise ValueError(
-                f"Value of N for TorchHypergeometric distribution must be greater of equal to 0, but was: {N}"
+                f"Value of N for Hypergeometric distribution must be greater of equal to 0, but was: {N}"
             )
         if not (torch.remainder(torch.tensor(N), 1.0) == torch.tensor(0.0)):
             raise ValueError(
-                f"Value of N for TorchHypergeometric distribution must be (equal to) an integer value, but was: {N}"
+                f"Value of N for Hypergeometric distribution must be (equal to) an integer value, but was: {N}"
             )
 
         if M < 0 or M > N or not np.isfinite(M):
             raise ValueError(
-                f"Value of M for TorchHypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {M}"
+                f"Value of M for Hypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {M}"
             )
         if not (torch.remainder(torch.tensor(M), 1.0) == torch.tensor(0.0)):
             raise ValueError(
-                f"Value of M for TorchHypergeometric distribution must be (equal to) an integer value, but was: {M}"
+                f"Value of M for Hypergeometric distribution must be (equal to) an integer value, but was: {M}"
             )
 
         if n < 0 or n > N or not np.isfinite(n):
             raise ValueError(
-                f"Value of n for TorchHypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {n}"
+                f"Value of n for Hypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {n}"
             )
         if not (torch.remainder(torch.tensor(n), 1.0) == torch.tensor(0.0)):
             raise ValueError(
-                f"Value of n for TorchHypergeometric distribution must be (equal to) an integer value, but was: {n}"
+                f"Value of n for Hypergeometric distribution must be (equal to) an integer value, but was: {n}"
             )
 
         self.M.data = torch.tensor(int(M)) # float(M)
@@ -152,9 +148,9 @@ class TorchHypergeometric(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = torch.ones(scope_data.shape, dtype=torch.bool)
@@ -176,11 +172,11 @@ class TorchHypergeometric(TorchParametricLeaf):
         return valid
 
 
-@dispatch(Hypergeometric)  # type: ignore[no-redef]
-def toTorch(node: Hypergeometric) -> TorchHypergeometric:
-    return TorchHypergeometric(node.scope, *node.get_params())
+@dispatch(memoize=True)
+def toTorch(node: BaseHypergeometric) -> Hypergeometric:
+    return Hypergeometric(node.scope, *node.get_params())
 
 
-@dispatch(TorchHypergeometric)  # type: ignore[no-redef]
-def toNodes(torch_node: TorchHypergeometric) -> Hypergeometric:
-    return Hypergeometric(torch_node.scope, *torch_node.get_params())
+@dispatch(memoize=True)
+def toBase(torch_node: Hypergeometric) -> BaseHypergeometric:
+    return BaseHypergeometric(torch_node.scope, *torch_node.get_params())

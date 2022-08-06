@@ -1,21 +1,16 @@
 """
 Created on November 6, 2021
 
-@authors: Bennet Wittelsbach, Philipp Deibert
+@authors: Philipp Deibert, Bennet Wittelsbach
 """
-
-from .parametric import ParametricLeaf
-from .statistical_types import ParametricType
-from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List
+from typing import Tuple
 import numpy as np
-from scipy.stats import uniform  # type: ignore
-from scipy.stats._distn_infrastructure import rv_continuous  # type: ignore
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.scope.scope import Scope
+from spflow.base.structure.nodes.node import LeafNode
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class Uniform(ParametricLeaf):
+class Uniform(LeafNode):
     r"""(Univariate) continuous Uniform distribution.
 
     .. math::
@@ -28,7 +23,7 @@ class Uniform(ParametricLeaf):
 
     Args:
         scope:
-            List of integers specifying the variable scope.
+            Scope object specifying the variable scope.
         start:
             Start of the interval.
         end:
@@ -36,17 +31,16 @@ class Uniform(ParametricLeaf):
         support_outside:
             Boolean specifying whether or not values outside of the interval are part of the support (defaults to False).
     """
-
-    type = ParametricType.CONTINUOUS
-
     def __init__(
-        self, scope: List[int], start: float, end: float, support_outside: bool = True
+        self, scope: Scope, start: float, end: float, support_outside: bool = True
     ) -> None:
 
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for Poisson should be 1, but was: {len(scope)}")
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Poisson should be 1, but was: {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Poisson should be empty, but was {scope.evidence}.")
 
-        super().__init__(scope)
+        super(Uniform, self).__init__(scope=scope)
         self.set_params(start, end, support_outside)
 
     def set_params(self, start: float, end: float, support_outside: bool = True) -> None:
@@ -103,18 +97,3 @@ class Uniform(ParametricLeaf):
             )
 
         return valid
-
-
-@dispatch(Uniform)  # type: ignore[no-redef]
-def get_scipy_object(node: Uniform) -> rv_continuous:
-    return uniform
-
-
-@dispatch(Uniform)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: Uniform) -> Dict[str, float]:
-    if node.start is None:
-        raise InvalidParametersError(f"Parameter 'start' of {node} must not be None")
-    if node.end is None:
-        raise InvalidParametersError(f"Parameter 'end' of {node} must not be None")
-    parameters = {"loc": node.start, "scale": node.end - node.start}
-    return parameters

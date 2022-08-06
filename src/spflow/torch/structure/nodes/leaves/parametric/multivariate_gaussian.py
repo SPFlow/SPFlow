@@ -8,16 +8,18 @@ import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from typing import List, Tuple, Union, Optional
-from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
-from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
-from spflow.base.structure.nodes.leaves.parametric import MultivariateGaussian
+from typing import List, Tuple, Union, Optional, Iterable
+from .projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.torch.structure.nodes.node import LeafNode
+from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as BaseMultivariateGaussian
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class TorchMultivariateGaussian(TorchParametricLeaf):
-    r"""Multivariate Normal distribution.
+class MultivariateGaussian(LeafNode):
+    r"""Multivariate Normal distribution for Torch backend.
 
     .. math::
 
@@ -32,40 +34,39 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
     Args:
         scope:
             List of integers specifying the variable scope.
-        mean_vector:
-            A list, NumPy array or a PyTorch tensor holding the means (:math:`\mu`) of each of the one-dimensional Normal distributions (defaults to all zeros).
+        mean:
+            A list, NumPy array or a torch tensor holding the means (:math:`\mu`) of each of the one-dimensional Normal distributions (defaults to all zeros).
             Has exactly as many elements as the scope of this leaf.
-        covariance_matrix:
-            A list of lists, NumPy array or PyTorch tensor (representing a two-dimensional :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
+        cov:
+            A list of lists, NumPy array or torch tensor (representing a two-dimensional :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
             of the scope) describing the covariances of the distribution (defaults to the identity matrix). The diagonal holds
             the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
     """
-
-    ptype = ParametricType.POSITIVE
-
     def __init__(
         self,
-        scope: List[int],
-        mean_vector: Optional[Union[List[float], torch.Tensor, np.ndarray]]=None,
-        covariance_matrix: Optional[Union[List[List[float]], torch.Tensor, np.ndarray]]=None,
+        scope: Scope,
+        mean: Optional[Union[List[float], torch.Tensor, np.ndarray]]=None,
+        cov: Optional[Union[List[List[float]], torch.Tensor, np.ndarray]]=None,
     ) -> None:
 
         # check if scope contains duplicates
-        if(len(set(scope)) != len(scope)):
-            raise ValueError("Scope for TorchMultivariateGaussian contains duplicate variables.")
+        if(len(set(scope.query)) != len(scope.query)):
+            raise ValueError("Query scope for MultivariateGaussian contains duplicate variables.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for MultivariateGaussian should be empty, but was {scope.evidence}.")
 
-        super(TorchMultivariateGaussian, self).__init__(scope)
+        super(MultivariateGaussian, self).__init__(scope=scope)
 
-        if(mean_vector is None):
-            mean_vector = torch.zeros((1,len(scope)))
-        if(covariance_matrix is None):
-            covariance_matrix = torch.eye(len(scope))
+        if(mean is None):
+            mean = torch.zeros((1,len(scope)))
+        if(cov is None):
+            cov = torch.eye(len(scope))
 
         # dimensions
         self.d = len(scope)
 
         # register mean vector as torch parameters
-        self.mean_vector = Parameter()
+        self.mean = Parameter()
 
         # internally we use the lower triangular matrix (Cholesky decomposition) to encode the covariance matrix
         # register (auxiliary) values for diagonal and non-diagonal values of lower triangular matrix as torch parameters
@@ -76,7 +77,7 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         self.tril_nondiag_indices = torch.tril_indices(self.d, self.d, offset=-1)
 
         # set parameters
-        self.set_params(mean_vector, covariance_matrix)
+        self.set_params(mean, cov)
 
     @property
     def covariance_tril(self) -> torch.Tensor:
@@ -90,7 +91,7 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         return L
 
     @property
-    def covariance_matrix(self) -> torch.Tensor:
+    def cov(self) -> torch.Tensor:
         # get lower triangular matrix
         L = self.covariance_tril
         # return covariance matrix
@@ -98,83 +99,83 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
 
     @property
     def dist(self) -> D.Distribution:
-        return D.MultivariateNormal(loc=self.mean_vector, scale_tril=self.covariance_tril)
+        return D.MultivariateNormal(loc=self.mean, scale_tril=self.covariance_tril)
 
     def set_params(
         self,
-        mean_vector: Union[List[float], torch.Tensor, np.ndarray],
-        covariance_matrix: Union[List[List[float]], torch.Tensor, np.ndarray],
+        mean: Union[List[float], torch.Tensor, np.ndarray],
+        cov: Union[List[List[float]], torch.Tensor, np.ndarray],
     ) -> None:
 
-        if isinstance(mean_vector, list):
+        if isinstance(mean, list):
             # convert float list to torch tensor
-            mean_vector = torch.tensor([float(v) for v in mean_vector])
-        elif isinstance(mean_vector, np.ndarray):
+            mean = torch.tensor([float(v) for v in mean])
+        elif isinstance(mean, np.ndarray):
             # convert numpy array to torch tensor
-            mean_vector = torch.from_numpy(mean_vector).type(torch.get_default_dtype())
+            mean = torch.from_numpy(mean).type(torch.get_default_dtype())
 
-        if isinstance(covariance_matrix, list):
+        if isinstance(cov, list):
             # convert numpy array to torch tensor
-            covariance_matrix = torch.tensor([[float(v) for v in row] for row in covariance_matrix])
-        elif isinstance(covariance_matrix, np.ndarray):
+            cov = torch.tensor([[float(v) for v in row] for row in cov])
+        elif isinstance(cov, np.ndarray):
             # convert numpy array to torch tensor
-            covariance_matrix = torch.from_numpy(covariance_matrix).type(torch.get_default_dtype())
+            cov = torch.from_numpy(cov).type(torch.get_default_dtype())
 
         # check mean vector for nan or inf values
-        if torch.any(torch.isinf(mean_vector)):
+        if torch.any(torch.isinf(mean)):
             raise ValueError(
-                "Mean vector for TorchMultivariateGaussian may not contain infinite values"
+                "Mean vector for MultivariateGaussian may not contain infinite values"
             )
-        if torch.any(torch.isnan(mean_vector)):
-            raise ValueError("Mean vector for TorchMultivariateGaussian may not contain NaN values")
+        if torch.any(torch.isnan(mean)):
+            raise ValueError("Mean vector for MultivariateGaussian may not contain NaN values")
 
         # dimensions
-        d = mean_vector.numel()
+        d = mean.numel()
 
         # make sure that number of dimensions matches scope length
         if (
-            (mean_vector.ndim == 1 and mean_vector.shape[0] != len(self.scope))
-            or (mean_vector.ndim == 2 and mean_vector.shape[1] != len(self.scope))
-            or mean_vector.ndim > 2
+            (mean.ndim == 1 and mean.shape[0] != len(self.scope.query))
+            or (mean.ndim == 2 and mean.shape[1] != len(self.scope.query))
+            or mean.ndim > 2
         ):
             raise ValueError(
-                f"Dimensions of mean vector for TorchMultivariateGaussian should match scope size {len(self.scope)}, but was: {mean_vector.shape}"
+                f"Dimensions of mean vector for MultivariateGaussian should match scope size {len(self.scope.query)}, but was: {mean.shape}"
             )
 
         # make sure that dimensions of covariance matrix are correct
-        if covariance_matrix.ndim != 2 or (
-            covariance_matrix.ndim == 2
+        if cov.ndim != 2 or (
+            cov.ndim == 2
             and (
-                covariance_matrix.shape[0] != len(self.scope)
-                or covariance_matrix.shape[1] != len(self.scope)
+                cov.shape[0] != len(self.scope.query)
+                or cov.shape[1] != len(self.scope.query)
             )
         ):
             raise ValueError(
-                f"Covariance matrix for TorchMultivariateGaussian expected to be of shape ({len(self.scope), len(self.scope)}), but was: {covariance_matrix.shape}"
+                f"Covariance matrix for MultivariateGaussian expected to be of shape ({len(self.scope.query), len(self.scope.query)}), but was: {cov.shape}"
             )
 
         # set mean vector
-        self.mean_vector.data = mean_vector
+        self.mean.data = mean
 
         # check covariance matrix for nan or inf values
-        if torch.any(torch.isinf(covariance_matrix)):
+        if torch.any(torch.isinf(cov)):
             raise ValueError(
-                "Covariance matrix vector for TorchMultivariateGaussian may not contain infinite values"
+                "Covariance matrix vector for MultivariateGaussian may not contain infinite values"
             )
-        if torch.any(torch.isnan(covariance_matrix)):
+        if torch.any(torch.isnan(cov)):
             raise ValueError(
-                "Covariance matrix for TorchMultivariateGaussian may not contain NaN values"
+                "Covariance matrix for MultivariateGaussian may not contain NaN values"
             )
 
         # compute lower triangular matrix (also check if covariance matrix is symmetric positive definite)
-        L = torch.linalg.cholesky(covariance_matrix)  # type: ignore
+        L = torch.linalg.cholesky(cov)  # type: ignore
 
         # set diagonal and non-diagonal values of lower triangular matrix
         self.tril_diag_aux.data = proj_bounded_to_real(torch.diag(L), lb=0.0)
         self.tril_nondiag.data = L[self.tril_nondiag_indices[0], self.tril_nondiag_indices[1]]
 
     def get_params(self) -> Tuple[List[float], List[List[float]]]:
-        return self.mean_vector.data.cpu().tolist(), self.covariance_matrix.data.cpu().tolist()  # type: ignore
+        return self.mean.data.cpu().tolist(), self.cov.data.cpu().tolist()  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
         r"""Checks if instances are part of the support of the MultivariateGaussian distribution.
@@ -190,9 +191,9 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scopes_out[0].query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scopes_out[0].query)}), but was: {scope_data.shape}"
             )
 
         valid = self.dist.support.check(scope_data)  # type: ignore
@@ -202,32 +203,37 @@ class TorchMultivariateGaussian(TorchParametricLeaf):
         valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
 
         return valid
+    
+    def marginalize(self, marg_rvs: Iterable[int]) -> Union["MultivariateGaussian", Gaussian, None]:
+    
+        # scope after marginalization (important: must remain order of scope indices since they map to the indices of the mean vector and covariance matrix!)
+        marg_scope = [rv for rv in self.scope.query if rv not in marg_rvs]
 
-    def marginalize(self, marg_rvs: List[int]) -> "TorchMultivariateGaussian":
+        # return univariate Gaussian if one-dimensional
+        if(len(marg_scope) == 1):
+            return Gaussian(Scope(marg_scope), self.mean[marg_scope[0]].detach().cpu().item(), self.cov[marg_scope[0]][marg_scope[0]].detach().cpu().item())
+        # entire node is marginalized over
+        elif not marg_scope:
+            return None
+        # node is partially marginalized over
+        else:
+            # compute marginalized mean vector and covariance matrix
+            marg_mean = self.mean[marg_scope]
+            marg_cov = self.cov[marg_scope][:, marg_scope]
 
-        # check if marginalized random variables are all part of the original scope
-        if not all([rv in self.scope for rv in marg_rvs]):
-            raise (
-                ValueError(
-                    f"Random variables to be marginalized {marg_rvs} not all part of the original scope {self.scope}"
-                )
-            )
-
-        # scope after marginalization
-        marg_scope = list(set(self.scope).difference(set(marg_rvs)))
-
-        # compute marginalized mean vector and covariance matrix
-        marg_mean_vector = self.mean_vector[marg_scope]
-        marg_covariance_matrix = self.covariance_matrix[marg_scope][:, marg_scope]
-
-        return TorchMultivariateGaussian(marg_scope, marg_mean_vector, marg_covariance_matrix)
-
-
-@dispatch(MultivariateGaussian)  # type: ignore[no-redef]
-def toTorch(node: MultivariateGaussian) -> TorchMultivariateGaussian:
-    return TorchMultivariateGaussian(node.scope, *node.get_params())
+            return MultivariateGaussian(Scope(marg_scope), marg_mean, marg_cov)
 
 
-@dispatch(TorchMultivariateGaussian)  # type: ignore[no-redef]
-def toNodes(torch_node: TorchMultivariateGaussian) -> MultivariateGaussian:
-    return MultivariateGaussian(torch_node.scope, *torch_node.get_params())
+@dispatch(memoize=True)
+def marginalize(node: MultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[MultivariateGaussian,Gaussian,None]:
+    return node.marginalize(marg_rvs)
+
+
+@dispatch(memoize=True)
+def toTorch(node: BaseMultivariateGaussian) -> MultivariateGaussian:
+    return MultivariateGaussian(node.scope, *node.get_params())
+
+
+@dispatch(memoize=True)
+def toBase(torch_node: MultivariateGaussian) -> BaseMultivariateGaussian:
+    return BaseMultivariateGaussian(torch_node.scope, *torch_node.get_params())

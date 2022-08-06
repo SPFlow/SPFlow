@@ -8,15 +8,14 @@ import numpy as np
 import torch
 import torch.distributions as D
 from typing import List, Tuple
-from .parametric import TorchParametricLeaf
-from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
-from spflow.base.structure.nodes.leaves.parametric import Uniform
+from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.torch.structure.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform as BaseUniform
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class TorchUniform(TorchParametricLeaf):
-    r"""(Univariate) continuous Uniform distribution.
+class Uniform(LeafNode):
+    r"""(Univariate) continuous Uniform distribution for Torch backend.
 
     .. math::
 
@@ -36,17 +35,16 @@ class TorchUniform(TorchParametricLeaf):
         support_outside:
             Boolean specifying whether or not values outside of the interval are part of the support (defaults to False).
     """
-
-    ptype = ParametricType.CONTINUOUS
-
     def __init__(
-        self, scope: List[int], start: float, end: float, support_outside: bool = True
+        self, scope: Scope, start: float, end: float, support_outside: bool = True
     ) -> None:
 
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for TorchUniform should be 1, but was: {len(scope)}")
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Poisson should be 1, but was: {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Poisson should be empty, but was {scope.evidence}.")
 
-        super(TorchUniform, self).__init__(scope)
+        super(Uniform, self).__init__(scope=scope)
 
         # register interval bounds as torch buffers (should not be changed)
         self.register_buffer("start", torch.empty(size=[]))
@@ -59,7 +57,7 @@ class TorchUniform(TorchParametricLeaf):
 
         if not start < end:
             raise ValueError(
-                f"Lower bound for TorchUniform distribution must be less than upper bound, but were: {start}, {end}"
+                f"Lower bound for Uniform distribution must be less than upper bound, but were: {start}, {end}"
             )
         if not (np.isfinite(start) and np.isfinite(end)):
             raise ValueError(f"Lower and upper bound must be finite, but were: {start}, {end}")
@@ -96,9 +94,9 @@ class TorchUniform(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         # torch distribution support is an interval, despite representing a distribution over a half-open interval
@@ -118,11 +116,11 @@ class TorchUniform(TorchParametricLeaf):
         return valid.squeeze(1)
 
 
-@dispatch(Uniform)  # type: ignore[no-redef]
-def toTorch(node: Uniform) -> TorchUniform:
-    return TorchUniform(node.scope, node.start, node.end)
+@dispatch(memoize=True)
+def toTorch(node: BaseUniform) -> Uniform:
+    return Uniform(node.scope, node.start, node.end)
 
 
-@dispatch(TorchUniform)  # type: ignore[no-redef]
-def toNodes(torch_node: TorchUniform) -> Uniform:
-    return Uniform(torch_node.scope, torch_node.start.cpu().numpy(), torch_node.end.cpu().numpy())  # type: ignore
+@dispatch(memoize=True)
+def toBase(torch_node: Uniform) -> BaseUniform:
+    return BaseUniform(torch_node.scope, torch_node.start.cpu().numpy(), torch_node.end.cpu().numpy())

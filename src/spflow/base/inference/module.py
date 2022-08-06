@@ -1,26 +1,15 @@
-"""
-Created on November 27, 2021
-
-@authors: Kevin Huy Nguyen
-
-"""
-
-from spflow.base.memoize import memoize
 import numpy as np
-from typing import Dict
-from multipledispatch import dispatch  # type: ignore
+from typing import Optional
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.base.structure.module import Module
-from spflow.base.inference.nodes.node_modules import log_likelihood, likelihood
-from spflow.base.inference.rat.rat_spn import log_likelihood, likelihood
 
 
-@dispatch(Module, np.ndarray, cache=dict)
-@memoize(Module)
-def likelihood(module: Module, data: np.ndarray, cache: Dict = {}) -> np.ndarray:
-    return likelihood(module, data, module.network_type, cache=cache)
+@dispatch(memoize=True)
+def log_likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+    raise NotImplementedError()
 
 
-@dispatch(Module, np.ndarray, cache=dict)
-@memoize(Module)
-def log_likelihood(module: Module, data: np.ndarray, cache: Dict = {}) -> np.ndarray:
-    return log_likelihood(module, data, module.network_type, cache=cache)
+@dispatch
+def likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+    return np.exp(log_likelihood(module, data, dispatch_ctx=dispatch_ctx))

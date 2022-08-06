@@ -9,15 +9,15 @@ import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
 from typing import List, Tuple, Optional
-from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
-from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
-from spflow.base.structure.nodes.leaves.parametric import Bernoulli
+from .projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.torch.structure.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli as BaseBernoulli
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class TorchBernoulli(TorchParametricLeaf):
-    r"""(Univariate) Bernoulli distribution.
+class Bernoulli(LeafNode):
+    r"""(Univariate) Bernoulli distribution for Torch backend.
 
     .. math::
 
@@ -34,15 +34,14 @@ class TorchBernoulli(TorchParametricLeaf):
         p:
             Probability of success in the range :math:`[0,1]` (default 0.5).
     """
+    def __init__(self, scope: Scope, p: Optional[float]=0.5) -> None:
 
-    ptype = ParametricType.BINARY
+        if len(scope.query) != 1:
+            raise ValueError(f"Scope size for Bernoulli should be 1, but was: {len(scope.query)}")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Bernoulli should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], p: Optional[float]=0.5) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for TorchBernoulli should be 1, but was: {len(scope)}")
-
-        super(TorchBernoulli, self).__init__(scope)
+        super(Bernoulli, self).__init__(scope=scope)
 
         # register auxiliary torch paramter for the success probability p
         self.p_aux = Parameter()
@@ -60,7 +59,7 @@ class TorchBernoulli(TorchParametricLeaf):
 
         if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
-                f"Value of p for TorchBernoulli distribution must to be between 0.0 and 1.0, but was: {p}"
+                f"Value of p for Bernoulli distribution must to be between 0.0 and 1.0, but was: {p}"
             )
 
         self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)
@@ -89,9 +88,9 @@ class TorchBernoulli(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = self.dist.support.check(scope_data)  # type: ignore
@@ -103,11 +102,11 @@ class TorchBernoulli(TorchParametricLeaf):
         return valid
 
 
-@dispatch(Bernoulli)  # type: ignore[no-redef]
-def toTorch(node: Bernoulli) -> TorchBernoulli:
-    return TorchBernoulli(node.scope, *node.get_params())
+@dispatch(memoize=True)
+def toTorch(node: BaseBernoulli) -> Bernoulli:
+    return Bernoulli(node.scope, *node.get_params())
 
 
-@dispatch(TorchBernoulli)  # type: ignore[no-redef]
-def toNodes(torch_node: TorchBernoulli) -> Bernoulli:
-    return Bernoulli(torch_node.scope, *torch_node.get_params())
+@dispatch(memoize=True)
+def toBase(torch_node: Bernoulli) -> BaseBernoulli:
+    return BaseBernoulli(torch_node.scope, *torch_node.get_params())

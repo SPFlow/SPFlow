@@ -3,29 +3,26 @@ Created on November 26, 2021
 
 @authors: Philipp Deibert
 """
-
 import torch
-from multipledispatch import dispatch  # type: ignore
-from typing import Dict
-from spflow.base.memoize import memoize
-from spflow.torch.structure.nodes import TorchProductNode, TorchSumNode
+from typing import Optional
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.torch.structure.nodes.node import SPNProductNode, SPNSumNode
 
 
-@dispatch(TorchProductNode, torch.Tensor, cache=dict)
-@memoize(TorchProductNode)
-def log_likelihood(node: TorchProductNode, data: torch.Tensor, cache: Dict = {}) -> torch.Tensor:
-    inputs = torch.hstack([log_likelihood(child, data, cache=cache) for child in node.children()])  # type: ignore
+@dispatch(memoize=True)
+def log_likelihood(node: SPNProductNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+    inputs = torch.hstack([log_likelihood(child, data, dispatch_ctx=dispatch_ctx) for child in node.children()])
 
     # return product (sum in log space)
-    return torch.sum(inputs, dim=-1, keepdims=True)  # type: ignore
+    return torch.sum(inputs, dim=-1, keepdims=True)
 
 
-@dispatch(TorchSumNode, torch.Tensor, cache=dict)
-@memoize(TorchSumNode)
-def log_likelihood(node: TorchSumNode, data: torch.Tensor, cache: Dict = {}) -> torch.Tensor:
-    inputs = torch.hstack([log_likelihood(child, data, cache=cache) for child in node.children()])  # type: ignore
+@dispatch(memoize=True)
+def log_likelihood(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+    inputs = torch.hstack([log_likelihood(child, data, dispatch_ctx=dispatch_ctx) for child in node.children()])
 
     # weight inputs in log-space
-    weighted_inputs = inputs + node.weights.log()  # type: ignore
+    weighted_inputs = inputs + node.weights.log()
 
-    return torch.logsumexp(weighted_inputs, dim=-1, keepdims=True)  # type: ignore
+    return torch.logsumexp(weighted_inputs, dim=-1, keepdims=True)

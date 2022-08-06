@@ -1,21 +1,16 @@
 """
 Created on November 6, 2021
 
-@authors: Bennet Wittelsbach, Philipp Deibert
+@authors: Philipp Deibert, Bennet Wittelsbach
 """
-
-from .parametric import ParametricLeaf
-from .statistical_types import ParametricType
-from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List, Optional
+from typing import Tuple, Optional
 import numpy as np
-from scipy.stats import geom  # type: ignore
-from scipy.stats._distn_infrastructure import rv_discrete  # type: ignore
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.scope.scope import Scope
+from spflow.base.structure.nodes.node import LeafNode
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class Geometric(ParametricLeaf):
+class Geometric(LeafNode):
     r"""(Univariate) Geometric distribution.
 
     .. math::
@@ -30,19 +25,18 @@ class Geometric(ParametricLeaf):
 
     Args:
         scope:
-            List of integers specifying the variable scope.
+            Scope object specifying the variable scope.
         p:
             Probability of success in the range :math:`(0,1]` (default 0.5).
     """
+    def __init__(self, scope: Scope, p: Optional[float]=0.5) -> None:
 
-    type = ParametricType.BINARY
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Geometric should be 1, but was {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Geometric should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], p: Optional[float]=0.5) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for Geometric should be 1, but was: {len(scope)}")
-
-        super().__init__(scope)
+        super(Geometric, self).__init__(scope=scope)
         self.set_params(p)
 
     def set_params(self, p: float) -> None:
@@ -71,9 +65,9 @@ class Geometric(ParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = np.ones(scope_data.shape[0], dtype=bool)
@@ -89,16 +83,3 @@ class Geometric(ParametricLeaf):
         valid[valid] &= (scope_data[valid] >= 1).sum(axis=-1).astype(bool)
 
         return valid
-
-
-@dispatch(Geometric)  # type: ignore[no-redef]
-def get_scipy_object(node: Geometric) -> rv_discrete:
-    return geom
-
-
-@dispatch(Geometric)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: Geometric) -> Dict[str, float]:
-    if node.p is None:
-        raise InvalidParametersError(f"Parameter 'p' of {node} must not be None")
-    parameters = {"p": node.p}
-    return parameters
