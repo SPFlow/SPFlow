@@ -1,21 +1,16 @@
 """
 Created on November 6, 2021
 
-@authors: Bennet Wittelsbach, Philipp Deibert
+@authors: Philipp Deibert, Bennet Wittelsbach
 """
-
-from .parametric import ParametricLeaf
-from .statistical_types import ParametricType
-from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List, Optional
+from typing import Tuple, Optional
 import numpy as np
-from scipy.stats import expon  # type: ignore
-from scipy.stats._distn_infrastructure import rv_continuous  # type: ignore
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.scope.scope import Scope
+from spflow.base.structure.nodes.node import LeafNode
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class Exponential(ParametricLeaf):
+class Exponential(LeafNode):
     r"""(Univariate) Exponential distribution.
 
     .. math::
@@ -29,19 +24,18 @@ class Exponential(ParametricLeaf):
     
     Args:
         scope:
-            List of integers specifying the variable scope.
+            Scope object specifying the variable scope.
         l:
             Rate parameter (:math:`\lambda`) of the Exponential distribution (must be greater than 0; default 1.0).
     """
+    def __init__(self, scope: Scope, l: Optional[float]=1.0) -> None:
 
-    type = ParametricType.POSITIVE
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Exponential should be 1, but was {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Exponential should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], l: Optional[float]=1.0) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for Exponential should be 1, but was: {len(scope)}")
-
-        super().__init__(scope)
+        super(Exponential, self).__init__(scope=scope)
         self.set_params(l)
 
     def set_params(self, l: float) -> None:
@@ -70,9 +64,9 @@ class Exponential(ParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = np.ones(scope_data.shape[0], dtype=bool)
@@ -84,16 +78,3 @@ class Exponential(ParametricLeaf):
         valid[valid] &= (scope_data[valid] >= 0).sum(axis=-1).astype(bool)
 
         return valid
-
-
-@dispatch(Exponential)  # type: ignore[no-redef]
-def get_scipy_object(node: Exponential) -> rv_continuous:
-    return expon
-
-
-@dispatch(Exponential)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: Exponential) -> Dict[str, float]:
-    if node.l is None:
-        raise InvalidParametersError(f"Parameter 'l' of {node} must not be None")
-    parameters = {"scale": 1.0 / node.l}
-    return parameters

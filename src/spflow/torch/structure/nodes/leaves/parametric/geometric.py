@@ -9,15 +9,15 @@ import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
 from typing import List, Tuple, Optional
-from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
-from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
-from spflow.base.structure.nodes.leaves.parametric import Geometric
+from .projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.torch.structure.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaves.parametric.geometric import Geometric as BaseGeometric
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class TorchGeometric(TorchParametricLeaf):
-    r"""(Univariate) Geometric distribution.
+class Geometric(LeafNode):
+    r"""(Univariate) Geometric distribution for Torch backend.
 
     .. math::
 
@@ -35,15 +35,14 @@ class TorchGeometric(TorchParametricLeaf):
         p:
             Probability of success in the range :math:`(0,1]` (default 0.5).
     """
+    def __init__(self, scope: Scope, p: Optional[float]=0.5) -> None:
 
-    ptype = ParametricType.BINARY
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Geometric should be 1, but was {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Geometric should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], p: Optional[float]=0.5) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for TorchGeometric should be 1, but was: {len(scope)}")
-
-        super(TorchGeometric, self).__init__(scope)
+        super(Geometric, self).__init__(scope=scope)
 
         # register auxiliary torch parameter for the success probability p
         self.p_aux = Parameter()
@@ -64,7 +63,7 @@ class TorchGeometric(TorchParametricLeaf):
 
         if p <= 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
-                f"Value of p for TorchGeometric distribution must to be greater than 0.0 and less or equal to 1.0, but was: {p}"
+                f"Value of p for Geometric distribution must to be greater than 0.0 and less or equal to 1.0, but was: {p}"
             )
 
         self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)
@@ -86,9 +85,9 @@ class TorchGeometric(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch
@@ -101,11 +100,11 @@ class TorchGeometric(TorchParametricLeaf):
         return valid
 
 
-@dispatch(Geometric)  # type: ignore[no-redef]
-def toTorch(node: Geometric) -> TorchGeometric:
-    return TorchGeometric(node.scope, *node.get_params())
+@dispatch(memoize=True)
+def toTorch(node: BaseGeometric) -> Geometric:
+    return Geometric(node.scope, *node.get_params())
 
 
-@dispatch(TorchGeometric)  # type: ignore[no-redef]
-def toNodes(torch_node: TorchGeometric) -> Geometric:
-    return Geometric(torch_node.scope, *torch_node.get_params())
+@dispatch(memoize=True)
+def toBase(torch_node: Geometric) -> BaseGeometric:
+    return BaseGeometric(torch_node.scope, *torch_node.get_params())

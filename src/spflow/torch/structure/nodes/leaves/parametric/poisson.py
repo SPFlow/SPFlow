@@ -9,15 +9,15 @@ import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
 from typing import List, Tuple, Optional
-from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
-from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
-from spflow.base.structure.nodes.leaves.parametric import Poisson
+from .projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.torch.structure.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaves.parametric.poisson import Poisson as BasePoisson
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class TorchPoisson(TorchParametricLeaf):
-    r"""(Univariate) Poisson distribution.
+class Poisson(LeafNode):
+    r"""(Univariate) Poisson distribution for Torch backend.
 
     .. math::
 
@@ -33,15 +33,14 @@ class TorchPoisson(TorchParametricLeaf):
         l:
             Rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0; default 1.0).
     """
+    def __init__(self, scope: Scope, l: Optional[float]=1.0) -> None:
 
-    ptype = ParametricType.COUNT
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Poisson should be 1, but was: {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Poisson should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], l: Optional[float]=1.0) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for TorchPoisson should be 1, but was: {len(scope)}")
-
-        super(TorchPoisson, self).__init__(scope)
+        super(Poisson, self).__init__(scope=scope)
 
         # register auxiliary torch parameter for lambda l
         self.l_aux = Parameter()
@@ -62,12 +61,12 @@ class TorchPoisson(TorchParametricLeaf):
 
         if not np.isfinite(l):
             raise ValueError(
-                f"Value of l for TorchPoisson distribution must be finite, but was: {l}"
+                f"Value of l for Poisson distribution must be finite, but was: {l}"
             )
 
         if l < 0:
             raise ValueError(
-                f"Value of l for TorchPoisson distribution must be non-negative, but was: {l}"
+                f"Value of l for Poisson distribution must be non-negative, but was: {l}"
             )
 
         self.l_aux.data = proj_bounded_to_real(torch.tensor(float(l)), lb=0.0)
@@ -89,9 +88,9 @@ class TorchPoisson(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = self.dist.support.check(scope_data)  # type: ignore
@@ -108,11 +107,11 @@ class TorchPoisson(TorchParametricLeaf):
         return valid
 
 
-@dispatch(Poisson)  # type: ignore[no-redef]
-def toTorch(node: Poisson) -> TorchPoisson:
-    return TorchPoisson(node.scope, *node.get_params())
+@dispatch(memoize=True)
+def toTorch(node: BasePoisson) -> Poisson:
+    return Poisson(node.scope, *node.get_params())
 
 
-@dispatch(TorchPoisson)  # type: ignore[no-redef]
-def toNodes(torch_node: TorchPoisson) -> Poisson:
-    return Poisson(torch_node.scope, *torch_node.get_params())
+@dispatch(memoize=True)
+def toBase(torch_node: Poisson) -> BasePoisson:
+    return BasePoisson(torch_node.scope, *torch_node.get_params())

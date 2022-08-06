@@ -9,15 +9,15 @@ import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
 from typing import List, Tuple, Optional
-from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
-from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
-from spflow.base.structure.nodes.leaves.parametric import Exponential
+from .projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.torch.structure.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaves.parametric.exponential import Exponential as BaseExponential
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class TorchExponential(TorchParametricLeaf):
-    r"""(Univariate) Exponential distribution.
+class Exponential(LeafNode):
+    r"""(Univariate) Exponential distribution for Torch backend.
 
     .. math::
         
@@ -34,15 +34,14 @@ class TorchExponential(TorchParametricLeaf):
         l:
             Rate parameter (:math:`\lambda`) of the Exponential distribution (must be greater than 0; default 1.5).
     """
+    def __init__(self, scope: Scope, l: Optional[float]=1.0) -> None:
 
-    ptype = ParametricType.POSITIVE
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Exponential should be 1, but was {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Exponential should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], l: Optional[float]=1.0) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for TorchExponential should be 1, but was: {len(scope)}")
-
-        super(TorchExponential, self).__init__(scope)
+        super(Exponential, self).__init__(scope=scope)
 
         # register auxiliary torch parameter for parameter l
         self.l_aux = Parameter()
@@ -63,7 +62,7 @@ class TorchExponential(TorchParametricLeaf):
 
         if l <= 0.0 or not np.isfinite(l):
             raise ValueError(
-                f"Value of l for TorchExponential distribution must be greater than 0, but was: {l}"
+                f"Value of l for Exponential distribution must be greater than 0, but was: {l}"
             )
 
         self.l_aux.data = proj_bounded_to_real(torch.tensor(float(l)), lb=0.0)
@@ -78,7 +77,7 @@ class TorchExponential(TorchParametricLeaf):
 
             \text{supp}(\text{Exponential})=(0,+\infty)
 
-        Note: for PyTorch version < 1.11.0 zero is not part of the support TorchExponential, even though it is for Exponential.
+        Note: for PyTorch version < 1.11.0 zero is not part of the support Exponential, even though it is for Exponential.
 
         Args:
             scope_data:
@@ -87,9 +86,9 @@ class TorchExponential(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = self.dist.support.check(scope_data)  # type: ignore
@@ -101,11 +100,11 @@ class TorchExponential(TorchParametricLeaf):
         return valid
 
 
-@dispatch(Exponential)  # type: ignore[no-redef]
-def toTorch(node: Exponential) -> TorchExponential:
-    return TorchExponential(node.scope, *node.get_params())
+@dispatch(memoize=True)
+def toTorch(node: BaseExponential) -> Exponential:
+    return Exponential(node.scope, *node.get_params())
 
 
-@dispatch(TorchExponential)  # type: ignore[no-redef]
-def toNodes(torch_node: TorchExponential) -> Exponential:
-    return Exponential(torch_node.scope, *torch_node.get_params())
+@dispatch(memoize=True)
+def toBase(torch_node: Exponential) -> BaseExponential:
+    return BaseExponential(torch_node.scope, *torch_node.get_params())

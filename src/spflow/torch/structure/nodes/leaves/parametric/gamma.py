@@ -9,15 +9,15 @@ import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
 from typing import List, Tuple, Optional
-from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
-from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
-from spflow.base.structure.nodes.leaves.parametric import Gamma
+from .projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.torch.structure.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma as BaseGamma
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class TorchGamma(TorchParametricLeaf):
-    r"""(Univariate) Gamma distribution.
+class Gamma(LeafNode):
+    r"""(Univariate) Gamma distribution for Torch backend.
     
     .. math::
     
@@ -40,15 +40,14 @@ class TorchGamma(TorchParametricLeaf):
         beta:
             Rate parameter (:math:`\beta`), greater than 0 (default 1.0).
     """
+    def __init__(self, scope: Scope, alpha: Optional[float]=1.0, beta: Optional[float]=1.0) -> None:
 
-    ptype = ParametricType.POSITIVE
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Gamma should be 1, but was {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Gamma should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], alpha: Optional[float]=1.0, beta: Optional[float]=1.0) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for TorchGamma should be 1, but was: {len(scope)}")
-
-        super(TorchGamma, self).__init__(scope)
+        super(Gamma, self).__init__(scope=scope)
 
         # register auxiliary torch parameters for alpha and beta
         self.alpha_aux = Parameter()
@@ -75,11 +74,11 @@ class TorchGamma(TorchParametricLeaf):
 
         if alpha <= 0.0 or not np.isfinite(alpha):
             raise ValueError(
-                f"Value of alpha for TorchGamma distribution must be greater than 0, but was: {alpha}"
+                f"Value of alpha for Gamma distribution must be greater than 0, but was: {alpha}"
             )
         if beta <= 0.0 or not np.isfinite(beta):
             raise ValueError(
-                f"Value of beta for TorchGamma distribution must be greater than 0, but was: {beta}"
+                f"Value of beta for Gamma distribution must be greater than 0, but was: {beta}"
             )
 
         self.alpha_aux.data = proj_bounded_to_real(torch.tensor(float(alpha)), lb=0.0)
@@ -102,9 +101,9 @@ class TorchGamma(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = self.dist.support.check(scope_data)  # type: ignore
@@ -116,11 +115,11 @@ class TorchGamma(TorchParametricLeaf):
         return valid
 
 
-@dispatch(Gamma)  # type: ignore[no-redef]
-def toTorch(node: Gamma) -> TorchGamma:
-    return TorchGamma(node.scope, *node.get_params())
+@dispatch(memoize=True)
+def toTorch(node: BaseGamma) -> Gamma:
+    return Gamma(node.scope, *node.get_params())
 
 
-@dispatch(TorchGamma)  # type: ignore[no-redef]
-def toNodes(torch_node: TorchGamma) -> Gamma:
-    return Gamma(torch_node.scope, *torch_node.get_params())
+@dispatch(memoize=True)
+def toBase(torch_node: Gamma) -> BaseGamma:
+    return BaseGamma(torch_node.scope, *torch_node.get_params())

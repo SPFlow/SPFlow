@@ -1,21 +1,16 @@
 """
 Created on November 6, 2021
 
-@authors: Bennet Wittelsbach, Philipp Deibert
+@authors: Philipp Deibert, Bennet Wittelsbach
 """
-
-from .parametric import ParametricLeaf
-from .statistical_types import ParametricType
-from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List
+from typing import Tuple, List
 import numpy as np
-from scipy.stats import hypergeom  # type: ignore
-from scipy.stats._distn_infrastructure import rv_discrete  # type: ignore
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.scope.scope import Scope
+from spflow.base.structure.nodes.node import LeafNode
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class Hypergeometric(ParametricLeaf):
+class Hypergeometric(LeafNode):
     r"""(Univariate) Hypergeometric distribution.
 
     .. math::
@@ -31,7 +26,7 @@ class Hypergeometric(ParametricLeaf):
 
     Args:
         scope:
-            List of integers specifying the variable scope.
+            Scope object specifying the variable scope.
         N:
             Total number of entities (in the population), greater or equal to 0.
         M:
@@ -39,15 +34,14 @@ class Hypergeometric(ParametricLeaf):
         n:
             Number of draws, greater of euqal to zero and less than or equal to N.
     """
+    def __init__(self, scope: Scope, N: int, M: int, n: int) -> None:
 
-    type = ParametricType.COUNT
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Hypergeometric should be 1, but was: {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Hypergeometric should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], N: int, M: int, n: int) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for Hypergeometric should be 1, but was: {len(scope)}")
-
-        super().__init__(scope)
+        super(Hypergeometric, self).__init__(scope=scope)
         self.set_params(N, M, n)
 
     def set_params(self, N: int, M: int, n: int) -> None:
@@ -105,9 +99,9 @@ class Hypergeometric(ParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = np.ones(scope_data.shape[0], dtype=bool)
@@ -130,21 +124,3 @@ class Hypergeometric(ParametricLeaf):
         )
 
         return valid
-
-
-@dispatch(Hypergeometric)  # type: ignore[no-redef]
-def get_scipy_object(node: Hypergeometric) -> rv_discrete:
-    return hypergeom
-
-
-@dispatch(Hypergeometric)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: Hypergeometric) -> Dict[str, int]:
-    if node.N is None:
-        raise InvalidParametersError(f"Parameter 'N' of {node} must not be None")
-    if node.M is None:
-        raise InvalidParametersError(f"Parameter 'M' of {node} must not be None")
-    if node.n is None:
-        raise InvalidParametersError(f"Parameter 'n' of {node} must not be None")
-    # note: scipy hypergeom has switched semantics for the parameters
-    parameters = {"M": node.N, "n": node.M, "N": node.n}
-    return parameters

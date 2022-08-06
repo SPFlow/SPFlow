@@ -1,21 +1,16 @@
 """
 Created on November 6, 2021
 
-@authors: Bennet Wittelsbach, Philipp Deibert
+@authors: Philipp Deibert, Bennet Wittelsbach
 """
-
-from .parametric import ParametricLeaf
-from .statistical_types import ParametricType
-from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List, Union, Optional
+from typing import Tuple, Optional
 import numpy as np
-from scipy.stats import binom  # type: ignore
-from scipy.stats._distn_infrastructure import rv_discrete  # type: ignore
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.scope.scope import Scope
+from spflow.base.structure.nodes.node import LeafNode
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class Binomial(ParametricLeaf):
+class Binomial(LeafNode):
     r"""(Univariate) Binomial distribution.
 
     .. math::
@@ -30,21 +25,20 @@ class Binomial(ParametricLeaf):
 
     Args:
         scope:
-            List of integers specifying the variable scope.
+            Scope object specifying the variable scope.
         n:
             Number of i.i.d. Bernoulli trials (greater of equal to 0).
         p:
             Probability of success of each trial in the range :math:`[0,1]` (default 0.5).
     """
+    def __init__(self, scope: Scope, n: int, p: Optional[float]=0.5) -> None:
 
-    type = ParametricType.COUNT
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Binomial should be 1, but was {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Binomial should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], n: int, p: Optional[float]=0.5) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for Binomial should be 1, but was: {len(scope)}")
-
-        super().__init__(scope)
+        super(Binomial, self).__init__(scope=scope)
         self.set_params(n, p)
 
     def set_params(self, n: int, p: float) -> None:
@@ -84,9 +78,9 @@ class Binomial(ParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = np.ones(scope_data.shape[0], dtype=bool)
@@ -104,18 +98,3 @@ class Binomial(ParametricLeaf):
         )
 
         return valid
-
-
-@dispatch(Binomial)  # type: ignore[no-redef]
-def get_scipy_object(node: Binomial) -> rv_discrete:
-    return binom
-
-
-@dispatch(Binomial)  # type: ignore[no-redef]
-def get_scipy_object_parameters(node: Binomial) -> Dict[str, Union[int, float]]:
-    if node.n is None:
-        raise InvalidParametersError(f"Parameter 'n' of {node} must not be None")
-    if node.p is None:
-        raise InvalidParametersError(f"Parameter 'p' of {node} must not be None")
-    parameters = {"n": node.n, "p": node.p}
-    return parameters

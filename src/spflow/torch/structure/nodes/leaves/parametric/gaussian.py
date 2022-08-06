@@ -9,15 +9,15 @@ import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
 from typing import List, Tuple, Optional
-from .parametric import TorchParametricLeaf, proj_bounded_to_real, proj_real_to_bounded
-from spflow.base.structure.nodes.leaves.parametric.statistical_types import ParametricType
-from spflow.base.structure.nodes.leaves.parametric import Gaussian
+from .projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.torch.structure.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian as BaseGaussian
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class TorchGaussian(TorchParametricLeaf):
-    r"""(Univariate) Normal distribution.
+class Gaussian(LeafNode):
+    r"""(Univariate) Normal distribution for Torch backend.
 
     .. math::
 
@@ -33,35 +33,34 @@ class TorchGaussian(TorchParametricLeaf):
             List of integers specifying the variable scope.
         mean:
             mean (:math:`\mu`) of the distribution (default 0.0).
-        stdev:
+        std:
             standard deviation (:math:`\sigma`) of the distribution (must be greater than 0; default 1.0).
     """
+    def __init__(self, scope: Scope, mean: Optional[float]=0.0, std: Optional[float]=1.0) -> None:
 
-    ptype = ParametricType.CONTINUOUS
+        if len(scope.query) != 1:
+            raise ValueError(f"Query scope size for Gaussian should be 1, but was: {len(scope.query)}.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for Gaussian should be empty, but was {scope.evidence}.")
 
-    def __init__(self, scope: List[int], mean: Optional[float]=0.0, stdev: Optional[float]=1.0) -> None:
-
-        if len(scope) != 1:
-            raise ValueError(f"Scope size for TorchGaussian should be 1, but was: {len(scope)}")
-
-        super(TorchGaussian, self).__init__(scope)
+        super(Gaussian, self).__init__(scope=scope)
 
         # register mean as torch parameter
         self.mean = Parameter()
         # register auxiliary torch paramter for standard deviation
-        self.stdev_aux = Parameter()
+        self.std_aux = Parameter()
 
         # set parameters
-        self.set_params(mean, stdev)
+        self.set_params(mean, std)
 
     @property
-    def stdev(self) -> torch.Tensor:
+    def std(self) -> torch.Tensor:
         # project auxiliary parameter onto actual parameter range
-        return proj_real_to_bounded(self.stdev_aux, lb=0.0)  # type: ignore
+        return proj_real_to_bounded(self.std_aux, lb=0.0)  # type: ignore
 
     @property
     def dist(self) -> D.Distribution:
-        return D.Normal(loc=self.mean, scale=self.stdev)
+        return D.Normal(loc=self.mean, scale=self.std)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
 
@@ -75,7 +74,7 @@ class TorchGaussian(TorchParametricLeaf):
 
         # ----- marginalization -----
 
-        marg_ids = torch.isnan(scope_data).sum(dim=1) == len(self.scope)
+        marg_ids = torch.isnan(scope_data).sum(dim=1) == len(self.scope.Query)
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
         log_prob[marg_ids] = 0.0
@@ -87,7 +86,7 @@ class TorchGaussian(TorchParametricLeaf):
 
         if not all(valid_ids):
             raise ValueError(
-                f"Encountered data instances that are not in the support of the TorchGaussian distribution."
+                f"Encountered data instances that are not in the support of the Gaussian distribution."
             )
 
         # compute probabilities for values inside distribution support
@@ -97,22 +96,22 @@ class TorchGaussian(TorchParametricLeaf):
 
         return log_prob
 
-    def set_params(self, mean: float, stdev: float) -> None:
+    def set_params(self, mean: float, std: float) -> None:
 
-        if not (np.isfinite(mean) and np.isfinite(stdev)):
+        if not (np.isfinite(mean) and np.isfinite(std)):
             raise ValueError(
-                f"Mean and standard deviation for TorchGaussian distribution must be finite, but were: {mean}, {stdev}"
+                f"Mean and standard deviation for Gaussian distribution must be finite, but were: {mean}, {std}"
             )
-        if stdev <= 0.0:
+        if std <= 0.0:
             raise ValueError(
-                f"Standard deviation for TorchGaussian distribution must be greater than 0.0, but was: {stdev}"
+                f"Standard deviation for Gaussian distribution must be greater than 0.0, but was: {std}"
             )
 
         self.mean.data = torch.tensor(float(mean))
-        self.stdev_aux.data = proj_bounded_to_real(torch.tensor(float(stdev)), lb=0.0)
+        self.std_aux.data = proj_bounded_to_real(torch.tensor(float(std)), lb=0.0)
 
     def get_params(self) -> Tuple[float, float]:
-        return self.mean.data.cpu().numpy(), self.stdev.data.cpu().numpy()  # type: ignore
+        return self.mean.data.cpu().numpy(), self.std.data.cpu().numpy()  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
         r"""Checks if instances are part of the support of the Gaussian distribution.
@@ -128,9 +127,9 @@ class TorchGaussian(TorchParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = self.dist.support.check(scope_data)  # type: ignore
@@ -142,11 +141,11 @@ class TorchGaussian(TorchParametricLeaf):
         return valid
 
 
-@dispatch(Gaussian)  # type: ignore[no-redef]
-def toTorch(node: Gaussian) -> TorchGaussian:
-    return TorchGaussian(node.scope, *node.get_params())
+@dispatch(memoize=True)
+def toTorch(node: BaseGaussian) -> Gaussian:
+    return Gaussian(node.scope, *node.get_params())
 
 
-@dispatch(TorchGaussian)  # type: ignore[no-redef]
-def toNodes(torch_node: TorchGaussian) -> Gaussian:
-    return Gaussian(torch_node.scope, *torch_node.get_params())
+@dispatch(memoize=True)
+def toBase(torch_node: Gaussian) -> BaseGaussian:
+    return BaseGaussian(torch_node.scope, *torch_node.get_params())

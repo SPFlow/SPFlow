@@ -1,21 +1,18 @@
 """
 Created on November 6, 2021
 
-@authors: Bennet Wittelsbach, Philipp Deibert
+@authors: Philipp Deibert, Bennet Wittelsbach
 """
-
-from .parametric import ParametricLeaf
-from .statistical_types import ParametricType
-from .exceptions import InvalidParametersError
-from typing import Tuple, Dict, List, Union, Optional
+from typing import Tuple, List, Union, Optional, Iterable
 import numpy as np
-from scipy.stats import multivariate_normal  # type: ignore
-from scipy.stats._distn_infrastructure import rv_continuous  # type: ignore
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.scope.scope import Scope
+from spflow.base.structure.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 
-from multipledispatch import dispatch  # type: ignore
 
-
-class MultivariateGaussian(ParametricLeaf):
+class MultivariateGaussian(LeafNode):
     r"""Multivariate Normal distribution.
 
     .. math::
@@ -30,104 +27,103 @@ class MultivariateGaussian(ParametricLeaf):
 
     Args:
         scope:
-            List of integers specifying the variable scope.
-        mean_vector:
+            Scope object specifying the variable scope.
+        mean:
             A list, NumPy array or a PyTorch tensor holding the means (:math:`\mu`) of each of the one-dimensional Normal distributions (defaults to all zeros).
             Has exactly as many elements as the scope of this leaf.
-        covariance_matrix:
+        cov:
             A list of lists, NumPy array or PyTorch tensor (representing a two-dimensional :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
             of the scope) describing the covariances of the distribution (defaults to the identity matrix). The diagonal holds
             the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
     """
-
-    type = ParametricType.CONTINUOUS
-
     def __init__(
         self,
-        scope: List[int],
-        mean_vector: Optional[Union[List[float], np.ndarray]]=None,
-        covariance_matrix: Optional[Union[List[List[float]], np.ndarray]]=None,
+        scope: Scope,
+        mean: Optional[Union[List[float], np.ndarray]]=None,
+        cov: Optional[Union[List[List[float]], np.ndarray]]=None,
     ) -> None:
 
         # check if scope contains duplicates
-        if(len(set(scope)) != len(scope)):
-            raise ValueError("Scope for MultivariateGaussian contains duplicate variables.")
+        if(len(set(scope.query)) != len(scope.query)):
+            raise ValueError("Query scope for MultivariateGaussian contains duplicate variables.")
+        if len(scope.evidence):
+            raise ValueError(f"Evidence scope for MultivariateGaussian should be empty, but was {scope.evidence}.")
 
-        super().__init__(scope)
+        super(MultivariateGaussian, self).__init__(scope=scope)
 
-        if(mean_vector is None):
-            mean_vector = np.zeros((1,len(scope)))
-        if(covariance_matrix is None):
-            covariance_matrix = np.eye(len(scope))
+        if(mean is None):
+            mean = np.zeros((1,len(scope.query)))
+        if(cov is None):
+            cov = np.eye(len(scope.query))
 
-        self.set_params(mean_vector, covariance_matrix)
+        self.set_params(mean, cov)
 
     def set_params(
         self,
-        mean_vector: Union[List[float], np.ndarray],
-        covariance_matrix: Union[List[List[float]], np.ndarray],
+        mean: Union[List[float], np.ndarray],
+        cov: Union[List[List[float]], np.ndarray],
     ) -> None:
 
         # cast lists to numpy arrays
-        if isinstance(mean_vector, List):
-            mean_vector = np.array(mean_vector)
-        if isinstance(covariance_matrix, List):
-            covariance_matrix = np.array(covariance_matrix)
+        if isinstance(mean, List):
+            mean = np.array(mean)
+        if isinstance(cov, List):
+            cov = np.array(cov)
 
         # check mean vector dimensions
         if (
-            (mean_vector.ndim == 1 and mean_vector.shape[0] != len(self.scope))
-            or (mean_vector.ndim == 2 and mean_vector.shape[1] != len(self.scope))
-            or mean_vector.ndim > 2
+            (mean.ndim == 1 and mean.shape[0] != len(self.scope.query))
+            or (mean.ndim == 2 and mean.shape[1] != len(self.scope.query))
+            or mean.ndim > 2
         ):
             raise ValueError(
-                f"Dimensions of mean vector for MultivariateGaussian should match scope size {len(self.scope)}, but was: {mean_vector.shape}"
+                f"Dimensions of mean vector for MultivariateGaussian should match scope size {len(self.scope.query)}, but was: {mean.shape}"
             )
 
         # check mean vector for nan or inf values
-        if np.any(np.isinf(mean_vector)):
+        if np.any(np.isinf(mean)):
             raise ValueError("Mean vector for MultivariateGaussian may not contain infinite values")
-        if np.any(np.isnan(mean_vector)):
+        if np.any(np.isnan(mean)):
             raise ValueError("Mean vector for MultivariateGaussian may not contain NaN values")
 
         # test whether or not matrix has correct shape
-        if covariance_matrix.ndim != 2 or (
-            covariance_matrix.ndim == 2
+        if cov.ndim != 2 or (
+            cov.ndim == 2
             and (
-                covariance_matrix.shape[0] != len(self.scope)
-                or covariance_matrix.shape[1] != len(self.scope)
+                cov.shape[0] != len(self.scope.query)
+                or cov.shape[1] != len(self.scope.query)
             )
         ):
             raise ValueError(
-                f"Covariance matrix for MultivariateGaussian expected to be of shape ({len(self.scope), len(self.scope)}), but was: {covariance_matrix.shape}"
+                f"Covariance matrix for MultivariateGaussian expected to be of shape ({len(self.scope.query), len(self.scope.query)}), but was: {cov.shape}"
             )
 
         # check covariance matrix for nan or inf values
-        if np.any(np.isinf(covariance_matrix)):
+        if np.any(np.isinf(cov)):
             raise ValueError(
                 "Covariance matrix for MultivariateGaussian may not contain infinite values"
             )
-        if np.any(np.isnan(covariance_matrix)):
+        if np.any(np.isnan(cov)):
             raise ValueError(
                 "Covariance matrix for MultivariateGaussian may not contain NaN values"
             )
 
         # test covariance matrix for symmetry
-        if not np.allclose(covariance_matrix, covariance_matrix.T):
+        if not np.allclose(cov, cov.T):
             raise ValueError("Covariance matrix for MultivariateGaussian must be symmetric")
         # test covariance matrix for positive semi-definiteness
-        if np.any(np.linalg.eigvals(covariance_matrix) < 0):
+        if np.any(np.linalg.eigvals(cov) < 0):
             raise ValueError(
                 "Covariance matrix for MultivariateGaussian must be positive semi-definite"
             )
 
-        self.mean_vector = mean_vector
-        self.covariance_matrix = covariance_matrix
+        self.mean = mean
+        self.cov = cov
 
     def get_params(
         self,
-    ) -> Tuple[Union[List[float], np.ndarray], Union[List[List[float]], np.ndarray]]:
-        return self.mean_vector, self.covariance_matrix
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        return self.mean, self.cov
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
         r"""Checks if instances are part of the support of the MultivariateGaussian distribution.
@@ -143,9 +139,9 @@ class MultivariateGaussian(ParametricLeaf):
             Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
         """
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
+                f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
         valid = np.ones(scope_data.shape[0], dtype=bool)
@@ -155,20 +151,27 @@ class MultivariateGaussian(ParametricLeaf):
         valid &= ~np.isinf(scope_data).sum(axis=-1).astype(bool)
 
         return valid
+    
+    def marginalize(self, marg_rvs: Iterable[int]) -> Union["MultivariateGaussian",Gaussian,None]:
+
+        # scope after marginalization (important: must remain order of scope indices since they map to the indices of the mean vector and covariance matrix!)
+        marg_scope = [rv for rv in self.scope.query if rv not in marg_rvs]
+
+        # return univariate Gaussian if one-dimensional
+        if(len(marg_scope) == 1):
+            return Gaussian(Scope(marg_scope), self.mean[marg_scope[0]], self.cov[marg_scope[0]][marg_scope[0]])
+        # entire node is marginalized over
+        elif not marg_scope:
+            return None
+        # node is partially marginalized over
+        else:
+            # compute marginalized mean vector and covariance matrix
+            marg_mean = self.mean[marg_scope]
+            marg_cov = self.cov[marg_scope][:, marg_scope]
+
+            return MultivariateGaussian(Scope(marg_scope), marg_mean, marg_cov)
 
 
-@dispatch(MultivariateGaussian)  # type: ignore[no-redef]
-def get_scipy_object(node: MultivariateGaussian) -> rv_continuous:
-    return multivariate_normal
-
-
-@dispatch(MultivariateGaussian)  # type: ignore[no-redef]
-def get_scipy_object_parameters(
-    node: MultivariateGaussian,
-) -> Dict[str, np.ndarray]:
-    if node.mean_vector is None:
-        raise InvalidParametersError(f"Parameter 'mean_vector' of {node} must not be None")
-    if node.covariance_matrix is None:
-        raise InvalidParametersError(f"Parameter 'covariance_matrix' of {node} must not be None")
-    parameters = {"mean": node.mean_vector, "cov": node.covariance_matrix}
-    return parameters
+@dispatch(memoize=True)
+def marginalize(node: MultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[MultivariateGaussian,Gaussian,None]:
+    return node.marginalize(marg_rvs)
