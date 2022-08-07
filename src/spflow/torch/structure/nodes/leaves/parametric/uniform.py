@@ -3,13 +3,13 @@ Created on November 06, 2021
 
 @authors: Philipp Deibert
 """
-
 import numpy as np
 import torch
 import torch.distributions as D
 from typing import List, Tuple
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform as BaseUniform
 
@@ -117,10 +117,10 @@ class Uniform(LeafNode):
 
 
 @dispatch(memoize=True)
-def toTorch(node: BaseUniform) -> Uniform:
+def toTorch(node: BaseUniform, dispatch_ctx: Optional[DispatchContext]=None) -> Uniform:
     return Uniform(node.scope, node.start, node.end)
 
 
 @dispatch(memoize=True)
-def toBase(torch_node: Uniform) -> BaseUniform:
+def toBase(torch_node: Uniform, dispatch_ctx: Optional[DispatchContext]=None) -> BaseUniform:
     return BaseUniform(torch_node.scope, torch_node.start.cpu().numpy(), torch_node.end.cpu().numpy())

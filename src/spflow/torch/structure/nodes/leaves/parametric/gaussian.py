@@ -3,7 +3,6 @@ Created on November 06, 2021
 
 @authors: Philipp Deibert
 """
-
 import numpy as np
 import torch
 import torch.distributions as D
@@ -12,6 +11,7 @@ from typing import List, Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian as BaseGaussian
 
@@ -142,10 +142,10 @@ class Gaussian(LeafNode):
 
 
 @dispatch(memoize=True)
-def toTorch(node: BaseGaussian) -> Gaussian:
+def toTorch(node: BaseGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> Gaussian:
     return Gaussian(node.scope, *node.get_params())
 
 
 @dispatch(memoize=True)
-def toBase(torch_node: Gaussian) -> BaseGaussian:
+def toBase(torch_node: Gaussian, dispatch_ctx: Optional[DispatchContext]=None) -> BaseGaussian:
     return BaseGaussian(torch_node.scope, *torch_node.get_params())
