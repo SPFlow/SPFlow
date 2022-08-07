@@ -3,7 +3,6 @@ Created on November 06, 2021
 
 @authors: Philipp Deibert
 """
-
 import numpy as np
 import torch
 import torch.distributions as D
@@ -12,6 +11,7 @@ from typing import List, Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial as BaseBinomial
 
@@ -121,10 +121,10 @@ class Binomial(LeafNode):
 
 
 @dispatch(memoize=True)
-def toTorch(node: BaseBinomial) -> Binomial:
+def toTorch(node: BaseBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> Binomial:
     return Binomial(node.scope, *node.get_params())
 
 
 @dispatch(memoize=True)
-def toBase(torch_node: Binomial) -> BaseBinomial:
+def toBase(torch_node: Binomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseBinomial:
     return BaseBinomial(torch_node.scope, *torch_node.get_params())

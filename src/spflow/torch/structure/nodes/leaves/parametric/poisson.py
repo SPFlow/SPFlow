@@ -3,7 +3,6 @@ Created on November 06, 2021
 
 @authors: Philipp Deibert
 """
-
 import numpy as np
 import torch
 import torch.distributions as D
@@ -12,6 +11,7 @@ from typing import List, Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.poisson import Poisson as BasePoisson
 
@@ -108,10 +108,10 @@ class Poisson(LeafNode):
 
 
 @dispatch(memoize=True)
-def toTorch(node: BasePoisson) -> Poisson:
+def toTorch(node: BasePoisson, dispatch_ctx: Optional[DispatchContext]=None) -> Poisson:
     return Poisson(node.scope, *node.get_params())
 
 
 @dispatch(memoize=True)
-def toBase(torch_node: Poisson) -> BasePoisson:
+def toBase(torch_node: Poisson, dispatch_ctx: Optional[DispatchContext]=None) -> BasePoisson:
     return BasePoisson(torch_node.scope, *torch_node.get_params())

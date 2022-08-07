@@ -3,7 +3,6 @@ Created on November 06, 2021
 
 @authors: Philipp Deibert
 """
-
 import numpy as np
 import torch
 import torch.distributions as D
@@ -231,10 +230,10 @@ def marginalize(node: MultivariateGaussian, marg_rvs: Iterable[int], prune: bool
 
 
 @dispatch(memoize=True)
-def toTorch(node: BaseMultivariateGaussian) -> MultivariateGaussian:
+def toTorch(node: BaseMultivariateGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> MultivariateGaussian:
     return MultivariateGaussian(node.scope, *node.get_params())
 
 
 @dispatch(memoize=True)
-def toBase(torch_node: MultivariateGaussian) -> BaseMultivariateGaussian:
+def toBase(torch_node: MultivariateGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> BaseMultivariateGaussian:
     return BaseMultivariateGaussian(torch_node.scope, *torch_node.get_params())

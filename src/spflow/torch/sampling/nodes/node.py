@@ -6,7 +6,8 @@ Created on May 10, 2022
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.meta.contexts.sampling_context import SamplingContext
-from spflow.torch.structure.nodes.node import SPNSumNode, SPNLeafNode
+from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
+from spflow.torch.inference.nodes.node import log_likelihood
 from spflow.torch.sampling.module import sample
 
 import torch
@@ -14,9 +15,9 @@ from typing import Optional
 
 
 @dispatch
-def sample(node: SPNSumNode, data: torch.Tensor, dispatch_ct: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
 
-    if any(len(child) != 1 for child in node.children()):
+    if any(child.n_out != 1 for child in node.children()):
         raise NotImplementedError(
             f"Sampling from multi-output child modules not yet supported for TorchSumNode."
         )
