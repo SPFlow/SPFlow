@@ -11,8 +11,12 @@ import unittest
 class TestNegativeBinomial(unittest.TestCase):
     def test_initialization(self):
 
-        # Valid parameters for Negative Binomial distribution: p in [0,1], n > 0
+        # Valid parameters for Negative Binomial distribution: p in (0,1], n > 0
 
+        # p = 1
+        negative_binomial = NegativeBinomial(Scope([0]), 1, 1.0)
+        # p = 0
+        self.assertRaises(Exception, NegativeBinomial, Scope([0]), 1, 0.0)
         # p < 0 and p > 1
         self.assertRaises(Exception, NegativeBinomial, Scope([0]), 1, np.nextafter(1.0, 2.0))
         self.assertRaises(Exception, NegativeBinomial, Scope([0]), 1, np.nextafter(0.0, -1.0))

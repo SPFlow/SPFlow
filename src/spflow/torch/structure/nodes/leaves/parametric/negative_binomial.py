@@ -34,7 +34,7 @@ class NegativeBinomial(LeafNode):
         n:
             Number of i.i.d. trials (greater or equal to 0).
         p:
-            Probability of success for each trial in the range :math:`[0,1]` (default 0.5).
+            Probability of success for each trial in the range :math:`(0,1]` (default 0.5).
     """
     def __init__(self, scope: Scope, n: int, p: Optional[float]=0.5) -> None:
 
@@ -66,7 +66,7 @@ class NegativeBinomial(LeafNode):
 
     def set_params(self, n: int, p: float) -> None:
 
-        if p < 0.0 or p > 1.0 or not np.isfinite(p):
+        if p <= 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
                 f"Value of p for NegativeBinomial distribution must to be between 0.0 and 1.0, but was: {p}"
             )
