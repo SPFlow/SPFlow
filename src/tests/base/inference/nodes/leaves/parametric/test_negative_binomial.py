@@ -58,23 +58,9 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
-    def test_likelihood_p_0(self):
-
-        # p = 0
-        negative_binomial = NegativeBinomial(Scope([0]), 1, 0.0)
-
-        data = np.array([[0.0], [1.0]])
-        targets = np.array([[1.0], [0.0]])
-
-        probs = likelihood(negative_binomial, data)
-        log_probs = log_likelihood(negative_binomial, data)
-
-        self.assertTrue(np.allclose(probs, np.exp(log_probs)))
-        self.assertTrue(np.allclose(probs, targets))
-
     def test_likelihood_p_none(self):
 
-        negative_binomial = NegativeBinomial(Scope([0]), 1, 0.0)
+        negative_binomial = NegativeBinomial(Scope([0]), 1, 0.5)
 
         data = np.array([[0.0], [1.0]])
 
@@ -84,7 +70,7 @@ class TestNegativeBinomial(unittest.TestCase):
 
     def test_likelihood_n_none(self):
 
-        negative_binomial = NegativeBinomial(Scope([0]), 1, 0.0)
+        negative_binomial = NegativeBinomial(Scope([0]), 1, 0.5)
 
         data = np.array([[0.0], [1.0]])
 

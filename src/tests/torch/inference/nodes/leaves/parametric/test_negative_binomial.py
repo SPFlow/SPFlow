@@ -119,23 +119,10 @@ class TestNegativeBinomial(unittest.TestCase):
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
-    
-    def test_likelihood_p_0(self):
 
-        # p = 0
-        negative_binomial = NegativeBinomial(Scope([0]), 1, 0.0)
-
-        data = torch.tensor([[0.0], [1.0]])
-        targets = torch.tensor([[1.0], [0.0]])
-
-        probs = likelihood(negative_binomial, data)
-        log_probs = log_likelihood(negative_binomial, data)
-
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
-    
     def test_likelihood_n_float(self):
 
+        negative_binomial = NegativeBinomial(Scope([0]), 1, 0.5)
         self.assertRaises(Exception, likelihood, negative_binomial, 0.5)
 
     def test_likelihood_marginalization(self):
