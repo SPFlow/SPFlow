@@ -4,7 +4,6 @@ from spflow.base.inference.nodes.leaves.parametric.hypergeometric import log_lik
 from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric, toBase, toTorch
 from spflow.torch.inference.nodes.leaves.parametric.hypergeometric import log_likelihood
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
 
 import torch
 import numpy as np
@@ -172,13 +171,6 @@ class TestHypergeometric(unittest.TestCase):
         )
         self.assertRaises(ValueError, log_likelihood, hypergeometric, torch.tensor([[5.5]]))
 
-"""
-    def test_sampling(self):
-
-        hypergeometric = Hypergeometric(Scope([0]), 10, 10, 10)
-
-        self.assertRaises(NotImplementedError, sample, hypergeometric)
-"""
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

@@ -1,11 +1,9 @@
-#from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli as BaseBernoulli
 from spflow.base.inference.nodes.leaves.parametric.bernoulli import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric.bernoulli import Bernoulli, toBase, toTorch
 from spflow.torch.inference.nodes.leaves.parametric.bernoulli import log_likelihood
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
 
 import torch
 import numpy as np
@@ -185,31 +183,6 @@ class TestBernoulli(unittest.TestCase):
         )
         self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[0.5]]))
 
-    """
-    def test_sampling(self):
-
-        # ----- p = 0 -----
-
-        bernoulli = Bernoulli(Scope([0]), 0.0)
-
-        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
-
-        samples = sample(bernoulli, data, ll_cache={}, sampling_ctx=SamplingContext([0, 2]))
-
-        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
-        self.assertTrue(all(samples[~samples.isnan()] == 0.0))
-
-        # ----- p = 1 -----
-
-        bernoulli = Bernoulli(Scope([0]), 1.0)
-
-        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
-
-        samples = sample(bernoulli, data, ll_cache={}, sampling_ctx=SamplingContext([0, 2], [[0], [0]]))
-
-        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
-        self.assertTrue(all(samples[~samples.isnan()] == 1.0))
-    """
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

@@ -1,11 +1,9 @@
-#from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform as BaseUniform
 from spflow.base.inference.nodes.leaves.parametric.uniform import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric.uniform import Uniform, toBase, toTorch
 from spflow.torch.inference.nodes.leaves.parametric.uniform import log_likelihood
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
 
 import torch
 import numpy as np
@@ -149,21 +147,6 @@ class TestUniform(unittest.TestCase):
             torch.tensor([[torch.nextafter(torch.tensor(2.0), torch.tensor(3.0))]]),
         )
 
-"""
-    def test_sampling(self):
-
-        # ----- a = -1.0, b = 2.5 -----
-
-        uniform = Uniform(Scope([0]), -1.0, 2.5)
-        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
-
-        samples = sample(uniform, data, ll_cache={}, sampling_ctx=SamplingContext([0, 2]))
-
-        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
-
-        samples = sample(uniform, 1000)
-        self.assertTrue(all((samples >= -1.0) & (samples <= 2.5)))
-"""
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)
