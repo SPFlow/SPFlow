@@ -159,7 +159,8 @@ class MultivariateGaussian(LeafNode):
 
         # return univariate Gaussian if one-dimensional
         if(len(marg_scope) == 1):
-            return Gaussian(Scope(marg_scope), self.mean[marg_scope[0]], self.cov[marg_scope[0]][marg_scope[0]])
+            # note: Gaussian requires standard deviations instead of variance (take square root)
+            return Gaussian(Scope(marg_scope), self.mean[marg_scope[0]], np.sqrt(self.cov[marg_scope[0]][marg_scope[0]]))
         # entire node is marginalized over
         elif not marg_scope:
             return None

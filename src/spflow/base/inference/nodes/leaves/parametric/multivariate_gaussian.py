@@ -43,6 +43,11 @@ def log_likelihood(node: MultivariateGaussian, data: np.ndarray, dispatch_ctx: O
         raise ValueError(
             f"Encountered data instances that are not in the support of the MultivariateGaussian distribution."
         )
+    
+    if(node.mean is None):
+        raise ValueError("Encountered 'None' value for MultivariateGaussian mean vector during inference.")
+    if(node.cov is None):
+        raise ValueError("Encountered 'None' value for MultivariateGaussian covariance matrix during inference.")
 
     # compute probabilities for all non-marginalized instances
     probs[~n_marg.astype(bool), 0] = multivariate_normal.logpdf(x=data[~n_marg.astype(bool)], mean=node.mean, cov=node.cov)
