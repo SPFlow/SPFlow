@@ -8,7 +8,6 @@ from spflow.torch.inference.nodes.leaves.parametric.multivariate_gaussian import
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.torch.inference.nodes.leaves.parametric.gaussian import log_likelihood
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
 
 import torch
 import numpy as np
@@ -256,13 +255,6 @@ class TestMultivariateGaussian(unittest.TestCase):
             ValueError, log_likelihood, multivariate_gaussian, torch.tensor([[0.0, float("inf")]])
         )
 
-"""
-    def test_sampling(self):
-
-        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), np.zeros(2), np.eye(2))
-
-        self.assertRaises(NotImplementedError, sample, multivariate_gaussian)
-"""
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

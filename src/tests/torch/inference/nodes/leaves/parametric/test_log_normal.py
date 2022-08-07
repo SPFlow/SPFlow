@@ -1,11 +1,9 @@
-#from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.log_normal import LogNormal as BaseLogNormal
 from spflow.base.inference.nodes.leaves.parametric.log_normal import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric.log_normal import LogNormal, toBase, toTorch
 from spflow.torch.inference.nodes.leaves.parametric.log_normal import log_likelihood
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
 
 import torch
 import numpy as np
@@ -143,33 +141,6 @@ class TestLogNormal(unittest.TestCase):
         )
         log_likelihood(log_normal, torch.tensor([[4.3]]))
 
-"""
-    def test_sampling(self):
-
-        # ----- mean = 0.0, std = 1.0 -----
-
-        log_normal = LogNormal(Scope([0]), 0.0, 1.0)
-
-        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
-
-        samples = sample(log_normal, data, ll_cache={}, sampling_ctx=SamplingContext([0, 2]))
-
-        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
-
-        samples = sample(log_normal, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.exp(torch.tensor(0.0 + (1.0 ** 2 / 2.0))), rtol=0.1)
-        )
-
-        # ----- mean = 1.0, std = 0.5 -----
-
-        log_normal = LogNormal(Scope([0]), 1.0, 0.5)
-
-        samples = sample(log_normal, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.exp(torch.tensor(1.0 + (0.5 ** 2 / 2.0))), rtol=0.1)
-        )
-"""
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)
