@@ -5,9 +5,6 @@ from spflow.torch.sampling.nodes.leaves.parametric.gaussian import sample
 from spflow.torch.sampling.module import sample
 
 import torch
-import numpy as np
-
-import random
 import unittest
 
 

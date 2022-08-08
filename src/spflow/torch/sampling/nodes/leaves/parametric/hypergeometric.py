@@ -14,4 +14,5 @@ from typing import Optional
 
 @dispatch
 def sample(leaf: Hypergeometric, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+    """TODO"""
     raise NotImplementedError()
