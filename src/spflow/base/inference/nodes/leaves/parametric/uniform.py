@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
 
 from typing import Optional
 import numpy as np
-from scipy.stats import uniform
 
 
 @dispatch(memoize=True)
@@ -38,6 +37,6 @@ def log_likelihood(node: Uniform, data: np.ndarray, dispatch_ctx: Optional[Dispa
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = uniform.logpdf(x=data[~marg_ids], loc=node.start, scale=node.end-node.start)
+    probs[~marg_ids] = node.dist.logpdf(x=data[~marg_ids])
 
     return probs

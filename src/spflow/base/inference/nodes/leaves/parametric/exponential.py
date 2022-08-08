@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.exponential import Exponentia
 
 from typing import Optional
 import numpy as np
-from scipy.stats import expon
 
 
 @dispatch(memoize=True)
@@ -38,6 +37,6 @@ def log_likelihood(node: Exponential, data: np.ndarray, dispatch_ctx: Optional[D
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = expon.logpdf(x=data[~marg_ids], scale=1.0/node.l)
+    probs[~marg_ids] = node.dist.logpdf(x=data[~marg_ids])
 
     return probs

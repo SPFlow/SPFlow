@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 
 from typing import Optional
 import numpy as np
-from scipy.stats import norm
 
 
 @dispatch(memoize=True)
@@ -38,6 +37,6 @@ def log_likelihood(node: Gaussian, data: np.ndarray, dispatch_ctx: Optional[Disp
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = norm.logpdf(x=data[~marg_ids], loc=node.mean, scale=node.std)
+    probs[~marg_ids] = node.dist.logpdf(x=data[~marg_ids])
 
     return probs

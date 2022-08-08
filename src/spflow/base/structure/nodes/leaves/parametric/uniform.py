@@ -5,9 +5,11 @@ Created on November 6, 2021
 """
 from typing import Tuple
 import numpy as np
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
+
+from scipy.stats import uniform
+from scipy.stats.distributions import rv_frozen
 
 
 class Uniform(LeafNode):
@@ -42,6 +44,10 @@ class Uniform(LeafNode):
 
         super(Uniform, self).__init__(scope=scope)
         self.set_params(start, end, support_outside)
+    
+    @property
+    def dist(self) -> rv_frozen:
+        return uniform(loc=self.start, scale=self.end-self.start)
 
     def set_params(self, start: float, end: float, support_outside: bool = True) -> None:
 

@@ -5,9 +5,11 @@ Created on November 6, 2021
 """
 from typing import Optional, Tuple
 import numpy as np
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
+
+from scipy.stats import lognorm
+from scipy.stats.distributions import rv_frozen
 
 
 class LogNormal(LeafNode):
@@ -39,6 +41,10 @@ class LogNormal(LeafNode):
 
         super(LogNormal, self).__init__(scope=scope)
         self.set_params(mean, std)
+    
+    @property
+    def dist(self) -> rv_frozen:
+        return lognorm(loc=0.0, scale=np.exp(self.mean), s=self.std)
 
     def set_params(self, mean: float, std: float) -> None:
 

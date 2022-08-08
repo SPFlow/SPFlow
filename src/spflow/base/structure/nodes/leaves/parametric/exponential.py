@@ -5,9 +5,11 @@ Created on November 6, 2021
 """
 from typing import Tuple, Optional
 import numpy as np
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
+
+from scipy.stats import expon
+from scipy.stats.distributions import rv_frozen
 
 
 class Exponential(LeafNode):
@@ -37,6 +39,10 @@ class Exponential(LeafNode):
 
         super(Exponential, self).__init__(scope=scope)
         self.set_params(l)
+    
+    @property
+    def dist(self) -> rv_frozen:
+        return expon(scale=1.0/self.l)
 
     def set_params(self, l: float) -> None:
 

@@ -5,9 +5,11 @@ Created on November 6, 2021
 """
 from typing import Tuple, Optional
 import numpy as np
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
+
+from scipy.stats import binom
+from scipy.stats.distributions import rv_frozen
 
 
 class Binomial(LeafNode):
@@ -40,6 +42,10 @@ class Binomial(LeafNode):
 
         super(Binomial, self).__init__(scope=scope)
         self.set_params(n, p)
+    
+    @property
+    def dist(self) -> rv_frozen:
+        return binom(n=self.n, p=self.p)
 
     def set_params(self, n: int, p: float) -> None:
 

@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import 
 
 from typing import Optional
 import numpy as np
-from scipy.stats import multivariate_normal
 
 
 @dispatch(memoize=True)
@@ -50,6 +49,6 @@ def log_likelihood(node: MultivariateGaussian, data: np.ndarray, dispatch_ctx: O
         raise ValueError("Encountered 'None' value for MultivariateGaussian covariance matrix during inference.")
 
     # compute probabilities for all non-marginalized instances
-    probs[~n_marg.astype(bool), 0] = multivariate_normal.logpdf(x=data[~n_marg.astype(bool)], mean=node.mean, cov=node.cov)
+    probs[~n_marg.astype(bool), 0] = node.dist.logpdf(x=data[~n_marg.astype(bool)])
 
     return probs

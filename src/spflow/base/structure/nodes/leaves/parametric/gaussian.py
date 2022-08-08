@@ -5,9 +5,11 @@ Created on November 6, 2021
 """
 from typing import Tuple, Optional
 import numpy as np
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
+
+from scipy.stats import norm
+from scipy.stats.distributions import rv_frozen
 
 
 class Gaussian(LeafNode):
@@ -44,6 +46,10 @@ class Gaussian(LeafNode):
 
         super(Gaussian, self).__init__(scope=scope)
         self.set_params(mean, std)
+    
+    @property
+    def dist(self) -> rv_frozen:
+        return norm(loc=self.mean, scale=self.std)
 
     def set_params(self, mean: Optional[float]=0.0, std: Optional[float]=1.0) -> None:
 

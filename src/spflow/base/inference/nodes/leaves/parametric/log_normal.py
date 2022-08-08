@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.log_normal import LogNormal
 
 from typing import Optional
 import numpy as np
-from scipy.stats import lognorm
 
 
 @dispatch(memoize=True)
@@ -38,6 +37,6 @@ def log_likelihood(node: LogNormal, data: np.ndarray, dispatch_ctx: Optional[Dis
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = lognorm.logpdf(x=data[~marg_ids], loc=0.0, scale=np.exp(node.mean), s=node.std)
+    probs[~marg_ids] = node.dist.logpdf(x=data[~marg_ids])
 
     return probs
