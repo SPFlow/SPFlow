@@ -5,9 +5,6 @@ from spflow.torch.sampling.nodes.leaves.parametric.log_normal import sample
 from spflow.torch.sampling.module import sample
 
 import torch
-import numpy as np
-
-import random
 import unittest
 
 
@@ -20,7 +17,7 @@ class TestLogNormal(unittest.TestCase):
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
 
-    def test_sampling(self):
+    def test_sampling_1(self):
 
         # ----- mean = 0.0, std = 1.0 -----
 
@@ -36,6 +33,8 @@ class TestLogNormal(unittest.TestCase):
         self.assertTrue(
             torch.isclose(samples.mean(), torch.exp(torch.tensor(0.0 + (1.0 ** 2 / 2.0))), rtol=0.1)
         )
+
+    def test_sampling_2(self):
 
         # ----- mean = 1.0, std = 0.5 -----
 

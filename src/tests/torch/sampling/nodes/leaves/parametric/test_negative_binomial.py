@@ -5,9 +5,6 @@ from spflow.torch.sampling.nodes.leaves.parametric.negative_binomial import samp
 from spflow.torch.sampling.module import sample
 
 import torch
-import numpy as np
-
-import random
 import unittest
 
 
@@ -20,7 +17,7 @@ class TestNegativeBinomial(unittest.TestCase):
     def teardown_class(cls):
         torch.set_default_dtype(torch.float32)
 
-    def test_sampling(self):
+    def test_sampling_1(self):
 
         # ----- n = 1, p = 1.0 -----
 
@@ -32,12 +29,16 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
         self.assertTrue(all(samples[~samples.isnan()] == 0.0))
 
+    def test_sampling_2(self):
+
         # ----- n = 10, p = 0.3 -----
 
         negative_binomial = NegativeBinomial(Scope([0]), 10, 0.3)
 
         samples = sample(negative_binomial, 1000)
         self.assertTrue(torch.isclose(samples.mean(), torch.tensor(10 * (1 - 0.3) / 0.3), rtol=0.1))
+
+    def test_sampling_3(self):
 
         # ----- n = 5, p = 0.8 -----
 

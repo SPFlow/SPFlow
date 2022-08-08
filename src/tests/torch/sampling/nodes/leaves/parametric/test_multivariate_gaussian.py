@@ -5,9 +5,6 @@ from spflow.torch.sampling.nodes.leaves.parametric.multivariate_gaussian import 
 from spflow.torch.sampling.module import sample
 
 import torch
-import numpy as np
-
-import random
 import unittest
 
 
@@ -22,7 +19,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
     def test_sampling(self):
 
-        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), np.zeros(2), np.eye(2))
+        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), torch.zeros(2), torch.eye(2))
 
         self.assertRaises(NotImplementedError, sample, multivariate_gaussian)
 

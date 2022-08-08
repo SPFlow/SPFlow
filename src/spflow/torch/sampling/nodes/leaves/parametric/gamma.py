@@ -1,3 +1,8 @@
+"""
+Created on May 10, 2022
+
+@authors: Philipp Deibert
+"""
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
@@ -9,7 +14,7 @@ from typing import Optional
 
 @dispatch
 def sample(leaf: Gamma, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
-
+    """TODO"""
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
