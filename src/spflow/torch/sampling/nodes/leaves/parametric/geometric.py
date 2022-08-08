@@ -14,7 +14,7 @@ from typing import Optional
 
 @dispatch
 def sample(leaf: Geometric, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
-
+    """TODO"""
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
@@ -28,6 +28,7 @@ def sample(leaf: Geometric, data: torch.Tensor, dispatch_ctx: Optional[DispatchC
 
     sampling_ids = marg_ids & instance_ids_mask.bool().to(leaf.p_aux.device)
 
-    data[sampling_ids, leaf.scope.query] = leaf.dist.sample((sampling_ids.sum(),)).to(leaf.p_aux.device)
+    # data needs to be offset by +1 due to the different definitions between SciPy and PyTorch
+    data[sampling_ids, leaf.scope.query] = leaf.dist.sample((sampling_ids.sum(),)).to(leaf.p_aux.device) + 1
 
     return data
