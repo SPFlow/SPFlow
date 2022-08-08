@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli
 
 from typing import Optional
 import numpy as np
-from scipy.stats import bernoulli
 
 
 @dispatch(memoize=True)
@@ -38,6 +37,6 @@ def log_likelihood(node: Bernoulli, data: np.ndarray, dispatch_ctx: Optional[Dis
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = bernoulli.logpmf(k=data[~marg_ids], p=node.p)
+    probs[~marg_ids] = node.dist.logpmf(k=data[~marg_ids])
 
     return probs

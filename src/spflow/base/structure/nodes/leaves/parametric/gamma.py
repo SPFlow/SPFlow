@@ -5,9 +5,11 @@ Created on November 6, 2021
 """
 from typing import Tuple, Optional
 import numpy as np
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
+
+from scipy.stats import gamma
+from scipy.stats.distributions import rv_frozen
 
 
 class Gamma(LeafNode):
@@ -43,6 +45,10 @@ class Gamma(LeafNode):
 
         super(Gamma, self).__init__(scope=scope)
         self.set_params(alpha, beta)
+    
+    @property
+    def dist(self) -> rv_frozen:
+        return gamma(a=self.alpha, scale=1.0/self.beta)
 
     def set_params(self, alpha: float, beta: float) -> None:
 

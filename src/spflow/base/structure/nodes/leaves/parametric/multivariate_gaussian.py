@@ -11,6 +11,9 @@ from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 
+from scipy.stats import multivariate_normal
+from scipy.stats.distributions import rv_frozen
+
 
 class MultivariateGaussian(LeafNode):
     r"""Multivariate Normal distribution.
@@ -57,6 +60,10 @@ class MultivariateGaussian(LeafNode):
             cov = np.eye(len(scope.query))
 
         self.set_params(mean, cov)
+    
+    @property
+    def dist(self) -> rv_frozen:
+        return multivariate_normal(mean=self.mean, cov=self.cov)
 
     def set_params(
         self,

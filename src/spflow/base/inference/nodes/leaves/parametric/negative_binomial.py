@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.negative_binomial import Nega
 
 from typing import Optional
 import numpy as np
-from scipy.stats import nbinom
 
 
 @dispatch(memoize=True)
@@ -38,6 +37,6 @@ def log_likelihood(node: NegativeBinomial, data: np.ndarray, dispatch_ctx: Optio
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = nbinom.logpmf(k=data[~marg_ids], n=node.n, p=node.p)
+    probs[~marg_ids] = node.dist.logpmf(k=data[~marg_ids])
 
     return probs

@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.geometric import Geometric
 
 from typing import Optional
 import numpy as np
-from scipy.stats import geom
 
 
 @dispatch(memoize=True)
@@ -38,6 +37,6 @@ def log_likelihood(node: Geometric, data: np.ndarray, dispatch_ctx: Optional[Dis
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = geom.logpmf(k=data[~marg_ids], p=node.p)
+    probs[~marg_ids] = node.dist.logpmf(k=data[~marg_ids])
 
     return probs

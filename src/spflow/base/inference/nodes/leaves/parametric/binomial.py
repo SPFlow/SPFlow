@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial
 
 from typing import Optional
 import numpy as np
-from scipy.stats import binom
 
 
 @dispatch(memoize=True)
@@ -38,6 +37,6 @@ def log_likelihood(node: Binomial, data: np.ndarray, dispatch_ctx: Optional[Disp
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = binom.logpmf(k=data[~marg_ids], n=node.n, p=node.p)
+    probs[~marg_ids] = node.dist.logpmf(k=data[~marg_ids])
 
     return probs

@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.poisson import Poisson
 
 from typing import Optional
 import numpy as np
-from scipy.stats import poisson
 
 
 @dispatch(memoize=True)
@@ -38,6 +37,6 @@ def log_likelihood(node: Poisson, data: np.ndarray, dispatch_ctx: Optional[Dispa
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = poisson.logpmf(k=data[~marg_ids], mu=node.l)
+    probs[~marg_ids] = node.dist.logpmf(k=data[~marg_ids])
 
     return probs

@@ -5,9 +5,11 @@ Created on November 6, 2021
 """
 from typing import Tuple, Optional
 import numpy as np
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
+
+from scipy.stats import bernoulli
+from scipy.stats.distributions import rv_frozen
 
 
 class Bernoulli(LeafNode):
@@ -37,6 +39,10 @@ class Bernoulli(LeafNode):
 
         super(Bernoulli, self).__init__(scope=scope)
         self.set_params(p)
+    
+    @property
+    def dist(self) -> rv_frozen:
+        return bernoulli(p=self.p)
 
     def set_params(self, p: float) -> None:
 

@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
 
 from typing import Optional
 import numpy as np
-from scipy.stats import gamma
 
 
 @dispatch(memoize=True)
@@ -38,6 +37,6 @@ def log_likelihood(node: Gamma, data: np.ndarray, dispatch_ctx: Optional[Dispatc
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = gamma.logpdf(x=data[~marg_ids], a=node.alpha, scale=1.0/node.beta)
+    probs[~marg_ids] = node.dist.logpdf(x=data[~marg_ids])
 
     return probs

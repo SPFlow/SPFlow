@@ -9,7 +9,6 @@ from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hyperge
 
 from typing import Optional
 import numpy as np
-from scipy.stats import hypergeom
 
 
 @dispatch(memoize=True)
@@ -38,6 +37,6 @@ def log_likelihood(node: Hypergeometric, data: np.ndarray, dispatch_ctx: Optiona
         )
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = hypergeom.logpmf(k=data[~marg_ids], M=node.N, n=node.M, N=node.n)
+    probs[~marg_ids] = node.dist.logpmf(k=data[~marg_ids])
 
     return probs
