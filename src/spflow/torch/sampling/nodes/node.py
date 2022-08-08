@@ -19,7 +19,7 @@ def sample(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[Dispatch
 
     if any(child.n_out != 1 for child in node.children()):
         raise NotImplementedError(
-            f"Sampling from multi-output child modules not yet supported for TorchSumNode."
+            f"Sampling from multi-output child modules not yet supported for 'SumNode'."
         )
 
     # compute log likelihoods of data instances (TODO: only compute for relevant instances? might clash with cashed values or cashing in general)
