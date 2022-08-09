@@ -13,7 +13,7 @@ from typing import Optional
 
 
 @dispatch
-def sample(leaf: MultivariateGaussian, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def sample(leaf: MultivariateGaussian, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
     """TODO"""
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
