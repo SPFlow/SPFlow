@@ -13,6 +13,26 @@ from typing import Optional
 
 
 @dispatch
-def sample(leaf: Hypergeometric, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def sample(leaf: Hypergeometric, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
     """TODO"""
-    raise NotImplementedError()
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+
+    if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
+        raise ValueError("Some instance ids are out of bounds for data tensor.")
+    
+    # TODO: what to do in case of instance ids that are already specified (i.e. not nan)?
+    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
+
+    instance_ids_mask = torch.zeros(data.shape[0])
+    instance_ids_mask[sampling_ctx.instance_ids] = 1
+
+    sampling_ids = marg_ids & instance_ids_mask.bool().to(leaf.N.device)
+
+    # TODO: may be inefficient
+    # create random permutations of N elements
+    rand_perm = torch.argsort(torch.rand(sampling_ids.shape[0], leaf.N), dim=1)
+    
+    # assuming that first M indices are the M objects of interest, count how many of these indices were "drawn" in the first n draws (with replacement since all indices are unique per row)
+    data[sampling_ids, leaf.scope.query] = (rand_perm[:, :leaf.n] <= leaf.M).sum(dim=1).type(torch.get_default_dtype())
+
+    return data

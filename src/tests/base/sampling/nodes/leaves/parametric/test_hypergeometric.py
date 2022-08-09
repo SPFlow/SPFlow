@@ -10,12 +10,31 @@ import unittest
 
 
 class TestHypergeometric(unittest.TestCase):
-    def test_sampling(self):
+    def test_sampling_1(self):
 
-        hypergeometric = Hypergeometric(Scope([0]), 10, 10, 10)
+       # ----- configuration 1 -----
+        N = 500
+        M = 100
+        n = 50
 
-        self.assertRaises(NotImplementedError, sample, hypergeometric)
+        hypergeometric = Hypergeometric(Scope([0]), N, M, n)
 
+        samples = sample(hypergeometric, 100000)
+
+        self.assertTrue(np.isclose(samples.mean(axis=0), np.array(n*M)/N, atol=0.01, rtol=0.1))
+
+    def test_sampling_2(self):
+
+        # ----- configuration 2 -----
+        N = 100
+        M = 50
+        n = 10
+
+        hypergeometric = Hypergeometric(Scope([0]), N, M, n)
+
+        samples = sample(hypergeometric, 100000)
+
+        self.assertTrue(np.isclose(samples.mean(axis=0), np.array(n*M)/N, atol=0.01, rtol=0.1))
 
 if __name__ == "__main__":
     unittest.main()
