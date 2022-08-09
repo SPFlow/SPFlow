@@ -69,7 +69,7 @@ def marginalize(node: Node, marg_rvs: Iterable[int], prune: bool=True, dispatch_
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
-        raise NotImplementedError("Partial marginalization of 'Node' is not implemented for generic nodes. Perhaps dispatch an appropriate implementation for a specific node type.")
+        raise NotImplementedError("Partial marginalization of 'Node' is not implemented for generic nodes. Dispatch an appropriate implementation for a specific node type.")
     else:
         return deepcopy(node)
 
@@ -133,6 +133,37 @@ class SPNSumNode(Node):
             raise ValueError("Number of weights for 'SPNSumNode' does not match total number of child outputs.")
 
         self.weights_aux.data = proj_convex_to_real(values)
+
+
+@dispatch(memoize=True)
+def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None):
+    """TODO"""
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+
+    # compute node scope (node only has single output)
+    node_scope = sum_node.scope
+
+    mutual_rvs = set(node_scope.query).intersection(set(marg_rvs))
+
+    # node scope is being fully marginalized
+    if(len(mutual_rvs) == len(node_scope.query)):
+        return None
+    # node scope is being partially marginalized
+    elif mutual_rvs:
+        marg_children = []
+
+        # marginalize child modules
+        for child in sum_node.children():
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+
+            # if marginalized child is not None
+            if marg_child:
+                marg_children.append(marg_child)
+        
+        return SPNSumNode(children=marg_children, weights=sum_node.weights)
+    else:
+        return deepcopy(sum_node)
 
 
 @dispatch(memoize=True)
