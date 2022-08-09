@@ -140,6 +140,9 @@ class MultivariateGaussian(LeafNode):
             raise ValueError(
                 f"Dimensions of mean vector for MultivariateGaussian should match scope size {len(self.scope.query)}, but was: {mean.shape}"
             )
+    
+        if(mean.ndim == 2):
+            mean = mean.squeeze(0)
 
         # make sure that dimensions of covariance matrix are correct
         if cov.ndim != 2 or (
