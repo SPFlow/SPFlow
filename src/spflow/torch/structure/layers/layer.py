@@ -13,7 +13,8 @@ from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.scope.scope import Scope
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.nodes.node import SPNProductNode, SPNSumNode
+from spflow.base.structure.layers.layer import SPNSumLayer as BaseSPNSumLayer
+from spflow.base.structure.layers.layer import SPNProductLayer as BaseSPNProductLayer
 
 
 class SPNSumLayer(Module):
@@ -134,6 +135,18 @@ def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, d
         return deepcopy(layer)
 
 
+@dispatch(memoize=True)
+def toBase(sum_layer: SPNSumLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNSumLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return BaseSPNSumLayer(n=sum_layer.n_out, children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()], weights=sum_layer.weights.detach().cpu().numpy())
+
+
+@dispatch(memoize=True)
+def toTorch(sum_layer: BaseSPNSumLayer, dispatch_ctx: Optional[DispatchContext]=None) -> SPNSumLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return SPNSumLayer(n=sum_layer.n_out, children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children], weights=sum_layer.weights)
+
+
 class SPNProductLayer(Module):
     """Layer representing multiple SPN-like product nodes over all children.
 
@@ -205,3 +218,15 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
         return SPNProductLayer(layer.n_out, children=marg_children)
     else:
         return deepcopy(layer)
+
+
+@dispatch(memoize=True)
+def toBase(product_layer: SPNProductLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNProductLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return BaseSPNProductLayer(n=product_layer.n_out, children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children()])
+
+
+@dispatch(memoize=True)
+def toTorch(product_layer: BaseSPNProductLayer, dispatch_ctx: Optional[DispatchContext]=None) -> SPNProductLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return SPNProductLayer(n=product_layer.n_out, children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children])
