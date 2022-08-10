@@ -31,8 +31,6 @@ class TestGeometric(unittest.TestCase):
 
         samples = sample(geometric, 1000)
 
-        print(2, samples.mean(), np.array((1.0-0.5)/0.5))
-
         self.assertTrue(np.isclose(samples.mean(), np.array(1.0/ 0.5), rtol=0.1))
 
     def test_sampling_3(self):
@@ -42,8 +40,6 @@ class TestGeometric(unittest.TestCase):
         geometric = Geometric(Scope([0]), 0.8)
 
         samples = sample(geometric, 1000)
-
-        print(3, samples.mean(), np.array((1.0-0.8)/0.8))
 
         self.assertTrue(np.isclose(samples.mean(), np.array(1.0/0.8), rtol=0.1))
 

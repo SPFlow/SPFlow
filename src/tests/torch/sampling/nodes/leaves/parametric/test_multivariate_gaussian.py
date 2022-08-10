@@ -34,7 +34,6 @@ class TestMultivariateGaussian(unittest.TestCase):
         mean_est = data.mean(dim=0)
         cov_est = torch.cov(data.T)
 
-        print(mean, mean_est)
         self.assertTrue(torch.allclose(mean, mean_est, atol=0.01, rtol=0.1))
         self.assertTrue(torch.allclose(cov, cov_est, atol=0.01, rtol=0.1))
     
@@ -81,7 +80,6 @@ class TestMultivariateGaussian(unittest.TestCase):
             mean_exact = mean[0, ~cond_mask] + ((data[i*10000, cond_mask]-mean[:, cond_mask])@(marg_cov_inv@cond_cov))
             cov_exact = cov[torch.meshgrid(non_cond_rvs, non_cond_rvs, indexing='ij')] - (cond_cov.T@marg_cov_inv@cond_cov)
 
-            print(mean_exact, mean_est)
             self.assertTrue(torch.allclose(mean_exact, mean_est, atol=0.01, rtol=0.1))
             self.assertTrue(torch.allclose(cov_exact, cov_est, atol=0.01, rtol=0.1))
 

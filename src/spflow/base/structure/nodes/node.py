@@ -112,7 +112,7 @@ class SPNSumNode(Node):
             raise ValueError("Weights for 'SPNSumNode' must be all positive.")
         if not np.isclose(values.sum(), 1.0):
             raise ValueError("Weights for 'SPNSumNode' must sum up to one.")
-        if not len(values) == self.n_in:
+        if not (len(values) == self.n_in):
             raise ValueError("Number of weights for 'SPNSumNode' does not match total number of child outputs.")
 
         self._weights = values
