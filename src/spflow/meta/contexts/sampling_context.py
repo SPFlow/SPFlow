@@ -47,4 +47,4 @@ def default_sampling_context(n: int) -> SamplingContext:
 
 
 def init_default_sampling_context(sampling_ctx: Union[SamplingContext, None], n: int) -> SamplingContext:
-    return sampling_ctx if sampling_ctx else default_sampling_context(n=n)
+    return sampling_ctx if sampling_ctx is not None else default_sampling_context(n=n)
