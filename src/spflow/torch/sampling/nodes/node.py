@@ -5,7 +5,7 @@ Created on May 10, 2022
 """
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.meta.contexts.sampling_context import SamplingContext
+from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
 from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
 from spflow.torch.inference.nodes.node import log_likelihood
 from spflow.torch.sampling.module import sample
@@ -17,12 +17,9 @@ from typing import Optional
 @dispatch
 def sample(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
 
+    # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-
-    if any(child.n_out != 1 for child in node.children()):
-        raise NotImplementedError(
-            f"Sampling from multi-output child modules not yet supported for 'SumNode'."
-        )
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # compute log likelihoods of data instances (TODO: only compute for relevant instances? might clash with cashed values or cashing in general)
     child_lls = torch.concat(
@@ -37,13 +34,15 @@ def sample(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[Dispatch
 
     # group sampled branches
     for branch in branches.unique():
-
-        # select corresponding instance ids
+        # group instances by sampled branch
         branch_instance_ids = torch.tensor(sampling_ctx.instance_ids)[branches == branch].tolist()
+
+        # get corresponding child and output id for sampled branch
+        child_id, output_id = node.input_to_output_id(branch)
 
         # sample from child module
         sample(
-            list(node.children())[branch], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instance_ids=branch_instance_ids, output_ids=[[0] for _ in range(len(branch_instance_ids))])
+            list(node.children())[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(branch_instance_ids, [[output_id] for _ in range(len(branch_instance_ids))])
         )
 
     return data
@@ -52,9 +51,12 @@ def sample(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[Dispatch
 @dispatch
 def sample(node: SPNProductNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
 
+    # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
+    # sample from all child outputs
     for child in node.children():
-        sample(child, data, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)
+        sample(child, data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(sampling_ctx.instance_ids, [list(range(child.n_out)) for _ in sampling_ctx.instance_ids]))
 
     return data
