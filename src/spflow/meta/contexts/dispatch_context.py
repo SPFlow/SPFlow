@@ -3,7 +3,8 @@ Created on August 02, 2022
 
 @authors: Philipp Deibert
 """
-from typing import Union
+from spflow.meta.structure.module import MetaModule
+from typing import Any, Union
 
 
 class DispatchContext():
@@ -21,6 +22,28 @@ class DispatchContext():
         self.args = {}
         self.funcs = {}
         self.cache = {}
+    
+    def cache_value(self, f_name: str, key: MetaModule, value: Any, overwrite=True) -> None:
+
+        if(not overwrite):
+            # if value is already cached don't overwrite
+            if(self.is_cached(f_name, key)):
+                return
+
+        # store value
+        self.cache[f_name][key] = value
+
+    def is_cached(self, f_name: str, key: MetaModule) -> bool:
+        return (f_name in self.cache and key in self.cache[f_name])
+
+    def get_cache_value(self, f_name: str, key: MetaModule) -> Union[Any, None]:
+
+        # if no value is cached, return None
+        if(not self.is_cached(f_name, key)):
+            return None
+        
+        # return cached value
+        return self.cache[f_name][key]
 
 
 def default_dispatch_context() -> DispatchContext:
@@ -28,4 +51,4 @@ def default_dispatch_context() -> DispatchContext:
 
 
 def init_default_dispatch_context(dispatch_ctx: Union[DispatchContext, None]) -> DispatchContext:
-    return dispatch_ctx if dispatch_ctx else default_dispatch_context()
+    return dispatch_ctx if dispatch_ctx is not None else default_dispatch_context()
