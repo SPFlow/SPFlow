@@ -1,4 +1,8 @@
-from spflow.torch.structure.layers.layer import SPNSumLayer, SPNProductLayer, marginalize
+from spflow.torch.structure.layers.layer import SPNSumLayer, SPNProductLayer, marginalize, toBase, toTorch
+from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian, toBase, toTorch
+from spflow.base.structure.layers.layer import SPNSumLayer as BaseSPNSumLayer
+from spflow.base.structure.layers.layer import SPNProductLayer as BaseSPNProductLayer
+from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian as BaseGaussian
 from spflow.meta.scope.scope import Scope
 from ..nodes.dummy_node import DummyNode
 import torch
@@ -82,9 +86,21 @@ class TestNode(unittest.TestCase):
         self.assertTrue(l_marg.scopes_out == [Scope([0,1]), Scope([0,1]), Scope([0,1])])
         self.assertTrue(torch.allclose(l.weights, l_marg.weights))
     
-    def test_sum_layer_backend_conversion(self):
-        #raise NotImplementedError()
-        pass
+    def test_sum_layer_backend_conversion_1(self):
+
+        torch_sum_layer = SPNSumLayer(n=3, children=[Gaussian(Scope([0])), Gaussian(Scope([0])), Gaussian(Scope([0]))])
+
+        base_sum_layer = toBase(torch_sum_layer)
+        self.assertTrue(np.allclose(base_sum_layer.weights, torch_sum_layer.weights.numpy()))
+        self.assertEqual(base_sum_layer.n_out, torch_sum_layer.n_out)
+    
+    def test_sum_layer_backend_conversion_2(self):
+
+        base_sum_layer = BaseSPNSumLayer(n=3, children=[BaseGaussian(Scope([0])), BaseGaussian(Scope([0])), BaseGaussian(Scope([0]))])
+        
+        torch_sum_layer = toTorch(base_sum_layer)
+        self.assertTrue(np.allclose(base_sum_layer.weights, torch_sum_layer.weights.numpy()))
+        self.assertEqual(base_sum_layer.n_out, torch_sum_layer.n_out)
 
     def test_product_layer_initialization(self):
         
@@ -123,9 +139,20 @@ class TestNode(unittest.TestCase):
         l_marg = marginalize(l, [4])
         self.assertTrue(l_marg.scopes_out == [Scope([0,1,2,3]), Scope([0,1,2,3]), Scope([0,1,2,3])])
 
-    def test_product_layer_backend_conversion(self):
-        #raise NotImplementedError()
-        pass
+    def test_product_layer_backend_conversion_1(self):
+
+        torch_product_layer = SPNProductLayer(n=3, children=[Gaussian(Scope([0])), Gaussian(Scope([1])), Gaussian(Scope([2]))])
+
+        base_product_layer = toBase(torch_product_layer)
+        self.assertEqual(base_product_layer.n_out, torch_product_layer.n_out)
+    
+    def test_product_layer_backend_conversion_2(self):
+
+        base_product_layer = BaseSPNProductLayer(n=3, children=[BaseGaussian(Scope([0])), BaseGaussian(Scope([1])), BaseGaussian(Scope([2]))])
+        
+        torch_product_layer = toTorch(base_product_layer)
+        self.assertEqual(base_product_layer.n_out, torch_product_layer.n_out)
+
 
 if __name__ == "__main__":
     unittest.main()

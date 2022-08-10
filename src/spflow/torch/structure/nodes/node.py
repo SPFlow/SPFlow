@@ -169,12 +169,14 @@ def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True,
 @dispatch(memoize=True)
 def toBase(sum_node: SPNSumNode, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNSumNode:
     """TODO"""
-    return BaseSPNSumNode(children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children()], weights=sum_node.weights.detach().numpy())
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return BaseSPNSumNode(children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children()], weights=sum_node.weights.detach().cpu().numpy())
 
 
 @dispatch(memoize=True)
 def toTorch(sum_node: BaseSPNSumNode, dispatch_ctx: Optional[DispatchContext]=None) -> SPNSumNode:
     """TODO"""
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return SPNSumNode(children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children], weights=sum_node.weights)
 
 
@@ -241,12 +243,14 @@ def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bo
 @dispatch(memoize=True)
 def toBase(product_node: SPNProductNode, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNProductNode:
     """TODO"""
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseSPNProductNode(children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in product_node.children()])
 
 
 @dispatch(memoize=True)
 def toTorch(product_node: BaseSPNProductNode, dispatch_ctx: Optional[DispatchContext]=None) -> SPNProductNode:
     """TODO"""
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return SPNProductNode(children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_node.children])
 
 
