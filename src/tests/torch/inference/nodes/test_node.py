@@ -54,6 +54,14 @@ def create_example_spn():
 
 
 class TestNode(unittest.TestCase):
+    @classmethod
+    def setup_class(cls):
+        torch.set_default_dtype(torch.float64)
+
+    @classmethod
+    def teardown_class(cls):
+        torch.set_default_dtype(torch.float32)
+
     def test_likelihood(self):
         dummy_spn = create_example_spn()
         dummy_data = torch.tensor([[1.0, 0.0, 1.0]])
@@ -155,4 +163,5 @@ class TestNode(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    torch.set_default_dtype(torch.float64)
     unittest.main()

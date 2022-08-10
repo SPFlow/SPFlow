@@ -34,11 +34,12 @@ def sample(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[Dispatch
 
     # group sampled branches
     for branch in branches.unique():
+
         # group instances by sampled branch
         branch_instance_ids = torch.tensor(sampling_ctx.instance_ids)[branches == branch].tolist()
 
         # get corresponding child and output id for sampled branch
-        child_id, output_id = node.input_to_output_id(branch)
+        child_id, output_id = node.input_to_output_id(branch.item())
 
         # sample from child module
         sample(
