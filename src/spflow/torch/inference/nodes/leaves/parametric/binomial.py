@@ -6,12 +6,14 @@ Created on November 26, 2021
 import torch
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.leaves.parametric.binomial import Binomial
 
 
 @dispatch(memoize=True)
 def log_likelihood(leaf: Binomial, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     batch_size: int = data.shape[0]
 

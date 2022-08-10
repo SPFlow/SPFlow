@@ -4,7 +4,7 @@ Created on May 10, 2022
 @authors: Philipp Deibert
 """
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.contexts.sampling_context import SamplingContext
 from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
 from spflow.torch.inference.nodes.node import log_likelihood
@@ -16,6 +16,8 @@ from typing import Optional
 
 @dispatch
 def sample(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     if any(child.n_out != 1 for child in node.children()):
         raise NotImplementedError(
@@ -49,6 +51,8 @@ def sample(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[Dispatch
 
 @dispatch
 def sample(node: SPNProductNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     for child in node.children():
         sample(child, data, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)

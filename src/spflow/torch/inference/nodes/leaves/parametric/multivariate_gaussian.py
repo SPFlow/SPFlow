@@ -7,13 +7,15 @@ import torch
 import torch.distributions as D
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian
 
 
 @dispatch(memoize=True)
 def log_likelihood(leaf: MultivariateGaussian, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+
     batch_size: int = data.shape[0]
 
     # get information relevant for the scope
@@ -74,7 +76,6 @@ def log_likelihood(leaf: MultivariateGaussian, data: torch.Tensor, dispatch_ctx:
             )
         # no random variables are marginalized over
         else:
-            # print(marg_mask, marg_data)
             # compute probabilities for values inside distribution support
             log_prob[marg_ids, 0] = leaf.dist.log_prob(
                 marg_data.type(torch.get_default_dtype())
