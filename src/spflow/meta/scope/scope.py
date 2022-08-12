@@ -53,8 +53,11 @@ class Scope():
     def equal_evidence(self, other) -> bool:
         """TODO"""
         return (set(self.evidence) == set(other.evidence))
-    
-    def isdisjoint(self, other):
+
+    def isempty(self) -> bool:
+        return not bool(self.query)
+
+    def isdisjoint(self, other) -> bool:
         """TODO"""
         return set(self.query).isdisjoint(other.query)
 

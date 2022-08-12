@@ -9,6 +9,7 @@ from spflow.meta.contexts.sampling_context import SamplingContext, init_default_
 from spflow.torch.structure.module import Module, NestedModule
 
 import torch
+import numpy as np
 from typing import Optional
 
 
@@ -36,39 +37,21 @@ def sample(placeholder: NestedModule.Placeholder, data: torch.Tensor, dispatch_c
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
     
-    sampling_ctx_per_child = {}
+    # dictionary to hold the 
+    sampling_ids_per_child = [([],[]) for _ in placeholder.host.children()]
 
-    # TODO: could potentially be done more efficiently via grouping
-    for instance_id, instance_output_ids in zip(sampling_ctx.instance_ids, sampling_ctx.output_ids):
+    for instance_id, output_ids in zip(sampling_ctx.instance_ids, sampling_ctx.output_ids):
+        # convert ids to actual child and output ids of host module
+        child_ids_actual, output_ids_actual = placeholder.input_to_output_ids(output_ids)
 
-        output_per_child = {}
-        
-        # iterate over actual child and output ids
-        if instance_output_ids == []:
-            # all children    
-            for _, ids in placeholder.input_to_output_id_dict.items():
-                output_per_child[ids[0]] = [ids[1]]
-        else:
-            for child_id, output_id in [placeholder.host.input_to_output_id(output_id) for output_id in instance_output_ids]:
-
-                # sort output ids per child id
-                if(child_id in output_per_child):
-                    output_per_child[child_id].append(output_id)
-                else:
-                    output_per_child[child_id] = [output_id]
-        
-        # append (or create) sampling contexts
-        for child_id, output_ids in output_per_child.items():
-            if(child_id) in sampling_ctx_per_child:
-                sampling_ctx_per_child[child_id].instance_ids.append(instance_id)
-                sampling_ctx_per_child[child_id].output_ids.append(output_ids)
-            else:
-                sampling_ctx_per_child[child_id] = SamplingContext([instance_id], [output_ids])
-    
-    host_children = list(placeholder.host.children())
+        for child_id in np.unique(child_ids_actual):
+            sampling_ids_per_child[child_id][0].append(instance_id)
+            sampling_ids_per_child[child_id][1].append(np.array(output_ids_actual)[child_ids_actual == child_id].tolist())
 
     # sample from children
-    for child_id, child_sampling_ctx in sampling_ctx_per_child.items():
-        sample(host_children[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=child_sampling_ctx)
+    for child_id, (instance_ids, output_ids) in enumerate(sampling_ids_per_child):
+        if(len(instance_ids) == 0):
+            continue
+        sample(placeholder.host.children[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instance_ids, output_ids))
 
     return data

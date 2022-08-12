@@ -1,6 +1,6 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.base.structure.layers.layer import SPNSumLayer, SPNProductLayer
+from spflow.base.structure.layers.layer import SPNSumLayer, SPNProductLayer, SPNPartitionLayer
 from spflow.base.inference.layers.layer import log_likelihood
 from spflow.base.structure.nodes.node import SPNSumNode, SPNProductNode
 from spflow.base.inference.nodes.node import log_likelihood
@@ -9,6 +9,7 @@ from spflow.base.inference.nodes.leaves.parametric.gaussian import log_likelihoo
 from spflow.base.inference.module import log_likelihood
 import numpy as np
 import unittest
+import itertools
 
 
 class TestNode(unittest.TestCase):
@@ -55,6 +56,31 @@ class TestNode(unittest.TestCase):
                 SPNProductNode(children=input_nodes),
             ],
             weights = [0.3, 0.4, 0.3]
+        )
+
+        dummy_data = np.array([[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]])
+
+        layer_ll = log_likelihood(layer_spn, dummy_data)
+        nodes_ll = log_likelihood(nodes_spn, dummy_data)
+
+        self.assertTrue(np.allclose(layer_ll, nodes_ll))
+
+    def test_partition_layer_likelihood(self):
+
+        input_partitions = [
+            [Gaussian(Scope([0])), Gaussian(Scope([0]))],
+            [Gaussian(Scope([1])), Gaussian(Scope([1])), Gaussian(Scope([1]))],
+            [Gaussian(Scope([2]))]
+        ]
+
+        layer_spn = SPNSumNode(children=[
+            SPNPartitionLayer(child_partitions=input_partitions)
+            ],
+            weights = [0.2, 0.1, 0.2, 0.2, 0.2, 0.1]
+        )
+
+        nodes_spn = SPNSumNode(children=[SPNProductNode(children=[input_partitions[0][i], input_partitions[1][j], input_partitions[2][k]]) for (i,j,k) in itertools.product([0,1], [0,1,2], [0])],
+            weights = [0.2, 0.1, 0.2, 0.2, 0.2, 0.1]
         )
 
         dummy_data = np.array([[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]])
