@@ -6,13 +6,14 @@ Created on August 08, 2022
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
-from spflow.torch.structure.layers.layer import SPNSumLayer, SPNProductLayer
+from spflow.torch.structure.layers.layer import SPNSumLayer, SPNProductLayer, SPNPartitionLayer
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 
 import torch
 import numpy as np
 from typing import Optional
+import itertools
 
 
 @dispatch
@@ -33,34 +34,25 @@ def sample(sum_layer: SPNSumLayer, data: torch.Tensor, dispatch_ctx: Optional[Di
     # compute log likelihoods for sum "nodes"
     partition_ll = torch.concat([log_likelihood(child, data, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()], dim=1)
 
-    for node_ids, indices in sampling_ctx.group_output_ids():
+    children = list(sum_layer.children())
 
-        if(node_ids):
-            node_id = node_ids[0]
-        else:
-            node_id = 0
+    for node_ids, instances in sampling_ctx.group_output_ids():
+
+        if(len(node_ids) != 1):
+            raise ValueError("Too many output ids specified for outputs over same scope.")
+
+        node_id = node_ids[0]
 
         # sample branches
-        input_ids = torch.multinomial(sum_layer.weights[node_id]*partition_ll[indices].exp(), num_samples=1)
+        input_ids = torch.multinomial(sum_layer.weights[node_id]*partition_ll[instances].exp(), num_samples=1)
 
         # get correct child id and corresponding output id
-        # child_ids, output_ids = zip(*sum_layer.input_to_output_id(input_ids))
-
-        child_ids = []
-        output_ids = []
-
-        # TODO: can be optimized by batch processing input_to_output_id
-        for input_id in input_ids:
-            child_id, output_id = sum_layer.input_to_output_id(input_id)
-            child_ids.append(child_id)
-            output_ids.append(output_id)
-
-        children = list(sum_layer.children())
+        child_ids, output_ids = sum_layer.input_to_output_ids(input_ids)
 
         # group by child ids
         for child_id in np.unique(child_ids):
 
-            child_instance_ids = torch.tensor(indices)[torch.tensor(child_ids) == child_id].tolist()
+            child_instance_ids = torch.tensor(instances)[torch.tensor(child_ids) == child_id].tolist()
             child_output_ids = np.array(output_ids)[np.array(child_ids) == child_id].tolist()
 
             # sample from partition node
@@ -76,18 +68,43 @@ def sample(product_layer: SPNProductLayer, data: torch.Tensor, dispatch_ctx: Opt
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    # compute log-likelihoods of this module (needed to initialize log-likelihood cache for placeholder)
-    log_likelihood(product_layer, data, dispatch_ctx=dispatch_ctx)
+    # all product nodes are over (all) children
+    for child in product_layer.children():
+        sample(child, data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(sampling_ctx.instance_ids, [list(range(child.n_out)) for _ in sampling_ctx.instance_ids]))
+
+    return data
+
+
+@dispatch
+def sample(partition_layer: SPNPartitionLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+    """TODO"""
+    # initialize contexts
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+
+    partition_indices = torch.tensor_split(torch.arange(0, partition_layer.n_out), torch.cumsum(torch.tensor(partition_layer.partition_sizes), dim=0)[:-1])
+    input_ids_per_node = torch.cartesian_prod(*partition_indices)
+
+    children = list(partition_layer.children())
 
     # sample accoding to sampling_context
-    # TODO
-    for node_ids in torch.unique(sampling_ctx.output_ids, dim=0):
+    for node_ids, instances in sampling_ctx.group_output_ids():
+
         if(len(node_ids) != 1):
             raise ValueError("Too many output ids specified for outputs over same scope.")
 
         node_id = node_ids[0]
-        node_instance_ids = torch.tensor(sampling_ctx.instance_ids)[torch.tensor(np.where(sampling_ctx.output_ids == node_ids)[0])].tolist()
 
-        sample(product_layer.nodes[node_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(node_instance_ids, [[] for i in node_instance_ids]))
+        # get input ids for this node
+        input_ids = input_ids_per_node[node_id]
+        child_ids, output_ids = partition_layer.input_to_output_ids(input_ids.tolist())
+
+        # group by child ids
+        for child_id in np.unique(child_ids):
+
+            child_output_ids = np.array(output_ids)[np.array(child_ids) == child_id].tolist()
+
+            # sample from partition node
+            sample(children[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instances, [child_output_ids for _ in instances]))
 
     return data

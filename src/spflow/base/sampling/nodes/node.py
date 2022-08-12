@@ -41,11 +41,11 @@ def sample(node: SPNSumNode, data: np.ndarray, dispatch_ctx: Optional[DispatchCo
         branch_instance_ids = np.array(sampling_ctx.instance_ids)[branches == branch].tolist()
 
         # get corresponding child and output id for sampled branch
-        child_id, output_id = node.input_to_output_id(branch)
+        child_ids, output_ids = node.input_to_output_ids([branch])
 
         # sample from child module
         sample(
-            node.children[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(branch_instance_ids, [[output_id] for _ in range(len(branch_instance_ids))])
+            node.children[child_ids[0]], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(branch_instance_ids, [[output_ids[0]] for _ in range(len(branch_instance_ids))])
         )
 
     return data
@@ -60,6 +60,6 @@ def sample(node: SPNProductNode, data: np.ndarray, dispatch_ctx: Optional[Dispat
 
     # sample from all child outputs
     for child in node.children:
-        sample(child, data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(sampling_ctx.instance_ids, [list(range(child.n_out)) for _ in sampling_ctx.instance_ids]))
+        data = sample(child, data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(sampling_ctx.instance_ids, [list(range(child.n_out)) for _ in sampling_ctx.instance_ids]))
 
     return data

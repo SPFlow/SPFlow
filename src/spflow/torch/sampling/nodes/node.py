@@ -39,11 +39,11 @@ def sample(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[Dispatch
         branch_instance_ids = torch.tensor(sampling_ctx.instance_ids)[branches == branch].tolist()
 
         # get corresponding child and output id for sampled branch
-        child_id, output_id = node.input_to_output_id(branch.item())
+        child_ids, output_ids = node.input_to_output_ids([branch.item()])
 
         # sample from child module
         sample(
-            list(node.children())[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(branch_instance_ids, [[output_id] for _ in range(len(branch_instance_ids))])
+            list(node.children())[child_ids[0]], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(branch_instance_ids, [[output_ids[0]] for _ in range(len(branch_instance_ids))])
         )
 
     return data
