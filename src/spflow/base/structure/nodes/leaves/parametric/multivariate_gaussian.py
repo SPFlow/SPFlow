@@ -51,6 +51,8 @@ class MultivariateGaussian(LeafNode):
             raise ValueError("Query scope for MultivariateGaussian contains duplicate variables.")
         if len(scope.evidence):
             raise ValueError(f"Evidence scope for MultivariateGaussian should be empty, but was {scope.evidence}.")
+        if len(scope.query) < 1:
+            raise ValueError("Size of query scope for MultivariateGaussian must be at least 1.")
 
         super(MultivariateGaussian, self).__init__(scope=scope)
 
@@ -165,20 +167,27 @@ class MultivariateGaussian(LeafNode):
     def marginalize(self, marg_rvs: Iterable[int]) -> Union["MultivariateGaussian",Gaussian,None]:
 
         # scope after marginalization (important: must remain order of scope indices since they map to the indices of the mean vector and covariance matrix!)
-        marg_scope = [rv for rv in self.scope.query if rv not in marg_rvs]
+        marg_scope = []
+        marg_scope_ids = []
+
+        for rv in self.scope.query:
+            if rv not in marg_rvs:
+                marg_scope.append(rv)
+                marg_scope_ids.append(self.scope.query.index(rv))
 
         # return univariate Gaussian if one-dimensional
         if(len(marg_scope) == 1):
             # note: Gaussian requires standard deviations instead of variance (take square root)
-            return Gaussian(Scope(marg_scope), self.mean[marg_scope[0]], np.sqrt(self.cov[marg_scope[0]][marg_scope[0]]))
+            return Gaussian(Scope(marg_scope), self.mean[marg_scope_ids[0]], np.sqrt(self.cov[marg_scope_ids[0]][marg_scope_ids[0]]))
         # entire node is marginalized over
-        elif not marg_scope:
+        elif len(marg_scope) == 0:
             return None
         # node is partially marginalized over
         else:
             # compute marginalized mean vector and covariance matrix
-            marg_mean = self.mean[marg_scope]
-            marg_cov = self.cov[marg_scope][:, marg_scope]
+            marg_scope_ids = [self.scope.query.index(rv) for rv in marg_scope]
+            marg_mean = self.mean[marg_scope_ids]
+            marg_cov = self.cov[marg_scope_ids][:, marg_scope_ids]
 
             return MultivariateGaussian(Scope(marg_scope), marg_mean, marg_cov)
 

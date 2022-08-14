@@ -35,7 +35,7 @@ class Hypergeometric(LeafNode):
         M:
             Number of entities with property of interest (in the population), greater or equal to zero and less than or equal to N.
         n:
-            Number of draws, greater of euqal to zero and less than or equal to N.
+            Number of draws, greater of equal to zero and less than or equal to N.
     """
     def __init__(self, scope: Scope, N: int, M: int, n: int) -> None:
 

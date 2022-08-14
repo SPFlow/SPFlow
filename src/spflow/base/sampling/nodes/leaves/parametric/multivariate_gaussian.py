@@ -21,7 +21,7 @@ def sample(leaf: MultivariateGaussian, data: np.ndarray, dispatch_ctx: Optional[
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    nan_data = np.isnan(data[:, leaf.scope.query])
+    nan_data = np.isnan(data[np.ix_(sampling_ctx.instance_ids, leaf.scope.query)])
 
     # group by scope rvs to sample
     for nan_mask in np.unique(nan_data, axis=0):
@@ -33,6 +33,7 @@ def sample(leaf: MultivariateGaussian, data: np.ndarray, dispatch_ctx: Optional[
             continue
         # sample from full distribution
         elif(np.sum(nan_mask) == len(leaf.scope.query)):
+            print(nan_mask, nan_data.shape, nan_mask.shape, np.array(sampling_ctx.instance_ids).shape)
             sampling_ids = np.array(sampling_ctx.instance_ids)[(nan_data == nan_mask).sum(axis=1) == nan_mask.shape[0]]
 
             data[np.ix_(sampling_ids, leaf.scope.query)] = leaf.dist.rvs(size=sampling_ids.shape[0])

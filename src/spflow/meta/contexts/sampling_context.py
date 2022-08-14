@@ -3,7 +3,7 @@ Created on May 23, 2022
 
 @authors: Philipp Deibert
 """
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 
 class SamplingContext:
@@ -26,20 +26,21 @@ class SamplingContext:
         self.instance_ids = instance_ids
         self.output_ids = output_ids
 
-    def group_output_ids(self):
+    def group_output_ids(self, n_total) -> Tuple[Union[int, None],List[int]]:
+        """TODO"""
 
-        unique_ids = []
-        indices = []
+        output_id_dict = {}
         
-        for index, output_id in zip(self.instance_ids, self.output_ids):
-            try:
-                i = unique_ids.index(output_id)
-                indices[i].append(index)
-            except ValueError:
-                unique_ids.append(output_id)
-                indices.append([index])
+        for instance_id, instance_output_ids in zip(self.instance_ids, self.output_ids):
+            if instance_output_ids == []:
+                instance_output_ids = list(range(n_total))
+            for output_id in instance_output_ids:
+                if output_id in output_id_dict:
+                    output_id_dict[output_id].append(instance_id)
+                else:
+                    output_id_dict[output_id] = [instance_id]
 
-        return zip(unique_ids, indices)
+        return tuple(output_id_dict.items())
 
 
 def default_sampling_context(n: int) -> SamplingContext:

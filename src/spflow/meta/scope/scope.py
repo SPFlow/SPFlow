@@ -3,7 +3,7 @@ Created on August 03, 2022
 
 @authors: Philipp Deibert
 """
-from typing import List, Optional
+from typing import List, Optional, Iterable
 
 
 class Scope():
@@ -64,3 +64,16 @@ class Scope():
     def union(self, other) -> "Scope":
         """TODO"""
         return Scope(set(self.query).union(other.query), set(self.evidence).union(other.evidence))
+
+
+def pairwise_disjoint(scopes: Iterable[Scope]) -> bool:
+    
+    overall_scope = Scope()
+
+    for scope in scopes:
+        if(overall_scope.isdisjoint(scope)):
+            overall_scope = overall_scope.union(scope)
+        else:
+            return False
+    
+    return True
