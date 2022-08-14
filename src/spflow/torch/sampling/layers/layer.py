@@ -23,7 +23,7 @@ def sample(sum_layer: SPNSumLayer, data: torch.Tensor, dispatch_ctx: Optional[Di
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    # all leafs in a _TorchRegionLayer have same scope, so only one output can be sampled simultaneously
+    # all nodes in sum layer have same scope
     if any([len(out) != 1 for out in sampling_ctx.output_ids]):
         raise ValueError("'SPNSumLayer only allows single output sampling.")
 
@@ -36,12 +36,7 @@ def sample(sum_layer: SPNSumLayer, data: torch.Tensor, dispatch_ctx: Optional[Di
 
     children = list(sum_layer.children())
 
-    for node_ids, instances in sampling_ctx.group_output_ids():
-
-        if(len(node_ids) != 1):
-            raise ValueError("Too many output ids specified for outputs over same scope.")
-
-        node_id = node_ids[0]
+    for node_id, instances in sampling_ctx.group_output_ids(sum_layer.n_out):
 
         # sample branches
         input_ids = torch.multinomial(sum_layer.weights[node_id]*partition_ll[instances].exp(), num_samples=1)
@@ -68,6 +63,10 @@ def sample(product_layer: SPNProductLayer, data: torch.Tensor, dispatch_ctx: Opt
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
+    # all nodes in sum layer have same scope
+    if any([len(out) != 1 for out in sampling_ctx.output_ids]):
+        raise ValueError("'SPNProductLayer only allows single output sampling.")
+
     # all product nodes are over (all) children
     for child in product_layer.children():
         sample(child, data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(sampling_ctx.instance_ids, [list(range(child.n_out)) for _ in sampling_ctx.instance_ids]))
@@ -82,18 +81,17 @@ def sample(partition_layer: SPNPartitionLayer, data: torch.Tensor, dispatch_ctx:
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
+    # all nodes in sum layer have same scope
+    if any([len(out) != 1 for out in sampling_ctx.output_ids]):
+        raise ValueError("'SPNPartitionLayer only allows single output sampling.")
+
     partition_indices = torch.tensor_split(torch.arange(0, partition_layer.n_out), torch.cumsum(torch.tensor(partition_layer.partition_sizes), dim=0)[:-1])
     input_ids_per_node = torch.cartesian_prod(*partition_indices)
 
     children = list(partition_layer.children())
 
     # sample accoding to sampling_context
-    for node_ids, instances in sampling_ctx.group_output_ids():
-
-        if(len(node_ids) != 1):
-            raise ValueError("Too many output ids specified for outputs over same scope.")
-
-        node_id = node_ids[0]
+    for node_id, instances in sampling_ctx.group_output_ids(partition_layer.n_out):
 
         # get input ids for this node
         input_ids = input_ids_per_node[node_id]
