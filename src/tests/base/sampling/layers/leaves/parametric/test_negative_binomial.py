@@ -18,10 +18,10 @@ import unittest
 class TestNode(unittest.TestCase):
     def test_sampling_1(self):
 
-        negative_binomial_layer = NegativeBinomialLayer(scope=Scope([0]), n=[3, 5], p=[0.8, 0.3], n_nodes=2)
+        negative_binomial_layer = NegativeBinomialLayer(scope=Scope([0]), n=3, p=[0.8, 0.3], n_nodes=2)
         s1 = SPNSumNode(children=[negative_binomial_layer], weights=[0.3, 0.7])
 
-        negative_binomial_nodes = [NegativeBinomial(Scope([0]), n=3, p=0.8), NegativeBinomial(Scope([0]), n=5, p=0.3)]
+        negative_binomial_nodes = [NegativeBinomial(Scope([0]), n=3, p=0.8), NegativeBinomial(Scope([0]), n=3, p=0.3)]
         s2 = SPNSumNode(children=negative_binomial_nodes, weights=[0.3, 0.7])
 
         layer_samples = sample(s1, 10000)

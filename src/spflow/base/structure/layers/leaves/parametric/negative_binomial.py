@@ -32,6 +32,9 @@ class NegativeBinomialLayer(Module):
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
+            if len(scope) == 0:
+                raise ValueError("List of scopes for 'NegativeBinomialLayer' was empty.")
+
             self._n_out = len(scope)
         
         super(NegativeBinomialLayer, self).__init__(children=[], **kwargs)
@@ -39,21 +42,16 @@ class NegativeBinomialLayer(Module):
         # create leaf nodes
         self.nodes = [NegativeBinomial(s, 1, 0.5) for s in scope]
 
+        # compute scope
+        self.scopes_out = scope
+
         # parse weights
         self.set_params(n, p)
-
-        # compute scope
-        self.scopes = scope
 
     @property
     def n_out(self) -> int:
         """Returns the number of outputs for this module."""
         return self._n_out
-    
-    @property
-    def scopes_out(self) -> List[Scope]:
-        """TODO"""
-        return self.scopes
 
     @property
     def n(self) -> np.ndarray:
@@ -85,6 +83,14 @@ class NegativeBinomialLayer(Module):
 
         for node_n, node_p, node in zip(n, p, self.nodes):
             node.set_params(node_n, node_p)
+       
+        node_scopes = np.array([s.query[0] for s in self.scopes_out])
+
+        for node_scope in np.unique(node_scopes):
+            # at least one such element exists
+            n_values = n[node_scopes == node_scope]
+            if not np.all(n_values == n_values[0]):
+                raise ValueError("All values of 'n' for 'NegativeBinomialLayer' over the same scope must be identical.")
     
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
         return self.n, self.p

@@ -33,6 +33,9 @@ class HypergeometricLayer(Module):
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
+            if len(scope) == 0:
+                raise ValueError("List of scopes for 'HypergeometricLayer' was empty.")
+
             self._n_out = len(scope)
         
         super(HypergeometricLayer, self).__init__(children=[], **kwargs)
@@ -40,21 +43,16 @@ class HypergeometricLayer(Module):
         # create leaf nodes
         self.nodes = [Hypergeometric(s, 1, 1, 1) for s in scope]
 
+        # compute scope
+        self.scopes_out = scope
+
         # parse weights
         self.set_params(N, M, n)
-
-        # compute scope
-        self.scopes = scope
 
     @property
     def n_out(self) -> int:
         """Returns the number of outputs for this module."""
         return self._n_out
-    
-    @property
-    def scopes_out(self) -> List[Scope]:
-        """TODO"""
-        return self.scopes
 
     @property
     def N(self) -> np.ndarray:
@@ -80,7 +78,7 @@ class HypergeometricLayer(Module):
             raise ValueError(f"Length of numpy array of 'N' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {N.shape[0]}")
 
         if isinstance(M, int):
-            M = np.array([float(M) for _ in range(self.n_out)])
+            M = np.array([M for _ in range(self.n_out)])
         if isinstance(M, list):
             M = np.array(M)
         if(M.ndim != 1):
@@ -89,7 +87,7 @@ class HypergeometricLayer(Module):
             raise ValueError(f"Length of numpy array of 'M' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {M.shape[0]}")
 
         if isinstance(n, int):
-            n = np.array([float(n) for _ in range(self.n_out)])
+            n = np.array([n for _ in range(self.n_out)])
         if isinstance(n, list):
             n = np.array(n)
         if(n.ndim != 1):
@@ -97,12 +95,45 @@ class HypergeometricLayer(Module):
         if(n.shape[0] != self.n_out):
             raise ValueError(f"Length of numpy array of 'n' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {n.shape[0]}")
 
+        node_scopes = np.array([s.query[0] for s in self.scopes_out])
+
+        for node_scope in np.unique(node_scopes):
+            # at least one such element exists
+            N_values = N[node_scopes == node_scope]
+            if not np.all(N_values == N_values[0]):
+                raise ValueError("All values of 'N' for 'HypergeometricLayer' over the same scope must be identical.")
+            # at least one such element exists
+            M_values = M[node_scopes == node_scope]
+            if not np.all(M_values == M_values[0]):
+                raise ValueError("All values of 'M' for 'HypergeometricLayer' over the same scope must be identical.")
+            # at least one such element exists
+            n_values = n[node_scopes == node_scope]
+            if not np.all(n_values == n_values[0]):
+                raise ValueError("All values of 'n' for 'HypergeometricLayer' over the same scope must be identical.")
 
         for node_N, node_M, node_n, node in zip(N, M, n, self.nodes):
             node.set_params(node_N, node_M, node_n)
     
     def get_params(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         return self.N, self.M, self.n
+    
+    def check_support(self, scope_data: np.ndarray, node_ids: List[int]) -> np.ndarray:
+        "TODO"
+        valid = np.ones(scope_data.shape, dtype=bool)
+
+        # check for infinite values
+        valid &= ~np.isinf(scope_data)
+
+        # check if all values are valid integers
+        # TODO: runtime warning due to nan values
+        valid &= np.remainder(scope_data, 1) == 0
+
+        # check if values are in valid range
+        valid &= (scope_data >= max(0, self.n + self.M - self.N)) & (  # type: ignore
+            scope_data <= min(self.n, self.M)  # type: ignore
+        )
+
+        return valid
 
 
 @dispatch(memoize=True)
