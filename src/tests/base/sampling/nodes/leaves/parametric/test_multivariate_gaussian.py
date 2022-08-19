@@ -1,4 +1,5 @@
 from spflow.meta.scope.scope import Scope
+from spflow.meta.contexts.sampling_context import SamplingContext
 from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian
 from spflow.base.sampling.nodes.leaves.parametric.multivariate_gaussian import sample
 from spflow.base.sampling.module import sample
@@ -75,6 +76,23 @@ class TestMultivariateGaussian(unittest.TestCase):
 
             self.assertTrue(np.allclose(mean_exact, mean_est, atol=0.01, rtol=0.1))
             self.assertTrue(np.allclose(cov_exact, cov_est, atol=0.01, rtol=0.1))
+
+    def test_sampling(self):
+
+        mv = MultivariateGaussian(Scope([0,1]))
+
+        # make sure that instance ids out of bounds raise errors
+        self.assertRaises(ValueError, sample, mv, np.array([[0, 0]]), sampling_ctx=SamplingContext([1]))
+
+    def test_sampling_2(self):
+
+        mv = MultivariateGaussian(Scope([0,1]))
+        data = np.array([[0.0, 0.0]])
+
+        # make sure that data without any 'NaN' values is simply skipped
+        data_ = sample(mv, data, sampling_ctx=SamplingContext([0]))
+
+        self.assertTrue(np.allclose(data, data_))
 
 
 if __name__ == "__main__":

@@ -42,8 +42,10 @@ class TestLayer(unittest.TestCase):
         
         # wrong number of values
         self.assertRaises(ValueError, GammaLayer, Scope([0]), alpha_values, beta_values[:-1], n_nodes=3)
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), alpha_values[:-1], beta_values, n_nodes=3)
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), [alpha_values for _ in range(3)], [beta_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), alpha_values, [beta_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), [alpha_values for _ in range(3)], beta_values, n_nodes=3)
 
         # ----- numpy parameter values -----
 
@@ -55,7 +57,10 @@ class TestLayer(unittest.TestCase):
         
         # wrong number of values
         self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array(alpha_values), np.array(beta_values[:-1]), n_nodes=3)
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array([alpha_values for _ in range(3)]), np.array([beta_values for _ in range(3)]), n_nodes=3)
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array(alpha_values[:-1]), np.array(beta_values), n_nodes=3)
+        # wrong number of dimensions (nested list)
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array([alpha_values for _ in range(3)]), beta_values, n_nodes=3)
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), alpha_values, np.array([beta_values for _ in range(3)]), n_nodes=3)
 
         # ---- different scopes -----
         l = GammaLayer(scope=Scope([1]), n_nodes=3)
@@ -67,6 +72,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, GammaLayer, Scope([]), n_nodes=3)
+        self.assertRaises(ValueError, GammaLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
@@ -116,6 +122,16 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
         self.assertTrue(np.all(l.alpha == l_marg.alpha))
         self.assertTrue(np.all(l.beta == l_marg.beta))
+
+    def test_get_params(self):
+
+        layer = GammaLayer(scope=Scope([1]), alpha=[0.73, 0.29], beta=[1.3, 0.92], n_nodes=2)
+
+        alpha, beta, *others = layer.get_params()
+
+        self.assertTrue(len(others) == 0)
+        self.assertTrue(np.allclose(alpha, np.array([0.73, 0.29])))
+        self.assertTrue(np.allclose(beta, np.array([1.3, 0.92])))
 
 
 if __name__ == "__main__":

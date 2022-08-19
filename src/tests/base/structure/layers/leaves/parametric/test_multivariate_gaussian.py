@@ -46,9 +46,11 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.cov == node_cov))
         
         # wrong number of values
+        self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0,1,2]), mean_values[:-1], cov_values, n_nodes=3)
         self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0,1,2]), mean_values, cov_values[:-1], n_nodes=3)
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0,1,2]), [mean_values for _ in range(3)], [cov_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0,1,2]), mean_values, [cov_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0,1,2]), [mean_values for _ in range(3)], cov_values, n_nodes=3)
 
         # ----- numpy parameter values -----
 
@@ -59,8 +61,11 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.cov == node_cov))
         
         # wrong number of values
+        self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0,1,2]), np.array(mean_values[:-1]), np.array(cov_values), n_nodes=3)
         self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0,1,2]), np.array(mean_values), np.array(cov_values[:-1]), n_nodes=3)
-        self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0,1,2]), np.array([mean_values for _ in range(3)]), np.array([cov_values for _ in range(3)]), n_nodes=3)
+        # wrong number of dimensions (nested list)
+        self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0,1,2]), mean_values, np.array([cov_values for _ in range(3)]), n_nodes=3)
+        self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0,1,2]), np.array([mean_values for _ in range(3)]), cov_values, n_nodes=3)
 
         # ---- different scopes -----
         l = MultivariateGaussianLayer(scope=Scope([0,1,2]), n_nodes=3)
@@ -72,6 +77,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([]), n_nodes=3)
+        self.assertRaises(ValueError, MultivariateGaussianLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1,2,3]), Scope([0,1,4]), Scope([0,2,3])]
@@ -128,6 +134,16 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(l_marg.scopes_out == [Scope([0,2]), Scope([1,3])])
         self.assertTrue(np.all(l.mean == l_marg.mean))
         self.assertTrue(np.all(l.cov == l_marg.cov))
+
+    def test_get_params(self):
+
+        layer = MultivariateGaussianLayer(scope=Scope([0,1]), mean=[[-0.73, 0.29], [0.36, -1.4]], cov=[[[1.0, 0.92], [0.92, 1.2]], [[1.0, 0.3],[0.3, 1.4]]], n_nodes=2)
+
+        mean, cov, *others = layer.get_params()
+
+        self.assertTrue(len(others) == 0)
+        self.assertTrue(np.allclose(mean, np.array([[-0.73, 0.29], [0.36, -1.4]])))
+        self.assertTrue(np.allclose(cov, np.array([[[1.0, 0.92], [0.92, 1.2]], [[1.0, 0.3],[0.3, 1.4]]])))
 
 
 if __name__ == "__main__":

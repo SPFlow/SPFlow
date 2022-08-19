@@ -47,9 +47,13 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.n == node_n))
 
         # wrong number of values
+        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], N_values[:-1], M_values, n_values, n_nodes=3)
+        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], N_values, M_values[:-1], n_values, n_nodes=3)
         self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], N_values, M_values, n_values[:-1], n_nodes=3)
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], [N_values for _ in range(3)], [M_values for _ in range(3)], [n_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], [N_values for _ in range(3)], M_values, n_values, n_nodes=3)
+        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], N_values, [M_values for _ in range(3)], n_values, n_nodes=3)
+        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], N_values, M_values, [n_values for _ in range(3)], n_nodes=3)
 
         # ----- numpy parameter values -----
 
@@ -61,8 +65,13 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.n == node_n))
         
         # wrong number of values
-        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], np.array(N_values), np.array(M_values[:-1]), np.array(n_values[:-1]), n_nodes=3)
-        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], np.array([N_values for _ in range(3)]), np.array([M_values for _ in range(3)]), np.array([n_values for _ in range(3)]), n_nodes=3)
+        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], np.array(N_values[:-1]), np.array(M_values), np.array(n_values), n_nodes=3)
+        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], np.array(N_values), np.array(M_values[:-1]), np.array(n_values), n_nodes=3)
+        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], np.array(N_values), np.array(M_values), np.array(n_values[:-1]), n_nodes=3)
+        # wrong number of dimensions (nested list)
+        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], np.array([N_values for _ in range(3)]), np.array(M_values), np.array(n_values), n_nodes=3)
+        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], np.array(N_values), np.array([M_values for _ in range(3)]), np.array(n_values), n_nodes=3)
+        self.assertRaises(ValueError, HypergeometricLayer, [Scope([1]), Scope([0]), Scope([2])], np.array(N_values), np.array(M_values), np.array([n_values for _ in range(3)]), n_nodes=3)
 
         # ---- different scopes -----
         l = HypergeometricLayer(scope=Scope([1]), N=1, M=1, n=1, n_nodes=3)
@@ -74,6 +83,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, HypergeometricLayer, Scope([]), N=1, M=1, n=1, n_nodes=3)
+        self.assertRaises(ValueError, HypergeometricLayer, [], N=1, M=1, n=1, n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
@@ -127,6 +137,17 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(np.all(l.N == l_marg.N))
         self.assertTrue(np.all(l.M == l_marg.M))
         self.assertTrue(np.all(l.n == l_marg.n))
+
+    def test_get_params(self):
+
+        layer = HypergeometricLayer(scope=Scope([1]), N=5, M=3, n=4, n_nodes=2)
+
+        N, M, n, *others = layer.get_params()
+
+        self.assertTrue(len(others) == 0)
+        self.assertTrue(np.allclose(N, np.array([5, 5])))
+        self.assertTrue(np.allclose(M, np.array([3, 3])))
+        self.assertTrue(np.allclose(n, np.array([4, 4])))
 
 
 if __name__ == "__main__":

@@ -40,6 +40,13 @@ class TestNode(unittest.TestCase):
         nodes_samples = sample(p2, 10000)
         self.assertTrue(np.allclose(layer_samples.mean(axis=0), nodes_samples.mean(axis=0), atol=0.01, rtol=0.1))
 
+    def test_sampling_3(self):
+        
+        uniform_layer = UniformLayer(scope=Scope([0]), start=[0.4, 0.3], end=[1.3, 0.8], n_nodes=2)
+        
+        # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails
+        self.assertRaises(ValueError, sample, uniform_layer)
+
 
 if __name__ == "__main__":
     unittest.main()

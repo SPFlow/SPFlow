@@ -41,9 +41,11 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.std == node_std))
         
         # wrong number of values
+        self.assertRaises(ValueError, LogNormalLayer, Scope([0]), mean_values[:-1], std_values, n_nodes=3)
         self.assertRaises(ValueError, LogNormalLayer, Scope([0]), mean_values, std_values[:-1], n_nodes=3)
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, LogNormalLayer, Scope([0]), [mean_values for _ in range(3)], [std_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, LogNormalLayer, Scope([0]), mean_values, [std_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, LogNormalLayer, Scope([0]), [mean_values for _ in range(3)], std_values, n_nodes=3)
 
         # ----- numpy parameter values -----
 
@@ -54,8 +56,11 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.std == node_std))
         
         # wrong number of values
+        self.assertRaises(ValueError, LogNormalLayer, Scope([0]), np.array(mean_values[:-1]), np.array(std_values), n_nodes=3)
         self.assertRaises(ValueError, LogNormalLayer, Scope([0]), np.array(mean_values), np.array(std_values[:-1]), n_nodes=3)
-        self.assertRaises(ValueError, LogNormalLayer, Scope([0]), np.array([mean_values for _ in range(3)]), np.array([std_values for _ in range(3)]), n_nodes=3)
+        # wrong number of dimensions (nested list)
+        self.assertRaises(ValueError, LogNormalLayer, Scope([0]), mean_values, np.array([std_values for _ in range(3)]), n_nodes=3)
+        self.assertRaises(ValueError, LogNormalLayer, Scope([0]), np.array([mean_values for _ in range(3)]), std_values, n_nodes=3)
 
         # ---- different scopes -----
         l = LogNormalLayer(scope=Scope([1]), n_nodes=3)
@@ -67,6 +72,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, LogNormalLayer, Scope([]), n_nodes=3)
+        self.assertRaises(ValueError, LogNormalLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
@@ -116,6 +122,16 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
         self.assertTrue(np.all(l.mean == l_marg.mean))
         self.assertTrue(np.all(l.std == l_marg.std))
+
+    def test_get_params(self):
+
+        layer = LogNormalLayer(scope=Scope([1]), mean=[-0.73, 0.29], std=[1.3, 0.92], n_nodes=2)
+
+        mean, std, *others = layer.get_params()
+
+        self.assertTrue(len(others) == 0)
+        self.assertTrue(np.allclose(mean, np.array([-0.73, 0.29])))
+        self.assertTrue(np.allclose(std, np.array([1.3, 0.92])))
 
 
 if __name__ == "__main__":

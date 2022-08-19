@@ -35,6 +35,13 @@ class TestBernoulli(unittest.TestCase):
         self.assertTrue(all(np.isnan(samples) == np.array([[False], [True], [False]])))
         self.assertTrue(all(samples[~np.isnan(samples)] == 1.0))
 
+    def test_sampling_3(self):
+
+        bernoulli = Bernoulli(Scope([0]), 0.5)
+
+        # make sure that instance ids out of bounds raise errors
+        self.assertRaises(ValueError, sample, bernoulli, np.array([[0]]), sampling_ctx=SamplingContext([1]))
+
 
 if __name__ == "__main__":
     unittest.main()

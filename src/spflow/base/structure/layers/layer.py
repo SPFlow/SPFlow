@@ -98,7 +98,7 @@ class SPNSumLayer(NestedModule):
 
 
 @dispatch(memoize=True)
-def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumLayer, None]:
+def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumLayer, Module, None]:
     """TODO"""
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -167,7 +167,7 @@ class SPNProductLayer(NestedModule):
 
 
 @dispatch(memoize=True)
-def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNProductLayer, None]:
+def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNProductLayer, Module, None]:
     """TODO"""
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -276,7 +276,7 @@ class SPNPartitionLayer(NestedModule):
 
 
 @dispatch(memoize=True)
-def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNPartitionLayer, None]:
+def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNPartitionLayer, Module, None]:
     """TODO"""
 
     # initialize dispatch context

@@ -38,6 +38,13 @@ class TestLogNormal(unittest.TestCase):
             np.isclose(samples.mean(), np.exp(1.0 + (0.5 ** 2 / 2.0)), rtol=0.1)
         )
 
+    def test_sampling_5(self):
+
+        log_normal = LogNormal(Scope([0]), 1.0, 0.5)
+
+        # make sure that instance ids out of bounds raise errors
+        self.assertRaises(ValueError, sample, log_normal, np.array([[0]]), sampling_ctx=SamplingContext([1]))
+
 
 if __name__ == "__main__":
     unittest.main()

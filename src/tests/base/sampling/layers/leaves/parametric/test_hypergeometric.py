@@ -40,6 +40,13 @@ class TestNode(unittest.TestCase):
         nodes_samples = sample(p2, 10000)
         self.assertTrue(np.allclose(layer_samples.mean(axis=0), nodes_samples.mean(axis=0), atol=0.01, rtol=0.1))
 
+    def test_sampling_3(self):
+        
+        hypergeometric_layer = HypergeometricLayer(scope=Scope([0]), N=8, M=3, n=4, n_nodes=2)
+        
+        # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails
+        self.assertRaises(ValueError, sample, hypergeometric_layer)
+
 
 if __name__ == "__main__":
     unittest.main()

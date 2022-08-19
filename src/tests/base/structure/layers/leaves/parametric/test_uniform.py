@@ -45,8 +45,10 @@ class TestLayer(unittest.TestCase):
         
         # wrong number of values
         self.assertRaises(ValueError, UniformLayer, Scope([0]), start, end[:-1], n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), start[:-1], end, n_nodes=3)
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), [start for _ in range(3)], [end for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), [start for _ in range(3)], end, n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), start, [end for _ in range(3)], n_nodes=3)
 
         # ----- numpy parameter values -----
 
@@ -57,9 +59,11 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.end == node_end))
         
         # wrong number of values
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array(start[:-1]), np.array(end), n_nodes=3)
         self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array(start), np.array(end[:-1]), n_nodes=3)
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array([start for _ in range(3)]), np.array([end for _ in range(3)]), n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array([start for _ in range(3)]), end, n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), start, np.array([end for _ in range(3)]), n_nodes=3)
 
         # ---- different scopes -----
         l = UniformLayer(scope=Scope([1]), start=0.0, end=1.0, n_nodes=3)
@@ -71,6 +75,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, UniformLayer, Scope([]), 0.0, 1.0, n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, [], 0.0, 1.0, n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
@@ -120,6 +125,17 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
         self.assertTrue(np.all(l.start == l_marg.start))
         self.assertTrue(np.all(l.end == l_marg.end))
+
+    def test_get_params(self):
+
+        layer = UniformLayer(scope=Scope([1]), start=[-0.73, 0.29], end=[0.5, 1.3], support_outside=[True, False], n_nodes=2)
+
+        start, end, support_outside, *others = layer.get_params()
+
+        self.assertTrue(len(others) == 0)
+        self.assertTrue(np.allclose(start, np.array([-0.73, 0.29])))
+        self.assertTrue(np.allclose(end, np.array([0.5, 1.3])))
+        self.assertTrue(np.allclose(support_outside, np.array([True, False])))
 
 
 if __name__ == "__main__":

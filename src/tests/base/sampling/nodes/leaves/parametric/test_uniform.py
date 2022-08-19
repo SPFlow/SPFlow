@@ -24,6 +24,14 @@ class TestUniform(unittest.TestCase):
         samples = sample(uniform, 1000)
         self.assertTrue(all((samples >= -1.0) & (samples <= 2.5)))
 
+    def test_sampling_2(self):
+
+        uniform = Uniform(Scope([0]), -1.0, 2.5)
+        
+        # make sure that instance ids out of bounds raise errors
+        self.assertRaises(ValueError, sample, uniform, np.array([[0]]), sampling_ctx=SamplingContext([1]))
+
+
 
 if __name__ == "__main__":
     unittest.main()

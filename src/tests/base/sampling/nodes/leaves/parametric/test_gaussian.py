@@ -24,6 +24,13 @@ class TestGaussian(unittest.TestCase):
         samples = sample(gaussian, 1000)
         self.assertTrue(np.isclose(samples.mean(), np.array([0.0]), atol=0.01))
 
+    def test_sampling_2(self):
+
+        gaussian = Gaussian(Scope([0]), 0.0, 1.0)
+
+        # make sure that instance ids out of bounds raise errors
+        self.assertRaises(ValueError, sample, gaussian, np.array([[0]]), sampling_ctx=SamplingContext([1]))
+
 
 if __name__ == "__main__":
     unittest.main()
