@@ -22,6 +22,9 @@ class Scope():
         if evidence is None:
             evidence = set()
 
+        if len(query) == 0 and len(evidence) != 0:
+            raise ValueError("List of query variables for 'Scope' is empty, but list of evidence variables is not.")
+
         if len(query) != len(set(query)):
             raise ValueError("List of query variables for 'Scope' contains duplicates.")
 
@@ -36,7 +39,7 @@ class Scope():
 
     def __repr__(self) -> str:
         """TODO"""
-        return "Scope({}|{})".format(self.query if self.query else "{}", self.evidence if self.evidence else "{}")
+        return "Scope({}|{})".format(self.query if self.query else "{}", self.evidence if self.evidence else "{}")  # pragma: no cover
 
     def __eq__(self, other) -> bool:
         """TODO"""
@@ -83,7 +86,8 @@ class Scope():
 
         for scope in scopes:
             if overall_scope is None:
-                overall_scope == None
+                overall_scope = scope
+                continue
             if not overall_scope == scope:
                 return False
         
