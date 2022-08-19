@@ -18,8 +18,7 @@ from functools import reduce
 def sample(module: Module, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     """TODO"""
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
-    return sample(module, 1, dispatch_ctx=dispatch_ctx)
+    return sample(module, 1, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)
 
 
 @dispatch
