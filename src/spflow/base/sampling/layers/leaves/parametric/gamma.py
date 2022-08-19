@@ -5,7 +5,7 @@ Created on August 14, 2022
 """
 import numpy as np
 from typing import Optional
-from spflow.meta.scope.scope import pairwise_disjoint
+from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
@@ -27,7 +27,7 @@ def sample(layer: GammaLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchC
         if len(output_ids) == 0:
             output_ids = list(range(layer.n_out))
 
-        if not pairwise_disjoint([layer_scopes[id] for id in output_ids]):
+        if not Scope.all_pairwise_disjoint([layer_scopes[id] for id in output_ids]):
             raise ValueError("Sampling from non-pairwise-disjoint scopes for instances is not allowed.")
 
     # all product nodes are over (all) children

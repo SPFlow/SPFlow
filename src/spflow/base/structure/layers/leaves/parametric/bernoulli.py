@@ -31,6 +31,9 @@ class BernoulliLayer(Module):
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
+            if len(scope) == 0:
+                raise ValueError("List of scopes for 'BernoulliLayer' was empty.")
+
             self._n_out = len(scope)
         
         super(BernoulliLayer, self).__init__(children=[], **kwargs)
@@ -38,21 +41,17 @@ class BernoulliLayer(Module):
         # create leaf nodes
         self.nodes = [Bernoulli(s) for s in scope]
 
+        # compute scope
+        self.scopes_out = scope
+
         # parse weights
         self.set_params(p)
 
-        # compute scope
-        self.scopes = scope
 
     @property
     def n_out(self) -> int:
         """Returns the number of outputs for this module."""
         return self._n_out
-    
-    @property
-    def scopes_out(self) -> List[Scope]:
-        """TODO"""
-        return self.scopes
 
     @property
     def p(self) -> np.ndarray:
@@ -68,7 +67,6 @@ class BernoulliLayer(Module):
             raise ValueError(f"Numpy array of 'p' values for 'BernoulliLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional.")
         if(p.shape[0] != self.n_out):
             raise ValueError(f"Length of numpy array of 'p' values for 'BernoulliLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}")
-
         for node_p, node in zip(p, self.nodes):
             node.set_params(node_p)
 

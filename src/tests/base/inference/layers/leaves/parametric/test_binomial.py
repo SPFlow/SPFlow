@@ -14,10 +14,10 @@ import unittest
 class TestNode(unittest.TestCase):
     def test_layer_likelihood_1(self):
 
-        binomial_layer = BinomialLayer(scope=Scope([0]), n=[3, 5], p=[0.8, 0.3], n_nodes=2)
+        binomial_layer = BinomialLayer(scope=[Scope([0]), Scope([0])], n=3, p=[0.8, 0.3])
         s1 = SPNSumNode(children=[binomial_layer], weights=[0.3, 0.7])
 
-        binomial_nodes = [Binomial(Scope([0]), n=3, p=0.8), Binomial(Scope([0]), n=5, p=0.3)]
+        binomial_nodes = [Binomial(Scope([0]), n=3, p=0.8), Binomial(Scope([0]), n=3, p=0.3)]
         s2 = SPNSumNode(children=binomial_nodes, weights=[0.3, 0.7])
 
         data = np.array([[0], [1], [0]])

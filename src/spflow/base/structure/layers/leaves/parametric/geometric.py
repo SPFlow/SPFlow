@@ -31,6 +31,9 @@ class GeometricLayer(Module):
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
+            if len(scope) == 0:
+                raise ValueError("List of scopes for 'GeometricLayer' was empty.")
+
             self._n_out = len(scope)
         
         super(GeometricLayer, self).__init__(children=[], **kwargs)
@@ -38,21 +41,16 @@ class GeometricLayer(Module):
         # create leaf nodes
         self.nodes = [Geometric(s) for s in scope]
 
+        # compute scope
+        self.scopes_out = scope
+
         # parse weights
         self.set_params(p)
-
-        # compute scope
-        self.scopes = scope
 
     @property
     def n_out(self) -> int:
         """Returns the number of outputs for this module."""
         return self._n_out
-    
-    @property
-    def scopes_out(self) -> List[Scope]:
-        """TODO"""
-        return self.scopes
 
     @property
     def p(self) -> np.ndarray:

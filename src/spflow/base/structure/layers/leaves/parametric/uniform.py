@@ -33,6 +33,9 @@ class UniformLayer(Module):
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
+            if len(scope) == 0:
+                raise ValueError("List of scopes for 'UniformLayer' was empty.")
+
             self._n_out = len(scope)
 
         super(UniformLayer, self).__init__(children=[], **kwargs)
@@ -40,21 +43,16 @@ class UniformLayer(Module):
         # create leaf nodes
         self.nodes = [Uniform(s, 0.0, 1.0) for s in scope]
 
+        # compute scope
+        self.scopes_out = scope
+
         # parse weights
         self.set_params(start, end, support_outside)
-
-        # compute scope
-        self.scopes = scope
 
     @property
     def n_out(self) -> int:
         """Returns the number of outputs for this module."""
         return self._n_out
-    
-    @property
-    def scopes_out(self) -> List[Scope]:
-        """TODO"""
-        return self.scopes
 
     @property
     def start(self) -> np.ndarray:

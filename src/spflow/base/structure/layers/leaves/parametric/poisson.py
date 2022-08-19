@@ -31,6 +31,9 @@ class PoissonLayer(Module):
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
+            if len(scope) == 0:
+                raise ValueError("List of scopes for 'PoissonLayer' was empty.")
+
             self._n_out = len(scope)
 
         super(PoissonLayer, self).__init__(children=[], **kwargs)
@@ -38,22 +41,17 @@ class PoissonLayer(Module):
         # create leaf nodes
         self.nodes = [Poisson(s) for s in scope]
 
+        # compute scope
+        self.scopes_out = scope
+
         # parse weights
         self.set_params(l)
-
-        # compute scope
-        self.scopes = scope
 
     @property
     def n_out(self) -> int:
         """Returns the number of outputs for this module."""
         return self._n_out
     
-    @property
-    def scopes_out(self) -> List[Scope]:
-        """TODO"""
-        return self.scopes
-
     @property
     def l(self) -> np.ndarray:
         return np.array([node.l for node in self.nodes])

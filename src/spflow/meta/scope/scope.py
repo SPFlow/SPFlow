@@ -65,15 +65,26 @@ class Scope():
         """TODO"""
         return Scope(set(self.query).union(other.query), set(self.evidence).union(other.evidence))
 
-
-def pairwise_disjoint(scopes: Iterable[Scope]) -> bool:
+    def all_pairwise_disjoint(scopes: Iterable["Scope"]) -> bool:
     
-    overall_scope = Scope()
+        overall_scope = Scope()
 
-    for scope in scopes:
-        if(overall_scope.isdisjoint(scope)):
-            overall_scope = overall_scope.union(scope)
-        else:
-            return False
+        for scope in scopes:
+            if(overall_scope.isdisjoint(scope)):
+                overall_scope = overall_scope.union(scope)
+            else:
+                return False
     
-    return True
+        return True
+    
+    def all_equal(scopes: Iterable["Scope"]) -> bool:
+
+        overall_scope = None
+
+        for scope in scopes:
+            if overall_scope is None:
+                overall_scope == None
+            if not overall_scope == scope:
+                return False
+        
+        return True
