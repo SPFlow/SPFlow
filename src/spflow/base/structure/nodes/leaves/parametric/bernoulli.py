@@ -74,19 +74,16 @@ class Bernoulli(LeafNode):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
-
-        valid = np.ones(scope_data.shape[0], dtype=bool)
+        valid = np.ones(scope_data.shape, dtype=bool)
 
         # check for infinite values
-        valid &= ~np.isinf(scope_data).sum(axis=-1).astype(bool)
+        valid &= ~np.isinf(scope_data)
 
         # check if all values are valid integers
         # TODO: runtime warning due to nan values
-        valid[valid] &= (np.remainder(scope_data[valid], 1) == 0).sum(axis=-1).astype(bool)
+        valid[valid] &= np.remainder(scope_data[valid], 1) == 0
 
         # check if values are in valid range
-        valid[valid] &= (
-            ((scope_data[valid] >= 0) & (scope_data[valid] <= 1)).sum(axis=-1).astype(bool)
-        )
+        valid[valid] &= (scope_data[valid] >= 0) & (scope_data[valid] <= 1)
 
         return valid

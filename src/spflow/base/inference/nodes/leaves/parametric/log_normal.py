@@ -28,7 +28,7 @@ def log_likelihood(node: LogNormal, data: np.ndarray, dispatch_ctx: Optional[Dis
     marg_ids = np.isnan(data).sum(axis=-1).astype(bool)
 
     # create masked based on distribution's support
-    valid_ids = node.check_support(data[~marg_ids])
+    valid_ids = node.check_support(data[~marg_ids]).squeeze(1)
 
     # TODO: suppress checks
     if not all(valid_ids):

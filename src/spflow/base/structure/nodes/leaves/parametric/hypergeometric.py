@@ -110,23 +110,19 @@ class Hypergeometric(LeafNode):
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
-        valid = np.ones(scope_data.shape[0], dtype=bool)
+        valid = np.ones(scope_data.shape, dtype=bool)
 
         # check for infinite values
-        valid &= ~np.isinf(scope_data).sum(axis=-1).astype(bool)
+        valid &= ~np.isinf(scope_data)
 
         # check if all values are valid integers
         # TODO: runtime warning due to nan values
-        valid[valid] &= (np.remainder(scope_data[valid], 1) == 0).sum(axis=-1).astype(bool)
+        valid[valid] &= (np.remainder(scope_data[valid], 1) == 0)
 
         # check if values are in valid range
         valid[valid] &= (
-            (
                 (scope_data[valid] >= max(0, self.n + self.M - self.N))
                 & (scope_data[valid] <= min(self.n, self.M))
-            )
-            .sum(axis=-1)
-            .astype(bool)
         )
 
         return valid

@@ -87,9 +87,9 @@ class Gaussian(LeafNode):
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
-        valid = np.ones(scope_data.shape[0], dtype=bool)
+        valid = np.ones(scope_data.shape, dtype=bool)
 
         # check for infinite values
-        valid &= ~np.isinf(scope_data).sum(axis=-1).astype(bool)
+        valid &= ~np.isinf(scope_data)
 
         return valid
