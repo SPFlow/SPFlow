@@ -82,7 +82,7 @@ class Gaussian(LeafNode):
         # ----- log probabilities -----
 
         # create masked based on distribution's support
-        valid_ids = self.check_support(scope_data[~marg_ids])
+        valid_ids = self.check_support(scope_data[~marg_ids]).squeeze(1)
 
         if not all(valid_ids):
             raise ValueError(
@@ -136,7 +136,7 @@ class Gaussian(LeafNode):
 
         # check for infinite values
         mask = valid.clone()
-        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+        valid[mask] &= ~scope_data[mask].isinf()
 
         return valid
 

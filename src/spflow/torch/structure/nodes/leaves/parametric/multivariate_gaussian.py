@@ -200,11 +200,11 @@ class MultivariateGaussian(LeafNode):
                 f"Expected scope_data to be of shape (n,{len(self.scopes_out[0].query)}), but was: {scope_data.shape}"
             )
 
-        valid = self.dist.support.check(scope_data)  # type: ignore
+        valid = self.dist.support.check(scope_data).unsqueeze(1)  # type: ignore
 
         # additionally check for infinite values (may return NaNs despite support)
         mask = valid.clone()
-        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+        valid[mask.squeeze(1), :] &= ~(scope_data[mask.squeeze(1), :].isinf().sum(dim=1, keepdims=True).bool())
 
         return valid
     

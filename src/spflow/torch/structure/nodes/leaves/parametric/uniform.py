@@ -49,6 +49,7 @@ class Uniform(LeafNode):
         # register interval bounds as torch buffers (should not be changed)
         self.register_buffer("start", torch.empty(size=[]))
         self.register_buffer("end", torch.empty(size=[]))
+        self.register_buffer("end_next", torch.empty(size=[]))
 
         # set parameters
         self.set_params(start, end, support_outside)
@@ -66,7 +67,8 @@ class Uniform(LeafNode):
         end_next = torch.nextafter(torch.tensor(end), torch.tensor(float("Inf")))  # type: ignore
 
         self.start.data = torch.tensor(float(start))  # type: ignore
-        self.end.data = torch.tensor(float(end_next))  # type: ignore
+        self.end.data = torch.tensor(float(end))  # type: ignore
+        self.end_next.data = torch.tensor(float(end_next))
         self.support_outside = support_outside
 
         # create Torch distribution with specified parameters
@@ -105,15 +107,14 @@ class Uniform(LeafNode):
         valid = torch.ones(scope_data.shape, dtype=torch.bool)
 
         # check for infinite values
-        valid &= ~scope_data.isinf().sum(dim=-1, keepdim=True).bool()
+        mask = valid.clone()
+        valid[mask] &= ~scope_data[mask].isinf()
 
         # check if values are within valid range
         if not self.support_outside:
+            valid[mask] &= (scope_data[mask] >= self.start) & (scope_data[mask] < self.end_next)
 
-            mask = valid.clone()
-            valid[mask] &= (scope_data[mask] >= self.start) & (scope_data[mask] < self.end)
-
-        return valid.squeeze(1)
+        return valid
 
 
 @dispatch(memoize=True)
