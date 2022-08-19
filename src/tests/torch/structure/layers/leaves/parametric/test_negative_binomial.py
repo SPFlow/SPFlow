@@ -51,9 +51,11 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
 
         # wrong number of values
+        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([0]), Scope([1]), Scope([2])], n_values[:-1], p_values)
         self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([0]), Scope([1]), Scope([2])], n_values, p_values[:-1])
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([0]), Scope([1]), Scope([2])], [n_values for _ in range(3)], [p_values for _ in range(3)])
+        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([0]), Scope([1]), Scope([2])], n_values, [p_values for _ in range(3)])
+        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([0]), Scope([1]), Scope([2])], [n_values for _ in range(3)], p_values)
 
         # ----- numpy parameter values -----
 
@@ -64,8 +66,11 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
 
         # wrong number of values
+        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([0]), Scope([1]), Scope([2])], np.array(n_values[:-1]), np.array(p_values))
         self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([0]), Scope([1]), Scope([2])], np.array(n_values), np.array(p_values[:-1]))
-        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([0]), Scope([1]), Scope([2])], np.array([n_values for _ in range(3)]), np.array([p_values for _ in range(3)]), n_nodes=3)
+        # wrong number of dimensions (nested list)
+        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([0]), Scope([1]), Scope([2])], np.array(n_values), np.array([p_values for _ in range(3)]), n_nodes=3)
+        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([0]), Scope([1]), Scope([2])], np.array([n_values for _ in range(3)]), np.array(p_values), n_nodes=3)
 
         # ---- different scopes -----
         l = NegativeBinomialLayer(scope=Scope([1]), n_nodes=3, n=2)
@@ -77,6 +82,7 @@ class TestNode(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, NegativeBinomialLayer, Scope([]), n_nodes=3, n=2)
+        self.assertRaises(ValueError, NegativeBinomialLayer, [], n_nodes=3, n=2)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]

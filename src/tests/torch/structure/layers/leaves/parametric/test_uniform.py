@@ -56,9 +56,13 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(support_outside_layer_node, torch.tensor(support_outside_value)))
 
         # wrong number of values
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), start_values[:-1], end_values, support_outside_values, n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), start_values, end_values[:-1], support_outside_values[:-1], n_nodes=3)
         self.assertRaises(ValueError, UniformLayer, Scope([0]), start_values, end_values, support_outside_values[:-1], n_nodes=3)
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), [start_values for _ in range(3)], [end_values for _ in range(3)], [support_outside_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), [start_values for _ in range(3)], end_values, support_outside_values, n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), start_values, [end_values for _ in range(3)], support_outside_values, n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), start_values, end_values, [support_outside_values for _ in range(3)], n_nodes=3)
 
         # ----- numpy parameter values -----
 
@@ -70,8 +74,13 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(support_outside_layer_node, torch.tensor(support_outside_value)))
 
         # wrong number of values
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array(start_values[:-1]), np.array(end_values), np.array(support_outside_values), n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array(start_values), np.array(end_values[:-1]), np.array(support_outside_values), n_nodes=3)
         self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array(start_values), np.array(end_values), np.array(support_outside_values[:-1]), n_nodes=3)
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array([start_values for _ in range(3)]), np.array([end_values for _ in range(3)]), np.array([support_outside_values for _ in range(3)]), n_nodes=3)
+        # wrong number of dimensions (nested list)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array([start_values for _ in range(3)]), np.array(end_values), np.array(support_outside_values), n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array(start_values), np.array([end_values for _ in range(3)]), np.array(support_outside_values), n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array(start_values), np.array(end_values), np.array([support_outside_values for _ in range(3)]), n_nodes=3)
 
         # ---- different scopes -----
         l = UniformLayer(scope=Scope([1]), n_nodes=3, start=0.0, end=1.0)
@@ -83,6 +92,7 @@ class TestNode(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, UniformLayer, Scope([]), n_nodes=3, start=0.0, end=1.0)
+        self.assertRaises(ValueError, UniformLayer, [], n_nodes=3, start=0.0, end=1.0)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]

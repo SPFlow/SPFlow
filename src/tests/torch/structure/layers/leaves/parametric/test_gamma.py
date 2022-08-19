@@ -51,9 +51,11 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(beta_layer_node, torch.tensor(beta_value)))
 
         # wrong number of values
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), alpha_values[:-1], beta_values, n_nodes=3)
         self.assertRaises(ValueError, GammaLayer, Scope([0]), alpha_values, beta_values[:-1], n_nodes=3)
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), [alpha_values for _ in range(3)], [beta_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), alpha_values, [beta_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), [alpha_values for _ in range(3)], beta_values, n_nodes=3)
 
         # ----- numpy parameter values -----
 
@@ -64,8 +66,11 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(beta_layer_node, torch.tensor(beta_value)))
 
         # wrong number of values
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array(alpha_values[:-1]), np.array(beta_values), n_nodes=3)
         self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array(alpha_values), np.array(beta_values[:-1]), n_nodes=3)
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array([alpha_values for _ in range(3)]), np.array([beta_values for _ in range(3)]), n_nodes=3)
+        # wrong number of dimensions (nested list)
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array(alpha_values), np.array([beta_values for _ in range(3)]), n_nodes=3)
+        self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array([alpha_values for _ in range(3)]), np.array(beta_values), n_nodes=3)
 
         # ---- different scopes -----
         l = GammaLayer(scope=Scope([1]), n_nodes=3)
@@ -77,6 +82,7 @@ class TestNode(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, GammaLayer, Scope([]), n_nodes=3)
+        self.assertRaises(ValueError, GammaLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
