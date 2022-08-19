@@ -1,4 +1,3 @@
-from sys import set_coroutine_origin_tracking_depth
 from spflow.meta.scope.scope import Scope
 import numpy as np
 import unittest
