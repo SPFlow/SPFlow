@@ -34,6 +34,6 @@ def sample(leaf: Hypergeometric, data: torch.Tensor, dispatch_ctx: Optional[Disp
     rand_perm = torch.argsort(torch.rand(sampling_ids.shape[0], leaf.N), dim=1)
     
     # assuming that first M indices are the M objects of interest, count how many of these indices were "drawn" in the first n draws (with replacement since all indices are unique per row)
-    data[sampling_ids, leaf.scope.query] = (rand_perm[:, :leaf.n] <= leaf.M).sum(dim=1).type(torch.get_default_dtype())
+    data[sampling_ids, leaf.scope.query] = (rand_perm[:, :leaf.n] < leaf.M).sum(dim=1).type(torch.get_default_dtype())
 
     return data
