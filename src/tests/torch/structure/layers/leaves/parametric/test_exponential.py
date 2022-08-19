@@ -70,6 +70,7 @@ class TestNode(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, ExponentialLayer, Scope([]), n_nodes=3)
+        self.assertRaises(ValueError, ExponentialLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]

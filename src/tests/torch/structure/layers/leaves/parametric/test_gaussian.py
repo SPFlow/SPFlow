@@ -52,8 +52,10 @@ class TestNode(unittest.TestCase):
 
         # wrong number of values
         self.assertRaises(ValueError, GaussianLayer, Scope([0]), mean_values, std_values[:-1], n_nodes=3)
+        self.assertRaises(ValueError, GaussianLayer, Scope([0]), mean_values[:-1], std_values, n_nodes=3)
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, GaussianLayer, Scope([0]), [mean_values for _ in range(3)], [std_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, GaussianLayer, Scope([0]), mean_values, [std_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(ValueError, GaussianLayer, Scope([0]), [mean_values for _ in range(3)], std_values, n_nodes=3)
 
         # ----- numpy parameter values -----
 
@@ -64,8 +66,11 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
 
         # wrong number of values
+        self.assertRaises(ValueError, GaussianLayer, Scope([0]), np.array(mean_values[:-1]), np.array(std_values), n_nodes=3)
         self.assertRaises(ValueError, GaussianLayer, Scope([0]), np.array(mean_values), np.array(std_values[:-1]), n_nodes=3)
-        self.assertRaises(ValueError, GaussianLayer, Scope([0]), np.array([mean_values for _ in range(3)]), np.array([std_values for _ in range(3)]), n_nodes=3)
+        # wrong number of dimensions (nested list)
+        self.assertRaises(ValueError, GaussianLayer, Scope([0]), np.array(mean_values), np.array([std_values for _ in range(3)]), n_nodes=3)
+        self.assertRaises(ValueError, GaussianLayer, Scope([0]), np.array([mean_values for _ in range(3)]), np.array(std_values), n_nodes=3)
 
         # ---- different scopes -----
         l = GaussianLayer(scope=Scope([1]), n_nodes=3)
@@ -77,6 +82,7 @@ class TestNode(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, GaussianLayer, Scope([]), n_nodes=3)
+        self.assertRaises(ValueError, GaussianLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]

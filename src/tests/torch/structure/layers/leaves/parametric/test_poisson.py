@@ -70,6 +70,7 @@ class TestNode(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, PoissonLayer, Scope([]), n_nodes=3)
+        self.assertRaises(ValueError, PoissonLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
