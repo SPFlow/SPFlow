@@ -75,15 +75,18 @@ class Binomial(LeafNode):
         return D.Binomial(total_count=self.n, probs=self.p)
 
     def set_params(self, n: int, p: float) -> None:
-
-        if n < 0 or not np.isfinite(n):
+    
+        if isinstance(n, float):
+            if not n.is_integer():
+                raise ValueError(
+                    f"Value of n for Binomial distribution must be (equal to) an integer value, but was: {n}"
+                )
+            n = torch.tensor(int(n))
+        elif isinstance(n, int):
+            n = torch.tensor(n)
+        if n < 0 or not torch.isfinite(n):
             raise ValueError(
                 f"Value of n for Binomial distribution must to greater of equal to 0, but was: {n}"
-            )
-
-        if not (torch.remainder(torch.tensor(n), 1.0) == torch.tensor(0.0)):
-            raise ValueError(
-                f"Value of n for Binomial distribution must be (equal to) an integer value, but was: {n}"
             )
 
         self.p = torch.tensor(float(p))
@@ -115,7 +118,7 @@ class Binomial(LeafNode):
 
         # check for infinite values
         mask = valid.clone()
-        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+        valid[mask] &= ~scope_data[mask].isinf()
 
         return valid
 

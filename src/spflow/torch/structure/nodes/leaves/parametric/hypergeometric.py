@@ -54,7 +54,7 @@ class Hypergeometric(LeafNode):
         # set parameters
         self.set_params(N, M, n)
 
-    def log_prob(self, k: torch.Tensor):
+    def log_prob(self, k: torch.Tensor) -> torch.Tensor:
 
         N_minus_M = self.N - self.M  # type: ignore
         n_minus_k = self.n - k  # type: ignore
@@ -69,26 +69,31 @@ class Hypergeometric(LeafNode):
         # ---- alternatively (more precise according to SciPy) -----
         # betaln(good+1, 1) + betaln(bad+1,1) + betaln(total-draws+1, draws+1) - betaln(k+1, good-k+1) - betaln(draws-k+1, bad-draws+k+1) - betaln(total+1, 1)
 
-        # TODO: avoid recomputation of terms
+        # reuse terms that occur multiple times
+        lgamma_1 = torch.lgamma(torch.tensor(1))
+        lgamma_M_p_2 = torch.lgamma(self.M + 2)
+        lgamma_N_p_2 = torch.lgamma(self.N + 2)
+        lgamma_N_m_M_p_2 = torch.lgamma(N_minus_M + 2)
+
         result = (
             torch.lgamma(self.M + 1)  # type: ignore
-            + torch.lgamma(torch.tensor(1.0))
-            - torch.lgamma(self.M + 2)  # type: ignore
+            + lgamma_1
+            - lgamma_M_p_2  # type: ignore
             + torch.lgamma(N_minus_M + 1)  # type: ignore
-            + torch.lgamma(torch.tensor(1.0))
-            - torch.lgamma(N_minus_M + 2)  # type: ignore
+            + lgamma_1
+            - lgamma_N_m_M_p_2  # type: ignore
             + torch.lgamma(self.N - self.n + 1)  # type: ignore
             + torch.lgamma(self.n + 1)  # type: ignore
-            - torch.lgamma(self.N + 2)  # type: ignore
+            - lgamma_N_p_2  # type: ignore
             - torch.lgamma(k + 1) # .float()
             - torch.lgamma(self.M - k + 1)
-            + torch.lgamma(self.M + 2)  # type: ignore
+            + lgamma_M_p_2  # type: ignore
             - torch.lgamma(n_minus_k + 1)
             - torch.lgamma(N_minus_M - self.n + k + 1)
-            + torch.lgamma(N_minus_M + 2)  # type: ignore
+            + lgamma_N_m_M_p_2  # type: ignore
             - torch.lgamma(self.N + 1)  # type: ignore
-            - torch.lgamma(torch.tensor(1.0))
-            + torch.lgamma(self.N + 2)  # type: ignore
+            - lgamma_1
+            + lgamma_N_p_2  # type: ignore
         )
 
         return result

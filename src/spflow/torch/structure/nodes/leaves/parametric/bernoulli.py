@@ -43,7 +43,7 @@ class Bernoulli(LeafNode):
 
         super(Bernoulli, self).__init__(scope=scope)
 
-        # register auxiliary torch paramter for the success probability p
+        # register auxiliary torch parameter for the success probability p
         self.p_aux = Parameter()
 
         # set parameters
@@ -97,7 +97,7 @@ class Bernoulli(LeafNode):
 
         # check for infinite values
         mask = valid.clone()
-        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+        valid[mask] &= ~scope_data[mask].isinf()
 
         return valid
 

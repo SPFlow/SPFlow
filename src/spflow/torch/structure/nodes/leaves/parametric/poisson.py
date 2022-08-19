@@ -102,7 +102,7 @@ class Poisson(LeafNode):
 
         # check for infinite values
         mask = valid.clone()
-        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+        valid[mask] &= ~scope_data[mask].isinf()
 
         return valid
 

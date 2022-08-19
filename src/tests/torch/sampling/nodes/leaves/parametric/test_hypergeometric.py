@@ -18,7 +18,7 @@ class TestHypergeometric(unittest.TestCase):
 
     def test_sampling_1(self):
 
-       # ----- configuration 1 -----
+        # ----- configuration 1 -----
         N = 500
         M = 100
         n = 50

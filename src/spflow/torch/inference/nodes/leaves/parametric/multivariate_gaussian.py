@@ -30,7 +30,7 @@ def log_likelihood(leaf: MultivariateGaussian, data: torch.Tensor, dispatch_ctx:
     _scope_data[_scope_data.isnan()] = 0.0
 
     # check support
-    valid_ids = leaf.check_support(_scope_data)
+    valid_ids = leaf.check_support(_scope_data).squeeze(1)
 
     del _scope_data  # free up memory
 

@@ -33,7 +33,7 @@ def log_likelihood(leaf: Gaussian, data: torch.Tensor, dispatch_ctx: Optional[Di
     # ----- log probabilities -----
 
     # create mask based on distribution's support
-    valid_ids = leaf.check_support(scope_data[~marg_ids])
+    valid_ids = leaf.check_support(scope_data[~marg_ids]).squeeze(1)
 
     # TODO: suppress checks
     if not all(valid_ids):
