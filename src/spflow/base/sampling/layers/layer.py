@@ -26,7 +26,7 @@ def sample(sum_layer: SPNSumLayer, data: np.ndarray, dispatch_ctx: Optional[Disp
 
     # sample accoding to sampling_context
     for node_ids in np.unique(sampling_ctx.output_ids, axis=0):
-        if(len(node_ids) != 1):
+        if len(node_ids) != 1 or (len(node_ids) == 0 and sum_layer.n_out != 1):
             raise ValueError("Too many output ids specified for outputs over same scope.")
 
         # single node id
@@ -45,6 +45,10 @@ def sample(product_layer: SPNProductLayer, data: np.ndarray, dispatch_ctx: Optio
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
+    for node_ids in np.unique(sampling_ctx.output_ids, axis=0):
+        if len(node_ids) != 1 or (len(node_ids) == 0 and product_layer.n_out != 1):
+            raise ValueError("Too many output ids specified for outputs over same scope.")
+
     # all product nodes are over (all) children
     for child in product_layer.children:
         sample(child, data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(sampling_ctx.instance_ids, [list(range(child.n_out)) for _ in sampling_ctx.instance_ids]))
@@ -61,7 +65,7 @@ def sample(partition_layer: SPNPartitionLayer, data: np.ndarray, dispatch_ctx: O
 
     # sample accoding to sampling_context
     for node_ids in np.unique(sampling_ctx.output_ids, axis=0):
-        if(len(node_ids) != 1):
+        if len(node_ids) != 1 or (len(node_ids) == 0 and partition_layer.n_out != 1):
             raise ValueError("Too many output ids specified for outputs over same scope.")
 
         node_id = node_ids[0]

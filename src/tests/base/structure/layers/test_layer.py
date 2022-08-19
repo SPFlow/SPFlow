@@ -52,6 +52,15 @@ class TestNode(unittest.TestCase):
 
         self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights)
         self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights.T)
+        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, np.expand_dims(weights, 0))
+        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, np.expand_dims(weights, -1))
+
+        # ----- incorrect number of weights -----
+        weights = np.array([[0.3, 0.3, 0.3, 0.1], [0.5, 0.2, 0.2, 0.1]])
+        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights)
+
+        weights = np.array([[0.3, 0.7], [0.5, 0.5]])
+        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights)
 
         # ----- weights not summing up to one per row -----
         weights = np.array([[0.3, 0.3, 0.4], [0.5, 0.7, 0.3], [0.1, 0.7, 0.2]])
@@ -67,7 +76,10 @@ class TestNode(unittest.TestCase):
     
         # ----- no children -----
         self.assertRaises(ValueError, SPNSumLayer, 3, [])
-    
+
+        # ----- invalid number of nodes -----
+        self.assertRaises(ValueError, SPNSumLayer, 0, input_nodes)
+
     def test_sum_layer_structural_marginalization(self):
         
         # dummy children over same scope
@@ -78,7 +90,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(marginalize(l, [0,1]) == None)
 
         # ----- marginalize over partial scope -----
-        l_marg = marginalize(l, [0])
+        l_marg = marginalize(l, [0],)
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
         self.assertTrue(np.all(l.weights == l_marg.weights))
 
@@ -108,6 +120,9 @@ class TestNode(unittest.TestCase):
         # ----- no children -----
         self.assertRaises(ValueError, SPNProductLayer, 3, [])
 
+        # ----- invalid number of nodes -----
+        self.assertRaises(ValueError, SPNProductLayer, 0, input_nodes)
+
     def test_product_layer_structural_marginalization(self):
         
         # dummy children over pair-wise disjoint scopes
@@ -126,6 +141,12 @@ class TestNode(unittest.TestCase):
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [4])
         self.assertTrue(l_marg.scopes_out == [Scope([0,1,2,3]), Scope([0,1,2,3]), Scope([0,1,2,3])])
+
+        # ----- pruning -----
+        l = SPNProductLayer(n=3, children=input_nodes[:2])
+
+        l_marg = marginalize(l, [0,1], prune=True)
+        self.assertTrue(isinstance(l_marg, DummyNode))
 
     def test_partition_layer_initialization(self):
         
@@ -164,7 +185,7 @@ class TestNode(unittest.TestCase):
             [DummyNode(Scope([0]))],
             [DummyNode(Scope([0])), DummyNode(Scope([0]))]
         ])
-    
+ 
     def test_partition_layer_structural_marginalization(self):
         
         # dummy partitios over pair-wise disjont scopes
@@ -184,6 +205,16 @@ class TestNode(unittest.TestCase):
         # should partially marginalize one partition
         l_marg = marginalize(l, [3])
         self.assertTrue(l_marg.scope == Scope([0,1,2]))
+
+        # ----- marginalize over non-scope rvs -----
+        l_marg = marginalize(l, [4])
+        self.assertTrue(l_marg.scopes_out == [Scope([0,1,2,3]), Scope([0,1,2,3]), Scope([0,1,2,3]), Scope([0,1,2,3]), Scope([0,1,2,3]), Scope([0,1,2,3])])
+
+        # ----- pruning -----
+        l = SPNPartitionLayer(child_partitions=input_partitions[1:])
+
+        l_marg = marginalize(l, [1,3], prune=True)
+        self.assertTrue(isinstance(l_marg, DummyNode))
 
 
 if __name__ == "__main__":

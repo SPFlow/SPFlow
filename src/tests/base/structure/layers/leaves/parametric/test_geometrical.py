@@ -60,6 +60,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, GeometricLayer, Scope([]), n_nodes=3)
+        self.assertRaises(ValueError, GeometricLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
@@ -105,6 +106,15 @@ class TestLayer(unittest.TestCase):
 
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
         self.assertTrue(np.all(l.p == l_marg.p))
+
+    def test_get_params(self):
+
+        layer = GeometricLayer(scope=Scope([1]), p=[0.73, 0.29], n_nodes=2)
+
+        p, *others = layer.get_params()
+
+        self.assertTrue(len(others) == 0)
+        self.assertTrue(np.allclose(p, np.array([0.73, 0.29])))
 
 
 if __name__ == "__main__":

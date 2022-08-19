@@ -60,6 +60,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, PoissonLayer, Scope([]), 1.5, n_nodes=3)
+        self.assertRaises(ValueError, PoissonLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
@@ -105,6 +106,15 @@ class TestLayer(unittest.TestCase):
 
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
         self.assertTrue(np.all(l.l == l_marg.l))
+
+    def test_get_params(self):
+
+        layer = PoissonLayer(scope=Scope([1]), l=[0.73, 0.29], n_nodes=2)
+
+        l, *others = layer.get_params()
+
+        self.assertTrue(len(others) == 0)
+        self.assertTrue(np.allclose(l, np.array([0.73, 0.29])))
 
 
 if __name__ == "__main__":

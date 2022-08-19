@@ -77,9 +77,9 @@ class GammaLayer(Module):
         if isinstance(beta, list):
             beta = np.array(beta)
         if(beta.ndim != 1):
-            raise ValueError(f"Numpy array of 'p' values for 'GammaLayer' is expected to be one-dimensional, but is {beta.ndim}-dimensional.")
+            raise ValueError(f"Numpy array of 'beta' values for 'GammaLayer' is expected to be one-dimensional, but is {beta.ndim}-dimensional.")
         if(beta.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'p' values for 'GammaLayer' must match number of output nodes {self.n_out}, but is {beta.shape[0]}")
+            raise ValueError(f"Length of numpy array of 'beta' values for 'GammaLayer' must match number of output nodes {self.n_out}, but is {beta.shape[0]}")
 
         for node_mean, node_beta, node in zip(alpha, beta, self.nodes):
             node.set_params(node_mean, node_beta)

@@ -40,6 +40,13 @@ class TestNode(unittest.TestCase):
         nodes_samples = sample(p2, 10000)
         self.assertTrue(np.allclose(layer_samples.mean(axis=0), nodes_samples.mean(axis=0), atol=0.01, rtol=0.1))
 
+    def test_sampling_3(self):
+        
+        multivariate_gaussian_layer = MultivariateGaussianLayer(scope=Scope([0,1]), mean=[[0.8, 0.3], [0.2, -0.1]], cov=[[[0.13, 0.08], [0.08, 0.05]], [[0.17, 0.054], [0.054, 0.0296]]], n_nodes=2)
+        
+        # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails
+        self.assertRaises(ValueError, sample, multivariate_gaussian_layer)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -40,6 +40,13 @@ class TestNegativeBinomial(unittest.TestCase):
         samples = sample(negative_binomial, 1000)
         self.assertTrue(np.isclose(samples.mean(), np.array(5 * (1 - 0.8) / 0.8), rtol=0.1))
 
+    def test_sampling_4(self):
+
+        negative_binomial = NegativeBinomial(Scope([0]), 5, 0.8)
+
+        # make sure that instance ids out of bounds raise errors
+        self.assertRaises(ValueError, sample, negative_binomial, np.array([[0]]), sampling_ctx=SamplingContext([1]))
+
 
 if __name__ == "__main__":
     unittest.main()

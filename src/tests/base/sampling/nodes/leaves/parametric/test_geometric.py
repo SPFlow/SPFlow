@@ -43,6 +43,13 @@ class TestGeometric(unittest.TestCase):
 
         self.assertTrue(np.isclose(samples.mean(), np.array(1.0/0.8), rtol=0.1))
 
+    def test_sampling_4(self):
+
+        geometric = Geometric(Scope([0]), 0.8)
+
+        # make sure that instance ids out of bounds raise errors
+        self.assertRaises(ValueError, sample, geometric, np.array([[0]]), sampling_ctx=SamplingContext([1]))
+
 
 if __name__ == "__main__":
     unittest.main()

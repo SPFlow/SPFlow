@@ -1,3 +1,4 @@
+from spflow.meta.contexts.sampling_context import SamplingContext
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import SPNSumNode, SPNProductNode
 from spflow.base.inference.nodes.node import log_likelihood
@@ -48,6 +49,9 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.allclose(nodes_samples.mean(axis=0), np.array([expected_mean]), atol=0.01, rtol=0.1))
         self.assertTrue(np.allclose(layer_samples.mean(axis=0), nodes_samples.mean(axis=0), atol=0.01, rtol=0.1))
 
+        # sample from multiple outputs (with same scope)
+        self.assertRaises(ValueError, sample, layer_spn.children[0], 1, sampling_ctx=SamplingContext([0], [[0,1]]))
+
     def test_product_layer_sampling(self):
 
         input_nodes = [
@@ -76,6 +80,9 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.allclose(nodes_samples.mean(axis=0), np.array([3.0, 1.0, 0.0]), atol=0.01, rtol=0.1))
         self.assertTrue(np.allclose(layer_samples.mean(axis=0), nodes_samples.mean(axis=0), atol=0.01, rtol=0.1))
 
+        # sample from multiple outputs (with same scope)
+        self.assertRaises(ValueError, sample, layer_spn.children[0], 1, sampling_ctx=SamplingContext([0], [[0,1]]))
+
     def test_partition_layer_sampling(self):
         
         input_partitions = [
@@ -101,6 +108,9 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(np.allclose(nodes_samples.mean(axis=0), expected_mean, atol=0.01, rtol=0.1))
         self.assertTrue(np.allclose(layer_samples.mean(axis=0), nodes_samples.mean(axis=0), atol=0.01, rtol=0.1))
+        
+        # sample from multiple outputs (with same scope)
+        self.assertRaises(ValueError, sample, layer_spn.children[0], 1, sampling_ctx=SamplingContext([0], [[0,1]]))
 
 
 if __name__ == "__main__":
