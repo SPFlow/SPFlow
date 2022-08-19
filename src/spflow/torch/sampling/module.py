@@ -11,21 +11,26 @@ from spflow.torch.structure.module import Module, NestedModule
 import torch
 import numpy as np
 from typing import Optional
+from functools import reduce
 
 
 @dispatch
-def sample(module: Module, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def sample(module: Module, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     """TODO"""
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
     return sample(module, 1, dispatch_ctx=dispatch_ctx)
 
 
 @dispatch
-def sample(module: Module, n: int, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def sample(module: Module, n: int, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     """TODO"""
+    combined_module_scope = reduce(lambda s1, s2: s1.union(s2), module.scopes_out)
+
+    data = torch.full((n, max(combined_module_scope.query)+1), float("nan"))
+
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = SamplingContext(list(range(n)))
-    data = torch.full((n, max(module.scope.query)+1), float("nan"))
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     return sample(module, data, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)
 
