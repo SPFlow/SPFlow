@@ -89,17 +89,15 @@ class Uniform(LeafNode):
                 f"Expected scope_data to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
             )
 
-        valid = np.ones(scope_data.shape[0], dtype=bool)
+        valid = np.ones(scope_data.shape, dtype=bool)
 
         # check for infinite values
-        valid &= ~np.isinf(scope_data).sum(axis=-1).astype(bool)
+        valid &= ~np.isinf(scope_data)
 
         # check if values are in valid range
         if not self.support_outside:
             valid[valid] &= (
-                ((scope_data[valid] >= self.start) & (scope_data[valid] <= self.end))
-                .sum(axis=-1)
-                .astype(bool)
+                (scope_data[valid] >= self.start) & (scope_data[valid] <= self.end)
             )
 
         return valid

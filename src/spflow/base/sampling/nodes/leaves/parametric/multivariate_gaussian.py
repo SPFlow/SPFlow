@@ -33,7 +33,6 @@ def sample(leaf: MultivariateGaussian, data: np.ndarray, dispatch_ctx: Optional[
             continue
         # sample from full distribution
         elif(np.sum(nan_mask) == len(leaf.scope.query)):
-            print(nan_mask, nan_data.shape, nan_mask.shape, np.array(sampling_ctx.instance_ids).shape)
             sampling_ids = np.array(sampling_ctx.instance_ids)[(nan_data == nan_mask).sum(axis=1) == nan_mask.shape[0]]
 
             data[np.ix_(sampling_ids, leaf.scope.query)] = leaf.dist.rvs(size=sampling_ids.shape[0])
