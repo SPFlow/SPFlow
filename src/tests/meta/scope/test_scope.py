@@ -18,6 +18,10 @@ class TestScope(unittest.TestCase):
 
         # empty query, non-empty evidence
         self.assertRaises(ValueError, Scope, [], [0])
+        
+        # negative scope rvs
+        self.assertRaises(ValueError, Scope, [-1], [])
+        self.assertRaises(ValueError, Scope, [0], [-1])
     
     def test_scope_methods(self):
 

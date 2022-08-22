@@ -17,13 +17,19 @@ class Scope():
         """TODO."""
         
         if query is None:
-            query = set()
+            query = []
 
         if evidence is None:
-            evidence = set()
+            evidence = []
 
         if len(query) == 0 and len(evidence) != 0:
             raise ValueError("List of query variables for 'Scope' is empty, but list of evidence variables is not.")
+        
+        if any(rv < 0 for rv in query):
+            raise ValueError("Query variables must all be non-negative.")
+
+        if any(rv < 0 for rv in evidence):
+            raise ValueError("Evidence variables must all be non-negative.")
 
         if len(query) != len(set(query)):
             raise ValueError("List of query variables for 'Scope' contains duplicates.")
