@@ -1,4 +1,4 @@
-from spflow.base.structure.layers.layer import SPNSumLayer, SPNProductLayer, SPNPartitionLayer, marginalize
+from spflow.base.structure.layers.layer import SPNSumLayer, SPNProductLayer, SPNPartitionLayer, SPNHadamardLayer, marginalize
 from spflow.meta.scope.scope import Scope
 from ..nodes.dummy_node import DummyNode
 import numpy as np
@@ -14,7 +14,7 @@ class TestNode(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNSumLayer(n=3, children=input_nodes)
+        l = SPNSumLayer(n_nodes=3, children=input_nodes)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
@@ -28,13 +28,13 @@ class TestNode(unittest.TestCase):
         weights = np.array([[0.3, 0.3, 0.4]])
 
         # two dimensional weight array
-        l = SPNSumLayer(n=3, children=input_nodes, weights=weights)
+        l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights)
 
         for node in l.nodes:
             self.assertTrue(np.all(node.weights == weights))
 
         # one dimensional weight array
-        l = SPNSumLayer(n=3, children=input_nodes, weights=weights.squeeze(0))
+        l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights.squeeze(0))
 
         for node in l.nodes:
             self.assertTrue(np.all(node.weights == weights))
@@ -42,7 +42,7 @@ class TestNode(unittest.TestCase):
         # ----- different weights for all nodes -----
         weights = np.array([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3], [0.1, 0.7, 0.2]])
         
-        l = SPNSumLayer(n=3, children=input_nodes, weights=weights)
+        l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights)
 
         for node, node_weights in zip(l.nodes, weights):
             self.assertTrue(np.all(node.weights == node_weights))
@@ -84,7 +84,7 @@ class TestNode(unittest.TestCase):
         
         # dummy children over same scope
         input_nodes = [DummyNode(Scope([0,1])), DummyNode(Scope([0,1])), DummyNode(Scope([0,1]))]
-        l = SPNSumLayer(n=3, children=input_nodes)
+        l = SPNSumLayer(n_nodes=3, children=input_nodes)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0,1]) == None)
@@ -107,7 +107,7 @@ class TestNode(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNProductLayer(n=3, children=input_nodes)
+        l = SPNProductLayer(n_nodes=3, children=input_nodes)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
@@ -127,7 +127,7 @@ class TestNode(unittest.TestCase):
         
         # dummy children over pair-wise disjoint scopes
         input_nodes = [DummyNode(Scope([0,1])), DummyNode(Scope([3])), DummyNode(Scope([2]))]
-        l = SPNProductLayer(n=3, children=input_nodes)
+        l = SPNProductLayer(n_nodes=3, children=input_nodes)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0,1,2,3]) == None)
@@ -143,7 +143,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(l_marg.scopes_out == [Scope([0,1,2,3]), Scope([0,1,2,3]), Scope([0,1,2,3])])
 
         # ----- pruning -----
-        l = SPNProductLayer(n=3, children=input_nodes[:2])
+        l = SPNProductLayer(n_nodes=3, children=input_nodes[:2])
 
         l_marg = marginalize(l, [0,1], prune=True)
         self.assertTrue(isinstance(l_marg, DummyNode))
@@ -212,6 +212,92 @@ class TestNode(unittest.TestCase):
 
         # ----- pruning -----
         l = SPNPartitionLayer(child_partitions=input_partitions[1:])
+
+        l_marg = marginalize(l, [1,3], prune=True)
+        self.assertTrue(isinstance(l_marg, DummyNode))
+
+    def test_hadamard_layer_initialization(self):
+    
+        # dummy partitios over pair-wise disjont scopes
+        input_partitions = [
+            [DummyNode(Scope([0]))],
+            [DummyNode(Scope([1,3])), DummyNode(Scope([1,3])), DummyNode(Scope([1,3]))],
+            [DummyNode(Scope([2]))],
+            [DummyNode(Scope([4])), DummyNode(Scope([4])), DummyNode(Scope([4]))]
+        ]
+
+        # ----- check attributes after correct initialization -----
+
+        l = SPNHadamardLayer(child_partitions=input_partitions)
+        # make sure number of creates nodes is correct
+        self.assertEqual(len(l.nodes), 3)
+        # make sure scopes are correct
+        self.assertTrue(np.all(l.scopes_out == [Scope([0,1,2,3,4]) for _ in range(len(l.nodes))]))
+        # make sure order of nodes is correct (important)
+        for indices, node in zip([[0,1,4,5],[0,2,4,6],[0,3,4,7]], l.nodes):
+            self.assertTrue(node.children[0].input_ids == indices)
+        
+        # only one partition
+        l = SPNHadamardLayer(child_partitions=[[DummyNode(Scope([1,3])), DummyNode(Scope([1,3])), DummyNode(Scope([1,3]))]])
+        # make sure number of creates nodes is correct
+        self.assertEqual(len(l.nodes), 3)
+        # make sure scopes are correct
+        self.assertTrue(np.all(l.scopes_out == [Scope([1,3]) for _ in range(len(l.nodes))]))
+        # make sure order of nodes is correct (important)
+        for indices, node in zip([[0],[1],[2]], l.nodes):
+            self.assertTrue(node.children[0].input_ids == indices)
+
+        # ----- no child partitions -----
+        self.assertRaises(ValueError, SPNHadamardLayer, [])
+
+        # ----- empty partition -----
+        self.assertRaises(ValueError, SPNHadamardLayer, [[]])
+
+        # ----- scopes inside partition differ -----
+        self.assertRaises(ValueError, SPNHadamardLayer, [
+            [DummyNode(Scope([0]))],
+            [DummyNode(Scope([1])), DummyNode(Scope([2]))]
+        ])
+
+        # ----- partitions of non-pair-wise disjoint scopes -----
+        self.assertRaises(ValueError, SPNHadamardLayer, [
+            [DummyNode(Scope([0]))],
+            [DummyNode(Scope([0])), DummyNode(Scope([0]))]
+        ])
+
+        # ----- invalid total outputs of partitions -----
+        self.assertRaises(ValueError, SPNHadamardLayer, [
+            [DummyNode(Scope([0])), DummyNode(Scope([0]))],
+            [DummyNode(Scope([1])), DummyNode(Scope([1])), DummyNode(Scope([1]))]
+        ])
+
+    def test_hadamard_layer_structural_marginalization(self):
+        
+        # dummy partitios over pair-wise disjont scopes
+        input_partitions = [
+            [DummyNode(Scope([0]))],
+            [DummyNode(Scope([1,3])), DummyNode(Scope([1,3])), DummyNode(Scope([1,3]))],
+            [DummyNode(Scope([2]))],
+            [DummyNode(Scope([4])), DummyNode(Scope([4])), DummyNode(Scope([4]))]
+        ]
+
+        l = SPNHadamardLayer(child_partitions=input_partitions)
+        # should marginalize entire module
+        l_marg = marginalize(l, [0,1,2,3,4])
+        self.assertTrue(l_marg is None)
+        # should marginalize entire partition
+        l_marg = marginalize(l, [2])
+        self.assertTrue(l_marg.scope == Scope([0,1,3,4]))
+        # should partially marginalize one partition
+        l_marg = marginalize(l, [3])
+        self.assertTrue(l_marg.scope == Scope([0,1,2,4]))
+
+        # ----- marginalize over non-scope rvs -----
+        l_marg = marginalize(l, [5])
+        self.assertTrue(l_marg.scopes_out == [Scope([0,1,2,3,4]), Scope([0,1,2,3,4]), Scope([0,1,2,3,4])])
+
+        # ----- pruning -----
+        l = SPNHadamardLayer(child_partitions=input_partitions[:2])
 
         l_marg = marginalize(l, [1,3], prune=True)
         self.assertTrue(isinstance(l_marg, DummyNode))

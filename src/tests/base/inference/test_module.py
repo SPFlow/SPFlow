@@ -12,8 +12,6 @@ class TestModule(unittest.TestCase):
     def test_likelihood(self):
 
         dummy_nodes = [DummyNode(Scope([0]))]
-        print(type(dummy_nodes[0]), isinstance(dummy_nodes[0], Module))
-
         dummy_module = DummyNestedModule(children=dummy_nodes)
 
         dummy_data = np.array([[np.nan, 0.0, 1.0]])
