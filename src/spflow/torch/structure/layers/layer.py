@@ -24,10 +24,10 @@ class SPNSumLayer(Module):
         n: number of output nodes.
         children: list of child modules.
     """
-    def __init__(self, n: int, children: List[Module], weights: Optional[Union[np.ndarray, torch.Tensor, List[List[float]], List[float]]]=None, **kwargs) -> None:
+    def __init__(self, n_nodes: int, children: List[Module], weights: Optional[Union[np.ndarray, torch.Tensor, List[List[float]], List[float]]]=None, **kwargs) -> None:
         """TODO"""
 
-        if(n < 1):
+        if(n_nodes < 1):
             raise ValueError("Number of nodes for 'SumLayer' must be greater of equal to 1.")
 
         if not children:
@@ -35,7 +35,7 @@ class SPNSumLayer(Module):
 
         super(SPNSumLayer, self).__init__(children=children, **kwargs)
 
-        self._n_out = n
+        self._n_out = n_nodes
         self.n_in = sum(child.n_out for child in self.children())
 
         # parse weights
@@ -131,7 +131,7 @@ def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, d
             if marg_child:
                 marg_children.append(marg_child)
         
-        return SPNSumLayer(n=layer.n_out, children=marg_children, weights=layer.weights)
+        return SPNSumLayer(n_nodes=layer.n_out, children=marg_children, weights=layer.weights)
     else:
         return deepcopy(layer)
 
@@ -139,13 +139,13 @@ def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, d
 @dispatch(memoize=True)
 def toBase(sum_layer: SPNSumLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNSumLayer:
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseSPNSumLayer(n=sum_layer.n_out, children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()], weights=sum_layer.weights.detach().cpu().numpy())
+    return BaseSPNSumLayer(n_nodes=sum_layer.n_out, children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()], weights=sum_layer.weights.detach().cpu().numpy())
 
 
 @dispatch(memoize=True)
 def toTorch(sum_layer: BaseSPNSumLayer, dispatch_ctx: Optional[DispatchContext]=None) -> SPNSumLayer:
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return SPNSumLayer(n=sum_layer.n_out, children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children], weights=sum_layer.weights)
+    return SPNSumLayer(n_nodes=sum_layer.n_out, children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children], weights=sum_layer.weights)
 
 
 class SPNProductLayer(Module):
@@ -155,13 +155,13 @@ class SPNProductLayer(Module):
         n: number of output nodes.
         children: list of child modules.
     """
-    def __init__(self, n: int, children: List[Module], **kwargs) -> None:
+    def __init__(self, n_nodes: int, children: List[Module], **kwargs) -> None:
         """TODO"""
 
-        if(n < 1):
+        if(n_nodes < 1):
             raise ValueError("Number of nodes for 'ProductLayer' must be greater of equal to 1.")
 
-        self._n_out = n
+        self._n_out = n_nodes
 
         if not children:
             raise ValueError("'SPNProductLayer' requires at least one child to be specified.")
@@ -217,7 +217,7 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
             if marg_child:
                 marg_children.append(marg_child)
        
-        return SPNProductLayer(layer.n_out, children=marg_children)
+        return SPNProductLayer(n_nodes=layer.n_out, children=marg_children)
     else:
         return deepcopy(layer)
 
@@ -225,13 +225,13 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
 @dispatch(memoize=True)
 def toBase(product_layer: SPNProductLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNProductLayer:
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseSPNProductLayer(n=product_layer.n_out, children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children()])
+    return BaseSPNProductLayer(n_nodes=product_layer.n_out, children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children()])
 
 
 @dispatch(memoize=True)
 def toTorch(product_layer: BaseSPNProductLayer, dispatch_ctx: Optional[DispatchContext]=None) -> SPNProductLayer:
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return SPNProductLayer(n=product_layer.n_out, children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children])
+    return SPNProductLayer(n_nodes=product_layer.n_out, children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children])
 
 
 class SPNPartitionLayer(Module):

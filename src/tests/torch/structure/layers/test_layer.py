@@ -19,7 +19,7 @@ class TestNode(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNSumLayer(n=3, children=input_nodes)
+        l = SPNSumLayer(n_nodes=3, children=input_nodes)
         # make sure scopes are correct
         self.assertTrue(np.all(l.scopes_out == [Scope([0,1]), Scope([0,1]), Scope([0,1])]))
         # make sure weight property works correctly
@@ -29,13 +29,13 @@ class TestNode(unittest.TestCase):
         weights = torch.tensor([[0.3, 0.3, 0.4]])
 
         # two dimensional weight array
-        l = SPNSumLayer(n=3, children=input_nodes, weights=weights)
+        l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights)
 
         for i in range(3):
             self.assertTrue(torch.all(l.weights[i] == weights))
 
         # one dimensional weight array
-        l = SPNSumLayer(n=3, children=input_nodes, weights=weights.squeeze(0))
+        l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights.squeeze(0))
 
         for i in range(3):
             self.assertTrue(torch.all(l.weights[i] == weights))
@@ -43,7 +43,7 @@ class TestNode(unittest.TestCase):
         # ----- different weights for all nodes -----
         weights = torch.tensor([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3], [0.1, 0.7, 0.2]])
         
-        l = SPNSumLayer(n=3, children=input_nodes, weights=weights)
+        l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights)
         for i in range(3):
             self.assertTrue(torch.all(l.weights[i] == weights[i]))
 
@@ -72,7 +72,7 @@ class TestNode(unittest.TestCase):
         
         # dummy children over same scope
         input_nodes = [DummyNode(Scope([0,1])), DummyNode(Scope([0,1])), DummyNode(Scope([0,1]))]
-        l = SPNSumLayer(n=3, children=input_nodes)
+        l = SPNSumLayer(n_nodes=3, children=input_nodes)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0,1]) == None)
@@ -89,7 +89,7 @@ class TestNode(unittest.TestCase):
     
     def test_sum_layer_backend_conversion_1(self):
 
-        torch_sum_layer = SPNSumLayer(n=3, children=[Gaussian(Scope([0])), Gaussian(Scope([0])), Gaussian(Scope([0]))])
+        torch_sum_layer = SPNSumLayer(n_nodes=3, children=[Gaussian(Scope([0])), Gaussian(Scope([0])), Gaussian(Scope([0]))])
 
         base_sum_layer = toBase(torch_sum_layer)
         self.assertTrue(np.allclose(base_sum_layer.weights, torch_sum_layer.weights.numpy()))
@@ -97,7 +97,7 @@ class TestNode(unittest.TestCase):
     
     def test_sum_layer_backend_conversion_2(self):
 
-        base_sum_layer = BaseSPNSumLayer(n=3, children=[BaseGaussian(Scope([0])), BaseGaussian(Scope([0])), BaseGaussian(Scope([0]))])
+        base_sum_layer = BaseSPNSumLayer(n_nodes=3, children=[BaseGaussian(Scope([0])), BaseGaussian(Scope([0])), BaseGaussian(Scope([0]))])
         
         torch_sum_layer = toTorch(base_sum_layer)
         self.assertTrue(np.allclose(base_sum_layer.weights, torch_sum_layer.weights.numpy()))
@@ -110,7 +110,7 @@ class TestNode(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNProductLayer(n=3, children=input_nodes)
+        l = SPNProductLayer(n_nodes=3, children=input_nodes)
         # make sure scopes are correct
         self.assertTrue(np.all(l.scopes_out == [Scope([0,1,2,3]), Scope([0,1,2,3]), Scope([0,1,2,3])]))
         
@@ -125,7 +125,7 @@ class TestNode(unittest.TestCase):
         
         # dummy children over pair-wise disjoint scopes
         input_nodes = [DummyNode(Scope([0,1])), DummyNode(Scope([3])), DummyNode(Scope([2]))]
-        l = SPNProductLayer(n=3, children=input_nodes)
+        l = SPNProductLayer(n_nodes=3, children=input_nodes)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0,1,2,3]) == None)
@@ -142,14 +142,14 @@ class TestNode(unittest.TestCase):
 
     def test_product_layer_backend_conversion_1(self):
 
-        torch_product_layer = SPNProductLayer(n=3, children=[Gaussian(Scope([0])), Gaussian(Scope([1])), Gaussian(Scope([2]))])
+        torch_product_layer = SPNProductLayer(n_nodes=3, children=[Gaussian(Scope([0])), Gaussian(Scope([1])), Gaussian(Scope([2]))])
 
         base_product_layer = toBase(torch_product_layer)
         self.assertEqual(base_product_layer.n_out, torch_product_layer.n_out)
     
     def test_product_layer_backend_conversion_2(self):
 
-        base_product_layer = BaseSPNProductLayer(n=3, children=[BaseGaussian(Scope([0])), BaseGaussian(Scope([1])), BaseGaussian(Scope([2]))])
+        base_product_layer = BaseSPNProductLayer(n_nodes=3, children=[BaseGaussian(Scope([0])), BaseGaussian(Scope([1])), BaseGaussian(Scope([2]))])
         
         torch_product_layer = toTorch(base_product_layer)
         self.assertEqual(base_product_layer.n_out, torch_product_layer.n_out)

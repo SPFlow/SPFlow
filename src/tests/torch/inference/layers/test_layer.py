@@ -26,7 +26,7 @@ class TestNode(unittest.TestCase):
         input_nodes = [Gaussian(Scope([0])), Gaussian(Scope([0])), Gaussian(Scope([0]))]
 
         layer_spn = SPNSumNode(children=[
-            SPNSumLayer(n=3,
+            SPNSumLayer(n_nodes=3,
                 children=input_nodes,
                 weights=[[0.8, 0.1, 0.1], [0.2, 0.3, 0.5], [0.2, 0.7, 0.1]]),
             ],
@@ -53,7 +53,7 @@ class TestNode(unittest.TestCase):
         input_nodes = [Gaussian(Scope([0])), Gaussian(Scope([1])), Gaussian(Scope([2]))]
 
         layer_spn = SPNSumNode(children=[
-            SPNProductLayer(n=3, children=input_nodes)
+            SPNProductLayer(n_nodes=3, children=input_nodes)
             ],
             weights = [0.3, 0.4, 0.3]
         )
