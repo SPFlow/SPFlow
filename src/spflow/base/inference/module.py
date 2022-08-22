@@ -9,7 +9,7 @@ from spflow.base.structure.module import Module, NestedModule
 def log_likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     """TODO"""
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    raise NotImplementedError()
+    raise NotImplementedError(f"'log_likelihood' is not defined for modules of type {type(module)}. Check if dispatched functions are correctly declared or imported.")
 
 
 @dispatch

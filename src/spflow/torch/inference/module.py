@@ -9,7 +9,7 @@ from spflow.torch.structure.module import Module, NestedModule
 def log_likelihood(module: Module, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     """TODO"""
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    raise NotImplementedError()
+    raise NotImplementedError(f"'log_likelihood' is not defined for modules of type {type(module)}. Check if dispatched functions are correctly declared or imported.")
 
 
 @dispatch
