@@ -1,8 +1,9 @@
 from spflow.meta.scope.scope import Scope
+from spflow.meta.contexts.sampling_context import SamplingContext
 from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
 from spflow.torch.inference.nodes.node import log_likelihood
 from spflow.torch.sampling.nodes.node import sample
-from spflow.torch.structure.layers.layer import SPNSumLayer, SPNProductLayer, SPNPartitionLayer
+from spflow.torch.structure.layers.layer import SPNSumLayer, SPNProductLayer, SPNPartitionLayer, SPNHadamardLayer
 from spflow.torch.inference.layers.layer import log_likelihood
 from spflow.torch.sampling.layers.layer import sample
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
@@ -56,6 +57,9 @@ class TestNode(unittest.TestCase):
         self.assertTrue(torch.allclose(nodes_samples.mean(dim=0), torch.tensor([expected_mean]), atol=0.01, rtol=0.1))
         self.assertTrue(torch.allclose(layer_samples.mean(dim=0), nodes_samples.mean(dim=0), atol=0.01, rtol=0.1))
 
+        # sample from multiple outputs (with same scope)
+        self.assertRaises(ValueError, sample, list(layer_spn.children())[0], 1, sampling_ctx=SamplingContext([0], [[0,1]]))
+
     def test_product_layer_sampling(self):
 
         input_nodes = [
@@ -84,6 +88,9 @@ class TestNode(unittest.TestCase):
         self.assertTrue(torch.allclose(nodes_samples.mean(axis=0), torch.tensor([3.0, 1.0, 0.0]), atol=0.01, rtol=0.1))
         self.assertTrue(torch.allclose(layer_samples.mean(axis=0), nodes_samples.mean(axis=0), atol=0.01, rtol=0.1))
 
+        # sample from multiple outputs (with same scope)
+        self.assertRaises(ValueError, sample, list(layer_spn.children())[0], 1, sampling_ctx=SamplingContext([0], [[0,1]]))
+
     def test_partition_layer_sampling(self):
         
         input_partitions = [
@@ -109,6 +116,38 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(torch.allclose(nodes_samples.mean(dim=0), expected_mean, atol=0.01, rtol=0.1))
         self.assertTrue(torch.allclose(layer_samples.mean(dim=0), nodes_samples.mean(axis=0), atol=0.01, rtol=0.1))
+
+        # sample from multiple outputs (with same scope)
+        self.assertRaises(ValueError, sample, list(layer_spn.children())[0], 1, sampling_ctx=SamplingContext([0], [[0,1]]))
+
+    def test_hadamard_layer_sampling(self):
+        
+        input_partitions = [
+            [Gaussian(Scope([0]), mean=3.0, std=0.01), Gaussian(Scope([0]), mean=1.0, std=0.01)],
+            [Gaussian(Scope([1]), mean=1.0, std=0.01), Gaussian(Scope([1]), mean=-5.0, std=0.01)],
+            [Gaussian(Scope([2]), mean=10.0, std=0.01)]
+        ]
+
+        layer_spn = SPNSumNode(children=[
+            SPNHadamardLayer(child_partitions=input_partitions)
+            ],
+            weights = [0.3, 0.7]
+        )
+        
+        nodes_spn = SPNSumNode(children=[SPNProductNode(children=[input_partitions[0][i], input_partitions[1][j], input_partitions[2][k]]) for (i,j,k) in [[0,0,0], [1,1,0]]],
+            weights = [0.3, 0.7]
+        )
+
+        expected_mean = 0.3 * torch.tensor([3.0, 1.0, 10.0]) + 0.7 * torch.tensor([1.0, -5.0, 10.0])
+
+        layer_samples = sample(layer_spn, 10000)
+        nodes_samples = sample(nodes_spn, 10000)
+
+        self.assertTrue(torch.allclose(nodes_samples.mean(axis=0), expected_mean, atol=0.01, rtol=0.1))
+        self.assertTrue(torch.allclose(layer_samples.mean(axis=0), nodes_samples.mean(axis=0), atol=0.01, rtol=0.1))
+        
+        # sample from multiple outputs (with same scope)
+        self.assertRaises(ValueError, sample, list(layer_spn.children())[0], 1, sampling_ctx=SamplingContext([0], [[0,1]]))
 
 
 if __name__ == "__main__":

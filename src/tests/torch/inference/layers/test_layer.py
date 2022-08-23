@@ -1,6 +1,6 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.layer import SPNSumLayer, SPNProductLayer, SPNPartitionLayer
+from spflow.torch.structure.layers.layer import SPNSumLayer, SPNProductLayer, SPNPartitionLayer, SPNHadamardLayer
 from spflow.torch.inference.layers.layer import log_likelihood
 from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
 from spflow.torch.inference.nodes.node import log_likelihood
@@ -92,6 +92,32 @@ class TestNode(unittest.TestCase):
         )
 
         dummy_data = torch.tensor([[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]])
+
+        layer_ll = log_likelihood(layer_spn, dummy_data)
+        nodes_ll = log_likelihood(nodes_spn, dummy_data)
+
+        self.assertTrue(torch.allclose(layer_ll, nodes_ll))
+    
+    def test_hadamard_layer_likelihood(self):
+
+        input_partitions = [
+            [Gaussian(Scope([0]))],
+            [Gaussian(Scope([1])), Gaussian(Scope([1])), Gaussian(Scope([1]))],
+            [Gaussian(Scope([2]))],
+            [Gaussian(Scope([3])), Gaussian(Scope([3])), Gaussian(Scope([3]))],
+        ]
+
+        layer_spn = SPNSumNode(children=[
+            SPNHadamardLayer(child_partitions=input_partitions)
+            ],
+            weights = [0.3, 0.2, 0.5]
+        )
+
+        nodes_spn = SPNSumNode(children=[SPNProductNode(children=[input_partitions[0][i], input_partitions[1][j], input_partitions[2][k], input_partitions[3][l]]) for (i,j,k,l) in [[0,0,0,0], [0,1,0,1], [0,2,0,2]]],
+            weights = [0.3, 0.2, 0.5]
+        )
+
+        dummy_data = torch.tensor([[1.0, 0.25, 0.0, -0.7], [0.0, 1.0, 0.25, 0.12], [0.25, 0.0, 1.0, 0.0]])
 
         layer_ll = log_likelihood(layer_spn, dummy_data)
         nodes_ll = log_likelihood(nodes_spn, dummy_data)
