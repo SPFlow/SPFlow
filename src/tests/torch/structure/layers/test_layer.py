@@ -34,20 +34,20 @@ class TestNode(unittest.TestCase):
         l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights)
 
         for i in range(3):
-            self.assertTrue(torch.all(l.weights[i] == weights))
+            self.assertTrue(torch.allclose(l.weights[i], weights))
 
         # one dimensional weight array
         l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights.squeeze(0))
 
         for i in range(3):
-            self.assertTrue(torch.all(l.weights[i] == weights))
+            self.assertTrue(torch.allclose(l.weights[i], weights))
 
         # ----- different weights for all nodes -----
         weights = torch.tensor([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3], [0.1, 0.7, 0.2]])
         
         l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights)
         for i in range(3):
-            self.assertTrue(torch.all(l.weights[i] == weights[i]))
+            self.assertTrue(torch.allclose(l.weights[i], weights[i]))
 
         # ----- two dimensional weight array of wrong shape -----
         weights = torch.tensor([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3]])
@@ -94,7 +94,7 @@ class TestNode(unittest.TestCase):
         torch_sum_layer = SPNSumLayer(n_nodes=3, children=[Gaussian(Scope([0])), Gaussian(Scope([0])), Gaussian(Scope([0]))])
 
         base_sum_layer = toBase(torch_sum_layer)
-        self.assertTrue(np.allclose(base_sum_layer.weights, torch_sum_layer.weights.numpy()))
+        self.assertTrue(np.allclose(base_sum_layer.weights, torch_sum_layer.weights.detach().numpy()))
         self.assertEqual(base_sum_layer.n_out, torch_sum_layer.n_out)
     
     def test_sum_layer_backend_conversion_2(self):
@@ -102,7 +102,7 @@ class TestNode(unittest.TestCase):
         base_sum_layer = BaseSPNSumLayer(n_nodes=3, children=[BaseGaussian(Scope([0])), BaseGaussian(Scope([0])), BaseGaussian(Scope([0]))])
         
         torch_sum_layer = toTorch(base_sum_layer)
-        self.assertTrue(np.allclose(base_sum_layer.weights, torch_sum_layer.weights.numpy()))
+        self.assertTrue(np.allclose(base_sum_layer.weights, torch_sum_layer.weights.detach().numpy()))
         self.assertEqual(base_sum_layer.n_out, torch_sum_layer.n_out)
 
     def test_product_layer_initialization(self):

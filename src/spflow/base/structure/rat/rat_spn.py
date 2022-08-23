@@ -18,7 +18,7 @@ from typing import Union, Iterable, Optional
 
 
 class RatSPN(Module):
-    """Torch backend module for RAT-SPNs.
+    """Base backend module for RAT-SPNs.
 
     Args:
         region_graph:
