@@ -13,6 +13,7 @@ from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.scope.scope import Scope
 from spflow.torch.structure.module import Module
+from spflow.torch.structure.nodes.node import proj_real_to_convex, proj_convex_to_real
 from spflow.base.structure.layers.layer import SPNSumLayer as BaseSPNSumLayer
 from spflow.base.structure.layers.layer import SPNProductLayer as BaseSPNProductLayer
 from spflow.base.structure.layers.layer import SPNPartitionLayer as BaseSPNPartitionLayer
@@ -45,6 +46,9 @@ class SPNSumLayer(Module):
             weights = torch.rand(self.n_out, self.n_in) + 1e-08  # avoid zeros
             weights /= weights.sum(dim=-1, keepdims=True)
 
+        # register auxiliary parameters for weights as torch parameters
+        self.weights_aux = torch.nn.Parameter()
+        # initialize weights
         self.weights = weights
 
         # compute scope
@@ -75,7 +79,8 @@ class SPNSumLayer(Module):
     @property
     def weights(self) -> np.ndarray:
         """TODO"""
-        return self._weights
+        # project auxiliary weights onto weights that sum up to one
+        return proj_real_to_convex(self.weights_aux)
 
     @weights.setter
     def weights(self, values: Union[np.ndarray, torch.Tensor, List[List[float]], List[float]]) -> None:
@@ -93,14 +98,14 @@ class SPNSumLayer(Module):
         
         # same weights for all sum nodes
         if(values.ndim == 1):
-            self._weights = values.repeat((self.n_out, 1)).clone()
+            self.weights_aux.data = proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
         if(values.ndim == 2):
             # same weights for all sum nodes
             if(values.shape[0] == 1):
-                self._weights = values.repeat((self.n_out, 1)).clone()
+                self.weights_aux.data = proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
             # different weights for all sum nodes
             elif(values.shape[0] == self.n_out):
-                self._weights = values.clone()
+                self.weights_aux.data = proj_convex_to_real(values.clone())
             # incorrect number of specified weights
             else:
                 raise ValueError(f"Incorrect number of weights for 'SPNSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}.")
