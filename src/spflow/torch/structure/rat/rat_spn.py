@@ -9,16 +9,17 @@ from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.base.structure.rat.region_graph import RegionGraph, Partition, Region, random_region_graph
-from spflow.base.structure.nodes.node import SPNSumNode
-from spflow.base.structure.layers.layer import SPNSumLayer, SPNPartitionLayer, SPNHadamardLayer
-from spflow.base.structure.layers.leaves.parametric.gaussian import GaussianLayer
-from spflow.base.structure.module import Module
+from spflow.base.structure.rat.rat_spn import RatSPN as BaseRatSPN
+from spflow.torch.structure.nodes.node import SPNSumNode
+from spflow.torch.structure.layers.layer import SPNSumLayer, SPNPartitionLayer, SPNHadamardLayer
+from spflow.torch.structure.layers.leaves.parametric.gaussian import GaussianLayer
+from spflow.torch.structure.module import Module
 
-from typing import Union, Iterable, Optional
+from typing import Union, Iterable, Optional, List
 
 
 class RatSPN(Module):
-    """Base backend module for RAT-SPNs.
+    """Torch backend module for RAT-SPNs.
 
     Args:
         region_graph:
@@ -79,25 +80,57 @@ class RatSPN(Module):
                     return GaussianLayer(region.scope, n_nodes=self.n_leaf_nodes)
                 else:
                     raise ValueError("Query scope for region is empty and cannot be converted into appropriate RAT-SPN layer representation.")
-        
+
         if region_graph.root_region is not None:
             self.root_region = convert_region(region_graph.root_region, n_nodes=self.n_root_nodes)
             self.root_node = SPNSumNode(children=[self.root_region])
         else:
             self.root_region = None
             self.root_node = None
-
+        
     @property
-    def n_out(self):
+    def n_out(self) -> int:
         # return number of outputs
         return 1
     
     @property
-    def scopes_out(self):
+    def scopes_out(self) -> List[Scope]:
         return self.root_node.scopes_out
 
 
 @dispatch(memoize=True)
-def marginalize(layer: RatSPN, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumLayer, Module, None]:
+def marginalize(rat_spn: RatSPN, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[RatSPN, Module, None]:
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     raise NotImplementedError()
+
+
+@dispatch(memoize=True)
+def toBase(rat_spn: RatSPN, dispatch_ctx: Optional[DispatchContext]=None) -> BaseRatSPN:
+    """TODO"""
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+
+    # create RAT-SPN in base backend (using empty region graph)
+    base_rat_spn = BaseRatSPN(RegionGraph(), n_root_nodes=rat_spn.n_root_nodes, n_region_nodes=rat_spn.n_region_nodes, n_leaf_nodes=rat_spn.n_leaf_nodes)
+
+    # replace actual module graph
+    base_rat_spn.root_node = toBase(rat_spn.root_node, dispatch_ctx=dispatch_ctx)
+    # set root region
+    base_rat_spn.root_region = base_rat_spn.root_node.children[0]
+
+    return base_rat_spn
+
+
+@dispatch(memoize=True)
+def toTorch(rat_spn: BaseRatSPN, dispatch_ctx: Optional[DispatchContext]=None) -> RatSPN:
+    """TODO"""
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+
+    # create RAT-SPN in base backend (using empty region graph)
+    torch_rat_spn = RatSPN(RegionGraph(), n_root_nodes=rat_spn.n_root_nodes, n_region_nodes=rat_spn.n_region_nodes, n_leaf_nodes=rat_spn.n_leaf_nodes)
+
+    # replace actual module graph
+    torch_rat_spn.root_node = toTorch(rat_spn.root_node, dispatch_ctx=dispatch_ctx)
+    # set root region
+    torch_rat_spn.root_region = next(torch_rat_spn.root_node.children())
+
+    return torch_rat_spn

@@ -5,7 +5,6 @@ from spflow.base.structure.layers.leaves.parametric.gaussian import GaussianLaye
 from spflow.base.structure.nodes.node import SPNSumNode, marginalize
 from spflow.base.structure.rat.rat_spn import RatSPN, marginalize
 from spflow.base.structure.rat.region_graph import random_region_graph
-import numpy as np
 
 
 def get_rat_spn_properties(rat_spn: RatSPN):
