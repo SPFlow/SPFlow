@@ -39,13 +39,13 @@ class Partition:
 
 class RegionGraph():
     """TODO"""
-    def __init__(self, root_region: Region):
+    def __init__(self, root_region: Optional[Region]=None):
 
-        if not isinstance(root_region, Region):
-            raise ValueError(f"'RegionGraph' expects root region of type 'Region', but got object of type {type(root_region)}.")
+        if not isinstance(root_region, Region) and root_region is not None:
+            raise ValueError(f"'RegionGraph' expects root region of type 'Region' or 'None', but got object of type {type(root_region)}.")
         
-        self.scope = root_region.scope
         self.root_region = root_region
+        self.scope = root_region.scope if root_region is not None else Scope([])
 
 
 def random_region_graph(

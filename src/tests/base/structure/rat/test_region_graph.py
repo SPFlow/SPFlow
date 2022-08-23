@@ -111,7 +111,6 @@ class TestRegionGraph(unittest.TestCase):
 
         self.assertRaises(ValueError, random_region_graph, scope=Scope(random_variables), depth=depth, replicas=replicas, n_splits=n_splits)
 
-
     def test_random_region_graph_structure_1(self):
         random_variables = list(range(7))
         depth = 2
