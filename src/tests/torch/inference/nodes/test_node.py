@@ -80,14 +80,14 @@ class TestNode(unittest.TestCase):
         self.assertTrue(torch.isclose(l_result[0][0], torch.tensor(0.09653235)))
         self.assertTrue(torch.isclose(ll_result[0][0], torch.tensor(-2.33787707)))
 
-    def test_likelihood_not_implemented(self):
+    def test_dummy_node_likelihood_not_implemented(self):
         dummy_node = DummyNode()
         dummy_data = torch.tensor([[1.0]])
 
         self.assertRaises(NotImplementedError, log_likelihood, dummy_node, dummy_data)
         self.assertRaises(NotImplementedError, likelihood, dummy_node, dummy_data)
 
-    def test_sum_gradient_optimization(self):
+    def test_sum_node_gradient_optimization(self):
 
         torch.manual_seed(0)
 
