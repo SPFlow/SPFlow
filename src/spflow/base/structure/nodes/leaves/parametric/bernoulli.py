@@ -62,28 +62,35 @@ class Bernoulli(LeafNode):
         .. math::
 
             \text{supp}(\text{Bernoulli})=\{0,1\}
-
+        
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+    
         Args:
-            scope_data:
-                Torch tensor containing possible distribution instances.
+            data:
+                Numpy array containing sample instances.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two dimensional Numpy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
 
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
+
+        # initialize mask for valid entries
         valid = np.ones(scope_data.shape, dtype=bool)
 
+        # nan entries (regarded as valid)
+        nan_mask = np.isnan(scope_data)
+
         # check for infinite values
-        valid &= ~np.isinf(scope_data)
+        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
         # TODO: runtime warning due to nan values
-        valid[valid] &= np.remainder(scope_data[valid], 1) == 0
+        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
 
         # check if values are in valid range
-        valid[valid] &= (scope_data[valid] >= 0) & (scope_data[valid] <= 1)
+        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0) & (scope_data[valid & ~nan_mask] <= 1)
 
         return valid

@@ -77,6 +77,8 @@ class Uniform(LeafNode):
             - :math:`end` is the end of the interval
             - :math:`\text{support\_outside}` is a truth value indicating whether values outside of the interval are part of the support
 
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
         Args:
             scope_data:
                 Torch tensor containing possible distribution instances.
@@ -91,13 +93,16 @@ class Uniform(LeafNode):
 
         valid = np.ones(scope_data.shape, dtype=bool)
 
+        # nan entries (regarded as valid)
+        nan_mask = np.isnan(scope_data)
+
         # check for infinite values
-        valid &= ~np.isinf(scope_data)
+        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if values are in valid range
         if not self.support_outside:
-            valid[valid] &= (
-                (scope_data[valid] >= self.start) & (scope_data[valid] <= self.end)
+            valid[valid & ~nan_mask] &= (
+                (scope_data[valid & ~nan_mask] >= self.start) & (scope_data[valid & ~nan_mask] <= self.end)
             )
 
         return valid
