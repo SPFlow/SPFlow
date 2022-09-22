@@ -75,6 +75,8 @@ class Gaussian(LeafNode):
 
             \text{supp}(\text{Gaussian})=(-\infty,+\infty)
 
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
         Args:
             scope_data:
                 Torch tensor containing possible distribution instances.
@@ -89,7 +91,10 @@ class Gaussian(LeafNode):
 
         valid = np.ones(scope_data.shape, dtype=bool)
 
+        # nan entries (regarded as valid)
+        nan_mask = np.isnan(scope_data)
+
         # check for infinite values
-        valid &= ~np.isinf(scope_data)
+        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         return valid

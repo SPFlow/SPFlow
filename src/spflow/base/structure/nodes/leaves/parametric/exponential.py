@@ -63,6 +63,8 @@ class Exponential(LeafNode):
 
             \text{supp}(\text{Exponential})=[0,+\infty)
 
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
         Args:
             scope_data:
                 Torch tensor containing possible distribution instances.
@@ -77,10 +79,13 @@ class Exponential(LeafNode):
 
         valid = np.ones(scope_data.shape, dtype=bool)
 
+        # nan entries (regarded as valid)
+        nan_mask = np.isnan(scope_data)
+
         # check for infinite values
-        valid &= ~np.isinf(scope_data)
+        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if values are in valid range
-        valid[valid] &= (scope_data[valid] >= 0)
+        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0)
 
         return valid

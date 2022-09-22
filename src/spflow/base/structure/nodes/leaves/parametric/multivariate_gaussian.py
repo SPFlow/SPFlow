@@ -121,10 +121,12 @@ class MultivariateGaussian(LeafNode):
             )
 
         # test covariance matrix for symmetry
-        if not np.allclose(cov, cov.T):
+        if not np.all(cov == cov.T):
             raise ValueError("Covariance matrix for MultivariateGaussian must be symmetric")
+
         # test covariance matrix for positive semi-definiteness
-        if np.any(np.linalg.eigvals(cov) < 0):
+        # NOTE: since we established in the test right before that matrix is symmetric we can use numpy's eigvalsh instead of eigvals
+        if np.any(np.linalg.eigvalsh(cov) < 0):
             raise ValueError(
                 "Covariance matrix for MultivariateGaussian must be positive semi-definite"
             )
@@ -143,6 +145,8 @@ class MultivariateGaussian(LeafNode):
         .. math::
 
             \text{supp}(\text{MultivariateGaussian})=(-\infty,+\infty)^k
+        
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:
@@ -158,9 +162,12 @@ class MultivariateGaussian(LeafNode):
 
         valid = np.ones(scope_data.shape, dtype=bool)
 
+        # nan entries (regarded as valid)
+        nan_mask = np.isnan(scope_data)
+
         # check for infinite values
         # additionally check for infinite values (may return NaNs despite support)
-        valid &= ~np.isinf(scope_data)
+        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         return valid
     

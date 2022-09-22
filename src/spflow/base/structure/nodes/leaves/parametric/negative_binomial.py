@@ -75,6 +75,8 @@ class NegativeBinomial(LeafNode):
 
             \text{supp}(\text{NegativeBinomial})=\mathbb{N}\cup\{0\}
 
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
         Args:
             scope_data:
                 Torch tensor containing possible distribution instances.
@@ -89,14 +91,17 @@ class NegativeBinomial(LeafNode):
 
         valid = np.ones(scope_data.shape, dtype=bool)
 
+        # nan entries (regarded as valid)
+        nan_mask = np.isnan(scope_data)
+
         # check for infinite values
-        valid &= ~np.isinf(scope_data)
+        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
         # TODO: runtime warning due to nan values
-        valid[valid] &= (np.remainder(scope_data[valid], 1) == 0)
+        valid[valid & ~nan_mask] &= (np.remainder(scope_data[valid & ~nan_mask], 1) == 0)
 
         # check if values are in valid range
-        valid[valid] &= (scope_data[valid] >= 0)
+        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0)
 
         return valid
