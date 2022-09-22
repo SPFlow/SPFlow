@@ -40,7 +40,7 @@ def maximum_likelihood_estimation(leaf: Gamma, data: np.ndarray, bias_correction
     elif nan_strategy is not None:
         raise ValueError(f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}.")
 
-    alpha_est, _, scale_est = gamma.fit(scope_data, floc=0, method='MLE')
+    alpha_est, _, scale_est = gamma.fit(scope_data, floc=0)
     beta_est = 1.0/scale_est
 
     # TODO: bias correction?
