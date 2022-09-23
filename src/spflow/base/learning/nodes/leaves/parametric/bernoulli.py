@@ -5,8 +5,6 @@ Created on August 29, 2022
 """
 from typing import Optional, Union, Callable
 import numpy as np
-from scipy.stats import bernoulli
-import scipy.stats as stats
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli
 
@@ -54,6 +52,6 @@ def maximum_likelihood_estimation(leaf: Bernoulli, data: np.ndarray, bias_correc
         p_est = 1e-8
     elif np.isclose(p_est, 1):
         p_est = 1 - 1e-8
-
+    
     # set parameters of leaf node
     leaf.set_params(p=p_est)
