@@ -90,12 +90,15 @@ class Geometric(LeafNode):
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
+        # nan entries (regarded as valid)
+        nan_mask = torch.isnan(scope_data)
+
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
         # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch
-        valid = self.dist.support.check(scope_data - 1)  # type: ignore
+        valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask] - 1).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        mask = valid.clone()
-        valid[mask] &= ~scope_data[mask].isinf()
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 

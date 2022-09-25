@@ -90,15 +90,15 @@ def maximum_likelihood_estimation(leaf: MultivariateGaussian, data: np.ndarray, 
     if len(leaf.scope.query) == 1:
         cov_est = cov_est.reshape(1,1)
     
-    # sometimes numpy returns a matrix with negative eigenvalues (i.e., not a valid positive semi-definite matrix)
-    if np.any(np.linalg.eigvalsh(cov_est) < 0):
-        # compute nearest symmetric positive semidefinite matrix
-        cov_est = nearest_sym_psd(cov_est)
-
     # edge case (if all values are the same, not enough samples or very close to each other)
     for i in range(scope_data.shape[1]):
         if np.isclose(cov_est[i][i], 0):
             cov_est[i][i] = 1e-8
+    
+    # sometimes numpy returns a matrix with negative eigenvalues (i.e., not a valid positive semi-definite matrix)
+    if np.any(np.linalg.eigvalsh(cov_est) < 0):
+        # compute nearest symmetric positive semidefinite matrix
+        cov_est = nearest_sym_psd(cov_est)
     
     # set parameters of leaf node
     leaf.set_params(mean=mean_est, cov=cov_est)

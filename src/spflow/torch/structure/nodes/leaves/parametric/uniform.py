@@ -100,19 +100,21 @@ class Uniform(LeafNode):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
+        
+        # nan entries (regarded as valid)
+        nan_mask = torch.isnan(scope_data)
 
         # torch distribution support is an interval, despite representing a distribution over a half-open interval
         # end is adjusted to the next largest number to make sure that desired end is part of the distribution interval
         # may cause issues with the support check; easier to do a manual check instead
-        valid = torch.ones(scope_data.shape, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
 
         # check for infinite values
-        mask = valid.clone()
-        valid[mask] &= ~scope_data[mask].isinf()
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         # check if values are within valid range
         if not self.support_outside:
-            valid[mask] &= (scope_data[mask] >= self.start) & (scope_data[mask] < self.end_next)
+            valid[~nan_mask & valid] &= ((scope_data[~nan_mask & valid] >= self.start) & (scope_data[~nan_mask & valid] < self.end_next)).squeeze(-1)
 
         return valid
 

@@ -75,7 +75,7 @@ class NegativeBinomial(LeafNode):
                 f"Value of n for NegativeBinomial distribution must to greater of equal to 0, but was: {n}"
             )
 
-        if not (torch.remainder(torch.tensor(n), 1.0) == 0.0):
+        if not (np.remainder(n, 1.0) == 0.0):
             raise ValueError(
                 f"Value of n for NegativeBinomial distribution must be (equal to) an integer value, but was: {n}"
             )
@@ -105,16 +105,17 @@ class NegativeBinomial(LeafNode):
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
-        valid = self.dist.support.check(scope_data)  # type: ignore
+        # nan entries (regarded as valid)
+        nan_mask = torch.isnan(scope_data)
+
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check if all values are valid integers
-        # TODO: runtime warning due to nan values
-        mask = valid.clone()
-        valid[mask] &= np.remainder(scope_data[mask], 1) == 0
+        valid[~nan_mask & valid] &= torch.remainder(scope_data[~nan_mask & valid], torch.tensor(1)).squeeze(-1) == 0
 
         # check for infinite values
-        mask = valid.clone()
-        valid[mask] &= ~scope_data[mask].isinf()
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 

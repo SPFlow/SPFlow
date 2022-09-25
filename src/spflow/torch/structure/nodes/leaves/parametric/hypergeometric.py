@@ -158,21 +158,22 @@ class Hypergeometric(LeafNode):
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
 
-        valid = torch.ones(scope_data.shape, dtype=torch.bool)
+        # nan entries (regarded as valid)
+        nan_mask = torch.isnan(scope_data)
+
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
 
         # check for infinite values
-        valid &= ~torch.isinf(scope_data)
+        valid[~nan_mask] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         # check if all values are valid integers
         # TODO: runtime warning due to nan values
-        mask = valid.clone()
-        valid[mask] &= torch.remainder(scope_data[mask], 1) == 0
+        valid[~nan_mask & valid] &= torch.remainder(scope_data[~nan_mask & valid], 1).squeeze(-1) == 0
 
         # check if values are in valid range
-        mask = valid.clone()
-        valid[mask] &= (scope_data[mask] >= max(0, self.n + self.M - self.N)) & (  # type: ignore
-            scope_data[mask] <= min(self.n, self.M)  # type: ignore
-        )
+        valid[~nan_mask & valid] &= (scope_data[~nan_mask & valid] >= max(0, self.n + self.M - self.N)) & (  # type: ignore
+            scope_data[~nan_mask & valid] <= min(self.n, self.M)  # type: ignore
+        ).squeeze(-1)
 
         return valid
 
