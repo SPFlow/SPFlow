@@ -88,6 +88,8 @@ class Uniform(LeafNode):
             - :math:`start` is the start of the interval
             - :math:`end` is the end of the interval
             - :math:`\text{support\_outside}` is a truth value indicating whether values outside of the interval are part of the support
+        
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:

@@ -259,6 +259,8 @@ class MultivariateGaussian(LeafNode):
         .. math::
 
             \text{supp}(\text{MultivariateGaussian})=(-\infty,+\infty)^k
+        
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:

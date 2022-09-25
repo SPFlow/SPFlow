@@ -79,6 +79,8 @@ class Exponential(LeafNode):
 
         Note: for PyTorch version < 1.11.0 zero is not part of the support Exponential, even though it is for Exponential.
 
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
         Args:
             scope_data:
                 Torch tensor containing possible distribution instances.

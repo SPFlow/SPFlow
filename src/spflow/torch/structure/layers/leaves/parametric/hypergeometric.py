@@ -151,6 +151,8 @@ class HypergeometricLayer(Module):
 
             TODO
 
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
         Args:
             data:
                 Torch tensor containing possible distribution instances.
@@ -164,24 +166,26 @@ class HypergeometricLayer(Module):
         # all query scopes are univariate
         scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
-        # TODO: does not work
         valid = torch.ones(scope_data.shape, dtype=torch.bool)
 
         # check for infinite values
         valid &= ~torch.isinf(scope_data)
 
+        # nan entries (regarded as valid)
+        nan_mask = torch.isnan(scope_data)
+
         # check if all values are valid integers
-        # TODO: runtime warning due to nan values
-        valid &= torch.remainder(scope_data, 1) == 0
+        valid[~nan_mask] &= torch.remainder(scope_data[~nan_mask], 1) == 0
 
         node_ids_tensor = torch.tensor(node_ids)
         N_nodes = self.N[node_ids_tensor]
         M_nodes = self.M[node_ids_tensor]
         n_nodes = self.n[node_ids_tensor]
-        
-        valid &= (scope_data >= torch.max(torch.vstack([torch.zeros(scope_data.shape[1]), n_nodes + M_nodes - N_nodes]), dim=0)[0].unsqueeze(0)) & (  # type: ignore
+
+        # check if values are in valid range
+        valid[~nan_mask & valid] &= ((scope_data >= torch.max(torch.vstack([torch.zeros(scope_data.shape[1]), n_nodes + M_nodes - N_nodes]), dim=0)[0].unsqueeze(0)) & (  # type: ignore
             scope_data <= torch.min(torch.vstack([n_nodes, M_nodes]), dim=0)[0].unsqueeze(0)  # type: ignore
-        )
+        ))[~nan_mask & valid]
 
         return valid
     

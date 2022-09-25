@@ -80,6 +80,8 @@ class Poisson(LeafNode):
         .. math::
 
             \text{supp}(\text{Poisson})=\mathbb{N}\cup\{0\}
+        
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:

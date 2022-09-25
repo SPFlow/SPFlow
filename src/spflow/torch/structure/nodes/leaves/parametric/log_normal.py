@@ -86,6 +86,8 @@ class LogNormal(LeafNode):
 
             \text{supp}(\text{LogNormal})=(0,\infty)
 
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
         Args:
             scope_data:
                 Torch tensor containing possible distribution instances.

@@ -146,6 +146,8 @@ class Hypergeometric(LeafNode):
             - :math:`M` is the number of entities with property of interest
             - :math:`n` is the number of draws
 
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
         Args:
             scope_data:
                 Torch tensor containing possible distribution instances.
@@ -167,7 +169,6 @@ class Hypergeometric(LeafNode):
         valid[~nan_mask] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         # check if all values are valid integers
-        # TODO: runtime warning due to nan values
         valid[~nan_mask & valid] &= torch.remainder(scope_data[~nan_mask & valid], 1).squeeze(-1) == 0
 
         # check if values are in valid range
