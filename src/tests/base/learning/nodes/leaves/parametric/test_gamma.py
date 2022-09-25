@@ -8,7 +8,6 @@ import random
 
 
 class TestNode(unittest.TestCase):
-
     def test_mle_1(self):
 
         # set seed

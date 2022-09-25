@@ -64,8 +64,8 @@ class TestNode(unittest.TestCase):
         self.assertTrue(torch.allclose(leaf.cov, torch.tensor([[1.0, -0.25], [-0.25, 0.0625]])))
 
         # perform MLE
-        #maximum_likelihood_estimation(leaf, data, bias_correction=True)
-        #self.assertTrue(torch.allclose(leaf.cov, 2*torch.tensor([[1.0, -0.25], [-0.25, 0.0625]])))
+        maximum_likelihood_estimation(leaf, data, bias_correction=True)
+        self.assertTrue(torch.allclose(leaf.cov, 2*torch.tensor([[1.0, -0.25], [-0.25, 0.0625]])))
 
     def test_mle_edge_cov_zero(self):
         

@@ -20,7 +20,6 @@ class TestNode(unittest.TestCase):
         data = np.random.binomial(n=3, p=0.3, size=(10000, 1))
 
         # perform MLE
-        print(leaf.p)
         maximum_likelihood_estimation(leaf, data)
 
         self.assertTrue(np.isclose(leaf.p, np.array(0.3), atol=1e-2, rtol=1e-3))
@@ -39,7 +38,6 @@ class TestNode(unittest.TestCase):
         # perform MLE
         maximum_likelihood_estimation(leaf, data)
 
-        print(leaf.p)
         self.assertTrue(np.isclose(leaf.p, np.array(0.7), atol=1e-2, rtol=1e-3))
 
     def test_mle_edge_0(self):
@@ -75,10 +73,6 @@ class TestNode(unittest.TestCase):
         self.assertTrue(leaf.p < 1.0)
     
     def test_mle_only_nans(self):
-
-        # set seed
-        np.random.seed(0)
-        random.seed(0)
         
         leaf = NegativeBinomial(Scope([0]), n=3)
 
@@ -90,10 +84,6 @@ class TestNode(unittest.TestCase):
 
     def test_mle_invalid_support(self):
 
-        # set seed
-        np.random.seed(0)
-        random.seed(0)
-        
         leaf = NegativeBinomial(Scope([0]), n=3)
 
         # perform MLE (should raise exceptions)

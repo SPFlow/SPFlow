@@ -4,16 +4,11 @@ from spflow.base.learning.nodes.leaves.parametric.uniform import maximum_likelih
 
 import numpy as np
 import unittest
-import random
 
 
 class TestNode(unittest.TestCase):
     def test_mle(self):
 
-        # set seed
-        np.random.seed(0)
-        random.seed(0)
-        
         leaf = Uniform(Scope([0]), start=0.0, end=1.0)
 
         # simulate data
@@ -25,10 +20,6 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.all([leaf.start, leaf.end] == [0.0, 1.0]))
 
     def test_mle_invalid_support(self):
-
-        # set seed
-        np.random.seed(0)
-        random.seed(0)
         
         leaf = Uniform(Scope([0]), start=1.0, end=3.0, support_outside=False)
 
