@@ -124,6 +124,8 @@ class GammaLayer(Module):
 
             TODO
 
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
         Args:
             data:
                 Torch tensor containing possible distribution instances.
@@ -137,11 +139,17 @@ class GammaLayer(Module):
         # all query scopes are univariate
         scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
+        # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(node_ids).support.check(scope_data)  # type: ignore
 
+        # nan entries (regarded as valid)
+        nan_mask = torch.isnan(scope_data)
+
+        # set nan_entries back to True
+        valid[nan_mask] = True
+
         # check for infinite values
-        mask = valid.clone()
-        valid[mask] &= ~scope_data[mask].isinf().sum(dim=-1).bool()
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf()
 
         return valid
 

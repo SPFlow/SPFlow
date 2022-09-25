@@ -102,6 +102,8 @@ class Binomial(LeafNode):
 
             \text{supp}(\text{Binomial})=\{0,\hdots,n\}
 
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
         Args:
             scope_data:
                 Torch tensor containing possible distribution instances.

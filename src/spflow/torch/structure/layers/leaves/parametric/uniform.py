@@ -158,13 +158,17 @@ class UniformLayer(Module):
         # end is adjusted to the next largest number to make sure that desired end is part of the distribution interval
         # may cause issues with the support check; easier to do a manual check instead
         valid = torch.ones(scope_data.shape, dtype=torch.bool)
-    
+
         # check if values are within valid range
         valid &= ((scope_data >= self.start[torch.tensor(node_ids)]) & (scope_data < self.end[torch.tensor(node_ids)]))
         valid |= self.support_outside[torch.tensor(node_ids)]
 
+        # nan entries (regarded as valid)
+        nan_mask = torch.isnan(scope_data)
+        valid[nan_mask] = True
+
         # check for infinite values
-        valid &= ~(scope_data.isinf())
+        valid[~nan_mask & valid] &= ~(scope_data[~nan_mask & valid].isinf())
 
         return valid
 

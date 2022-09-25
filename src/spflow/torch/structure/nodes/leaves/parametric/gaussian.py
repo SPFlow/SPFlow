@@ -119,6 +119,8 @@ class Gaussian(LeafNode):
         .. math::
 
             \text{supp}(\text{Gaussian})=(-\infty,+\infty)
+        
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:

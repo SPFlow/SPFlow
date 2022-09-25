@@ -80,6 +80,8 @@ class Bernoulli(LeafNode):
         .. math::
 
             \text{supp}(\text{Bernoulli})=\{0,1\}
+        
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:
