@@ -64,7 +64,13 @@ def nearest_sym_pd(A: torch.Tensor) -> torch.Tensor:
 
     while not is_pd(A_hat):
         # compute smallest real part eigenvalue
-        min_eigval = torch.min(torch.real(torch.linalg.eigvalsh(A_hat)))
+        eigvals = torch.linalg.eigvalsh(A_hat)
+
+        if torch.is_complex(eigvals):
+            eigval = torch.real(eigvals)
+        
+        min_eigval = torch.min(eigvals)
+        
         # adjust matrix
         A_hat += I*(-min_eigval*(k**2) + spacing)
         k += 1
