@@ -15,6 +15,7 @@ from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as BaseMultivariateGaussian
+from packaging import version
 
 
 def torch_spacing(A: torch.Tensor) -> torch.Tensor:
@@ -27,6 +28,11 @@ def torch_spacing(A: torch.Tensor) -> torch.Tensor:
 def nearest_sym_pd(A: torch.Tensor) -> torch.Tensor:
     # compute closest positive definite matrix as described in (Higham, 1988) https://www.sciencedirect.com/science/article/pii/0024379588902236
     # based on MATLAB implementation found here: https://mathworks.com/matlabcentral/fileexchange/42885-nearestspd?s_tid=mwa_osa_a and this Python port: https://stackoverflow.com/questions/43238173/python-convert-matrix-to-positive-semi-definite/43244194#43244194
+
+    if version.parse(torch.__version__) < version.parse("1.11.0"):
+        exception = RuntimeError
+    else:
+        exception = torch.linalg.LinAlgError
 
     def is_pd(A: torch.Tensor) -> torch.Tensor:
         try:
