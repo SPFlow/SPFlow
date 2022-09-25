@@ -38,7 +38,7 @@ def nearest_sym_pd(A: torch.Tensor) -> torch.Tensor:
         try:
             torch.linalg.cholesky(A)
             return True
-        except torch.linalg.LinAlgError:
+        except exception:
             return False
 
     # make sure matrix is symmetric
