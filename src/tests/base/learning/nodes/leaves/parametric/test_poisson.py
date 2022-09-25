@@ -58,10 +58,6 @@ class TestNode(unittest.TestCase):
         self.assertTrue(leaf.l > 0.0)
 
     def test_mle_only_nans(self):
-
-        # set seed
-        np.random.seed(0)
-        random.seed(0)
         
         leaf = Poisson(Scope([0]))
 
@@ -72,10 +68,6 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, data, nan_strategy='ignore')
 
     def test_mle_invalid_support(self):
-
-        # set seed
-        np.random.seed(0)
-        random.seed(0)
         
         leaf = Poisson(Scope([0]))
 

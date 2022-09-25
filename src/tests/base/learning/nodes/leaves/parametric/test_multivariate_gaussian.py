@@ -41,7 +41,7 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(np.allclose(leaf.mean, np.array([0.5, 0.2]), atol=1e-2, rtol=1e-2))
         self.assertTrue(np.allclose(leaf.cov, np.array([[1.3, -0.7], [-0.7, 1.0]]), atol=1e-2, rtol=1e-2))
-    
+
     def test_mle_bias_correction(self):
 
         leaf = MultivariateGaussian(Scope([0,1]))
@@ -68,10 +68,6 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.all(np.diag(leaf.cov) > 0))
 
     def test_mle_only_nans(self):
-
-        # set seed
-        np.random.seed(0)
-        random.seed(0)
         
         leaf = MultivariateGaussian(Scope([0,1]))
 

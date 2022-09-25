@@ -64,7 +64,7 @@ class TestNode(unittest.TestCase):
         leaf = LogNormal(Scope([0]))
 
         # simulate data
-        data = np.log(np.random.randn(1, 1))
+        data = np.exp(np.random.randn(1, 1))
 
         # perform MLE
         maximum_likelihood_estimation(leaf, data, bias_correction=False)
@@ -81,7 +81,7 @@ class TestNode(unittest.TestCase):
         leaf = LogNormal(Scope([0]))
 
         # simulate data
-        data = np.random.randn(1, 1)
+        data = np.exp(np.random.randn(1, 1))
 
         # perform MLE (should throw a warning due to bias correction on a single sample)
         self.assertWarns(RuntimeWarning, maximum_likelihood_estimation, leaf, data, bias_correction=True)
@@ -91,10 +91,6 @@ class TestNode(unittest.TestCase):
         self.assertTrue(leaf.std > 0)
 
     def test_mle_only_nans(self):
-
-        # set seed
-        np.random.seed(0)
-        random.seed(0)
         
         leaf = LogNormal(Scope([0]))
 
@@ -105,10 +101,6 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, data, nan_strategy='ignore')
 
     def test_mle_invalid_support(self):
-
-        # set seed
-        np.random.seed(0)
-        random.seed(0)
         
         leaf = LogNormal(Scope([0]))
 

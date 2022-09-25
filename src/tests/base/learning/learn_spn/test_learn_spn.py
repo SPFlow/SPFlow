@@ -177,7 +177,6 @@ class TestNode(unittest.TestCase):
         self.assertTrue(isinstance(partition_1, SPNSumNode)) 
         partition_1_clustering_1, partition_1_clustering_2 = partition_1.children
         # children of both clusterings should be product nodes since this partition is originally multivariate
-        # print(partition_1.children)
         self.assertTrue(isinstance(partition_1_clustering_1, SPNProductNode))
         self.assertTrue(all([isinstance(child, Gaussian) for child in partition_1_clustering_1.children]))
         self.assertTrue(isinstance(partition_1_clustering_1, SPNProductNode))
