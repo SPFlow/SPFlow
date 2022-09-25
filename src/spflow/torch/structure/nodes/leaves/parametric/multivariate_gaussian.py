@@ -17,6 +17,55 @@ from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as BaseMultivariateGaussian
 
 
+def torch_spacing(A: torch.Tensor) -> torch.Tensor:
+    return torch.min(
+        torch.nextafter(A,  torch.tensor(float("inf")))-A, 
+        torch.nextafter(A, -torch.tensor(float("inf")))-A
+    )
+
+
+def nearest_sym_pd(A: torch.Tensor) -> torch.Tensor:
+    # compute closest positive definite matrix as described in (Higham, 1988) https://www.sciencedirect.com/science/article/pii/0024379588902236
+    # based on MATLAB implementation found here: https://mathworks.com/matlabcentral/fileexchange/42885-nearestspd?s_tid=mwa_osa_a and this Python port: https://stackoverflow.com/questions/43238173/python-convert-matrix-to-positive-semi-definite/43244194#43244194
+
+    def is_pd(A: torch.Tensor) -> torch.Tensor:
+        try:
+            torch.linalg.cholesky(A)
+            return True
+        except torch.linalg.LinAlgError:
+            return False
+
+    # make sure matrix is symmetric
+    B = (A + A)/2
+
+    # compute symmetric polar factor of B from SVD (which is symmetric positive definite)
+    U, s, _ = torch.linalg.svd(B)
+    H = torch.matmul(U, torch.matmul(torch.diag(s), U.T))
+    
+    # compute closest symmetric positive semi-definite matrix to A in Frobenius norm (see paper linked above)
+    A_hat = (B+H)/2
+    # again, make sure matrix is symmetric
+    A_hat = (A_hat + A_hat.T)/2
+
+    # check if matrix is actually symmetric positive-definite
+    if is_pd(A_hat):
+        return A_hat
+
+    # else fix it
+    spacing = torch_spacing(torch.linalg.norm(A_hat))
+    I = torch.eye(A.shape[0])
+    k = 1
+
+    while not is_pd(A_hat):
+        # compute smallest real part eigenvalue
+        min_eigval = torch.min(torch.real(torch.linalg.eigvalsh(A_hat)))
+        # adjust matrix
+        A_hat += I*(-min_eigval*(k**2) + spacing)
+        k += 1
+
+    return A_hat
+
+
 class MultivariateGaussian(LeafNode):
     r"""Multivariate Normal distribution for Torch backend.
 
@@ -171,7 +220,18 @@ class MultivariateGaussian(LeafNode):
                 "Covariance matrix for MultivariateGaussian may not contain NaN values"
             )
 
-        # compute lower triangular matrix (also check if covariance matrix is symmetric positive definite)
+        # compute eigenvalues (can use eigvalsh here since we already know matrix is symmetric)        
+        eigvals = torch.linalg.eigvalsh(cov)
+
+        if torch.any(eigvals < 0.0):
+            raise ValueError("Covariance matrix for MultivariateGaussian is not symmetric positive semi-definite (contains negative real eigenvalues).")
+
+        # edge case: covariance matrix is positive semi-definite but NOT positive definite (needed for projection)
+        if torch.any(eigvals == 0):
+            # find nearest symmetric positive definite matrix in Frobenius norm
+            cov = nearest_sym_pd(cov)
+
+        # compute lower triangular matrix
         L = torch.linalg.cholesky(cov)  # type: ignore
 
         # set diagonal and non-diagonal values of lower triangular matrix
@@ -200,11 +260,11 @@ class MultivariateGaussian(LeafNode):
                 f"Expected scope_data to be of shape (n,{len(self.scopes_out[0].query)}), but was: {scope_data.shape}"
             )
 
-        valid = self.dist.support.check(scope_data).unsqueeze(1)  # type: ignore
-
-        # additionally check for infinite values (may return NaNs despite support)
-        mask = valid.clone()
-        valid[mask.squeeze(1), :] &= ~(scope_data[mask.squeeze(1), :].isinf().sum(dim=1, keepdims=True).bool())
+        # different to univariate distributions, cannot simply check via torch distribution's support due to possible incomplete data in multivariate case; therefore do it ourselves (not difficult here since support is R)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        
+        # check for infinite values (may return NaNs despite support)
+        valid &= ~scope_data.isinf().sum(dim=1, keepdim=True).bool()
 
         return valid
     

@@ -113,12 +113,15 @@ class Binomial(LeafNode):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
+        
+        # nan entries (regarded as valid)
+        nan_mask = torch.isnan(scope_data)
 
-        valid = self.dist.support.check(scope_data)  # type: ignore
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        mask = valid.clone()
-        valid[mask] &= ~scope_data[mask].isinf()
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 
