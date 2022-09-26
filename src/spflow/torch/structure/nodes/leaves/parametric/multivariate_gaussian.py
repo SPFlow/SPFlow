@@ -16,6 +16,7 @@ from spflow.torch.structure.nodes.node import LeafNode
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as BaseMultivariateGaussian
 from packaging import version
+import warnings
 
 
 def torch_spacing(A: torch.Tensor) -> torch.Tensor:
@@ -191,9 +192,6 @@ class MultivariateGaussian(LeafNode):
         if torch.any(torch.isnan(mean)):
             raise ValueError("Mean vector for MultivariateGaussian may not contain NaN values")
 
-        # dimensions
-        d = mean.numel()
-
         # make sure that number of dimensions matches scope length
         if (
             (mean.ndim == 1 and mean.shape[0] != len(self.scope.query))
@@ -240,6 +238,7 @@ class MultivariateGaussian(LeafNode):
 
         # edge case: covariance matrix is positive semi-definite but NOT positive definite (needed for projection)
         if torch.any(eigvals == 0):
+            warnings.warn("Covariance matrix for Torch MultivariateGaussian is positive semi-definite, but not positive definite. Using closest positive definite matrix instead. Required for interal projection of learnable parameters.", RuntimeWarning)
             # find nearest symmetric positive definite matrix in Frobenius norm
             cov = nearest_sym_pd(cov)
 
