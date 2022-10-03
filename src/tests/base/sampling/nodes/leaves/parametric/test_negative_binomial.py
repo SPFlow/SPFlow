@@ -5,12 +5,17 @@ from spflow.base.sampling.nodes.leaves.parametric.negative_binomial import sampl
 from spflow.base.sampling.module import sample
 
 import numpy as np
+import random
 
 import unittest
 
 
 class TestNegativeBinomial(unittest.TestCase):
     def test_sampling_1(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- n = 1, p = 1.0 -----
 
@@ -24,6 +29,10 @@ class TestNegativeBinomial(unittest.TestCase):
 
     def test_sampling_2(self):
 
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- n = 10, p = 0.3 -----
 
         negative_binomial = NegativeBinomial(Scope([0]), 10, 0.3)
@@ -32,6 +41,10 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertTrue(np.isclose(samples.mean(), np.array(10 * (1 - 0.3) / 0.3), rtol=0.1))
 
     def test_sampling_3(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- n = 5, p = 0.8 -----
 

@@ -5,12 +5,17 @@ from spflow.base.sampling.nodes.leaves.parametric.poisson import sample
 from spflow.base.sampling.module import sample
 
 import numpy as np
+import random
 
 import unittest
 
 
 class TestPoisson(unittest.TestCase):
     def test_sampling_1(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- l = 1.0 -----
 
@@ -26,6 +31,10 @@ class TestPoisson(unittest.TestCase):
 
     def test_sampling_2(self):
 
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- l = 0.5 -----
 
         poisson = Poisson(Scope([0]), 0.5)
@@ -34,6 +43,10 @@ class TestPoisson(unittest.TestCase):
         self.assertTrue(np.isclose(samples.mean(), np.array(0.5), rtol=0.1))
 
     def test_sampling_3(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- l = 2.5 -----
 

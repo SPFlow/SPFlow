@@ -12,6 +12,10 @@ import unittest
 class TestMultivariateGaussian(unittest.TestCase):
     def test_joint_sampling(self):
 
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
+
         rng = np.random.default_rng(123)
 
         # generate mean vector
@@ -34,6 +38,10 @@ class TestMultivariateGaussian(unittest.TestCase):
         self.assertTrue(np.allclose(cov, cov_est, atol=0.01, rtol=0.1))
     
     def test_conditional_sampling(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
         
         rng = np.random.default_rng(123)
 
@@ -85,6 +93,10 @@ class TestMultivariateGaussian(unittest.TestCase):
         self.assertRaises(ValueError, sample, mv, np.array([[0, 0]]), sampling_ctx=SamplingContext([1]))
 
     def test_sampling_2(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         mv = MultivariateGaussian(Scope([0,1]))
         data = np.array([[0.0, 0.0]])

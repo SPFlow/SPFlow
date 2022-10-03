@@ -8,11 +8,16 @@ from spflow.base.sampling.nodes.leaves.parametric.gaussian import sample
 from spflow.base.sampling.module import sample
 
 import numpy as np
+import random
 import unittest
 
 
 class TestNode(unittest.TestCase):
     def test_spn_sampling(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         s = SPNSumNode(
             children=[
@@ -50,6 +55,10 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.allclose(samples.mean(axis=0), expected_mean, rtol=0.1))
 
     def test_sum_node_sampling(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         l1 = Gaussian(Scope([0]), -5.0, 1.0)
         l2 = Gaussian(Scope([0]), 5.0, 1.0)

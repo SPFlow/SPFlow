@@ -5,12 +5,17 @@ from spflow.base.sampling.nodes.leaves.parametric.uniform import sample
 from spflow.base.sampling.module import sample
 
 import numpy as np
+import random
 
 import unittest
 
 
 class TestUniform(unittest.TestCase):
     def test_sampling(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- a = -1.0, b = 2.5 -----
 

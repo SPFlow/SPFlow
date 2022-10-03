@@ -4,6 +4,8 @@ from spflow.torch.sampling.nodes.leaves.parametric.multivariate_gaussian import 
 from spflow.torch.sampling.module import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 
 
@@ -17,6 +19,11 @@ class TestMultivariateGaussian(unittest.TestCase):
         torch.set_default_dtype(torch.float32)
 
     def test_joint_sampling(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         # generate mean vector
         mean = torch.randn((1,5)) * 0.1
@@ -38,6 +45,11 @@ class TestMultivariateGaussian(unittest.TestCase):
         self.assertTrue(torch.allclose(cov, cov_est, atol=0.01, rtol=0.1))
     
     def test_conditional_sampling(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
         
         # generate mean vector
         mean = torch.randn((1,5)) * 0.1

@@ -5,6 +5,7 @@ from spflow.base.sampling.nodes.leaves.parametric.geometric import sample
 from spflow.base.sampling.module import sample
 
 import numpy as np
+import random
 
 import unittest
 
@@ -25,6 +26,10 @@ class TestGeometric(unittest.TestCase):
     
     def test_sampling_2(self):
 
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- p = 0.5 -----
 
         geometric = Geometric(Scope([0]), 0.5)
@@ -34,6 +39,10 @@ class TestGeometric(unittest.TestCase):
         self.assertTrue(np.isclose(samples.mean(), np.array(1.0/ 0.5), rtol=0.1))
 
     def test_sampling_3(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- p = 0.8 -----
 

@@ -8,6 +8,8 @@ from spflow.torch.sampling.nodes.leaves.parametric.gaussian import sample
 from spflow.torch.sampling.module import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 
 
@@ -21,6 +23,11 @@ class TestNode(unittest.TestCase):
         torch.set_default_dtype(torch.float32)
 
     def test_spn_sampling(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         s = SPNSumNode(
             children=[
@@ -58,6 +65,11 @@ class TestNode(unittest.TestCase):
         self.assertTrue(torch.allclose(samples.mean(dim=0), expected_mean, rtol=0.1))
 
     def test_sum_node_sampling(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         l1 = Gaussian(Scope([0]), -5.0, 1.0)
         l2 = Gaussian(Scope([0]), 5.0, 1.0)

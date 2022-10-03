@@ -5,12 +5,17 @@ from spflow.base.sampling.nodes.leaves.parametric.log_normal import sample
 from spflow.base.sampling.module import sample
 
 import numpy as np
+import random
 
 import unittest
 
 
 class TestLogNormal(unittest.TestCase):
     def test_sampling_1(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- mean = 0.0, std = 1.0 -----
 
@@ -28,6 +33,10 @@ class TestLogNormal(unittest.TestCase):
         )
     
     def test_sampling_2(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- mean = 1.0, std = 0.5 -----
 

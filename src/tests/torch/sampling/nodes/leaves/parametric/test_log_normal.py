@@ -5,6 +5,8 @@ from spflow.torch.sampling.nodes.leaves.parametric.log_normal import sample
 from spflow.torch.sampling.module import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 
 
@@ -18,6 +20,11 @@ class TestLogNormal(unittest.TestCase):
         torch.set_default_dtype(torch.float32)
 
     def test_sampling_1(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- mean = 0.0, std = 1.0 -----
 
@@ -35,6 +42,11 @@ class TestLogNormal(unittest.TestCase):
         )
 
     def test_sampling_2(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- mean = 1.0, std = 0.5 -----
 

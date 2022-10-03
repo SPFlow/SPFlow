@@ -13,6 +13,8 @@ from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 import itertools
 
@@ -27,6 +29,11 @@ class TestNode(unittest.TestCase):
         torch.set_default_dtype(torch.float32)
 
     def test_sum_layer_sampling(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         input_nodes = [
             Gaussian(Scope([0]), mean=3.0, std=0.01),
@@ -62,6 +69,11 @@ class TestNode(unittest.TestCase):
 
     def test_product_layer_sampling(self):
 
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
         input_nodes = [
             Gaussian(Scope([0]), mean=3.0, std=0.01),
             Gaussian(Scope([1]), mean=1.0, std=0.01),
@@ -92,6 +104,11 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, sample, list(layer_spn.children())[0], 1, sampling_ctx=SamplingContext([0], [[0,1]]))
 
     def test_partition_layer_sampling(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
         
         input_partitions = [
             [Gaussian(Scope([0]), mean=3.0, std=0.01), Gaussian(Scope([0]), mean=1.0, std=0.01)],
@@ -121,7 +138,12 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, sample, list(layer_spn.children())[0], 1, sampling_ctx=SamplingContext([0], [[0,1]]))
 
     def test_hadamard_layer_sampling(self):
-        
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
         input_partitions = [
             [Gaussian(Scope([0]), mean=3.0, std=0.01), Gaussian(Scope([0]), mean=1.0, std=0.01)],
             [Gaussian(Scope([1]), mean=1.0, std=0.01), Gaussian(Scope([1]), mean=-5.0, std=0.01)],
