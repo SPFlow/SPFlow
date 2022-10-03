@@ -1,17 +1,22 @@
+"""
+Created on September 7, 2022
+
+@authors: Philipp Deibert
+"""
 import numpy as np
 from functools import partial
 from typing import Callable, Union, Optional, Dict, Any
 from spflow.meta.scope.scope import Scope
-from spflow.base.learning.learn_spn.rdc import randomized_dependency_coefficients
+from spflow.base.utils.randomized_dependency_coefficients import randomized_dependency_coefficients
 from spflow.base.learning.nodes.leaves.parametric.gaussian import maximum_likelihood_estimation
+from spflow.base.utils.connected_components import connected_components
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.structure.nodes.node import SPNSumNode, SPNProductNode
-from networkx.algorithms.components.connected import connected_components
-from networkx.convert_matrix import from_numpy_array
+from spflow.base.structure.module import Module
 from sklearn.cluster import KMeans
 
 
-def partition_by_rdc(data, threshold=0.3, preprocessing: Optional[Callable]=None):
+def partition_by_rdc(data: np.ndarray, threshold: float=0.3, preprocessing: Optional[Callable]=None) -> np.ndarray:
 
     # perform optional pre-processing of data
     if preprocessing is not None:
@@ -24,11 +29,16 @@ def partition_by_rdc(data, threshold=0.3, preprocessing: Optional[Callable]=None
 
     # create adjacency matrix of features from thresholded rdcs
     adj_mat = (rdcs >= threshold).astype(int)
-    
-    return [list(cc) for cc in connected_components(from_numpy_array(adj_mat))]
+
+    partition_ids = np.zeros(data.shape[1])
+
+    for i, cc in enumerate(connected_components(adj_mat)):
+        partition_ids[list(cc)] = i
+
+    return partition_ids
 
 
-def cluster_by_kmeans(data, n_clusters=2, preprocessing: Optional[Callable]=None):
+def cluster_by_kmeans(data: np.ndarray, n_clusters: int=2, preprocessing: Optional[Callable]=None) -> np.ndarray:
 
     # perform optional pre-processing of data
     if preprocessing is not None:
@@ -42,7 +52,7 @@ def cluster_by_kmeans(data, n_clusters=2, preprocessing: Optional[Callable]=None
     return data_labels
 
 
-def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_instances_slice: int=100, fit_leaves: bool=True, clustering_method: Union[str, Callable]="kmeans", partitioning_method: Union[str, Callable]="rdc", clustering_args: Optional[Dict[str, Any]]=None, partitioning_args: Optional[Dict[str, Any]]=None):
+def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_instances_slice: int=100, fit_leaves: bool=True, clustering_method: Union[str, Callable]="kmeans", partitioning_method: Union[str, Callable]="rdc", clustering_args: Optional[Dict[str, Any]]=None, partitioning_args: Optional[Dict[str, Any]]=None) -> Module:
 
     # initialize scope
     if scope is None:
@@ -77,7 +87,7 @@ def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_
 
     if not isinstance(min_instances_slice, int) or min_instances_slice < 2:
         raise ValueError(f"Value for 'min_instances_slice' must be an integer greater than 1, but was: {min_instances_slice}.")
-    if not isinstance(min_features_slice, int) or min_instances_slice < 2:
+    if not isinstance(min_features_slice, int) or min_features_slice < 2:
         raise ValueError(f"Value for 'min_features_slice' must be an integer greater than 1, but was: {min_features_slice}.")
 
     # helper functions
@@ -106,8 +116,6 @@ def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_
 
         return SPNProductNode(children=leaves)
 
-    # TODO: remove irrelevant features?
-
     # features does not need to be split any further
     if len(scope.query) < min_features_slice:
 
@@ -119,7 +127,13 @@ def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_
             return create_uv_leaf(scope, data, fit_leaves)
     else:
         # select correct data
-        partitions = partitioning_method(data)
+        partition_ids = partitioning_method(data)
+
+        # compute partitions of rvs from partition id labels
+        partitions = []
+
+        for partition_id in np.sort(np.unique(partition_ids)):
+            partitions.append( np.where(partition_ids == partition_id)[0] )
 
         # multiple partition (i.e., data can be partitioned)
         if len(partitions) > 1:

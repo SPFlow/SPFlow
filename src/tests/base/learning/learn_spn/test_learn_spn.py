@@ -15,16 +15,17 @@ def clustering_fn(x):
     mask[int(x.shape[0]/2):] = 1
     return mask
 
+
 def partitioning_fn(x):
-    ids = np.array(range(x.shape[1]))
+    ids = np.zeros(x.shape[1])
 
     if not partitioning_fn.alternate or partitioning_fn.partition:
         # split into two approximately equal sized partitions
         partitioning_fn.partition = False
-        return [ids[int(x.shape[1]/2):], ids[:int(x.shape[1]/2)]]
+        ids[:int(x.shape[1]/2)] = 1
     else:
         partitioning_fn.partition = True
-        return [ids]
+    return ids
 
 
 class TestNode(unittest.TestCase):
@@ -101,7 +102,7 @@ class TestNode(unittest.TestCase):
         partition_mask = partition_by_rdc(np.hstack([data_partition_1, data_partition_2]), threshold=0.5)
 
         # should be two partitions
-        self.assertTrue(len(partition_mask) == 2)
+        self.assertTrue(len(np.unique(partition_mask)) == 2)
 
     def test_rdc_partitioning_2(self):
         
@@ -110,16 +111,19 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         # simulate partition data
-        data_partition_1 = np.random.multivariate_normal(np.zeros(2), np.ones((2, 2)), size=(100,))
+        data_partition_1 = np.random.multivariate_normal(np.zeros(2), np.array([[1, 0.5],[0.5, 1]]), size=(100,))
         data_partition_2 = np.random.randn(100, 1) + 10.0
 
         # compute clusters using k-means
         partition_mask = partition_by_rdc(np.hstack([data_partition_1, data_partition_2]), threshold=0.5)
 
         # should be two partitions
-        self.assertTrue(len(partition_mask) == 2)
-        self.assertTrue(partition_mask[0] == [0,1] or partition_mask[0] == [2])
-    
+        self.assertTrue(len(np.unique(partition_mask)) == 2)
+
+        # check if partitions are correct (order is irrelevant)
+        partition_1 = np.where(partition_mask == 0)[0]
+        self.assertTrue(np.all(partition_1 == [0,1]) or np.all(partition_1 == [2]))
+
     def test_rdc_partitioning_nan(self):
 
         # set seed
@@ -134,7 +138,7 @@ class TestNode(unittest.TestCase):
         data_partition_2[0] = np.nan
 
         self.assertRaises(ValueError, partition_by_rdc, np.hstack([data_partition_1, data_partition_2]), threshold=0.5)
-
+    
     def test_learn_1(self):
 
         # set seed
@@ -183,7 +187,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(all([isinstance(child, Gaussian) for child in partition_1_clustering_2.children]))
         # partition 2
         self.assertTrue(isinstance(partition_2, Gaussian))
-    
+
     def test_learn_spn_3(self):
 
         # set seed
@@ -221,7 +225,7 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, learn_spn, np.random.randn(1,3), min_instances_slice=1)
         # invalid min number of features for slicing
         self.assertRaises(ValueError, learn_spn, np.random.randn(1,3), min_features_slice=1)
-        
+
 
 if __name__ == "__main__":
     unittest.main()
