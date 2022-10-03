@@ -5,6 +5,8 @@ from spflow.torch.sampling.nodes.leaves.parametric.negative_binomial import samp
 from spflow.torch.sampling.module import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 
 
@@ -19,6 +21,11 @@ class TestNegativeBinomial(unittest.TestCase):
 
     def test_sampling_1(self):
 
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- n = 1, p = 1.0 -----
 
         negative_binomial = NegativeBinomial(Scope([0]), 1, 1.0)
@@ -31,6 +38,11 @@ class TestNegativeBinomial(unittest.TestCase):
 
     def test_sampling_2(self):
 
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- n = 10, p = 0.3 -----
 
         negative_binomial = NegativeBinomial(Scope([0]), 10, 0.3)
@@ -39,6 +51,11 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertTrue(torch.isclose(samples.mean(), torch.tensor(10 * (1 - 0.3) / 0.3), rtol=0.1))
 
     def test_sampling_3(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- n = 5, p = 0.8 -----
 

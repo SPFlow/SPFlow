@@ -15,9 +15,17 @@ from spflow.base.inference.layers.leaves.parametric.gaussian import log_likeliho
 from spflow.base.sampling.layers.leaves.parametric.gaussian import sample
 import unittest
 
+import numpy as np
+import random
+
 
 class TestModule(unittest.TestCase):    
     def test_sampling(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
+
         # create region graph
         region_graph = random_region_graph(scope=Scope(list(range(128))), depth=5, replicas=2, n_splits=2)
 

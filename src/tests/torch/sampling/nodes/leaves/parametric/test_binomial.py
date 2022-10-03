@@ -5,6 +5,8 @@ from spflow.torch.sampling.nodes.leaves.parametric.binomial import sample
 from spflow.torch.sampling.module import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 
 
@@ -19,6 +21,11 @@ class TestBinomial(unittest.TestCase):
 
     def test_sampling_1(self):
 
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- p = 0 -----
 
         binomial = Binomial(Scope([0]), 10, 0.0)
@@ -32,6 +39,11 @@ class TestBinomial(unittest.TestCase):
 
     def test_sampling_2(self):
 
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- p = 1 -----
 
         binomial = Binomial(Scope([0]), 10, 1.0)
@@ -44,6 +56,11 @@ class TestBinomial(unittest.TestCase):
         self.assertTrue(all(samples[~samples.isnan()] == 10))
 
     def test_sampling_3(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- p = 0.5 -----
 

@@ -5,6 +5,8 @@ from spflow.torch.sampling.nodes.leaves.parametric.geometric import sample
 from spflow.torch.sampling.module import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 
 
@@ -19,6 +21,11 @@ class TestGeometric(unittest.TestCase):
 
     def test_sampling_1(self):
 
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- p = 1.0 -----
 
         geometric = Geometric(Scope([0]), 1.0)
@@ -32,6 +39,11 @@ class TestGeometric(unittest.TestCase):
     
     def test_sampling_2(self):
 
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- p = 0.5 -----
 
         geometric = Geometric(Scope([0]), 0.5)
@@ -40,6 +52,11 @@ class TestGeometric(unittest.TestCase):
         self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0/0.5), rtol=0.1))
 
     def test_sampling_3(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- p = 0.8 -----
 

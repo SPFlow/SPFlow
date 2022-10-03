@@ -12,11 +12,16 @@ from spflow.base.inference.module import log_likelihood
 from spflow.base.sampling.module import sample
 
 import numpy as np
+import random
 import unittest
 
 
 class TestNode(unittest.TestCase):
     def test_sampling_1(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         multivariate_gaussian_layer = MultivariateGaussianLayer(scope=Scope([0,1]), mean=[[0.8, 0.3], [0.2, -0.1]], cov=[[[0.13, 0.08], [0.08, 0.05]], [[0.17, 0.054], [0.054, 0.0296]]], n_nodes=2)
         s1 = SPNSumNode(children=[multivariate_gaussian_layer], weights=[0.3, 0.7])
@@ -29,6 +34,10 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.allclose(layer_samples.mean(axis=0), nodes_samples.mean(axis=0), atol=0.01, rtol=0.1))
 
     def test_sampling_2(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         multivariate_gaussian_layer = MultivariateGaussianLayer(scope=[Scope([0,1]), Scope([2,3])], mean=[[0.8, 0.3], [0.2, -0.1]], cov=[[[0.13, 0.08], [0.08, 0.05]], [[0.17, 0.054], [0.054, 0.0296]]])
         p1 = SPNProductNode(children=[multivariate_gaussian_layer])

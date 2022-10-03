@@ -13,12 +13,17 @@ from spflow.base.inference.module import log_likelihood
 from spflow.base.sampling.module import sample
 
 import numpy as np
+import random
 import unittest
 import itertools
 
 
 class TestNode(unittest.TestCase):
     def test_sum_layer_sampling(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         input_nodes = [
             Gaussian(Scope([0]), mean=3.0, std=0.01),
@@ -54,6 +59,10 @@ class TestNode(unittest.TestCase):
 
     def test_product_layer_sampling(self):
 
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
+
         input_nodes = [
             Gaussian(Scope([0]), mean=3.0, std=0.01),
             Gaussian(Scope([1]), mean=1.0, std=0.01),
@@ -84,6 +93,10 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, sample, layer_spn.children[0], 1, sampling_ctx=SamplingContext([0], [[0,1]]))
 
     def test_partition_layer_sampling(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
         
         input_partitions = [
             [Gaussian(Scope([0]), mean=3.0, std=0.01), Gaussian(Scope([0]), mean=1.0, std=0.01)],
@@ -113,6 +126,10 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, sample, layer_spn.children[0], 1, sampling_ctx=SamplingContext([0], [[0,1]]))
     
     def test_hadamard_layer_sampling(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
         
         input_partitions = [
             [Gaussian(Scope([0]), mean=3.0, std=0.01), Gaussian(Scope([0]), mean=1.0, std=0.01)],

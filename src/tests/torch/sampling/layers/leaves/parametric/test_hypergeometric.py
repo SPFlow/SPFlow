@@ -12,6 +12,8 @@ from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 import itertools
 
@@ -26,6 +28,11 @@ class TestNode(unittest.TestCase):
         torch.set_default_dtype(torch.float32)
 
     def test_layer_sampling(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         layer = HypergeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], N=[10, 6, 10], M=[4, 2, 4], n=[5, 3, 5])
 

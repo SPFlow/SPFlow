@@ -5,6 +5,8 @@ from spflow.torch.sampling.nodes.leaves.parametric.exponential import sample
 from spflow.torch.sampling.module import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 
 
@@ -18,6 +20,11 @@ class TestExponential(unittest.TestCase):
         torch.set_default_dtype(torch.float32)
 
     def test_sampling_1(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- l = 0 -----
 
@@ -34,6 +41,11 @@ class TestExponential(unittest.TestCase):
 
     def test_sampling_2(self):
 
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- l = 0.5 -----
 
         exponential = Exponential(Scope([0]), 0.5)
@@ -41,6 +53,11 @@ class TestExponential(unittest.TestCase):
         self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0 / 0.5), rtol=0.1))
 
     def test_sampling_3(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- l = 2.5 -----
 

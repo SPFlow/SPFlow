@@ -4,6 +4,8 @@ from spflow.torch.structure.nodes.leaves.parametric.bernoulli import Bernoulli
 from spflow.torch.sampling.nodes.leaves.parametric.bernoulli import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 
 
@@ -18,6 +20,11 @@ class TestBernoulli(unittest.TestCase):
 
     def test_sampling_0(self):
 
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- p = 0 -----
 
         bernoulli = Bernoulli(Scope([0]), 0.0)
@@ -30,6 +37,11 @@ class TestBernoulli(unittest.TestCase):
         self.assertTrue(all(samples[~samples.isnan()] == 0.0))
 
     def test_sampling_1(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- p = 1 -----
 

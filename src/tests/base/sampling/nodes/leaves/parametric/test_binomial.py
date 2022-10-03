@@ -5,6 +5,7 @@ from spflow.base.sampling.nodes.leaves.parametric.binomial import sample
 from spflow.base.sampling.module import sample
 
 import numpy as np
+import random
 
 import unittest
 
@@ -38,6 +39,10 @@ class TestBinomial(unittest.TestCase):
 
     def test_sampling_3(self):
 
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- p = 0.5 -----
 
         binomial = Binomial(Scope([0]), 10, 0.5)
@@ -46,6 +51,10 @@ class TestBinomial(unittest.TestCase):
         self.assertTrue(np.isclose(samples.mean(), np.array(5.0), rtol=0.1))
 
     def test_sampling_4(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         binomial = Binomial(Scope([0]), 5, 0.5)
 

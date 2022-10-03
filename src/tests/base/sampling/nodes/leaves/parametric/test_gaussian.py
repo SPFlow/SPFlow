@@ -5,12 +5,17 @@ from spflow.base.sampling.nodes.leaves.parametric.gaussian import sample
 from spflow.base.sampling.module import sample
 
 import numpy as np
+import random
 
 import unittest
 
 
 class TestGaussian(unittest.TestCase):
     def test_sampling(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
 
         gaussian = Gaussian(Scope([0]), 0.0, 0.0005)
 

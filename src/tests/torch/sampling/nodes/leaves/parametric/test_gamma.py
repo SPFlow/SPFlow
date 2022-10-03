@@ -5,6 +5,8 @@ from spflow.torch.sampling.nodes.leaves.parametric.gamma import sample
 from spflow.torch.sampling.module import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 
 
@@ -18,6 +20,11 @@ class TestGamma(unittest.TestCase):
         torch.set_default_dtype(torch.float32)
 
     def test_sampling_1(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- alpha = 1, beta = 1 -----
 
@@ -34,6 +41,11 @@ class TestGamma(unittest.TestCase):
 
     def test_sampling_2(self):
 
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
         # ----- alpha = 0.5, beta = 1.5 -----
 
         gamma = Gamma(Scope([0]), 0.5, 1.5)
@@ -42,6 +54,11 @@ class TestGamma(unittest.TestCase):
         self.assertTrue(torch.isclose(samples.mean(), torch.tensor(0.5 / 1.5), rtol=0.1))
 
     def test_sampling_3(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         # ----- alpha = 1.5, beta = 0.5 -----
 

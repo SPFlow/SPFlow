@@ -5,6 +5,8 @@ from spflow.torch.sampling.nodes.leaves.parametric.gaussian import sample
 from spflow.torch.sampling.module import sample
 
 import torch
+import numpy as np
+import random
 import unittest
 
 
@@ -18,6 +20,11 @@ class TestGaussian(unittest.TestCase):
         torch.set_default_dtype(torch.float32)
 
     def test_sampling(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
 
         gaussian = Gaussian(Scope([0]), 0.0, 0.0005)
 
