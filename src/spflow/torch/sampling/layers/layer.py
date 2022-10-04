@@ -38,16 +38,16 @@ def sample(sum_layer: SPNSumLayer, data: torch.Tensor, dispatch_ctx: Optional[Di
     for node_id, instances in sampling_ctx.group_output_ids(sum_layer.n_out):
 
         # sample branches
-        input_ids = torch.multinomial(sum_layer.weights[node_id]*partition_ll[instances].exp(), num_samples=1)
+        input_ids = torch.multinomial(sum_layer.weights[node_id]*partition_ll[instances].exp(), num_samples=1).flatten()
 
         # get correct child id and corresponding output id
         child_ids, output_ids = sum_layer.input_to_output_ids(input_ids)
 
         # group by child ids
-        for child_id in np.unique(child_ids):
+        for child_id in torch.unique(torch.tensor(child_ids)):
 
             child_instance_ids = torch.tensor(instances)[torch.tensor(child_ids) == child_id].tolist()
-            child_output_ids = np.array(output_ids)[np.array(child_ids) == child_id].tolist()
+            child_output_ids = torch.tensor(output_ids)[torch.tensor(child_ids) == child_id].unsqueeze(1).tolist()
 
             # sample from partition node
             sample(children[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(child_instance_ids, child_output_ids))

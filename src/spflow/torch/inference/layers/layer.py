@@ -47,8 +47,8 @@ def log_likelihood(partition_layer: SPNPartitionLayer, data: torch.Tensor, dispa
     # compute child log-likelihoods
     child_lls = torch.concat([log_likelihood(child, data, dispatch_ctx=dispatch_ctx) for child in partition_layer.children()], dim=1)
 
-    # compute all combinations of indices
-    partition_indices = torch.tensor_split(torch.arange(0, partition_layer.n_out), torch.cumsum(torch.tensor(partition_layer.partition_sizes), dim=0)[:-1])
+    # compute all combinations of input indices
+    partition_indices = torch.tensor_split(torch.arange(0, partition_layer.n_in), torch.cumsum(torch.tensor(partition_layer.partition_sizes), dim=0)[:-1])
     indices = torch.cartesian_prod(*partition_indices)
 
     # multiply children (sum in log-space)
