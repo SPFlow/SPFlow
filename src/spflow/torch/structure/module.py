@@ -43,16 +43,25 @@ class Module(MetaModule, nn.Module, ABC):
         if isinstance(input_ids, list):
             input_ids = torch.tensor(input_ids)
 
+        # remember original shape
+        shape = input_ids.shape
+        # flatten tensor
+        input_ids = input_ids.ravel()
+
         # infer number of inputs from children (and their numbers of outputs)
         child_num_outputs = torch.tensor([child.n_out for child in self.children()])
         child_cum_outputs = torch.cumsum(child_num_outputs, dim=-1)
 
         # get child module for corresponding input
-        child_ids = torch.sum(child_cum_outputs <= input_ids.reshape(-1,1), dim=1).tolist()
+        child_ids = torch.sum(child_cum_outputs <= input_ids.reshape(-1,1), dim=1)
         # get output id of child module for corresponding input
-        output_ids = (input_ids-(child_cum_outputs[child_ids]-child_num_outputs[child_ids])).tolist()
+        output_ids = (input_ids-(child_cum_outputs[child_ids.tolist()]-child_num_outputs[child_ids.tolist()]))
 
-        return child_ids, output_ids
+        # restore original shape
+        child_ids = child_ids.reshape(shape)
+        output_ids = output_ids.reshape(shape)
+
+        return child_ids.tolist(), output_ids.tolist()
     
     @abstractmethod
     def n_out(self):
