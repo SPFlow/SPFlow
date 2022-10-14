@@ -5,13 +5,13 @@ Created on August 03, 2022
 """
 import warnings
 from typing import Callable, Any
-from functools import wraps
 from plum import dispatch as plum_dispatch
 from spflow.meta.dispatch.memoize import memoize as memoize_decorator
 from spflow.meta.dispatch.swappable import swappable as swappable_decorator
+from spflow.meta.dispatch.initializer import initialize as initialize_decorator
 
 
-def dispatch(*args, memoize=False, swappable=True) -> Callable:
+def dispatch(*args, memoize=False, swappable=True, initializers=None) -> Callable:
     """TODO."""
     def dispatch_decorator(f):
         _f = f
@@ -19,10 +19,10 @@ def dispatch(*args, memoize=False, swappable=True) -> Callable:
         if(swappable): _f = swappable_decorator(_f)
         if(memoize): _f = memoize_decorator(_f)
 
-        if f.__name__ == 'log_likelihood' and not memoize:
-            warnings.warn("Function 'log_likelihood' was dispatched without memoization, but is recommended to save redundant computations and to correctly compute gradients in some backends. Ignore this message if this is intended.")
+        if f.__name__ in ['log_likelihood', 'em', 'maximum_likelihood_estimation'] and not memoize:
+            warnings.warn(f"Function '{f.__name__}' was dispatched without memoization, but is recommended to save redundant computations and to correctly compute gradients in certain situations. Ignore this message if this is intended.")
 
-        return plum_dispatch(_f) 
+        return plum_dispatch(_f)
 
     if(len(args) == 1 and callable(args[0])):
         f = args[0]
