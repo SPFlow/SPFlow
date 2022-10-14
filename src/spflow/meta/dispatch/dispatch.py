@@ -8,7 +8,6 @@ from typing import Callable, Any
 from plum import dispatch as plum_dispatch
 from spflow.meta.dispatch.memoize import memoize as memoize_decorator
 from spflow.meta.dispatch.swappable import swappable as swappable_decorator
-from spflow.meta.dispatch.initializer import initialize as initialize_decorator
 
 
 def dispatch(*args, memoize=False, swappable=True, initializers=None) -> Callable:
