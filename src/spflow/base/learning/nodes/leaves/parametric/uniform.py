@@ -6,16 +6,16 @@ Created on August 29, 2022
 from typing import Optional, Union, Callable
 import numpy as np
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
 
 
-# TODO: MLE dispatch context?
-
-
 @dispatch(memoize=True)
-def maximum_likelihood_estimation(leaf: Uniform, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+def maximum_likelihood_estimation(leaf: Uniform, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """TODO."""
+
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     if np.any(~leaf.check_support(data[:, leaf.scope.query])):
         raise ValueError("Encountered values outside of the support for 'Uniform'.")

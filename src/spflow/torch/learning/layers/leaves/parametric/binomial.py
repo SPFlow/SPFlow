@@ -6,16 +6,16 @@ Created on September 25, 2022
 from typing import Optional, Union, Callable
 import torch
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.layers.leaves.parametric.binomial import BinomialLayer
 
 
-# TODO: MLE dispatch context?
-
-
 @dispatch(memoize=True)
-def maximum_likelihood_estimation(layer: BinomialLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+def maximum_likelihood_estimation(layer: BinomialLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """TODO."""
+
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # select relevant data for scope
     scope_data = torch.hstack([data[:, scope.query] for scope in layer.scopes_out])
@@ -90,3 +90,25 @@ def maximum_likelihood_estimation(layer: BinomialLayer, data: torch.Tensor, weig
 
     # set parameters of leaf node
     layer.set_params(n=layer.n, p=p_est)
+
+
+@dispatch(memoize=True)
+def em(layer: BinomialLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+
+    with torch.no_grad():
+        # ----- expectation step -----
+
+        # get cached log-likelihood gradients w.r.t. module log-likelihoods
+        expectations = dispatch_ctx.cache['log_likelihood'][layer].grad
+        # normalize expectations for better numerical stability
+        expectations /= expectations.sum(dim=0)
+
+        # ----- maximization step -----
+
+        # update parameters through maximum weighted likelihood estimation
+        maximum_likelihood_estimation(layer, data, weights=expectations, bias_correction=False, dispatch_ctx=dispatch_ctx)
+
+    # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients

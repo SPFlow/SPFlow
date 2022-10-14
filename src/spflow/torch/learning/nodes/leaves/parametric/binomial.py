@@ -6,16 +6,16 @@ Created on August 29, 2022
 from typing import Optional, Union, Callable
 import torch
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.leaves.parametric.binomial import Binomial
 
 
-# TODO: MLE dispatch context?
-
-
 @dispatch(memoize=True)
-def maximum_likelihood_estimation(leaf: Binomial, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+def maximum_likelihood_estimation(leaf: Binomial, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """TODO."""
+
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # select relevant data for scope
     scope_data = data[:, leaf.scope.query]
@@ -76,8 +76,11 @@ def maximum_likelihood_estimation(leaf: Binomial, data: torch.Tensor, weights: O
     leaf.set_params(n=leaf.n, p=p_est)
 
 
-@dispatch
+@dispatch(memoize=True)
 def em(leaf: Binomial, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     with torch.no_grad():
         # ----- expectation step -----
@@ -90,6 +93,6 @@ def em(leaf: Binomial, data: torch.Tensor, dispatch_ctx: Optional[DispatchContex
         # ----- maximization step -----
 
         # update parameters through maximum weighted likelihood estimation
-        maximum_likelihood_estimation(leaf, data, weights=expectations.squeeze(1), bias_correction=False)
+        maximum_likelihood_estimation(leaf, data, weights=expectations.squeeze(1), bias_correction=False, dispatch_ctx=dispatch_ctx)
 
     # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
