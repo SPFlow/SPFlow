@@ -6,16 +6,16 @@ Created on September 25, 2022
 from typing import Optional, Union, Callable
 import torch
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.layers.leaves.parametric.hypergeometric import HypergeometricLayer
 
 
-# TODO: MLE dispatch context?
-
-
 @dispatch(memoize=True)
-def maximum_likelihood_estimation(layer: HypergeometricLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+def maximum_likelihood_estimation(layer: HypergeometricLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """TODO."""
+
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # select relevant data for scope
     scope_data = torch.hstack([data[:, scope.query] for scope in layer.scopes_out])
@@ -25,3 +25,13 @@ def maximum_likelihood_estimation(layer: HypergeometricLayer, data: torch.Tensor
 
     # do nothing since there are no learnable parameters
     pass
+
+
+@dispatch(memoize=True)
+def em(layer: HypergeometricLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+
+    # update parameters through maximum weighted likelihood estimation (NOTE: simply for checking support)
+    maximum_likelihood_estimation(layer, data, bias_correction=False, dispatch_ctx=dispatch_ctx)

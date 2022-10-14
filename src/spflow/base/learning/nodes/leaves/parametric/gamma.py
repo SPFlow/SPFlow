@@ -7,17 +7,17 @@ from typing import Optional, Union, Callable
 import numpy as np
 from scipy.stats import gamma
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
 from scipy.special import digamma, polygamma
 
 
-# TODO: MLE dispatch context?
-
-
 @dispatch(memoize=True)
-def maximum_likelihood_estimation(leaf: Gamma, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+def maximum_likelihood_estimation(leaf: Gamma, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """TODO."""
+
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # select relevant data for scope
     scope_data = data[:, leaf.scope.query]

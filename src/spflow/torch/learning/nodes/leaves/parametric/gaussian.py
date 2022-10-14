@@ -6,16 +6,16 @@ Created on August 29, 2022
 from typing import Optional, Union, Callable
 import torch
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 
 
-# TODO: MLE dispatch context?
-
-
 @dispatch(memoize=True)
-def maximum_likelihood_estimation(leaf: Gaussian, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+def maximum_likelihood_estimation(leaf: Gaussian, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """TODO."""
+
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # select relevant data for scope
     scope_data = data[:, leaf.scope.query]
@@ -65,9 +65,9 @@ def maximum_likelihood_estimation(leaf: Gaussian, data: torch.Tensor, weights: O
     std_est = (weights * (scope_data-mean_est)**2).sum()
     
     if bias_correction:
-        std_est = torch.sqrt(torch.pow(weights.reshape(-1, 1) * (scope_data-mean_est), 2).sum() / (n_total - 1))
+        std_est = torch.sqrt((weights * torch.pow(scope_data-mean_est, 2)).sum() / (n_total - 1))
     else:
-        std_est = torch.sqrt(torch.pow(weights.reshape(-1, 1) * (scope_data-mean_est), 2).sum() / n_total)
+        std_est = torch.sqrt((weights * torch.pow(scope_data-mean_est, 2)).sum() / n_total)
 
     # edge case (if all values are the same, not enough samples or very close to each other)
     if torch.isclose(std_est, torch.tensor(0.0)) or torch.isnan(std_est):
@@ -77,8 +77,11 @@ def maximum_likelihood_estimation(leaf: Gaussian, data: torch.Tensor, weights: O
     leaf.set_params(mean=mean_est, std=std_est)
 
 
-@dispatch
+@dispatch(memoize=True)
 def em(leaf: Gaussian, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     with torch.no_grad():
         # ----- expectation step -----
@@ -91,6 +94,6 @@ def em(leaf: Gaussian, data: torch.Tensor, dispatch_ctx: Optional[DispatchContex
         # ----- maximization step -----
 
         # update parameters through maximum weighted likelihood estimation
-        maximum_likelihood_estimation(leaf, data, weights=expectations.squeeze(1), bias_correction=False)
+        maximum_likelihood_estimation(leaf, data, weights=expectations.squeeze(1), bias_correction=False, dispatch_ctx=dispatch_ctx)
 
     # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
