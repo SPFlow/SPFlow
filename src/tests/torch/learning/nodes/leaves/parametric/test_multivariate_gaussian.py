@@ -1,4 +1,5 @@
 from spflow.meta.scope.scope import Scope
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian
 from spflow.torch.learning.nodes.leaves.parametric.multivariate_gaussian import maximum_likelihood_estimation
 
@@ -125,6 +126,15 @@ class TestNode(unittest.TestCase):
         leaf = MultivariateGaussian(Scope([0,1]))
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, torch.tensor([[float("nan"), 0.0], [1, 0.1], [1.9, -0.2]]), nan_strategy='invalid_string')
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, torch.tensor([[float("nan"), 0.0], [1, 0.1], [1.9, -0.2]]), nan_strategy=1)
+
+    # TODO: test weighted MLE
+
+    def test_em_step(self):
+        pass
+        # TODO
+    
+    def test_em_mixture_of_multivariate_gaussians(self):
+        pass
 
 
 if __name__ == "__main__":

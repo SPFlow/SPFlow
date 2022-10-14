@@ -6,15 +6,28 @@ Created on August 29, 2022
 from typing import Optional, Union, Callable
 import numpy as np
 from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 
 
-@dispatch(memoize=True) # TODO: swappable
-def maximum_likelihood_estimation(leaf: Gaussian, data: np.ndarray, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+# TODO: MLE dispatch context?
+
+
+@dispatch(memoize=True)
+def maximum_likelihood_estimation(leaf: Gaussian, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
     """TODO."""
 
     # select relevant data for scope
     scope_data = data[:, leaf.scope.query]
+
+    if weights is None:
+        weights = np.ones(data.shape[0])
+
+    if weights.ndim != 1 or weights.shape[0] != data.shape[0]:
+        raise ValueError("Number of specified weights for maximum-likelihood estimation does not match number of data points.")
+    
+    # reshape weights
+    weights = weights.reshape(-1, 1)
 
     if np.any(~leaf.check_support(scope_data)):
         raise ValueError("Encountered values outside of the support for 'Gaussian'.")
@@ -31,17 +44,30 @@ def maximum_likelihood_estimation(leaf: Gaussian, data: np.ndarray, bias_correct
     if isinstance(nan_strategy, str):
         if nan_strategy == "ignore":
             # simply ignore missing data
-            scope_data = scope_data[~nan_mask]
+            scope_data = scope_data[~nan_mask.squeeze(1)]
+            weights = weights[~nan_mask.squeeze(1)]
         else:
             raise ValueError("Unknown strategy for handling missing (NaN) values for 'Gaussian'.")
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
+        # TODO: how to handle weights?
     elif nan_strategy is not None:
         raise ValueError(f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}.")
 
+    # normalize weights to sum to n_samples
+    weights /= weights.sum() / scope_data.shape[0]
+
+    # total (weighted) number of instances
+    n_total = weights.sum()
+
     # calculate mean and standard deviation from data
-    mean_est = scope_data.mean()
-    std_est = scope_data.std(ddof=1 if bias_correction else 0)
+    mean_est = (weights * scope_data).sum() / n_total
+    std_est = (weights * (scope_data-mean_est)**2).sum()
+    
+    if bias_correction:
+        std_est = np.sqrt(np.power(weights.reshape(-1, 1) * (scope_data-mean_est), 2).sum() / (n_total - 1))
+    else:
+        std_est = np.sqrt(np.power(weights.reshape(-1, 1) * (scope_data-mean_est), 2).sum() / n_total)
 
     # edge case (if all values are the same, not enough samples or very close to each other)
     if np.isclose(std_est, 0.0) or np.isnan(std_est):

@@ -6,11 +6,15 @@ Created on August 29, 2022
 from typing import Optional, Union, Callable
 import numpy as np
 from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric
 
 
-@dispatch(memoize=True) # TODO: swappable
-def maximum_likelihood_estimation(leaf: Hypergeometric, data: np.ndarray, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+# TODO: MLE dispatch context?
+
+
+@dispatch(memoize=True)
+def maximum_likelihood_estimation(leaf: Hypergeometric, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
     """TODO."""
 
     if np.any(~leaf.check_support(data[:, leaf.scope.query])):

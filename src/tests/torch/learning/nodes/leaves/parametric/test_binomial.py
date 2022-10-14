@@ -1,6 +1,8 @@
 from spflow.meta.scope.scope import Scope
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.nodes.leaves.parametric.binomial import Binomial
-from spflow.torch.learning.nodes.leaves.parametric.binomial import maximum_likelihood_estimation
+from spflow.torch.learning.nodes.leaves.parametric.binomial import maximum_likelihood_estimation, em
+from spflow.torch.inference.nodes.leaves.parametric.binomial import log_likelihood
 
 import torch
 import numpy as np
@@ -126,6 +128,32 @@ class TestNode(unittest.TestCase):
         leaf = Binomial(Scope([0]), n=2)
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, torch.tensor([[float("nan")], [1], [0], [1]]), nan_strategy='invalid_string')
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, torch.tensor([[float("nan")], [1], [0], [1]]), nan_strategy=1)
+
+    # TODO: test weighted MLE
+
+    def test_em_step(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        leaf = Binomial(Scope([0]), n=3)
+        data = torch.tensor(np.random.binomial(n=3, p=0.3, size=(10000, 1)))
+        dispatch_ctx = DispatchContext()
+
+        # compute gradients of log-likelihoods w.r.t. module log-likelihoods
+        ll = log_likelihood(leaf, data, dispatch_ctx=dispatch_ctx)
+        ll.retain_grad()
+        ll.sum().backward()
+
+        # perform an em step
+        em(leaf, data, dispatch_ctx=dispatch_ctx)
+
+        self.assertTrue(torch.isclose(leaf.p, torch.tensor(0.3), atol=1e-2, rtol=1e-3))
+
+    def test_em_mixture_of_binomials(self):
+        pass
 
 
 if __name__ == "__main__":
