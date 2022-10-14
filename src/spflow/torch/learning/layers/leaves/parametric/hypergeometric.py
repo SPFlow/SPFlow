@@ -6,11 +6,15 @@ Created on September 25, 2022
 from typing import Optional, Union, Callable
 import torch
 from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.layers.leaves.parametric.hypergeometric import HypergeometricLayer
 
 
-@dispatch(memoize=True) # TODO: swappable
-def maximum_likelihood_estimation(layer: HypergeometricLayer, data: torch.Tensor, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+# TODO: MLE dispatch context?
+
+
+@dispatch(memoize=True)
+def maximum_likelihood_estimation(layer: HypergeometricLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
     """TODO."""
 
     # select relevant data for scope

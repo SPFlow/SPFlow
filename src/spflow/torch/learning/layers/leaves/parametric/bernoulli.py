@@ -6,15 +6,31 @@ Created on September 25, 2022
 from typing import Optional, Union, Callable
 import torch
 from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.layers.leaves.parametric.bernoulli import BernoulliLayer
 
 
-@dispatch(memoize=True) # TODO: swappable
-def maximum_likelihood_estimation(layer: BernoulliLayer, data: torch.Tensor, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+# TODO: MLE dispatch context?
+
+
+@dispatch(memoize=True)
+def maximum_likelihood_estimation(layer: BernoulliLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
     """TODO."""
 
     # select relevant data for scope
     scope_data = torch.hstack([data[:, scope.query] for scope in layer.scopes_out])
+
+    if weights is None:
+        weights = torch.ones(data.shape[0], layer.n_out)
+
+    if (weights.ndim == 1 and weights.shape[0] != data.shape[0]) or \
+       (weights.ndim == 2 and (weights.shape[0] != data.shape[0] or weights.shape[1] != layer.n_out)) or \
+       (weights.ndim not in [1, 2]):
+            raise ValueError("Number of specified weights for maximum-likelihood estimation does not match number of data points.")
+
+    if weights.ndim == 1:
+        # broadcast weights
+        weights = weights.repeat(layer.n_out, 1).T
 
     if torch.any(~layer.check_support(scope_data)):
         raise ValueError("Encountered values outside of the support for 'BernoulliLayer'.")
@@ -32,26 +48,37 @@ def maximum_likelihood_estimation(layer: BernoulliLayer, data: torch.Tensor, bia
     if isinstance(nan_strategy, str):
         # simply ignore missing data
         if nan_strategy == "ignore":
+            # set weights for NaN entries to zero
+            weights = weights * ~nan_mask
 
-            # total number of instances
-            n_total = (~nan_mask).sum(dim=0) # never zero since we checked that earlier
+            # normalize weights to sum to n_samples
+            weights /= weights.sum(dim=0) / scope_data.shape[0]
 
-            # count number of total successes
-            n_success = torch.nan_to_num(scope_data, nan=0.0).sum(dim=0)
+            # total (weighted) number of instances
+            n_total = weights.sum(dim=0) # never zero since we checked that earlier
 
+            # count (weighted) number of total successes
+            n_success = (weights * torch.nan_to_num(scope_data, nan=0.0)).sum(dim=0)
+
+            # estimate (weighted) success probability
             p_est = n_success/n_total
         else:
             raise ValueError("Unknown strategy for handling missing (NaN) values for 'BernoulliLayer'.")
     elif isinstance(nan_strategy, Callable) or nan_strategy is None:
         if isinstance(nan_strategy, Callable):
             scope_data = nan_strategy(scope_data)
+            # TODO: how to handle weights?
 
-        # total number of instances
-        n_total = scope_data.shape[0]
+        # normalize weights to sum to n_samples
+        weights /= weights.sum(dim=0) / scope_data.shape[0]
 
-        # count number of total successes
-        n_success = scope_data.sum(dim=0)
+        # total (weighted) number of instances
+        n_total = weights.sum(dim=0)
 
+        # count (weighted) number of total successes
+        n_success = (weights * scope_data).sum(dim=0)
+
+        # estimate (weighted) success probability
         p_est = n_success/n_total
     else:
         raise ValueError(f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}.")

@@ -5,13 +5,16 @@ Created on September 25, 2022
 """
 from typing import Optional, Union, Callable
 import torch
-from scipy.stats import gamma
 from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.layers.leaves.parametric.gamma import GammaLayer
 
 
+# TODO: MLE dispatch context?
+
+
 @dispatch(memoize=True) # TODO: swappable
-def maximum_likelihood_estimation(layer: GammaLayer, data: torch.Tensor, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+def maximum_likelihood_estimation(layer: GammaLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
     """TODO."""
 
     # select relevant data for scope
@@ -20,6 +23,18 @@ def maximum_likelihood_estimation(layer: GammaLayer, data: torch.Tensor, bias_co
     if torch.any(~layer.check_support(scope_data)):
         raise ValueError("Encountered values outside of the support for 'GammaLayer'.")
     
+    if weights is None:
+        weights = torch.ones(data.shape[0], layer.n_out)
+
+    if (weights.ndim == 1 and weights.shape[0] != data.shape[0]) or \
+       (weights.ndim == 2 and (weights.shape[0] != data.shape[0] or weights.shape[1] != layer.n_out)) or \
+       (weights.ndim not in [1, 2]):
+            raise ValueError("Number of specified weights for maximum-likelihood estimation does not match number of data points.")
+
+    if weights.ndim == 1:
+        # broadcast weights
+        weights = weights.repeat(layer.n_out, 1).T
+
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
 
@@ -33,19 +48,32 @@ def maximum_likelihood_estimation(layer: GammaLayer, data: torch.Tensor, bias_co
     if isinstance(nan_strategy, str):
         # simply ignore missing data
         if nan_strategy == "ignore":
+            # set weights for NaN entries to zero
+            weights = weights * ~nan_mask
+            
+            # normalize weights to sum to n_samples
+            weights /= weights.sum(dim=0) / scope_data.shape[0]
+
             # compute some prelimiary values
-            mean = torch.nan_to_num(scope_data, nan=0.0).sum(dim=0)/(~nan_mask).sum(dim=0)
+            n_total = weights.sum(dim=0)
+            mean = (weights * torch.nan_to_num(scope_data, nan=0.0)).sum(dim=0) / n_total
             log_mean = mean.log()
-            mean_log = torch.nan_to_num(scope_data, nan=1.0).log().sum(dim=0)/(~nan_mask).sum(dim=0) # covert nan to 1s instead of 0s due to log
+            mean_log = (weights * torch.nan_to_num(scope_data, nan=1.0).log()).sum(dim=0) / n_total # covert nan to 1s instead of 0s due to log
         else:
             raise ValueError("Unknown strategy for handling missing (NaN) values for 'GammaLayer'.")
     elif isinstance(nan_strategy, Callable) or nan_strategy is None:
         if isinstance(nan_strategy, Callable):
             scope_data = nan_strategy(scope_data)
+            # TODO: how to handle weights?
+
+        # normalize weights to sum to n_samples
+        weights /= weights.sum(dim=0) / scope_data.shape[0]
+
         # compute some prelimiary values
-        mean = scope_data.mean(dim=0)
+        n_total = weights.sum(dim=0)
+        mean = (weights * scope_data).sum(dim=0) / n_total
         log_mean = mean.log()
-        mean_log = scope_data.log().mean(dim=0)
+        mean_log = (weights * scope_data.log()).sum(dim=0) / n_total
     else:
         raise ValueError(f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}.")
 
@@ -68,6 +96,8 @@ def maximum_likelihood_estimation(layer: GammaLayer, data: torch.Tensor, bias_co
     # compute beta estimate
     # NOTE: different to the original paper we compute the inverse since beta=1.0/scale
     beta_est = (alpha_est / mean)
+
+    # TODO: bias correction?
 
     # edge case: if alpha/beta 0, set to larger value (should not happen, but just in case)
     alpha_est[torch.allclose(alpha_est, torch.tensor(0.0))] = 1e-8
