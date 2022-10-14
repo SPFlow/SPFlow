@@ -83,6 +83,22 @@ class TestNode(unittest.TestCase):
             @dispatch(memoize=False)
             def log_likelihood(module: Module, dispatch_ctx: Optional[DispatchContext]=None) -> int:
                 return 0
+    
+    def test_dispatch_em_without_memoization(self):
+
+        with self.assertWarns(Warning):
+            # dispatch function called 'em' WITHOUT memoization
+            @dispatch(memoize=False)
+            def em(module: Module, dispatch_ctx: Optional[DispatchContext]=None) -> int:
+                return 0
+    
+    def test_dispatch_maximum_likelihood_estimation_without_memoization(self):
+
+        with self.assertWarns(Warning):
+            # dispatch function called 'maximum_likelihood_estimation' WITHOUT memoization
+            @dispatch(memoize=False)
+            def maximum_likelihood_estimation(module: Module, dispatch_ctx: Optional[DispatchContext]=None) -> int:
+                return 0
 
 
 if __name__ == "__main__":
