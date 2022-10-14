@@ -6,15 +6,31 @@ Created on September 25, 2022
 from typing import Optional, Union, Callable
 import torch
 from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.layers.leaves.parametric.log_normal import LogNormalLayer
 
 
-@dispatch(memoize=True) # TODO: swappable
-def maximum_likelihood_estimation(layer: LogNormalLayer, data: torch.Tensor, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
+# TODO: MLE dispatch context?
+
+
+@dispatch(memoize=True)
+def maximum_likelihood_estimation(layer: LogNormalLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None) -> None:
     """TODO."""
 
     # select relevant data for scope
     scope_data = torch.hstack([data[:, scope.query] for scope in layer.scopes_out])
+
+    if weights is None:
+        weights = torch.ones(data.shape[0], layer.n_out)
+
+    if (weights.ndim == 1 and weights.shape[0] != data.shape[0]) or \
+       (weights.ndim == 2 and (weights.shape[0] != data.shape[0] or weights.shape[1] != layer.n_out)) or \
+       (weights.ndim not in [1, 2]):
+            raise ValueError("Number of specified weights for maximum-likelihood estimation does not match number of data points.")
+
+    if weights.ndim == 1:
+        # broadcast weights
+        weights = weights.repeat(layer.n_out, 1).T
 
     if torch.any(~layer.check_support(scope_data)):
         raise ValueError("Encountered values outside of the support for 'LogNormalLayer'.")
@@ -32,23 +48,38 @@ def maximum_likelihood_estimation(layer: LogNormalLayer, data: torch.Tensor, bia
     if isinstance(nan_strategy, str):
         # simply ignore missing data
         if nan_strategy == "ignore":
-            n_total = (~nan_mask).sum(dim=0)
-            mean_est = torch.nan_to_num(scope_data, nan=1.0).log().sum(dim=0)/n_total
+            # set weights for NaN entries to zero
+            weights = weights * ~nan_mask
+            
+            # normalize weights to sum to n_samples
+            weights /= weights.sum(dim=0) / scope_data.shape[0]
+
+            n_total = weights.sum(dim=0)
+            mean_est = (weights * torch.nan_to_num(scope_data, nan=1.0).log()).sum(dim=0) / n_total
 
             if bias_correction:
                 n_total -= 1
             
             std_est = torch.sqrt(
-                torch.nan_to_num(scope_data.log()-mean_est, nan=0.0).pow(2).sum(dim=0) / n_total
+                (weights * torch.nan_to_num(scope_data.log()-mean_est, nan=0.0).pow(2)).sum(dim=0) / n_total
             )
         else:
             raise ValueError("Unknown strategy for handling missing (NaN) values for 'LogNormalLayer'.")
     elif isinstance(nan_strategy, Callable) or nan_strategy is None:
         if isinstance(nan_strategy, Callable):
             scope_data = nan_strategy(scope_data)
+            # TODO: how to handle weights
+
         # calculate mean and standard deviation from data
-        mean_est = torch.log(scope_data).mean(dim=0)
-        std_est = torch.log(scope_data).std(unbiased=True if bias_correction else False, dim=0)
+        n_total = weights.sum(dim=0)
+        mean_est = (weights * torch.log(scope_data)).sum(dim=0) / n_total
+
+        if bias_correction:
+            n_total -= 1
+        
+        std_est = torch.sqrt(
+            (weights * torch.pow(scope_data.log()-mean_est, 2)).sum(dim=0) / n_total
+        )
     else:
         raise ValueError(f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}.")
 
