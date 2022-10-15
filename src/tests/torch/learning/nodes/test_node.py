@@ -1,10 +1,11 @@
 from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.nodes.node import SPNSumNode
 from spflow.torch.learning.nodes.node import em
 from spflow.torch.inference.nodes.node import log_likelihood
-from ... structure.nodes.dummy_node import DummyNode, log_likelihood, em
-
+from ... structure.nodes.dummy_node import DummyLeaf, log_likelihood, em
+from typing import Optional
 import torch
 import numpy as np
 import unittest
@@ -27,8 +28,8 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        l1 = DummyNode(Scope([0]), loc=2.0)
-        l2 = DummyNode(Scope([0]), loc=-2.0)
+        l1 = DummyLeaf(Scope([0]), loc=2.0)
+        l2 = DummyLeaf(Scope([0]), loc=-2.0)
         sum_node = SPNSumNode([l1, l2], weights=[0.5, 0.5])
 
         data = torch.tensor(np.vstack([
