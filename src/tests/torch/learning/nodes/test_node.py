@@ -1,11 +1,9 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.nodes.node import SPNSumNode
-from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.torch.learning.nodes.node import em
-from spflow.torch.learning.nodes.leaves.parametric.gaussian import em
 from spflow.torch.inference.nodes.node import log_likelihood
-from spflow.torch.inference.nodes.leaves.parametric.gaussian import log_likelihood
+from ... structure.nodes.dummy_node import DummyNode, log_likelihood, em
 
 import torch
 import numpy as np
@@ -29,13 +27,13 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        l1 = Gaussian(Scope([0]), mean=2.0, std=1.0)
-        l2 = Gaussian(Scope([0]), mean=-2.0, std=1.00)
+        l1 = DummyNode(Scope([0]), loc=2.0)
+        l2 = DummyNode(Scope([0]), loc=-2.0)
         sum_node = SPNSumNode([l1, l2], weights=[0.5, 0.5])
 
         data = torch.tensor(np.vstack([
-            np.random.normal(2.0, 1.0, size=(10000, 1)),
-            np.random.normal(-2.0, 1.0, size=(20000, 1))
+            np.random.normal(2.0, 0.2, size=(10000, 1)),
+            np.random.normal(-2.0, 0.2, size=(20000, 1))
         ]))
 
         dispatch_ctx = DispatchContext()
@@ -43,7 +41,8 @@ class TestNode(unittest.TestCase):
         # compute gradients of log-likelihoods w.r.t. module log-likelihoods
         ll = log_likelihood(sum_node, data, dispatch_ctx=dispatch_ctx)
         for module_ll in dispatch_ctx.cache['log_likelihood'].values():
-            module_ll.retain_grad()
+            if module_ll.requires_grad:
+                module_ll.retain_grad()
         ll.sum().backward()
 
         # perform an em step
