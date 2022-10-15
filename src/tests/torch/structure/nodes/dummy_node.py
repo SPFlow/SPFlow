@@ -8,7 +8,7 @@ from copy import deepcopy
 
 
 class DummyNode(LeafNode):
-    """Dummy node class without children (to simulate leaf nodes)."""
+    """Dummy node class without children."""
     def __init__(self, scope: Optional[Scope]=None, loc=0.0):
 
         if scope is None:
@@ -40,8 +40,19 @@ def marginalize(node: DummyNode, marg_rvs: Iterable[int], prune: bool=True, disp
         return deepcopy(node)
 
 
+class DummyLeaf(LeafNode):
+    def __init__(self, scope: Optional[Scope]=None, loc=0.0):
+
+        if scope is None:
+            scope = Scope([0])
+        
+        self.loc = torch.tensor(loc)
+
+        super(DummyLeaf, self).__init__(scope=scope)
+
+
 @dispatch(memoize=True)
-def log_likelihood(node: DummyNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(node: DummyLeaf, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
 
     scope_data = data[:, node.scope.query]
 
@@ -54,6 +65,6 @@ def log_likelihood(node: DummyNode, data: torch.Tensor, dispatch_ctx: Optional[D
 
 
 @dispatch(memoize=True)
-def em(node: DummyNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(node: DummyLeaf, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
 
     pass
