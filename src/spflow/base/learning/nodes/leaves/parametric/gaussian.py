@@ -65,9 +65,9 @@ def maximum_likelihood_estimation(leaf: Gaussian, data: np.ndarray, weights: Opt
     std_est = (weights * (scope_data-mean_est)**2).sum()
     
     if bias_correction:
-        std_est = np.sqrt(np.power(weights.reshape(-1, 1) * (scope_data-mean_est), 2).sum() / (n_total - 1))
+        std_est = np.sqrt((weights * np.power((scope_data-mean_est), 2)).sum() / (n_total - 1))
     else:
-        std_est = np.sqrt(np.power(weights.reshape(-1, 1) * (scope_data-mean_est), 2).sum() / n_total)
+        std_est = np.sqrt((weights * np.power((scope_data-mean_est), 2)).sum() / n_total)
 
     # edge case (if all values are the same, not enough samples or very close to each other)
     if np.isclose(std_est, 0.0) or np.isnan(std_est):

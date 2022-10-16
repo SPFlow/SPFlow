@@ -1,8 +1,12 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
+from spflow.torch.inference.nodes.node import log_likelihood
+from spflow.torch.learning.nodes.node import em
 from spflow.torch.structure.nodes.leaves.parametric.gamma import Gamma
 from spflow.torch.learning.nodes.leaves.parametric.gamma import maximum_likelihood_estimation, em
 from spflow.torch.inference.nodes.leaves.parametric.gamma import log_likelihood
+from spflow.torch.learning.expectation_maximization.expectation_maximization import expectation_maximization
 
 import torch
 import numpy as np
@@ -101,7 +105,23 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, torch.tensor([[float("nan")], [0.1], [1.9], [0.7]]), nan_strategy='invalid_string')
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, torch.tensor([[float("nan")], [1], [0], [1]]), nan_strategy=1)
 
-    # TODO: test weighted MLE
+    def test_weighted_mle(self):
+
+        leaf = Gamma(Scope([0]))
+
+        data = torch.tensor(np.vstack([
+            np.random.gamma(shape=1.7, scale=1.0/0.8, size=(10000,1)),
+            np.random.gamma(shape=0.5, scale=1.0/1.4, size=(10000,1))
+        ]))
+        weights = torch.concat([
+            torch.zeros(10000),
+            torch.ones(10000)
+        ])
+
+        maximum_likelihood_estimation(leaf, data, weights)
+
+        self.assertTrue(torch.isclose(leaf.alpha, torch.tensor(0.5), atol=1e-3, rtol=1e-2))
+        self.assertTrue(torch.isclose(leaf.beta, torch.tensor(1.4), atol=1e-2, rtol=1e-2))
 
     def test_em_step(self):
 
@@ -125,8 +145,51 @@ class TestNode(unittest.TestCase):
         self.assertTrue(torch.isclose(leaf.alpha, torch.tensor(0.3), atol=1e-3, rtol=1e-2))
         self.assertTrue(torch.isclose(leaf.beta, torch.tensor(1.7), atol=1e-3, rtol=1e-2))
 
-    def test_em_mixture_of_gammas(self):
-        pass
+    def test_em_product_of_gammas(self):
+        
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        l1 = Gamma(Scope([0]))
+        l2 = Gamma(Scope([1]))
+        prod_node = SPNProductNode([l1, l2])
+
+        data = torch.tensor(np.hstack([
+            np.random.gamma(shape=0.3, scale=1.0/1.7, size=(15000, 1)),
+            np.random.gamma(shape=1.4, scale=1.0/0.8, size=(15000, 1))
+        ]))
+
+        expectation_maximization(prod_node, data, max_steps=10)
+
+        self.assertTrue(torch.isclose(l1.alpha, torch.tensor(0.3), atol=1e-2, rtol=1e-2))
+        self.assertTrue(torch.isclose(l2.alpha, torch.tensor(1.4), atol=1e-2, rtol=1e-2))
+        self.assertTrue(torch.isclose(l1.beta, torch.tensor(1.7), atol=1e-2, rtol=1e-2))
+        self.assertTrue(torch.isclose(l2.beta, torch.tensor(0.8), atol=1e-2, rtol=1e-2))
+
+    def test_em_sum_of_gammas(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        l1 = Gamma(Scope([0]), alpha=1.2, beta=0.5)
+        l2 = Gamma(Scope([0]), alpha=0.6, beta=1.9)
+        sum_node = SPNSumNode([l1, l2], weights=[0.5, 0.5])
+
+        data = torch.tensor(np.vstack([
+            np.random.gamma(shape=0.9, scale=1.0/1.9, size=(20000, 1)),
+            np.random.gamma(shape=1.4, scale=1.0/0.8, size=(20000, 1))
+        ]))
+
+        expectation_maximization(sum_node, data, max_steps=10)
+ 
+        self.assertTrue(torch.isclose(l1.alpha, torch.tensor(1.4), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.isclose(l2.alpha, torch.tensor(0.9), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.isclose(l1.beta, torch.tensor(0.8), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.isclose(l2.beta, torch.tensor(1.9), atol=1e-2, rtol=1e-1))
 
 
 if __name__ == "__main__":

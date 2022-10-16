@@ -1,8 +1,12 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
+from spflow.torch.inference.nodes.node import log_likelihood
+from spflow.torch.learning.nodes.node import em
 from spflow.torch.structure.nodes.leaves.parametric.binomial import Binomial
 from spflow.torch.learning.nodes.leaves.parametric.binomial import maximum_likelihood_estimation, em
 from spflow.torch.inference.nodes.leaves.parametric.binomial import log_likelihood
+from spflow.torch.learning.expectation_maximization.expectation_maximization import expectation_maximization
 
 import torch
 import numpy as np
@@ -129,7 +133,22 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, torch.tensor([[float("nan")], [1], [0], [1]]), nan_strategy='invalid_string')
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, torch.tensor([[float("nan")], [1], [0], [1]]), nan_strategy=1)
 
-    # TODO: test weighted MLE
+    def test_weighted_mle(self):
+
+        leaf = Binomial(Scope([0]), n=3)
+
+        data = torch.tensor(np.vstack([
+            np.random.binomial(n=3, p=0.8, size=(10000,1)),
+            np.random.binomial(n=3, p=0.2, size=(10000,1))
+        ]))
+        weights = torch.concat([
+            torch.zeros(10000),
+            torch.ones(10000)
+        ])
+
+        maximum_likelihood_estimation(leaf, data, weights)
+
+        self.assertTrue(torch.isclose(leaf.p, torch.tensor(0.2), atol=1e-3, rtol=1e-2))
 
     def test_em_step(self):
 
@@ -152,8 +171,51 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(torch.isclose(leaf.p, torch.tensor(0.3), atol=1e-2, rtol=1e-3))
 
-    def test_em_mixture_of_binomials(self):
-        pass
+    def test_em_product_of_binomials(self):
+        
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        l1 = Binomial(Scope([0]), n=3, p=0.5)
+        l2 = Binomial(Scope([1]), n=5, p=0.5)
+        prod_node = SPNProductNode([l1, l2])
+
+        data = torch.tensor(np.hstack([
+            np.random.binomial(n=3, p=0.8, size=(10000, 1)),
+            np.random.binomial(n=5, p=0.2, size=(10000, 1))
+        ]))
+
+        expectation_maximization(prod_node, data, max_steps=10)
+
+        self.assertTrue(torch.isclose(l1.p, torch.tensor(0.8), atol=1e-3, rtol=1e-2))
+        self.assertTrue(torch.isclose(l2.p, torch.tensor(0.2), atol=1e-3, rtol=1e-2))
+
+    def test_em_sum_of_binomials(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        l1 = Binomial(Scope([0]), n=3, p=0.4)
+        l2 = Binomial(Scope([0]), n=3, p=0.6)
+        sum_node = SPNSumNode([l1, l2], weights=[0.5, 0.5])
+
+        data = torch.tensor(np.vstack([
+            np.random.binomial(n=3, p=0.8, size=(10000, 1)),
+            np.random.binomial(n=3, p=0.3, size=(10000, 1))
+        ]))
+
+        expectation_maximization(sum_node, data, max_steps=10)
+
+        # optimal p
+        p_opt = data.sum() / (data.shape[0] * 3)
+        # total p represented by mixture
+        p_em = (sum_node.weights * torch.tensor([l1.p, l2.p])).sum()
+        
+        self.assertTrue(torch.isclose(p_opt, p_em))
 
 
 if __name__ == "__main__":
