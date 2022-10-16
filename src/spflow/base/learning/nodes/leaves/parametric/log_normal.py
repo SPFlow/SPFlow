@@ -64,9 +64,9 @@ def maximum_likelihood_estimation(leaf: LogNormal, data: np.ndarray, weights: Op
     mean_est = (weights * np.log(scope_data)).sum() / n_total
     
     if bias_correction:
-        std_est = np.sqrt(np.power(weights * (np.log(scope_data)-mean_est), 2).sum() / (n_total - 1))
+        std_est = np.sqrt((weights * np.power((np.log(scope_data)-mean_est), 2)).sum() / (n_total - 1))
     else:
-        std_est = np.sqrt(np.power(weights * (np.log(scope_data)-mean_est), 2).sum() / n_total)
+        std_est = np.sqrt((weights * np.power((np.log(scope_data)-mean_est), 2)).sum() / n_total)
 
     # edge case (if all values are the same, not enough samples or very close to each other)
     if np.isclose(std_est, 0.0) or np.isnan(std_est):

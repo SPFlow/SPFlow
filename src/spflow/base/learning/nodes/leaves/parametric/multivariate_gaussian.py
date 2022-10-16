@@ -58,14 +58,16 @@ def maximum_likelihood_estimation(leaf: MultivariateGaussian, data: np.ndarray, 
     weights /= weights.sum() / scope_data.shape[0]
 
     if nan_strategy == "ignore":
+        n_total = (weights * ~nan_mask).sum(axis=0)
         # compute mean of available data
-        mean_est = np.sum(weights * np.nan_to_num(scope_data, nan=0.0), axis=0)/(weights * ~nan_mask).sum(axis=0)
+        mean_est = np.sum(weights * np.nan_to_num(scope_data, nan=0.0), axis=0) / n_total
         # compute covariance of full samples only!
         full_sample_mask = (~nan_mask).sum(axis=1) == scope_data.shape[1]
         cov_est = np.cov(scope_data[full_sample_mask].T, aweights=weights[full_sample_mask].squeeze(-1), ddof=1 if bias_correction else 0)
     else:
+        n_total = weights.sum(axis=0)
         # calculate mean and standard deviation from data
-        mean_est = np.mean(scope_data, axis=0)
+        mean_est = np.sum(weights * scope_data, axis=0) / n_total
         cov_est = np.cov(scope_data.T, aweights=weights.squeeze(-1), ddof=1 if bias_correction else 0)
 
     if len(leaf.scope.query) == 1:

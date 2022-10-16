@@ -114,6 +114,23 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.nan], [1], [0], [1]]), nan_strategy='invalid_string')
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.nan], [1], [0], [1]]), nan_strategy=1)
 
+    def test_weighted_mle(self):
+
+        leaf = Binomial(Scope([0]), n=3)
+
+        data = np.vstack([
+            np.random.binomial(n=3, p=0.8, size=(10000,1)),
+            np.random.binomial(n=3, p=0.2, size=(10000,1))
+        ])
+        weights = np.concatenate([
+            np.zeros(10000),
+            np.ones(10000)
+        ])
+
+        maximum_likelihood_estimation(leaf, data, weights)
+
+        self.assertTrue(np.isclose(leaf.p, 0.2, atol=1e-3, rtol=1e-2))
+
 
 if __name__ == "__main__":
     unittest.main()

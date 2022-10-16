@@ -64,9 +64,9 @@ def maximum_likelihood_estimation(leaf: LogNormal, data: torch.Tensor, weights: 
     mean_est = (weights * torch.log(scope_data)).sum() / n_total
     
     if bias_correction:
-        std_est = torch.sqrt(torch.pow(weights * (torch.log(scope_data)-mean_est), 2).sum() / (n_total - 1))
+        std_est = torch.sqrt((weights * torch.pow(torch.log(scope_data)-mean_est, 2)).sum() / (n_total - 1))
     else:
-        std_est = torch.sqrt(torch.pow(weights * (torch.log(scope_data)-mean_est), 2).sum() / n_total)
+        std_est = torch.sqrt((weights * torch.pow(torch.log(scope_data)-mean_est, 2)).sum() / n_total)
 
     # edge case (if all values are the same, not enough samples or very close to each other)
     if torch.isclose(std_est, torch.tensor(0.0)) or torch.isnan(std_est):

@@ -28,7 +28,7 @@ def maximum_likelihood_estimation(layer: HypergeometricLayer, data: np.ndarray, 
 
     if weights.ndim == 1:
         # broadcast weights
-        weights = weights.repeat(layer.n_out, 1).T
+        weights = np.expand_dims(weights, 1).repeat(layer.n_out, 1)
 
     for node, node_weights in zip(layer.nodes, weights.T):
         maximum_likelihood_estimation(node, data, node_weights, bias_correction=bias_correction, nan_strategy=nan_strategy, dispatch_ctx=dispatch_ctx)

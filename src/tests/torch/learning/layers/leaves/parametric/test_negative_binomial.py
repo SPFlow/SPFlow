@@ -1,6 +1,12 @@
 from spflow.meta.scope.scope import Scope
+from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
+from spflow.torch.inference.nodes.node import log_likelihood
+from spflow.torch.learning.nodes.node import em
 from spflow.torch.structure.layers.leaves.parametric.negative_binomial import NegativeBinomialLayer
-from spflow.torch.learning.layers.leaves.parametric.negative_binomial import maximum_likelihood_estimation
+from spflow.torch.learning.layers.leaves.parametric.negative_binomial import maximum_likelihood_estimation, em
+from spflow.torch.inference.layers.leaves.parametric.negative_binomial import log_likelihood
+from spflow.torch.learning.expectation_maximization.expectation_maximization import expectation_maximization
 
 import torch
 import numpy as np
@@ -107,6 +113,101 @@ class TestNode(unittest.TestCase):
         layer = NegativeBinomialLayer(Scope([0]), n=2)
         self.assertRaises(ValueError, maximum_likelihood_estimation, layer, torch.tensor([[float("nan")], [1], [0], [1]]), nan_strategy='invalid_string')
         self.assertRaises(ValueError, maximum_likelihood_estimation, layer, torch.tensor([[float("nan")], [1], [0], [1]]), nan_strategy=1)
+
+    def test_weighted_mle(self):
+
+        leaf = NegativeBinomialLayer([Scope([0]),Scope([1])], n=[3, 5])
+
+        data = torch.tensor(
+            np.hstack([
+                np.vstack([
+                    np.random.binomial(n=3, p=0.8, size=(10000,1)),
+                    np.random.binomial(n=3, p=0.2, size=(10000,1))
+                ]),
+                np.vstack([
+                    np.random.binomial(n=5, p=0.3, size=(10000,1)),
+                    np.random.binomial(n=5, p=0.7, size=(10000,1))
+                ])
+            ]))
+
+        weights = torch.concat([
+            torch.zeros(10000),
+            torch.ones(10000)
+        ])
+
+        maximum_likelihood_estimation(leaf, data, weights)
+
+        self.assertTrue(torch.all(leaf.n == torch.tensor([3, 5])))
+        self.assertTrue(torch.allclose(leaf.p, torch.tensor([0.2, 0.7]), atol=1e-3, rtol=1e-2))
+
+    def test_em_step(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = NegativeBinomialLayer([Scope([0]),Scope([1])], n=[3, 5])
+        data = torch.tensor(np.hstack([
+                np.random.binomial(n=3, p=0.3, size=(10000, 1)),
+                np.random.binomial(n=5, p=0.7, size=(10000, 1))
+            ]))
+        dispatch_ctx = DispatchContext()
+
+        # compute gradients of log-likelihoods w.r.t. module log-likelihoods
+        ll = log_likelihood(layer, data, dispatch_ctx=dispatch_ctx)
+        ll.retain_grad()
+        ll.sum().backward()
+
+        # perform an em step
+        em(layer, data, dispatch_ctx=dispatch_ctx)
+
+        self.assertTrue(torch.all(layer.n == torch.tensor([3, 5])))
+        self.assertTrue(torch.allclose(layer.p, torch.tensor([0.3, 0.7]), atol=1e-2, rtol=1e-3))
+
+    def test_em_product_of_binomials(self):
+        
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = NegativeBinomialLayer([Scope([0]),Scope([1])], n=[3,5])
+        prod_node = SPNProductNode([layer])
+
+        data = torch.tensor(np.hstack([
+            np.random.binomial(n=3, p=0.8, size=(10000, 1)),
+            np.random.binomial(n=5, p=0.2, size=(10000, 1))
+        ]))
+
+        expectation_maximization(prod_node, data, max_steps=10)
+
+        self.assertTrue(torch.allclose(layer.p, torch.tensor([0.8, 0.2]), atol=1e-3, rtol=1e-2))
+
+    def test_em_sum_of_binomials(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = NegativeBinomialLayer([Scope([0]),Scope([0])], n=3, p=[0.4,0.6])
+        sum_node = SPNSumNode([layer], weights=[0.5, 0.5])
+
+        data = torch.tensor(np.vstack([
+            np.random.binomial(n=3, p=0.8, size=(10000, 1)),
+            np.random.binomial(n=3, p=0.3, size=(10000, 1))
+        ]))
+
+        expectation_maximization(sum_node, data, max_steps=10)
+
+        # optimal p
+        p_opt = data.sum() / (data.shape[0] * 3)
+        # total p represented by mixture
+        p_em = (sum_node.weights * layer.p).sum()
+        
+        self.assertTrue(torch.all(layer.n == torch.tensor([3, 3])))
+        self.assertTrue(torch.isclose(p_opt, p_em))
 
 
 if __name__ == "__main__":

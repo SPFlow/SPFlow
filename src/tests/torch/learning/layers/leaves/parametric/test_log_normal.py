@@ -1,6 +1,12 @@
 from spflow.meta.scope.scope import Scope
+from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
+from spflow.torch.inference.nodes.node import log_likelihood
+from spflow.torch.learning.nodes.node import em
 from spflow.torch.structure.layers.leaves.parametric.log_normal import LogNormalLayer
-from spflow.torch.learning.layers.leaves.parametric.log_normal import maximum_likelihood_estimation
+from spflow.torch.learning.layers.leaves.parametric.log_normal import maximum_likelihood_estimation, em
+from spflow.torch.inference.layers.leaves.parametric.log_normal import log_likelihood
+from spflow.torch.learning.expectation_maximization.expectation_maximization import expectation_maximization
 
 import torch
 import numpy as np
@@ -124,6 +130,96 @@ class TestNode(unittest.TestCase):
         layer = LogNormalLayer(Scope([0]))
         self.assertRaises(ValueError, maximum_likelihood_estimation, layer, torch.tensor([[float("nan")], [0.1], [1.9], [0.7]]), nan_strategy='invalid_string')
         self.assertRaises(ValueError, maximum_likelihood_estimation, layer, torch.tensor([[float("nan")], [1], [0], [1]]), nan_strategy=1)
+
+    def test_weighted_mle(self):
+
+        leaf = LogNormalLayer([Scope([0]),Scope([1])])
+
+        data = torch.tensor(
+            np.hstack([
+                np.vstack([
+                    np.random.lognormal(1.7, 0.8, size=(10000,1)),
+                    np.random.lognormal(0.5, 1.4, size=(10000,1))
+                ]),
+                np.vstack([
+                    np.random.lognormal(0.9, 0.3, size=(10000,1)),
+                    np.random.lognormal(1.3, 1.7, size=(10000,1))
+                ])
+            ]))
+        weights = torch.concat([
+            torch.zeros(10000),
+            torch.ones(10000)
+        ])
+
+        maximum_likelihood_estimation(leaf, data, weights)
+
+        self.assertTrue(torch.allclose(leaf.mean, torch.tensor([0.5, 1.3]), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.allclose(leaf.std, torch.tensor([1.4, 1.7]), atol=1e-2, rtol=1e-1))
+
+    def test_em_step(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = LogNormalLayer([Scope([0]),Scope([1])])
+        data = torch.tensor(np.hstack([
+                np.random.lognormal(0.3, 1.7, size=(10000, 1)),
+                np.random.lognormal(1.4, 0.8, size=(10000, 1))
+            ]))
+        dispatch_ctx = DispatchContext()
+
+        # compute gradients of log-likelihoods w.r.t. module log-likelihoods
+        ll = log_likelihood(layer, data, dispatch_ctx=dispatch_ctx)
+        ll.retain_grad()
+        ll.sum().backward()
+
+        # perform an em step
+        em(layer, data, dispatch_ctx=dispatch_ctx)
+
+        self.assertTrue(torch.allclose(layer.mean, torch.tensor([0.3, 1.4]), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.allclose(layer.std, torch.tensor([1.7, 0.8]), atol=1e-2, rtol=1e-1))
+
+    def test_em_product_of_log_normals(self):
+        
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = LogNormalLayer([Scope([0]),Scope([1])], mean=[1.5, -2.5], std=[0.75, 1.5])
+        prod_node = SPNProductNode([layer])
+
+        data = torch.tensor(np.hstack([
+            np.random.lognormal(2.0, 1.0, size=(15000, 1)),
+            np.random.lognormal(-2.0, 1.0, size=(15000, 1))
+        ]))
+
+        expectation_maximization(prod_node, data, max_steps=10)
+
+        self.assertTrue(torch.allclose(layer.mean, torch.tensor([2.0, -2.0]), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.allclose(layer.std, torch.tensor([1.0, 1.0]), atol=1e-2, rtol=1e-1))
+
+    def test_em_sum_of_log_normals(self):
+
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = LogNormalLayer([Scope([0]),Scope([0])], mean=[1.5, -2.5], std=[0.75, 1.5])
+        sum_node = SPNSumNode([layer], weights=[0.5, 0.5])
+
+        data = torch.tensor(np.vstack([
+            np.random.lognormal(2.0, 1.0, size=(20000, 1)),
+            np.random.lognormal(-2.0, 1.0, size=(20000, 1))
+        ]))
+
+        expectation_maximization(sum_node, data, max_steps=10)
+
+        self.assertTrue(torch.allclose(layer.mean, torch.tensor([2.0, -2.0]), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.allclose(layer.std, torch.tensor([1.0, 1.0]), atol=1e-2, rtol=1e-1))
 
 
 if __name__ == "__main__":

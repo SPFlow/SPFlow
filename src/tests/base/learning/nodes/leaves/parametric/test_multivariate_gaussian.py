@@ -114,6 +114,24 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.nan, 0.0], [1, 0.1], [1.9, -0.2]]), nan_strategy='invalid_string')
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.nan, 0.0], [1, 0.1], [1.9, -0.2]]), nan_strategy=1)
 
+    def test_weighted_mle(self):
+
+        leaf = MultivariateGaussian(Scope([0,1]))
+
+        data = np.vstack([
+            np.random.multivariate_normal([1.7, 2.1], np.eye(2), size=(10000,)),
+            np.random.multivariate_normal([0.5, -0.3], np.eye(2), size=(10000,))
+        ])
+        weights = np.concatenate([
+            np.zeros(10000),
+            np.ones(10000)
+        ])
+
+        maximum_likelihood_estimation(leaf, data, weights)
+
+        self.assertTrue(np.allclose(leaf.mean, np.array([0.5, -0.3]), atol=1e-2, rtol=1e-1))
+        self.assertTrue(np.allclose(leaf.cov, np.eye(2), atol=1e-2, rtol=1e-2))
+
 
 if __name__ == "__main__":
     unittest.main()
