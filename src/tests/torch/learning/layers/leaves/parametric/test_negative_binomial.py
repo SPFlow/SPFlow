@@ -33,7 +33,7 @@ class TestNode(unittest.TestCase):
         layer = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
 
         # simulate data
-        data = np.hstack([np.random.binomial(n=3, p=0.3, size=(10000, 1)), np.random.binomial(n=10, p=0.7, size=(10000, 1))])
+        data = np.hstack([np.random.negative_binomial(n=3, p=0.3, size=(10000, 1)), np.random.negative_binomial(n=10, p=0.7, size=(10000, 1))])
 
         # perform MLE
         maximum_likelihood_estimation(layer, torch.tensor(data))
@@ -49,7 +49,8 @@ class TestNode(unittest.TestCase):
         layer = NegativeBinomialLayer(Scope([0]), n=3)
 
         # simulate data
-        data = np.random.binomial(n=3, p=0.0, size=(100, 1))
+        data = np.random.negative_binomial(n=3, p=0.0, size=(100, 1))
+        data[data < 0] = np.iinfo(data.dtype).max # p=zero leads to integer overflow due to infinite number of trials
 
         # perform MLE
         maximum_likelihood_estimation(layer, torch.tensor(data))
@@ -66,7 +67,7 @@ class TestNode(unittest.TestCase):
         layer = NegativeBinomialLayer(Scope([0]), n=5)
 
         # simulate data
-        data = np.random.binomial(n=5, p=1.0, size=(100, 1))
+        data = np.random.negative_binomial(n=5, p=1.0, size=(100, 1))
 
         # perform MLE
         maximum_likelihood_estimation(layer, torch.tensor(data))
@@ -89,7 +90,6 @@ class TestNode(unittest.TestCase):
         # perform MLE (should raise exceptions)
         self.assertRaises(ValueError, maximum_likelihood_estimation, layer, torch.tensor([[float("inf")]]), bias_correction=True)
         self.assertRaises(ValueError, maximum_likelihood_estimation, layer, torch.tensor([[-0.1]]), bias_correction=True)
-        self.assertRaises(ValueError, maximum_likelihood_estimation, layer, torch.tensor([[4]]), bias_correction=True)
 
     def test_mle_nan_strategy_none(self):
 
@@ -100,7 +100,7 @@ class TestNode(unittest.TestCase):
 
         layer = NegativeBinomialLayer(Scope([0]), n=2)
         maximum_likelihood_estimation(layer, torch.tensor([[float("nan")], [1], [2], [1]]), nan_strategy='ignore')
-        self.assertTrue(torch.isclose(layer.p, torch.tensor(4.0/6.0)))
+        self.assertTrue(torch.isclose(layer.p, torch.tensor((2*3) / (1+2 + 2+2 + 1+2))))
 
     def test_mle_nan_strategy_callable(self):
 
@@ -121,12 +121,12 @@ class TestNode(unittest.TestCase):
         data = torch.tensor(
             np.hstack([
                 np.vstack([
-                    np.random.binomial(n=3, p=0.8, size=(10000,1)),
-                    np.random.binomial(n=3, p=0.2, size=(10000,1))
+                    np.random.negative_binomial(n=3, p=0.8, size=(10000,1)),
+                    np.random.negative_binomial(n=3, p=0.2, size=(10000,1))
                 ]),
                 np.vstack([
-                    np.random.binomial(n=5, p=0.3, size=(10000,1)),
-                    np.random.binomial(n=5, p=0.7, size=(10000,1))
+                    np.random.negative_binomial(n=5, p=0.3, size=(10000,1)),
+                    np.random.negative_binomial(n=5, p=0.7, size=(10000,1))
                 ])
             ]))
 
@@ -149,8 +149,8 @@ class TestNode(unittest.TestCase):
 
         layer = NegativeBinomialLayer([Scope([0]),Scope([1])], n=[3, 5])
         data = torch.tensor(np.hstack([
-                np.random.binomial(n=3, p=0.3, size=(10000, 1)),
-                np.random.binomial(n=5, p=0.7, size=(10000, 1))
+                np.random.negative_binomial(n=3, p=0.3, size=(10000, 1)),
+                np.random.negative_binomial(n=5, p=0.7, size=(10000, 1))
             ]))
         dispatch_ctx = DispatchContext()
 
@@ -176,8 +176,8 @@ class TestNode(unittest.TestCase):
         prod_node = SPNProductNode([layer])
 
         data = torch.tensor(np.hstack([
-            np.random.binomial(n=3, p=0.8, size=(10000, 1)),
-            np.random.binomial(n=5, p=0.2, size=(10000, 1))
+            np.random.negative_binomial(n=3, p=0.8, size=(10000, 1)),
+            np.random.negative_binomial(n=5, p=0.2, size=(10000, 1))
         ]))
 
         expectation_maximization(prod_node, data, max_steps=10)
@@ -195,19 +195,13 @@ class TestNode(unittest.TestCase):
         sum_node = SPNSumNode([layer], weights=[0.5, 0.5])
 
         data = torch.tensor(np.vstack([
-            np.random.binomial(n=3, p=0.8, size=(10000, 1)),
-            np.random.binomial(n=3, p=0.3, size=(10000, 1))
+            np.random.negative_binomial(n=3, p=0.8, size=(10000, 1)),
+            np.random.negative_binomial(n=3, p=0.3, size=(10000, 1))
         ]))
 
         expectation_maximization(sum_node, data, max_steps=10)
 
-        # optimal p
-        p_opt = data.sum() / (data.shape[0] * 3)
-        # total p represented by mixture
-        p_em = (sum_node.weights * layer.p).sum()
-        
-        self.assertTrue(torch.all(layer.n == torch.tensor([3, 3])))
-        self.assertTrue(torch.isclose(p_opt, p_em))
+        self.assertTrue(torch.allclose(layer.p, torch.tensor([0.3, 0.8]), atol=1e-2, rtol=1e-2))
 
 
 if __name__ == "__main__":

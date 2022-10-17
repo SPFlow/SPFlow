@@ -57,14 +57,14 @@ def maximum_likelihood_estimation(leaf: NegativeBinomial, data: np.ndarray, weig
     # normalize weights to sum to n_samples
     weights /= weights.sum() / scope_data.shape[0]
 
-    # total (weighted) number of instances times number of trials per instance
-    n_total = (weights.sum() * leaf.n)
+    # total (weighted) number of successes
+    n_success = (weights.sum() * leaf.n)
 
-    # count (weighted) number of total successes
-    n_success = (weights * scope_data).sum()
+    # total number of trials
+    n_total = (weights * (scope_data + leaf.n)).sum()
 
     # estimate (weighted) success probability
-    p_est = n_success/n_total
+    p_est = n_success / n_total
 
     # edge case: if prob. 1 (or 0), set to smaller (or larger) value
     if np.isclose(p_est, 0.0):
