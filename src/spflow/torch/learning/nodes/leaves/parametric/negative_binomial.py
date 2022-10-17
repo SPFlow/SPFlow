@@ -57,11 +57,14 @@ def maximum_likelihood_estimation(leaf: NegativeBinomial, data: torch.Tensor, we
     # normalize weights to sum to n_samples
     weights /= weights.sum() / scope_data.shape[0]
 
-    # total (weighted) number of instances times number of trials per instance
-    n_total = (weights.sum() * leaf.n).type(dtype=torch.get_default_dtype())
+    # total (weighted) number of successes
+    n_success = (weights.sum() * leaf.n).type(dtype=torch.get_default_dtype())
 
-    # count (weighted) number of total successes
-    n_success = (weights * scope_data).sum(dtype=torch.get_default_dtype())
+    # count (weighted) number of trials
+    n_total = (weights * (scope_data + leaf.n)).sum(dtype=torch.get_default_dtype())
+
+    # estimate (weighted) success probability
+    p_est = n_success / n_total
 
     # estimate (weighted) success probability
     p_est = n_success/n_total

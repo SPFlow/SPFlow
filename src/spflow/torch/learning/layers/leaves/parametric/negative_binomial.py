@@ -54,11 +54,11 @@ def maximum_likelihood_estimation(layer: NegativeBinomialLayer, data: torch.Tens
             # normalize weights to sum to n_samples
             weights /= weights.sum(dim=0) / scope_data.shape[0]
 
-            # total number of instances times number of trials per instance
-            n_total = weights.sum(dim=0) * layer.n
+            # total number of successes
+            n_success = weights.sum(dim=0) * layer.n
 
-            # count number of total successes
-            n_success = (weights * torch.nan_to_num(scope_data, nan=0.0)).sum(dim=0)
+            # count number of trials
+            n_total = (weights * torch.nan_to_num(scope_data + layer.n, nan=0.0)).sum(dim=0)
         else:
             raise ValueError("Unknown strategy for handling missing (NaN) values for 'NegativeBinomialLayer'.")
     elif isinstance(nan_strategy, Callable) or nan_strategy is None:
@@ -69,11 +69,11 @@ def maximum_likelihood_estimation(layer: NegativeBinomialLayer, data: torch.Tens
         # normalize weights to sum to n_samples
         weights /= weights.sum(dim=0) / scope_data.shape[0]
 
-        # total number of instances times number of trials per instance
-        n_total = weights.sum(dim=0) * layer.n
+        # total number of successes
+        n_success = weights.sum(dim=0) * layer.n
 
-        # count number of total successes
-        n_success = (weights * scope_data).sum(dim=0)
+        # count number of trials
+        n_total = (weights * (scope_data + layer.n)).sum(dim=0)
     else:
         raise ValueError(f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}.")
     

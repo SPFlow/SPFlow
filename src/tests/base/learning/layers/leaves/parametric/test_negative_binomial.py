@@ -17,12 +17,12 @@ class TestNode(unittest.TestCase):
         layer = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
 
         # simulate data
-        data = np.hstack([np.random.binomial(n=3, p=0.3, size=(10000, 1)), np.random.binomial(n=10, p=0.7, size=(10000, 1))])
+        data = np.hstack([np.random.negative_binomial(n=3, p=0.3, size=(10000, 1)), np.random.negative_binomial(n=10, p=0.7, size=(10000, 1))])
 
         # perform MLE
         maximum_likelihood_estimation(layer, data)
 
-        self.assertTrue(np.allclose(layer.p, np.array([0.3, 0.7]), atol=1e-2, rtol=1e-3))
+        self.assertTrue(np.allclose(layer.p, np.array([0.3, 0.7]), atol=1e-2, rtol=1e-2))
 
     def test_weighted_mle(self):
 
@@ -30,12 +30,12 @@ class TestNode(unittest.TestCase):
 
         data = np.hstack([
                     np.vstack([
-                        np.random.binomial(n=3, p=0.8, size=(10000,1)),
-                        np.random.binomial(n=3, p=0.2, size=(10000,1))
+                        np.random.negative_binomial(n=3, p=0.8, size=(10000,1)),
+                        np.random.negative_binomial(n=3, p=0.2, size=(10000,1))
                     ]),
                     np.vstack([
-                        np.random.binomial(n=5, p=0.3, size=(10000,1)),
-                        np.random.binomial(n=5, p=0.7, size=(10000,1))
+                        np.random.negative_binomial(n=5, p=0.3, size=(10000,1)),
+                        np.random.negative_binomial(n=5, p=0.7, size=(10000,1))
                     ])
                 ])
 

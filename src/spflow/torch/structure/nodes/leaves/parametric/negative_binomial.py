@@ -21,18 +21,18 @@ class NegativeBinomial(LeafNode):
 
     .. math::
 
-        \text{PMF}(k) = \binom{k+n-1}{k}(1-p)^n p^k
+        \text{PMF}(k) = \binom{k+n-1}{n-1}p^n(1-p)^k
 
     where
-        - :math:`k` is the number of successes
-        - :math:`n` is the maximum number of failures
+        - :math:`k` is the number of failures
+        - :math:`n` is the maximum number of successes
         - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
 
     Args:
         scope:
             List of integers specifying the variable scope.
         n:
-            Number of i.i.d. trials (greater or equal to 0).
+            Number of i.i.d. successes (greater or equal to 0).
         p:
             Probability of success for each trial in the range :math:`(0,1]` (default 0.5).
     """

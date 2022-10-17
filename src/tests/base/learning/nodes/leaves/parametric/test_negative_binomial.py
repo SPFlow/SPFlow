@@ -17,7 +17,7 @@ class TestNode(unittest.TestCase):
         leaf = NegativeBinomial(Scope([0]), n=3)
 
         # simulate data
-        data = np.random.binomial(n=3, p=0.3, size=(10000, 1))
+        data = np.random.negative_binomial(n=3, p=0.3, size=(10000, 1))
 
         # perform MLE
         maximum_likelihood_estimation(leaf, data)
@@ -33,7 +33,7 @@ class TestNode(unittest.TestCase):
         leaf = NegativeBinomial(Scope([0]), n=10)
 
         # simulate data
-        data = np.random.binomial(n=10, p=0.7, size=(10000, 1))
+        data = np.random.negative_binomial(n=10, p=0.7, size=(10000, 1))
 
         # perform MLE
         maximum_likelihood_estimation(leaf, data)
@@ -49,7 +49,8 @@ class TestNode(unittest.TestCase):
         leaf = NegativeBinomial(Scope([0]), n=3)
 
         # simulate data
-        data = np.random.binomial(n=3, p=0.0, size=(100, 1))
+        data = np.random.negative_binomial(n=3, p=0.0, size=(100, 1))
+        data[data < 0] = np.iinfo(data.dtype).max # p=zero leads to integer overflow due to infinite number of trials
 
         # perform MLE
         maximum_likelihood_estimation(leaf, data)
@@ -65,7 +66,7 @@ class TestNode(unittest.TestCase):
         leaf = NegativeBinomial(Scope([0]), n=5)
 
         # simulate data
-        data = np.random.binomial(n=5, p=1.0, size=(100, 1))
+        data = np.random.negative_binomial(n=5, p=1.0, size=(100, 1))
 
         # perform MLE
         maximum_likelihood_estimation(leaf, data)
@@ -81,7 +82,7 @@ class TestNode(unittest.TestCase):
 
         # check if exception is raised
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, data, nan_strategy='ignore')
-
+    
     def test_mle_invalid_support(self):
 
         leaf = NegativeBinomial(Scope([0]), n=3)
@@ -89,7 +90,6 @@ class TestNode(unittest.TestCase):
         # perform MLE (should raise exceptions)
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.inf]]), bias_correction=True)
         self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[-0.1]]), bias_correction=True)
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[4]]), bias_correction=True)
 
     def test_mle_nan_strategy_none(self):
 
@@ -100,7 +100,7 @@ class TestNode(unittest.TestCase):
 
         leaf = NegativeBinomial(Scope([0]), n=2)
         maximum_likelihood_estimation(leaf, np.array([[np.nan], [1], [2], [1]]), nan_strategy='ignore')
-        self.assertTrue(np.isclose(leaf.p, 4.0/6.0))
+        self.assertTrue(np.isclose(leaf.p, (3*2)/(1+2 + 2+2 + 1+2)))
 
     def test_mle_nan_strategy_callable(self):
 
@@ -119,8 +119,8 @@ class TestNode(unittest.TestCase):
         leaf = NegativeBinomial(Scope([0]), n=3)
 
         data = np.vstack([
-            np.random.binomial(n=3, p=0.8, size=(10000,1)),
-            np.random.binomial(n=3, p=0.2, size=(10000,1))
+            np.random.negative_binomial(n=3, p=0.8, size=(10000,1)),
+            np.random.negative_binomial(n=3, p=0.2, size=(10000,1))
         ])
         weights = np.concatenate([
             np.zeros(10000),
