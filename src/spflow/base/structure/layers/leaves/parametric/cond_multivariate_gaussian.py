@@ -3,7 +3,7 @@ Created on October 18, 2022
 
 @authors: Philipp Deibert
 """
-from typing import List, Union, Optional, Iterable, Tuple, Literal, Callable
+from typing import List, Union, Optional, Iterable, Tuple, Callable
 import numpy as np
 
 from spflow.meta.dispatch.dispatch import dispatch
