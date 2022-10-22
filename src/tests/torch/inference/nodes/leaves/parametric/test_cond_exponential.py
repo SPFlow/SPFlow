@@ -31,8 +31,8 @@ class TestExponential(unittest.TestCase):
         exponential = CondExponential(Scope([0]), cond_f=cond_f)
 
         # create test inputs/outputs
-        data = torch.tensor([[0], [2], [5]])
-        targets = torch.tensor([[0.5], [0.18394], [0.0410425]])
+        data = torch.tensor([[2], [5]])
+        targets = torch.tensor([[0.18394], [0.0410425]])
 
         probs = likelihood(exponential, data)
         log_probs = log_likelihood(exponential, data)
@@ -48,8 +48,8 @@ class TestExponential(unittest.TestCase):
         dispatch_ctx.args[exponential] = {'l': 0.5}
 
         # create test inputs/outputs
-        data = torch.tensor([[0], [2], [5]])
-        targets = torch.tensor([[0.5], [0.18394], [0.0410425]])
+        data = torch.tensor([[2], [5]])
+        targets = torch.tensor([[0.18394], [0.0410425]])
 
         probs = likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
@@ -67,8 +67,8 @@ class TestExponential(unittest.TestCase):
         dispatch_ctx.args[exponential] = {'cond_f': cond_f}
 
         # create test inputs/outputs
-        data = torch.tensor([[0], [2], [5]])
-        targets = torch.tensor([[0.5], [0.18394], [0.0410425]])
+        data = torch.tensor([[2], [5]])
+        targets = torch.tensor([[0.18394], [0.0410425]])
 
         probs = likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
