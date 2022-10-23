@@ -95,37 +95,62 @@ class CondMultivariateGaussianLayer(Module):
                     mean.append(args['mean'])
                     cov.append(args['cov'])
 
-                mean = tuple(mean)
-                cov = tuple(cov)
             else:
                 args = cond_f(data)
                 mean = args['mean']
                 cov = args['cov']
 
-                if isinstance(mean, list):
-                    mean = np.array(mean)
-                if mean.ndim == 1:
-                    mean = np.vstack([mean for _ in range(self.n_out)])
-                if mean.ndim == 2 and mean.shape[0] == 1:
-                    mean = np.vstack([mean for _ in range(self.n_out)])
-                if(mean.ndim != 2):
-                    raise ValueError(f"Numpy array of 'mean' values for 'CondMultivariateGaussianLayer' is expected to be two-dimensional, but is {mean.ndim}-dimensional.")
-                if(mean.shape[0] != self.n_out):
-                    raise ValueError(f"Length of numpy array of 'mean' values for 'CondMultivariateGaussianLayer' must match number of output nodes {self.n_out}, but is {mean.shape[0]}")
+        if isinstance(mean, list):
+            # can be a list of values specifying a single mean (broadcast to all nodes)
+            if all([isinstance(m, float) or isinstance(m, int) for m in mean]):
+                mean = [np.array(mean) for _ in range(self.n_out)]
+            # can also be a list of different means
+            else:
+                mean = [m if isinstance(m, np.ndarray) else np.array(m) for m in mean]
+        elif isinstance(mean, np.ndarray):
+            # can be a one-dimensional numpy array specifying single mean (broadcast to all nodes)
+            if(mean.ndim == 1):
+                mean = [mean for _ in range(self.n_out)]
+            # can also be an array of different means
+            else:
+                mean = [m for m in mean]
+        else:
+            raise ValueError(f"Specified 'mean' for 'CondMultivariateGaussianLayer' is of unknown type {type(mean)}.")
 
-                if isinstance(cov, list):
-                    cov = np.array(cov)
-                if cov.ndim == 2:
-                    cov = np.stack([cov for _ in range(self.n_out)])
-                if cov.ndim == 3 and cov.shape[0] == 1:
-                    cov = np.vstack([cov for _ in range(self.n_out)])
-                if(cov.ndim != 3):
-                    raise ValueError(f"Numpy array of 'cov' values for 'CondMultivariateGaussianLayer' is expected to be three-dimensional, but is {cov.ndim}-dimensional.")
-                if(cov.shape[0] != self.n_out):
-                    raise ValueError(f"Length of numpy array of 'cov' values for 'CondMultivariateGaussianLayer' must match number of output nodes {self.n_out}, but is {cov.shape[0]}")
+        if isinstance(cov, list):
+            # can be a list of lists of values specifying a single cov (broadcast to all nodes)
+            if all([
+                all([isinstance(c, float) or isinstance(c, int) for c in l]) for l in cov
+            ]):
+                cov = [np.array(cov) for _ in range(self.n_out)]
+            # can also be a list of different covs
+            else:
+                cov = [c if isinstance(c, np.ndarray) else np.array(c) for c in cov]
+        elif isinstance(cov, np.ndarray):
+            # can be a two-dimensional numpy array specifying single cov (broadcast to all nodes)
+            if(cov.ndim == 2):
+                cov = [cov for _ in range(self.n_out)]
+            # can also be an array of different covs
+            else:
+                cov = [c for c in cov]
+        else:
+            raise ValueError(f"Specified 'cov' for 'CondMultivariateGaussianLayer' is of unknown type {type(cov)}.")
 
-                mean = tuple([m for m in mean])
-                cov = tuple([c for c in cov])
+        if len(mean) != self.n_out:
+            raise ValueError(f"Length of list of 'mean' values for 'CondMultivariateGaussianLayer' must match number of output nodes {self.n_out}, but is {len(mean)}")
+        if len(cov) != self.n_out:
+            raise ValueError(f"Length of list of 'cov' values for 'CondMultivariateGaussianLayer' must match number of output nodes {self.n_out}, but is {len(cov)}")
+
+        for m, c, s in zip(mean, cov, self.scopes_out):
+            if(m.ndim != 1):
+                raise ValueError(f"All numpy arrays of 'mean' values for 'CondMultivariateGaussianLayer' are expected to be one-dimensional, but at least one is {m.ndim}-dimensional.")
+            if(m.shape[0] != len(s.query)):
+                raise ValueError(f"Dimensions of a mean vector for 'CondMultivariateGaussianLayer' do not match corresponding scope size.")
+
+            if(c.ndim != 2):
+                raise ValueError(f"All numpy arrays of 'cov' values for 'CondMultivariateGaussianLayer' are expected to be two-dimensional, but at least one is {c.ndim}-dimensional.")
+            if(c.shape[0] != len(s.query) or c.shape[1] != len(s.query)):
+                raise ValueError(f"Dimensions of a covariance matrix for 'CondMultivariateGaussianLayer' do not match corresponding scope size.")
 
         return mean, cov
 
