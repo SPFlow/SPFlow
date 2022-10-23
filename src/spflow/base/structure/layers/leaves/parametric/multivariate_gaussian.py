@@ -3,13 +3,12 @@ Created on August 12, 2022
 
 @authors: Philipp Deibert
 """
-from typing import List, Union, Optional, Iterable, Tuple, Literal
+from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
 
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.scope.scope import Scope
-from spflow.meta.types.feature_types import FeatureType
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
@@ -97,18 +96,6 @@ class MultivariateGaussianLayer(Module):
 
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
         return self.mean, self.cov
-    
-    @classmethod
-    def accepts(self, signatures: List[Tuple[List[Literal[FeatureType]], Scope]]) -> bool:  # type: ignore
-        # layer has at least one output
-        if len(signatures) < 1:
-            return False
-
-        # all output signatures should be accepted by Bernoulli leaf nodes
-        if not all([MultivariateGaussian.accepts([node_signature]) for node_signature in signatures]):
-            return False
-
-        return True
     
     # TODO: check support
 
