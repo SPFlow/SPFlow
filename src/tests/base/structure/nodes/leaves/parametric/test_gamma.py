@@ -25,7 +25,7 @@ class TestGamma(unittest.TestCase):
 
         # beta > 0
         Gamma(Scope([0]), 1.0, np.nextafter(0.0, 1.0))
-        # alpha = 0
+        # beta = 0
         self.assertRaises(Exception, Gamma, Scope([0]), 1.0, 0.0)
         # beta < 0
         self.assertRaises(Exception, Gamma, Scope([0]), 1.0, np.nextafter(0.0, -1.0))

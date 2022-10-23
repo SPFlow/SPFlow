@@ -38,7 +38,7 @@ def log_likelihood(leaf: Gamma, data: torch.Tensor, dispatch_ctx: Optional[Dispa
     # TODO: suppress checks
     if not all(valid_ids):
         raise ValueError(
-            f"Encountered data instances that are not in the support of the TorchGamma distribution."
+            f"Encountered data instances that are not in the support of the Gamma distribution."
         )
 
     # compute probabilities for values inside distribution support

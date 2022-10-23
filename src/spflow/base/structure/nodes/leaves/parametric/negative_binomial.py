@@ -50,16 +50,16 @@ class NegativeBinomial(LeafNode):
 
         if p <= 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
-                f"Value of p for NegativeBinomial distribution must to be between 0.0 and 1.0, but was: {p}"
+                f"Value of p for Negative Binomial distribution must to be between 0.0 (excluding) and 1.0 (including), but was: {p}"
             )
         if n < 0 or not np.isfinite(n):
             raise ValueError(
-                f"Value of n for NegativeBinomial distribution must to greater of equal to 0, but was: {n}"
+                f"Value of n for Negative Binomial distribution must to greater of equal to 0, but was: {n}"
             )
 
         if not (np.remainder(n, 1.0) == 0.0):
             raise ValueError(
-                f"Value of n for NegativeBinomial distribution must be (equal to) an integer value, but was: {n}"
+                f"Value of n for Negative Binomial distribution must be (equal to) an integer value, but was: {n}"
             )
 
         self.n = n

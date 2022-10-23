@@ -3,6 +3,7 @@ from spflow.base.structure.nodes.node import marginalize
 from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli
 from spflow.base.inference.nodes.leaves.parametric.bernoulli import log_likelihood
 from spflow.base.inference.module import likelihood
+from typing import Callable
 
 import numpy as np
 import unittest

@@ -1,4 +1,3 @@
-#from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma as BaseGamma
 from spflow.base.inference.nodes.leaves.parametric.gamma import log_likelihood
@@ -6,16 +5,12 @@ from spflow.torch.structure.nodes.leaves.parametric.gamma import Gamma, toBase, 
 from spflow.torch.structure.nodes.node import marginalize
 from spflow.torch.inference.nodes.leaves.parametric.gamma import log_likelihood
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
 
 import torch
 import numpy as np
 
 import random
 import unittest
-
-from packaging import version
-
 
 class TestGamma(unittest.TestCase):
     def test_initialization(self):

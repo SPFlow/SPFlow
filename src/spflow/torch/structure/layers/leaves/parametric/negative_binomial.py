@@ -131,8 +131,8 @@ class NegativeBinomialLayer(Module):
         self.n.data = n
 
     def get_params(self) -> Tuple[torch.Tensor, torch.Tensor]:
-        return (self.p, self.n)
-    
+        return (self.n, self.p)
+
     def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
         r"""Checks if instances are part of the support of the NegativeBinomial distribution.
 

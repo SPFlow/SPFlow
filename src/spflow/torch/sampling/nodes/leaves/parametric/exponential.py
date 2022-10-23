@@ -1,3 +1,8 @@
+"""
+Created on May 10, 2022
+
+@authors: Philipp Deibert
+"""
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context

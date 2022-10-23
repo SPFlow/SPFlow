@@ -190,7 +190,7 @@ class MultivariateGaussian(LeafNode):
         self.tril_nondiag.data = L[self.tril_nondiag_indices[0], self.tril_nondiag_indices[1]]
 
     def get_params(self) -> Tuple[List[float], List[List[float]]]:
-        return self.mean.data.cpu().tolist(), self.cov.data.cpu().tolist()  # type: ignore
+        return self.mean.data.cpu().detach().tolist(), self.cov.data.cpu().detach().tolist()  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
         r"""Checks if instances are part of the support of the MultivariateGaussian distribution.

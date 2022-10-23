@@ -1,4 +1,3 @@
-#from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.exponential import Exponential as BaseExponential
 from spflow.base.inference.nodes.leaves.parametric.exponential import log_likelihood
@@ -6,15 +5,12 @@ from spflow.torch.structure.nodes.leaves.parametric.exponential import Exponenti
 from spflow.torch.structure.nodes.node import marginalize
 from spflow.torch.inference.nodes.leaves.parametric.exponential import log_likelihood
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
 
 import torch
 import numpy as np
 
 import random
 import unittest
-
-from packaging import version
 
 
 class TestExponential(unittest.TestCase):

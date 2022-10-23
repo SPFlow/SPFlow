@@ -38,7 +38,7 @@ def log_likelihood(leaf: Exponential, data: torch.Tensor, dispatch_ctx: Optional
     # TODO: suppress checks
     if not all(valid_ids):
         raise ValueError(
-            f"Encountered data instances that are not in the support of the TorchExponential distribution."
+            f"Encountered data instances that are not in the support of the Exponential distribution."
         )
 
     # compute probabilities for values inside distribution support

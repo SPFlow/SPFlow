@@ -67,7 +67,7 @@ class MultivariateGaussianLayer(Module):
     def cov(self) -> List[np.ndarray]:
         return [node.cov for node in self.nodes]
 
-    def set_params(self, mean: Optional[Union[List[float], List[List[float]], np.ndarray]]=None, cov: Optional[Union[List[List[float]], List[List[List[float]]], np.ndarray]]=None) -> None:
+    def set_params(self, mean: Optional[Union[List[float], np.ndarray, List[List[float]], List[np.ndarray]]]=None, cov: Optional[Union[List[List[float]], np.ndarray, List[List[List[float]]], List[np.ndarray]]]=None) -> None:
 
         if isinstance(mean, list):
             # can be a list of values specifying a single mean (broadcast to all nodes)
@@ -124,7 +124,7 @@ class MultivariateGaussianLayer(Module):
         for node_mean, node_cov, node in zip(mean, cov, self.nodes):
             node.set_params(node_mean, node_cov)
 
-    def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_params(self) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         return self.mean, self.cov
     
     # TODO: check support

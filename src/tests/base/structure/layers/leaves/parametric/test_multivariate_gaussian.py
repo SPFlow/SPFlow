@@ -23,7 +23,7 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.mean == node_mean))
             self.assertTrue(np.all(node.cov == node_cov))
 
-        # ----- float/int parameter values ----- 
+        # ----- single mean/cov list parameter values ----- 
         mean_value = [0.0, -1.0, 2.3]
         cov_value = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
         l = MultivariateGaussianLayer(scope=Scope([1,0,2]), n_nodes=3, mean=mean_value, cov=cov_value)
@@ -32,7 +32,7 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.mean == mean_value))
             self.assertTrue(np.all(node.cov == cov_value))
 
-        # ----- list parameter values -----
+        # ----- multiple mean/cov list parameter values -----
         mean_values = [[0.0, -1.0, 2.3], [1.0, 5.0, -3.0], [-7.1, 3.2, -0.9]]
         cov_values = [
             [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
@@ -68,7 +68,7 @@ class TestLayer(unittest.TestCase):
         self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0,1,2]), np.array([mean_values for _ in range(3)]), cov_values, n_nodes=3)
 
         # ---- different scopes -----
-        l = MultivariateGaussianLayer(scope=Scope([0,1,2]), n_nodes=3)
+        l = MultivariateGaussianLayer(scope=[Scope([0,1,2]), Scope([1,3]), Scope([2])], n_nodes=3)
         for node, node_scope in zip(l.nodes, l.scopes_out):
             self.assertEqual(node.scope, node_scope)
 

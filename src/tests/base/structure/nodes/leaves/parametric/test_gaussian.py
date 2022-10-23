@@ -13,7 +13,7 @@ import math
 class TestGaussian(unittest.TestCase):
     def test_initialization(self):
 
-        # Valid parameters for Exponential distribution: mean in (-inf,inf), stdev > 0
+        # Valid parameters for Gaussian distribution: mean in (-inf,inf), stdev > 0
 
         mean = random.random()
 

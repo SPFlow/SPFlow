@@ -38,7 +38,7 @@ def sample(leaf: MultivariateGaussian, data: np.ndarray, dispatch_ctx: Optional[
             data[np.ix_(sampling_ids, leaf.scope.query)] = leaf.dist.rvs(size=sampling_ids.shape[0])
         # sample from conditioned distribution
         else:
-            # note: the conditional sampling implemented here is based on the algorithm described in Arnaud Doucet (2010): "A Note on Efficient Conditional Simulation of Gaussian Distributions" (https://www.stats.ox.ac.uk/~doucet/doucet_simulationconditionalgaussian.pdf)
+            # NOTE: the conditional sampling implemented here is based on the algorithm described in Arnaud Doucet (2010): "A Note on Efficient Conditional Simulation of Gaussian Distributions" (https://www.stats.ox.ac.uk/~doucet/doucet_simulationconditionalgaussian.pdf)
             sampling_ids = np.array(sampling_ctx.instance_ids)[(nan_data == nan_mask).sum(axis=1) == nan_mask.shape[0]]
 
             # sample from full distribution
