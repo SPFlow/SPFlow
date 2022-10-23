@@ -98,8 +98,8 @@ class TestLayer(unittest.TestCase):
         l_marg = marginalize(l, [2])
 
         self.assertTrue(l_marg.scopes_out == [Scope([0,1]), Scope([0,1])])
-        self.assertTrue(np.all(l.mean == l_marg.mean))
-        self.assertTrue(np.all(l.cov == l_marg.cov))
+        self.assertTrue(all([np.all(m1 == m2) for m1, m2 in zip(l.mean, l_marg.mean)]))
+        self.assertTrue(all([np.all(c1 == c2) for c1, c2 in zip(l.cov, l_marg.cov)]))
     
         # ---------- different scopes -----------
 
@@ -132,8 +132,8 @@ class TestLayer(unittest.TestCase):
         l_marg = marginalize(l, [4])
 
         self.assertTrue(l_marg.scopes_out == [Scope([0,2]), Scope([1,3])])
-        self.assertTrue(np.all(l.mean == l_marg.mean))
-        self.assertTrue(np.all(l.cov == l_marg.cov))
+        self.assertTrue(all([np.all(m1 == m2) for m1, m2 in zip(l.mean, l_marg.mean)]))
+        self.assertTrue(all([np.all(c1 == c2) for c1, c2 in zip(l.cov, l_marg.cov)]))
 
     def test_get_params(self):
 

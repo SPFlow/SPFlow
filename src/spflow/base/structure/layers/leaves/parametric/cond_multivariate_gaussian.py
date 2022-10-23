@@ -39,11 +39,6 @@ class CondMultivariateGaussianLayer(Module):
 
         super(CondMultivariateGaussianLayer, self).__init__(children=[], **kwargs)
 
-        self.n_variate = len(scope[0].query)
-
-        if not all([len(s.query) == self.n_variate for s in scope]):
-            raise ValueError("Scope for 'CondMultivariateGaussianLayer' must all have same number of dimensions.")
-
         # create leaf nodes
         self.nodes = [CondMultivariateGaussian(s) for s in scope]
 
@@ -136,7 +131,7 @@ class CondMultivariateGaussianLayer(Module):
 
     def get_params(self) -> Tuple:
         return tuple([])
-    
+
     # TODO: check support
 
 
