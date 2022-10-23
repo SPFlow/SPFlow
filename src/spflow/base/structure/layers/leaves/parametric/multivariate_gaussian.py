@@ -3,19 +3,20 @@ Created on August 12, 2022
 
 @authors: Philipp Deibert
 """
-from typing import List, Union, Optional, Iterable, Tuple
+from typing import List, Union, Optional, Iterable, Tuple, Literal
 import numpy as np
 
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.scope.scope import Scope
+from spflow.meta.types.feature_types import FeatureType
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 
 
 class MultivariateGaussianLayer(Module):
-    """Layer representing multiple (univariate) gaussian leaf nodes.
+    """Layer representing multiple multivariate gaussian leaf nodes.
 
     Args:
         scope: TODO
@@ -40,11 +41,6 @@ class MultivariateGaussianLayer(Module):
 
         super(MultivariateGaussianLayer, self).__init__(children=[], **kwargs)
 
-        self.n_variate = len(scope[0].query)
-
-        if not all([len(s.query) == self.n_variate for s in scope]):
-            raise ValueError("Scope for 'MultivariateGaussianLayer' must all have same number of dimensions.")
-
         if(mean is None):
             mean = np.zeros((1,len(scope[0].query)))
         if(cov is None):
@@ -65,12 +61,12 @@ class MultivariateGaussianLayer(Module):
         return self._n_out
  
     @property
-    def mean(self) -> np.ndarray:
-        return np.vstack([node.mean for node in self.nodes])
-    
+    def mean(self) -> List[np.ndarray]:
+        return [node.mean for node in self.nodes]
+
     @property
-    def cov(self) -> np.ndarray:
-        return np.stack([node.cov for node in self.nodes])
+    def cov(self) -> List[np.ndarray]:
+        return [node.cov for node in self.nodes]
 
     def set_params(self, mean: Optional[Union[List[float], List[List[float]], np.ndarray]]=None, cov: Optional[Union[List[List[float]], List[List[List[float]]], np.ndarray]]=None) -> None:
 
@@ -101,6 +97,20 @@ class MultivariateGaussianLayer(Module):
 
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
         return self.mean, self.cov
+    
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Literal[FeatureType]], Scope]]) -> bool:  # type: ignore
+        # layer has at least one output
+        if len(signatures) < 1:
+            return False
+
+        # all output signatures should be accepted by Bernoulli leaf nodes
+        if not all([MultivariateGaussian.accepts([node_signature]) for node_signature in signatures]):
+            return False
+
+        return True
+    
+    # TODO: check support
 
 
 @dispatch(memoize=True)
