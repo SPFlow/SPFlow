@@ -8,7 +8,6 @@ from spflow.torch.inference.nodes.leaves.parametric.multivariate_gaussian import
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.torch.inference.nodes.leaves.parametric.gaussian import log_likelihood
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
 
 import torch
 import numpy as np

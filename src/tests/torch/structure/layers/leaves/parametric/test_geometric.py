@@ -58,6 +58,7 @@ class TestNode(unittest.TestCase):
 
         # wrong number of values
         self.assertRaises(ValueError, GeometricLayer, Scope([0]), np.array(p_values[:-1]), n_nodes=3)
+        # wrong number of dimensions (nested list)
         self.assertRaises(ValueError, GeometricLayer, Scope([0]), np.array([p_values for _ in range(3)]), n_nodes=3)
 
         # ---- different scopes -----

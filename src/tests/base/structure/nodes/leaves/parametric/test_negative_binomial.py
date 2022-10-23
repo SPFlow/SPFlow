@@ -11,7 +11,7 @@ import unittest
 class TestNegativeBinomial(unittest.TestCase):
     def test_initialization(self):
 
-        # Valid parameters for Negative Binomial distribution: p in (0,1], n > 0
+        # Valid parameters for Negative Binomial distribution: p in (0,1], n in N U {0}
 
         # p = 1
         negative_binomial = NegativeBinomial(Scope([0]), 1, 1.0)

@@ -1,4 +1,3 @@
-#from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.negative_binomial import NegativeBinomial as BaseNegativeBinomial
 from spflow.base.inference.nodes.leaves.parametric.negative_binomial import log_likelihood
@@ -6,7 +5,6 @@ from spflow.torch.structure.nodes.leaves.parametric.negative_binomial import Neg
 from spflow.torch.structure.nodes.node import marginalize
 from spflow.torch.inference.nodes.leaves.parametric.negative_binomial import log_likelihood
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
 
 import torch
 import numpy as np

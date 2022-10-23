@@ -38,7 +38,7 @@ def log_likelihood(leaf: NegativeBinomial, data: torch.Tensor, dispatch_ctx: Opt
     # TODO: suppress checks
     if not all(valid_ids):
         raise ValueError(
-            f"Encountered data instances that are not in the support of the TorchNegativeBinomial distribution."
+            f"Encountered data instances that are not in the support of the NegativeBinomial distribution."
         )
 
     # compute probabilities for values inside distribution support

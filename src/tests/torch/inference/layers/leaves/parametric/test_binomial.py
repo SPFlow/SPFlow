@@ -41,7 +41,7 @@ class TestNode(unittest.TestCase):
     def test_gradient_computation(self):
 
         n = [4, 6]
-        p = random.random()
+        p = [random.random(), random.random()]
 
         torch_binomial = BinomialLayer(scope=[Scope([0]), Scope([1])], n=n, p=p)
 

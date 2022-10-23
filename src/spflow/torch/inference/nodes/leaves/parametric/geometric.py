@@ -38,7 +38,7 @@ def log_likelihood(leaf: Geometric, data: torch.Tensor, dispatch_ctx: Optional[D
     # TODO: suppress checks
     if not all(valid_ids):
         raise ValueError(
-            f"Encountered data instances that are not in the support of the TorchGeometric distribution."
+            f"Encountered data instances that are not in the support of the Geometric distribution."
         )
 
     # compute probabilities for values inside distribution support

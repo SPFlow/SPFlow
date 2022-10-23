@@ -1,4 +1,3 @@
-#from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial as BaseBinomial
 from spflow.base.inference.nodes.leaves.parametric.binomial import log_likelihood
@@ -6,7 +5,6 @@ from spflow.torch.structure.nodes.leaves.parametric.binomial import Binomial, to
 from spflow.torch.structure.nodes.node import marginalize
 from spflow.torch.inference.nodes.leaves.parametric.binomial import log_likelihood
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
 
 import torch
 import numpy as np
