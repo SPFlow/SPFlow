@@ -27,7 +27,7 @@ def sample(layer: CondLogNormalLayer, data: np.ndarray, dispatch_ctx: Optional[D
     mean_values, std_values = layer.retrieve_params(data, dispatch_ctx)
 
     for node, mean, std in zip(layer.nodes, mean_values, std_values):
-        dispatch_ctx.args[node] = {'mean': mean, 'std': std}
+        dispatch_ctx.update_args(node, {'mean': mean, 'std': std})
 
     # sample
     for output_ids in np.unique(sampling_ctx.output_ids, axis=0):

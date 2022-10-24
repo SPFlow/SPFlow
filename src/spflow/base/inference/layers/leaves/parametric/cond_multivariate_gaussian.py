@@ -20,7 +20,7 @@ def log_likelihood(layer: CondMultivariateGaussianLayer, data: np.ndarray, dispa
     mean_values, cov_values = layer.retrieve_params(data, dispatch_ctx)
 
     for node, mean, cov in zip(layer.nodes, mean_values, cov_values):
-        dispatch_ctx.args[node] = {'mean': mean, 'cov': cov}
+        dispatch_ctx.update_args(node, {'mean': mean, 'cov': cov})
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
     return np.concatenate([log_likelihood(node, data, dispatch_ctx=dispatch_ctx) for node in layer.nodes], axis=1)

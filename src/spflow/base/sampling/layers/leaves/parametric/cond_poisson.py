@@ -27,7 +27,7 @@ def sample(layer: CondPoissonLayer, data: np.ndarray, dispatch_ctx: Optional[Dis
     l_values = layer.retrieve_params(data, dispatch_ctx)
 
     for node, l in zip(layer.nodes, l_values):
-        dispatch_ctx.args[node] = {'l': l}
+        dispatch_ctx.update_args(node, {'l': l})
 
     # sample
     for output_ids in np.unique(sampling_ctx.output_ids, axis=0):
