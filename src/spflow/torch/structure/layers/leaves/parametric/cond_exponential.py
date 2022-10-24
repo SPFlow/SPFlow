@@ -185,9 +185,11 @@ def marginalize(layer: CondExponentialLayer, marg_rvs: Iterable[int], prune: boo
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseCondExponentialLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondExponentialLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondExponentialLayer(scope=layer.scopes_out)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: CondExponentialLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondExponentialLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondExponentialLayer(scope=torch_layer.scopes_out)

@@ -10,7 +10,7 @@ from torch.nn.parameter import Parameter
 from typing import List, Tuple, Optional, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.cond_log_normal import CondLogNormal as BaseCondLogNormal
 
@@ -135,9 +135,11 @@ class CondLogNormal(LeafNode):
 
 @dispatch(memoize=True)
 def toTorch(node: BaseCondLogNormal, dispatch_ctx: Optional[DispatchContext]=None) -> CondLogNormal:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondLogNormal(node.scope, *node.get_params())
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: CondLogNormal, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondLogNormal:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondLogNormal(torch_node.scope, *torch_node.get_params())

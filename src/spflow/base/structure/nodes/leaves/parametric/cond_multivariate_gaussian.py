@@ -214,4 +214,5 @@ class CondMultivariateGaussian(LeafNode):
 
 @dispatch(memoize=True)
 def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussian,CondGaussian,None]:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return node.marginalize(marg_rvs)

@@ -212,9 +212,11 @@ def marginalize(layer: CondGammaLayer, marg_rvs: Iterable[int], prune: bool=True
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseCondGammaLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondGammaLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondGammaLayer(scope=layer.scopes_out)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: CondGammaLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondGammaLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondGammaLayer(scope=torch_layer.scopes_out)

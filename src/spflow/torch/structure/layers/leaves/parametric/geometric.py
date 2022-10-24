@@ -163,9 +163,11 @@ def marginalize(layer: GeometricLayer, marg_rvs: Iterable[int], prune: bool=True
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseGeometricLayer, dispatch_ctx: Optional[DispatchContext]=None) -> GeometricLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return GeometricLayer(scope=layer.scopes_out, p=layer.p)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: GeometricLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseGeometricLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseGeometricLayer(scope=torch_layer.scopes_out, p=torch_layer.p.detach().numpy())

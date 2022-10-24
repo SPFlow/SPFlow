@@ -8,7 +8,7 @@ import torch
 from typing import List, Tuple, Optional
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric as BaseHypergeometric
 
@@ -181,9 +181,11 @@ class Hypergeometric(LeafNode):
 
 @dispatch(memoize=True)
 def toTorch(node: BaseHypergeometric, dispatch_ctx: Optional[DispatchContext]=None) -> Hypergeometric:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return Hypergeometric(node.scope, *node.get_params())
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: Hypergeometric, dispatch_ctx: Optional[DispatchContext]=None) -> BaseHypergeometric:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseHypergeometric(torch_node.scope, *torch_node.get_params())

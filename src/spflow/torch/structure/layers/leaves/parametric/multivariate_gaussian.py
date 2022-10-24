@@ -190,9 +190,11 @@ def marginalize(layer: MultivariateGaussianLayer, marg_rvs: Iterable[int], prune
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseMultivariateGaussianLayer, dispatch_ctx: Optional[DispatchContext]=None) -> MultivariateGaussianLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return MultivariateGaussianLayer(scope=layer.scopes_out, mean=layer.mean, cov=layer.cov)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: MultivariateGaussianLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseMultivariateGaussianLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseMultivariateGaussianLayer(scope=torch_layer.scopes_out, mean=[m.detach().numpy() for m in torch_layer.mean], cov=[c.detach().numpy() for c in torch_layer.cov])

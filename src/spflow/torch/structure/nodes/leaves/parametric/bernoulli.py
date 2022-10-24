@@ -11,7 +11,7 @@ from typing import List, Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli as BaseBernoulli
 
@@ -109,9 +109,11 @@ class Bernoulli(LeafNode):
 
 @dispatch(memoize=True)
 def toTorch(node: BaseBernoulli, dispatch_ctx: Optional[DispatchContext]=None) -> Bernoulli:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return Bernoulli(node.scope, *node.get_params())
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: Bernoulli, dispatch_ctx: Optional[DispatchContext]=None) -> BaseBernoulli:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseBernoulli(torch_node.scope, *torch_node.get_params())

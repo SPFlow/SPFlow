@@ -185,9 +185,11 @@ def marginalize(layer: CondPoissonLayer, marg_rvs: Iterable[int], prune: bool=Tr
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseCondPoissonLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondPoissonLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondPoissonLayer(scope=layer.scopes_out)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: CondPoissonLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondPoissonLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondPoissonLayer(scope=torch_layer.scopes_out)

@@ -10,7 +10,7 @@ from torch.nn.parameter import Parameter
 from typing import List, Tuple, Union, Optional, Iterable, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.utils.nearest_sym_pd import nearest_sym_pd
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import CondGaussian
@@ -249,14 +249,17 @@ class CondMultivariateGaussian(LeafNode):
 
 @dispatch(memoize=True)
 def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussian,CondGaussian,None]:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return node.marginalize(marg_rvs)
 
 
 @dispatch(memoize=True)
 def toTorch(node: BaseCondMultivariateGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> CondMultivariateGaussian:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondMultivariateGaussian(node.scope)
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: CondMultivariateGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondMultivariateGaussian:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondMultivariateGaussian(torch_node.scope)

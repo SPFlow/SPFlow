@@ -184,9 +184,11 @@ def marginalize(layer: GammaLayer, marg_rvs: Iterable[int], prune: bool=True, di
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseGammaLayer, dispatch_ctx: Optional[DispatchContext]=None) -> GammaLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return GammaLayer(scope=layer.scopes_out, alpha=layer.alpha, beta=layer.beta)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: GammaLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseGammaLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseGammaLayer(scope=torch_layer.scopes_out, alpha=torch_layer.alpha.detach().numpy(), beta=torch_layer.beta.detach().numpy())

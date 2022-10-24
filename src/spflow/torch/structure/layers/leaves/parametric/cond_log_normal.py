@@ -212,9 +212,11 @@ def marginalize(layer: CondLogNormalLayer, marg_rvs: Iterable[int], prune: bool=
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseCondLogNormalLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondLogNormalLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondLogNormalLayer(scope=layer.scopes_out)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: CondLogNormalLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondLogNormalLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondLogNormalLayer(scope=torch_layer.scopes_out)

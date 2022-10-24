@@ -10,7 +10,7 @@ from torch.nn.parameter import Parameter
 from typing import List, Tuple, Optional, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.cond_negative_binomial import CondNegativeBinomial as BaseCondNegativeBinomial
 
@@ -151,9 +151,11 @@ class CondNegativeBinomial(LeafNode):
 
 @dispatch(memoize=True)
 def toTorch(node: BaseCondNegativeBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> CondNegativeBinomial:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondNegativeBinomial(node.scope, *node.get_params())
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: CondNegativeBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondNegativeBinomial:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondNegativeBinomial(torch_node.scope, *torch_node.get_params())

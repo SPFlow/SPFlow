@@ -10,7 +10,7 @@ from torch.nn.parameter import Parameter
 from typing import List, Tuple, Optional, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.cond_gamma import CondGamma as BaseCondGamma
 
@@ -139,9 +139,11 @@ class CondGamma(LeafNode):
 
 @dispatch(memoize=True)
 def toTorch(node: BaseCondGamma, dispatch_ctx: Optional[DispatchContext]=None) -> CondGamma:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondGamma(node.scope)
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: CondGamma, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondGamma:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondGamma(torch_node.scope)

@@ -203,9 +203,11 @@ def marginalize(layer: UniformLayer, marg_rvs: Iterable[int], prune: bool=True, 
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseUniformLayer, dispatch_ctx: Optional[DispatchContext]=None) -> UniformLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return UniformLayer(scope=layer.scopes_out, start=layer.start, end=layer.end, support_outside=layer.support_outside)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: UniformLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseUniformLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseUniformLayer(scope=torch_layer.scopes_out, start=torch_layer.start.numpy(), end=torch_layer.end.numpy(), support_outside=torch_layer.support_outside.numpy())

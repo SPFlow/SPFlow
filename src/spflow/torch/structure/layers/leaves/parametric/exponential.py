@@ -162,9 +162,11 @@ def marginalize(layer: ExponentialLayer, marg_rvs: Iterable[int], prune: bool=Tr
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseExponentialLayer, dispatch_ctx: Optional[DispatchContext]=None) -> ExponentialLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ExponentialLayer(scope=layer.scopes_out, l=layer.l)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: ExponentialLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseExponentialLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseExponentialLayer(scope=torch_layer.scopes_out, l=torch_layer.l.detach().numpy())
