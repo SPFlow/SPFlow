@@ -6,7 +6,7 @@ Created on October 18, 2022
 from typing import Tuple, List, Union, Optional, Iterable, Union, Callable
 import numpy as np
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import CondGaussian
