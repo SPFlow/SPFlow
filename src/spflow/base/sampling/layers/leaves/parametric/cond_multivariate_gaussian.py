@@ -27,7 +27,7 @@ def sample(layer: CondMultivariateGaussianLayer, data: np.ndarray, dispatch_ctx:
     mean_values, cov_values = layer.retrieve_params(data, dispatch_ctx)
 
     for node, mean, cov in zip(layer.nodes, mean_values, cov_values):
-        dispatch_ctx.args[node] = {'mean': mean, 'cov': cov}
+        dispatch_ctx.update_args(node, {'mean': mean, 'cov': cov})
 
     # sample
     for output_ids in np.unique(sampling_ctx.output_ids, axis=0):

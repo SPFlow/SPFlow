@@ -20,7 +20,7 @@ def log_likelihood(layer: CondExponentialLayer, data: np.ndarray, dispatch_ctx: 
     l_values = layer.retrieve_params(data, dispatch_ctx)
 
     for node, l in zip(layer.nodes, l_values):
-        dispatch_ctx.args[node] = {'l': l}
+        dispatch_ctx.update_args(node, {'l': l})
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
     return np.concatenate([log_likelihood(node, data, dispatch_ctx=dispatch_ctx) for node in layer.nodes], axis=1)

@@ -27,7 +27,7 @@ def sample(layer: CondBernoulliLayer, data: np.ndarray, dispatch_ctx: Optional[D
     p_values = layer.retrieve_params(data, dispatch_ctx)
 
     for node, p in zip(layer.nodes, p_values):
-        dispatch_ctx.args[node] = {'p': p}
+        dispatch_ctx.update_args(node, {'p': p})
 
     # sample
     for output_ids in np.unique(sampling_ctx.output_ids, axis=0):

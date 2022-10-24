@@ -20,7 +20,7 @@ def log_likelihood(layer: CondLogNormalLayer, data: np.ndarray, dispatch_ctx: Op
     mean_values, std_values = layer.retrieve_params(data, dispatch_ctx)
 
     for node, mean, std in zip(layer.nodes, mean_values, std_values):
-        dispatch_ctx.args[node] = {'mean': mean, 'std': std}
+        dispatch_ctx.update_args(node, {'mean': mean, 'std': std})
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
     return np.concatenate([log_likelihood(node, data, dispatch_ctx=dispatch_ctx) for node in layer.nodes], axis=1)

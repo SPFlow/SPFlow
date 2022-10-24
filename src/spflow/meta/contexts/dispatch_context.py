@@ -4,7 +4,7 @@ Created on August 02, 2022
 @authors: Philipp Deibert
 """
 from spflow.meta.structure.module import MetaModule
-from typing import Any, Union
+from typing import Any, Union, Dict, Any
 
 
 class DispatchContext():
@@ -44,6 +44,15 @@ class DispatchContext():
         
         # return cached value
         return self.cache[f_name][key]
+    
+    def update_args(self, module: MetaModule, kwargs: Dict[str, Any]) -> None:
+
+        # create empty dictionary if no argument dictionary exists
+        if module not in self.args:
+            self.args[module] = {}
+        
+        # update argument dictionary
+        self.args[module].update(kwargs)
 
 
 def default_dispatch_context() -> DispatchContext:

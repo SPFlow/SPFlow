@@ -27,7 +27,7 @@ def sample(layer: CondGammaLayer, data: np.ndarray, dispatch_ctx: Optional[Dispa
     alpha_values, beta_values = layer.retrieve_params(data, dispatch_ctx)
 
     for node, alpha, beta in zip(layer.nodes, alpha_values, beta_values):
-        dispatch_ctx.args[node] = {'alpha': alpha, 'beta': beta}
+        dispatch_ctx.update_args(node, {'alpha': alpha, 'beta': beta})
 
     # sample
     for output_ids in np.unique(sampling_ctx.output_ids, axis=0):
