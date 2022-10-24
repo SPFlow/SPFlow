@@ -272,9 +272,11 @@ def marginalize(layer: HypergeometricLayer, marg_rvs: Iterable[int], prune: bool
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseHypergeometricLayer, dispatch_ctx: Optional[DispatchContext]=None) -> HypergeometricLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return HypergeometricLayer(scope=layer.scopes_out, N=layer.N, M=layer.M, n=layer.n)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: HypergeometricLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseHypergeometricLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseHypergeometricLayer(scope=torch_layer.scopes_out, N=torch_layer.N.numpy(), M=torch_layer.M.numpy(), n=torch_layer.n.numpy())

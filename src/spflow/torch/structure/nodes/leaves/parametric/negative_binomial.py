@@ -11,7 +11,7 @@ from typing import List, Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.negative_binomial import NegativeBinomial as BaseNegativeBinomial
 
@@ -124,9 +124,11 @@ class NegativeBinomial(LeafNode):
 
 @dispatch(memoize=True)
 def toTorch(node: BaseNegativeBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> NegativeBinomial:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return NegativeBinomial(node.scope, *node.get_params())
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: NegativeBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseNegativeBinomial:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseNegativeBinomial(torch_node.scope, *torch_node.get_params())

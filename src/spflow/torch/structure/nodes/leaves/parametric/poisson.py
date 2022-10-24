@@ -11,7 +11,7 @@ from typing import List, Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.poisson import Poisson as BasePoisson
 
@@ -112,9 +112,11 @@ class Poisson(LeafNode):
 
 @dispatch(memoize=True)
 def toTorch(node: BasePoisson, dispatch_ctx: Optional[DispatchContext]=None) -> Poisson:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return Poisson(node.scope, *node.get_params())
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: Poisson, dispatch_ctx: Optional[DispatchContext]=None) -> BasePoisson:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BasePoisson(torch_node.scope, *torch_node.get_params())

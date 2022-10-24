@@ -220,9 +220,11 @@ def marginalize(layer: CondMultivariateGaussianLayer, marg_rvs: Iterable[int], p
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseCondMultivariateGaussianLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondMultivariateGaussianLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondMultivariateGaussianLayer(scope=layer.scopes_out)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: CondMultivariateGaussianLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondMultivariateGaussianLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondMultivariateGaussianLayer(scope=torch_layer.scopes_out)

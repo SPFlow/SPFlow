@@ -162,9 +162,11 @@ def marginalize(layer: PoissonLayer, marg_rvs: Iterable[int], prune: bool=True, 
 
 @dispatch(memoize=True)
 def toTorch(layer: BasePoissonLayer, dispatch_ctx: Optional[DispatchContext]=None) -> PoissonLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return PoissonLayer(scope=layer.scopes_out, l=layer.l)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: PoissonLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BasePoissonLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BasePoissonLayer(scope=torch_layer.scopes_out, l=torch_layer.l.detach().numpy())

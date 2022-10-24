@@ -11,7 +11,7 @@ from typing import List, Tuple, Optional, Callable
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.cond_binomial import CondBinomial as BaseCondBinomial
 
@@ -152,9 +152,11 @@ class CondBinomial(LeafNode):
 
 @dispatch(memoize=True)
 def toTorch(node: BaseCondBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> CondBinomial:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondBinomial(node.scope, *node.get_params())
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: CondBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondBinomial:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondBinomial(torch_node.scope, *torch_node.get_params())

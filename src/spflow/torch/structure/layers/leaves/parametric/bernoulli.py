@@ -168,9 +168,11 @@ def marginalize(layer: BernoulliLayer, marg_rvs: Iterable[int], prune: bool=True
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseBernoulliLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BernoulliLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BernoulliLayer(scope=layer.scopes_out, p=layer.p)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: BernoulliLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseBernoulliLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseBernoulliLayer(scope=torch_layer.scopes_out, p=torch_layer.p.detach().numpy())

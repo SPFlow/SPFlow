@@ -179,9 +179,11 @@ def marginalize(layer: LogNormalLayer, marg_rvs: Iterable[int], prune: bool=True
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseLogNormalLayer, dispatch_ctx: Optional[DispatchContext]=None) -> LogNormalLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return LogNormalLayer(scope=layer.scopes_out, mean=layer.mean, std=layer.std)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: LogNormalLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseLogNormalLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseLogNormalLayer(scope=torch_layer.scopes_out, mean=torch_layer.mean.detach().numpy(), std=torch_layer.std.detach().numpy())

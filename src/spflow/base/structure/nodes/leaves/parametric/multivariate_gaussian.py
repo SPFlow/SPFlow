@@ -6,7 +6,7 @@ Created on November 6, 2021
 from typing import Tuple, List, Union, Optional, Iterable
 import numpy as np
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
@@ -201,4 +201,5 @@ class MultivariateGaussian(LeafNode):
 
 @dispatch(memoize=True)
 def marginalize(node: MultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[MultivariateGaussian,Gaussian,None]:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return node.marginalize(marg_rvs)

@@ -10,7 +10,7 @@ from torch.nn.parameter import Parameter
 from typing import List, Tuple, Optional, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.cond_poisson import CondPoisson as BaseCondPoisson
 
@@ -130,9 +130,11 @@ class CondPoisson(LeafNode):
 
 @dispatch(memoize=True)
 def toTorch(node: BaseCondPoisson, dispatch_ctx: Optional[DispatchContext]=None) -> CondPoisson:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondPoisson(node.scope)
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: CondPoisson, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondPoisson:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondPoisson(torch_node.scope)

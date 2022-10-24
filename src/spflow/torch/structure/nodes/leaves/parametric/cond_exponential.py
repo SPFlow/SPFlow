@@ -11,7 +11,7 @@ from typing import List, Tuple, Optional, Callable
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.cond_exponential import CondExponential as BaseCondExponential
 
@@ -128,9 +128,11 @@ class CondExponential(LeafNode):
 
 @dispatch(memoize=True)
 def toTorch(node: BaseCondExponential, dispatch_ctx: Optional[DispatchContext]=None) -> CondExponential:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondExponential(node.scope)
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: CondExponential, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondExponential:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondExponential(torch_node.scope)

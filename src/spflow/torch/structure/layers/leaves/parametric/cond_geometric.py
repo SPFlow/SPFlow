@@ -188,9 +188,11 @@ def marginalize(layer: CondGeometricLayer, marg_rvs: Iterable[int], prune: bool=
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseCondGeometricLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondGeometricLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondGeometricLayer(scope=layer.scopes_out)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: CondGeometricLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondGeometricLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondGeometricLayer(scope=torch_layer.scopes_out)

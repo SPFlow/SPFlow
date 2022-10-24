@@ -225,9 +225,11 @@ def marginalize(layer: CondNegativeBinomialLayer, marg_rvs: Iterable[int], prune
 
 @dispatch(memoize=True)
 def toTorch(layer: BaseCondNegativeBinomialLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondNegativeBinomialLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondNegativeBinomialLayer(scope=layer.scopes_out, n=layer.n)
 
 
 @dispatch(memoize=True)
 def toBase(torch_layer: CondNegativeBinomialLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondNegativeBinomialLayer:
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondNegativeBinomialLayer(scope=torch_layer.scopes_out, n=torch_layer.n.numpy())
