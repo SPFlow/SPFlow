@@ -26,6 +26,7 @@ class SPNSumLayer(Module):
     Args:
         n: number of output nodes.
         children: list of child modules.
+        weights: TODO
     """
     def __init__(self, n_nodes: int, children: List[Module], weights: Optional[Union[np.ndarray, torch.Tensor, List[List[float]], List[float]]]=None, **kwargs) -> None:
         """TODO"""
