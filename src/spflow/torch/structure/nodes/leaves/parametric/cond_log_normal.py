@@ -136,10 +136,10 @@ class CondLogNormal(LeafNode):
 @dispatch(memoize=True)
 def toTorch(node: BaseCondLogNormal, dispatch_ctx: Optional[DispatchContext]=None) -> CondLogNormal:
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return CondLogNormal(node.scope, *node.get_params())
+    return CondLogNormal(node.scope)
 
 
 @dispatch(memoize=True)
 def toBase(torch_node: CondLogNormal, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondLogNormal:
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseCondLogNormal(torch_node.scope, *torch_node.get_params())
+    return BaseCondLogNormal(torch_node.scope)

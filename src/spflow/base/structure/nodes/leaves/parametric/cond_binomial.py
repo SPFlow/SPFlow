@@ -1,7 +1,5 @@
-"""
-Created on October 18, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Binomial leaf node for SPFlow in the 'base' backend.
 """
 from typing import Tuple, Optional, Callable, Union
 import numpy as np
@@ -9,12 +7,14 @@ from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.node import LeafNode
 
-from scipy.stats import binom
-from scipy.stats.distributions import rv_frozen
+from scipy.stats import binom  # type: ignore
+from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondBinomial(LeafNode):
-    r"""Conditional (univariate) Binomial distribution.
+    r"""Conditional (univariate) Binomial distribution leaf node in the 'base' backend.
+
+    Represents a conditional univariate Binomial distribution, with the following probability mass function (PMF):
 
     .. math::
 
@@ -26,20 +26,31 @@ class CondBinomial(LeafNode):
         - :math:`k` is the number of successes
         - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
 
-    Args:
-        scope:
-            Scope object specifying the variable scope.
+    Attributes:
         n:
-            Number of i.i.d. Bernoulli trials (greater of equal to 0).
+            Integer representing the number of i.i.d. Bernoulli trials (greater or equal to 0).
         cond_f:
-            Callable that provides the conditional parameters (p) of this distribution. TODO
+            Optional callable to retrieve the conditional parameter for the leaf node.
+            Its output should be a dictionary containing ``p`` as a key, and the value should be
+            a floating point value representing the success probability in :math:`[0,1]`.
     """
     def __init__(self, scope: Scope, n: int, cond_f: Optional[Callable]=None) -> None:
+        r"""Initializes ``ConditionalBernoulli`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            n:
+                Integer representing the number of i.i.d. Bernoulli trials (greater or equal to 0).
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``p`` as a key, and the value should be
+                a floating point value representing the success probability in :math:`[0,1]`.
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for Binomial should be 1, but was {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'CondBinomial' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for Binomial should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'CondBinomial' should be empty, but was {scope.evidence}.")
 
         super(CondBinomial, self).__init__(scope=scope)
         
@@ -48,27 +59,67 @@ class CondBinomial(LeafNode):
         self.set_cond_f(cond_f)
 
     def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+        r"""Sets the function to retrieve the node's conditonal parameter.
+
+        Args:
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``p`` as a key, and the value should be
+                a floating point value representing the success probability in :math:`[0,1]`.
+        """
         self.cond_f = cond_f
 
     def dist(self, p: float) -> rv_frozen:
+        r"""Returns the SciPy distribution represented by the leaf node.
+
+        Args:
+            p:
+                Floating point value representing the success probability of each trial between zero and one.
+
+        Returns:
+            ``scipy.stats.distributions.rv_frozen`` distribution.
+        """
         return binom(n=self.n, p=p)
 
     def set_params(self, n: int) -> None:
+        """Sets the parameters for the represented distribution.
 
+        Args:
+            n:
+                Integer representing the number of i.i.d. Bernoulli trials (greater or equal to 0).
+        """
         if n < 0 or not np.isfinite(n):
             raise ValueError(
-                f"Value of n for Binomial distribution must to greater of equal to 0, but was: {n}"
+                f"Value of 'n' for 'Binomial' must to greater of equal to 0, but was: {n}"
             )
 
         if not (np.remainder(n, 1.0) == 0.0):
             raise ValueError(
-                f"Value of n for Binomial distribution must be (equal to) an integer value, but was: {n}"
+                f"Value of 'n' for 'Binomial' must be (equal to) an integer value, but was: {n}"
             )
 
         self.n = n
 
     def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[Union[np.ndarray, float]]:
+        r"""Retrieves the conditional parameter of the leaf node.
+    
+        First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameter.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
+
+        Args:
+            data:
+                Two-dimensional NumPy array containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            One-dimensional NumPy array of non-zero weights
         
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         p, cond_f = None, None
 
         # check dispatch cache for required conditional parameter 'p'
@@ -96,16 +147,23 @@ class CondBinomial(LeafNode):
         # check if value for 'p' is valid
         if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
-                f"Value of p for conditional Binomial distribution must to be between 0.0 and 1.0, but was: {p}"
+                f"Value of 'p' for 'CondBinomial' distribution must to be between 0.0 and 1.0, but was: {p}"
             )
         
         return p
 
     def get_params(self) -> Tuple[int]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Integer number representing the number of i.i.d. Bernoulli trials and the floating point value representing the success probability.
+        """
         return (self.n,)
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
-        r"""Checks if instances are part of the support of the Binomial distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Binomial distribution, which is:
 
         .. math::
 
@@ -115,11 +173,11 @@ class CondBinomial(LeafNode):
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional NumPy array containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
