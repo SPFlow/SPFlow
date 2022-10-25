@@ -1,14 +1,32 @@
-"""
-Created on September 26, 2022
+# -*- coding: utf-8 -*-
+"""Algorithm to find connected components in an undirected graph.
 
-@authors: Philipp Deibert
+Typical usage example:
+
+    cc_list = connected_components(adjacency_matrix)
 """
 import torch
+from typing import List, Set
 
 
-def connected_components(adjacency_matrix: torch.Tensor) -> torch.Tensor:
-    """TODO."""
-    
+def connected_components(adjacency_matrix: torch.Tensor) -> List[Set[int]]:
+    """Computes all connected components in an undirected graph.
+
+    Computes all connected components in an undirected graph.
+    Returns a list of all connected componentsin an undirected graph,specified using an adjaceny matrix.
+
+    Args:
+        adjacency_matrix:
+            Two-dimensional PyTorch tensor representing the symmetric adjacency matrix of an undirected graph.
+            Any non-zero entry will be treated as an edge.
+
+    Returns:
+        A list containing sets of integers representing the node ids of the connected components.
+
+    Raises:
+        ValueError: Specified adjacency matrix is not symmetric.
+    """
+
     if not torch.all(adjacency_matrix == adjacency_matrix.T):
         raise ValueError("Connected components expects input to be an undirected graph, but specified adjacency matrix was not symmetrical.")
 

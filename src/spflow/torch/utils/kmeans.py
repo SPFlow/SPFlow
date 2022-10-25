@@ -1,15 +1,42 @@
-"""
-Created on Octomber 1, 2022
+# -*- coding: utf-8 -*-
+"""Algorithm to compute k-Means clusters from data.
 
-@authors: Philipp Deibert
+Typical usage example:
+
+    labels = kmeans(data, n_clusters)
 """
 from typing import Union, Tuple
 import torch
 
 
 def kmeans(data: torch.Tensor, n_clusters: int, centroids: Union[str, torch.Tensor]='kmeans++', max_iter: int=300, tol: float=1e-4) -> Tuple[torch.Tensor, torch.Tensor]:
-    """TODO."""
-    
+    """Computes k-Means clustering on input data.
+
+    Performs k-Means clustering on input data and returns the resulting cluster labels for all input samples as well as the cluster centroids.
+    Implementation follows the efficient algorithm described in (Hamerly, 2010): "Making k-means even faster".
+
+    Args:
+        data:
+            Two-dimensional PyTorch tensor containing the data to be clustered. Each row is regarded as a (possibly multivariate) sample.
+        n_clusters:
+            Integer specifying the desired number of clusters to be used. Must be at least 1.
+        centroids:
+            String or PyTorch tensor specifying which initial centroids should be used.
+            In case of 'kmeans++', the first centroid is chosen randomly from data and each successive centroid is selected to be furthest away from any existing centroid.
+            In case of 'random', centroids are randomly chosen from data samples.
+            If a PyTorch tensor is specified, it is expected to be a two-dimensional where each row is a different centroid. Number of centroids must match number of specified clusters.
+            Defaults to 'kmeans++'.
+        max_iter:
+            Maximum number of iterations. Defaults to 300.
+        tol:
+            Tolerance to check for convergence of algorithm. Defaults to 10^(-4).
+
+    Returns:
+        Tuple of PyTorch tensors. The first tensor represents the cluster labels for the input samples. The second tensor contains the final cluster centroids.
+
+    Raises:
+        ValueError: Invalid argument values.
+    """
     if n_clusters < 1:
         raise ValueError(f"k-Means clustering requires at least one target cluster, but {n_clusters} were specified.")
 
