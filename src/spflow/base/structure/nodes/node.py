@@ -30,7 +30,7 @@ class Node(Module, ABC):
             List of scopes representing the output scopes.
     """
     def __init__(self, children: Optional[List[Module]]=None, **kwargs) -> None:
-        """Initializes 'Node' object.
+        r"""Initializes ``Node`` object.
 
         Initializes node by correctly setting its children.
 
@@ -45,7 +45,7 @@ class Node(Module, ABC):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of output for this node. Returns one since nodes represent single outputs."""
+        """Returns the number of outputs for this node. Returns one since nodes represent single outputs."""
         return 1
     
     @property
@@ -114,7 +114,7 @@ class SPNSumNode(Node):
             List of scopes representing the output scopes.
     """
     def __init__(self, children: List[Module], weights: Optional[Union[np.ndarray, List[float]]]=None) -> None:
-        """Initializes 'SPNSumNode' object.
+        r"""Initializes ``SPNSumNode`` object.
 
         Args:
             children:
@@ -186,7 +186,7 @@ class SPNSumNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumNode,None]:
-    """Structural marginalization for 'SPNSumNode' objects.
+    r"""Structural marginalization for ``SPNSumNode`` objects.
 
     Structurally marginalizes the specified sum node.
     If the sum node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -236,7 +236,7 @@ def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True,
 
 
 class SPNProductNode(Node):
-    """SPN-like product node in the 'base' backend.
+    r"""SPN-like product node in the 'base' backend.
 
     Represents a product of its children over pair-wise disjoint scopes.
 
@@ -249,7 +249,7 @@ class SPNProductNode(Node):
             List of scopes representing the output scopes.
     """
     def __init__(self, children: List[Module]) -> None:
-        """Initializes 'SPNProductNode' object.
+        r"""Initializes ``SPNProductNode`` object.
 
         Args:
             children:
@@ -277,7 +277,7 @@ class SPNProductNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNProductNode,Node,None]:
-    """Structural marginalization for 'SPNProductNode' objects.
+    r"""Structural marginalization for ``SPNProductNode`` objects.
 
     Structurally marginalizes the specified product node.
     If the product node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -344,7 +344,7 @@ class LeafNode(Node, ABC):
             List of scopes representing the output scopes.
     """
     def __init__(self, scope: Scope, **kwargs) -> None:
-        """Initializes 'LeafNode' object.
+        r"""Initializes ``LeafNode`` object.
 
         Args:
             scope:

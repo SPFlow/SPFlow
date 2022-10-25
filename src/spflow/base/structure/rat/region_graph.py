@@ -1,10 +1,5 @@
-"""
-Created on May 05, 2021
-
-@authors: Kevin Huy Nguyen, Bennet Wittelsbach, Philipp Deibert
-
-This file provides the structure and construction algorithm for abstract RegionGraphs, which are
-used to build RAT-SPNs.
+# -*- coding: utf-8 -*-
+"""Contains classes and functions to create Region Graphs.
 """
 import random
 import numpy as np
@@ -13,20 +8,62 @@ from spflow.meta.scope.scope import Scope
 
 
 class Region:
-    """TODO"""
-    def __init__(self, scope: Scope, partitions: List["Partition"]=[]):
+    r"""Represents an abstract region as part of a region graph.
 
+    For details see (Peharz et al., 2020): "Random Sum-Product Networks: A Simple and Effective Approach to Probabilistic Deep Learning".
+
+    Attributes:
+       scope:
+            Scope represented by the region.
+        partitions:
+            List of ``Partition`` objects belonging to the region.
+    """
+    def __init__(self, scope: Scope, partitions: List["Partition"]=None) -> None:
+        r"""Initializes 'Region' object.
+
+        Args:
+            scope:
+                Scope represented by the region.
+            partitions:
+                Optional list of ``Partition`` objects belonging to the region.
+                Defaults to None, in which case it is initialized to an empty list.
+
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if len(scope.query) == 0:
             raise ValueError("Query scope for 'Region' is empty.")
+        
+        if partitions is None:
+            partitions = []
 
         self.scope = scope
         self.partitions = partitions
 
 
 class Partition:
-    """TODO"""
-    def __init__(self, scope: Scope, regions: List["Region"]):
+    r"""Represents an abstract partition as part of a region graph.
 
+    For details see (Peharz et al., 2020): "Random Sum-Product Networks: A Simple and Effective Approach to Probabilistic Deep Learning".
+
+    Attributes:
+        scope:
+            Scope represented by the partition.
+        regions:
+            List of ``Region`` objects belonging to the partition.
+    """
+    def __init__(self, scope: Scope, regions: List["Region"]) -> None:
+        r"""Initializes 'Partition' object.
+
+        Args:
+            scope:
+                Scope represented by the partition.
+            regions:
+                List of ``Region`` objects belonging to the partition.
+
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if len(scope.query) == 0:
             raise ValueError("Query scope for 'Partition' is empty.")
 
@@ -38,9 +75,26 @@ class Partition:
 
 
 class RegionGraph():
-    """TODO"""
-    def __init__(self, root_region: Optional[Region]=None):
+    r"""Abstract region graph consisting of abstract regions and partitions.
 
+    For details see (Peharz et al., 2020): "Random Sum-Product Networks: A Simple and Effective Approach to Probabilistic Deep Learning".
+
+    Attributes:
+        scope:
+            Scope represented by the region graph.
+        root_region:
+            ``Region`` object representing the root (i.e., top-most) region of the graph.
+    """
+    def __init__(self, root_region: Optional[Region]=None) -> None:
+        r"""Initializes 'RegionGraph' object.
+
+        Args:
+            root_region:
+                ``Region`` object representing the root (i.e., top-most) region of the graph.
+
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if not isinstance(root_region, Region) and root_region is not None:
             raise ValueError(f"'RegionGraph' expects root region of type 'Region' or 'None', but got object of type {type(root_region)}.")
         
@@ -49,28 +103,27 @@ class RegionGraph():
 
 
 def random_region_graph(
-    scope: Scope, depth: int, replicas: int, n_splits: int = 2
+    scope: Scope, depth: int, replicas: int, n_splits: int=2
 ) -> RegionGraph:
-    """Creates a region graph composed of Regions and Partitions.
+    r"""Creates a random instance of a region graph.
 
-    This algorithm is an implementation of "Algorithm 1" of the original paper.
+    For details see "Algorithm 1" in (Peharz et al., 2020): "Random Sum-Product Networks: A Simple and Effective Approach to Probabilistic Deep Learning".
 
     Args:
         scope:
-            TODO
+            Scope to be represented by the region graph.
         depth:
-            (D in the paper)
-            An integer that controls the depth of the graph structure of the RegionGraph. One level
-            of depth equals to a pair of (Partitions, Regions). The root has depth 0.
+            Integer specifying the depth of the region graph (D in the original paper).
+            The root region has depth 0. Any additional level is represented by a pair of partition and subsequent region(s).
         replicas:
-            (R in the paper)
-            An integer for the number of replicas. Replicas are distinct Partitions of the whole
-            set of random variables X, which are children of the root_region of the RegionGraph.
+            Integer specifying the number of replicas to be created (R in the original paper).
+            Replicas are distinct partitions over the same scope that are combined by the root region.
         n_splits:
-            The number of splits per Region (defaults to 2).
+            Integer specifying the number of scope partitions at each partition.
+            Defaults to 2.
 
     Returns:
-        A RegionGraph with a binary tree structure, consisting of alternating Regions and Partitions.
+        A ``RegionGraph`` instance with tree structure, consisting of a root region and alternating subsequent partitions and regions.
 
     Raises:
         ValueError: If any argument is invalid.
@@ -97,30 +150,34 @@ def random_region_graph(
 def split(
     scope: Scope,
     depth: int,
-    n_splits: int = 2
+    n_splits: int=2
 ) -> Partition:
-    """Splits a scope into (currently balanced) Partitions.
+    r"""Creates a ``Partion`` instance for a specified scopes.
 
-    TODO:
-    Recursively builds up a binary tree structure of the region graph. First, it splits the
-    random variables of the parent_region, Y, into a Partition consisting of two balanced,
-    distinct subsets of Y, and adds it as a child of the parent_region. Then, split() will
-    be called onto each of the two subsets of Y until the maximum depth of the RegionGraph
-    is reached, OR each Region consists of only 1 random variable,
+    Splits a specified scope into a given number of approximately equal sized parts (i.e., regions)
+    and recusively creates subsequent partitions with decreasing value for ``depth`` until
+    the scope cannot be partitioned into ``n_splits`` parts anymore or ``depth`` reaches zero.
 
     Args:
-        partition_scope:
-            TODO
+        scope:
+            Scope to be represented by the region graph.
         depth:
-            The maximum depth of the region graph until which split() will be recursively called.
+            Integer specifying the depth of the partition (D in the original paper).
         n_splits:
-            The number of splits per Region.
+            Integer specifying the number of approximately equal sized scope partitions.
+            Defaults to 2.
+
+    Returns:
+        A ``Partition`` instance with recursively created sub-regions and partitions.
+
+    Raises:
+        ValueError: If any argument is invalid.
     """
     if n_splits < 2:
-        raise ValueError(f"Number of splits must be at least 2, but is {n_splits}.")
+        raise ValueError(f"Number of splits 'n_splits' must be at least 2, but is {n_splits}.")
     
     if depth < 1:
-        raise ValueError(f"Depth for splitting scope is expected to be at least 1, but is {depth}.")
+        raise ValueError(f"Depth for splitting scope 'depth' is expected to be at least 1, but is {depth}.")
 
     shuffled_rvs = scope.query.copy()
     random.shuffle(shuffled_rvs)
