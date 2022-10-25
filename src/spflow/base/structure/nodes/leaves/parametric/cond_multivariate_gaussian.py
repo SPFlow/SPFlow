@@ -240,59 +240,9 @@ class CondMultivariateGaussian(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         return valid
-    
-    def marginalize(self, marg_rvs: Iterable[int]) -> Union["CondMultivariateGaussian",CondGaussian,None]:
-        """Returns a structurally marginalized leaf node.
-
-        TODO: delete and use 'marginalize instead'
-
-        Structurally marginalizes the leaf node.
-        If the node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
-        If the node's scope is fully marginalized over, then None is returned.
-        If the node's scope is partially marginalized over, a marginal uni- or multivariate Gaussian is returned instead.
-
-        Args:
-            node:
-                Node module to marginalize.
-            marg_rvs:
-                Iterable of integers representing the indices of the random variables to marginalize.
-            prune:
-                Boolean indicating whether or not to prune nodes and modules where possible.
-                Has no effect here. Defaults to True.
-            dispatch_ctx:
-                Optional dispatch context.
-        
-        Returns:
-            Unaltered node if module is not marginalized, marginalized uni- or multivariate Gaussian leaf node, or None if it is completely marginalized.
-        """
-        # scope after marginalization (important: must remain order of scope indices since they map to the indices of the mean vector and covariance matrix!)
-        marg_scope = []
-        marg_scope_ids = []
-
-        for rv in self.scope.query:
-            if rv not in marg_rvs:
-                marg_scope.append(rv)
-                marg_scope_ids.append(self.scope.query.index(rv))
-        
-        if any([rv in marg_rvs for rv in self.scope.evidence]):
-            raise ValueError("")
-
-        # return univariate Gaussian if one-dimensional
-        if(len(marg_scope) == 1):
-            # note: Gaussian requires standard deviations instead of variance (take square root)
-            return CondGaussian(Scope(marg_scope))
-        # entire node is marginalized over
-        elif len(marg_scope) == 0:
-            return None
-        # node is partially marginalized over
-        else:
-            # compute marginalized mean vector and covariance matrix
-            marg_scope_ids = [self.scope.query.index(rv) for rv in marg_scope]
-
-            return CondMultivariateGaussian(Scope(marg_scope))
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussian,CondGaussian,None]:
     """Structural marginalization for node objects.
 
@@ -315,5 +265,30 @@ def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: 
     Returns:
             Unaltered node if module is not marginalized, marginalized uni- or multivariate Gaussian leaf node, or None if it is completely marginalized.
     """
+    # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return node.marginalize(marg_rvs)
+
+    scope = node.scope
+
+    # scope after marginalization (important: must remain order of scope indices since they map to the indices of the mean vector and covariance matrix!)
+    marg_scope = []
+    marg_scope_ids = []
+
+    for rv in scope.query:
+        if rv not in marg_rvs:
+            marg_scope.append(rv)
+            marg_scope_ids.append(scope.query.index(rv))
+
+    # return univariate Gaussian if one-dimensional
+    if(len(marg_scope) == 1):
+        # note: Gaussian requires standard deviations instead of variance (take square root)
+        return CondGaussian(Scope(marg_scope))
+    # entire node is marginalized over
+    elif len(marg_scope) == 0:
+        return None
+    # node is partially marginalized over
+    else:
+        # compute marginalized mean vector and covariance matrix
+        marg_scope_ids = [scope.query.index(rv) for rv in marg_scope]
+
+        return CondMultivariateGaussian(Scope(marg_scope))
