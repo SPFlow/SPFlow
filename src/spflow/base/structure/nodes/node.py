@@ -1,9 +1,8 @@
-"""
-Created on May 27, 2021
+# -*- coding: utf-8 -*-
+"""Contains basic node classes for SPFlow in the 'base' backend.
 
-@authors: Philipp Deibert
-
-This file provides the base variants of individual graph nodes.
+Contains the abstract 'Node' and 'LeafNode' classes for SPFlow node modules in the 'base' backend
+as well as classes for SPN-like sum- and product nodes.
 """
 from abc import ABC
 from typing import List, Union, Optional, Iterable
@@ -18,13 +17,27 @@ from spflow.base.structure.module import Module
 
 
 class Node(Module, ABC):
-    """Base version of an abstract node.
+    """Abstract base class for nodes in the 'base' backend.
 
-    Args:
-        children: list of child modules (defaults to empty list).
+    All valid SPFlow node modules in the 'base' backend should inherit from this class or a subclass of it.
+
+    Attributes:
+        children:
+            List of modules that are children to the module in a directed graph.
+        n_out:
+            Integer indicating the number of outputs. One for nodes.
+        scopes_out:
+            List of scopes representing the output scopes.
     """
     def __init__(self, children: Optional[List[Module]]=None, **kwargs) -> None:
-        """TODO"""
+        """Initializes 'Node' object.
+
+        Initializes node by correctly setting its children.
+
+        Args:
+            children:
+                Optional list of modules that are children to the node.
+        """
         if(children is None):
             children = []
 
@@ -32,17 +45,41 @@ class Node(Module, ABC):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module. Returns one since nodes represent a single output."""
+        """Returns the number of output for this node. Returns one since nodes represent single outputs."""
         return 1
     
     @property
     def scopes_out(self) -> List[Scope]:
+        """Returns the output scopes this node represents."""
         return [self.scope]
 
 
-@dispatch(memoize=True)
-def marginalize(node: Node, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None):
-    """TODO"""
+@dispatch(memoize=True)  # type: ignore
+def marginalize(node: Node, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[Node,None]:
+    """Structural marginalization for node objects.
+
+    Structurally marginalizes the specified node module.
+    If the node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
+    If the node's scope is fully marginalized over, then None is returned.
+    This implementation does not handle partial marginalization over the node's scope and instead raises an Error.
+
+    Args:
+        node:
+            Node module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered node if module is not marginalized or None if it is completely marginalized.
+
+    Raises:
+        ValueError: Partial marginalization of node's scope.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -62,14 +99,34 @@ def marginalize(node: Node, marg_rvs: Iterable[int], prune: bool=True, dispatch_
 
 
 class SPNSumNode(Node):
-    """Base version of a sum node.
+    """SPN-like sum node in the 'base' backend.
 
-    Args:
-        children: non-empty list of child modules.
-        weights: optional zero-dimensional float list, or numpy array containing non-negative weights for each child (defaults to 'None' in which case weights are initialized to random weights in (0,1) summing up to one).
+    Represents a convex combination of its children over the same scope.
+
+    Attributes:
+        children:
+            Non-empty list of modules that are children to the node in a directed graph.
+        weights:
+            One-dimensional NumPy array containing non-negative weights for each input, summing up to one.
+        n_out:
+            Integer indicating the number of outputs. One for nodes.
+        scopes_out:
+            List of scopes representing the output scopes.
     """
     def __init__(self, children: List[Module], weights: Optional[Union[np.ndarray, List[float]]]=None) -> None:
-        """TODO"""
+        """Initializes 'SPNSumNode' object.
+
+        Args:
+            children:
+                Non-empty list of modules that are children to the node.
+                The output scopes for all child modules need to be equal.
+            weights:
+                Optional list of floats, or one-dimensional NumPy array containing non-negative weights for each input, summing up to one.
+                Defaults to 'None' in which case weights are initialized to random weights in (0,1) and normalized.
+        
+        Raises:
+            ValueError: Invalid arguments.
+        """
         super(SPNSumNode, self).__init__(children=children)
 
         if not children:
@@ -98,12 +155,21 @@ class SPNSumNode(Node):
 
     @property
     def weights(self) -> np.ndarray:
-        """TODO"""
+        """Returns the weights of the node as a NumPy array."""
         return self._weights
 
     @weights.setter
     def weights(self, values: Union[np.ndarray, List[float]]) -> None:
-        """TODO"""
+        """Sets the weights of the node to specified values.
+
+        Args:
+            values:
+                One-dimensional NumPy array or list of floats of non-negative values summing up to one.
+                Number of values must match number of total inputs to the node.
+
+        Raises:
+            ValueError: Invalid values.
+        """
         if isinstance(values, list):
             values = np.array(values)
         if(values.ndim != 1):
@@ -118,9 +184,29 @@ class SPNSumNode(Node):
         self._weights = values
 
 
-@dispatch(memoize=True)
-def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None):
-    """TODO"""
+@dispatch(memoize=True)  # type: ignore
+def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumNode,None]:
+    """Structural marginalization for 'SPNSumNode' objects.
+
+    Structurally marginalizes the specified sum node.
+    If the sum node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
+    If the sum node's scope is fully marginalized over, then None is returned.
+    If the sum node's scope is partially marginalized over, then a new sum node over the marginalized child modules is returned.
+
+    Args:
+        sum_node:
+            Sum node module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect when marginalizing sum nodes. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        (Marginalized) sum node or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -150,13 +236,28 @@ def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True,
 
 
 class SPNProductNode(Node):
-    """Base version of a product node.
+    """SPN-like product node in the 'base' backend.
 
-    Args:
-        children: non-empty list of child modules.
+    Represents a product of its children over pair-wise disjoint scopes.
+
+    Attributes:
+        children:
+            Non-empty list of modules that are children to the node in a directed graph.
+        n_out:
+            Integer indicating the number of outputs. One for nodes.
+        scopes_out:
+            List of scopes representing the output scopes.
     """
     def __init__(self, children: List[Module]) -> None:
-        """TODO"""
+        """Initializes 'SPNProductNode' object.
+
+        Args:
+            children:
+                Non-empty list of modules that are children to the node.
+                The output scopes for all child modules need to be pair-wise disjoint.
+        Raises:
+            ValueError: Invalid arguments.
+        """
         super(SPNProductNode, self).__init__(children=children)
 
         if not children:
@@ -174,9 +275,31 @@ class SPNProductNode(Node):
         self.scope = scope
 
 
-@dispatch(memoize=True)
-def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[Node,None]:
-    """TODO"""
+@dispatch(memoize=True)  # type: ignore
+def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNProductNode,Node,None]:
+    """Structural marginalization for 'SPNProductNode' objects.
+
+    Structurally marginalizes the specified product node.
+    If the product node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
+    If the product node's scope is fully marginalized over, then None is returned.
+    If the product node's scope is partially marginalized over, then a new prodcut node over the marginalized child modules is returned.
+    If the marginalized product node has only one input and 'prune' is set, then the product node is pruned and the child is returned directly.
+
+    Args:
+        product_node:
+            Sum node module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            If set to True and the marginalized node has a single input, the child is returned directly.
+            Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        (Marginalized) product node or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -210,13 +333,23 @@ def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bo
 
 
 class LeafNode(Node, ABC):
-    """Base version of an abstract leaf node.
+    """Abstract base class for leaf nodes in the 'base' backend.
 
-    Args:
-        scope: 'Scope' object representing the scope of this leaf node.
+    All valid SPFlow leaf nodes in the 'base' backend should inherit from this class or a subclass of it.
+    
+    Attributes:
+        n_out:
+            Integer indicating the number of outputs. One for nodes.
+        scopes_out:
+            List of scopes representing the output scopes.
     """
     def __init__(self, scope: Scope, **kwargs) -> None:
-        """TODO"""
+        """Initializes 'LeafNode' object.
+
+        Args:
+            scope:
+                Scope object representing the scope of the leaf node,
+        """
         super(LeafNode, self).__init__(children=[], **kwargs)
 
         self.scope = scope

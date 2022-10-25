@@ -88,16 +88,6 @@ class Module(MetaModule, nn.Module, ABC):
         output_ids = output_ids.reshape(shape)
 
         return child_ids.tolist(), output_ids.tolist()
-    
-    @abstractmethod
-    def n_out(self) -> int:
-        """Returns the number of output for this module."""
-        pass
-
-    @abstractmethod
-    def scopes_out(self) -> List[Scope]:
-        """Returns the output scope this module represents."""
-        pass
 
 
 class NestedModule(Module, ABC):

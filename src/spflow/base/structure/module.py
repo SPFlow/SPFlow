@@ -29,7 +29,7 @@ class Module(MetaModule, ABC):
 
         Args:
             children:
-                List of modules that are children to the module in a directed graph.
+                List of modules that are children to the module.
 
         Raises:
             ValueError: children of invalid type.
@@ -81,16 +81,6 @@ class Module(MetaModule, ABC):
         output_ids = output_ids.reshape(shape)
 
         return child_ids.tolist(), output_ids.tolist()
- 
-    @abstractmethod
-    def n_out(self) -> int:
-        """Returns the number of output for this module."""
-        pass
-
-    @abstractmethod
-    def scopes_out(self) -> List[Scope]:
-        """Returns the output scope this module represents."""
-        pass
 
 
 class NestedModule(Module, ABC):
@@ -111,7 +101,7 @@ class NestedModule(Module, ABC):
 
         Args:
             children:
-                List of modules that are children to this module in a directed graph.
+                List of modules that are children to this module.
         """
         if children is None:
             children = []
