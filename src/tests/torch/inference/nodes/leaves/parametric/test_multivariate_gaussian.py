@@ -3,7 +3,7 @@ from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import 
 from spflow.base.inference.nodes.leaves.parametric.multivariate_gaussian import log_likelihood
 from spflow.torch.structure.nodes.node import SPNProductNode
 from spflow.torch.inference.nodes.node import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian, toBase, toTorch
+from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian, toBase, toTorch, marginalize
 from spflow.torch.inference.nodes.leaves.parametric.multivariate_gaussian import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.torch.inference.nodes.leaves.parametric.gaussian import log_likelihood
@@ -201,8 +201,8 @@ class TestMultivariateGaussian(unittest.TestCase):
         # inference using "structurally" marginalized multivariate gaussians for each random variable (combined via product node for convenience)
         marginalized_mv_gaussians = SPNProductNode(
             children=[
-                multivariate_gaussian.marginalize([1]),
-                multivariate_gaussian.marginalize([0]),
+                marginalize(multivariate_gaussian, [1]),
+                marginalize(multivariate_gaussian, [0]),
             ],
         )
 
