@@ -1,7 +1,5 @@
-"""
-Created on October 18, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Gaussian leaf node for SPFlow in the 'base' backend.
 """
 from typing import Tuple, Optional, Callable, Union
 import numpy as np
@@ -9,12 +7,14 @@ from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.node import LeafNode
 
-from scipy.stats import norm
-from scipy.stats.distributions import rv_frozen
+from scipy.stats import norm  # type: ignore
+from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondGaussian(LeafNode):
-    r"""Conditional (univariate) Normal distribution.
+    r"""Conditional (univariate) Normal distribution leaf node in the 'base' backend.
+
+    Represents a conditional univariate Gaussian distribution, with the following probability density function (PDF):
 
     .. math::
 
@@ -25,32 +25,67 @@ class CondGaussian(LeafNode):
         - :math:`\mu` is the mean
         - :math:`\sigma` is the standard deviation
 
-    Args:
-        scope:
-            Scope object specifying the variable scope.
+    Attributes:
         cond_f:
-            Callable that provides the conditional parameters (mean, std) of this distribution. TODO
+            Optional callable to retrieve the conditional parameter for the leaf node.
+            Its output should be a dictionary containing ``mean``,``std`` as keys, and the values should be
+            floating point values, where the latter should be greater than 0.
     """
     def __init__(
         self,
         scope: Scope,
         cond_f: Optional[Callable]=None,
     ) -> None:
+        r"""Initializes ``CondGaussian`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``mean``,``std`` as keys, and the values should be
+                floating point values, where the latter should be greater than 0.
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for conditional Gaussian should be 1, but was: {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'CondGaussian' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for conditional Gaussian should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'CondGaussian' should be empty, but was {scope.evidence}.")
 
         super(CondGaussian, self).__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 
     def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+        r"""Sets the function to retrieve the node's conditonal parameter.
+
+        Args:
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``mean``,``std`` as keys, and the values should be
+                floating point values, where the latter should be greater than 0.
+        """
         self.cond_f = cond_f
 
     def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[Union[np.ndarray, float],Union[np.ndarray, float]]:
+        r"""Retrieves the conditional parameter of the leaf node.
+    
+        First, checks if conditional parameters (``mean``,``std``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
+
+        Args:
+            data:
+                Two-dimensional NumPy array containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            One-dimensional NumPy array of non-zero weights
         
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         mean, std, cond_f = None, None, None
 
         # check dispatch cache for required conditional parameters 'mean', 'std'
@@ -82,23 +117,33 @@ class CondGaussian(LeafNode):
         # check if values for 'mean', 'std' are valid
         if not (np.isfinite(mean) and np.isfinite(std)):
             raise ValueError(
-                f"Mean and standard deviation for Gaussian distribution must be finite, but were: {mean}, {std}"
+                f"Values for 'mean' and 'std' for 'CondGaussian' must be finite, but were: {mean}, {std}"
             )
         if std <= 0.0:
             raise ValueError(
-                f"Standard deviation for Gaussian distribution must be greater than 0.0, but was: {std}"
+                f"Value for 'std' for 'CondGaussian' must be greater than 0.0, but was: {std}"
             )
 
         return mean, std
 
     def dist(self, mean: float, std: float) -> rv_frozen:
+        r"""Returns the SciPy distribution represented by the leaf node.
+        
+        Args:
+            mean:
+                Floating point value representing the mean (:math:`\mu`) of the distribution.
+            std:
+                Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
+
+        Returns:
+            ``scipy.stats.distributions.rv_frozen`` distribution.
+        """
         return norm(loc=mean, scale=std)
 
-    def get_params(self) -> Tuple:
-        return tuple([])
-
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
-        r"""Checks if instances are part of the support of the Gaussian distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Gaussian distribution, which is:
 
         .. math::
 
@@ -108,11 +153,11 @@ class CondGaussian(LeafNode):
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional NumPy array containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"

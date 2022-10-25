@@ -1,19 +1,19 @@
-"""
-Created on November 6, 2021
-
-@authors: Philipp Deibert, Bennet Wittelsbach
+# -*- coding: utf-8 -*-
+"""Contains Log-Normal leaf node for SPFlow in the 'base' backend.
 """
 from typing import Optional, Tuple
 import numpy as np
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
 
-from scipy.stats import lognorm
-from scipy.stats.distributions import rv_frozen
+from scipy.stats import lognorm  # type: ignore
+from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class LogNormal(LeafNode):
-    r"""(Univariate) Log-Normal distribution.
+    r"""(Univariate) Log-Normal distribution leaf node in the 'base' backend.
+
+    Represents an univariate Log-Normal distribution, with the following probability distribution function (PDF):
 
     .. math::
 
@@ -24,47 +24,77 @@ class LogNormal(LeafNode):
         - :math:`\mu` is the mean
         - :math:`\sigma` is the standard deviation
 
-    Args:
+    Attributes:
         scope:
             Scope object specifying the variable scope.
         mean:
-            mean (:math:`\mu`) of the distribution (default 0.0).
+            Floating point value representing the mean (:math:`\mu`) of the distribution.
         std:
-            standard deviation (:math:`\sigma`) of the distribution (must be greater than 0; default 1.0).
-    """
-    def __init__(self, scope: Scope, mean: Optional[float]=0.0, std: Optional[float]=1.0) -> None:
+            Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
+        """
+    def __init__(self, scope: Scope, mean: float=0.0, std: float=1.0) -> None:
+        r"""Initializes ``LogNormal`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            mean:
+                Floating point value representing the mean (:math:`\mu`) of the distribution.
+                Defaults to 0.0.
+            std:
+                Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
+                Defaults to 1.0.
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for LogNormal should be 1, but was: {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'LogNormal' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for LogNormal should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'LogNormal' should be empty, but was {scope.evidence}.")
 
         super(LogNormal, self).__init__(scope=scope)
         self.set_params(mean, std)
     
     @property
     def dist(self) -> rv_frozen:
+        r"""Returns the SciPy distribution represented by the leaf node.
+        
+        Returns:
+            ``scipy.stats.distributions.rv_frozen`` distribution.
+        """
         return lognorm(loc=0.0, scale=np.exp(self.mean), s=self.std)
 
     def set_params(self, mean: float, std: float) -> None:
+        r"""Sets the parameters for the represented distribution.
 
+        Args:
+            mean:
+                Floating point value representing the mean (:math:`\mu`) of the distribution.
+            std:
+                Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
+        """
         if not (np.isfinite(mean) and np.isfinite(std)):
             raise ValueError(
-                f"Mean and standard deviation for LogNormal distribution must be finite, but were: {mean}, {std}"
+                f"Values for 'mean' and 'std' for 'LogNormal' must be finite, but were: {mean}, {std}"
             )
         if std <= 0.0:
             raise ValueError(
-                f"Standard deviation for LogNormal distribution must be greater than 0.0, but was: {std}"
+                f"Value for 'std' for 'LogNormal' must be greater than 0.0, but was: {std}"
             )
 
         self.mean = mean
         self.std = std
 
     def get_params(self) -> Tuple[float, float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the floating point values representing the mean and standard deviation.
+        """
         return self.mean, self.std
 
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
-        r"""Checks if instances are part of the support of the LogNormal distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Log-Normal distribution, which is:
 
         .. math::
 
@@ -74,11 +104,11 @@ class LogNormal(LeafNode):
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional NumPy array containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"

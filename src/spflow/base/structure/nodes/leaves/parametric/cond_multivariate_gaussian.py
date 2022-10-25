@@ -1,7 +1,5 @@
-"""
-Created on October 18, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Multivariate Normal leaf node for SPFlow in the 'base' backend.
 """
 from typing import Tuple, List, Union, Optional, Iterable, Union, Callable
 import numpy as np
@@ -11,12 +9,14 @@ from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import CondGaussian
 
-from scipy.stats import multivariate_normal
-from scipy.stats.distributions import rv_frozen
+from scipy.stats import multivariate_normal  # type: ignore
+from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondMultivariateGaussian(LeafNode):
-    r"""Conditional multivariate Normal distribution.
+    r"""Conditional Multivariate Gaussian distribution leaf node in the 'base' backend.
+
+    Represents a conditional multivariate Gaussian distribution, with the following probability distribution function (PDF):
 
     .. math::
 
@@ -28,35 +28,79 @@ class CondMultivariateGaussian(LeafNode):
         - :math:`\mu` is the :math:`d`-dim. mean vector
         - :math:`\Sigma` is the :math:`d\times d` covariance matrix
 
-    Args:
-        scope:
-            Scope object specifying the variable scope.
+    Attributes
         cond_f:
-            Callable that provides the conditional parameters (mean, std) of this distribution. TODO
+            Optional callable to retrieve the conditional parameter for the leaf node.
+            Its output should be a dictionary containing ``mean``,``cov`` as keys.
+            The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array
+            containing the means.
+            The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array
+            containing a symmetric positive semi-definite matrix.
     """
     def __init__(
         self,
         scope: Scope,
         cond_f: Optional[Callable]=None,
     ) -> None:
+        r"""Initializes ``CondMultivariateGaussian`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``mean``,``cov`` as keys.
+                The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array
+                containing the means.
+                The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array
+                containing a symmetric positive semi-definite matrix.
+        """
         # check if scope contains duplicates
         if(len(set(scope.query)) != len(scope.query)):
-            raise ValueError("Query scope for MultivariateGaussian contains duplicate variables.")
+            raise ValueError("Query scope for 'CondMultivariateGaussian' contains duplicate variables.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for MultivariateGaussian should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'CondMultivariateGaussian' should be empty, but was {scope.evidence}.")
         if len(scope.query) < 1:
-            raise ValueError("Size of query scope for MultivariateGaussian must be at least 1.")
+            raise ValueError("Size of query scope for 'CondMultivariateGaussian' must be at least 1.")
 
         super(CondMultivariateGaussian, self).__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 
     def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+        r"""Sets the function to retrieve the node's conditonal parameter.
+
+        Args:
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``mean``,``cov`` as keys.
+                The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array
+                containing the means.
+                The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array
+                containing a symmetric positive semi-definite matrix.
+        """
         self.cond_f = cond_f
 
     def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[np.ndarray,np.ndarray]:
+        r"""Retrieves the conditional parameter of the leaf node.
+    
+        First, checks if conditional parameters (``mean``,``cov``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
+
+        Args:
+            data:
+                Two-dimensional NumPy array containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            One-dimensional NumPy array of non-zero weights
         
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         mean, cov, cond_f = None, None, None
 
         # check dispatch cache for required conditional parameters 'mean', 'cov'
@@ -98,7 +142,7 @@ class CondMultivariateGaussian(LeafNode):
             or mean.ndim > 2
         ):
             raise ValueError(
-                f"Dimensions of mean vector for MultivariateGaussian should match scope size {len(self.scope.query)}, but was: {mean.shape}"
+                f"Dimensions of 'mean' for 'CondMultivariateGaussian' should match scope size {len(self.scope.query)}, but was: {mean.shape}."
             )
         
         if(mean.ndim == 2):
@@ -106,9 +150,9 @@ class CondMultivariateGaussian(LeafNode):
 
         # check mean vector for nan or inf values
         if np.any(np.isinf(mean)):
-            raise ValueError("Mean vector for MultivariateGaussian may not contain infinite values")
+            raise ValueError("Value of 'mean' for 'CondMultivariateGaussian' may not contain infinite values.")
         if np.any(np.isnan(mean)):
-            raise ValueError("Mean vector for MultivariateGaussian may not contain NaN values")
+            raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' may not contain NaN values.")
 
         # test whether or not matrix has correct shape
         if cov.ndim != 2 or (
@@ -119,40 +163,54 @@ class CondMultivariateGaussian(LeafNode):
             )
         ):
             raise ValueError(
-                f"Covariance matrix for MultivariateGaussian expected to be of shape ({len(self.scope.query), len(self.scope.query)}), but was: {cov.shape}"
+                f"Value of 'cov' for 'CondMultivariateGaussian' expected to be of shape ({len(self.scope.query), len(self.scope.query)}), but was: {cov.shape}."
             )
 
         # check covariance matrix for nan or inf values
         if np.any(np.isinf(cov)):
             raise ValueError(
-                "Covariance matrix for MultivariateGaussian may not contain infinite values"
+                "Value of 'cov' for 'CondMultivariateGaussian' may not contain infinite values."
             )
         if np.any(np.isnan(cov)):
             raise ValueError(
-                "Covariance matrix for MultivariateGaussian may not contain NaN values"
+                "Value of 'cov' for 'CondMultivariateGaussian' may not contain NaN values."
             )
 
         # test covariance matrix for symmetry
         if not np.all(cov == cov.T):
-            raise ValueError("Covariance matrix for MultivariateGaussian must be symmetric")
+            raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' must be symmetric.")
 
         # test covariance matrix for positive semi-definiteness
         # NOTE: since we established in the test right before that matrix is symmetric we can use numpy's eigvalsh instead of eigvals
         if np.any(np.linalg.eigvalsh(cov) < 0):
             raise ValueError(
-                "Covariance matrix for MultivariateGaussian must be positive semi-definite"
+                "Value of 'cov' for 'CondMultivariateGaussian' must be positive semi-definite."
             )
 
         return mean, cov
 
     def dist(self, mean: np.ndarray, cov: np.ndarray) -> rv_frozen:
+        r"""Returns the SciPy distribution represented by the leaf node.
+        
+        Args:
+            mean:
+                A list of floating points or one-dimensional NumPy array containing the means (:math:`\mu`) of each of the one-dimensional Normal distributions.
+                Must have exactly as many elements as the scope of this leaf.
+                Defaults to all zeros. 
+            cov:
+                A list of lists of floating points or a two-dimensional NumPy array (representing a :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
+                of the scope) describing the covariances of the distribution. The diagonal holds the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
+                Defaults to the identity matrix.
+
+        Returns:
+            ``scipy.stats.distributions.rv_frozen`` distribution.
+        """
         return multivariate_normal(mean=mean, cov=cov)
 
-    def get_params(self) -> Tuple:
-        return tuple([])
-
     def check_support(self, scope_data: np.ndarray) -> np.ndarray:
-        r"""Checks if instances are part of the support of the MultivariateGaussian distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Multivariate Gaussian distribution, which is:
 
         .. math::
 
@@ -162,11 +220,11 @@ class CondMultivariateGaussian(LeafNode):
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional NumPy array containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
@@ -184,7 +242,29 @@ class CondMultivariateGaussian(LeafNode):
         return valid
     
     def marginalize(self, marg_rvs: Iterable[int]) -> Union["CondMultivariateGaussian",CondGaussian,None]:
+        """Returns a structurally marginalized leaf node.
 
+        TODO: delete and use 'marginalize instead'
+
+        Structurally marginalizes the leaf node.
+        If the node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
+        If the node's scope is fully marginalized over, then None is returned.
+        If the node's scope is partially marginalized over, a marginal uni- or multivariate Gaussian is returned instead.
+
+        Args:
+            node:
+                Node module to marginalize.
+            marg_rvs:
+                Iterable of integers representing the indices of the random variables to marginalize.
+            prune:
+                Boolean indicating whether or not to prune nodes and modules where possible.
+                Has no effect here. Defaults to True.
+            dispatch_ctx:
+                Optional dispatch context.
+        
+        Returns:
+            Unaltered node if module is not marginalized, marginalized uni- or multivariate Gaussian leaf node, or None if it is completely marginalized.
+        """
         # scope after marginalization (important: must remain order of scope indices since they map to the indices of the mean vector and covariance matrix!)
         marg_scope = []
         marg_scope_ids = []
@@ -214,5 +294,26 @@ class CondMultivariateGaussian(LeafNode):
 
 @dispatch(memoize=True)
 def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussian,CondGaussian,None]:
+    """Structural marginalization for node objects.
+
+    Structurally marginalizes the leaf node.
+    If the node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
+    If the node's scope is fully marginalized over, then None is returned.
+    If the node's scope is partially marginalized over, a marginal uni- or multivariate Gaussian is returned instead.
+
+    Args:
+        node:
+            Node module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+            Unaltered node if module is not marginalized, marginalized uni- or multivariate Gaussian leaf node, or None if it is completely marginalized.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return node.marginalize(marg_rvs)
