@@ -1,7 +1,5 @@
-"""
-Created on August 05, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains inference methods for ``Poisson`` nodes for SPFlow in the 'base' backend.
 """
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.dispatch.dispatch import dispatch
@@ -11,9 +9,33 @@ from typing import Optional
 import numpy as np
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def log_likelihood(node: Poisson, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """TODO"""
+    """Computes log-likelihoods for ``Poisson`` node given input data.
+
+    Log-likelihood for ``Poisson`` is given by the logarithm of its probability mass function (PMF):
+
+    .. math::
+
+        \log(\text{PMF}(k) = \lambda^k\frac{e^{-\lambda}}{k!})
+
+    where
+        - :math:`k` is the number of occurrences
+        - :math:`\lambda` is the rate parameter
+
+    Args:
+        node:
+            Leaf node to perform inference for.
+        data:
+            Two-dimensional NumPy array containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Returns:
+        Two-dimensional NumPy array containing the log-likelihoods of the input data for the sum node.
+        Each row corresponds to an input sample.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
