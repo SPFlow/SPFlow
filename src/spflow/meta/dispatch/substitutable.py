@@ -1,7 +1,11 @@
-"""
-Created on August 03, 2022
+# -*- coding: utf-8 -*-
+"""Contains a convenient decorator to automatically check for alternative function during dispatch.
 
-@authors: Philipp Deibert
+Typical usage example:
+
+    @substitutable
+    def foo():
+        pass
 """
 from typing import Callable, Any
 from functools import wraps
@@ -9,17 +13,17 @@ from spflow.meta.structure.module import MetaModule
 from spflow.meta.contexts.dispatch_context import DispatchContext, default_dispatch_context
 
 
-def swappable(f) -> Callable:
-    """Swappable decorator.
+def substitutable(f) -> Callable:
+    """Decorator that wraps a function and automatically checks for alternative functions during dispatching.
 
     Wraps a function in order to automatically check the dispatch context for specified alternative functions for a given module type.
-    Assumes that the first argument is a module that is used as the key for checking for alternative functions.
+    The first argument to the original function must be an instance of (a subclass of) 'MetaModule' to check for corresponding alternative functions.
 
     Returns:
         Wrapped function that automatically checks for alternative functions.
     """
     @wraps(f)
-    def swappable_f(*args, **kwargs) -> Any:
+    def substitutable_f(*args, **kwargs) -> Any:
 
         # ----- retrieve MetaModule that is dispatched on -----
 
@@ -58,7 +62,7 @@ def swappable(f) -> Callable:
         if dispatch_ctx is None:
             dispatch_ctx = default_dispatch_context()
 
-        # ----- swapping -----
+        # ----- substituting -----
 
         _f = f
 
@@ -69,4 +73,4 @@ def swappable(f) -> Callable:
 
         return _f(*args, **kwargs)
     
-    return swappable_f
+    return substitutable_f

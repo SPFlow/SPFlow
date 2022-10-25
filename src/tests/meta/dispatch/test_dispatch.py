@@ -57,10 +57,10 @@ class TestNode(unittest.TestCase):
         self.assertTrue(dispatch_ctx.cache['func'][module] == res)
         self.assertTrue(res == 1)
     
-    def test_dispatch_swappable(self):
+    def test_dispatch_substitutable(self):
 
         # dispatch function and allow alternative functions to be passed in dispatch context
-        @dispatch(swappable=True)
+        @dispatch(substitutable=True)
         def func(module: Module, i: int, dispatch_ctx: Optional[DispatchContext]=None) -> int:
             return 0
         
