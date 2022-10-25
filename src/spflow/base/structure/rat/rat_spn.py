@@ -1,9 +1,5 @@
-"""
-Created on July 1, 2021
-
-@authors: Philipp Deibert
-
-This file provides the base backend version of RAT-SPNs.
+# -*- coding: utf-8 -*-
+"""Contains the SPFlow architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the 'base' backend.
 """
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
@@ -14,21 +10,26 @@ from spflow.base.structure.layers.layer import SPNSumLayer, SPNPartitionLayer, S
 from spflow.base.structure.layers.leaves.parametric.gaussian import GaussianLayer
 from spflow.base.structure.module import Module
 
-from typing import Union, Iterable, Optional
+from typing import Union, Iterable, Optional, List
 
 
 class RatSPN(Module):
-    """Base backend module for RAT-SPNs.
+    r"""Module architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the 'base' backend.
 
-    Args:
-        region_graph:
-            Region graph representing the high-level structure of the RAT-SPN.
+    Constructs a RAT-SPN from a specified ``RegionGraph`` instance.
+    For details see (Peharz et al., 2020): "Random Sum-Product Networks: A Simple and Effective Approach to Probabilistic Deep Learning".
+
+    Attributes:
         n_root_nodes:
-            Number of nodes in the root region.
+            Integer specifying the number of sum nodes in the root region (C in the original paper).
         n_region_nodes:
-            Number of sum ndoes per internal region.
-        n_leaf_nodes:
-            Number of leaf nodes per leaf region.
+            Integer specifying the number of sum nodes in each (non-root) region (S in the original paper).
+        n_leaf_ndoes:
+            Integer specifying the number of leaf nodes in each leaf region (I in the original paper).
+        root_node:
+            SPN-like sum node that represents the root of the model.
+        root_region:
+            SPN-like sum layer that represents the root region of the model.
     """
     def __init__(
         self,
@@ -38,7 +39,21 @@ class RatSPN(Module):
         n_leaf_nodes: int,
     ) -> None:
         super(RatSPN, self).__init__(children=[])
+        r"""Initializer for ``RatSPN`` object.
 
+        Args:
+            region_graph:
+                ``RegionGraph`` instance to create RAT-SPN architecture from.
+            n_root_nodes:
+                Integer specifying the number of sum nodes in the root region (C in the original paper).
+            n_region_nodes:
+                Integer specifying the number of sum nodes in each (non-root) region (S in the original paper).
+            n_leaf_ndoes:
+                Integer specifying the number of leaf nodes in each leaf region (I in the original paper).
+
+        Raises:
+            ValueError: Invalid arguments.
+        """
         self.n_root_nodes = n_root_nodes
         self.n_region_nodes = n_region_nodes
         self.n_leaf_nodes = n_leaf_nodes
@@ -54,8 +69,14 @@ class RatSPN(Module):
         self.from_region_graph(region_graph)
 
     def from_region_graph(self, region_graph: RegionGraph) -> Union[SPNSumLayer, GaussianLayer, SPNHadamardLayer]:
-        """TODO"""
+        r"""Function to create explicit RAT-SPN from an abstract region graph.
 
+        Args:
+            region_graph:
+                ``RegionGraph`` instance to create RAT-SPN architecture from.
+        Returns:
+            ValueError: Invalid arguments.
+        """
         def convert_partition(partition: Partition) -> SPNPartitionLayer:
 
             return SPNPartitionLayer(child_partitions=[
@@ -88,16 +109,35 @@ class RatSPN(Module):
             self.root_node = None
 
     @property
-    def n_out(self):
-        # return number of outputs
+    def n_out(self) -> int:
+        """Returns the number of outputs for this module. Returns one since RAT-SPNs always have a single output."""
         return 1
     
     @property
-    def scopes_out(self):
+    def scopes_out(self) -> List[Scope]:
+        """Returns the output scopes of the RAT-SPN."""
         return self.root_node.scopes_out
 
 
-@dispatch(memoize=True)
-def marginalize(layer: RatSPN, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumLayer, Module, None]:
+@dispatch(memoize=True)  # type: ignore
+def marginalize(rat_spn: RatSPN, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumLayer, Module, None]:
+    r"""Structural marginalization for ``RatSPN`` objects.
+
+    Raises a ``NoteImplementedError`` since structural marginalization is not yet supported for RAT-SPNs.
+
+    Args:
+        rat_spn:
+           ``RatSPN`` instance to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Raises:
+        NotImplementedError: Structural marginalization is not yet supported for RAT-SPNs.    
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     raise NotImplementedError()
