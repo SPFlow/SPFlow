@@ -1,18 +1,32 @@
-"""
-Created on September 26, 2022
+# -*- coding: utf-8 -*-
+"""Algorithm to compute Pearson correlation coefficients for a data set.
 
-@authors: Philipp Deibert
+Typical usage example:
+
+    coeffs = corrcoef(data)
 """
 from typing import Optional
 import torch
 
 
 def corrcoef(data: torch.Tensor) -> torch.Tensor:
-    r"""TODO.
+    r"""Computes the Pearson correlation coefficients for a given data set.
+
+    Returns the correlation coefficients computed from a specified data set according to:
 
     .. math::
         
         \frac{\text{Cov}(x)_{ij}}{\sigma_i\sigma_j}
+
+    Args:
+        data:
+            Two-dimensional PyTorch tensor representing the data set. Each row is regarded as a sample.
+
+    Returns:
+        NumPy array containing the Pearson correlation coefficients.
+
+    Raises:
+        ValueError: invalid arguments.
     """
     if torch.is_complex(data):
         raise ValueError("Computing correlation coefficients for complex data is not supported.")

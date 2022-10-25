@@ -1,7 +1,9 @@
-"""
-Created on September 7, 2022
+# -*- coding: utf-8 -*-
+"""Algorithm to compute randomized dependency coefficients (RDCs) for a data set.
 
-@authors: Philipp Deibert
+Typical usage example:
+
+    coeffs = randomized_dependency_coefficients(data, k, s, phi)
 """
 from typing import Callable
 import numpy as np
@@ -11,7 +13,30 @@ from spflow.base.utils.empirical_cdf import empirical_cdf
 
 
 def randomized_dependency_coefficients(data: np.ndarray, k: int=20, s: float=1/6, phi: Callable=np.sin) -> np.ndarray:
-    """TODO."""
+    """Computes the randomized dependency coefficients (RDCs) for a given data set.
+
+    Returns the randomized dependency coefficients (RDCs) computed from a specified data set, as described in (Lopez-Paz et al., 2013): "The Randomized Dependence Coefficient"
+
+    Args:
+        data:
+            Two-dimensional NumPy array containing the data set. Each row is regarded as a sample and each column as a different feature.
+            May not contain any missing (i.e., NaN) entries.
+        k:
+            Integer specifying the number of random projections to be used.
+            Defaults to 20.
+        s:
+            Floating point value specifying the standard deviation of the Normal distribution to sample the weights for the random projections from.
+            Defaults to 1/6.
+        phi:
+            Callable representing the (non-linear) projection.
+            Defaults to 'np.sin'.
+
+    Returns:
+        NumPy array containing the computed randomized dependency coefficients.
+    
+    Raises:
+        ValueError: Invalid inputs.
+    """
     # default arguments according to paper
     if np.any(np.isnan(data)):
         raise ValueError("Randomized dependency coefficients cannot be computed for data with missing values.")

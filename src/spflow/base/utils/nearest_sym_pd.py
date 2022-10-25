@@ -1,14 +1,28 @@
-"""
-Created on October 14, 2022
+# -*- coding: utf-8 -*-
+"""Algorithm to compute the closest positive definite matrix to a given matrix.
 
-@authors: Philipp Deibert
+Typical usage example:
+
+    pd_matrix = nearest_sym_pd(matrix)
 """
 import numpy as np
 
 
 def nearest_sym_pd(A: np.ndarray) -> np.ndarray:
+    """Algorithm to compute the closest positive definite matrix to a given matrix.
+
+    Returns the closest positive definite matrix to a given matrix in the Frobenius norm,
+    as described in (Higham, 1988): "Computing a nearest symmetric positive semidefinite matrix".
+
+    Args:
+        A:
+            Numpy array to compute closest positive definite matrix to.
+
+    Returns:
+        Closest positive definite matrix to input in the Frobenius norm.
+    """
     # compute closest positive definite matrix as described in (Higham, 1988) https://www.sciencedirect.com/science/article/pii/0024379588902236
-    # based on MATLAB implementation found here: https://mathworks.com/matlabcentral/fileexchange/42885-nearestspd?s_tid=mwa_osa_a and this Python port: https://stackoverflow.com/questions/43238173/python-convert-matrix-to-positive-semi-definite/43244194#43244194
+    # based on MATLAB implementation (found here https://mathworks.com/matlabcentral/fileexchange/42885-nearestspd?s_tid=mwa_osa_a) and this Python port: https://stackoverflow.com/questions/43238173/python-convert-matrix-to-positive-semi-definite/43244194#43244194
 
     def is_pd(A: np.ndarray) -> np.ndarray:
         try:
