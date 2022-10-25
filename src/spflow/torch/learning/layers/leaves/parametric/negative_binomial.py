@@ -10,7 +10,7 @@ from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_
 from spflow.torch.structure.layers.leaves.parametric.negative_binomial import NegativeBinomialLayer
 
 
-@dispatch(memoize=True) # TODO: swappable
+@dispatch(memoize=True)
 def maximum_likelihood_estimation(layer: NegativeBinomialLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """TODO."""
 

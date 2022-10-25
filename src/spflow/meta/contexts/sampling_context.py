@@ -1,21 +1,41 @@
-"""
-Created on May 23, 2022
+# -*- coding: utf-8 -*-
+"""Contains the sampling context used in SPFlow
 
-@authors: Philipp Deibert
+Typical usage example:
+
+    sampling_ctx = SamplingDispatch(instance_ids, output_ids)
 """
 from typing import List, Optional, Union, Tuple
 
 
 class SamplingContext:
-    """Keeps track of instance ids to sample and which output ids to sample from (relevant for modules with multiple outputs).
+    """Class for storing context information during sampling.
+
+    Keeps track of instance indices to sample and which output indices of a module to sample from (relevant for modules with multiple outputs).
     
-    Args:
-        instance_ids: list of ints representing the instances to sample.
-        output_ids: list of lists of ints representing the output ids for the corresponding instances to sample from (relevant for multi-output module).
-                    As a shorthand, '[]' implies to sample from all outputs for a given instance id.
+    Attributes:
+        instance_ids:
+            List of integers representing the instances of a data set to sample.
+            Required to correctly place sampled values into target data set and take potential evidence into account.
+        output_ids:
+            List of lists of integers representing the output ids for the corresponding instances to sample from (relevant for multi-output module).
+            As a shorthand convention, '[]' implies to sample from all outputs for a given instance.
     """
     def __init__(self, instance_ids: List[int], output_ids: Optional[List[List[int]]]=None) -> None:
+        """Initializes 'SamplingContext' object.
 
+        Args:
+            instance_ids:
+                List of integers representing the instances of a data set to sample.
+                Required to correctly place sampled values into target data set and take potential evidence into account.
+            output_ids:
+                Optional list of lists of integers representing the output ids for the corresponding instances to sample from (relevant for multi-output module).
+                As a shorthand convention, an empty list ('[]') implies to sample from all outputs for the corresponding instance.
+                Defaults to None, in which case the output indices for all instances are set to an empty list ('[]').
+
+        Raises:
+            ValueError: Number of instance indices does not match number of output indices.
+        """
         if output_ids is None:
             # assume sampling over all outputs (i.e. [])
             output_ids = [[] for _ in instance_ids]
@@ -26,9 +46,17 @@ class SamplingContext:
         self.instance_ids = instance_ids
         self.output_ids = output_ids
 
-    def group_output_ids(self, n_total) -> Tuple[Union[int, None],List[int]]:
-        """TODO"""
+    def group_output_ids(self, n_total: int) -> List[Tuple[Union[int, None],List[int]]]:
+        """Groups instances in the sampling context by their output indices.
 
+        Args:
+            n_total:
+                Integer indicating the number of outputs of the module in question.
+                Required to initialize the output ids in case of an empty list of output ids (in which case all output ids are sampled from).
+
+        Returns:
+            List of pairs (tuples) of an output index (or None) and a list of all instance indices that sample from the corresponding output index.
+        """
         output_id_dict = {}
         
         for instance_id, instance_output_ids in zip(self.instance_ids, self.output_ids):
@@ -44,8 +72,28 @@ class SamplingContext:
 
 
 def default_sampling_context(n: int) -> SamplingContext:
+    """Returns an initialized 'SamplingContext' object.
+    
+    Args:
+        n:
+            Integer specifying the number of instance indices to intialize.
+
+    Returns:
+        Sampling context initialized with instance indices from 0 to 'n' and corresponding output indices as '[]'.
+    """
     return SamplingContext(list(range(n)), [[] for _ in range(n)])
 
 
 def init_default_sampling_context(sampling_ctx: Union[SamplingContext, None], n: int) -> SamplingContext:
+    """Initializes sampling context, if it is not already initialized.
+
+    Args
+        sampling_ctx:
+            'SamplingContext' object or None.
+        n:
+            Integer specifying the number of instance indices to intialize.
+
+    Returns:
+        Original sampling context if not None or a new initialized sampling context.
+    """
     return sampling_ctx if sampling_ctx is not None else default_sampling_context(n=n)

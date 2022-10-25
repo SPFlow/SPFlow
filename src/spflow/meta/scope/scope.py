@@ -1,21 +1,37 @@
-"""
-Created on August 03, 2022
+# -*- coding: utf-8 -*-
+"""Contains the 'Scope' class for representing scopes over random variables.
 
-@authors: Philipp Deibert
+Typical usage example:
+
+    scope = Scope(query_rvs, evidence_rvs)
 """
 from typing import List, Optional, Iterable
 
 
 class Scope():
-    """Class representing Variable scopes.
-    
-    Args:
-        query: list of integers representing query variables (may not be empty or contain duplicates).
-        evidence: (optional) list of integers representing evidence variables (may be empty; may not contain duplicates).
+    """Scopes over random variables (RVs).
+
+    Represents scope over random variables (RVs).
+    Contains both RVs that are part of the query (i.e., RVs that are represented by the scope) as well as evidence of the scope (i.e., RVs that the scope is conditioned on).
+
+    Attributes:
+        query:
+            List of non-negative integers representing query RVs.
+        evidence:
+            List of non-negative integers representing evidence variables.
     """
     def __init__(self, query: Optional[List[int]]=None, evidence: Optional[List[int]]=None) -> None:
-        """TODO."""
+        """Initializes 'Scope' object.
+
+        Args:    
+            query:
+                List of non-negative integers representing query RVs (may not contain duplicates).
+            evidence:
+                Optional list of non-negative integers representing evidence variables (may not contain duplicates or RVs that are in the query).
         
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if query is None:
             query = []
 
@@ -44,38 +60,104 @@ class Scope():
         self.evidence = evidence
 
     def __repr__(self) -> str:
-        """TODO"""
+        """Returns a string representation of the scope of form 'Scope(query|evidence)'.
+
+        Returns:
+            String containg the string representation of scope.
+        """
         return "Scope({}|{})".format(self.query if self.query else "{}", self.evidence if self.evidence else "{}")  # pragma: no cover
 
     def __eq__(self, other) -> bool:
-        """TODO"""
+        """Equality comparison between two 'Scope' objects.
+    
+        Two scopes are considered equal if they represent the same query and evidence RVs.
+
+        Args:
+            other:
+                'Scope' object to compare to.
+
+        Returns:
+            Boolean indicating whether both scopes are considered equal (True) or not (False).
+        """
         return self.equal_query(other) and self.equal_evidence(other) 
 
     def __len__(self) -> int:
-        """Returns the number of query variables"""
+        """Returns the number of query variables in the scope.
+
+        Returns:
+            Integer representing the number of query variables.
+        """
         return len(self.query)
     
     def equal_query(self, other) -> bool:
-        """TODO"""
+        """Checks if the query of the scope is identical to that of another.
+    
+        Args:
+            other:
+                'Scope' object to compare to.
+
+        Returns:
+            Boolean indicating whether both query scopes are idential (True) or not (False).
+        """
         return (set(self.query) == set(other.query))
     
     def equal_evidence(self, other) -> bool:
-        """TODO"""
+        """Checks if the evidence of the scope is identical to that of another.
+    
+        Args:
+            other:
+                'Scope' object to compare to.
+
+        Returns:
+            Boolean indicating whether both evidence scopes are idential (True) or not (False).
+        """
         return (set(self.evidence) == set(other.evidence))
 
     def isempty(self) -> bool:
+        """Checks if the scope is empty.
+    
+        A scope is considered empty if its query is empty, i.e., the scope does not represent any RVs.
+
+        Returns:
+            Boolean indicating whether the scope is empty (True) or not (False).
+        """
         return not bool(self.query)
 
     def isdisjoint(self, other) -> bool:
-        """TODO"""
+        """Checks if the scope is disjoint to another scope.
+
+        Two scopes are considered disjoint if their queries are disjoint, i.e., they do not represent any common RVs.
+
+        Returns:
+            Boolean indicating whether the scopes are disjoint (True) or not (False).
+        """
         return set(self.query).isdisjoint(other.query)
 
     def union(self, other) -> "Scope":
-        """TODO"""
+        """Computes the union of the scope and another scope.
+
+        The union of two scopes results in the union of the queries and evidences, respectively.
+
+        Args:
+            other:
+                'Scope' object to compute the union with.
+
+        Returns:
+            'Scope' object representing the union of both scopes.
+        """
         return Scope(set(self.query).union(other.query), set(self.evidence).union(other.evidence))
 
+    @staticmethod
     def all_pairwise_disjoint(scopes: Iterable["Scope"]) -> bool:
-    
+        """Checks if a sequence of scopes are pairwise disjoint.
+
+        Args:
+            scopes:
+                Iterable of 'Scope' objects to check pairwise disjointness.
+
+        Returns:
+            Boolean indicating whether all scopes are pairwise disjoint (True) or not (False).
+        """
         overall_scope = Scope()
 
         for scope in scopes:
@@ -86,8 +168,17 @@ class Scope():
     
         return True
     
+    @staticmethod
     def all_equal(scopes: Iterable["Scope"]) -> bool:
+        """Checks if a sequence of scopes are all equal.
 
+        Args:
+            scopes:
+                Iterable of 'Scope' objects to check for equality.
+
+        Returns:
+            Boolean indicating whether all scopes are equal (True) or not (False).
+        """
         overall_scope = None
 
         for scope in scopes:

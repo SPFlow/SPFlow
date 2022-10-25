@@ -1,7 +1,11 @@
-"""
-Created on November 26, 2021
+# -*- coding: utf-8 -*-
+"""Contains a convenient decorator to automatically check for cached values during dispatch.
 
-@authors: Philipp Deibert
+Typical usage example:
+
+    @memoize
+    def foo():
+        pass
 """
 from typing import Callable, Any
 from functools import wraps
@@ -10,10 +14,10 @@ from spflow.meta.contexts.dispatch_context import DispatchContext, default_dispa
 
 
 def memoize(f) -> Callable:
-    """Memoization decorator.
+    """Cecorator that wraps a function and automatically checks for cached values during dispatching.
 
     Wraps a function in order to automatically check the dispatch cache for stored values.
-    Assumes that the first argument is a module that is used as the key for the cache.
+    The first argument to the original function must be an instance of (a subclass of) 'MetaModule' to use as a key for the cache.
 
     Returns:
         Wrapped function that automatically checks against a dispatch cache
