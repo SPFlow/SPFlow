@@ -1,19 +1,19 @@
-"""
-Created on July 04, 2021
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""TODO.
 """
 from typing import Union, Optional
 
 import torch
 
-# TODO: redundant with node projections? (put somewhere together)
+
 def proj_real_to_bounded(
     x: torch.Tensor,
     lb: Optional[Union[float, torch.Tensor]] = None,
     ub: Optional[Union[float, torch.Tensor]] = None,
 ) -> torch.Tensor:
     r"""Projects the real numbers onto a bounded interval.
+
+    TODO
 
     .. math::
 
