@@ -1,7 +1,5 @@
-"""
-Created on August 12, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Negative Binomial leaf layer for SPFlow in the 'base' backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -14,17 +12,47 @@ from spflow.base.structure.nodes.leaves.parametric.negative_binomial import Nega
 
 
 class NegativeBinomialLayer(Module):
-    """Layer representing multiple (univariate) negative binomial leaf nodes.
+    r"""Layer of multiple (univariate) Negative Binomial distribution leaf node in the 'base' backend.
 
-    Args:
-        scope: TODO
-        n: TODO
-        p: TODO
-        n_nodes: number of output nodes.
+    Represents multiple univariate Negative Binomial distributions with independent scopes, each with the following probability mass function (PMF):
+
+    .. math::
+
+        \text{PMF}(k) = \binom{k+n-1}{n-1}p^n(1-p)^k
+
+    where
+        - :math:`k` is the number of failures
+        - :math:`n` is the maximum number of successes
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+
+    Attributes:
+        n:
+            One-dimensional NumPy array containing the number of successes (greater or equal to 0) for each independent Negative Binomial distribution.
+        p:
+            One-dimensional NumPy array containing the success probabilities for each of the independent Negative Binomial distributions in the range :math:`(0,1]`.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``NegativeBinomial`` objects for the nodes in this layer.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], n: Union[int, List[int], np.ndarray], p: Union[int, float, List[float], np.ndarray]=0.5, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``NegativeBinomialLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            n:
+                Integer, list of integers or one-dimensional NumPy array containing the number of successes (greater or equal to 0) for each independent Negative Binomial distribution.
+                If a single integer value is given it is broadcast to all nodes.
+            p:
+                Floating point, list of floats or one-dimensional NumPy array representing the success probabilities of the Negative Binomial distributionsin the range :math:`(0,1]`.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 0.5.
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'NegativeBinomialLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -50,19 +78,31 @@ class NegativeBinomialLayer(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     @property
     def n(self) -> np.ndarray:
+        """Returns the numbers of successes of the represented distributions."""
         return np.array([node.n for node in self.nodes])
     
     @property
     def p(self) -> np.ndarray:
+        """Returns the success probabilities of the represented distributions."""
         return np.array([node.p for node in self.nodes])
 
     def set_params(self, n: Union[int, List[int], np.ndarray], p: Union[int, float, List[float], np.ndarray]=0.5) -> None:
+        """Sets the parameters for the represented distributions.
 
+        Args:
+            n:
+                Integer, list of integers or one-dimensional NumPy array containing the number of successes (greater or equal to 0) for each independent Negative Binomial distribution.
+                If a single integer value is given it is broadcast to all nodes.
+            p:
+                Floating point, list of floats or one-dimensional NumPy array representing the success probabilities of the Negative Binomial distributionsin the range :math:`(0,1]`.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 0.5.
+        """
         if isinstance(n, int):
             n = np.array([n for _ in range(self.n_out)])
         if isinstance(n, list):
@@ -93,12 +133,40 @@ class NegativeBinomialLayer(Module):
                 raise ValueError("All values of 'n' for 'NegativeBinomialLayer' over the same scope must be identical.")
     
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of one-dimensional NumPy arrays representing the number successes and success probabilities.
+        """
         return self.n, self.p
+    
+    # TODO: dist
+
+    # TODO: check support
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: NegativeBinomialLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[NegativeBinomialLayer, NegativeBinomial, None]:
-    """TODO"""
+    """Structural marginalization for ``NegativeBinomialLayer`` objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

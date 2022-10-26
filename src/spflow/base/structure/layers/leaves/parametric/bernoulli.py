@@ -1,7 +1,5 @@
-"""
-Created on August 12, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Bernoulli leaf layer for SPFlow in the 'base' backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -14,16 +12,42 @@ from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli
 
 
 class BernoulliLayer(Module):
-    """Layer representing multiple (univariate) bernoulli leaf nodes.
+    r"""Layer of multiple (univariate) Bernoulli distribution leaf nodes in the 'base' backend.
 
-    Args:
-        scope: TODO
-        p: TODO
-        n_nodes: number of output nodes.
+    Represents multiple univariate Bernoulli distributions with independent scopes, each with the following probability mass function (PMF):
+
+    .. math::
+
+        \text{PMF}(k)=\begin{cases} p   & \text{if } k=1\\
+                                    1-p & \text{if } k=0\end{cases}
+        
+    where
+        - :math:`p` is the success probability in :math:`[0,1]`
+        - :math:`k` is the outcome of the trial (0 or 1)
+
+    Attributes:
+        p:
+            One-dimensional NumPy array containing the success probabilities for each of the independent Bernoulli distributions.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``Bernoulli`` objects for the nodes in this layer.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], p: Union[int, float, List[float], np.ndarray]=0.5, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``BernoulliLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            p:
+                Floating point, list of floats or one-dimensional NumPy array representing the success probabilities of the Bernoulli distributions between zero and one.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 0.5.
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'BernoulliLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -50,15 +74,23 @@ class BernoulliLayer(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     @property
     def p(self) -> np.ndarray:
+        """Returns the success probabilities of the represented distributions."""
         return np.array([node.p for node in self.nodes])
 
     def set_params(self, p: Union[int, float, List[float], np.ndarray]=0.5) -> None:
+        """Sets the parameters for the represented distributions.
 
+        Args:
+            p:
+                Floating point, list of floats or one-dimensional NumPy array representing the success probabilities of the Bernoulli distributions between zero and one.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 0.5.
+        """
         if isinstance(p, int) or isinstance(p, float):
             p = np.array([p for _ in range(self.n_out)])
         if isinstance(p, list):
@@ -71,12 +103,40 @@ class BernoulliLayer(Module):
             node.set_params(node_p)
 
     def get_params(self) -> Tuple[np.ndarray]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            One-dimensional NumPy array representing the success probabilities.
+        """
         return (self.p,)
 
+    # TODO: dist
 
-@dispatch(memoize=True)
+    # TODO: check support
+
+
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: BernoulliLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[BernoulliLayer, Bernoulli, None]:
-    """TODO"""
+    """Structural marginalization for ``BernoulliLayer`` objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

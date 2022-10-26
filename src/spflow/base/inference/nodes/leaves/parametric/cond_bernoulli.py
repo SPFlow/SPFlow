@@ -24,6 +24,8 @@ def log_likelihood(node: CondBernoulli, data: np.ndarray, dispatch_ctx: Optional
         - :math:`p` is the success probability in :math:`[0,1]`
         - :math:`k` is the outcome of the trial (0 or 1)
 
+    Missing values (i.e., NaN) are marginalized over.
+
     Args:
         node:
             Leaf node to perform inference for.

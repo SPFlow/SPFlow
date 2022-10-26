@@ -14,6 +14,7 @@ def log_likelihood(sum_node: SPNSumNode, data: np.ndarray, dispatch_ctx: Optiona
     """Computes log-likelihoods for SPN-like sum node given input data.
 
     Log-likelihood for sum node is the logarithm of the sum of weighted exponentials (LogSumExp) of its input likelihoods (weighted sum in linear space).
+    Missing values (i.e., NaN) are marginalized over.
 
     Args:
         sum_node:
@@ -43,6 +44,7 @@ def log_likelihood(product_node: SPNProductNode, data: np.ndarray, dispatch_ctx:
     """Computes log-likelihoods for SPN-like product node given input data.
 
     Log-likelihood for product node is the sum of its input likelihoods (product in linear space).
+    Missing values (i.e., NaN) are marginalized over.
 
     Args:
         prduct_node:

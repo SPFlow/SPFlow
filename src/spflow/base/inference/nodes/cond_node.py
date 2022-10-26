@@ -14,6 +14,7 @@ def log_likelihood(sum_node: SPNCondSumNode, data: np.ndarray, dispatch_ctx: Opt
     """Computes log-likelihoods for conditional SPN-like sum node given input data.
 
     Log-likelihood for sum node is the logarithm of the sum of weighted exponentials (LogSumExp) of its input likelihoods (weighted sum in linear space).
+    Missing values (i.e., NaN) are marginalized over.
 
     Args:
         sum_node:

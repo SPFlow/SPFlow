@@ -26,6 +26,8 @@ def log_likelihood(node: Hypergeometric, data: np.ndarray, dispatch_ctx: Optiona
         - :math:`n` is the number of draws
         - :math:`k` s the number of observed entities
 
+    Missing values (i.e., NaN) are marginalized over.
+
     Args:
         node:
             Leaf node to perform inference for.

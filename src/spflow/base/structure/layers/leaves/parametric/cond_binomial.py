@@ -1,7 +1,5 @@
-"""
-Created on October 18, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Binomial leaf layer for SPFlow in the 'base' backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
 import numpy as np
@@ -14,17 +12,59 @@ from spflow.base.structure.nodes.leaves.parametric.cond_binomial import CondBino
 
 
 class CondBinomialLayer(Module):
-    """Layer representing multiple conditional (univariate) binomial leaf nodes.
+    r"""Layer of multiple conditional (univariate) Binomial distribution leaf nodes in the 'base' backend.
 
-    Args:
-        scope: TODO
-        n: TODO
-        cond_f: TODO
-        n_nodes: number of output nodes.
+    Represents multiple conditional univariate Binomial distributions with independent scopes, each with the following probability mass function (PMF):
+
+    .. math::
+
+        \text{PMF}(k) = \binom{n}{k}p^k(1-p)^{n-k}
+
+    where
+        - :math:`p` is the success probability of each trial in :math:`[0,1]`
+        - :math:`n` is the number of total trials
+        - :math:`k` is the number of successes
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+
+    Attributes:
+        n:
+            One-dimensional NumPy array containing the number of i.i.d. Bernoulli trials (greater or equal to 0) for each independent Binomial distribution.
+        cond_f:
+            Optional callable or list of callables to retrieve parameters for the leaf nodes.
+            If a single callable, its output should be a dictionary containing 'p' as a key, and the value should be
+            a floating point, a list of floats or a one-dimensional NumPy array, containing the success probabilities between zero and one.
+            If it is a single floating point value, the same value is reused for all leaf nodes.
+            If a list of callables, each one should return a dictionary containing 'p' as a key, and the value should
+            be a floating point value between zero and one.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``CondBinomial`` objects for the nodes in this layer.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], n: Union[int, List[int], np.ndarray], cond_f: Optional[Union[Callable, List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
+        r"""Initializes ``CondBinomialLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            n:
+                Integer, list of integers or one-dimensional NumPy array containing the number of i.i.d. Bernoulli trials (greater or equal to 0) for each independent Binomial distribution.
+                If a single integer value is given it is broadcast to all nodes.
+            cond_f:
+                Optional callable or list of callables to retrieve parameters for the leaf nodes.
+                If a single callable, its output should be a dictionary containing 'p' as a key, and the value should be
+                a floating point, a list of floats or a one-dimensional NumPy array, containing the success probabilities between zero and one.
+                If it is a single floating point value, the same value is reused for all leaf nodes.
+                If a list of callables, each one should return a dictionary containing 'p' as a key, and the value should
+                be a floating point value between zero and one.
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
         
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'CondBinomialLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -52,22 +92,54 @@ class CondBinomialLayer(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     @property
     def n(self) -> np.ndarray:
+        """Returns the numbers of i.i.d. Bernoulli trials of the represented distributions."""
         return np.array([node.n for node in self.nodes])
 
     def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+        r"""Sets the ``cond_f`` property.
 
+        Args:
+            cond_f:
+                Optional callable or list of callables to retrieve parameters for the leaf nodes.
+                If a single callable, its output should be a dictionary containing 'p' as a key, and the value should be
+                a floating point, a list of floats or a one-dimensional NumPy array, containing the success probabilities between zero and one.
+                If it is a single floating point value, the same value is reused for all leaf nodes.
+                If a list of callables, each one should return a dictionary containing 'p' as a key, and the value should
+                be a floating point value between zero and one.
+
+        Raises:
+            ValueError: If list of callables does not match number of nodes represented by the layer.
+        """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
             raise ValueError("'CondBinomialLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
 
         self.cond_f = cond_f
 
     def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> np.ndarray:
+        r"""Retrieves the conditional parameters of the leaf layer.
 
+        First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function or list of functions (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
+
+        Args:
+            data:
+                Two-dimensional NumPy array containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            Two-dimensional NumPy array of non-zero weights summing up to one per row.
+        
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         p, cond_f = None, None
 
         # check dispatch cache for required conditional parameter 'p'
@@ -108,7 +180,13 @@ class CondBinomialLayer(Module):
         return p
 
     def set_params(self, n: Union[int, List[int], np.ndarray]) -> None:
+        """Sets the parameters for the represented distributions.
 
+        Args:
+            n:
+                Integer, list of integers or one-dimensional NumPy array containing the number of i.i.d. Bernoulli trials (greater or equal to 0) for each independent Binomial distribution.
+                If a single integer value is given it is broadcast to all nodes.
+        """
         if isinstance(n, int):
             n = np.array([n for _ in range(self.n_out)])
         if isinstance(n, list):
@@ -130,14 +208,40 @@ class CondBinomialLayer(Module):
             node.set_params(node_n)
 
     def get_params(self) -> Tuple[np.ndarray]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            One-dimensional NumPy array representing the number of i.i.d. Bernoulli trials.
+        """
         return (self.n,)
-    
+
+    # TODO: dist
+
     # TODO: check support
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: CondBinomialLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondBinomialLayer, CondBinomial, None]:
-    """TODO"""
+    """Structural marginalization for ``CondBinomialLayer`` objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

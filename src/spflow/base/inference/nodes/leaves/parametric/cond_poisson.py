@@ -11,7 +11,7 @@ import numpy as np
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(node: CondPoisson, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """Computes log-likelihoods for ``CondPoisson`` node given input data.
+    r"""Computes log-likelihoods for ``CondPoisson`` node given input data.
 
     Log-likelihood for ``CondPoisson`` is given by the logarithm of its probability mass function (PMF):
 
@@ -22,6 +22,8 @@ def log_likelihood(node: CondPoisson, data: np.ndarray, dispatch_ctx: Optional[D
     where
         - :math:`k` is the number of occurrences
         - :math:`\lambda` is the rate parameter
+
+    Missing values (i.e., NaN) are marginalized over.
 
     Args:
         node:

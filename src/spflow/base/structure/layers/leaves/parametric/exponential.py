@@ -1,7 +1,5 @@
-"""
-Created on August 12, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Exponential leaf layer for SPFlow in the 'base' backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -14,16 +12,42 @@ from spflow.base.structure.nodes.leaves.parametric.exponential import Exponentia
 
 
 class ExponentialLayer(Module):
-    """Layer representing multiple (univariate) exponential leaf nodes.
+    r"""Layer of multiple (univariate) Exponential distribution leaf nodes in the 'base' backend.
 
-    Args:
-        scope: TODO
-        l: TODO
-        n_nodes: number of output nodes.
+    Represents multiple univariate Exponential distributions with independent scopes, each with the following probability distribution function (PDF):
+
+    .. math::
+        
+        \text{PDF}(x) = \begin{cases} \lambda e^{-\lambda x} & \text{if } x > 0\\
+                                      0                      & \text{if } x <= 0\end{cases}
+    
+    where
+        - :math:`x` is the input observation
+        - :math:`\lambda` is the rate parameter
+    
+    Attributes:
+        l:
+            One-dimensional NumPy array containing the rate parameters (:math:`\lambda`) for each of the independent Exponential distributions.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``Exponential`` objects for the nodes in this layer.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], l: Union[int, float, List[float], np.ndarray]=1.0, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``ExponentialLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            l:
+                Floating point, list of floats or one-dimensional NumPy array representing the rate parameters (:math:`\lambda`) of the Exponential distributions (must be greater than 0).
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 1.0.
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'ExponentialLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -49,15 +73,22 @@ class ExponentialLayer(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     @property
     def l(self) -> np.ndarray:
+        """Returns the rate parameters of the represented distributions."""
         return np.array([node.l for node in self.nodes])
 
     def set_params(self, l: Union[int, float, List[float], np.ndarray]) -> None:
+        r"""Sets the parameters for the represented distributions.
 
+        Args:
+            l:
+                Floating point, list of floats or one-dimensional NumPy array representing the rate parameters (:math:`\lambda`) of the Exponential distributions (must be greater than 0).
+                If a single floating point value is given it is broadcast to all nodes.
+        """
         if isinstance(l, int) or isinstance(l, float):
             l = np.array([float(l) for _ in range(self.n_out)])
         if isinstance(l, list):
@@ -71,12 +102,40 @@ class ExponentialLayer(Module):
             node.set_params(node_l)
     
     def get_params(self) -> Tuple[np.ndarray]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            One-dimensional NumPy array representing the rate parameters.
+        """
         return (self.l,)
 
+    # TODO: dist
 
-@dispatch(memoize=True)
+    # TODO: check support
+
+
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: ExponentialLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[ExponentialLayer, Exponential, None]:
-    """TODO"""
+    r"""Structural marginalization for ``ExponentialLayer`` objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
