@@ -47,7 +47,7 @@ def log_likelihood(product_node: SPNProductNode, data: np.ndarray, dispatch_ctx:
     Missing values (i.e., NaN) are marginalized over.
 
     Args:
-        prduct_node:
+        product_node:
             Product node to perform inference for.
         data:
             Two-dimensional NumPy array containing the input data.
