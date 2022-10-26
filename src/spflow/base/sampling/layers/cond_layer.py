@@ -1,7 +1,5 @@
-"""
-Created on October 24, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains sampling methods for conditional SPN-like layers for SPFlow in the 'base' backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -15,9 +13,32 @@ import numpy as np
 from typing import Optional
 
 
-@dispatch
+@dispatch  # type: ignore
 def sample(sum_layer: SPNCondSumLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
-    """TODO"""
+    """Samples from conditional SPN-like sum layers in the 'base' backend given potential evidence.
+
+    Can only sample from at most one output at a time, since all scopes are equal and overlap.
+    Samples from each input proportionally to its weighted likelihoods given the evidence.
+    Missing values (i.e., NaN) are filled with sampled values.
+
+    Args:
+        sum_layer:
+            Sum layer to sample from.
+        data:
+            Two-dimensional NumPy array containing potential evidence.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+        sampling_ctx:
+            Optional sampling context containing the instances (i.e., rows) of ``data`` to fill with sampled values and the output indices of the node to sample from.
+
+    Returns:
+        Two-dimensional NumPy array containing the sampled values together with the specified evidence.
+        Each row corresponds to a sample.
+    
+    Raises:
+        ValueError: Sampling from invalid number of outputs.
+    """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
