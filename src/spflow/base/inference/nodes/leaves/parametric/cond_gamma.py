@@ -26,6 +26,8 @@ def log_likelihood(node: CondGamma, data: np.ndarray, dispatch_ctx: Optional[Dis
         - :math:`\alpha` is the shape parameter
         - :math:`\beta` is the rate parameter
 
+    Missing values (i.e., NaN) are marginalized over.
+
     Args:
         node:
             Leaf node to perform inference for.

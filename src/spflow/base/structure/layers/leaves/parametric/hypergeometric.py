@@ -1,7 +1,5 @@
-"""
-Created on August 12, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Hypergeometric leaf layer for SPFlow in the 'base' backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -14,18 +12,53 @@ from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hyperge
 
 
 class HypergeometricLayer(Module):
-    """Layer representing multiple (univariate) hypergeometric leaf nodes.
+    r"""Layer of multiple (univariate) Hypergeometric distribution leaf node in the 'base' backend.
 
-    Args:
-        scope: TODO
-        N: TODO
-        M: TODO
-        n: TODO
-        n_nodes: number of output nodes.
+    Represents multiple univariate Hypergeometric distributions with independent scopes, each with the following probability mass function (PMF):
+
+    .. math::
+
+        \text{PMF}(k) = \frac{\binom{M}{k}\binom{N-M}{n-k}}{\binom{N}{n}}
+
+    where
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+        - :math:`N` is the total number of entities
+        - :math:`M` is the number of entities with property of interest
+        - :math:`n` is the number of draws
+        - :math:`k` s the number of observed entities
+
+    Attributes:
+        N:
+            One-dimensional NumPy array specifying the total numbers of entities (in the populations), greater or equal to 0.
+        M:
+            One-dimensional NumPy array specifying the numbers of entities with property of interest (in the populations), greater or equal to zero and less than or equal to N.
+        n:
+            One-dimensional NumPy array specifying the numbers of draws, greater of equal to zero and less than or equal to N.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``Hypergeometric`` objects for the nodes in this layer.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], N: Union[int, List[int], np.ndarray], M: Union[int, List[int], np.ndarray], n: Union[int, List[int], np.ndarray], n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``HypergeometricLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            N:
+                Integer, list of ints or one-dimensional NumPy array specifying the total numbers of entities (in the populations), greater or equal to 0.
+                If a single integer value is given it is broadcast to all nodes.
+            M:
+                Integer, list of ints or one-dimensional NumPy array specifying the numbers of entities with property of interest (in the populations), greater or equal to zero and less than or equal to N.
+                If a single integer value is given it is broadcast to all nodes.
+            n:
+                Integer, list of ints or one-dimensional NumPy array specifying the numbers of draws, greater of equal to zero and less than or equal to N.
+                If a single integer value is given it is broadcast to all nodes.
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'HypergeometricLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -51,23 +84,38 @@ class HypergeometricLayer(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     @property
     def N(self) -> np.ndarray:
+        """Returns the total numbers of entities (in the populations)"""
         return np.array([node.N for node in self.nodes])
     
     @property
     def M(self) -> np.ndarray:
+        """Returns the numbers of entities with property of interest (in the populations)."""
         return np.array([node.M for node in self.nodes])
 
     @property
     def n(self) -> np.ndarray:
+        """Returns the numbers of draws."""
         return np.array([node.n for node in self.nodes])
 
     def set_params(self, N: Union[int, List[int], np.ndarray], M: Union[int, List[int], np.ndarray], n: Union[int, List[int], np.ndarray]) -> None:
+        """Sets the parameters for the represented distributions.
 
+        Args:
+            N:
+                Integer, list of ints or one-dimensional NumPy array specifying the total numbers of entities (in the populations), greater or equal to 0.
+                If a single integer value is given it is broadcast to all nodes.
+            M:
+                Integer, list of ints or one-dimensional NumPy array specifying the numbers of entities with property of interest (in the populations), greater or equal to zero and less than or equal to N.
+                If a single integer value is given it is broadcast to all nodes.
+            n:
+                Integer, list of ints or one-dimensional NumPy array specifying the numbers of draws, greater of equal to zero and less than or equal to N.
+                If a single integer value is given it is broadcast to all nodes.
+        """
         if isinstance(N, int):
             N = np.array([N for _ in range(self.n_out)])
         if isinstance(N, list):
@@ -115,6 +163,11 @@ class HypergeometricLayer(Module):
             node.set_params(node_N, node_M, node_n)
     
     def get_params(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Thee one-dimensional NumPy arrays representing the total numbers of entities, the numbers of entities of interest and the numbers of draws.
+        """
         return self.N, self.M, self.n
     
     def check_support(self, scope_data: np.ndarray, node_ids: List[int]) -> np.ndarray:
@@ -134,11 +187,34 @@ class HypergeometricLayer(Module):
         )
 
         return valid
+    
+    # TODO: dist
+
+    # TODO: check support
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: HypergeometricLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[HypergeometricLayer, Hypergeometric, None]:
-    """TODO"""
+    """Structural marginalization for ``HypergeometricLayer`` objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

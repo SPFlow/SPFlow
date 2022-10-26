@@ -1,7 +1,5 @@
-"""
-Created on August 12, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Uniform leaf node for SPFlow in the 'base' backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -14,18 +12,43 @@ from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
 
 
 class UniformLayer(Module):
-    """Layer representing multiple (univariate) uniform leaf nodes.
+    r"""Layer of multiple (univariate) continuous Uniform distribution leaf nodes in the 'base' backend.
 
-    Args:
-        scope: TODO
-        start: TODO
-        end: TODO
-        support_outside: TODO
-        n_nodes: number of output nodes.
+    Represents multiple univariate Poisson distributions with independent scopes, each with the following probability distribution function (PDF):
+
+    .. math::
+
+        \text{PDF}(x) = \frac{1}{\text{end} - \text{start}}\mathbf{1}_{[\text{start}, \text{end}]}(x)
+
+    where
+        - :math:`x` is the input observation
+        - :math:`\mathbf{1}_{[\text{start}, \text{end}]}` is the indicator function for the given interval (evaluating to 0 if x is not in the interval)
+
+    Attributes:
+        start:
+            One-dimensional NumPy array containing the start of the intervals (including).
+        end:
+            One-dimensional NumPy array containing the end of the intervals (including). Must be larger than 'start'.
+        support_outside:
+            One-dimensional NumPy array containing booleans indicating whether or not values outside of the intervals are part of the support.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], start: Union[int, float, List[float], np.ndarray], end: Union[int, float, List[float], np.ndarray], support_outside: Union[bool, List[bool], np.ndarray]=True, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``UniformLayer`` leaf node.
+
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            start:
+                Floating point, list of floats or one-dimensional NumPy array containing the start of the intervals (including).
+                If a single floating point value is given, it is broadcast to all nodes.
+            end:
+                Floating point, list of floats or one-dimensional NumPy array containing the end of the intervals (including). Must be larger than 'start'.
+                If a single floating point value is given, it is broadcast to all nodes.
+            support_outside:
+                Boolean, list of booleans or one-dimensional NumPy array containing booleans indicating whether or not values outside of the intervals are part of the support.
+                If a single boolean value is given, it is broadcast to all nodes.
+                Defaults to True.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'UniformLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -51,23 +74,39 @@ class UniformLayer(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     @property
     def start(self) -> np.ndarray:
+        """Returns the starts of the intervals of the represented distributions."""
         return np.array([node.start for node in self.nodes])
     
     @property
     def end(self) -> np.ndarray:
+        """Returns the ends of the intervals of the represented distributions."""
         return np.array([node.end for node in self.nodes])
     
     @property
     def support_outside(self) -> np.ndarray:
+        """Returns the booleans indicating whether or not values outside of the intervals are part of the supports of the represented distributions."""
         return np.array([node.support_outside for node in self.nodes])
 
     def set_params(self, start: Union[int, float, List[float], np.ndarray], end: Union[int, float, List[float], np.ndarray], support_outside: Union[bool, List[bool], np.ndarray]=True) -> None:
+        """Sets the parameters for the represented distributions.
 
+        Args:
+            start:
+                Floating point, list of floats or one-dimensional NumPy array containing the start of the intervals (including).
+                If a single floating point value is given, it is broadcast to all nodes.
+            end:
+                Floating point, list of floats or one-dimensional NumPy array containing the end of the intervals (including). Must be larger than 'start'.
+                If a single floating point value is given, it is broadcast to all nodes.
+            support_outside:
+                Boolean, list of booleans or one-dimensional NumPy array containing booleans indicating whether or not values outside of the intervals are part of the support.
+                If a single boolean value is given, it is broadcast to all nodes.
+                Defaults to True.
+        """
         if isinstance(start, int) or isinstance(start, float):
             start = np.array([float(start) for _ in range(self.n_out)])
         if isinstance(start, list):
@@ -99,12 +138,40 @@ class UniformLayer(Module):
             node.set_params(node_start, node_end, node_support_outside)
     
     def get_params(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of three one-dimensional NumPy arrays representing the starts and ends of the intervals and the booleans indicating whether or not values outside of the intervals are part of the supports.
+        """
         return self.start, self.end, self.support_outside
 
+    # TODO: dist
 
-@dispatch(memoize=True)
+    # TODO: check support
+
+
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: UniformLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[UniformLayer, Uniform, None]:
-    """TODO"""
+    """Structural marginalization for ``UniformLayer`` objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

@@ -23,6 +23,8 @@ def log_likelihood(node: Geometric, data: np.ndarray, dispatch_ctx: Optional[Dis
         - :math:`k` is the number of trials
         - :math:`p` is the success probability of each trial
 
+    Missing values (i.e., NaN) are marginalized over.
+
     Args:
         node:
             Leaf node to perform inference for.

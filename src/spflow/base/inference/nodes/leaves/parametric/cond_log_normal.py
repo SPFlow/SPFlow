@@ -24,6 +24,8 @@ def log_likelihood(node: CondLogNormal, data: np.ndarray, dispatch_ctx: Optional
         - :math:`\mu` is the mean
         - :math:`\sigma` is the standard deviation
 
+    Missing values (i.e., NaN) are marginalized over.
+
     Args:
         node:
             Leaf node to perform inference for.

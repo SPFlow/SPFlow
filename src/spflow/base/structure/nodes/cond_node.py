@@ -22,6 +22,10 @@ class SPNCondSumNode(Node):
     Attributes:
         children:
             Non-empty list of modules that are children to the node in a directed graph.
+        cond_f:
+            Optional callable to retrieve weights for the sum node.
+            Its output should be a dictionary containing 'weights' as a key, and the value should be
+            a list of floats or a one-dimensional NumPy array containing non-zero values, summing up to one.
         n_out:
             Integer indicating the number of outputs. One for nodes.
         scopes_out:

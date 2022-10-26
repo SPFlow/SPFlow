@@ -11,7 +11,7 @@ import numpy as np
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(node: CondNegativeBinomial, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """Computes log-likelihoods for ``CondNegativeBinomial`` node given input data.
+    r"""Computes log-likelihoods for ``CondNegativeBinomial`` node given input data.
 
     Log-likelihood for ``CondNegativeBinomial`` is given by the logarithm of its probability mass function (PMF):
 
@@ -23,6 +23,8 @@ def log_likelihood(node: CondNegativeBinomial, data: np.ndarray, dispatch_ctx: O
         - :math:`k` is the number of failures
         - :math:`n` is the maximum number of successes
         - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+
+    Missing values (i.e., NaN) are marginalized over.
 
     Args:
         node:

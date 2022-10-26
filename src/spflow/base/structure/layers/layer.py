@@ -1,7 +1,7 @@
-"""
-Created on August 09, 2022
+# -*- coding: utf-8 -*-
+"""Contains basic layer classes for SPFlow in the 'base' backend.
 
-@authors: Philipp Deibert
+Contains classes for layers of SPN-like sum- and product nodes.
 """
 from typing import List, Union, Optional, Iterable
 from copy import deepcopy
@@ -17,17 +17,44 @@ from spflow.base.structure.nodes.node import SPNProductNode, SPNSumNode
 
 
 class SPNSumLayer(NestedModule):
-    """Layer representing multiple SPN-like sum nodes over all children.
+    r"""Layer representing multiple SPN-like sum nodes over all children in the 'base' backend.
 
-    Args:
-        n: number of output nodes.
-        children: list of child modules.
+    Represents multiple convex combinations of its children over the same scope.
+
+    Attributes:
+        children:
+            Non-empty list of modules that are children to the node in a directed graph.
+        weights:
+            Two-dimensional NumPy array containing non-negative weights for each input.
+            Each row corresponds to a sum node with values summing up to one.
+        n_out:
+            Integer indicating the number of outputs. Equal to the number of nodes represented by the layer.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``SPNSumNode`` objects for the nodes in this layer.
     """
     def __init__(self, n_nodes: int, children: List[Module], weights: Optional[Union[np.ndarray, List[List[float]], List[float]]]=None, **kwargs) -> None:
-        """TODO"""
+        r"""Initializes ``SPNSumLayer`` object.
 
+        Args:
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent.
+            children:
+                Non-empty list of modules that are children to the layer.
+                The output scopes for all child modules need to be equal.
+            weights:
+                Optional list of floats, list of lists of floats or one- to two-dimensional NumPy array,
+                containing non-negative weights. There should be weights for each of the node and inputs.
+                Each row corresponds to a sum node and values should sum up to one. If it is a list of floats
+                or one-dimensional NumPy array, the same weights are reused for all sum nodes.
+                Defaults to 'None' in which case weights are initialized to random weights in (0,1) and normalized per row.
+
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if(n_nodes < 1):
-            raise ValueError("Number of nodes for 'SumLayer' must be greater of equal to 1.")
+            raise ValueError("Number of nodes for 'SPNSumLayer' must be greater of equal to 1.")
 
         if len(children) == 0:
             raise ValueError("'SPNSumLayer' requires at least one child to be specified.")
@@ -52,22 +79,34 @@ class SPNSumLayer(NestedModule):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
     
     @property
     def scopes_out(self) -> List[Scope]:
-        """TODO"""
+        """Returns the output scopes this layer represents."""
         return [self.scope for _ in range(self.n_out)]
 
     @property
     def weights(self) -> np.ndarray:
-        """TODO"""
+        """Returns the weights of all nodes as a two-dimensional NumPy array."""
         return np.vstack([node.weights for node in self.nodes])
 
     @weights.setter
     def weights(self, values: Union[np.ndarray, List[List[float]], List[float]]) -> None:
-        """TODO"""
+        """Sets the weights of all nodes to specified values.
+
+        Args:
+            values:
+                List of floats, list of lists of floats or one- to two-dimensional NumPy array,
+                containing non-negative weights. There should be weights for each of the node and inputs.
+                Each row corresponds to a sum node and values should sum up to one. If it is a list of floats
+                or one-dimensional NumPy array, the same weights are reused for all sum nodes.
+                Two-dimensional NumPy array containing non-negative weights for each input.
+
+        Raises:
+            ValueError: Invalid values.
+        """
         if isinstance(values, list):
             values = np.array(values)
         if(values.ndim != 1 and values.ndim != 2):
@@ -97,9 +136,29 @@ class SPNSumLayer(NestedModule):
                 raise ValueError(f"Incorrect number of weights for 'SPNSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}.")
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumLayer, Module, None]:
-    """TODO"""
+    """Structural marginalization for SPN-like sum layer objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+    If the layer's scope is partially marginalized over, then a new sum layer over the marginalized child modules is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        (Marginalized) sum layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -130,17 +189,34 @@ def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, d
 
 
 class SPNProductLayer(NestedModule):
-    """Layer representing multiple SPN-like product nodes over all children.
+    r"""Layer representing multiple SPN-like product nodes over all children in the 'base' backend.
 
-    Args:
-        n: number of output nodes.
-        children: list of child modules.
+    Represents multiple products of its children over pair-wise disjoint scopes.
+
+    Attributes:
+        children:
+            Non-empty list of modules that are children to the node in a directed graph.
+        n_out:
+            Integer indicating the number of outputs. Equal to the number of nodes represented by the layer.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``SPNProductNode`` objects for the nodes in this layer.
     """
     def __init__(self, n_nodes: int, children: List[Module], **kwargs) -> None:
-        """TODO"""
+        r"""Initializes ``SPNProductLayer`` object.
 
+        Args:
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent.
+            children:
+                Non-empty list of modules that are children to the layer.
+                The output scopes for all child modules need to be pair-wise disjoint.
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if(n_nodes < 1):
-            raise ValueError("Number of nodes for 'ProductLayer' must be greater of equal to 1.")
+            raise ValueError("Number of nodes for 'SPNProductLayer' must be greater of equal to 1.")
 
         self._n_out = n_nodes
 
@@ -158,17 +234,40 @@ class SPNProductLayer(NestedModule):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
     
     @property
     def scopes_out(self) -> List[Scope]:
+        """Returns the output scopes this layer represents."""
         return [self.scope for _ in range(self.n_out)]
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNProductLayer, Module, None]:
-    """TODO"""
+    """Structural marginalization for SPN-like product layer objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+    If the layer's scope is partially marginalized over, then a new product layer over the marginalized child modules is returned.
+    If the marginalized product layer has only one input and 'prune' is set, then the product node is pruned and the input is returned directly.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            If set to True and the marginalized node has a single input, the input is returned directly.
+            Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        (Marginalized) product layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -193,8 +292,8 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
             if marg_child:
                 marg_children.append(marg_child)
         
-        # if product node has only one child after marginalization and pruning is true, return child directly
-        if(len(marg_children) == 1 and prune):
+        # if product node has only one child with a single ouput after marginalization and pruning is true, return child directly
+        if(len(marg_children) == 1 and marg_children[0].n_out == 1 and prune):
             return marg_children[0]
         else:
             return SPNProductLayer(n_nodes=layer.n_out, children=marg_children)
@@ -203,14 +302,50 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
 
 
 class SPNPartitionLayer(NestedModule):
-    """Layer representing multiple SPN-like product nodes partitions.
+    """Layer representing multiple SPN-like product nodes in the 'base' backend as combinations of inputs from different partitions.
 
-    Args:
-        child_partitions: list of lists of child modules with pair-wise disoint scopes between partitions.
+    A partition is a group of inputs over the same scope. Different partitions have pair-wise disjoint scopes.
+    The layer represents all possible combinations of products selecting a single input from each partition.
+    The resulting outputs all have the same scopes.
+
+    Example:
+
+        layer = SPNPartitionLayer([[node1, node2], [node3], [node4, node5, node6]])
+    
+        In this example the layer will have 2*1*3=6 product nodes over the following inputs (in this order):
+
+            node1, node3, node4
+            node1, node3, node5
+            node1, node3, node6
+            node2, node3, node4
+            node2, node3, node5
+            node2, node3, node6
+
+    Attributes:
+        children:
+            Non-empty list of modules that are children to the node in a directed graph.
+        n_out:
+            Integer indicating the number of outputs. Equal to the number of nodes represented by the layer.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``SPNProductNode`` objects for the nodes in this layer.
+        modules_per_partition:
+            List of integers keeping track of the number of total inputs each input partition represents.
+        partition_scopes:
+            List of scopes keeping track of the scopes each partition represents.
     """
     def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
-        """TODO"""
+        r"""Initializes ``SPNPartitionLayer`` object.
 
+        Args:
+            child_partitions:
+                Non-empty list of lists of modules that are children to the layer.
+                The output scopes for all child modules in a partition need to be qual.
+                The output scopes for different partitions need to be pair-wise disjoint.
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if len(child_partitions) == 0:
             raise ValueError("No partitions for 'SPNPartitionLayer' specified.")
         
@@ -267,18 +402,40 @@ class SPNPartitionLayer(NestedModule):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
     
     @property
     def scopes_out(self) -> List[Scope]:
+        """Returns the output scopes this layer represents."""
         return [self.scope for _ in range(self.n_out)]
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNPartitionLayer, Module, None]:
-    """TODO"""
+    """Structural marginalization for SPN-like partition layer objects.
 
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+    If the layer's scope is partially marginalized over, then a new product layer over the marginalized child modules is returned.
+    If the marginalized product layer has only one input and 'prune' is set, then the product node is pruned and the input is returned directly.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            If set to True and the marginalized node has a single input, the input is returned directly.
+            Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        (Marginalized) partition layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -312,8 +469,8 @@ def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=T
             else:
                 marg_partitions.append(deepcopy(partition_children))
 
-        # if product node has only one child after marginalization and pruning is true, return child directly
-        if(len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and prune):
+        # if product node has only one input after marginalization and pruning is true, return input directly
+        if(len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and marg_partitions[0][0].n_out == 1 and prune):
             return marg_partitions[0][0]
         else:
             return SPNPartitionLayer(child_partitions=marg_partitions)
@@ -322,14 +479,49 @@ def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=T
 
 
 class SPNHadamardLayer(NestedModule):
-    """Layer representing multiple SPN-like product nodes in an element-wise fashion.
+    """Layer representing multiple SPN-like product nodes in the 'base' backend as element-wise products of inputs from different partitions.
 
-    Args:
-        child_partitions: list of lists of child modules with pair-wise disoint scopes between partitions. The total number of outputs should be the same for all partitions (in the case of one output in a partition, it is broadcast). 
+    A partition is a group of inputs over the same scope. Different partitions have pair-wise disjoint scopes.
+    The layer represents element-wise products selecting a single input from each partition.
+    This means that all partitions must represent an equal number of inputs or a single input (in which case the input is broadcast).
+    The resulting outputs all have the same scopes.
+
+    Example:
+
+        layer = SPNHadamardLayer([[node1, node2], [node3], [node4, node5]])
+    
+        In this example the layer will have 2 product nodes over the following inputs (in this order):
+
+            node1, node3, node4
+            node2, node3, node5
+
+    Attributes:
+        children:
+            Non-empty list of modules that are children to the node in a directed graph.
+        n_out:
+            Integer indicating the number of outputs. Equal to the number of nodes represented by the layer.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``SPNProductNode`` objects for the nodes in this layer.
+        modules_per_partition:
+            List of integers keeping track of the number of total inputs each input partition represents.
+        partition_scopes:
+            List of scopes keeping track of the scopes each partition represents.
     """
     def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
-        """TODO"""
+        r"""Initializes ``SPNHadamardLayer`` object.
 
+        Args:
+            child_partitions:
+                Non-empty list of lists of modules that are children to the layer.
+                The output scopes for all child modules in a partition need to be qual.
+                The output scopes for different partitions need to be pair-wise disjoint.
+                All partitions must have the same number of total outputs or a single output
+                (in which case the output is broadcast).
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if len(child_partitions) == 0:
             raise ValueError("No partitions for 'SPNHadamardLayer' specified.")
 
@@ -395,18 +587,40 @@ class SPNHadamardLayer(NestedModule):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
     
     @property
     def scopes_out(self) -> List[Scope]:
+        """Returns the output scopes this layer represents."""
         return [self.scope for _ in range(self.n_out)]
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: SPNHadamardLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNHadamardLayer, Module, None]:
-    """TODO"""
+    """Structural marginalization for SPN-like Hadamard layer objects.
 
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+    If the layer's scope is partially marginalized over, then a new product layer over the marginalized child modules is returned.
+    If the marginalized product layer has only one input and 'prune' is set, then the product node is pruned and the input is returned directly.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            If set to True and the marginalized node has a single input, the input is returned directly.
+            Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        (Marginalized) Hadamard layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -440,8 +654,8 @@ def marginalize(layer: SPNHadamardLayer, marg_rvs: Iterable[int], prune: bool=Tr
             else:
                 marg_partitions.append(deepcopy(partition_children))
 
-        # if product node has only one child after marginalization and pruning is true, return child directly
-        if(len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and prune):
+        # if product node has only one input after marginalization and pruning is true, return input directly
+        if(len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and marg_partitions[0][0].n_out == 1 and prune):
             return marg_partitions[0][0]
         else:
             return SPNHadamardLayer(child_partitions=marg_partitions)

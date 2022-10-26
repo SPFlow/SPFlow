@@ -1,7 +1,5 @@
-"""
-Created on August 12, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Gaussian leaf layer for SPFlow in the 'base' backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -14,17 +12,48 @@ from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 
 
 class GaussianLayer(Module):
-    """Layer representing multiple (univariate) gaussian leaf nodes.
+    r"""Layer of multiple (univariate) Gaussian distribution leaf nodes in the 'base' backend.
 
-    Args:
-        scope: TODO
-        mean: TODO
-        std: TODO
-        n_nodes: number of output nodes.
+    Represents multiple univariate Gaussian distributions with independent scopes, each with the following probability distribution function (PDF):
+
+    .. math::
+
+        \text{PDF}(x) = \frac{1}{\sqrt{2\pi\sigma^2}}\exp(-\frac{(x-\mu)^2}{2\sigma^2})
+
+    where
+        - :math:`x` the observation
+        - :math:`\mu` is the mean
+        - :math:`\sigma` is the standard deviation
+
+    Attributes:
+        mean:
+            One-dimensional NumPy array representing the means (:math:`\mu`) of the distributions.
+        std:
+            One-dimensional NumPy array representing the standard deviations (:math:`\sigma`) of the distributions (must be greater than 0).
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``Gaussian`` objects for the nodes in this layer.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], mean: Union[float, List[float], np.ndarray]=0.0, std: Union[float, List[float], np.ndarray]=1.0, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``GaussianLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            mean:
+                Floating point, list of floats or one-dimensional NumPy array representing the means (:math:`\mu`).
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 0.0.
+            std:
+                Floating point, list of floats or one-dimensional NumPy array representing the standard deviations (:math:`\sigma`), greater than 0.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 1.0. 
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'GaussianLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -50,19 +79,32 @@ class GaussianLayer(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     @property
     def mean(self) -> np.ndarray:
+        """Returns the means of the represented distributions."""
         return np.array([node.mean for node in self.nodes])
     
     @property
     def std(self) -> np.ndarray:
+        """Returns the standard deviations of the represented distributions."""
         return np.array([node.std for node in self.nodes])
 
     def set_params(self, mean: Union[int, float, List[float], np.ndarray]=0.0, std: Union[int, float, List[float], np.ndarray]=1.0) -> None:
+        r"""Sets the parameters for the represented distributions.
 
+        Args:
+            mean:
+                Floating point, list of floats or one-dimensional NumPy array representing the means (:math:`\mu`).
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 0.0.
+            std:
+                Floating point, list of floats or one-dimensional NumPy array representing the standard deviations (:math:`\sigma`), greater than 0.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 1.0. 
+        """
         if isinstance(mean, int) or isinstance(mean, float):
             mean = np.array([mean for _ in range(self.n_out)])
         if isinstance(mean, list):
@@ -85,12 +127,40 @@ class GaussianLayer(Module):
             node.set_params(node_mean, node_std)
     
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of one-dimensional NumPy arrays representing the means and standard deviations.
+        """
         return self.mean, self.std
+        
+    # TODO: dist
+
+    # TODO: check support
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: GaussianLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[GaussianLayer, Gaussian, None]:
-    """TODO"""
+    r"""Structural marginalization for ``GaussianLayer`` objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

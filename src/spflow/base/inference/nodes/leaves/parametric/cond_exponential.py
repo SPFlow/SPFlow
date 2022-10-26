@@ -24,6 +24,8 @@ def log_likelihood(node: CondExponential, data: np.ndarray, dispatch_ctx: Option
         - :math:`x` is the input observation
         - :math:`\lambda` is the rate parameter
 
+    Missing values (i.e., NaN) are marginalized over.
+
     Args:
         node:
             Leaf node to perform inference for.

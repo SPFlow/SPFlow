@@ -283,7 +283,7 @@ def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bo
     If the product node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
     If the product node's scope is fully marginalized over, then None is returned.
     If the product node's scope is partially marginalized over, then a new prodcut node over the marginalized child modules is returned.
-    If the marginalized product node has only one input and 'prune' is set, then the product node is pruned and the child is returned directly.
+    If the marginalized product node has only one input and 'prune' is set, then the product node is pruned and the input is returned directly.
 
     Args:
         product_node:
@@ -292,7 +292,7 @@ def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bo
             Iterable of integers representing the indices of the random variables to marginalize.
         prune:
             Boolean indicating whether or not to prune nodes and modules where possible.
-            If set to True and the marginalized node has a single input, the child is returned directly.
+            If set to True and the marginalized node has a single input, the input is returned directly.
             Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
@@ -323,8 +323,8 @@ def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bo
             if marg_child:
                 marg_children.append(marg_child)
         
-        # if product node has only one child after marginalization and pruning is true, return child directly
-        if(len(marg_children) == 1 and prune):
+        # if product node has only one child with a single output after marginalization and pruning is true, return child directly
+        if(len(marg_children) == 1 and marg_children[0].n_out == 1 and prune):
             return marg_children[0]
         else:
             return SPNProductNode(marg_children)

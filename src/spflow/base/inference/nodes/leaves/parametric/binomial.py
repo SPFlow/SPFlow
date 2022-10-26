@@ -25,6 +25,8 @@ def log_likelihood(node: Binomial, data: np.ndarray, dispatch_ctx: Optional[Disp
         - :math:`k` is the number of successes
         - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
 
+    Missing values (i.e., NaN) are marginalized over.
+
     Args:
         node:
             Leaf node to perform inference for.

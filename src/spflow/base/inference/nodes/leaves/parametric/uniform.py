@@ -11,7 +11,7 @@ import numpy as np
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(node: Uniform, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """Computes log-likelihoods for ``Uniform`` node given input data.
+    r"""Computes log-likelihoods for ``Uniform`` node given input data.
 
     Log-likelihood for ``Uniform`` is given by the logarithm of its probability distribution function (PDF):
 
@@ -22,6 +22,8 @@ def log_likelihood(node: Uniform, data: np.ndarray, dispatch_ctx: Optional[Dispa
     where
         - :math:`x` is the input observation
         - :math:`\mathbf{1}_{[\text{start}, \text{end}]}` is the indicator function for the given interval (evaluating to 0 if x is not in the interval)
+
+    Missing values (i.e., NaN) are marginalized over.
 
     Args:
         node:

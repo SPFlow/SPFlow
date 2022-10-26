@@ -11,7 +11,7 @@ import numpy as np
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(node: MultivariateGaussian, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """Computes log-likelihoods for ``MultivariateGaussian`` node given input data.
+    r"""Computes log-likelihoods for ``MultivariateGaussian`` node given input data.
 
     Log-likelihood for ``MultivariateGaussian`` is given by the logarithm of its probability distribution function (PDF):
 
@@ -24,6 +24,8 @@ def log_likelihood(node: MultivariateGaussian, data: np.ndarray, dispatch_ctx: O
         - :math:`x` is the :math:`d`-dim. vector of observations
         - :math:`\mu` is the :math:`d`-dim. mean vector
         - :math:`\Sigma` is the :math:`d\times d` covariance matrix
+
+    Missing values (i.e., NaN) are marginalized over.
 
     Args:
         node:

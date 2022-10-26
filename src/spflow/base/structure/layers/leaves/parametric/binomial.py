@@ -1,7 +1,5 @@
-"""
-Created on August 12, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Binomial leaf layer for SPFlow in the 'base' backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -14,17 +12,48 @@ from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial
 
 
 class BinomialLayer(Module):
-    """Layer representing multiple (univariate) binomial leaf nodes.
+    r"""Layer of multiple (univariate) Binomial distribution leaf nodes in the 'base' backend.
 
-    Args:
-        scope: TODO
-        n: TODO
-        p: TODO
-        n_nodes: number of output nodes.
+    Represents multiple univariate Binomial distributions with independent scopes, each with the following probability mass function (PMF):
+
+    .. math::
+
+        \text{PMF}(k) = \binom{n}{k}p^k(1-p)^{n-k}
+
+    where
+        - :math:`p` is the success probability of each trial in :math:`[0,1]`
+        - :math:`n` is the number of total trials
+        - :math:`k` is the number of successes
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+
+    Attributes:
+        n:
+            One-dimensional NumPy array containing the number of i.i.d. Bernoulli trials (greater or equal to 0) for each independent Binomial distribution.
+        p:
+            One-dimensional NumPy array containing the success probabilities for each of the independent Binomial distributions.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``Binomial`` objects for the nodes in this layer.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], n: Union[int, List[int], np.ndarray], p: Union[int, float, List[float], np.ndarray]=0.5, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``BinomialLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            n:
+                Integer, list of integers or one-dimensional NumPy array containing the number of i.i.d. Bernoulli trials (greater or equal to 0) for each independent Binomial distribution.
+                If a single integer value is given it is broadcast to all nodes.
+            p:
+                Floating point, list of floats or one-dimensional NumPy array representing the success probabilities of the Binomial distributions between zero and one.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 0.5.
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'BinomialLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -50,19 +79,31 @@ class BinomialLayer(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     @property
     def n(self) -> np.ndarray:
+        """Returns the numbers of i.i.d. Bernoulli trials of the represented distributions."""
         return np.array([node.n for node in self.nodes])
     
     @property
     def p(self) -> np.ndarray:
+        """Returns the success probabilities of the represented distributions."""
         return np.array([node.p for node in self.nodes])
 
     def set_params(self, n: Union[int, List[int], np.ndarray], p: Union[int, float, List[float], np.ndarray]=0.5) -> None:
+        """Sets the parameters for the represented distributions.
 
+        Args:
+            n:
+                Integer, list of integers or one-dimensional NumPy array containing the number of i.i.d. Bernoulli trials (greater or equal to 0) for each independent Binomial distribution.
+                If a single integer value is given it is broadcast to all nodes.
+            p:
+                Floating point, list of floats or one-dimensional NumPy array representing the success probabilities of the Binomial distributions between zero and one.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 0.5.
+        """
         if isinstance(n, int):
             n = np.array([n for _ in range(self.n_out)])
         if isinstance(n, list):
@@ -93,12 +134,40 @@ class BinomialLayer(Module):
             node.set_params(node_n, node_p)
     
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of one-dimensional NumPy arrays representing the number of i.i.d. Bernoulli trials and success probabilities.
+        """
         return self.n, self.p
+    
+    # TODO: dist
+
+    # TODO: check support
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: BinomialLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[BinomialLayer, Binomial, None]:
-    """TODO"""
+    """Structural marginalization for ``BinomialLayer`` objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

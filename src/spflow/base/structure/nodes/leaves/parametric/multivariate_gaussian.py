@@ -30,7 +30,7 @@ class MultivariateGaussian(LeafNode):
 
     Attributes:
         mean:
-            A list of floating points or one-dimensional NumPy array containing the means (:math:`\mu`) of each of the one-dimensional Normal distributions.
+            A list of floating points or one-dimensional NumPy array containing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
             Must have exactly as many elements as the scope of this leaf.
             Defaults to all zeros. 
         cov:

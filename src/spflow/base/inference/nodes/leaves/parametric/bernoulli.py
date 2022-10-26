@@ -14,7 +14,7 @@ def log_likelihood(node: Bernoulli, data: np.ndarray, dispatch_ctx: Optional[Dis
     r"""Computes log-likelihoods for ``Bernoulli`` node given input data.
 
     Log-likelihood for ``Bernoulli`` is given by the logarithm of its probability mass function (PMF):
-    
+
     .. math::
 
         \log(\text{PMF}(k))=\begin{cases} \log(p)   & \text{if } k=1\\
@@ -23,6 +23,8 @@ def log_likelihood(node: Bernoulli, data: np.ndarray, dispatch_ctx: Optional[Dis
     where
         - :math:`p` is the success probability in :math:`[0,1]`
         - :math:`k` is the outcome of the trial (0 or 1)
+
+    Missing values (i.e., NaN) are marginalized over.
 
     Args:
         node:

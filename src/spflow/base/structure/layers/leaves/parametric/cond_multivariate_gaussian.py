@@ -1,7 +1,5 @@
-"""
-Created on October 18, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Multivariate Gaussian leaf layer for SPFlow in the 'base' backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
 import numpy as np
@@ -15,16 +13,63 @@ from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import CondGaus
 
 
 class CondMultivariateGaussianLayer(Module):
-    """Layer representing multiple conditional multivariate gaussian leaf nodes.
+    r"""Layer of multiple conditional multivariate Gaussian distribution leaf node in the 'base' backend.
 
-    Args:
-        scope: TODO
-        cond_f: TODO
-        n_nodes: number of output nodes.
+    Represents multiple conditional multivariate Gaussian distributions with independent scopes, each with the following probability distribution function (PDF):
+
+    .. math::
+
+        \text{PDF}(x) = \frac{1}{\sqrt{(2\pi)^d\det\Sigma}}\exp\left(-\frac{1}{2} (x-\mu)^T\Sigma^{-1}(x-\mu)\right)
+
+    where
+        - :math:`d` is the dimension of the distribution
+        - :math:`x` is the :math:`d`-dim. vector of observations
+        - :math:`\mu` is the :math:`d`-dim. mean vector
+        - :math:`\Sigma` is the :math:`d\times d` covariance matrix
+
+    Attributes:
+        cond_f:
+            Optional callable or list of callables to retrieve parameters for the leaf nodes.
+            If a single callable, its output should be a dictionary contain 'mean','cov' as keys.
+            The value for ``mean`` should be a list of floats, list of lists of floats or one- to two-dimensional NumPy array
+            containing the means of the distributions. If a list of floats or a one-dimensional NumPy array is given, it is broadcast to all nodes.
+            The value for ``cov`` should be a list of lists of floats, a list of list of list of floats or a two- to three-dimensional NumPy array
+            containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats is given or one-dimensional NumPy array it is broadcast to all nodes.
+            a list of floats, a list of lists of floats or one- to two-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
+            If ``cond_f`` is a list of callables, each one should return a dictionary containing 'mean','std' as keys.
+            The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array
+            containing the means.
+            The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array
+            containing a symmetric positive semi-definite covariance matrix.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``MultivariateGaussian`` objects for the nodes in this layer.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], cond_f: Optional[Union[Callable,List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
+        r"""Initializes ``CondMultivariateGaussianLayer`` object.
 
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            cond_f:
+                Optional callable or list of callables to retrieve parameters for the leaf nodes.
+                If a single callable, its output should be a dictionary contain 'mean','cov' as keys.
+                The value for ``mean`` should be a list of floats, list of lists of floats or one- to two-dimensional NumPy array
+                containing the means of the distributions. If a list of floats or a one-dimensional NumPy array is given, it is broadcast to all nodes.
+                The value for ``cov`` should be a list of lists of floats, a list of list of list of floats or a two- to three-dimensional NumPy array
+                containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats is given or one-dimensional NumPy array it is broadcast to all nodes.
+                a list of floats, a list of lists of floats or one- to two-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
+                If ``cond_f`` is a list of callables, each one should return a dictionary containing 'mean','std' as keys.
+                The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array
+                containing the means.
+                The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array
+                containing a symmetric positive semi-definite covariance matrix.
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'CondMultivariateGaussianLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -49,18 +94,55 @@ class CondMultivariateGaussianLayer(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
     
     def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+        r"""Sets the ``cond_f`` property.
 
+        Args:
+            cond_f:
+                Optional callable or list of callables to retrieve parameters for the leaf nodes.
+                If a single callable, its output should be a dictionary contain 'mean','cov' as keys.
+                The value for ``mean`` should be a list of floats, list of lists of floats or one- to two-dimensional NumPy array
+                containing the means of the distributions. If a list of floats or a one-dimensional NumPy array is given, it is broadcast to all nodes.
+                The value for ``cov`` should be a list of lists of floats, a list of list of list of floats or a two- to three-dimensional NumPy array
+                containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats is given or one-dimensional NumPy array it is broadcast to all nodes.
+                a list of floats, a list of lists of floats or one- to two-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
+                If ``cond_f`` is a list of callables, each one should return a dictionary containing 'mean','std' as keys.
+                The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array
+                containing the means.
+                The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array
+                containing a symmetric positive semi-definite covariance matrix.
+
+        Raises:
+            ValueError: If list of callables does not match number of nodes represented by the layer.
+        """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
             raise ValueError("'CondMultivariateGaussianLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
 
         self.cond_f = cond_f
     
     def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+        r"""Retrieves the conditional parameters of the leaf layer.
 
+        First, checks if conditional parameters (``mean``,``cov``) are passed as additional arguments in the dispatch context.
+        Secondly, checks if a function or list of functions (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
+
+        Args:
+            data:
+                Two-dimensional NumPy array containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            Two-dimensional NumPy array of non-zero weights summing up to one per row.
+        
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         mean, cov, cond_f = None, None, None
 
         # check dispatch cache for required conditional parameters 'mean','cov'
@@ -154,15 +236,33 @@ class CondMultivariateGaussianLayer(Module):
 
         return mean, cov
 
-    def get_params(self) -> Tuple:
-        return tuple([])
+    # TODO: dist
 
     # TODO: check support
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: CondMultivariateGaussianLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussianLayer, CondMultivariateGaussian, CondGaussian, None]:
-    """TODO"""
+    r"""Structural marginalization for ``CondMultivariateGaussianLayer`` objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

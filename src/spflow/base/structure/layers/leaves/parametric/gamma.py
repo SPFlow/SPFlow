@@ -1,7 +1,5 @@
-"""
-Created on August 12, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Gamma leaf layer for SPFlow in the 'base' backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -14,17 +12,50 @@ from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
 
 
 class GammaLayer(Module):
-    """Layer representing multiple (univariate) gamma leaf nodes.
+    r"""Layer of multiple (univariate) Gamma distribution leaf nodes in the 'base' backend.
 
-    Args:
-        scope: TODO
-        alpha: TODO
-        beta: TODO
-        n_nodes: number of output nodes.
+    Represents multiple univariate Gamma distributions with independent scopes, each with the following probability distribution function (PDF):
+
+    .. math::
+    
+        \text{PDF}(x) = \begin{cases} \frac{\beta^\alpha}{\Gamma(\alpha)}x^{\alpha-1}e^{-\beta x} & \text{if } x > 0\\
+                                      0 & \text{if } x <= 0\end{cases}
+
+    where
+        - :math:`x` is the input observation
+        - :math:`\Gamma` is the Gamma function
+        - :math:`\alpha` is the shape parameter
+        - :math:`\beta` is the rate parameter
+    
+    Attributes:
+        alpha:
+            One-dimensional NumPy array representing the shape parameters (:math:`\alpha`), greater than 0.
+        beta:
+            One-dimensional NumPy array representing the rate parameter (:math:`\beta`), greater than 0.    
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``Gamma`` objects for the nodes in this layer.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], alpha: Union[float, List[float], np.ndarray]=1.0, beta: Union[float, List[float], np.ndarray]=1.0, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``GammaLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            alpha:
+                Floating point, list of floats or one-dimensional NumPy array representing the shape parameters (:math:`\alpha`), greater than 0.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 1.0.
+            beta:
+                Floating point, list of floats or one-dimensional NumPy array representing the rate parameters (:math:`\beta`), greater than 0.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 1.0. 
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'GammaLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -50,19 +81,32 @@ class GammaLayer(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     @property
     def alpha(self) -> np.ndarray:
+        """Returns the shape parameters of the represented distributions."""
         return np.array([node.alpha for node in self.nodes])
     
     @property
     def beta(self) -> np.ndarray:
+        """Returns the rate parameters of the represented distributions."""
         return np.array([node.beta for node in self.nodes])
 
     def set_params(self, alpha: Union[int, float, List[float], np.ndarray]=1.0, beta: Union[int, float, List[float], np.ndarray]=1.0) -> None:
+        r"""Sets the parameters for the represented distributions.
 
+        Args:
+            alpha:
+                Floating point, list of floats or one-dimensional NumPy array representing the shape parameters (:math:`\alpha`), greater than 0.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 1.0.
+            beta:
+                Floating point, list of floats or one-dimensional NumPy array representing the rate parameters (:math:`\beta`), greater than 0.
+                If a single floating point value is given it is broadcast to all nodes.
+                Defaults to 1.0.
+        """
         if isinstance(alpha, int) or isinstance(alpha, float):
             alpha = np.array([alpha for _ in range(self.n_out)])
         if isinstance(alpha, list):
@@ -85,12 +129,40 @@ class GammaLayer(Module):
             node.set_params(node_mean, node_beta)
     
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of one-dimensional NumPy arrays representing the shape and rate parameters.
+        """
         return self.alpha, self.beta
 
+    # TODO: dist
 
-@dispatch(memoize=True)
+    # TODO: check support
+
+
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: GammaLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[GammaLayer, Gamma, None]:
-    """TODO"""
+    r"""Structural marginalization for ``GammaLayer`` objects.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
