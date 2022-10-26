@@ -11,7 +11,7 @@ from spflow.base.structure.nodes.node import SPNSumNode, SPNProductNode
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(sum_node: SPNSumNode, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """Computes log-likelihoods for SPN-like sum node given input data.
+    """Computes log-likelihoods for SPN-like sum nodes in the 'base' backend given input data.
 
     Log-likelihood for sum node is the logarithm of the sum of weighted exponentials (LogSumExp) of its input likelihoods (weighted sum in linear space).
     Missing values (i.e., NaN) are marginalized over.
@@ -41,7 +41,7 @@ def log_likelihood(sum_node: SPNSumNode, data: np.ndarray, dispatch_ctx: Optiona
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(product_node: SPNProductNode, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """Computes log-likelihoods for SPN-like product node given input data.
+    """Computes log-likelihoods for SPN-like product nodes in the 'base' backend given input data.
 
     Log-likelihood for product node is the sum of its input likelihoods (product in linear space).
     Missing values (i.e., NaN) are marginalized over.
