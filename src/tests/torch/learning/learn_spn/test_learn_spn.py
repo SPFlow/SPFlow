@@ -167,7 +167,7 @@ class TestNode(unittest.TestCase):
         partitioning_fn.alternate = True
         partitioning_fn.partition = True
 
-        spn = learn_spn(data, partitioning_method=partitioning_fn, clustering_method=clustering_fn, fit_leaves=False, min_features_slice=4)
+        spn = learn_spn(data, partitioning_method=partitioning_fn, clustering_method=clustering_fn, fit_params=False, min_features_slice=4)
 
         # check resulting graph
         self.assertTrue(isinstance(spn, SPNProductNode))
@@ -188,7 +188,7 @@ class TestNode(unittest.TestCase):
         partitioning_fn.alternate = True
         partitioning_fn.partition = True
 
-        spn = learn_spn(data, partitioning_method=partitioning_fn, clustering_method=clustering_fn, fit_leaves=False, min_instances_slice=51)
+        spn = learn_spn(data, partitioning_method=partitioning_fn, clustering_method=clustering_fn, fit_params=False, min_instances_slice=51)
 
         # check resulting graph
         self.assertTrue(isinstance(spn, SPNProductNode))
@@ -217,7 +217,7 @@ class TestNode(unittest.TestCase):
 
         partitioning_fn.alternate = False
 
-        spn = learn_spn(data, partitioning_method=partitioning_fn, clustering_method=clustering_fn, fit_leaves=False, min_instances_slice=101)
+        spn = learn_spn(data, partitioning_method=partitioning_fn, clustering_method=clustering_fn, fit_params=False, min_instances_slice=101)
 
         # check resulting graph
         self.assertTrue(isinstance(spn, SPNProductNode))

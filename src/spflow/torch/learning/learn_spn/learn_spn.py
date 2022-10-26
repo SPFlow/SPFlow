@@ -52,7 +52,7 @@ def cluster_by_kmeans(data: torch.Tensor, n_clusters: int=2, preprocessing: Opti
     return data_labels
 
 
-def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_instances_slice: int=100, fit_leaves: bool=True, clustering_method: Union[str, Callable]="kmeans", partitioning_method: Union[str, Callable]="rdc", clustering_args: Optional[Dict[str, Any]]=None, partitioning_args: Optional[Dict[str, Any]]=None) -> Module:
+def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_instances_slice: int=100, fit_params: bool=True, clustering_method: Union[str, Callable]="kmeans", partitioning_method: Union[str, Callable]="rdc", clustering_args: Optional[Dict[str, Any]]=None, partitioning_args: Optional[Dict[str, Any]]=None) -> Module:
 
     # initialize scope
     if scope is None:
@@ -91,17 +91,17 @@ def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_
         raise ValueError(f"Value for 'min_features_slice' must be an integer greater than 1, but was: {min_features_slice}.")
 
     # helper functions
-    def create_uv_leaf(scope: Scope, data: torch.Tensor, fit_leaves: bool=True):
+    def create_uv_leaf(scope: Scope, data: torch.Tensor, fit_params: bool=True):
         # create leaf node
         leaf = Gaussian(scope=scope) # TODO: infer correct leaf node
 
-        if fit_leaves:
+        if fit_params:
             # estimate leaf node parameters from data
             maximum_likelihood_estimation(leaf, data)
         
         return leaf
 
-    def create_partitioned_mv_leaf(scope: Scope, data: torch.Tensor, fit_leaves: bool=True):
+    def create_partitioned_mv_leaf(scope: Scope, data: torch.Tensor, fit_params: bool=True):
         # combine univariate leafs via product node
         leaves = []
 
@@ -110,7 +110,7 @@ def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_
             leaf = Gaussian(scope=Scope([rv]))
             leaves.append(leaf)
 
-            if fit_leaves:
+            if fit_params:
                 # estimate leaf node parameters from data
                 maximum_likelihood_estimation(leaf, data[:, [rv]])
 
@@ -121,10 +121,10 @@ def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_
 
         # multivariate scope
         if len(scope.query) > 1:
-            return create_partitioned_mv_leaf(scope, data, fit_leaves)
+            return create_partitioned_mv_leaf(scope, data, fit_params)
         # univariate scope
         else:
-            return create_uv_leaf(scope, data, fit_leaves)
+            return create_uv_leaf(scope, data, fit_params)
     else:
         # select correct data
         partition_ids = partitioning_method(data)
@@ -144,7 +144,7 @@ def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_
                             scope=Scope([scope.query[rv] for rv in partition]),
                             clustering_method=clustering_method,
                             partitioning_method=partitioning_method,
-                            fit_leaves=fit_leaves,
+                            fit_params=fit_params,
                             min_features_slice=min_features_slice,
                             min_instances_slice=min_instances_slice
                         ) for partition in partitions
@@ -153,21 +153,35 @@ def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_
         else:
             # if not enough instances to cluster, create univariate leaf nodes (can be set to prevent overfitting too much or to reduce network size)
             if data.shape[0] < min_instances_slice:
-                return create_partitioned_mv_leaf(scope, data, fit_leaves)
+                return create_partitioned_mv_leaf(scope, data, fit_params)
             # cluster data
             else:
                 labels = clustering_method(data)
 
-                return SPNSumNode(
-                    children=[
-                        learn_spn(data[labels == cluster_id, :],
-                                scope=scope,
-                                clustering_method=clustering_method,
-                                partitioning_method=partitioning_method,
-                                fit_leaves=fit_leaves,
-                                min_features_slice=min_features_slice,
-                                min_instances_slice=min_instances_slice
-                            ) for cluster_id in torch.unique(labels)
-                    ],
-                    weights=[(labels == cluster_id).sum()/data.shape[0] for cluster_id in torch.unique(labels)]
-                )
+                if fit_params:
+                    return SPNSumNode(
+                        children=[
+                            learn_spn(data[labels == cluster_id, :],
+                                    scope=scope,
+                                    clustering_method=clustering_method,
+                                    partitioning_method=partitioning_method,
+                                    fit_params=fit_params,
+                                    min_features_slice=min_features_slice,
+                                    min_instances_slice=min_instances_slice
+                                ) for cluster_id in torch.unique(labels)
+                        ],
+                        weights=[(labels == cluster_id).sum()/data.shape[0] for cluster_id in torch.unique(labels)]
+                    )
+                else:
+                    return SPNSumNode(
+                        children=[
+                            learn_spn(data[labels == cluster_id, :],
+                                    scope=scope,
+                                    clustering_method=clustering_method,
+                                    partitioning_method=partitioning_method,
+                                    fit_params=fit_params,
+                                    min_features_slice=min_features_slice,
+                                    min_instances_slice=min_instances_slice
+                                ) for cluster_id in torch.unique(labels)
+                        ]
+                    )
