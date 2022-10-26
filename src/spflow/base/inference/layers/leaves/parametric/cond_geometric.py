@@ -1,7 +1,5 @@
-"""
-Created on October 18, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains inference methods for ``CondGeometricLayer`` leaves for SPFlow in the 'base' backend.
 """
 import numpy as np
 from typing import Optional
@@ -10,9 +8,38 @@ from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_
 from spflow.base.structure.layers.leaves.parametric.cond_geometric import CondGeometricLayer
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def log_likelihood(layer: CondGeometricLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """TODO"""
+    r"""Computes log-likelihoods for ``CondGeometricLayer`` leaves in the 'base' backend given input data.
+
+    Log-likelihood for ``CondGeometricLayer`` is given by the logarithm of its individual probability distribution functions (PDFs):
+
+    .. math::
+
+        \log(\text{PMF}(k)) =  \log(p(1-p)^{k-1})
+
+    where
+        - :math:`k` is the number of trials
+        - :math:`p` is the success probability of each trial
+
+    Missing values (i.e., NaN) are marginalized over.
+
+    Args:
+        node:
+            Leaf node to perform inference for.
+        data:
+            Two-dimensional NumPy array containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Returns:
+        Two-dimensional NumPy array containing the log-likelihoods of the input data for the sum node.
+        Each row corresponds to an input sample.
+
+    Raises:
+        ValueError: Data outside of support.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

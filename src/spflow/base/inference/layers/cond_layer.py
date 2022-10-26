@@ -1,19 +1,34 @@
-"""
-Created on October 24, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains inference methods for SPN-like conditional layers for SPFlow in the 'base' backend.
 """
 import numpy as np
 from typing import Optional
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.base.structure.layers.cond_layer import SPNCondSumLayer
-from spflow.base.inference.nodes.cond_node import SPNCondSumNode
+from spflow.base.inference.nodes.cond_node import log_likelihood
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def log_likelihood(sum_layer: SPNCondSumLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """TODO"""
+    """Computes log-likelihoods for conditional SPN-like sum layers given input data.
+
+    Log-likelihoods for sum nodes are the logarithm of the sum of weighted exponentials (LogSumExp) of its input likelihoods (weighted sum in linear space).
+    Missing values (i.e., NaN) are marginalized over.
+
+    Args:
+        sum_layer:
+            Sum layer to perform inference for.
+        data:
+            Two-dimensional NumPy array containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Returns:
+        Two-dimensional NumPy array containing the log-likelihoods of the input data for the sum node.
+        Each row corresponds to an input sample.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
