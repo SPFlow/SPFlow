@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+"""Contains sampling methods for ``Uniform`` nodes for SPFlow in the 'base' backend.
+"""
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
@@ -7,9 +10,27 @@ import numpy as np
 from typing import Optional
 
 
-@dispatch
+@dispatch  # type: ignore
 def sample(leaf: Uniform, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
-    """TODO"""
+    r"""Samples from ``Uniform`` nodes in the 'base' backend given potential evidence.
+
+    Samples missing values proportionally to its probability distribution function (PDF).
+
+    Args:
+        leaf:
+            Leaf node to sample from.
+        data:
+            Two-dimensional NumPy array containing potential evidence.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+        sampling_ctx:
+            Optional sampling context containing the instances (i.e., rows) of ``data`` to fill with sampled values and the output indices of the node to sample from.
+
+    Returns:
+        Two-dimensional NumPy array containing the sampled values together with the specified evidence.
+        Each row corresponds to a sample.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
