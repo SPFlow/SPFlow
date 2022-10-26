@@ -11,7 +11,7 @@ import numpy as np
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(node: Uniform, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    r"""Computes log-likelihoods for ``Uniform`` node given input data.
+    r"""Computes log-likelihoods for ``Uniform`` node in the 'base' backend given input data.
 
     Log-likelihood for ``Uniform`` is given by the logarithm of its probability distribution function (PDF):
 
@@ -37,6 +37,9 @@ def log_likelihood(node: Uniform, data: np.ndarray, dispatch_ctx: Optional[Dispa
     Returns:
         Two-dimensional NumPy array containing the log-likelihoods of the input data for the sum node.
         Each row corresponds to an input sample.
+
+    Raises:
+        ValueError: Data outside of support.
     """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)

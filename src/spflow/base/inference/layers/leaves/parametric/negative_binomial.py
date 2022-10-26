@@ -1,7 +1,5 @@
-"""
-Created on August 14, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains inference methods for ``NegativeBinomialLayer`` leaves for SPFlow in the 'base' backend.
 """
 import numpy as np
 from typing import Optional
@@ -10,9 +8,39 @@ from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_
 from spflow.base.structure.layers.leaves.parametric.negative_binomial import NegativeBinomialLayer
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def log_likelihood(layer: NegativeBinomialLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """TODO"""
+    r"""Computes log-likelihoods for ``NegativeBinomialLayer`` leaves in the 'base' backend given input data.
+
+    Log-likelihood for ``NegativeBinomialLayer`` is given by the logarithm of its individual probability mass functions (PMFs):
+
+    .. math::
+
+        \log(\text{PMF}(k)) = \log(\binom{k+n-1}{n-1}p^n(1-p)^k)
+
+    where
+        - :math:`k` is the number of failures
+        - :math:`n` is the maximum number of successes
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+
+    Missing values (i.e., NaN) are marginalized over.
+
+    Args:
+        node:
+            Leaf node to perform inference for.
+        data:
+            Two-dimensional NumPy array containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Returns:
+        Two-dimensional NumPy array containing the log-likelihoods of the input data for the sum node.
+        Each row corresponds to an input sample.
+
+    Raises:
+        ValueError: Data outside of support.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
