@@ -11,7 +11,7 @@ import numpy as np
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(node: MultivariateGaussian, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    r"""Computes log-likelihoods for ``MultivariateGaussian`` node given input data.
+    r"""Computes log-likelihoods for ``MultivariateGaussian`` node in the 'base' backend given input data.
 
     Log-likelihood for ``MultivariateGaussian`` is given by the logarithm of its probability distribution function (PDF):
 
@@ -39,6 +39,9 @@ def log_likelihood(node: MultivariateGaussian, data: np.ndarray, dispatch_ctx: O
     Returns:
         Two-dimensional NumPy array containing the log-likelihoods of the input data for the sum node.
         Each row corresponds to an input sample.
+
+    Raises:
+        ValueError: Data outside of support.
     """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
