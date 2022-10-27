@@ -220,7 +220,10 @@ class MultivariateGaussianLayer(Module):
             Two dimensional PyTorch tensor indicating for each instance and node, whether they are part of the support (True) or not (False).
             Each row corresponds to an input sample.
         """
-        return [node.check_support(data) for node in self.nodes]
+        if node_ids is None:
+            node_ids = list(range(self.n_out))
+
+        return torch.concat([self.nodes[i].check_support(data) for i in node_ids], dim=1)
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -3,6 +3,7 @@
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
+from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -110,10 +111,47 @@ class BernoulliLayer(Module):
         """
         return (self.p,)
 
-    # TODO: dist
+    def dist(self, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+        r"""Returns the SciPy distributions represented by the leaf layer.
+        
+        Args:
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
 
-    # TODO: check support
+        Returns:
+            List of ``scipy.stats.distributions.rv_frozen`` distributions.
+        """
+        if node_ids is None:
+            node_ids = list(range(self.n_out))
 
+        return [self.nodes[i].dist for i in node_ids]
+
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+        r"""Checks if specified data is in support of the represented distributions.
+
+        Determines whether or not instances are part of the supports of the Bernoulli distributions, which are:
+
+        .. math::
+
+            \text{supp}(\text{Bernoulli})=\{0,1\}
+        
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+    
+        Args:
+            TODO
+            scope_data:
+                Two-dimensional NumPy array containing sample instances.
+                Each row is regarded as a sample.
+
+        Returns:
+            Two dimensional NumPy array indicating for each instance and node, whether they are part of the support (True) or not (False).
+            Each row corresponds to an input sample.
+        """
+        if node_ids is None:
+            node_ids = list(range(self.n_out))
+
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: BernoulliLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[BernoulliLayer, Bernoulli, None]:
