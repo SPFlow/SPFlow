@@ -17,7 +17,7 @@ import unittest
 class TestHypergeometric(unittest.TestCase):
     def test_initialization(self):
 
-        # Valid parameters for Hypergeometric distribution: N in N U {0}, M in {0,...,N}, n in {0,...,N}, p in [0,1] TODO
+        # Valid parameters for Hypergeometric distribution: N in N U {0}, M in {0,...,N}, n in {0,...,N}, p in [0,1]
 
         # N = 0
         Hypergeometric(Scope([0]), 0, 0, 0)

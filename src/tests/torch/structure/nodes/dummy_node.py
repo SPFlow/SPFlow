@@ -21,7 +21,7 @@ class DummyNode(LeafNode):
 
 @dispatch(memoize=True)
 def marginalize(node: DummyNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[None, DummyNode]:
-    """TODO"""
+
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

@@ -20,7 +20,7 @@ import unittest
 class TestMultivariateGaussian(unittest.TestCase):
     def test_initialization(self):
 
-        # Valid parameters for Multivariate Gaussian distribution: mean vector in R^k, covariance matrix in R^(k x k) symmetric positive semi-definite (TODO: PDF only exists if p.d.?)
+        # Valid parameters for Multivariate Gaussian distribution: mean vector in R^k, covariance matrix in R^(k x k) symmetric positive semi-definite
 
         # mean contains inf and mean contains nan
         self.assertRaises(
