@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains inference methods for ``BinomialLayer`` leaves for SPFlow in the 'base' backend.
+"""Contains inference methods for ``BinomialLayer`` leaves for SPFlow in the ``base`` backend.
 """
 import numpy as np
 from typing import Optional

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains inference methods for RAT-SPNs for SPFlow in the 'base' backend.
+"""Contains inference methods for RAT-SPNs for SPFlow in the ``base`` backend.
 """
 import numpy as np
 from typing import Optional
@@ -10,7 +10,7 @@ from spflow.base.structure.rat.rat_spn import RatSPN
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(rat_spn: RatSPN, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """Computes log-likelihoods for RAT-SPNs nodes in the 'base' backend given input data.
+    """Computes log-likelihoods for RAT-SPNs nodes in the ``base`` backend given input data.
 
     Args:
         sum_node:

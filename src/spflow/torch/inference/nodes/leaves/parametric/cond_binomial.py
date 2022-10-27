@@ -1,7 +1,5 @@
-"""
-Created on October 20, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains inference methods for ``CondBinomial`` nodes for SPFlow in the ``torch`` backend.
 """
 import torch
 from typing import Optional
@@ -10,9 +8,37 @@ from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_
 from spflow.torch.structure.nodes.leaves.parametric.cond_binomial import CondBinomial
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def log_likelihood(leaf: CondBinomial, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+    r"""Computes log-likelihoods for ``CondBinomial`` node given input data in the ``torch`` backend.
 
+    Log-likelihood for ``CondBinomial`` is given by the logarithm of its probability mass function (PMF):
+    
+    .. math::
+
+        \log(\text{PMF}(k)) = \log(\binom{n}{k}p^k(1-p)^{n-k})
+
+    where
+        - :math:`p` is the success probability of each trial in :math:`[0,1]`
+        - :math:`n` is the number of total trials
+        - :math:`k` is the number of successes
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+
+    Missing values (i.e., NaN) are marginalized over.
+
+    Args:
+        node:
+            Leaf node to perform inference for.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Returns:
+        Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
+        Each row corresponds to an input sample.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # retrieve value for 'p'

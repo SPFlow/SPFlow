@@ -1,7 +1,5 @@
-"""
-Created on October 12, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains the expectation maximization optimization parameter learner for SPFlow in the ``torch`` backend.
 """
 from typing import List
 from spflow.meta.contexts.dispatch_context import DispatchContext
@@ -12,12 +10,24 @@ from spflow.torch.learning.nodes.leaves.parametric.bernoulli import em # TODO
 import torch
 
 
-def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=-1) -> List[torch.Tensor]:
+def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=-1) -> torch.Tensor:
+    """Performs partitioning usig randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``torch`` backend.
 
+    Args:
+        module:
+            Module to perform EM optimization on.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        max_steps:
+            Integer representing the maximum number of iterations.
+            Defaults to -1, in which case the optimization is performed until convergence. 
+
+    Returns:
+        One-dimensional PyTorch tensors, containing the average log-likelihood for each iteration step. 
+    """
     prev_avg_ll = torch.tensor(-float("inf"))
     ll_history = []
-
-    n_steps = 0
 
     while True:
 
@@ -52,4 +62,4 @@ def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=
         # increment steps counter
         n_steps += 1
 
-    return ll_history, n_steps
+    return torch.concat(ll_history)

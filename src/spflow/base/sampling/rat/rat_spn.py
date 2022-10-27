@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains sampling methods for RAT-SPNs for SPFlow in the 'base' backend.
+"""Contains sampling methods for RAT-SPNs for SPFlow in the ``base`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -12,7 +12,7 @@ from typing import Optional
 
 @dispatch  # type: ignore
 def sample(rat_spn: RatSPN, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
-    r"""Samples from RAT-SPNs in the 'base' backend given potential evidence.
+    r"""Samples from RAT-SPNs in the ``base`` backend given potential evidence.
 
     Missing values (i.e., NaN) are filled with sampled values.
 

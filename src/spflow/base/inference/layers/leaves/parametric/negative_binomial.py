@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains inference methods for ``NegativeBinomialLayer`` leaves for SPFlow in the 'base' backend.
+"""Contains inference methods for ``NegativeBinomialLayer`` leaves for SPFlow in the ``base`` backend.
 """
 import numpy as np
 from typing import Optional
@@ -10,7 +10,7 @@ from spflow.base.structure.layers.leaves.parametric.negative_binomial import Neg
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(layer: NegativeBinomialLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    r"""Computes log-likelihoods for ``NegativeBinomialLayer`` leaves in the 'base' backend given input data.
+    r"""Computes log-likelihoods for ``NegativeBinomialLayer`` leaves in the ``base`` backend given input data.
 
     Log-likelihood for ``NegativeBinomialLayer`` is given by the logarithm of its individual probability mass functions (PMFs):
 

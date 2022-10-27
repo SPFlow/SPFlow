@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains learning methods for ``Gamma`` nodes for SPFlow in the 'base' backend.
+"""Contains learning methods for ``Gamma`` nodes for SPFlow in the ``base`` backend.
 """
 from typing import Optional, Union, Callable
 import numpy as np
@@ -12,7 +12,7 @@ from scipy.special import digamma, polygamma
 
 @dispatch(memoize=True)  # type: ignore
 def maximum_likelihood_estimation(leaf: Gamma, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
-    r"""Maximum (weighted) likelihood estimation (MLE) of ``Gamma`` node parameters in the 'base' backend.
+    r"""Maximum (weighted) likelihood estimation (MLE) of ``Gamma`` node parameters in the ``base`` backend.
 
     Estimates the shape and rate parameters :math:`alpha`,:math:`beta` of a Gamma distribution from data, as described in (Minka, 2002): "Estimating a Gamma distribution" (adjusted to support weights).
     Weights are normalized to sum up to :math:`N`.

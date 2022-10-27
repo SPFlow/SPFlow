@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains learning methods for ``LogNormal`` nodes for SPFlow in the 'base' backend.
+"""Contains learning methods for ``LogNormal`` nodes for SPFlow in the ``base`` backend.
 """
 from typing import Optional, Union, Callable
 import numpy as np
@@ -10,7 +10,7 @@ from spflow.base.structure.nodes.leaves.parametric.log_normal import LogNormal
 
 @dispatch(memoize=True)  # type: ignore
 def maximum_likelihood_estimation(leaf: LogNormal, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
-    r"""Maximum (weighted) likelihood estimation (MLE) of ``LogNormal`` node parameters in the 'base' backend.
+    r"""Maximum (weighted) likelihood estimation (MLE) of ``LogNormal`` node parameters in the ``base`` backend.
 
     Estimates the mean and standard deviation :math:`\mu` and :math:`\sigma` of a Log-Normal distribution from data, as follows:
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains inference methods for ``CondGammaLayer`` leaves for SPFlow in the 'base' backend.
+"""Contains inference methods for ``CondGammaLayer`` leaves for SPFlow in the ``base`` backend.
 """
 import numpy as np
 from typing import Optional
@@ -10,7 +10,7 @@ from spflow.base.structure.layers.leaves.parametric.cond_gamma import CondGammaL
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(layer: CondGammaLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    r"""Computes log-likelihoods for ``CondGammaLayer`` leaves in the 'base' backend given input data.
+    r"""Computes log-likelihoods for ``CondGammaLayer`` leaves in the ``base`` backend given input data.
 
     Log-likelihood for ``CondGammaLayer`` is given by the logarithm of its individual probability distribution functions (PDFs):
 

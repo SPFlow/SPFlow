@@ -1,7 +1,5 @@
-"""
-Created on October 21, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-probability
+"""Contains inference methods for ``CondBinomialLayer`` leaves for SPFlow in the ``torch`` backend.
 """
 import torch
 import numpy as np
@@ -12,9 +10,40 @@ from spflow.meta.dispatch.dispatch import dispatch
 from spflow.torch.structure.layers.leaves.parametric.cond_binomial import CondBinomialLayer
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def log_likelihood(layer: CondBinomialLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
-    """TODO"""
+    r"""Computes log-likelihoods for ``CondBinomialLayer`` leaves in the ``torch`` backend given input data.
+
+    Log-likelihood for ``CondBinomialLayer`` is given by the logarithm of its individual probability mass functions (PMFs):
+    
+    .. math::
+
+        \log(\text{PMF}(k)) = \log(\binom{n}{k}p^k(1-p)^{n-k})
+
+    where
+        - :math:`p` is the success probability of each trial in :math:`[0,1]`
+        - :math:`n` is the number of total trials
+        - :math:`k` is the number of successes
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+
+    Missing values (i.e., NaN) are marginalized over.
+
+    Args:
+        node:
+            Leaf node to perform inference for.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Returns:
+        Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
+        Each row corresponds to an input sample.
+        
+    Raises:
+        ValueError: Data outside of support.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

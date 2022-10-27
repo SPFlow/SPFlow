@@ -1,7 +1,5 @@
-"""
-Created on November 26, 2021
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains inference methods for ``LogNormal`` nodes for SPFlow in the ``torch`` backend.
 """
 import torch
 from typing import Optional
@@ -10,9 +8,39 @@ from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_
 from spflow.torch.structure.nodes.leaves.parametric.log_normal import LogNormal
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def log_likelihood(leaf: LogNormal, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
-    
+    r"""Computes log-likelihoods for ``LogNormal`` node in the ``torch`` backend given input data.
+
+    Log-likelihood for ``LogNormal`` is given by the logarithm of its probability distribution function (PDF):
+
+    .. math::
+
+        \log(\text{PDF}(x)) = \log(\frac{1}{x\sigma\sqrt{2\pi}}\exp\left(-\frac{(\ln(x)-\mu)^2}{2\sigma^2}\right))
+
+    where
+        - :math:`x` is an observation
+        - :math:`\mu` is the mean
+        - :math:`\sigma` is the standard deviation
+
+    Missing values (i.e., NaN) are marginalized over.
+
+    Args:
+        node:
+            Leaf node to perform inference for.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Returns:
+        Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
+        Each row corresponds to an input sample.
+
+    Raises:
+        ValueError: Data outside of support.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     batch_size: int = data.shape[0]

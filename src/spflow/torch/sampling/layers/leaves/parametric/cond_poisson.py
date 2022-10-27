@@ -1,7 +1,5 @@
-"""
-Created on October 21, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains sampling methods for ``CondPoissonLayer`` leaves for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
@@ -17,9 +15,31 @@ from typing import Optional
 import itertools
 
 
-@dispatch
+@dispatch  # type: ignore
 def sample(layer: CondPoissonLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
-    """TODO"""
+    r"""Samples from ``CondPoissonLayer`` leaves in the ``torch`` backend given potential evidence.
+
+    Can only sample from at most one output at a time, since all scopes are equal and overlap.
+    Samples missing values proportionally to its probability mass function (PMF).
+
+    Args:
+        layer:
+            Leaf layer to sample from.
+        data:
+            Two-dimensional PyTorch tensor containing potential evidence.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+        sampling_ctx:
+            Optional sampling context containing the instances (i.e., rows) of ``data`` to fill with sampled values and the output indices of the node to sample from.
+
+    Returns:
+        Two-dimensional PyTorch tensor containing the sampled values together with the specified evidence.
+        Each row corresponds to a sample.
+    
+    Raises:
+        ValueError: Sampling from invalid number of outputs.
+    """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])

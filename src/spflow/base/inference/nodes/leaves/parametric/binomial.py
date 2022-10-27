@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains inference methods for ``Binomial`` nodes for SPFlow in the 'base' backend.
+"""Contains inference methods for ``Binomial`` nodes for SPFlow in the ``base`` backend.
 """
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.dispatch.dispatch import dispatch
@@ -11,7 +11,7 @@ import numpy as np
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(node: Binomial, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    r"""Computes log-likelihoods for ``Binomial`` node in the 'base' backend given input data.
+    r"""Computes log-likelihoods for ``Binomial`` node in the ``base`` backend given input data.
 
     Log-likelihood for ``Binomial`` is given by the logarithm of its probability mass function (PMF):
     

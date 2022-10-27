@@ -1,7 +1,5 @@
-"""
-Created on August 17, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains inference methods for ``HypergeometricLayer`` leaves for SPFlow in the ``torch`` backend.
 """
 import torch
 import numpy as np
@@ -12,9 +10,41 @@ from spflow.meta.dispatch.dispatch import dispatch
 from spflow.torch.structure.layers.leaves.parametric.hypergeometric import HypergeometricLayer
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def log_likelihood(layer: HypergeometricLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
-    """TODO"""
+    r"""Computes log-likelihoods for ``HypergeometricLayer`` leaves in the ``torch`` backend given input data.
+
+    Log-likelihood for ``HypergeometricLayer`` is given by the logarithm of its individual probability mass functions (PMFs):
+
+    .. math::
+
+        \log(\text{PMF}(k)) = \log(\frac{\binom{M}{k}\binom{N-M}{n-k}}{\binom{N}{n}})
+
+    where
+        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+        - :math:`N` is the total number of entities
+        - :math:`M` is the number of entities with property of interest
+        - :math:`n` is the number of draws
+        - :math:`k` s the number of observed entities
+
+    Missing values (i.e., NaN) are marginalized over.
+
+    Args:
+        node:
+            Leaf node to perform inference for.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Returns:
+        Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
+        Each row corresponds to an input sample.
+
+    Raises:
+        ValueError: Data outside of support.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

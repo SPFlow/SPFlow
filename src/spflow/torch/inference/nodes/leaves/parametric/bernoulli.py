@@ -1,7 +1,5 @@
-"""
-Created on November 26, 2021
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains inference methods for ``Bernoulli`` nodes for SPFlow in the ``torch`` backend.
 """
 import torch
 from typing import Optional
@@ -10,9 +8,39 @@ from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_
 from spflow.torch.structure.nodes.leaves.parametric.bernoulli import Bernoulli
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def log_likelihood(leaf: Bernoulli, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+    r"""Computes log-likelihoods for ``Bernoulli`` node in the ``torch`` backend given input data.
 
+    Log-likelihood for ``Bernoulli`` is given by the logarithm of its probability mass function (PMF):
+
+    .. math::
+
+        \log(\text{PMF}(k))=\begin{cases} \log(p)   & \text{if } k=1\\
+                                          \log(1-p) & \text{if } k=0\end{cases}
+
+    where
+        - :math:`p` is the success probability in :math:`[0,1]`
+        - :math:`k` is the outcome of the trial (0 or 1)
+
+    Missing values (i.e., NaN) are marginalized over.
+
+    Args:
+        node:
+            Leaf node to perform inference for.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Returns:
+        Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
+        Each row corresponds to an input sample.
+    
+    Raises:
+        ValueError: Data outside of support.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     batch_size: int = data.shape[0]

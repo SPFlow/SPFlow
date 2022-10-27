@@ -1,7 +1,5 @@
-"""
-Created on September 25, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains learning methods for ``GammaLayer`` leaves for SPFlow in the ``torch`` backend.
 """
 from typing import Optional, Union, Callable
 import torch
@@ -10,10 +8,39 @@ from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_
 from spflow.torch.structure.layers.leaves.parametric.gamma import GammaLayer
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def maximum_likelihood_estimation(layer: GammaLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
-    """TODO."""
+    r"""Maximum (weighted) likelihood estimation (MLE) of ``GammaLayer`` leaves' parameters in the ``torch`` backend.
 
+    Estimates the shape and rate parameters :math:`alpha`,:math:`beta` of each Gamma distribution from data, as described in (Minka, 2002): "Estimating a Gamma distribution" (adjusted to support weights).
+    Weights are normalized to sum up to :math:`N` per row.
+
+    Args:
+        leaf:
+            Leaf node to estimate parameters of.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        weights:
+            Optional one- or two-dimensional PyTorch tensor containing non-negative weights for all data samples and nodes.
+            Must match number of samples in ``data``.
+            If a one-dimensional PyTorch tensor is given, the weights are broadcast to all nodes.
+            Defaults to None in which case all weights are initialized to ones.
+        bias_corrections:
+            Boolen indicating whether or not to correct possible biases.
+            Not relevant for ``GammaLayer`` leaves.
+            Defaults to True.
+        nan_strategy:
+            Optional string or callable specifying how to handle missing data.
+            If 'ignore', missing values (i.e., NaN entries) are ignored.
+            If a callable, it is called using ``data`` and should return another PyTorch tensor of same size.
+            Defaults to None.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Raises:
+        ValueError: Invalid arguments.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -107,9 +134,19 @@ def maximum_likelihood_estimation(layer: GammaLayer, data: torch.Tensor, weights
     layer.set_params(alpha=alpha_est, beta=beta_est)
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def em(layer: GammaLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+    """Performs a single expectation maximizaton (EM) step for ``GammaLayer`` in the ``torch`` backend.
 
+    Args:
+        leaf:
+            Leaf node to perform EM step for.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

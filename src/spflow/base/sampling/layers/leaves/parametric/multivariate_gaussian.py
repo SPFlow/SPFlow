@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains sampling methods for ``MultivariateGaussianLayer`` leaves for SPFlow in the 'base' backend.
+"""Contains sampling methods for ``MultivariateGaussianLayer`` leaves for SPFlow in the ``base`` backend.
 """
 import numpy as np
 from typing import Optional
@@ -13,7 +13,7 @@ from spflow.base.sampling.module import sample
 
 @dispatch  # type: ignore
 def sample(layer: MultivariateGaussianLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
-    r"""Samples from ``MultivariateGaussianLayer`` leaves in the 'base' backend given potential evidence.
+    r"""Samples from ``MultivariateGaussianLayer`` leaves in the ``base`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
     Samples missing values proportionally to its probability distribution function (PDF).

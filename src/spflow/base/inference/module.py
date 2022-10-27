@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains inference methods for ``Module`` and ``NestedModule`` objects for SPFlow in the 'base' backend.
+"""Contains inference methods for ``Module`` and ``NestedModule`` objects for SPFlow in the ``base`` backend.
 """
 import numpy as np
 from typing import Optional
@@ -10,7 +10,7 @@ from spflow.base.structure.module import Module, NestedModule
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """Raises ``NotImplementedError`` for modules in the 'base' backend that have not dispatched a log-likelihood inference routine.
+    """Raises ``NotImplementedError`` for modules in the ``base`` backend that have not dispatched a log-likelihood inference routine.
 
     Args:
         sum_node:
@@ -31,7 +31,7 @@ def log_likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[Disp
 
 @dispatch  # type: ignore
 def likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """Computes likelihoods for modules in the 'base' backend given input data.
+    """Computes likelihoods for modules in the ``base`` backend given input data.
 
     Likelihoods are per default computed from the infered log-likelihoods of a module.
 
@@ -54,7 +54,7 @@ def likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[Dispatch
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(nesting_module: NestedModule.Placeholder, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """Raises ``LookupError`` for placeholder-modules in the 'base' backend.
+    """Raises ``LookupError`` for placeholder-modules in the ``base`` backend.
     
     The log-likelihoods for placeholder-modules should be set in the dispatch context cache by the host module.
     This method is only called if the cache is not filled properly, due to memoization.
