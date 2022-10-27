@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Exponential leaf layer for SPFlow in the 'base' backend.
+"""Contains Exponential leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.exponential import Exponentia
 
 
 class ExponentialLayer(Module):
-    r"""Layer of multiple (univariate) Exponential distribution leaf nodes in the 'base' backend.
+    r"""Layer of multiple (univariate) Exponential distribution leaf nodes in the ``base`` backend.
 
     Represents multiple univariate Exponential distributions with independent scopes, each with the following probability distribution function (PDF):
 
@@ -116,7 +116,7 @@ class ExponentialLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: ExponentialLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[ExponentialLayer, Exponential, None]:
-    r"""Structural marginalization for ``ExponentialLayer`` objects.
+    r"""Structural marginalization for ``ExponentialLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

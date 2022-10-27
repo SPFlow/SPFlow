@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Multivariate Gaussian leaf layer for SPFlow in the 'base' backend.
+"""Contains Multivariate Gaussian leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -13,7 +13,7 @@ from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 
 
 class MultivariateGaussianLayer(Module):
-    r"""Layer of multiple multivariate Gaussian distribution leaf node in the 'base' backend.
+    r"""Layer of multiple multivariate Gaussian distribution leaf node in the ``base`` backend.
 
     Represents multiple multivariate Gaussian distributions with independent scopes, each with the following probability distribution function (PDF):
 
@@ -29,10 +29,10 @@ class MultivariateGaussianLayer(Module):
 
     Attributes:
         mean:
-            Two-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
+            List of one-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
             Each row corresponds to a distribution.
         cov:
-            Three-dimensional NumPy array (representing :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
+            List of two-dimensional NumPy array (representing :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
             of the scope of the respective distribution) describing the covariances of the distributions. The diagonals hold the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
             Each element of the first dimension corresponds to a distribution.
         scopes_out:
@@ -40,7 +40,7 @@ class MultivariateGaussianLayer(Module):
         nodes:
             List of ``MultivariateGaussian`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], mean: Optional[Union[List[float], List[List[float]], np.ndarray]]=None, cov: Optional[Union[List[List[float]], List[List[List[float]]], np.ndarray]]=None, n_nodes: int=1, **kwargs) -> None:
+    def __init__(self, scope: Union[Scope, List[Scope]], mean: Optional[Union[List[float], List[List[float]], List[np.ndarray]]]=None, cov: Optional[Union[List[List[float]], List[List[List[float]]], List[np.ndarray]]]=None, n_nodes: int=1, **kwargs) -> None:
         r"""Initializes ``MultivariateGaussianLayer`` object.
 
         Args:
@@ -48,11 +48,11 @@ class MultivariateGaussianLayer(Module):
                 Scope or list of scopes specifying the scopes of the individual distribution.
                 If a single scope is given, it is used for all nodes.
             mean:
-                A list of floats, a list of lists of floats or a one- to two-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
+                A list of floats, a list of lists of floats, a one-dimensional NumPy array or a list of one-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
                 Each row corresponds to a distribution. If a list of floats or one-dimensional NumPy array is given, it is broadcast to all nodes.
                 Defaults to None, in which case all distributions are initialized with all zero means.
             cov:
-                A list of lists of floats, a list of lists of lists of floats or a two- to three-dimensional NumPy array (representing :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
+                A list of lists of floats, a list of lists of lists of floats, a two-dimensional NumPy array or a list of two-dimensional NumPy arrays (representing :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
                 of the scope of the respective distribution) describing the covariances of the distributions. The diagonals hold the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
                 Each element of the first dimension corresponds to a distribution. If a list of lists of floats or two-dimensional NumPy array is given, it is broadcast to all nodes.
                 Defaults to None, in which case all distributions are initialized with identity matrices.
@@ -108,12 +108,14 @@ class MultivariateGaussianLayer(Module):
 
         Args:
             mean:
-                A list of floats, a list of lists of floats or a one- to two-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
+                A list of floats, a list of lists of floats, a one-dimensional NumPy array or a list of one-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
                 Each row corresponds to a distribution. If a list of floats or one-dimensional NumPy array is given, it is broadcast to all nodes.
+                Defaults to None, in which case all distributions are initialized with all zero means.
             cov:
-                A list of lists of floats, a list of lists of lists of floats or a two- to three-dimensional NumPy array (representing :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
+                A list of lists of floats, a list of lists of lists of floats, a two-dimensional NumPy array or a list of two-dimensional NumPy arrays (representing :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
                 of the scope of the respective distribution) describing the covariances of the distributions. The diagonals hold the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
                 Each element of the first dimension corresponds to a distribution. If a list of lists of floats or two-dimensional NumPy array is given, it is broadcast to all nodes.
+                Defaults to None, in which case all distributions are initialized with identity matrices.
         """
         if isinstance(mean, list):
             # can be a list of values specifying a single mean (broadcast to all nodes)
@@ -174,7 +176,7 @@ class MultivariateGaussianLayer(Module):
         """Returns the parameters of the represented distribution.
 
         Returns:
-            Tuple of a two- and a three-dimensional NumPy array representing the means and covariance matrices.
+            Tuple of a list of one-dimensional NumPy array and a list of a two-dimensional NumPy array representing the means and covariances, respectively.
         """
         return self.mean, self.cov
     
@@ -185,7 +187,7 @@ class MultivariateGaussianLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: MultivariateGaussianLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[MultivariateGaussianLayer, MultivariateGaussian, Gaussian, None]:
-    r"""Structural marginalization for ``MultivariateGaussianLayer`` objects.
+    r"""Structural marginalization for ``MultivariateGaussianLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

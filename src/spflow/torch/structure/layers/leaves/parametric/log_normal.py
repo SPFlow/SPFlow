@@ -1,7 +1,5 @@
-"""
-Created on August 15, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Log-Normal leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 from functools import reduce
@@ -20,17 +18,48 @@ from spflow.base.structure.layers.leaves.parametric.log_normal import LogNormalL
 
 
 class LogNormalLayer(Module):
-    """Layer representing multiple (univariate) log-normal leaf nodes in the Torch backend.
+    r"""Layer of multiple (univariate) Log-Normal distribution leaf nodes in the ``torch`` backend.
 
-    Args:
-        scope: TODO
-        mean: TODO
-        std: TODO
-        n_nodes: number of output nodes.
+    Represents multiple univariate Log-Normal distributions with independent scopes, each with the following probability distribution function (PDF):
+
+    .. math::
+
+        \text{PDF}(x) = \frac{1}{x\sigma\sqrt{2\pi}}\exp\left(-\frac{(\ln(x)-\mu)^2}{2\sigma^2}\right)
+
+    where
+        - :math:`x` is an observation
+        - :math:`\mu` is the mean
+        - :math:`\sigma` is the standard deviation
+
+    Internally :math:`\mu,\sigma` are represented as unbounded parameters that are projected onto the bounded range :math:`(0,\infty)` for representing the actual shape and rate parameters, respectively.
+
+    Attributes:
+        mean:
+            One-dimensional PyTorch tensor representing the means (:math:`\mu`) of the Gamma distributions.
+        std_aux:
+            Unbounded one-dimensional PyTorch parameter that is projected to yield the actual standard deviations.
+        std:
+            One-dimensional PyTorch tensor representing the standard deviations (:math:`\sigma`) of the Gaussian distributions, greater than 0 (projected from ``std_aux``).
     """
     def __init__(self, scope: Union[Scope, List[Scope]], mean: Union[int, float, List[float], np.ndarray, torch.Tensor]=0.0, std: Union[int, float, List[float], np.ndarray, torch.Tensor]=1.0, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``LogNormalLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            mean:
+                Floating point, list of floats or one-dimensional NumPy array or PyTorch tensor representing the means (:math:`\mu`).
+                If a single value is given it is broadcast to all nodes.
+                Defaults to 0.0.
+            std:
+                Floating point, list of floats or one-dimensional NumPy array or PyTorch tensor representing the standard deviations (:math:`\sigma`), greater than 0.
+                If a single value is given it is broadcast to all nodes.
+                Defaults to 1.0. 
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'LogNormalLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -62,22 +91,44 @@ class LogNormalLayer(Module):
 
     @property
     def n_out(self) -> int:
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
     
     @property
     def std(self) -> torch.Tensor:
+        """TODO"""
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.std_aux, lb=0.0)  # type: ignore
 
     def dist(self, node_ids: Optional[List[int]]=None) -> D.Distribution:
+        r"""Returns the PyTorch distributions represented by the leaf layer.
 
+        Args:
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
+
+        Returns:
+            ``torch.distributions.LogNormal`` instance.
+        """
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
         return D.LogNormal(loc=self.mean[node_ids], scale=self.std[node_ids])
 
     def set_params(self, mean: Union[int, float, List[float], np.ndarray, torch.Tensor], std: Union[int, float, List[float], np.ndarray, torch.Tensor]) -> None:
-    
+        r"""Sets the parameters for the represented distributions.
+
+        Args:
+            mean:
+                Floating point, list of floats or one-dimensional NumPy array or PyTorch tensor representing the means (:math:`\mu`).
+                If a single value is given it is broadcast to all nodes.
+                Defaults to 0.0.
+            std:
+                Floating point, list of floats or one-dimensional NumPy array or PyTorch tensor representing the standard deviations (:math:`\sigma`), greater than 0.
+                If a single value is given it is broadcast to all nodes.
+                Defaults to 1.0. 
+        """
         if isinstance(mean, int) or isinstance(mean, float):
             mean = torch.tensor([mean for _ in range(self.n_out)])
         elif isinstance(mean, list) or isinstance(mean, np.ndarray):
@@ -110,23 +161,32 @@ class LogNormalLayer(Module):
         self.std_aux.data = proj_bounded_to_real(std, lb=0.0)
 
     def get_params(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of one-dimensional PyTorch tensor representing the means and standard deviations.
+        """
         return (self.mean, self.std)
     
     def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the LogNormal distribution.
+        r"""Checks if specified data is in support of the represented distributions.
+
+        Determines whether or note instances are part of the supports of the Log-Normal distributions, which are:
 
         .. math::
 
-            TODO
+            \text{supp}(\text{LogNormal})=(0,\infty)
 
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
-            data:
-                Torch tensor containing possible distribution instances.
-            node_ids: TODO
+            TODO
+            scope_data:
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two dimensional PyTorch tensor indicating for each instance and node, whether they are part of the support (True) or not (False).
+            Each row corresponds to an input sample.
         """
         if node_ids is None:
             node_ids = list(range(self.n_out))
@@ -149,9 +209,28 @@ class LogNormalLayer(Module):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: LogNormalLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[LogNormalLayer, LogNormal, None]:
-    """TODO"""
+    """Structural marginalization for ``LogNormalLayer`` objects in the ``torch`` backend.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -177,13 +256,29 @@ def marginalize(layer: LogNormalLayer, marg_rvs: Iterable[int], prune: bool=True
         return LogNormalLayer(scope=marginalized_scopes, mean=layer.mean[marginalized_node_ids].detach(), std=layer.std[marginalized_node_ids].detach())
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(layer: BaseLogNormalLayer, dispatch_ctx: Optional[DispatchContext]=None) -> LogNormalLayer:
+    """Conversion for ``LogNormalLayer`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return LogNormalLayer(scope=layer.scopes_out, mean=layer.mean, std=layer.std)
 
 
-@dispatch(memoize=True)
-def toBase(torch_layer: LogNormalLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseLogNormalLayer:
+@dispatch(memoize=True)  # type: ignore
+def toBase(layer: LogNormalLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseLogNormalLayer:
+    """Conversion for ``LogNormalLayer`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseLogNormalLayer(scope=torch_layer.scopes_out, mean=torch_layer.mean.detach().numpy(), std=torch_layer.std.detach().numpy())
+    return BaseLogNormalLayer(scope=layer.scopes_out, mean=layer.mean.detach().numpy(), std=layer.std.detach().numpy())

@@ -1,7 +1,5 @@
-"""
-Created on August 15, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Exponential leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 from functools import reduce
@@ -20,16 +18,42 @@ from spflow.base.structure.layers.leaves.parametric.exponential import Exponenti
 
 
 class ExponentialLayer(Module):
-    """Layer representing multiple (univariate) exponential leaf nodes in the Torch backend.
+    r"""Layer of multiple (univariate) Exponential distribution leaf nodes in the 'base' backend.
 
-    Args:
-        scope: TODO
-        l: TODO
-        n_nodes: number of output nodes.
+    Represents multiple univariate Exponential distributions with independent scopes, each with the following probability distribution function (PDF):
+
+    .. math::
+        
+        \text{PDF}(x) = \begin{cases} \lambda e^{-\lambda x} & \text{if } x > 0\\
+                                      0                      & \text{if } x <= 0\end{cases}
+    
+    where
+        - :math:`x` is the input observation
+        - :math:`\lambda` is the rate parameter
+    
+    Internally :math:`l` are represented as unbounded parameters that are projected onto the bounded range :math:`(0,\infty)` for representing the actual rate parameters.
+
+    Attributes:
+        l_aux:
+            One-dimensional PyTorch parameter that is projected to yield the actual rate parameters.
+        l:
+            One-dimensional PyTorch tensor representing the rate parameters (:math:`\lambda`) of the Exponential distributions (projected from ``l_aux``).
     """
     def __init__(self, scope: Union[Scope, List[Scope]], l: Union[int, float, List[float], np.ndarray, torch.Tensor]=1.0, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``ExponentialLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            l:
+                Floating point, list of floats or one-dimensional NumPy array or PyTorch tensor representing the rate parameters (:math:`\lambda`) of the Exponential distributions (must be greater than 0).
+                If a single value is given it is broadcast to all nodes.
+                Defaults to 1.0.
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'ExponentialLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -60,22 +84,41 @@ class ExponentialLayer(Module):
     
     @property
     def n_out(self) -> int:
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     @property
     def l(self) -> torch.Tensor:
+        """TODO"""
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.l_aux, lb=0.0)  # type: ignore
 
     def dist(self, node_ids: Optional[List[int]]=None) -> D.Distribution:
+        r"""Returns the PyTorch distributions represented by the leaf layer.
 
+        Args:
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
+
+        Returns:
+            ``torch.distributions.Exponential`` instance.
+        """
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
         return D.Exponential(rate=self.l[node_ids])
 
     def set_params(self, l: Union[int, float, List[float], np.ndarray, torch.Tensor]) -> None:
-    
+        r"""Sets the parameters for the represented distributions.
+
+        TODO: projection function
+
+        Args:
+            l:
+                Floating point, list of floats or one-dimensional NumPy array or PyTorch tensor representing the rate parameters (:math:`\lambda`) of the Exponential distributions (must be greater than 0).
+                If a single floating point value is given it is broadcast to all nodes.
+        """
         if isinstance(l, int) or isinstance(l, float):
             l = torch.tensor([l for _ in range(self.n_out)])
         elif isinstance(l, list) or isinstance(l, np.ndarray):
@@ -93,23 +136,32 @@ class ExponentialLayer(Module):
         self.l_aux.data = proj_bounded_to_real(l, lb=0.0)
 
     def get_params(self) -> Tuple[torch.Tensor]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            One-dimensional PyTorch tensor representing the rate parameters.
+        """
         return (self.l,)
     
     def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the Exponential distribution.
+        r"""Checks if specified data is in support of the represented distributions.
+
+        Determines whether or note instances are part of the supports of the Exponential distributions, which are:
 
         .. math::
 
-            TODO
-        
+            \text{supp}(\text{Exponential})=[0,+\infty)
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
-            data:
-                Torch tensor containing possible distribution instances.
-            node_ids: TODO
+            TODO
+            scope_data:
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two dimensional PyTorch tensor indicating for each instance and node, whether they are part of the support (True) or not (False).
+            Each row corresponds to an input sample.
         """
         if node_ids is None:
             node_ids = list(range(self.n_out))
@@ -132,9 +184,28 @@ class ExponentialLayer(Module):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: ExponentialLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[ExponentialLayer, Exponential, None]:
-    """TODO"""
+    """Structural marginalization for ``ExponentialLayer`` objects in the ``torch`` backend.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -160,13 +231,29 @@ def marginalize(layer: ExponentialLayer, marg_rvs: Iterable[int], prune: bool=Tr
         return ExponentialLayer(scope=marginalized_scopes, l=layer.l[marginalized_node_ids].detach())
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(layer: BaseExponentialLayer, dispatch_ctx: Optional[DispatchContext]=None) -> ExponentialLayer:
+    """Conversion for ``ExponentialLayer`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ExponentialLayer(scope=layer.scopes_out, l=layer.l)
 
 
-@dispatch(memoize=True)
-def toBase(torch_layer: ExponentialLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseExponentialLayer:
+@dispatch(memoize=True)  # type: ignore
+def toBase(layer: ExponentialLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseExponentialLayer:
+    """Conversion for ``ExponentialLayer`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseExponentialLayer(scope=torch_layer.scopes_out, l=torch_layer.l.detach().numpy())
+    return BaseExponentialLayer(scope=layer.scopes_out, l=layer.l.detach().numpy())

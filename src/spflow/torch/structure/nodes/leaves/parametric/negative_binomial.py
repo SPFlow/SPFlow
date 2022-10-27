@@ -32,7 +32,7 @@ class NegativeBinomial(LeafNode):
 
     Attributes:
         n:
-            Scalar PyTorch tensor representing the number successes (greater or equal to 0).
+            Scalar PyTorch tensor representing the number of successes (greater or equal to 0).
         p_aux:
             Unbounded scalar PyTorch parameter that is projected to yield the actual success probability.
         p:

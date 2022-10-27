@@ -1,15 +1,11 @@
-"""
-Created on August 15, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Uniform leaf node for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 from functools import reduce
 import numpy as np
 import torch
 import torch.distributions as D
-from torch.nn.parameter import Parameter
-from ....nodes.leaves.parametric.projections import proj_bounded_to_real, proj_real_to_bounded
 
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -20,17 +16,46 @@ from spflow.base.structure.layers.leaves.parametric.uniform import UniformLayer 
 
 
 class UniformLayer(Module):
-    """Layer representing multiple (univariate) uniform leaf nodes in the Torch backend.
+    r"""Layer of multiple (univariate) continuous Uniform distribution leaf nodes in the ``base`` backend.
 
-    Args:
-        scope: TODO
-        start: TODO
-        end: TODO
-        n_nodes: number of output nodes.
+    Represents multiple univariate Poisson distributions with independent scopes, each with the following probability distribution function (PDF):
+
+    .. math::
+
+        \text{PDF}(x) = \frac{1}{\text{end} - \text{start}}\mathbf{1}_{[\text{start}, \text{end}]}(x)
+
+    where
+        - :math:`x` is the input observation
+        - :math:`\mathbf{1}_{[\text{start}, \text{end}]}` is the indicator function for the given interval (evaluating to 0 if x is not in the interval)
+
+    Attributes:
+        start:
+            One-dimensional PyTorch tensor containing the start of the intervals (including).
+        end:
+            One-dimensional PyTorch tensor containing the end of the intervals (including). Must be larger than 'start'.
+        end_next:
+            One-dimensional PyTorch tensor containing the next largest floating point values to ``end``.
+            Used for the PyTorch distributions which do not include the specified ends of the intervals.
+        support_outside:
+            One-dimensional PyTorch tensor containing booleans indicating whether or not values outside of the intervals are part of the support.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], start: Union[int, float, List[float], np.ndarray, torch.Tensor], end: Union[int, float, List[float], np.ndarray, torch.Tensor], support_outside: Union[bool, List[bool], np.ndarray, torch.Tensor]=True, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``UniformLayer`` leaf node.
+
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            start:
+                Floating point, list of floats or one-dimensional NumPy array or PyTorch tensor containing the start of the intervals (including).
+                If a single value is given, it is broadcast to all nodes.
+            end:
+                Floating point, list of floats or one-dimensional NumPy array or PyTorch tensor containing the end of the intervals (including). Must be larger than 'start'.
+                If a single value is given, it is broadcast to all nodes.
+            support_outside:
+                Boolean, list of booleans or one-dimensional NumPy array or PyTorch tensor containing booleans indicating whether or not values outside of the intervals are part of the support.
+                If a single boolean value is given, it is broadcast to all nodes.
+                Defaults to True.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'UniformLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -64,10 +89,20 @@ class UniformLayer(Module):
 
     @property
     def n_out(self) -> int:
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     def dist(self, node_ids: Optional[List[int]]=None) -> D.Distribution:
+        r"""Returns the PyTorch distributions represented by the leaf layer.
 
+        Args:
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
+
+        Returns:
+            ``torch.distributions.Uniform`` instances.
+        """
         if node_ids is None:
             node_ids = list(range(self.n_out))
         
@@ -132,21 +167,37 @@ class UniformLayer(Module):
         self.support_outside.data = support_outside
 
     def get_params(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of three one-dimensional PyTorch tensor representing the starts and ends of the intervals and the booleans indicating whether or not values outside of the intervals are part of the supports.
+        """
         return (self.start, self.end, self.support_outside)
     
     def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the Uniform distribution.
+        r"""Checks if specified data is in support of the represented distributions.
+
+        Determines whether or note instances are part of the supports of the Uniform distributions, which are:
 
         .. math::
 
-            TODO
+            \text{supp}(\text{Uniform})=\begin{cases} [start,end] & \text{if support\_outside}=\text{false}\\
+                                                 (-\infty,\infty) & \text{if support\_outside}=\text{true} \end{cases}
+        where
+            - :math:`start` is the start of the interval
+            - :math:`end` is the end of the interval
+            - :math:`\text{support\_outside}` is a truth value indicating whether values outside of the interval are part of the support
+
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
-            data:
-                Torch tensor containing possible distribution instances.
-            node_ids: TODO
+            TODO
+            scope_data:
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False) of each specified distribution.
+            Two dimensional PyTorch tensor indicating for each instance and node, whether they are part of the support (True) or not (False).
+            Each row corresponds to an input sample.
         """
         if node_ids is None:
             node_ids = list(range(self.n_out))
@@ -173,9 +224,28 @@ class UniformLayer(Module):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: UniformLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[UniformLayer, Uniform, None]:
-    """TODO"""
+    """Structural marginalization for ``UniformLayer`` objects in the ``torch`` backend.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -201,13 +271,29 @@ def marginalize(layer: UniformLayer, marg_rvs: Iterable[int], prune: bool=True, 
         return UniformLayer(scope=marginalized_scopes, start=layer.start[marginalized_node_ids].detach(), end=layer.end[marginalized_node_ids].detach(), support_outside=layer.support_outside[marginalized_node_ids].detach())
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(layer: BaseUniformLayer, dispatch_ctx: Optional[DispatchContext]=None) -> UniformLayer:
+    """Conversion for ``UniformLayer`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return UniformLayer(scope=layer.scopes_out, start=layer.start, end=layer.end, support_outside=layer.support_outside)
 
 
-@dispatch(memoize=True)
-def toBase(torch_layer: UniformLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseUniformLayer:
+@dispatch(memoize=True)  # type: ignore
+def toBase(layer: UniformLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseUniformLayer:
+    """Conversion for ``UniformLayer`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseUniformLayer(scope=torch_layer.scopes_out, start=torch_layer.start.numpy(), end=torch_layer.end.numpy(), support_outside=torch_layer.support_outside.numpy())
+    return BaseUniformLayer(scope=layer.scopes_out, start=layer.start.numpy(), end=layer.end.numpy(), support_outside=layer.support_outside.numpy())

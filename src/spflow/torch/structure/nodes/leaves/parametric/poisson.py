@@ -33,7 +33,7 @@ class Poisson(LeafNode):
         l_aux:
             Unbounded scalar PyTorch parameter that is projected to yield the actual rate parameter.
         l:
-            Scalar PyTorch tensor representing the rate parameter (:math:`\lambda`) of the Exponential distribution (projected from ``l_aux``).
+            Scalar PyTorch tensor representing the rate parameters (:math:`\lambda`) of the Poisson distribution (projected from ``l_aux``).
     """
     def __init__(self, scope: Scope, l: Optional[float]=1.0) -> None:
         r"""Initializes ``Poisson`` leaf node.

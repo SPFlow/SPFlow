@@ -28,7 +28,7 @@ class Exponential(LeafNode):
         - :math:`x` is the input observation
         - :math:`\lambda` is the rate parameter
     
-    Internally :math:`l` is represented as an unbounded parameter that is projected onto the bounded range :math:`(0,\infty)` for representing the actual rate probability.
+    Internally :math:`l` is represented as an unbounded parameter that is projected onto the bounded range :math:`(0,\infty)` for representing the actual rate parameters.
 
     Attributes:
         l_aux:
@@ -76,6 +76,8 @@ class Exponential(LeafNode):
 
     def set_params(self, l: float) -> None:
         r"""Sets the parameters for the represented distribution.
+
+        TODO: projection function
 
         Args:
             l:

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains basic layer classes for SPFlow in the 'base' backend.
+"""Contains basic layer classes for SPFlow in the ``base`` backend.
 
 Contains classes for layers of SPN-like sum- and product nodes.
 """
@@ -17,7 +17,7 @@ from spflow.base.structure.nodes.node import SPNProductNode, SPNSumNode
 
 
 class SPNSumLayer(NestedModule):
-    r"""Layer representing multiple SPN-like sum nodes over all children in the 'base' backend.
+    r"""Layer representing multiple SPN-like sum nodes over all children in the ``base`` backend.
 
     Represents multiple convex combinations of its children over the same scope.
 
@@ -138,7 +138,7 @@ class SPNSumLayer(NestedModule):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumLayer, Module, None]:
-    """Structural marginalization for SPN-like sum layer objects.
+    """Structural marginalization for SPN-like sum layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
@@ -189,7 +189,7 @@ def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, d
 
 
 class SPNProductLayer(NestedModule):
-    r"""Layer representing multiple SPN-like product nodes over all children in the 'base' backend.
+    r"""Layer representing multiple SPN-like product nodes over all children in the ``base`` backend.
 
     Represents multiple products of its children over pair-wise disjoint scopes.
 
@@ -245,7 +245,7 @@ class SPNProductLayer(NestedModule):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNProductLayer, Module, None]:
-    """Structural marginalization for SPN-like product layer objects.
+    """Structural marginalization for SPN-like product layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
@@ -302,7 +302,7 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
 
 
 class SPNPartitionLayer(NestedModule):
-    """Layer representing multiple SPN-like product nodes in the 'base' backend as combinations of inputs from different partitions.
+    """Layer representing multiple SPN-like product nodes in the ``base`` backend as combinations of inputs from different partitions.
 
     A partition is a group of inputs over the same scope. Different partitions have pair-wise disjoint scopes.
     The layer represents all possible combinations of products selecting a single input from each partition.
@@ -413,7 +413,7 @@ class SPNPartitionLayer(NestedModule):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNPartitionLayer, Module, None]:
-    """Structural marginalization for SPN-like partition layer objects.
+    """Structural marginalization for SPN-like partition layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
@@ -479,7 +479,7 @@ def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=T
 
 
 class SPNHadamardLayer(NestedModule):
-    """Layer representing multiple SPN-like product nodes in the 'base' backend as element-wise products of inputs from different partitions.
+    """Layer representing multiple SPN-like product nodes in the ``base`` backend as element-wise products of inputs from different partitions.
 
     A partition is a group of inputs over the same scope. Different partitions have pair-wise disjoint scopes.
     The layer represents element-wise products selecting a single input from each partition.
@@ -598,7 +598,7 @@ class SPNHadamardLayer(NestedModule):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: SPNHadamardLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNHadamardLayer, Module, None]:
-    """Structural marginalization for SPN-like Hadamard layer objects.
+    """Structural marginalization for SPN-like Hadamard layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

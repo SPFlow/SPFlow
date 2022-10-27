@@ -119,6 +119,7 @@ class SPNSumNode(Node):
     """SPN-like sum node in the ``torch`` backend.
 
     Represents a convex combination of its children over the same scope.
+    Internally, the weights are represented as unbounded parameters that are projected onto convex combination for representing the actual weights.
 
     Methods:
         children():
@@ -128,7 +129,7 @@ class SPNSumNode(Node):
         weights_aux:
             One-dimensional PyTorch tensor containing weights for each input.
         weights:
-            One-dimensional PyTorch tensor containing non-negative weights for each input, summing up to one. Projected from unbounded 'weights_aux'.
+            One-dimensional PyTorch tensor containing non-negative weights for each input, summing up to one (projected from 'weights_aux').
         n_out:
             Integer indicating the number of outputs. One for nodes.
         scopes_out:

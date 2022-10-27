@@ -32,6 +32,9 @@ class Uniform(LeafNode):
             Scalar PyTorch tensor representing the start of the interval (including).
         end:
             Scalar PyTorch tensor representing the end of the interval (including). Must be larger than 'start'.
+        end_next:
+            Scalary PyTorch tensor containing the next largest floating point value to ``end``.
+            Used for the PyTorch distribution which does not include the specified end of the interval.
         support_outside:
             Scalar PyTorch tensor indicating whether or not values outside of the interval are part of the support.
     """

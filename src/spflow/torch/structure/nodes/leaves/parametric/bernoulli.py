@@ -111,7 +111,7 @@ class Bernoulli(LeafNode):
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
-        Determines whether or note instances are part of the support of the Bernoulli distribution, which is:
+        Determines whether or not instances are part of the support of the Bernoulli distribution, which is:
 
         .. math::
 

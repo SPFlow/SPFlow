@@ -36,11 +36,11 @@ class Gamma(LeafNode):
         alpha_aux:
             Unbounded scalar PyTorch parameter that is projected to yield the actual shape parameter.
         alpha:
-            Scalar PyTorch tensor representing the shape parameter (:math:`\alpha`) of the Gamma distribution, greater than 0 (projected from ``l_aux``).
+            Scalar PyTorch tensor representing the shape parameter (:math:`\alpha`) of the Gamma distribution, greater than 0 (projected from ``alpha_aux``).
         beta_aux:
             Unbounded scalar PyTorch parameter that is projected to yield the actual rate parameter.
         beta:
-            Scalar PyTorch tensor representing the rate parameter (:math:`\beta`) of the Gamma distribution, greater than 0 (projected from ``l_aux``).
+            Scalar PyTorch tensor representing the rate parameter (:math:`\beta`) of the Gamma distribution, greater than 0 (projected from ``beta_aux``).
     """
     def __init__(self, scope: Scope, alpha: float=1.0, beta: float=1.0) -> None:
         r"""Initializes ``Exponential`` leaf node.
