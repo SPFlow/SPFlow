@@ -10,9 +10,19 @@ from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_
 from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def em(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+    """Performs a single expectation maximizaton (EM) step for ``SPNSumNode`` in the ``torch`` backend.
 
+    Args:
+        node:
+            Node to perform EM step for.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -33,9 +43,19 @@ def em(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchCont
         em(child, data, dispatch_ctx=dispatch_ctx)
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def em(node: SPNProductNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+    """Performs a single expectation maximizaton (EM) step for ``SPNProductNode`` in the ``torch`` backend.
 
+    Args:
+        node:
+            Node to perform EM step for.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
