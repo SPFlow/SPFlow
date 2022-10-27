@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Contains Gaussian leaf node for SPFlow in the 'base' backend.
+"""Contains Gaussian leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple, Optional
+from typing import Tuple
 import numpy as np
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
@@ -11,7 +11,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class Gaussian(LeafNode):
-    r"""(Univariate) Gaussian (a.k.a. Normal) distribution leaf node in the 'base' backend.
+    r"""(Univariate) Gaussian (a.k.a. Normal) distribution leaf node in the ``base`` backend.
 
     Represents an univariate Gaussian distribution, with the following probability density function (PDF):
 
@@ -90,7 +90,7 @@ class Gaussian(LeafNode):
         """Returns the parameters of the represented distribution.
 
         Returns:
-            Tuple of the floating point values representing the mean and standard deviation.
+            Tuple of floating point values representing the mean and standard deviation.
         """
         return self.mean, self.std
 
@@ -110,7 +110,7 @@ class Gaussian(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(

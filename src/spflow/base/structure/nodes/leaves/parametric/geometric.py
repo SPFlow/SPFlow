@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Geometric leaf node for SPFlow in the 'base' backend.
+"""Contains Geometric leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional
 import numpy as np
@@ -11,7 +11,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class Geometric(LeafNode):
-    r"""(Univariate) Geometric distribution leaf node in the 'base' backend.
+    r"""(Univariate) Geometric distribution leaf node in the ``base`` backend.
 
     Represents an univariate Geometric distribution, with the following probability mass function (PMF):
 
@@ -22,8 +22,6 @@ class Geometric(LeafNode):
     where
         - :math:`k` is the number of trials
         - :math:`p` is the success probability of each trial
-
-    TODO: Note, that the Geometric distribution as implemented in PyTorch uses :math:`k-1` as input.
 
     Attributes:
         p:

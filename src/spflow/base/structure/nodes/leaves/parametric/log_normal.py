@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Log-Normal leaf node for SPFlow in the 'base' backend.
+"""Contains Log-Normal leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Optional, Tuple
 import numpy as np
@@ -11,7 +11,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class LogNormal(LeafNode):
-    r"""(Univariate) Log-Normal distribution leaf node in the 'base' backend.
+    r"""(Univariate) Log-Normal distribution leaf node in the ``base`` backend.
 
     Represents an univariate Log-Normal distribution, with the following probability distribution function (PDF):
 
@@ -31,7 +31,7 @@ class LogNormal(LeafNode):
             Floating point value representing the mean (:math:`\mu`) of the distribution.
         std:
             Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
-        """
+    """
     def __init__(self, scope: Scope, mean: float=0.0, std: float=1.0) -> None:
         r"""Initializes ``LogNormal`` leaf node.
 
@@ -107,7 +107,7 @@ class LogNormal(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(

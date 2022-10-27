@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Contains Exponential leaf node for SPFlow in the 'base' backend.
+"""Contains Exponential leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple, Optional
+from typing import Tuple
 import numpy as np
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
@@ -11,7 +11,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class Exponential(LeafNode):
-    r"""(Univariate) Exponential distribution leaf node in the 'base' backend.
+    r"""(Univariate) Exponential distribution leaf node in the ``base`` backend.
 
     Represents an univariate Exponential distribution, with the following probability distribution function (PDF):
 
@@ -93,7 +93,7 @@ class Exponential(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(

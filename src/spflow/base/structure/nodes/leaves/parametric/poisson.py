@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Poisson leaf node for SPFlow in the 'base' backend.
+"""Contains Poisson leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional
 import numpy as np
@@ -11,7 +11,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class Poisson(LeafNode):
-    r"""(Univariate) Poisson distribution leaf node in the 'base' backend.
+    r"""(Univariate) Poisson distribution leaf node in the ``base`` backend.
 
     Represents a univariate Poisson distribution, with the following probability mass function (PMF):
 
@@ -95,7 +95,7 @@ class Poisson(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scopes_out[0].query):
             raise ValueError(

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Uniform leaf node for SPFlow in the 'base' backend.
+"""Contains Uniform leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple
 import numpy as np
@@ -11,7 +11,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class Uniform(LeafNode):
-    r"""(Univariate) continuous Uniform distribution leaf node in the 'base' backend.
+    r"""(Univariate) continuous Uniform distribution leaf node in the ``base`` backend.
 
     Represents an univariate Uniform distribution, with the following probability distribution function (PDF):
 
@@ -30,7 +30,6 @@ class Uniform(LeafNode):
             Floating point value representing the end of the interval (including). Must be larger than 'start'.
         support_outside:
             Boolean indicating whether or not values outside of the interval are part of the support.
-            Defaults to False.
     """
     def __init__(
         self, scope: Scope, start: float, end: float, support_outside: bool=True
@@ -117,7 +116,7 @@ class Uniform(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
             raise ValueError(

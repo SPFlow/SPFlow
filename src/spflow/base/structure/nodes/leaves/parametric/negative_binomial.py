@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Negative Binomial leaf node for SPFlow in the 'base' backend.
+"""Contains Negative Binomial leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional
 import numpy as np
@@ -109,7 +109,7 @@ class NegativeBinomial(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
