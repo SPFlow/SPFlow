@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Negative Binomial leaf layer for SPFlow in the 'base' backend.
+"""Contains conditional Negative Binomial leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
 import numpy as np
@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.cond_negative_binomial import
 
 
 class CondNegativeBinomialLayer(Module):
-    r"""Layer of multiple conditional (univariate) Negative Binomial distribution leaf nodes in the 'base' backend.
+    r"""Layer of multiple conditional (univariate) Negative Binomial distribution leaf nodes in the ``base`` backend.
 
     Represents multiple conditional univariate Negative Binomial distributions with independent scopes, each with the following probability mass function (PMF):
 
@@ -30,10 +30,10 @@ class CondNegativeBinomialLayer(Module):
             One-dimensional NumPy array containing the number of successes (greater or equal to 0) for each independent Negative Binomial distribution.
         cond_f:
             Optional callable or list of callables to retrieve parameters for the leaf nodes.
-            If a single callable, its output should be a dictionary containing 'p' as a key, and the value should be
+            If a single callable, its output should be a dictionary containing ``p`` as a key, and the value should be
             a floating point, a list of floats or a one-dimensional NumPy array, containing the success probabilities in the range :math:`(0,1]`.
             If it is a single floating point value, the same value is reused for all leaf nodes.
-            If a list of callables, each one should return a dictionary containing 'p' as a key, and the value should
+            If a list of callables, each one should return a dictionary containing ``p`` as a key, and the value should
             be a floating point value in the range :math:`(0,1]`.
         scopes_out:
             List of scopes representing the output scopes.
@@ -52,10 +52,10 @@ class CondNegativeBinomialLayer(Module):
                 If a single integer value is given it is broadcast to all nodes.
             cond_f:
                 Optional callable or list of callables to retrieve parameters for the leaf nodes.
-                If a single callable, its output should be a dictionary containing 'p' as a key, and the value should be
+                If a single callable, its output should be a dictionary containing ``p`` as a key, and the value should be
                 a floating point, a list of floats or a one-dimensional NumPy array, containing the success probabilities in the range :math:`(0,1]`.
                 If it is a single floating point value, the same value is reused for all leaf nodes.
-                If a list of callables, each one should return a dictionary containing 'p' as a key, and the value should
+                If a list of callables, each one should return a dictionary containing ``p`` as a key, and the value should
                 be a floating point value in the range :math:`(0,1]`.
             n_nodes:
                 Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
@@ -102,10 +102,10 @@ class CondNegativeBinomialLayer(Module):
         Args:
             cond_f:
                 Optional callable or list of callables to retrieve parameters for the leaf nodes.
-                If a single callable, its output should be a dictionary containing 'p' as a key, and the value should be
+                If a single callable, its output should be a dictionary containing ``p`` as a key, and the value should be
                 a floating point, a list of floats or a one-dimensional NumPy array, containing the success probabilities in the range :math:`(0,1]`.
                 If it is a single floating point value, the same value is reused for all leaf nodes.
-                If a list of callables, each one should return a dictionary containing 'p' as a key, and the value should
+                If a list of callables, each one should return a dictionary containing ``p`` as a key, and the value should
                 be a floating point value in the range :math:`(0,1]`.
 
         Raises:
@@ -131,7 +131,7 @@ class CondNegativeBinomialLayer(Module):
                 Dispatch context.
 
         Returns:
-            Two-dimensional NumPy array of non-zero weights summing up to one per row.
+            One-dimensional NumPy array representing the success probabilities.
         
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
@@ -218,7 +218,7 @@ class CondNegativeBinomialLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: CondNegativeBinomialLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondNegativeBinomialLayer, CondNegativeBinomial, None]:
-    r"""Structural marginalization for ``CondNegativeBinomialLayer`` objects.
+    r"""Structural marginalization for ``CondNegativeBinomialLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

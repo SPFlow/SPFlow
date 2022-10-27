@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import CondGaus
 
 
 class CondGaussianLayer(Module):
-    r"""Layer of multiple conditional (univariate) Gaussian distribution leaf nodes in the 'base' backend.
+    r"""Layer of multiple conditional (univariate) Gaussian distribution leaf nodes in the ``base`` backend.
 
     Represents multiple conditional univariate Gaussian distributions with independent scopes, each with the following probability distribution function (PDF):
 
@@ -28,10 +28,10 @@ class CondGaussianLayer(Module):
     Attributes:
         cond_f:
             Optional callable or list of callables to retrieve parameters for the leaf nodes.
-            If a single callable, its output should be a dictionary contain 'mean','std' as keys, and the values should be
+            If a single callable, its output should be a dictionary contain ``mean``,``std`` as keys, and the values should be
             a floating point, a list of floats or a one-dimensional NumPy array, containing the mean and standard deviation (the latter greater than 0), respectively.
             If the values are single floating point values, the same values are reused for all leaf nodes.
-            If a list of callables, each one should return a dictionary containing 'mean','std' as keys, and the values should
+            If a list of callables, each one should return a dictionary containing ``mean``,``std`` as keys, and the values should
             be floating point values (the latter greater than 0.0).
         scopes_out:
             List of scopes representing the output scopes.
@@ -47,10 +47,10 @@ class CondGaussianLayer(Module):
                 If a single scope is given, it is used for all nodes.
             cond_f:
                 Optional callable or list of callables to retrieve parameters for the leaf nodes.
-                If a single callable, its output should be a dictionary contain 'mean','std' as keys, and the values should be
+                If a single callable, its output should be a dictionary contain ``mean``,``std`` as keys, and the values should be
                 a floating point, a list of floats or a one-dimensional NumPy array, containing the mean and standard deviation (the latter greater than 0), respectively.
                 If the values are single floating point values, the same values are reused for all leaf nodes.
-                If a list of callables, each one should return a dictionary containing 'mean','std' as keys, and the values should
+                If a list of callables, each one should return a dictionary containing ``mean``,``std`` as keys, and the values should
                 be floating point values (the latter greater than 0.0).
             n_nodes:
                 Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
@@ -89,10 +89,10 @@ class CondGaussianLayer(Module):
         Args:
             cond_f:
                 Optional callable or list of callables to retrieve parameters for the leaf nodes.
-                If a single callable, its output should be a dictionary contain 'mean','std' as keys, and the values should be
+                If a single callable, its output should be a dictionary contain ``mean``,``std`` as keys, and the values should be
                 a floating point, a list of floats or a one-dimensional NumPy array, containing the mean and standard deviation (the latter greater than 0), respectively.
                 If the values are single floating point values, the same values are reused for all leaf nodes.
-                If a list of callables, each one should return a dictionary containing 'mean','std' as keys, and the values should
+                If a list of callables, each one should return a dictionary containing ``mean``,``std`` as keys, and the values should
                 be floating point values (the latter greater than 0.0).
 
         Raises:
@@ -118,7 +118,7 @@ class CondGaussianLayer(Module):
                 Dispatch context.
 
         Returns:
-            Two-dimensional NumPy array of non-zero weights summing up to one per row.
+            Tuple of two one-dimensional NumPy array representing the means and standard deviations, respectively.
         
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
@@ -190,7 +190,7 @@ class CondGaussianLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: CondGaussianLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondGaussianLayer, CondGaussian, None]:
-    r"""Structural marginalization for ``CondGaussianLayer`` objects.
+    r"""Structural marginalization for ``CondGaussianLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
