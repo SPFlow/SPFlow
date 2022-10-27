@@ -10,7 +10,7 @@ import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(node: MultivariateGaussian, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(node: MultivariateGaussian, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     r"""Computes log-likelihoods for ``MultivariateGaussian`` node in the ``base`` backend given input data.
 
     Log-likelihood for ``MultivariateGaussian`` is given by the logarithm of its probability distribution function (PDF):
@@ -33,6 +33,9 @@ def log_likelihood(node: MultivariateGaussian, data: np.ndarray, dispatch_ctx: O
         data:
             Two-dimensional NumPy array containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the distribution.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -63,14 +66,14 @@ def log_likelihood(node: MultivariateGaussian, data: np.ndarray, dispatch_ctx: O
     if any((n_marg > 0) & (n_marg < len(node.scope.query))):
         raise ValueError(f"Partial marginalization not yet supported for MultivariateGaussian.")
 
-    # create masked based on distribution's support
-    valid_ids = node.check_support(data[~n_marg.astype(bool)])
+    if check_support:
+        # create masked based on distribution's support
+        valid_ids = node.check_support(data[~n_marg.astype(bool)])
 
-    # TODO: suppress checks
-    if not valid_ids.all():
-        raise ValueError(
-            f"Encountered data instances that are not in the support of the MultivariateGaussian distribution."
-        )
+        if not valid_ids.all():
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the MultivariateGaussian distribution."
+            )
     
     if(node.mean is None):
         raise ValueError("Encountered 'None' value for MultivariateGaussian mean vector during inference.")

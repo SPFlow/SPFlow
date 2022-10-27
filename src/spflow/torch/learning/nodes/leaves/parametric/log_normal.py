@@ -9,7 +9,7 @@ from spflow.torch.structure.nodes.leaves.parametric.log_normal import LogNormal
 
 
 @dispatch(memoize=True)  # type: ignore
-def maximum_likelihood_estimation(leaf: LogNormal, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def maximum_likelihood_estimation(leaf: LogNormal, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     r"""Maximum (weighted) likelihood estimation (MLE) of ``LogNormal`` node parameters in the ``torch`` backend.
 
     Estimates the mean and standard deviation :math:`\mu` and :math:`\sigma` of a Log-Normal distribution from data, as follows:
@@ -50,6 +50,9 @@ def maximum_likelihood_estimation(leaf: LogNormal, data: torch.Tensor, weights: 
             If 'ignore', missing values (i.e., NaN entries) are ignored.
             If a callable, it is called using ``data`` and should return another PyTorch tensor of same size.
             Defaults to None.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -71,8 +74,9 @@ def maximum_likelihood_estimation(leaf: LogNormal, data: torch.Tensor, weights: 
     # reshape weights
     weights = weights.reshape(-1, 1)
 
-    if torch.any(~leaf.check_support(scope_data)):
-        raise ValueError("Encountered values outside of the support for 'LogNormal'.")
+    if check_support:
+        if torch.any(~leaf.check_support(scope_data)):
+            raise ValueError("Encountered values outside of the support for 'LogNormal'.")
 
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
@@ -119,7 +123,7 @@ def maximum_likelihood_estimation(leaf: LogNormal, data: torch.Tensor, weights: 
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(leaf: LogNormal, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(leaf: LogNormal, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """Performs a single expectation maximizaton (EM) step for ``LogNormal`` in the ``torch`` backend.
 
     Args:
@@ -128,6 +132,9 @@ def em(leaf: LogNormal, data: torch.Tensor, dispatch_ctx: Optional[DispatchConte
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
     """
@@ -145,6 +152,6 @@ def em(leaf: LogNormal, data: torch.Tensor, dispatch_ctx: Optional[DispatchConte
         # ----- maximization step -----
 
         # update parameters through maximum weighted likelihood estimation
-        maximum_likelihood_estimation(leaf, data, weights=expectations.squeeze(1), bias_correction=False, dispatch_ctx=dispatch_ctx)
+        maximum_likelihood_estimation(leaf, data, weights=expectations.squeeze(1), bias_correction=False, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
     # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients

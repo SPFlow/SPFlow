@@ -10,7 +10,7 @@ import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(node: CondLogNormal, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(node: CondLogNormal, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     r"""Computes log-likelihoods for ``CondLogNormal`` node given input data in the ``base`` backend.
 
     Log-likelihood for ``CondLogNormal`` is given by the logarithm of its probability distribution function (PDF):
@@ -32,6 +32,9 @@ def log_likelihood(node: CondLogNormal, data: np.ndarray, dispatch_ctx: Optional
         data:
             Two-dimensional NumPy array containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the distribution.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -55,14 +58,14 @@ def log_likelihood(node: CondLogNormal, data: np.ndarray, dispatch_ctx: Optional
     # keeps default value of 1 (0 in log-space)
     marg_ids = np.isnan(data).sum(axis=-1).astype(bool)
 
-    # create masked based on distribution's support
-    valid_ids = node.check_support(data[~marg_ids]).squeeze(1)
+    if check_support:
+        # create masked based on distribution's support
+        valid_ids = node.check_support(data[~marg_ids]).squeeze(1)
 
-    # TODO: suppress checks
-    if not all(valid_ids):
-        raise ValueError(
-            f"Encountered data instances that are not in the support of the LogNormal distribution."
-        )
+        if not all(valid_ids):
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the LogNormal distribution."
+            )
 
     # compute probabilities for all non-marginalized instances
     probs[~marg_ids] = node.dist(mean=mean, std=std).logpdf(x=data[~marg_ids])

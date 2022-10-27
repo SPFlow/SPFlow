@@ -9,7 +9,7 @@ from spflow.torch.structure.nodes.leaves.parametric.cond_binomial import CondBin
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(leaf: CondBinomial, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(leaf: CondBinomial, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     r"""Computes log-likelihoods for ``CondBinomial`` node given input data in the ``torch`` backend.
 
     Log-likelihood for ``CondBinomial`` is given by the logarithm of its probability mass function (PMF):
@@ -32,6 +32,9 @@ def log_likelihood(leaf: CondBinomial, data: torch.Tensor, dispatch_ctx: Optiona
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the distribution.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -61,14 +64,14 @@ def log_likelihood(leaf: CondBinomial, data: torch.Tensor, dispatch_ctx: Optiona
 
     # ----- log probabilities -----
 
-    # create masked based on distribution's support
-    valid_ids = leaf.check_support(scope_data[~marg_ids]).squeeze(1)
+    if check_support:
+        # create masked based on distribution's support
+        valid_ids = leaf.check_support(scope_data[~marg_ids]).squeeze(1)
 
-    # TODO: suppress checks
-    if not all(valid_ids):
-        raise ValueError(
-            f"Encountered data instances that are not in the support of the CondBinomial distribution."
-        )
+        if not all(valid_ids):
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the CondBinomial distribution."
+            )
 
     # compute probabilities for values inside distribution support
     log_prob[~marg_ids] = leaf.dist(p=p).log_prob(

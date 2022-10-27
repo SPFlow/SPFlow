@@ -10,7 +10,7 @@ from spflow.base.inference.nodes.cond_node import log_likelihood
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(sum_layer: SPNCondSumLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(sum_layer: SPNCondSumLayer, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     """Computes log-likelihoods for conditional SPN-like sum layers given input data in the ``base`` backend.
 
     Log-likelihoods for sum nodes are the logarithm of the sum of weighted exponentials (LogSumExp) of its input likelihoods (weighted sum in linear space).
@@ -22,6 +22,9 @@ def log_likelihood(sum_layer: SPNCondSumLayer, data: np.ndarray, dispatch_ctx: O
         data:
             Two-dimensional NumPy array containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -39,10 +42,10 @@ def log_likelihood(sum_layer: SPNCondSumLayer, data: np.ndarray, dispatch_ctx: O
         dispatch_ctx.update_args(node, {'weights': w})
 
     # compute child log-likelihoods
-    child_lls = np.concatenate([log_likelihood(child, data, dispatch_ctx=dispatch_ctx) for child in sum_layer.children], axis=1)
+    child_lls = np.concatenate([log_likelihood(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for child in sum_layer.children], axis=1)
 
     # set placeholder values
     sum_layer.set_placeholders("log_likelihood", child_lls, dispatch_ctx, overwrite=False)
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return np.concatenate([log_likelihood(node, data, dispatch_ctx=dispatch_ctx) for node in sum_layer.nodes], axis=1)
+    return np.concatenate([log_likelihood(node, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for node in sum_layer.nodes], axis=1)

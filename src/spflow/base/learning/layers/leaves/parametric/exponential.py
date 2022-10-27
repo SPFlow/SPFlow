@@ -10,7 +10,7 @@ from spflow.base.structure.layers.leaves.parametric.exponential import Exponenti
 
 
 @dispatch(memoize=True)  # type: ignore
-def maximum_likelihood_estimation(layer: ExponentialLayer, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def maximum_likelihood_estimation(layer: ExponentialLayer, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     r"""Maximum (weighted) likelihood estimation (MLE) of ``ExponentialLayer`` leaves' parameters in the ``base`` backend.
 
     Estimates the rate parameters :math:`l` of each Exponential distribution from data, as follows:
@@ -51,6 +51,9 @@ def maximum_likelihood_estimation(layer: ExponentialLayer, data: np.ndarray, wei
             If 'ignore', missing values (i.e., NaN entries) are ignored.
             If a callable, it is called using ``data`` and should return another NumPy array of same size.
             Defaults to None.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -73,4 +76,4 @@ def maximum_likelihood_estimation(layer: ExponentialLayer, data: np.ndarray, wei
         weights = np.expand_dims(weights, 1).repeat(layer.n_out, 1)
 
     for node, node_weights in zip(layer.nodes, weights.T):
-        maximum_likelihood_estimation(node, data, node_weights, bias_correction=bias_correction, nan_strategy=nan_strategy, dispatch_ctx=dispatch_ctx)
+        maximum_likelihood_estimation(node, data, node_weights, bias_correction=bias_correction, nan_strategy=nan_strategy, check_support=check_support, dispatch_ctx=dispatch_ctx)

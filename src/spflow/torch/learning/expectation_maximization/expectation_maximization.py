@@ -10,7 +10,7 @@ from spflow.torch.learning.nodes.leaves.parametric.bernoulli import em # TODO
 import torch
 
 
-def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=-1) -> torch.Tensor:
+def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=-1, check_support: bool=True) -> torch.Tensor:
     """Performs partitioning usig randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``torch`` backend.
 
     Args:
@@ -22,6 +22,9 @@ def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=
         max_steps:
             Integer representing the maximum number of iterations.
             Defaults to -1, in which case the optimization is performed until convergence. 
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
 
     Returns:
         One-dimensional PyTorch tensors, containing the average log-likelihood for each iteration step. 
@@ -35,7 +38,7 @@ def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=
         dispatch_ctx = DispatchContext()
 
         # compute log likelihoods and sum them together
-        acc_ll = log_likelihood(module, data, dispatch_ctx=dispatch_ctx).sum()
+        acc_ll = log_likelihood(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx).sum()
 
         avg_ll = acc_ll.detach().clone() / data.shape[0]
         ll_history.append(avg_ll)
@@ -54,7 +57,7 @@ def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=
             acc_ll.backward()
 
         # recursively perform expectation maximization
-        em(module, data, dispatch_ctx=dispatch_ctx)
+        em(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
         prev_avg_ll = avg_ll
         # TODO: zero/None all gradients

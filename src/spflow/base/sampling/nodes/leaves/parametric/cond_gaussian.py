@@ -11,7 +11,7 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(leaf: CondGaussian, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
+def sample(leaf: CondGaussian, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
     r"""Samples from ``CondGaussian`` nodes in the ``base`` backend given potential evidence.
 
     Samples missing values proportionally to its probability distribution function (PDF).

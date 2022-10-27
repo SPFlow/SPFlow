@@ -52,7 +52,7 @@ class DummyLeaf(LeafNode):
 
 
 @dispatch(memoize=True)
-def log_likelihood(node: DummyLeaf, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(node: DummyLeaf, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
 
     scope_data = data[:, node.scope.query]
 
@@ -65,6 +65,6 @@ def log_likelihood(node: DummyLeaf, data: torch.Tensor, dispatch_ctx: Optional[D
 
 
 @dispatch(memoize=True)
-def em(node: DummyLeaf, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(node: DummyLeaf, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
 
     pass

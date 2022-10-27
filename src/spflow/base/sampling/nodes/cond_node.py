@@ -13,7 +13,7 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(node: SPNCondSumNode, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
+def sample(node: SPNCondSumNode, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
     """Samples from conditional SPN-like sum nodes in the ``base`` backend given potential evidence.
 
     Samples from each input proportionally to its weighted likelihoods given the evidence.
@@ -25,6 +25,9 @@ def sample(node: SPNCondSumNode, data: np.ndarray, dispatch_ctx: Optional[Dispat
         data:
             Two-dimensional NumPy array containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -40,7 +43,7 @@ def sample(node: SPNCondSumNode, data: np.ndarray, dispatch_ctx: Optional[Dispat
 
     # compute log likelihoods of data instances (TODO: only compute for relevant instances? might clash with cashed values or cashing in general)
     child_lls = np.concatenate(
-        [log_likelihood(child, data, dispatch_ctx=dispatch_ctx) for child in node.children], axis=1
+        [log_likelihood(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for child in node.children], axis=1
     )
 
     # retrieve value for 'weights'
@@ -65,7 +68,7 @@ def sample(node: SPNCondSumNode, data: np.ndarray, dispatch_ctx: Optional[Dispat
 
         # sample from child module
         sample(
-            node.children[child_ids[0]], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(branch_instance_ids, [[output_ids[0]] for _ in range(len(branch_instance_ids))])
+            node.children[child_ids[0]], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(branch_instance_ids, [[output_ids[0]] for _ in range(len(branch_instance_ids))])
         )
 
     return data

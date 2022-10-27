@@ -11,7 +11,7 @@ from spflow.torch.structure.layers.leaves.parametric.gamma import GammaLayer
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(layer: GammaLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(layer: GammaLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     r"""Computes log-likelihoods for ``GammaLayer`` leaves in the ``torch`` backend given input data.
 
     Log-likelihood for ``GammaLayer`` is given by the logarithm of its individual probability distribution functions (PDFs):
@@ -35,6 +35,9 @@ def log_likelihood(layer: GammaLayer, data: torch.Tensor, dispatch_ctx: Optional
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the distribution.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -76,15 +79,15 @@ def log_likelihood(layer: GammaLayer, data: torch.Tensor, dispatch_ctx: Optional
         log_prob[torch.meshgrid(marg_ids, node_ids_tensor, indexing='ij')] = 0.0
 
         # ----- log probabilities -----
-    
-        # create masked based on distribution's support
-        valid_ids = layer.check_support(data[~marg_mask], node_ids=node_ids)
 
-        # TODO: suppress checks
-        if not all(valid_ids.sum(dim=1)):
-            raise ValueError(
-                f"Encountered data instances that are not in the support of the Gamma distribution."
-            )
+        if check_support:
+            # create masked based on distribution's support
+            valid_ids = layer.check_support(data[~marg_mask], node_ids=node_ids)
+
+            if not all(valid_ids.sum(dim=1)):
+                raise ValueError(
+                    f"Encountered data instances that are not in the support of the Gamma distribution."
+                )
         
         # compute probabilities for values inside distribution support
         log_prob[torch.meshgrid(non_marg_ids, node_ids_tensor, indexing='ij')] = layer.dist(node_ids=node_ids).log_prob(

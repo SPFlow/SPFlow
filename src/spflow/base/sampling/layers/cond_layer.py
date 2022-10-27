@@ -14,7 +14,7 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(sum_layer: SPNCondSumLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
+def sample(sum_layer: SPNCondSumLayer, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
     """Samples from conditional SPN-like sum layers in the ``base`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
@@ -27,6 +27,9 @@ def sample(sum_layer: SPNCondSumLayer, data: np.ndarray, dispatch_ctx: Optional[
         data:
             Two-dimensional NumPy array containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -44,7 +47,7 @@ def sample(sum_layer: SPNCondSumLayer, data: np.ndarray, dispatch_ctx: Optional[
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # compute log-likelihoods of this module (needed to initialize log-likelihood cache for placeholder)
-    log_likelihood(sum_layer, data, dispatch_ctx=dispatch_ctx)
+    log_likelihood(sum_layer, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
     # retrieve value for 'weights'
     weights = sum_layer.retrieve_params(data, dispatch_ctx)
@@ -61,6 +64,6 @@ def sample(sum_layer: SPNCondSumLayer, data: np.ndarray, dispatch_ctx: Optional[
         node_id = node_ids[0]
         node_instance_ids = np.array(sampling_ctx.instance_ids)[np.where(sampling_ctx.output_ids == node_ids)[0]].tolist()
 
-        sample(sum_layer.nodes[node_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(node_instance_ids, [[] for i in node_instance_ids]))
+        sample(sum_layer.nodes[node_id], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(node_instance_ids, [[] for i in node_instance_ids]))
 
     return data

@@ -9,7 +9,7 @@ from spflow.torch.structure.nodes.leaves.parametric.cond_geometric import CondGe
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(leaf: CondGeometric, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(leaf: CondGeometric, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     r"""Computes log-likelihoods for ``CondGeometric`` node given input data in the ``torch`` backend.
 
     Log-likelihood for ``CondGeometric`` is given by the logarithm of its probability distribution function (PDF):
@@ -30,6 +30,9 @@ def log_likelihood(leaf: CondGeometric, data: torch.Tensor, dispatch_ctx: Option
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the distribution.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -59,14 +62,14 @@ def log_likelihood(leaf: CondGeometric, data: torch.Tensor, dispatch_ctx: Option
 
     # ----- log probabilities -----
 
-    # create masked based on distribution's support
-    valid_ids = leaf.check_support(scope_data[~marg_ids]).squeeze(1)
+    if check_support:
+        # create masked based on distribution's support
+        valid_ids = leaf.check_support(scope_data[~marg_ids]).squeeze(1)
 
-    # TODO: suppress checks
-    if not all(valid_ids):
-        raise ValueError(
-            f"Encountered data instances that are not in the support of the CondGeometric distribution."
-        )
+        if not all(valid_ids):
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the CondGeometric distribution."
+            )
 
     # compute probabilities for values inside distribution support
     # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch

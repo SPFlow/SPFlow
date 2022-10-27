@@ -11,7 +11,7 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(leaf: CondGamma, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
+def sample(leaf: CondGamma, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
     r"""Samples from ``CondGamma`` nodes in the ``base`` backend given potential evidence.
 
     Samples missing values proportionally to its probability distribution function (PDF).
@@ -22,6 +22,9 @@ def sample(leaf: CondGamma, data: np.ndarray, dispatch_ctx: Optional[DispatchCon
         data:
             Two-dimensional NumPy array containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:

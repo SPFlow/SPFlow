@@ -13,7 +13,7 @@ from spflow.torch.sampling.module import sample
 
 
 @dispatch  # type: ignore
-def sample(layer: CondMultivariateGaussianLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(layer: CondMultivariateGaussianLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
     r"""Samples from ``CondMultivariateGaussianLayer`` leaves in the ``torch`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
@@ -26,6 +26,9 @@ def sample(layer: CondMultivariateGaussianLayer, data: torch.Tensor, dispatch_ct
         data:
             Two-dimensional PyTorch tensor containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -61,6 +64,6 @@ def sample(layer: CondMultivariateGaussianLayer, data: torch.Tensor, dispatch_ct
 
     # all product nodes are over (all) children
     for node_id, instances in sampling_ctx.group_output_ids(layer.n_out):
-        sample(layer.nodes[node_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instances, [[] for _ in instances]))
+        sample(layer.nodes[node_id], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instances, [[] for _ in instances]))
 
     return data
