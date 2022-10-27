@@ -41,7 +41,7 @@ def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=
         ll_history.append(avg_ll)
 
         # end update loop if max steps reached or loss converged
-        if n_steps == max_steps or avg_ll <= prev_avg_ll:
+        if max_steps == 0 or avg_ll <= prev_avg_ll:
             break
 
         # retain gradients for all module log-likelihoods
@@ -60,6 +60,7 @@ def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=
         # TODO: zero/None all gradients
 
         # increment steps counter
-        n_steps += 1
+        if max_steps > 0:
+            max_steps -= 1
 
-    return torch.concat(ll_history)
+    return torch.stack(ll_history)
