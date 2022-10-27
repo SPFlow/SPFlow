@@ -37,7 +37,6 @@ def sample(leaf: Gamma, data: np.ndarray, dispatch_ctx: Optional[DispatchContext
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    # TODO: what to do in case of instance ids that are already specified (i.e. not nan)?
     marg_ids = (np.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = np.zeros(data.shape[0])

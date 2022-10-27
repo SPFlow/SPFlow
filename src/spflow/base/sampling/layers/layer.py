@@ -61,7 +61,7 @@ def sample(sum_layer: SPNSumLayer, data: np.ndarray, dispatch_ctx: Optional[Disp
 
 @dispatch  # type: ignore
 def sample(product_layer: SPNProductLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
-    """Samples from SPN-like product layers in the 'base' backend given potential evidence.
+    """Samples from SPN-like product layers in the ``base`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
     Recursively samples from each input.
@@ -102,7 +102,7 @@ def sample(product_layer: SPNProductLayer, data: np.ndarray, dispatch_ctx: Optio
 
 @dispatch  # type: ignore
 def sample(partition_layer: SPNPartitionLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
-    """Samples from SPN-like partition layers in the 'base' backend given potential evidence.
+    """Samples from SPN-like partition layers in the ``base`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
     Recursively samples from each input.
@@ -145,7 +145,7 @@ def sample(partition_layer: SPNPartitionLayer, data: np.ndarray, dispatch_ctx: O
 
 @dispatch  # type: ignore
 def sample(hadamard_layer: SPNHadamardLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
-    """Samples from SPN-like element-wise product layers in the 'base' backend given potential evidence.
+    """Samples from SPN-like element-wise product layers in the ``base`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
     Recursively samples from each input.
