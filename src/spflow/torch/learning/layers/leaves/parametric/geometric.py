@@ -144,8 +144,8 @@ def em(layer: GeometricLayer, data: torch.Tensor, dispatch_ctx: Optional[Dispatc
     """Performs a single expectation maximizaton (EM) step for ``GeometricLayer`` in the ``torch`` backend.
 
     Args:
-        leaf:
-            Leaf node to perform EM step for.
+        layer:
+            Leaf layer to perform EM step for.
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.

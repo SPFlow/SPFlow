@@ -60,8 +60,8 @@ def em(layer: UniformLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchC
     """Performs a single expectation maximizaton (EM) step for ``UniformLayer`` in the ``torch`` backend.
 
     Args:
-        leaf:
-            Leaf node to perform EM step for.
+        layer:
+            Leaf layer to perform EM step for.
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.

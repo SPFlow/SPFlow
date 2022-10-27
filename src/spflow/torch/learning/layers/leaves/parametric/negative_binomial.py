@@ -131,8 +131,8 @@ def em(layer: NegativeBinomialLayer, data: torch.Tensor, dispatch_ctx: Optional[
     """Performs a single expectation maximizaton (EM) step for ``NegativeBinomialLayer`` in the ``torch`` backend.
 
     Args:
-        leaf:
-            Leaf node to perform EM step for.
+        layer:
+            Leaf layer to perform EM step for.
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
