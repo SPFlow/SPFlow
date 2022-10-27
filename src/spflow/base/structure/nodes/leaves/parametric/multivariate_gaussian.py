@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Multivariate Normal leaf node for SPFlow in the 'base' backend.
+"""Contains Multivariate Normal leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List, Union, Optional, Iterable
 import numpy as np
@@ -32,11 +32,9 @@ class MultivariateGaussian(LeafNode):
         mean:
             A list of floating points or one-dimensional NumPy array containing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
             Must have exactly as many elements as the scope of this leaf.
-            Defaults to all zeros. 
         cov:
             A list of lists of floating points or a two-dimensional NumPy array (representing a :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
             of the scope) describing the covariances of the distribution. The diagonal holds the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
-            Defaults to the identity matrix.
     """
     def __init__(
         self,
@@ -166,7 +164,7 @@ class MultivariateGaussian(LeafNode):
         """Returns the parameters of the represented distribution.
 
         Returns:
-            Tuple of NumPy array representing the mean and covariance matrix, respectively.
+            Tuple of a one-dimensional and a two-dimensional NumPy array representing the mean and covariance matrix, respectively.
         """
         return self.mean, self.cov
 
@@ -186,7 +184,7 @@ class MultivariateGaussian(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(

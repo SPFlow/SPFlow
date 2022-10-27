@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Gamma leaf node for SPFlow in the 'base' backend.
+"""Contains Gamma leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional
 import numpy as np
@@ -11,7 +11,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class Gamma(LeafNode):
-    r"""(Univariate) Gamma distribution leaf node in the 'base' backend.
+    r"""(Univariate) Gamma distribution leaf node in the ``base`` backend.
 
     Represents an univariate Exponential distribution, with the following probability distribution function (PDF):
 
@@ -28,9 +28,9 @@ class Gamma(LeafNode):
 
     Attributes:
         alpha:
-            Floating point value representing the shape parameter (:math:`\alpha`), greater than 0 (default 1.0).
+            Floating point value representing the shape parameter (:math:`\alpha`), greater than 0.
         beta:
-            Floating point value representing the rate parameter (:math:`\beta`), greater than 0 (default 1.0).
+            Floating point value representing the rate parameter (:math:`\beta`), greater than 0.
     """
     def __init__(self, scope: Scope, alpha: Optional[float]=1.0, beta: Optional[float]=1.0) -> None:
         r"""Initializes ``Exponential`` leaf node.
@@ -107,7 +107,7 @@ class Gamma(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
