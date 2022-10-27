@@ -37,7 +37,7 @@ class DispatchContext():
             f_name:
                 String denoting the function for which to cache the value.
             key:
-                Instance of (a subclass of) 'MetaModule' for which to cache the value.
+                Instance of (a subclass of) ``MetaModule`` for which to cache the value.
             value:
                 Object to cache.
             overwrite:
@@ -59,7 +59,7 @@ class DispatchContext():
             f_name:
                 String denoting the function for which to check the cache.
             key:
-                Instance of (a subclass of) 'MetaModule' for which to check the cache.
+                Instance of (a subclass of) ``MetaModule`` for which to check the cache.
         
         Returns:
             Boolean indicating whether there is a corresponding cached object (True) or not (False).
@@ -73,7 +73,7 @@ class DispatchContext():
             f_name:
                 String denoting the function for which to retrive the cached object.
             key:
-                Instance of (a subclass of) 'MetaModule' for which to retrieve the cached object.
+                Instance of (a subclass of) ``MetaModule`` for which to retrieve the cached object.
         
         Returns:
             Cached object (if it exists) or None.
@@ -90,7 +90,7 @@ class DispatchContext():
 
         Args:
             key:
-                Instance of (a subclass of) 'MetaModule' for which to update additional keyword arguments.
+                Instance of (a subclass of) ``MetaModule`` for which to update additional keyword arguments.
             update_args:
                 Dictionary mapping strings (i.e., keyword arguments) to objects (i.e., argument values).
         """
@@ -103,7 +103,7 @@ class DispatchContext():
 
 
 def default_dispatch_context() -> DispatchContext:
-    """Returns empty 'DispatchContext' object.
+    """Returns empty ``DispatchContext`` object.
 
     Returns:
         Empty dispatch context.
@@ -116,7 +116,7 @@ def init_default_dispatch_context(dispatch_ctx: Union[DispatchContext, None]) ->
 
     Args
         dispatch_ctx:
-            'DispatchContext' object or None.
+            ``DispatchContext`` object or None.
 
     Returns:
         Original dispatch context if not None or a new empty dispatch context.

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains the 'Scope' class for representing scopes over random variables.
+"""Contains the ``Scope`` class for representing scopes over random variables.
 
 Typical usage example:
 
@@ -60,7 +60,7 @@ class Scope():
         self.evidence = evidence
 
     def __repr__(self) -> str:
-        """Returns a string representation of the scope of form 'Scope(query|evidence)'.
+        """Returns a string representation of the scope of form ``Scope(query|evidence)``.
 
         Returns:
             String containg the string representation of scope.
@@ -68,13 +68,13 @@ class Scope():
         return "Scope({}|{})".format(self.query if self.query else "{}", self.evidence if self.evidence else "{}")  # pragma: no cover
 
     def __eq__(self, other) -> bool:
-        """Equality comparison between two 'Scope' objects.
+        """Equality comparison between two ``Scope`` objects.
     
         Two scopes are considered equal if they represent the same query and evidence RVs.
 
         Args:
             other:
-                'Scope' object to compare to.
+                ``Scope`` object to compare to.
 
         Returns:
             Boolean indicating whether both scopes are considered equal (True) or not (False).
@@ -94,7 +94,7 @@ class Scope():
     
         Args:
             other:
-                'Scope' object to compare to.
+                ``Scope` object to compare to.
 
         Returns:
             Boolean indicating whether both query scopes are idential (True) or not (False).
@@ -106,7 +106,7 @@ class Scope():
     
         Args:
             other:
-                'Scope' object to compare to.
+                ``Scope`` object to compare to.
 
         Returns:
             Boolean indicating whether both evidence scopes are idential (True) or not (False).
@@ -140,10 +140,10 @@ class Scope():
 
         Args:
             other:
-                'Scope' object to compute the union with.
+                ``Scope`` object to compute the union with.
 
         Returns:
-            'Scope' object representing the union of both scopes.
+            ``Scope`` object representing the union of both scopes.
         """
         return Scope(set(self.query).union(other.query), set(self.evidence).union(other.evidence))
 
@@ -153,7 +153,7 @@ class Scope():
 
         Args:
             scopes:
-                Iterable of 'Scope' objects to check pairwise disjointness.
+                Iterable of ``Scope`` objects to check pairwise disjointness.
 
         Returns:
             Boolean indicating whether all scopes are pairwise disjoint (True) or not (False).
@@ -174,7 +174,7 @@ class Scope():
 
         Args:
             scopes:
-                Iterable of 'Scope' objects to check for equality.
+                Iterable of ``Scope`` objects to check for equality.
 
         Returns:
             Boolean indicating whether all scopes are equal (True) or not (False).
