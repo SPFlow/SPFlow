@@ -1,7 +1,5 @@
-"""
-Created on September 26, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains the LearnSPN structure and parameter learner for SPFlow in the 'torch' backend.
 """
 import torch
 from functools import partial
@@ -17,7 +15,23 @@ from spflow.torch.structure.module import Module
 
 
 def partition_by_rdc(data: torch.Tensor, threshold: float=0.3, preprocessing: Optional[Callable]=None) -> torch.Tensor:
+    """Performs partitioning usig randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the 'torch' backend.
 
+    Args:
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        threshold:
+            Floating point value specifying the threshold for independence testing between two features.
+            Defaults to 0.3
+        preprocessing:
+            Optional callable that is called with ``data`` and returns another PyTorch tensor of the same shape.
+            Defaults to None.
+
+    Returns:
+        One-dimensional PyTorch tensor with the same number of entries as the number of features in ``data``.
+        Each integer value indicates the partition the corresponding feature is assigned to.
+    """
     # perform optional pre-processing of data
     if preprocessing is not None:
         partitioning_data = preprocessing(data)
@@ -39,7 +53,23 @@ def partition_by_rdc(data: torch.Tensor, threshold: float=0.3, preprocessing: Op
 
 
 def cluster_by_kmeans(data: torch.Tensor, n_clusters: int=2, preprocessing: Optional[Callable]=None) -> torch.Tensor:
+    """Performs clustering usig k-Means to be used with the LearnSPN algorithm in the 'torch' backend.
 
+    Args:
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        n_clusters:
+            Integer value specifying the number of clusters to be used.
+            Defaults to 2.
+        preprocessing:
+            Optional callable that is called with ``data`` and returns another PyTorch tensor of the same shape.
+            Defaults to None.
+
+    Returns:
+        One-dimensional PyTorch tensor with the same number of entries as the number of samples in ``data``.
+        Each integer value indicates the cluster the corresponding sample is assigned to.
+    """
     # perform optional pre-processing of data
     if preprocessing is not None:
         clustering_data = preprocessing(data)
@@ -53,7 +83,48 @@ def cluster_by_kmeans(data: torch.Tensor, n_clusters: int=2, preprocessing: Opti
 
 
 def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_instances_slice: int=100, fit_params: bool=True, clustering_method: Union[str, Callable]="kmeans", partitioning_method: Union[str, Callable]="rdc", clustering_args: Optional[Dict[str, Any]]=None, partitioning_args: Optional[Dict[str, Any]]=None) -> Module:
+    """LearnSPN structure and parameter learner for the 'torch' backend.
 
+    LearnSPN algorithm as described in (Gens & Domingos, 2013): "Learning the Structure of Sum-Product Networks".
+
+    Args:
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        scope:
+            Optional scope corresponding to ``data``.
+            Defaults to None, in which case a scope is initialized from ``data``.
+        min_features_slice:
+            Integer value specifying the minimum number of features required to partition.
+            Defaults to 2.
+        min_instances_slice:
+            Integer value specifying the minimum number of instances required to cluster.
+            Defaults to 100.
+        fit_params:
+            Boolean value determining whether or not to estimate the parameters of the nodes.
+            If set to False, only the structure is learned.
+            Defaults to True
+        clustering_method:
+            String or callable specifying the clustering method to be used.
+            If 'kmeans' k-Means clustering is used.
+            If a callable, it is expected to accept ``data`` and return a one-dimensional PyTorch tensor of integer values indicating the clusters the corresponding samples are assigned to.
+        partitioning_method:
+            String or callable specifying the partitioning method to be used.
+            If 'rdc' randomized dependence coefficients (RDCs) are used to determine independencies.
+            If a callable, it is expected to accept ``data`` and return a one-dimensional PyTorch tensor with the same number of features as in ``data`` of integer values indicating the partitions the corresponding features are assigned to.
+        clustering_args:
+            Optional dictionary mapping keyword arguments to objects.
+            Passed to ``clustering_method`` each time it is called.
+        partitioning_args:
+            Optional dictionary mapping keyword arguments to objects.
+            Passed to ``partitioning_method`` each time it is called.
+
+    Returns:
+        A node representing the learned SPN.
+
+    Raises:
+        ValueError: Invalid arguments.
+    """
     # initialize scope
     if scope is None:
         scope = Scope(list(range(data.shape[1])))

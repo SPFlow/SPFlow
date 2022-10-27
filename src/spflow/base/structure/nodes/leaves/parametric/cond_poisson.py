@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Poisson leaf node for SPFlow in the 'base' backend.
+"""Contains conditional Poisson leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional, Callable, Union
 import numpy as np
@@ -12,7 +12,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondPoisson(LeafNode):
-    r"""Conditional (univariate) Poisson distribution leaf node in the 'base' backend.
+    r"""Conditional (univariate) Poisson distribution leaf node in the ``base`` backend.
 
     Represents a conditional univariate Poisson distribution, with the following probability mass function (PMF):
 
@@ -76,7 +76,7 @@ class CondPoisson(LeafNode):
                 Dispatch context.
 
         Returns:
-            One-dimensional NumPy array of non-zero weights
+            Floating point value or scalar NumPy array representing the rate parameter.
         
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
@@ -144,7 +144,7 @@ class CondPoisson(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scopes_out[0].query):
             raise ValueError(

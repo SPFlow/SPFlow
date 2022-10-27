@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Contains basic node classes for SPFlow in the 'base' backend.
+"""Contains basic node classes for SPFlow in the ``base`` backend.
 
-Contains the abstract 'Node' and 'LeafNode' classes for SPFlow node modules in the 'base' backend
+Contains the abstract ``Node`` and ``LeafNode`` classes for SPFlow node modules in the ``base`` backend
 as well as classes for SPN-like sum- and product nodes.
 """
 from abc import ABC
@@ -17,9 +17,9 @@ from spflow.base.structure.module import Module
 
 
 class Node(Module, ABC):
-    """Abstract base class for nodes in the 'base' backend.
+    """Abstract base class for nodes in the ``base`` backend.
 
-    All valid SPFlow node modules in the 'base' backend should inherit from this class or a subclass of it.
+    All valid SPFlow node modules in the ``base`` backend should inherit from this class or a subclass of it.
 
     Attributes:
         children:
@@ -56,7 +56,7 @@ class Node(Module, ABC):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(node: Node, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[Node,None]:
-    """Structural marginalization for node objects.
+    """Structural marginalization for node objects in the ``base`` backend.
 
     Structurally marginalizes the specified node module.
     If the node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -99,7 +99,7 @@ def marginalize(node: Node, marg_rvs: Iterable[int], prune: bool=True, dispatch_
 
 
 class SPNSumNode(Node):
-    """SPN-like sum node in the 'base' backend.
+    """SPN-like sum node in the ``base`` backend.
 
     Represents a convex combination of its children over the same scope.
 
@@ -186,7 +186,7 @@ class SPNSumNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumNode,None]:
-    r"""Structural marginalization for ``SPNSumNode`` objects.
+    r"""Structural marginalization for ``SPNSumNode`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified sum node.
     If the sum node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -236,7 +236,7 @@ def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True,
 
 
 class SPNProductNode(Node):
-    r"""SPN-like product node in the 'base' backend.
+    r"""SPN-like product node in the ``base`` backend.
 
     Represents a product of its children over pair-wise disjoint scopes.
 
@@ -277,7 +277,7 @@ class SPNProductNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNProductNode,Node,None]:
-    r"""Structural marginalization for ``SPNProductNode`` objects.
+    r"""Structural marginalization for ``SPNProductNode`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified product node.
     If the product node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -333,7 +333,7 @@ def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bo
 
 
 class LeafNode(Node, ABC):
-    """Abstract base class for leaf nodes in the 'base' backend.
+    """Abstract base class for leaf nodes in the ``base`` backend.
 
     All valid SPFlow leaf nodes in the 'base' backend should inherit from this class or a subclass of it.
     

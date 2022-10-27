@@ -1,14 +1,10 @@
-"""
-Created on October 20, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Binomial leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
 import torch
 import torch.distributions as D
-from torch.nn.parameter import Parameter
-from typing import List, Tuple, Optional, Callable
-from .projections import proj_bounded_to_real, proj_real_to_bounded
+from typing import Tuple, Optional, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -17,7 +13,9 @@ from spflow.base.structure.nodes.leaves.parametric.cond_binomial import CondBino
 
 
 class CondBinomial(LeafNode):
-    r"""Conditional (univariate) Binomial distribution for Torch backend.
+    r"""Conditional (univariate) Binomial distribution leaf node in the ``torch`` backend.
+
+    Represents a conditional univariate Binomial distribution, with the following probability mass function (PMF):
 
     .. math::
 
@@ -29,20 +27,32 @@ class CondBinomial(LeafNode):
         - :math:`k` is the number of successes
         - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
 
-    Args:
-        scope:
-            List of integers specifying the variable scope.
+    Attributes:
         n:
-            Number of i.i.d. Bernoulli trials (greater of equal to 0).
+            Scalar PyTorch tensor representing the number of i.i.d. Bernoulli trials (greater or equal to 0).
         cond_f:
-            TODO
+            cond_f:
+            Optional callable to retrieve the conditional parameter for the leaf node.
+            Its output should be a dictionary containing ``p`` as a key, and the value should be
+            a floating point, scalar NumPy array or scalar PyTorch tensor representing the success probability in :math:`[0,1]`.
     """
     def __init__(self, scope: Scope, n: int, cond_f: Optional[Callable]=None) -> None:
+        r"""Initializes ``ConditionalBernoulli`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            n:
+                Integer representing the number of i.i.d. Bernoulli trials (greater or equal to 0).
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``p`` as a key, and the value should be
+                a floating point, scalar NumPy array or scalar PyTorch tensor representing the success probability in :math:`[0,1]`.
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for CondBinomial should be 1, but was {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'CondBinomial' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for CondBinomial should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'CondBinomial' should be empty, but was {scope.evidence}.")
 
         super(CondBinomial, self).__init__(scope=scope)
 
@@ -55,10 +65,36 @@ class CondBinomial(LeafNode):
         self.set_cond_f(cond_f)
 
     def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+        r"""Sets the function to retrieve the node's conditonal parameter.
+
+        Args:
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``p`` as a key, and the value should be
+                a floating point, scalar NumPy array or scalar PyTorch tensor representing the success probability in :math:`[0,1]`.
+        """
         self.cond_f = cond_f
 
     def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor]:
-        
+        r"""Retrieves the conditional parameter of the leaf node.
+    
+        First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameter.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
+
+        Args:
+            data:
+                Two-dimensional PyTorch tensor containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            Scalar PyTorch tensor representing the success probability.
+
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         p, cond_f = None, None
 
         # check dispatch cache for required conditional parameter 'p'
@@ -95,13 +131,32 @@ class CondBinomial(LeafNode):
         return p
 
     def get_params(self) -> Tuple[int]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Integer number representing the number of i.i.d. Bernoulli trials and the floating point value representing the success probability.
+        """
         return (self.n.data.cpu().numpy(),)  # type: ignore
 
     def dist(self, p: torch.Tensor) -> D.Distribution:
+        r"""Returns the PyTorch distribution represented by the leaf node.
+
+        Args:
+            p:
+                Scalar PyTorch tensor representing the success probability of each trial between zero and one.
+
+        Returns:
+            ``torch.distributions.Binomial`` instance.
+        """
         return D.Binomial(total_count=self.n, probs=p)
 
     def set_params(self, n: int) -> None:
-    
+        """Sets the parameters for the represented distribution.
+
+        Args:
+            n:
+                Integer representing the number of i.i.d. Bernoulli trials (greater or equal to 0).
+        """
         if isinstance(n, float):
             if not n.is_integer():
                 raise ValueError(
@@ -118,21 +173,23 @@ class CondBinomial(LeafNode):
         self.n.data = torch.tensor(int(n))  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the Binomial distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Binomial distribution, which is:
 
         .. math::
 
             \text{supp}(\text{Binomial})=\{0,\hdots,n\}
-
+        
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
@@ -150,13 +207,29 @@ class CondBinomial(LeafNode):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(node: BaseCondBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> CondBinomial:
+    """Conversion for ``CondBinomial`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondBinomial(node.scope, *node.get_params())
 
 
-@dispatch(memoize=True)
-def toBase(torch_node: CondBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondBinomial:
+@dispatch(memoize=True)  # type: ignore
+def toBase(node: CondBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondBinomial:
+    """Conversion for ``CondBinomial`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseCondBinomial(torch_node.scope, *torch_node.get_params())
+    return BaseCondBinomial(node.scope, *node.get_params())

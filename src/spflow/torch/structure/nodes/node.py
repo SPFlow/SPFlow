@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Contains basic node classes for SPFlow in the 'torch' backend.
+"""Contains basic node classes for SPFlow in the ``torch`` backend.
 
-Contains the abstract 'Node' and 'LeafNode' classes for SPFlow node modules in the 'torch' backend
+Contains the abstract ``Node`` and ``LeafNode`` classes for SPFlow node modules in the ``torch`` backend
 as well as classes for SPN-like sum- and product nodes.
 """
 from abc import ABC
@@ -21,18 +21,20 @@ from spflow.torch.structure.module import Module
 
 # TODO: put projections somewhere else
 def proj_convex_to_real(x: torch.Tensor) -> torch.Tensor:
+    """TODO"""
     # convex coefficients are already normalized, so taking the log is sufficient
     return torch.log(x)
 
 
 def proj_real_to_convex(x: torch.Tensor) -> torch.Tensor:
+    """TODO"""
     return torch.nn.functional.softmax(x, dim=-1)
 
 
 class Node(Module, ABC):
-    """Abstract base class for nodes in the 'torch' backend.
+    """Abstract base class for nodes in the ``torch`` backend.
 
-    All valid SPFlow node modules in the 'torch' backend should inherit from this class or a subclass of it.
+    All valid SPFlow node modules in the ``torch`` backend should inherit from this class or a subclass of it.
 
     Methods:
         children():
@@ -45,7 +47,7 @@ class Node(Module, ABC):
             List of scopes representing the output scopes.
     """
     def __init__(self, children: Optional[List[Module]]=None, **kwargs) -> None:
-        """Initializes 'Node' object.
+        r"""Initializes ``Node`` object.
 
         Initializes node by correctly setting its children.
 
@@ -71,7 +73,7 @@ class Node(Module, ABC):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(node: Node, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[Node,None]:
-    """Structural marginalization for node objects.
+    """Structural marginalization for node objects in the ``torch`` backend.
 
     Structurally marginalizes the specified node module.
     If the node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -114,7 +116,7 @@ def marginalize(node: Node, marg_rvs: Iterable[int], prune: bool=True, dispatch_
 
 
 class SPNSumNode(Node):
-    """SPN-like sum node in the 'torch' backend.
+    """SPN-like sum node in the ``torch`` backend.
 
     Represents a convex combination of its children over the same scope.
 
@@ -209,7 +211,7 @@ class SPNSumNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None):
-    """Structural marginalization for 'SPNSumNode' objects.
+    """Structural marginalization for ``SPNSumNode`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified sum node.
     If the sum node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -260,7 +262,7 @@ def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True,
 
 @dispatch(memoize=True)  # type: ignore
 def toBase(sum_node: SPNSumNode, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNSumNode:
-    """Conversion for 'SPNSumNode' from 'torch' backend to 'base' backend.
+    """Conversion for ``SPNSumNode`` from ``torch`` backend to ``base`` backend.
     
     Args:
         sum_node:
@@ -274,7 +276,7 @@ def toBase(sum_node: SPNSumNode, dispatch_ctx: Optional[DispatchContext]=None) -
 
 @dispatch(memoize=True)  # type: ignore
 def toTorch(sum_node: BaseSPNSumNode, dispatch_ctx: Optional[DispatchContext]=None) -> SPNSumNode:
-    """Conversion for 'SPNSumNode' from 'base' backend to 'torch' backend.
+    """Conversion for ``SPNSumNode`` from ``base`` backend to ``torch`` backend.
     
     Args:
         sum_node:
@@ -287,7 +289,7 @@ def toTorch(sum_node: BaseSPNSumNode, dispatch_ctx: Optional[DispatchContext]=No
 
 
 class SPNProductNode(Node):
-    """SPN-like product node in the 'torch' backend.
+    """SPN-like product node in the ``torch`` backend.
 
     Represents a product of its children over pair-wise disjoint scopes.
 
@@ -302,7 +304,7 @@ class SPNProductNode(Node):
             List of scopes representing the output scopes.
     """
     def __init__(self, children: List[Module]) -> None:
-        """Initializes 'SPNProductNode' object.
+        """Initializes ``SPNProductNode`` object.
 
         Args:
             children:
@@ -330,7 +332,7 @@ class SPNProductNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[Node,None]:
-    """Structural marginalization for 'SPNProductNode' objects.
+    """Structural marginalization for 'SPNProductNode' objects in the ``torch`` backend.
 
     Structurally marginalizes the specified product node.
     If the product node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -387,7 +389,7 @@ def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bo
 
 @dispatch(memoize=True)  # type: ignore
 def toBase(product_node: SPNProductNode, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNProductNode:
-    """Conversion for 'SPNProductNode' from 'torch' backend to 'base' backend.
+    """Conversion for ``SPNProductNode`` from ``torch`` backend to ``base`` backend.
     
     Args:
         sum_node:
@@ -401,7 +403,7 @@ def toBase(product_node: SPNProductNode, dispatch_ctx: Optional[DispatchContext]
 
 @dispatch(memoize=True)  # type: ignore
 def toTorch(product_node: BaseSPNProductNode, dispatch_ctx: Optional[DispatchContext]=None) -> SPNProductNode:
-    """Conversion for 'SPNProductNode' from 'base' backend to 'torch' backend.
+    """Conversion for ``SPNProductNode`` from ``base`` backend to ``torch`` backend.
     
     Args:
         sum_node:
@@ -414,7 +416,7 @@ def toTorch(product_node: BaseSPNProductNode, dispatch_ctx: Optional[DispatchCon
 
 
 class LeafNode(Node, ABC):
-    """Abstract base class for leaf nodes in the 'torch' backend.
+    """Abstract base class for leaf nodes in the ``torch`` backend.
 
     All valid SPFlow leaf nodes in the 'base' backend should inherit from this class or a subclass of it.
     

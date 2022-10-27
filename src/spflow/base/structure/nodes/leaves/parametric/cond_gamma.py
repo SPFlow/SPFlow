@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Gamma leaf node for SPFlow in the 'base' backend.
+"""Contains conditional Gamma leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional, Callable, Union
 import numpy as np
@@ -12,7 +12,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondGamma(LeafNode):
-    r"""Conditional (univariate) Gamma distribution leaf node in the 'base' backend.
+    r"""Conditional (univariate) Gamma distribution leaf node in the ``base`` backend.
 
     Represents a conditional univariate Exponential distribution, with the following probability distribution function (PDF):
 
@@ -79,8 +79,8 @@ class CondGamma(LeafNode):
                 Dispatch context.
 
         Returns:
-            One-dimensional NumPy array of non-zero weights
-        
+            Tuple of floats or scalar NumPy arrays representing the shape and rate parameters, respectively.
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -115,11 +115,11 @@ class CondGamma(LeafNode):
         # check if values for 'alpha', 'beta' are valid
         if alpha <= 0.0 or not np.isfinite(alpha):
             raise ValueError(
-                f"Value of alpha for conditional Gamma distribution must be greater than 0, but was: {alpha}"
+                f"Value of 'alpha' for 'CondGamma' must be greater than 0, but was: {alpha}"
             )
         if beta <= 0.0 or not np.isfinite(beta):
             raise ValueError(
-                f"Value of beta for conditional Gamma distribution must be greater than 0, but was: {beta}"
+                f"Value of 'beta' for 'CondGamma' must be greater than 0, but was: {beta}"
             )
         
         return alpha, beta
@@ -154,7 +154,7 @@ class CondGamma(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(

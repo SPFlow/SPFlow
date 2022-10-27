@@ -1,14 +1,9 @@
+# -*- coding: utf-8 -*-
+"""Contains conditional Gaussian leaf node for SPFlow in the ``torch`` backend.
 """
-Created on October 20, 2022
-
-@authors: Philipp Deibert
-"""
-import numpy as np
 import torch
 import torch.distributions as D
-from torch.nn.parameter import Parameter
-from typing import List, Tuple, Optional, Callable
-from .projections import proj_bounded_to_real, proj_real_to_bounded
+from typing import Tuple, Optional, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -17,7 +12,9 @@ from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import CondGaus
 
 
 class CondGaussian(LeafNode):
-    r"""Conditional (univariate) Normal distribution for Torch backend.
+    r"""Conditional (univariate) Normal distribution leaf node in the ``torch`` backend.
+
+    Represents a conditional univariate Gaussian distribution, with the following probability density function (PDF):
 
     .. math::
 
@@ -28,28 +25,63 @@ class CondGaussian(LeafNode):
         - :math:`\mu` is the mean
         - :math:`\sigma` is the standard deviation
 
-    Args:
-        scope:
-            List of integers specifying the variable scope.
+    Attributes:
         cond_f:
-            TODO
+            Optional callable to retrieve the conditional parameter for the leaf node.
+            Its output should be a dictionary containing ``mean``,``std`` as keys, and the values should be
+            floats, scalar NumPy arrays or scalar PyTorch tensors, where the value for ``std`` should be greater than 0.
     """
     def __init__(self, scope: Scope, cond_f: Optional[Callable]=None) -> None:
+        r"""Initializes ``CondGaussian`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``mean``,``std`` as keys, and the values should be
+                floats, scalar NumPy arrays or scalar PyTorch tensors, where the value for ``std`` should be greater than 0.
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for CondGaussian should be 1, but was: {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'CondGaussian' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for CondGaussian should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'CondGaussian' should be empty, but was {scope.evidence}.")
 
         super(CondGaussian, self).__init__(scope=scope)
     
         self.set_cond_f(cond_f)
 
     def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+        r"""Sets the function to retrieve the node's conditonal parameter.
+
+        Args:
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``mean``,``std`` as keys, and the values should be
+                floats, scalar NumPy arrays or scalar PyTorch tensors, where the value for ``std`` should be greater than 0.
+        """
         self.cond_f = cond_f
 
     def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor,torch.Tensor]:
+        r"""Retrieves the conditional parameter of the leaf node.
+    
+        First, checks if conditional parameters (``mean``,``std``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
+
+        Args:
+            data:
+                Two-dimensional PyTorch tensor containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            Tuple of two scalar PyTorch tensors representing the mean and standard deviation.
         
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         mean, std, cond_f = None, None, None
 
         # check dispatch cache for required conditional parameters 'mean', 'std'
@@ -86,37 +118,47 @@ class CondGaussian(LeafNode):
         # check if values for 'mean', 'std' are valid
         if not (torch.isfinite(mean) and torch.isfinite(std)):
             raise ValueError(
-                f"Mean and standard deviation for CondGaussian distribution must be finite, but were: {mean}, {std}"
+                f"Values for 'mean' and 'std' for 'CondGaussian' must be finite, but were: {mean}, {std}"
             )
         if std <= 0.0:
             raise ValueError(
-                f"Standard deviation for CondGaussian distribution must be greater than 0.0, but was: {std}"
+                f"Value for 'std' for 'CondGaussian' must be greater than 0.0, but was: {std}"
             )
 
         return mean, std
 
     def dist(self, mean: torch.Tensor, std: torch.Tensor) -> D.Distribution:
+        r"""Returns the PyTorch distribution represented by the leaf node.
+        
+        Args:
+            mean:
+                Scalar PyTorch tensor representing the mean (:math:`\mu`) of the distribution.
+            std:
+                Scalar PyTorch tensor representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
+
+        Returns:
+            ``torch.distributions.Normal`` distribution.
+        """
         return D.Normal(loc=mean, scale=std)
 
-    def get_params(self) -> Tuple:
-        return tuple([])
-
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the Gaussian distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Gaussian distribution, which is:
 
         .. math::
 
             \text{supp}(\text{Gaussian})=(-\infty,+\infty)
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
@@ -134,13 +176,29 @@ class CondGaussian(LeafNode):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(node: BaseCondGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> CondGaussian:
+    """Conversion for ``CondGaussian`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondGaussian(node.scope)
 
 
-@dispatch(memoize=True)
-def toBase(torch_node: CondGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondGaussian:
+@dispatch(memoize=True)  # type: ignore
+def toBase(node: CondGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondGaussian:
+    """Conversion for ``CondGaussian`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseCondGaussian(torch_node.scope)
+    return BaseCondGaussian(node.scope)

@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
-"""Contains the abstract 'Module' class for SPFlow modules in the 'base' backend.
+"""Contains the abstract ``Module`` class for SPFlow modules in the ``base`` backend.
 
-All valid SPFlow modules in the 'base' backend should inherit from this class or a subclass of it.
+All valid SPFlow modules in the ``base`` backend should inherit from this class or a subclass of it.
 """
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import List, Tuple, Optional, Union
 import numpy as np
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.meta.scope.scope import Scope
 from spflow.meta.structure.module import MetaModule
 
 
 class Module(MetaModule, ABC):
-    """Abstract module class for building graph-based models in the 'base' backend.
+    r"""Abstract module class for building graph-based models in the ``base`` backend.
 
     Attributes:
         children:
@@ -23,7 +22,7 @@ class Module(MetaModule, ABC):
             List of scopes representing the output scopes.
     """
     def __init__(self, children: Optional[List["Module"]]=None) -> None:
-        """Initializes 'Module' object.
+        r"""Initializes ``Module`` object.
 
         Initializes module by correctly setting its children.
 
@@ -84,7 +83,7 @@ class Module(MetaModule, ABC):
 
 
 class NestedModule(Module, ABC):
-    """Convenient abstract module class for modules in the 'base' backend that nest non-terminal modules.
+    """Convenient abstract module class for modules in the ``base`` backend that nest non-terminal modules.
 
     Attributes:
         children:
@@ -95,13 +94,13 @@ class NestedModule(Module, ABC):
             List of scopes representing the output scopes.
     """
     def __init__(self, children: Optional[List[Module]]=None, **kwargs) -> None:
-        """Initializes 'NestedModule' object.
+        """Initializes ``NestedModule`` object.
 
         Initializes module by correctly setting its children.
 
         Args:
             children:
-                List of modules that are children to this module.
+                List of modules that are children to the module.
         """
         if children is None:
             children = []
@@ -145,7 +144,7 @@ class NestedModule(Module, ABC):
             dispatch_ctx.cache_value(f_name, ph, inputs[:, ph.input_ids], overwrite=overwrite)
 
     class Placeholder(Module):
-        """Placeholder module as an intermediary module between nested non-terminal modules and actual child modules.
+        """Placeholder module as an intermediary module between nested non-terminal modules and actual child modules in the ``base`` backend.
 
         Since all non-terminal modules need their children to be specified at creation, internal non-terminal modules would
         have to have the same children as the outer host module. This is not ideal, therefore placeholders can be used instead
@@ -159,7 +158,7 @@ class NestedModule(Module, ABC):
                 List of scopes representing the output scopes (equal to the scopes of the inputs it represents).
         """
         def __init__(self, host: Module, input_ids: List[int]) -> None:
-            """Initializes 'Placeholder' object.
+            """Initializes ``Placeholder`` object.
 
             Initializes module by correctly setting its children.
 

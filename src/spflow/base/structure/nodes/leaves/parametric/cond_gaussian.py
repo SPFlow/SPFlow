@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Gaussian leaf node for SPFlow in the 'base' backend.
+"""Contains conditional Gaussian leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional, Callable, Union
 import numpy as np
@@ -12,7 +12,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondGaussian(LeafNode):
-    r"""Conditional (univariate) Normal distribution leaf node in the 'base' backend.
+    r"""Conditional (univariate) Normal distribution leaf node in the ``base`` backend.
 
     Represents a conditional univariate Gaussian distribution, with the following probability density function (PDF):
 
@@ -81,7 +81,7 @@ class CondGaussian(LeafNode):
                 Dispatch context.
 
         Returns:
-            One-dimensional NumPy array of non-zero weights
+            Tuple of two floats or scalar NumPy arrays representing the mean and standard deviation.
         
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
@@ -156,7 +156,7 @@ class CondGaussian(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(

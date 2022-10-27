@@ -1,13 +1,9 @@
+# -*- coding: utf-8 -*-
+"""Contains conditional Gamma leaf node for SPFlow in the ``torch`` backend.
 """
-Created on October 20, 2022
-
-@authors: Philipp Deibert
-"""
-import numpy as np
 import torch
 import torch.distributions as D
-from torch.nn.parameter import Parameter
-from typing import List, Tuple, Optional, Callable
+from typing import Tuple, Optional, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -16,8 +12,10 @@ from spflow.base.structure.nodes.leaves.parametric.cond_gamma import CondGamma a
 
 
 class CondGamma(LeafNode):
-    r"""Conditional (univariate) Gamma distribution for Torch backend.
-    
+    r"""Conditional (univariate) Gamma distribution leaf node in the ``torch`` backend.
+
+    Represents a conditional univariate Exponential distribution, with the following probability distribution function (PDF):
+
     .. math::
     
         \text{PDF}(x) = \begin{cases} \frac{\beta^\alpha}{\Gamma(\alpha)}x^{\alpha-1}e^{-\beta x} & \text{if } x > 0\\
@@ -28,17 +26,24 @@ class CondGamma(LeafNode):
         - :math:`\Gamma` is the Gamma function
         - :math:`\alpha` is the shape parameter
         - :math:`\beta` is the rate parameter
-
-    TODO: check
-    
-    Args:
-        scope:
-            List of integers specifying the variable scope.
+ 
+    Attributes:
         cond_f:
-            TODO
+            Optional callable to retrieve the conditional parameter for the leaf node.
+            Its output should be a dictionary containing ``alpha``,``beta`` as a key, and the value should be
+            a floating points, scalar NumPy arrays or scalar PyTorch tensors representing the shape and rate parameters, respectively.
     """
     def __init__(self, scope: Scope, cond_f: Optional[Callable]=None) -> None:
+        r"""Initializes ``CondExponential`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``alpha``,``beta`` as a key, and the value should be
+                a floating points, scalar NumPy arrays or scalar PyTorch tensors representing the shape and rate parameters, respectively.
+        """
         if len(scope.query) != 1:
             raise ValueError(f"Query scope size for CondGamma should be 1, but was {len(scope.query)}.")
         if len(scope.evidence):
@@ -49,13 +54,50 @@ class CondGamma(LeafNode):
         self.set_cond_f(cond_f)
 
     def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+        r"""Sets the function to retrieve the node's conditonal parameter.
+
+        Args:
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``alpha``,``beta`` as a key, and the value should be
+                a floating points, scalar NumPy arrays or scalar PyTorch tensors representing the shape and rate parameters, respectively.
+        """
         self.cond_f = cond_f
 
     def dist(self, alpha: torch.Tensor, beta: torch.Tensor) -> D.Distribution:
+        r"""Returns the PyTorch distribution represented by the leaf node.
+        
+        Args:
+            alpha:
+                Scalar PyTorch tensor representing the shape parameter (:math:`\alpha`), greater than 0.
+            beta:
+                Scalar PyTorch tensor representing the rate parameter (:math:`\beta`), greater than 0.
+
+        Returns:
+            ``torch.distributions.Gamma`` instance.
+        """
         return D.Gamma(concentration=alpha, rate=beta)
     
     def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor,torch.Tensor]:
-        
+        r"""Retrieves the conditional parameter of the leaf node.
+    
+        First, checks if conditional parameters (``alpha``,``beta``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
+
+        Args:
+            data:
+                Two-dimensional PyTorch tensor containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            Tuple of scalar PyTorch tensor representing the shape and rate parameters, respectively.
+
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         alpha, beta, cond_f = None, None, None
 
         # check dispatch cache for required conditional parameters 'alpha', 'beta'
@@ -92,34 +134,33 @@ class CondGamma(LeafNode):
         # check if values for 'alpha', 'beta' are valid
         if alpha <= 0.0 or not torch.isfinite(alpha):
             raise ValueError(
-                f"Value of alpha for conditional Gamma distribution must be greater than 0, but was: {alpha}"
+                f"Value of 'alpha' for 'CondGamma' must be greater than 0, but was: {alpha}"
             )
         if beta <= 0.0 or not torch.isfinite(beta):
             raise ValueError(
-                f"Value of beta for conditional Gamma distribution must be greater than 0, but was: {beta}"
+                f"Value of 'beta' for 'CondGamma' must be greater than 0, but was: {beta}"
             )
-        
+
         return alpha, beta
 
-    def get_params(self) -> Tuple:
-        return tuple([])
-
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the Gamma distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Gamma distribution, which is:
 
         .. math::
 
             \text{supp}(\text{Gamma})=(0,+\infty)
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
@@ -137,13 +178,29 @@ class CondGamma(LeafNode):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(node: BaseCondGamma, dispatch_ctx: Optional[DispatchContext]=None) -> CondGamma:
+    """Conversion for ``CondGamma`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondGamma(node.scope)
 
 
-@dispatch(memoize=True)
-def toBase(torch_node: CondGamma, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondGamma:
+@dispatch(memoize=True)  # type: ignore
+def toBase(node: CondGamma, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondGamma:
+    """Conversion for ``CondGamma`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseCondGamma(torch_node.scope)
+    return BaseCondGamma(node.scope)

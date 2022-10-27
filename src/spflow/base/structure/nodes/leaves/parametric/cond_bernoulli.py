@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Bernoulli leaf node for SPFlow in the 'base' backend.
+"""Contains conditional Bernoulli leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional, Callable, Union
 import numpy as np
@@ -12,7 +12,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondBernoulli(LeafNode):
-    r"""Conditional (univariate) Bernoulli distribution leaf node in the 'base' backend.
+    r"""Conditional (univariate) Bernoulli distribution leaf node in the ``base`` backend.
 
     Represents a conditional univariate Bernoulli distribution, with the following probability mass function (PMF):
 
@@ -29,7 +29,7 @@ class CondBernoulli(LeafNode):
         cond_f:
             Optional callable to retrieve the conditional parameter for the leaf node.
             Its output should be a dictionary containing ``p`` as a key, and the value should be
-            a floating poit value representing the success probability in :math:`[0,1]`.
+            a floating point value representing the success probability in :math:`[0,1]`.
     """
     def __init__(self, scope: Scope, cond_f: Optional[Callable]=None) -> None:
         r"""Initializes ``ConditionalBernoulli`` leaf node.
@@ -77,8 +77,8 @@ class CondBernoulli(LeafNode):
                 Dispatch context.
 
         Returns:
-            One-dimensional NumPy array of non-zero weights
-        
+            Floating point or scalar NumPy array representing the success probability.
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -109,7 +109,7 @@ class CondBernoulli(LeafNode):
         # check if value for 'p' is valid
         if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
-                f"Value of p for conditional Bernoulli distribution must to be between 0.0 and 1.0, but was: {p}"
+                f"Value of 'p' for 'CondBernoulli' distribution must to be between 0.0 and 1.0, but was: {p}"
             )
         
         return p
@@ -142,7 +142,7 @@ class CondBernoulli(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(

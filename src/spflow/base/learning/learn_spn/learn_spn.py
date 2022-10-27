@@ -92,7 +92,7 @@ def learn_spn(data: np.ndarray, scope: Optional[Scope]=None, min_features_slice:
             Two-dimensional NumPy array containing the input data.
             Each row corresponds to a sample.
         scope:
-            Optional scope corresponding to ``data.
+            Optional scope corresponding to ``data``.
             Defaults to None, in which case a scope is initialized from ``data``.
         min_features_slice:
             Integer value specifying the minimum number of features required to partition.
@@ -103,6 +103,7 @@ def learn_spn(data: np.ndarray, scope: Optional[Scope]=None, min_features_slice:
         fit_params:
             Boolean value determining whether or not to estimate the parameters of the nodes.
             If set to False, only the structure is learned.
+            Defaults to True
         clustering_method:
             String or callable specifying the clustering method to be used.
             If 'kmeans' k-Means clustering is used.

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional SPN-like sum node for SPFlow in the 'torch' backend.
+"""Contains conditional SPN-like sum node for SPFlow in the ``torch`` backend.
 """
 from abc import ABC
 from typing import List, Union, Optional, Iterable, Callable
@@ -17,7 +17,7 @@ from spflow.torch.structure.module import Module
 
 
 class SPNCondSumNode(Node):
-    """Conditional SPN-like sum node in the 'torch' backend.
+    """Conditional SPN-like sum node in the ``torch`` backend.
 
     Represents a convex combination of its children over the same scope.
 
@@ -26,13 +26,17 @@ class SPNCondSumNode(Node):
             Iterator over all modules that are children to the module in a directed graph.
 
     Attributes:
+        cond_f:
+            Optional callable to retrieve weights for the sum node.
+            Its output should be a dictionary containing ``weights`` as a key, and the value should be
+            a list of floats, one-dimensional NumPy array or a one-dimensional PyTorch tensor containing non-zero values, summing up to one.
         n_out:
             Integer indicating the number of outputs. One for nodes.
         scopes_out:
             List of scopes representing the output scopes.
     """
     def __init__(self, children: List[Module], cond_f: Optional[Callable]=None) -> None:
-        """Initializes 'SPNCondSumNode' object.
+        """Initializes ``SPNCondSumNode`` object.
 
         Args:
             children:
@@ -74,7 +78,7 @@ class SPNCondSumNode(Node):
         Args:
             cond_f:
                 Optional callable to retrieve weights for the sum node.
-                Its output should be a dictionary containing 'weights' as a key, and the value should be
+                Its output should be a dictionary containing ``weights`` as a key, and the value should be
                 a list of floats or, one-dimensional NumPy array or a one-dimensional PyTorch tensor containing non-zero values, summing up to one.
         """
         self.cond_f = cond_f
@@ -82,13 +86,13 @@ class SPNCondSumNode(Node):
     def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> torch.Tensor:
         """Retrieves the conditional weights of the sum node.
     
-        First, checks if conditional weights ('weights') are passed as an additional argument in the dispatch context.
-        Secondly, checks if a function ('cond_f') is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
-        Lastly, checks if a 'cond_f' is set as an attributed to retrieve the conditional parameters.
+        First, checks if conditional weights (``weights``) are passed as an additional argument in the dispatch context.
+        Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
 
         Args:
             data:
-                Two-dimensional NumPy array containing the data to compute the conditional parameters.
+                Two-dimensional PyTorch tensor containing the data to compute the conditional parameters.
                 Each row is regarded as a sample.
             dispatch_ctx:
                 Dispatch context.
@@ -137,9 +141,9 @@ class SPNCondSumNode(Node):
         return weights
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(sum_node: SPNCondSumNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None):
-    """Structural marginalization for 'SPNCondSumNode' objects.
+    """Structural marginalization for ``SPNCondSumNode`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified sum node.
     If the sum node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -188,9 +192,9 @@ def marginalize(sum_node: SPNCondSumNode, marg_rvs: Iterable[int], prune: bool=T
         return deepcopy(sum_node)
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toBase(sum_node: SPNCondSumNode, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNCondSumNode:
-    """Conversion for 'SPNCondSumNode' from 'torch' backend to 'base' backend.
+    """Conversion for ``SPNCondSumNode`` from ``torch`` backend to ``base`` backend.
     
     Args:
         sum_node:
@@ -202,9 +206,9 @@ def toBase(sum_node: SPNCondSumNode, dispatch_ctx: Optional[DispatchContext]=Non
     return BaseSPNCondSumNode(children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children()])
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(sum_node: BaseSPNCondSumNode, dispatch_ctx: Optional[DispatchContext]=None) -> SPNCondSumNode:
-    """Conversion for 'SPNCondSumNode' from 'base' backend to 'torch' backend.
+    """Conversion for ``SPNCondSumNode`` from ``base`` backend to ``torch`` backend.
     
     Args:
         sum_node:

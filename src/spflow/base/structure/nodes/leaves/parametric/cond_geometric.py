@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Geometric leaf node for SPFlow in the 'base' backend.
+"""Contains conditional Geometric leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional, Callable, Union
 import numpy as np
@@ -12,7 +12,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondGeometric(LeafNode):
-    r"""Conditional (univariate) Geometric distribution leaf node in the 'base' backend.
+    r"""Conditional (univariate) Geometric distribution leaf node in the ``base`` backend.
 
     Represents a conditional univariate Geometric distribution, with the following probability mass function (PMF):
 
@@ -23,8 +23,6 @@ class CondGeometric(LeafNode):
     where
         - :math:`k` is the number of trials
         - :math:`p` is the success probability of each trial
-
-    TODO: Note, that the Geometric distribution as implemented in PyTorch uses :math:`k-1` as input.
 
     Attributes:
         cond_f:
@@ -78,7 +76,7 @@ class CondGeometric(LeafNode):
                 Dispatch context.
 
         Returns:
-            One-dimensional NumPy array of non-zero weights
+            Floating point or scalar NumPy array representing the success probability.
         
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
@@ -143,7 +141,7 @@ class CondGeometric(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(

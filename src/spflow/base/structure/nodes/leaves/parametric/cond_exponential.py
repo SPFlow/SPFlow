@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Exponential leaf node for SPFlow in the 'base' backend.
+"""Contains conditional Exponential leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional, Callable, Union
 import numpy as np
@@ -12,7 +12,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondExponential(LeafNode):
-    r"""Conditional (univariate) Exponential distribution leaf node in the 'base' backend.
+    r"""Conditional (univariate) Exponential distribution leaf node in the ``base`` backend.
 
     Represents a conditional univariate Exponential distribution, with the following probability distribution function (PDF):
 
@@ -64,7 +64,7 @@ class CondExponential(LeafNode):
 
     def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[Union[np.ndarray, float]]:
         r"""Retrieves the conditional parameter of the leaf node.
-    
+
         First, checks if conditional parameter (``l``) is passed as an additional argument in the dispatch context.
         Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameter.
         Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
@@ -77,8 +77,8 @@ class CondExponential(LeafNode):
                 Dispatch context.
 
         Returns:
-            One-dimensional NumPy array of non-zero weights
-        
+            Floating point or scalar NumPy array representing the rate parameter.
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -109,7 +109,7 @@ class CondExponential(LeafNode):
         # check if value for 'l' is valid
         if l <= 0.0 or not np.isfinite(l):
             raise ValueError(
-                f"Value of l for conditional Exponential distribution must be greater than 0, but was: {l}"
+                f"Value of 'l' for conditional Exponential distribution must be greater than 0, but was: {l}"
             )
 
         return l
@@ -142,7 +142,7 @@ class CondExponential(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(

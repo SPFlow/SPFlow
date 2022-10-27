@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional SPN-like sum node for SPFlow in the 'base' backend.
+"""Contains conditional SPN-like sum node for SPFlow in the ``base`` backend.
 """
 from abc import ABC
 from typing import List, Union, Optional, Iterable, Callable
@@ -15,7 +15,7 @@ from spflow.base.structure.nodes.node import Node
 
 
 class SPNCondSumNode(Node):
-    """Conditional SPN-like sum node in the 'base' backend.
+    """Conditional SPN-like sum node in the ``base`` backend.
 
     Represents a convex combination of its children over the same scope.
 
@@ -24,7 +24,7 @@ class SPNCondSumNode(Node):
             Non-empty list of modules that are children to the node in a directed graph.
         cond_f:
             Optional callable to retrieve weights for the sum node.
-            Its output should be a dictionary containing 'weights' as a key, and the value should be
+            Its output should be a dictionary containing ``weights`` as a key, and the value should be
             a list of floats or a one-dimensional NumPy array containing non-zero values, summing up to one.
         n_out:
             Integer indicating the number of outputs. One for nodes.
@@ -32,7 +32,7 @@ class SPNCondSumNode(Node):
             List of scopes representing the output scopes.
     """
     def __init__(self, children: List[Module], cond_f: Optional[Callable]=None) -> None:
-        """Initializes 'SPNCondSumNode' object.
+        """Initializes ``SPNCondSumNode`` object.
 
         Args:
             children:
@@ -74,7 +74,7 @@ class SPNCondSumNode(Node):
         Args:
             cond_f:
                 Optional callable to retrieve weights for the sum node.
-                Its output should be a dictionary containing 'weights' as a key, and the value should be
+                Its output should be a dictionary containing ``weights`` as a key, and the value should be
                 a list of floats or a one-dimensional NumPy array containing non-zero values, summing up to one.
         """
         self.cond_f = cond_f
@@ -82,9 +82,9 @@ class SPNCondSumNode(Node):
     def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> np.ndarray:
         """Retrieves the conditional weights of the sum node.
     
-        First, checks if conditional weights ('weights') are passed as an additional argument in the dispatch context.
-        Secondly, checks if a function ('cond_f') is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
-        Lastly, checks if a 'cond_f' is set as an attributed to retrieve the conditional parameters.
+        First, checks if conditional weights (``weights``) are passed as an additional argument in the dispatch context.
+        Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
 
         Args:
             data:
@@ -140,7 +140,7 @@ class SPNCondSumNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(sum_node: SPNCondSumNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None):
-    """Structural marginalization for 'SPNCondSumNode' objects.
+    """Structural marginalization for ``SPNCondSumNode`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified sum node.
     If the sum node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
