@@ -40,7 +40,6 @@ def sample(leaf: CondPoisson, data: np.ndarray, dispatch_ctx: Optional[DispatchC
     # retrieve value for 'l'
     l = leaf.retrieve_params(data, dispatch_ctx)
 
-    # TODO: what to do in case of instance ids that are already specified (i.e. not nan)?
     marg_ids = (np.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = np.zeros(data.shape[0])

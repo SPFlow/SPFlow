@@ -160,7 +160,6 @@ class CondPoisson(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        # TODO: runtime warning due to nan values
         valid[valid & ~nan_mask] &= (np.remainder(scope_data[valid & ~nan_mask], 1) == 0)
 
         # check if values are in valid range
