@@ -9,7 +9,7 @@ from spflow.base.structure.layers.leaves.parametric.cond_geometric import CondGe
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(layer: CondGeometricLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(layer: CondGeometricLayer, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     r"""Computes log-likelihoods for ``CondGeometricLayer`` leaves in the ``base`` backend given input data.
 
     Log-likelihood for ``CondGeometricLayer`` is given by the logarithm of its individual probability distribution functions (PDFs):
@@ -30,6 +30,9 @@ def log_likelihood(layer: CondGeometricLayer, data: np.ndarray, dispatch_ctx: Op
         data:
             Two-dimensional NumPy array containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -50,4 +53,4 @@ def log_likelihood(layer: CondGeometricLayer, data: np.ndarray, dispatch_ctx: Op
         dispatch_ctx.update_args(node, {'p': p})
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return np.concatenate([log_likelihood(node, data, dispatch_ctx=dispatch_ctx) for node in layer.nodes], axis=1)
+    return np.concatenate([log_likelihood(node, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for node in layer.nodes], axis=1)

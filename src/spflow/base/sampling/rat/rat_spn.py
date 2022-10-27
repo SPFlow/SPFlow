@@ -11,7 +11,7 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(rat_spn: RatSPN, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
+def sample(rat_spn: RatSPN, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
     r"""Samples from RAT-SPNs in the ``base`` backend given potential evidence.
 
     Missing values (i.e., NaN) are filled with sampled values.
@@ -22,6 +22,9 @@ def sample(rat_spn: RatSPN, data: np.ndarray, dispatch_ctx: Optional[DispatchCon
         data:
             Two-dimensional NumPy array containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -34,4 +37,4 @@ def sample(rat_spn: RatSPN, data: np.ndarray, dispatch_ctx: Optional[DispatchCon
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    return sample(rat_spn.root_node, data, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)
+    return sample(rat_spn.root_node, data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)

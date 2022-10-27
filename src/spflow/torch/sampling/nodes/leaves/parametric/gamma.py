@@ -11,7 +11,7 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(leaf: Gamma, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(leaf: Gamma, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
     r"""Samples from ``Gamma`` nodes in the ``torch`` backend given potential evidence.
 
     Samples missing values proportionally to its probability distribution function (PDF).
@@ -22,6 +22,9 @@ def sample(leaf: Gamma, data: torch.Tensor, dispatch_ctx: Optional[DispatchConte
         data:
             Two-dimensional PyTorch tensor containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:

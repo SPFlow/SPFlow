@@ -9,7 +9,7 @@ from spflow.base.structure.layers.leaves.parametric.bernoulli import BernoulliLa
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(layer: BernoulliLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(layer: BernoulliLayer, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     r"""Computes log-likelihoods for ``BernoulliLayer`` leaves in the ``base`` backend given input data.
 
     Log-likelihood for ``BernoulliLayer`` is given by the logarithm of its individual probability mass functions (PMFs):
@@ -31,6 +31,9 @@ def log_likelihood(layer: BernoulliLayer, data: np.ndarray, dispatch_ctx: Option
         data:
             Two-dimensional NumPy array containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -45,4 +48,4 @@ def log_likelihood(layer: BernoulliLayer, data: np.ndarray, dispatch_ctx: Option
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return np.concatenate([log_likelihood(node, data, dispatch_ctx=dispatch_ctx) for node in layer.nodes], axis=1)
+    return np.concatenate([log_likelihood(node, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for node in layer.nodes], axis=1)

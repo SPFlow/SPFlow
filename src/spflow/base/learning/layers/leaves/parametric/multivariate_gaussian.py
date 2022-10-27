@@ -10,7 +10,7 @@ from spflow.base.structure.layers.leaves.parametric.multivariate_gaussian import
 
 
 @dispatch(memoize=True)  # type: ignore
-def maximum_likelihood_estimation(layer: MultivariateGaussianLayer, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def maximum_likelihood_estimation(layer: MultivariateGaussianLayer, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     r"""Maximum (weighted) likelihood estimation (MLE) of ``MultivariateGaussianLayer`` leaves' parameters in the ``base`` backend.
 
     Estimates the means and covariance matrices :math:`\mu` and :math:`\Sigma` of each Multivariate Gaussian distribution from data, as follows:
@@ -52,6 +52,9 @@ def maximum_likelihood_estimation(layer: MultivariateGaussianLayer, data: np.nda
             If 'ignore', missing values (i.e., NaN entries) are ignored.
             If a callable, it is called using ``data`` and should return another NumPy array of same size.
             Defaults to None.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -74,4 +77,4 @@ def maximum_likelihood_estimation(layer: MultivariateGaussianLayer, data: np.nda
         weights = np.expand_dims(weights, 1).repeat(layer.n_out, 1)
 
     for node, node_weights in zip(layer.nodes, weights.T):
-        maximum_likelihood_estimation(node, data, node_weights, bias_correction=bias_correction, nan_strategy=nan_strategy, dispatch_ctx=dispatch_ctx)
+        maximum_likelihood_estimation(node, data, node_weights, bias_correction=bias_correction, nan_strategy=nan_strategy, check_support=check_support, dispatch_ctx=dispatch_ctx)

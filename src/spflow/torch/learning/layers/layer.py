@@ -11,7 +11,7 @@ from spflow.torch.structure.layers.layer import SPNSumLayer, SPNProductLayer, SP
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(layer: SPNSumLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(layer: SPNSumLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNSumLayer`` in the ``torch`` backend.
 
     Args:
@@ -20,6 +20,9 @@ def em(layer: SPNSumLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchCo
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
     """
@@ -41,11 +44,11 @@ def em(layer: SPNSumLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchCo
 
     # recursively call EM on children
     for child in layer.children():
-        em(child, data, dispatch_ctx=dispatch_ctx)
+        em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(layer: SPNProductLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(layer: SPNProductLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNProductLayer`` in the ``torch`` backend.
 
     Args:
@@ -54,6 +57,9 @@ def em(layer: SPNProductLayer, data: torch.Tensor, dispatch_ctx: Optional[Dispat
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
     """
@@ -62,11 +68,11 @@ def em(layer: SPNProductLayer, data: torch.Tensor, dispatch_ctx: Optional[Dispat
 
     # recursively call EM on children
     for child in layer.children():
-        em(child, data, dispatch_ctx=dispatch_ctx)
+        em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(layer: SPNPartitionLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(layer: SPNPartitionLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNPartitionLayer`` in the ``torch`` backend.
 
     Args:
@@ -75,6 +81,9 @@ def em(layer: SPNPartitionLayer, data: torch.Tensor, dispatch_ctx: Optional[Disp
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
     """
@@ -83,11 +92,11 @@ def em(layer: SPNPartitionLayer, data: torch.Tensor, dispatch_ctx: Optional[Disp
 
     # recursively call EM on children
     for child in layer.children():
-        em(child, data, dispatch_ctx=dispatch_ctx)
+        em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(layer: SPNHadamardLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(layer: SPNHadamardLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNHadamardLayer`` in the ``torch`` backend.
 
     Args:
@@ -96,6 +105,9 @@ def em(layer: SPNHadamardLayer, data: torch.Tensor, dispatch_ctx: Optional[Dispa
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
     """
@@ -104,4 +116,4 @@ def em(layer: SPNHadamardLayer, data: torch.Tensor, dispatch_ctx: Optional[Dispa
 
     # recursively call EM on children
     for child in layer.children():
-        em(child, data, dispatch_ctx=dispatch_ctx)
+        em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)

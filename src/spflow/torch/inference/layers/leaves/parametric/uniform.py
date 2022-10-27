@@ -11,7 +11,7 @@ from spflow.torch.structure.layers.leaves.parametric.uniform import UniformLayer
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(layer: UniformLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(layer: UniformLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     r"""Computes log-likelihoods for ``UniformLayer`` leaves in the ``torch`` backend given input data.
 
     Log-likelihood for ``UniformLayer`` is given by the logarithm of its individual probability distribution functions (PDFs):
@@ -32,6 +32,9 @@ def log_likelihood(layer: UniformLayer, data: torch.Tensor, dispatch_ctx: Option
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the distribution.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -66,14 +69,14 @@ def log_likelihood(layer: UniformLayer, data: torch.Tensor, dispatch_ctx: Option
 
         # ----- log probabilities -----
 
-        # create masked based on distribution's support
-        valid_ids = layer.check_support(data[~marg_mask], node_ids=[node_id])
+        if check_support:
+            # create masked based on distribution's support
+            valid_ids = layer.check_support(data[~marg_mask], node_ids=[node_id])
 
-        # TODO: suppress checks
-        if not all(valid_ids):
-            raise ValueError(
-                f"Encountered data instances that are not in the support of the TorchUniform distribution."
-            )
+            if not all(valid_ids):
+                raise ValueError(
+                    f"Encountered data instances that are not in the support of the TorchUniform distribution."
+                )
 
         if layer.support_outside[node_id]:
             torch_valid_mask = torch.zeros(len(marg_mask), dtype=torch.bool)

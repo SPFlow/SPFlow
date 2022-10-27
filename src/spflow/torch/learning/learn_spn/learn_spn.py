@@ -82,7 +82,7 @@ def cluster_by_kmeans(data: torch.Tensor, n_clusters: int=2, preprocessing: Opti
     return data_labels
 
 
-def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_instances_slice: int=100, fit_params: bool=True, clustering_method: Union[str, Callable]="kmeans", partitioning_method: Union[str, Callable]="rdc", clustering_args: Optional[Dict[str, Any]]=None, partitioning_args: Optional[Dict[str, Any]]=None) -> Module:
+def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_instances_slice: int=100, fit_params: bool=True, clustering_method: Union[str, Callable]="kmeans", partitioning_method: Union[str, Callable]="rdc", clustering_args: Optional[Dict[str, Any]]=None, partitioning_args: Optional[Dict[str, Any]]=None, check_support: bool=True) -> Module:
     """LearnSPN structure and parameter learner for the ``torch`` backend.
 
     LearnSPN algorithm as described in (Gens & Domingos, 2013): "Learning the Structure of Sum-Product Networks".
@@ -118,6 +118,9 @@ def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_
         partitioning_args:
             Optional dictionary mapping keyword arguments to objects.
             Passed to ``partitioning_method`` each time it is called.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
 
     Returns:
         A node representing the learned SPN.
@@ -168,7 +171,7 @@ def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_
 
         if fit_params:
             # estimate leaf node parameters from data
-            maximum_likelihood_estimation(leaf, data)
+            maximum_likelihood_estimation(leaf, data, check_support=check_support)
         
         return leaf
 
@@ -183,7 +186,7 @@ def learn_spn(data, scope: Optional[Scope]=None, min_features_slice: int=2, min_
 
             if fit_params:
                 # estimate leaf node parameters from data
-                maximum_likelihood_estimation(leaf, data[:, [rv]])
+                maximum_likelihood_estimation(leaf, data[:, [rv]], check_support=check_support)
 
         return SPNProductNode(children=leaves)
 

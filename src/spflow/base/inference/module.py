@@ -9,7 +9,7 @@ from spflow.base.structure.module import Module, NestedModule
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(module: Module, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     """Raises ``NotImplementedError`` for modules in the ``base`` backend that have not dispatched a log-likelihood inference routine.
 
     Args:
@@ -18,6 +18,9 @@ def log_likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[Disp
         data:
             Two-dimensional NumPy array containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -30,7 +33,7 @@ def log_likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[Disp
 
 
 @dispatch  # type: ignore
-def likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def likelihood(module: Module, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     """Computes likelihoods for modules in the ``base`` backend given input data.
 
     Likelihoods are per default computed from the infered log-likelihoods of a module.
@@ -41,6 +44,9 @@ def likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[Dispatch
         data:
             Two-dimensional NumPy array containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -49,11 +55,11 @@ def likelihood(module: Module, data: np.ndarray, dispatch_ctx: Optional[Dispatch
         Each row corresponds to an input sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return np.exp(log_likelihood(module, data, dispatch_ctx=dispatch_ctx))
+    return np.exp(log_likelihood(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx))
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(nesting_module: NestedModule.Placeholder, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(nesting_module: NestedModule.Placeholder, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     """Raises ``LookupError`` for placeholder-modules in the ``base`` backend.
     
     The log-likelihoods for placeholder-modules should be set in the dispatch context cache by the host module.
@@ -65,6 +71,9 @@ def log_likelihood(nesting_module: NestedModule.Placeholder, data: np.ndarray, d
         data:
             Two-dimensional NumPy array containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 

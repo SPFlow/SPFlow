@@ -10,7 +10,7 @@ import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(node: NegativeBinomial, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(node: NegativeBinomial, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     r"""Computes log-likelihoods for ``NegativeBinomial`` node in the ``base`` backend given input data.
 
     Log-likelihood for ``NegativeBinomial`` is given by the logarithm of its probability mass function (PMF):
@@ -32,6 +32,9 @@ def log_likelihood(node: NegativeBinomial, data: np.ndarray, dispatch_ctx: Optio
         data:
             Two-dimensional NumPy array containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the distribution.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -55,14 +58,14 @@ def log_likelihood(node: NegativeBinomial, data: np.ndarray, dispatch_ctx: Optio
     # keeps default value of 1 (0 in log-space)
     marg_ids = np.isnan(data).sum(axis=-1).astype(bool)
 
-    # create masked based on distribution's support
-    valid_ids = node.check_support(data[~marg_ids]).squeeze(1)
+    if check_support:
+        # create masked based on distribution's support
+        valid_ids = node.check_support(data[~marg_ids]).squeeze(1)
 
-    # TODO: suppress checks
-    if not all(valid_ids):
-        raise ValueError(
-            f"Encountered data instances that are not in the support of the NegativeBinomial distribution."
-        )
+        if not all(valid_ids):
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the NegativeBinomial distribution."
+            )
 
     # compute probabilities for all non-marginalized instances
     probs[~marg_ids] = node.dist.logpmf(k=data[~marg_ids])

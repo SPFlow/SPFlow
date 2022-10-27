@@ -9,7 +9,7 @@ from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import Hyperg
 
 
 @dispatch(memoize=True)  # type: ignore
-def maximum_likelihood_estimation(leaf: Hypergeometric, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def maximum_likelihood_estimation(leaf: Hypergeometric, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     r"""Maximum (weighted) likelihood estimation (MLE) of ``Hypergeometric`` node parameters in the ``torch`` backend.
 
     All parameters of the Hypergeometric distribution are regarded as fixed and will not be estimated.
@@ -43,15 +43,16 @@ def maximum_likelihood_estimation(leaf: Hypergeometric, data: torch.Tensor, weig
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    if torch.any(~leaf.check_support(data[:, leaf.scope.query])):
-        raise ValueError("Encountered values outside of the support for 'Hypergeometric'.")
+    if check_support:
+        if torch.any(~leaf.check_support(data[:, leaf.scope.query])):
+            raise ValueError("Encountered values outside of the support for 'Hypergeometric'.")
 
     # do nothing since there are no learnable parameters
     pass
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(leaf: Hypergeometric, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(leaf: Hypergeometric, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """Performs a single expectation maximizaton (EM) step for ``Hypergeometric`` in the ``torch`` backend.
 
     Args:
@@ -60,6 +61,9 @@ def em(leaf: Hypergeometric, data: torch.Tensor, dispatch_ctx: Optional[Dispatch
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
     """
@@ -67,4 +71,4 @@ def em(leaf: Hypergeometric, data: torch.Tensor, dispatch_ctx: Optional[Dispatch
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # update parameters through maximum weighted likelihood estimation (NOTE: simply for checking support)
-    maximum_likelihood_estimation(leaf, data, bias_correction=False, dispatch_ctx=dispatch_ctx)
+    maximum_likelihood_estimation(leaf, data, bias_correction=False, check_support=check_support, dispatch_ctx=dispatch_ctx)

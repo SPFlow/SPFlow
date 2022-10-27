@@ -14,7 +14,7 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(sum_layer: SPNSumLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(sum_layer: SPNSumLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
     """Samples from SPN-like sum layers in the ``torch`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
@@ -27,6 +27,9 @@ def sample(sum_layer: SPNSumLayer, data: torch.Tensor, dispatch_ctx: Optional[Di
         data:
             Two-dimensional PyTorch tensor containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -52,7 +55,7 @@ def sample(sum_layer: SPNSumLayer, data: torch.Tensor, dispatch_ctx: Optional[Di
     instance_ids_mask[sampling_ctx.instance_ids] = True
 
     # compute log likelihoods for sum "nodes"
-    partition_ll = torch.concat([log_likelihood(child, data, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()], dim=1)
+    partition_ll = torch.concat([log_likelihood(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()], dim=1)
 
     children = list(sum_layer.children())
 
@@ -71,13 +74,13 @@ def sample(sum_layer: SPNSumLayer, data: torch.Tensor, dispatch_ctx: Optional[Di
             child_output_ids = torch.tensor(output_ids)[torch.tensor(child_ids) == child_id].unsqueeze(1).tolist()
 
             # sample from partition node
-            sample(children[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(child_instance_ids, child_output_ids))
+            sample(children[child_id], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(child_instance_ids, child_output_ids))
 
     return data
 
 
 @dispatch  # type: ignore
-def sample(product_layer: SPNProductLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(product_layer: SPNProductLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
     """Samples from SPN-like product layers in the ``torch`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
@@ -90,6 +93,9 @@ def sample(product_layer: SPNProductLayer, data: torch.Tensor, dispatch_ctx: Opt
         data:
             Two-dimensional PyTorch tensor containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -112,13 +118,13 @@ def sample(product_layer: SPNProductLayer, data: torch.Tensor, dispatch_ctx: Opt
 
     # all product nodes are over (all) children
     for child in product_layer.children():
-        sample(child, data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(sampling_ctx.instance_ids, [list(range(child.n_out)) for _ in sampling_ctx.instance_ids]))
+        sample(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(sampling_ctx.instance_ids, [list(range(child.n_out)) for _ in sampling_ctx.instance_ids]))
 
     return data
 
 
 @dispatch  # type: ignore
-def sample(partition_layer: SPNPartitionLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(partition_layer: SPNPartitionLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
     """Samples from SPN-like partition layers in the ``torch`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
@@ -131,6 +137,9 @@ def sample(partition_layer: SPNPartitionLayer, data: torch.Tensor, dispatch_ctx:
         data:
             Two-dimensional PyTorch tensor containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -170,13 +179,13 @@ def sample(partition_layer: SPNPartitionLayer, data: torch.Tensor, dispatch_ctx:
             child_output_ids = np.array(output_ids)[np.array(child_ids) == child_id].tolist()
 
             # sample from partition node
-            sample(children[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instances, [child_output_ids for _ in instances]))
+            sample(children[child_id], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instances, [child_output_ids for _ in instances]))
 
     return data
 
 
 @dispatch  # type: ignore
-def sample(hadamard_layer: SPNHadamardLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(hadamard_layer: SPNHadamardLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
     """Samples from SPN-like element-wise product layers in the ``torch`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
@@ -189,6 +198,9 @@ def sample(hadamard_layer: SPNHadamardLayer, data: torch.Tensor, dispatch_ctx: O
         data:
             Two-dimensional PyTorch tensor containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -231,6 +243,6 @@ def sample(hadamard_layer: SPNHadamardLayer, data: torch.Tensor, dispatch_ctx: O
             child_output_ids = np.array(output_ids)[np.array(child_ids) == child_id].tolist()
 
             # sample from partition node
-            sample(children[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instances, [child_output_ids for _ in instances]))
+            sample(children[child_id], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instances, [child_output_ids for _ in instances]))
 
     return data

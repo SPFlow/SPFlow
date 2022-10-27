@@ -9,7 +9,7 @@ from spflow.torch.structure.layers.leaves.parametric.bernoulli import BernoulliL
 
 
 @dispatch(memoize=True)  # type: ignore
-def maximum_likelihood_estimation(layer: BernoulliLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def maximum_likelihood_estimation(layer: BernoulliLayer, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     r"""Maximum (weighted) likelihood estimation (MLE) of ``BernoulliLayer`` leaves' parameters in the ``torch`` backend.
 
     Estimates the success probabilities :math:`p` of each Bernoulli distribution from data, as follows:
@@ -45,6 +45,9 @@ def maximum_likelihood_estimation(layer: BernoulliLayer, data: torch.Tensor, wei
             If 'ignore', missing values (i.e., NaN entries) are ignored.
             If a callable, it is called using ``data`` and should return another PyTorch tensor of same size.
             Defaults to None.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -69,8 +72,9 @@ def maximum_likelihood_estimation(layer: BernoulliLayer, data: torch.Tensor, wei
         # broadcast weights
         weights = weights.repeat(layer.n_out, 1).T
 
-    if torch.any(~layer.check_support(scope_data)):
-        raise ValueError("Encountered values outside of the support for 'BernoulliLayer'.")
+    if check_support:
+        if torch.any(~layer.check_support(scope_data)):
+            raise ValueError("Encountered values outside of the support for 'BernoulliLayer'.")
 
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
@@ -129,7 +133,7 @@ def maximum_likelihood_estimation(layer: BernoulliLayer, data: torch.Tensor, wei
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(layer: BernoulliLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(layer: BernoulliLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """Performs a single expectation maximizaton (EM) step for ``BernoulliLayer`` in the ``torch`` backend.
 
     Args:
@@ -138,6 +142,9 @@ def em(layer: BernoulliLayer, data: torch.Tensor, dispatch_ctx: Optional[Dispatc
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
     """
@@ -155,6 +162,6 @@ def em(layer: BernoulliLayer, data: torch.Tensor, dispatch_ctx: Optional[Dispatc
         # ----- maximization step -----
 
         # update parameters through maximum weighted likelihood estimation
-        maximum_likelihood_estimation(layer, data, weights=expectations, bias_correction=False, dispatch_ctx=dispatch_ctx)
+        maximum_likelihood_estimation(layer, data, weights=expectations, bias_correction=False, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
     # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients

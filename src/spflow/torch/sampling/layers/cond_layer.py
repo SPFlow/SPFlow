@@ -14,7 +14,7 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(sum_layer: SPNCondSumLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(sum_layer: SPNCondSumLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
     """Samples from conditional SPN-like sum layers in the ``torch`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
@@ -27,6 +27,9 @@ def sample(sum_layer: SPNCondSumLayer, data: torch.Tensor, dispatch_ctx: Optiona
         data:
             Two-dimensional PyTorch tensor containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -55,7 +58,7 @@ def sample(sum_layer: SPNCondSumLayer, data: torch.Tensor, dispatch_ctx: Optiona
     instance_ids_mask[sampling_ctx.instance_ids] = True
 
     # compute log likelihoods for sum "nodes"
-    partition_ll = torch.concat([log_likelihood(child, data, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()], dim=1)
+    partition_ll = torch.concat([log_likelihood(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()], dim=1)
 
     children = list(sum_layer.children())
 
@@ -74,6 +77,6 @@ def sample(sum_layer: SPNCondSumLayer, data: torch.Tensor, dispatch_ctx: Optiona
             child_output_ids = torch.tensor(output_ids)[torch.tensor(child_ids) == child_id].unsqueeze(1).tolist()
 
             # sample from partition node
-            sample(children[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(child_instance_ids, child_output_ids))
+            sample(children[child_id], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(child_instance_ids, child_output_ids))
 
     return data

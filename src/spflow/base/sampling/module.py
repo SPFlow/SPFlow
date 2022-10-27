@@ -12,7 +12,7 @@ from functools import reduce
 
 
 @dispatch  # type: ignore
-def sample(module: Module, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def sample(module: Module, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     r"""Samples from modules in the ``base`` backend without any evidence.
 
     Samples a single instance from the module.
@@ -23,6 +23,9 @@ def sample(module: Module, dispatch_ctx: Optional[DispatchContext]=None, samplin
         data:
             Two-dimensional NumPy array containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -33,11 +36,11 @@ def sample(module: Module, dispatch_ctx: Optional[DispatchContext]=None, samplin
         Each row corresponds to a sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return sample(module, 1, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)
+    return sample(module, 1, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)
 
 
 @dispatch  # type: ignore
-def sample(module: Module, n: int, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def sample(module: Module, n: int, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> np.ndarray:
     r"""Samples specified numbers of instances from modules in the ``base`` backend without any evidence.
 
     Samples a specified number of instance from the module by creating an empty two-dimensional NumPy array (i.e., filled with NaN values) of appropriate size and filling it.
@@ -48,6 +51,9 @@ def sample(module: Module, n: int, dispatch_ctx: Optional[DispatchContext]=None,
         data:
             Two-dimensional NumPy array containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -64,11 +70,11 @@ def sample(module: Module, n: int, dispatch_ctx: Optional[DispatchContext]=None,
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    return sample(module, data, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)
+    return sample(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)
 
 
 @dispatch  # type: ignore
-def sample(placeholder: NestedModule.Placeholder, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
+def sample(placeholder: NestedModule.Placeholder, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
     r"""Samples from a placeholder modules in the ``base`` with potential evidence.
 
     Samples from the actual inputs represented by the placeholder module.
@@ -79,6 +85,9 @@ def sample(placeholder: NestedModule.Placeholder, data: np.ndarray, dispatch_ctx
         data:
             Two-dimensional NumPy array containing potential evidence.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
         sampling_ctx:
@@ -107,6 +116,6 @@ def sample(placeholder: NestedModule.Placeholder, data: np.ndarray, dispatch_ctx
     for child_id, (instance_ids, output_ids) in enumerate(sampling_ids_per_child):
         if(len(instance_ids) == 0):
             continue
-        sample(placeholder.host.children[child_id], data, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instance_ids, output_ids))
+        sample(placeholder.host.children[child_id], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instance_ids, output_ids))
 
     return data

@@ -11,7 +11,7 @@ from spflow.torch.structure.layers.leaves.parametric.cond_gaussian import CondGa
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(layer: CondGaussianLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(layer: CondGaussianLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     r"""Computes log-likelihoods for ``CondGaussianLayer`` leaves in the ``torch`` backend given input data.
 
     Log-likelihood for ``CondGaussianLayer`` is given by the logarithm of its individual probability distribution functions (PDFs):
@@ -33,6 +33,9 @@ def log_likelihood(layer: CondGaussianLayer, data: torch.Tensor, dispatch_ctx: O
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the distribution.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -77,15 +80,15 @@ def log_likelihood(layer: CondGaussianLayer, data: torch.Tensor, dispatch_ctx: O
         log_prob[torch.meshgrid(marg_ids, node_ids_tensor, indexing='ij')] = 0.0
 
         # ----- log probabilities -----
-    
-        # create masked based on distribution's support
-        valid_ids = layer.check_support(data[~marg_mask], node_ids=node_ids)
 
-        # TODO: suppress checks
-        if not all(valid_ids.sum(dim=1)):
-            raise ValueError(
-                f"Encountered data instances that are not in the support of the Gaussian distribution."
-            )
+        if check_support:
+            # create masked based on distribution's support
+            valid_ids = layer.check_support(data[~marg_mask], node_ids=node_ids)
+
+            if not all(valid_ids.sum(dim=1)):
+                raise ValueError(
+                    f"Encountered data instances that are not in the support of the Gaussian distribution."
+                )
         
         # compute probabilities for values inside distribution support
         log_prob[torch.meshgrid(non_marg_ids, node_ids_tensor, indexing='ij')] = layer.dist(mean=mean, std=std, node_ids=node_ids).log_prob(

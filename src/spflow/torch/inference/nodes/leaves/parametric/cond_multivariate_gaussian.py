@@ -10,7 +10,7 @@ from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian i
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(leaf: CondMultivariateGaussian, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(leaf: CondMultivariateGaussian, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     r"""Computes log-likelihoods for ``CondMultivariateGaussian`` node given input data in the ``torch`` backend.
 
     Log-likelihood for ``CondMultivariateGaussian`` is given by the logarithm of its probability distribution function (PDF):
@@ -33,6 +33,9 @@ def log_likelihood(leaf: CondMultivariateGaussian, data: torch.Tensor, dispatch_
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the distribution.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
 
@@ -61,16 +64,16 @@ def log_likelihood(leaf: CondMultivariateGaussian, data: torch.Tensor, dispatch_
     _scope_data = scope_data.clone()
     _scope_data[_scope_data.isnan()] = 0.0
 
-    # check support
-    valid_ids = leaf.check_support(_scope_data).squeeze(1)
+    if check_support:
+        # check support
+        valid_ids = leaf.check_support(_scope_data).squeeze(1)
+
+        if not all(valid_ids):
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the TorchMultivariateGaussian distribution."
+            )
 
     del _scope_data  # free up memory
-
-    # TODO: suppress checks
-    if not all(valid_ids):
-        raise ValueError(
-            f"Encountered data instances that are not in the support of the TorchMultivariateGaussian distribution."
-        )
 
     # ----- log probabilities -----
 

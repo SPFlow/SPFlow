@@ -11,7 +11,7 @@ from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(node: SPNSumNode, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNSumNode`` in the ``torch`` backend.
 
     Args:
@@ -20,6 +20,9 @@ def em(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchCont
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
     """
@@ -40,11 +43,11 @@ def em(node: SPNSumNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchCont
 
     # recursively call EM on children
     for child in node.children():
-        em(child, data, dispatch_ctx=dispatch_ctx)
+        em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(node: SPNProductNode, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(node: SPNProductNode, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNProductNode`` in the ``torch`` backend.
 
     Args:
@@ -53,6 +56,9 @@ def em(node: SPNProductNode, data: torch.Tensor, dispatch_ctx: Optional[Dispatch
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
     """
@@ -61,4 +67,4 @@ def em(node: SPNProductNode, data: torch.Tensor, dispatch_ctx: Optional[Dispatch
 
     # recursively call EM on children
     for child in node.children():
-        em(child, data, dispatch_ctx=dispatch_ctx)
+        em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
