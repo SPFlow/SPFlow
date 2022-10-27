@@ -1,7 +1,5 @@
-"""
-Created on October 21, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Bernoulli leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
 from functools import reduce
@@ -18,16 +16,50 @@ from spflow.base.structure.layers.leaves.parametric.cond_bernoulli import CondBe
 
 
 class CondBernoulliLayer(Module):
-    """Layer representing multiple conditional (univariate) bernoulli leaf nodes in the Torch backend.
+    r"""Layer of multiple conditional (univariate) Bernoulli distribution leaf nodes in the ``torch`` backend.
 
-    Args:
-        scope: TODO
-        cond_f: TODO
-        n_nodes: number of output nodes.
+    Represents multiple conditional univariate Bernoulli distributions with independent scopes, each with the following probability mass function (PMF):
+
+    .. math::
+
+        \text{PMF}(k)=\begin{cases} p   & \text{if } k=1\\
+                                    1-p & \text{if } k=0\end{cases}
+        
+    where
+        - :math:`p` is the success probability in :math:`[0,1]`
+        - :math:`k` is the outcome of the trial (0 or 1)
+
+    Attributes:
+        cond_f:
+            Optional callable or list of callables to retrieve parameters for the leaf nodes.
+            If a single callable, its output should be a dictionary containing ``p`` as a key, and the value should be
+            a floating point, a list of floats or o one-dimensional NumPy array or PyTorch tensor, containing the success probabilities between zero and one.
+            If it is a single floating point value, the same value is reused for all leaf nodes.
+            If a list of callables, each one should return a dictionary containing ``p`` as a key, and the value should
+            be a floating point value between zero and one.
+        scopes_out:
+            List of scopes representing the output scopes.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], cond_f: Optional[Union[Callable,List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``CondBernoulliLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            cond_f:
+                Optional callable or list of callables to retrieve parameters for the leaf nodes.
+                If a single callable, its output should be a dictionary containing ``p`` as a key, and the value should be
+                a floating point, a list of floats or o one-dimensional NumPy array or PyTorch tensor, containing the success probabilities between zero and one.
+                If it is a single floating point value, the same value is reused for all leaf nodes.
+                If a list of callables, each one should return a dictionary containing ``p`` as a key, and the value should
+                be a floating point value between zero and one.
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent.
+
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'CondBernoulliLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -54,17 +86,49 @@ class CondBernoulliLayer(Module):
 
     @property
     def n_out(self) -> int:
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
     def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+        r"""Sets the ``cond_f`` property.
 
+        Args:
+            cond_f:
+                Optional callable or list of callables to retrieve parameters for the leaf nodes.
+                If a single callable, its output should be a dictionary containing ``p`` as a key, and the value should be
+                a floating point, a list of floats or o one-dimensional NumPy array or PyTorch tensor, containing the success probabilities between zero and one.
+                If it is a single floating point value, the same value is reused for all leaf nodes.
+                If a list of callables, each one should return a dictionary containing ``p`` as a key, and the value should
+                be a floating point value between zero and one.
+
+        Raises:
+            ValueError: If list of callables does not match number of nodes represented by the layer.
+        """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
             raise ValueError("'CondBernoulliLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
 
         self.cond_f = cond_f
 
     def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> torch.Tensor:
+        r"""Retrieves the conditional parameters of the leaf layer.
 
+        First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function or list of functions (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
+
+        Args:
+            data:
+                Two-dimensional PyTorch tensor containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            One-dimensional PyTorch tensor representing the success probabilities.
+
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         p, cond_f = None, None
 
         # check dispatch cache for required conditional parameter 'p'
@@ -111,32 +175,47 @@ class CondBernoulliLayer(Module):
         return p
 
     def dist(self, p: torch.Tensor, node_ids: Optional[List[int]]=None) -> D.Distribution:
+        r"""Returns the PyTorch distributions represented by the leaf layer.
 
+        Args:
+            p:
+                One-dimensional PyTorch tensor representing the success probabilities of all distributions between zero and one (not just the ones specified by ``node_ids``).
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
+
+        Returns:
+            ``torch.distributions.Bernoulli`` instance.
+        """
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
         return D.Bernoulli(probs=p[node_ids])
 
-    def get_params(self) -> Tuple:
-        return tuple([])
-
     def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the Bernoulli distribution.
+        r"""Checks if specified data is in support of the represented distributions.
+
+        Determines whether or not instances are part of the supports of the Bernoulli distributions, which are:
 
         .. math::
 
             \text{supp}(\text{Bernoulli})=\{0,1\}
         
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
-
+    
         Args:
-            data:
-                Torch tensor containing possible distribution instances.
-            node_ids: TODO
-        Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
-        """
+            TODO
+            scope_data:
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
 
+        Returns:
+            Two dimensional PyTorch tensor indicating for each instance and node, whether they are part of the support (True) or not (False).
+            Each row corresponds to an input sample.
+        """
         if node_ids is None:
             node_ids = list(range(self.n_out))  
 
@@ -158,9 +237,28 @@ class CondBernoulliLayer(Module):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: CondBernoulliLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondBernoulliLayer, CondBernoulli, None]:
-    """TODO"""
+    """Structural marginalization for ``CondBernoulliLayer`` objects in the ``torch`` backend.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -185,13 +283,29 @@ def marginalize(layer: CondBernoulliLayer, marg_rvs: Iterable[int], prune: bool=
         return CondBernoulliLayer(scope=marginalized_scopes)
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(layer: BaseCondBernoulliLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondBernoulliLayer:
+    """Conversion for ``CondBernoulliLayer`` from ``base`` backend to ``torch`` backend.
+    
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondBernoulliLayer(scope=layer.scopes_out)
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toBase(torch_layer: CondBernoulliLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondBernoulliLayer:
+    """Conversion for ``CondBernoulliLayer`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondBernoulliLayer(scope=torch_layer.scopes_out)

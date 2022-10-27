@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Gamma leaf layer for SPFlow in the 'base' backend.
+"""Contains conditional Gamma leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
 import numpy as np
@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.cond_gamma import CondGamma
 
 
 class CondGammaLayer(Module):
-    r"""Layer of multiple conditional (univariate) Gamma distribution leaf nodes in the 'base' backend.
+    r"""Layer of multiple conditional (univariate) Gamma distribution leaf nodes in the ``base`` backend.
 
     Represents multiple conditional univariate Gamma distributions with independent scopes, each with the following probability distribution function (PDF):
 
@@ -30,10 +30,10 @@ class CondGammaLayer(Module):
     Attributes:
         cond_f:
             Optional callable or list of callables to retrieve parameters for the leaf nodes.
-            If a single callable, its output should be a dictionary contain 'alpha','beta' as keys, and the values should be
+            If a single callable, its output should be a dictionary contain ``alpha``,``beta`` as keys, and the values should be
             a floating point, a list of floats or a one-dimensional NumPy array, containing the shape and rate parameters (greater than 0), respectively.
             If the values are single floating point values, the same values are reused for all leaf nodes.
-            If a list of callables, each one should return a dictionary containing 'alpha','beta' as keys, and the values should
+            If a list of callables, each one should return a dictionary containing ``alpha``,``beta`` as keys, and the values should
             be floating point values greater than 0.0.
         scopes_out:
             List of scopes representing the output scopes.
@@ -49,10 +49,10 @@ class CondGammaLayer(Module):
                 If a single scope is given, it is used for all nodes.
             cond_f:
                 Optional callable or list of callables to retrieve parameters for the leaf nodes.
-                If a single callable, its output should be a dictionary contain 'alpha','beta' as keys, and the values should be
+                If a single callable, its output should be a dictionary contain ``alpha``,``beta`` as keys, and the values should be
                 a floating point, a list of floats or a one-dimensional NumPy array, containing the shape and rate parameters (greater than 0), respectively.
                 If the values are single floating point values, the same values are reused for all leaf nodes.
-                If a list of callables, each one should return a dictionary containing 'alpha','beta' as keys, and the values should
+                If a list of callables, each one should return a dictionary containing ``alpha``,``beta`` as keys, and the values should
                 be floating point values greater than 0.0.
             n_nodes:
                 Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
@@ -91,10 +91,10 @@ class CondGammaLayer(Module):
         Args:
             cond_f:
                 Optional callable or list of callables to retrieve parameters for the leaf nodes.
-                If a single callable, its output should be a dictionary contain 'alpha','beta' as keys, and the values should be
+                If a single callable, its output should be a dictionary contain ``alpha``,``beta`` as keys, and the values should be
                 a floating point, a list of floats or a one-dimensional NumPy array, containing the shape and rate parameters (greater than 0), respectively.
                 If the values are single floating point values, the same values are reused for all leaf nodes.
-                If a list of callables, each one should return a dictionary containing 'alpha','beta' as keys, and the values should
+                If a list of callables, each one should return a dictionary containing ``alpha``,``beta`` as keys, and the values should
                 be floating point values greater than 0.0.
 
         Raises:
@@ -120,8 +120,8 @@ class CondGammaLayer(Module):
                 Dispatch context.
 
         Returns:
-            Two-dimensional NumPy array of non-zero weights summing up to one per row.
-        
+            Tuple of one-dimensional NumPy arrays representing the shape and rate parameters, respectively.
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -193,7 +193,7 @@ class CondGammaLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: CondGammaLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondGammaLayer, CondGamma, None]:
-    r"""Structural marginalization for ``CondGammaLayer`` objects.
+    r"""Structural marginalization for ``CondGammaLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

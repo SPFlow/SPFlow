@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Poisson leaf layer for SPFlow in the 'base' backend.
+"""Contains conditional Poisson leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
 import numpy as np
@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.cond_poisson import CondPoiss
 
 
 class CondPoissonLayer(Module):
-    r"""Layer of multiple conditional (univariate) Poisson distribution leaf nodes in the 'base' backend.
+    r"""Layer of multiple conditional (univariate) Poisson distribution leaf nodes in the ``base`` backend.
 
     Represents multiple conditional univariate Poisson distributions with independent scopes, each with the following probability mass function (PMF):
 
@@ -27,10 +27,10 @@ class CondPoissonLayer(Module):
     Attributes:
         cond_f:
             Optional callable or list of callables to retrieve parameters for the leaf nodes.
-            If a single callable, its output should be a dictionary containing 'l' as a key, and the value should be
+            If a single callable, its output should be a dictionary containing ``l`` as a key, and the value should be
             a floating point, a list of floats or a one-dimensional NumPy array, containing the success probabilities greater than or equal to 0.0.
             If it is a single floating point value, the same value is reused for all leaf nodes.
-            If a list of callables, each one should return a dictionary containing 'l' as a key, and the value should
+            If a list of callables, each one should return a dictionary containing ``l`` as a key, and the value should
             be a floating point value greater than or equal to 0.0.
         scopes_out:
             List of scopes representing the output scopes.
@@ -46,10 +46,10 @@ class CondPoissonLayer(Module):
                 If a single scope is given, it is used for all nodes.
             cond_f:
                 Optional callable or list of callables to retrieve parameters for the leaf nodes.
-                If a single callable, its output should be a dictionary containing 'l' as a key, and the value should be
+                If a single callable, its output should be a dictionary containing ``l`` as a key, and the value should be
                 a floating point, a list of floats or a one-dimensional NumPy array, containing the success probabilities greater than or equal to 0.0.
                 If it is a single floating point value, the same value is reused for all leaf nodes.
-                If a list of callables, each one should return a dictionary containing 'l' as a key, and the value should
+                If a list of callables, each one should return a dictionary containing ``l`` as a key, and the value should
                 be a floating point value greater than or equal to 0.0.
             n_nodes:
                 Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
@@ -88,10 +88,10 @@ class CondPoissonLayer(Module):
         Args:
             cond_f:
                 Optional callable or list of callables to retrieve parameters for the leaf nodes.
-                If a single callable, its output should be a dictionary containing 'l' as a key, and the value should be
+                If a single callable, its output should be a dictionary containing ``l`` as a key, and the value should be
                 a floating point, a list of floats or a one-dimensional NumPy array, containing the success probabilities greater than or equal to 0.0.
                 If it is a single floating point value, the same value is reused for all leaf nodes.
-                If a list of callables, each one should return a dictionary containing 'l' as a key, and the value should
+                If a list of callables, each one should return a dictionary containing ``l`` as a key, and the value should
                 be a floating point value greater than or equal to 0.0.
 
         Raises:
@@ -117,7 +117,7 @@ class CondPoissonLayer(Module):
                 Dispatch context.
 
         Returns:
-            Two-dimensional NumPy array of non-zero weights summing up to one per row.
+            One-dimensional NumPy array representing the rate parameters.
         
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
@@ -168,7 +168,7 @@ class CondPoissonLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: CondPoissonLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondPoissonLayer, CondPoisson, None]:
-    r"""Structural marginalization for ``CondPoissonLayer`` objects.
+    r"""Structural marginalization for ``CondPoissonLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

@@ -6,8 +6,6 @@ from functools import reduce
 import numpy as np
 import torch
 import torch.distributions as D
-from torch.nn.parameter import Parameter
-from ....nodes.leaves.parametric.projections import proj_bounded_to_real, proj_real_to_bounded
 
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -217,6 +215,7 @@ class MultivariateGaussianLayer(Module):
             scope_data:
                 Two-dimensional PyTorch tensor containing sample instances.
                 Each row is regarded as a sample.
+
         Returns:
             Two dimensional PyTorch tensor indicating for each instance and node, whether they are part of the support (True) or not (False).
             Each row corresponds to an input sample.

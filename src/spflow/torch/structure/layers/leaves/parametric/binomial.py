@@ -205,6 +205,7 @@ class BinomialLayer(Module):
             scope_data:
                 Two-dimensional PyTorch tensor containing sample instances.
                 Each row is regarded as a sample.
+
         Returns:
             Two dimensional PyTorch tensor indicating for each instance and node, whether they are part of the support (True) or not (False).
             Each row corresponds to an input sample.
@@ -279,7 +280,7 @@ def marginalize(layer: BinomialLayer, marg_rvs: Iterable[int], prune: bool=True,
 
 @dispatch(memoize=True)  # type: ignore
 def toTorch(layer: BaseBinomialLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BinomialLayer:
-    """Conversion for ``BernoulliLayer`` from ``base`` backend to ``torch`` backend.
+    """Conversion for ``BinomialLayer`` from ``base`` backend to ``torch`` backend.
     
     Args:
         layer:
@@ -293,7 +294,7 @@ def toTorch(layer: BaseBinomialLayer, dispatch_ctx: Optional[DispatchContext]=No
 
 @dispatch(memoize=True)  # type: ignore
 def toBase(layer: BinomialLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseBinomialLayer:
-    """Conversion for ``BernoulliLayer`` from ``torch`` backend to ``base`` backend.
+    """Conversion for ``BinomialLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
         layer:

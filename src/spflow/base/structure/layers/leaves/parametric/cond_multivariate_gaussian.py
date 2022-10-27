@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Multivariate Gaussian leaf layer for SPFlow in the 'base' backend.
+"""Contains conditional Multivariate Gaussian leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
 import numpy as np
@@ -13,7 +13,7 @@ from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import CondGaus
 
 
 class CondMultivariateGaussianLayer(Module):
-    r"""Layer of multiple conditional multivariate Gaussian distribution leaf node in the 'base' backend.
+    r"""Layer of multiple conditional multivariate Gaussian distribution leaf node in the ``base`` backend.
 
     Represents multiple conditional multivariate Gaussian distributions with independent scopes, each with the following probability distribution function (PDF):
 
@@ -30,13 +30,12 @@ class CondMultivariateGaussianLayer(Module):
     Attributes:
         cond_f:
             Optional callable or list of callables to retrieve parameters for the leaf nodes.
-            If a single callable, its output should be a dictionary contain 'mean','cov' as keys.
-            The value for ``mean`` should be a list of floats, list of lists of floats or one- to two-dimensional NumPy array
+            If a single callable, its output should be a dictionary contain ``mean``,``cov`` as keys.
+            The value for ``mean`` should be a list of floats, list of lists of floats, a one-dimensional NumPy array or a list of one-dimensional NumPy arrays
             containing the means of the distributions. If a list of floats or a one-dimensional NumPy array is given, it is broadcast to all nodes.
-            The value for ``cov`` should be a list of lists of floats, a list of list of list of floats or a two- to three-dimensional NumPy array
-            containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats is given or one-dimensional NumPy array it is broadcast to all nodes.
-            a list of floats, a list of lists of floats or one- to two-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
-            If ``cond_f`` is a list of callables, each one should return a dictionary containing 'mean','std' as keys.
+            The value for ``cov`` should be a list of lists of floats, a list of list of list of floats, a two-dimensional NumPy array or a list of two-dimensional NumPy arrays
+            containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats or one-dimensional NumPy array is given, it is broadcast to all nodes.
+            If ``cond_f`` is a list of callables, each one should return a dictionary containing ``mean``,``cov`` as keys.
             The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array
             containing the means.
             The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array
@@ -44,7 +43,7 @@ class CondMultivariateGaussianLayer(Module):
         scopes_out:
             List of scopes representing the output scopes.
         nodes:
-            List of ``MultivariateGaussian`` objects for the nodes in this layer.
+            List of ``CondMultivariateGaussian`` objects for the nodes in this layer.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], cond_f: Optional[Union[Callable,List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
         r"""Initializes ``CondMultivariateGaussianLayer`` object.
@@ -55,13 +54,12 @@ class CondMultivariateGaussianLayer(Module):
                 If a single scope is given, it is used for all nodes.
             cond_f:
                 Optional callable or list of callables to retrieve parameters for the leaf nodes.
-                If a single callable, its output should be a dictionary contain 'mean','cov' as keys.
-                The value for ``mean`` should be a list of floats, list of lists of floats or one- to two-dimensional NumPy array
+                If a single callable, its output should be a dictionary contain ``mean``,``cov`` as keys.
+                The value for ``mean`` should be a list of floats, list of lists of floats, a one-dimensional NumPy array or a list of one-dimensional NumPy arrays
                 containing the means of the distributions. If a list of floats or a one-dimensional NumPy array is given, it is broadcast to all nodes.
-                The value for ``cov`` should be a list of lists of floats, a list of list of list of floats or a two- to three-dimensional NumPy array
-                containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats is given or one-dimensional NumPy array it is broadcast to all nodes.
-                a list of floats, a list of lists of floats or one- to two-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
-                If ``cond_f`` is a list of callables, each one should return a dictionary containing 'mean','std' as keys.
+                The value for ``cov`` should be a list of lists of floats, a list of list of list of floats, a two-dimensional NumPy array or a list of two-dimensional NumPy arrays
+                containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats or one-dimensional NumPy array is given, it is broadcast to all nodes.
+                If ``cond_f`` is a list of callables, each one should return a dictionary containing ``mean``,``cov`` as keys.
                 The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array
                 containing the means.
                 The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array
@@ -103,18 +101,17 @@ class CondMultivariateGaussianLayer(Module):
         Args:
             cond_f:
                 Optional callable or list of callables to retrieve parameters for the leaf nodes.
-                If a single callable, its output should be a dictionary contain 'mean','cov' as keys.
-                The value for ``mean`` should be a list of floats, list of lists of floats or one- to two-dimensional NumPy array
+                If a single callable, its output should be a dictionary contain ``mean``,``cov`` as keys.
+                The value for ``mean`` should be a list of floats, list of lists of floats, a one-dimensional NumPy array or a list of one-dimensional NumPy arrays
                 containing the means of the distributions. If a list of floats or a one-dimensional NumPy array is given, it is broadcast to all nodes.
-                The value for ``cov`` should be a list of lists of floats, a list of list of list of floats or a two- to three-dimensional NumPy array
-                containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats is given or one-dimensional NumPy array it is broadcast to all nodes.
-                a list of floats, a list of lists of floats or one- to two-dimensional NumPy array representing the means (:math:`\mu`) of each of the one-dimensional Gaussian distributions.
-                If ``cond_f`` is a list of callables, each one should return a dictionary containing 'mean','std' as keys.
+                The value for ``cov`` should be a list of lists of floats, a list of list of list of floats, a two-dimensional NumPy array or a list of two-dimensional NumPy arrays
+                containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats or one-dimensional NumPy array is given, it is broadcast to all nodes.
+                If ``cond_f`` is a list of callables, each one should return a dictionary containing ``mean``,``cov`` as keys.
                 The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array
                 containing the means.
                 The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array
                 containing a symmetric positive semi-definite covariance matrix.
-
+            
         Raises:
             ValueError: If list of callables does not match number of nodes represented by the layer.
         """
@@ -138,7 +135,9 @@ class CondMultivariateGaussianLayer(Module):
                 Dispatch context.
 
         Returns:
-            Two-dimensional NumPy array of non-zero weights summing up to one per row.
+            Tuple of two lists of NumPy arrays.
+            The first list contains one-dimensional NumPy arrays representing the means.
+            The second list contains two-dimensional NumPy arrays representing the covariance matrices.
         
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
@@ -243,7 +242,7 @@ class CondMultivariateGaussianLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: CondMultivariateGaussianLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussianLayer, CondMultivariateGaussian, CondGaussian, None]:
-    r"""Structural marginalization for ``CondMultivariateGaussianLayer`` objects.
+    r"""Structural marginalization for ``CondMultivariateGaussianLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

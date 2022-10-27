@@ -1,7 +1,5 @@
-"""
-Created on October 21, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Poisson leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
 from functools import reduce
@@ -18,16 +16,47 @@ from spflow.base.structure.layers.leaves.parametric.cond_poisson import CondPois
 
 
 class CondPoissonLayer(Module):
-    """Layer representing multiple conditional (univariate) poisson leaf nodes in the Torch backend.
+    r"""Layer of multiple conditional (univariate) Poisson distribution leaf nodes in the ``base`` backend.
 
-    Args:
-        scope: TODO
-        cond_f: TODO
-        n_nodes: number of output nodes.
+    Represents multiple conditional univariate Poisson distributions with independent scopes, each with the following probability mass function (PMF):
+
+    .. math::
+
+        \text{PMF}(k) = \lambda^k\frac{e^{-\lambda}}{k!}
+
+    where
+        - :math:`k` is the number of occurrences
+        - :math:`\lambda` is the rate parameter
+
+    Attributes:
+        cond_f:
+            Optional callable or list of callables to retrieve parameters for the leaf nodes.
+            If a single callable, its output should be a dictionary containing ``l`` as a key, and the value should be
+            a floating point, a list of floats or a one-dimensional NumPy array or PyTorch tensor, containing the success probabilities greater than or equal to 0.0.
+            If it is a single floating point value, the same value is reused for all leaf nodes.
+            If a list of callables, each one should return a dictionary containing ``l`` as a key, and the value should
+            be a floating point value greater than or equal to 0.0.
+        scopes_out:
+            List of scopes representing the output scopes.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], cond_f: Optional[Union[Callable,List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``CondPoissonLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            cond_f:
+                Optional callable or list of callables to retrieve parameters for the leaf nodes.
+                If a single callable, its output should be a dictionary containing ``l`` as a key, and the value should be
+                a floating point, a list of floats or a one-dimensional NumPy array or PyTorch tensor, containing the success probabilities greater than or equal to 0.0.
+                If it is a single floating point value, the same value is reused for all leaf nodes.
+                If a list of callables, each one should return a dictionary containing ``l`` as a key, and the value should
+                be a floating point value greater than or equal to 0.0.
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'CondPoissonLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -54,24 +83,67 @@ class CondPoissonLayer(Module):
 
     @property
     def n_out(self) -> int:
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
     
     def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+        r"""Sets the ``cond_f`` property.
 
+        Args:
+            cond_f:
+                Optional callable or list of callables to retrieve parameters for the leaf nodes.
+                If a single callable, its output should be a dictionary containing ``l`` as a key, and the value should be
+                a floating point, a list of floats or a one-dimensional NumPy array or PyTorch tensor, containing the success probabilities greater than or equal to 0.0.
+                If it is a single floating point value, the same value is reused for all leaf nodes.
+                If a list of callables, each one should return a dictionary containing ``l`` as a key, and the value should
+                be a floating point value greater than or equal to 0.0.
+
+        Raises:
+            ValueError: If list of callables does not match number of nodes represented by the layer.
+        """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
             raise ValueError("'CondPoissonLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
 
         self.cond_f = cond_f
 
     def dist(self, l: torch.Tensor, node_ids: Optional[List[int]]=None) -> D.Distribution:
+        r"""Returns the PyTorch distributions represented by the leaf layer.
 
+        Args:
+            l:
+                One-dimensional PyTorch tensor representing the rate parameters of all distributions, greater or equal to 0.0 (not just the ones specified by ``node_ids``).
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
+
+        Returns:
+            ``torch.distributions.Poisson`` instances.
+        """
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
         return D.Poisson(rate=l[node_ids])
     
     def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> torch.Tensor:
+        r"""Retrieves the conditional parameters of the leaf layer.
 
+        First, checks if conditional parameter (``l``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function or list of functions (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
+
+        Args:
+            data:
+                Two-dimensional NumPy array containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            One-dimensional PyTorch tensor representing the rate parameters.
+        
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         l, cond_f = None, None
 
         # check dispatch cache for required conditional parameter 'l'
@@ -116,24 +188,29 @@ class CondPoissonLayer(Module):
 
         return l
     
-    def get_params(self) -> Tuple:
-        return tuple([])
-    
     def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the Poisson distribution.
+        r"""Checks if specified data is in support of the represented distributions.
+
+        Determines whether or note instances are part of the supports of the Poisson distributions, which are:
 
         .. math::
 
-            TODO
+            \text{supp}(\text{Poisson})=\mathbb{N}\cup\{0\}
 
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
-            data:
-                Torch tensor containing possible distribution instances.
-            node_ids: TODO
+            TODO
+            scope_data:
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
+
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two dimensional PyTorch tensor indicating for each instance and node, whether they are part of the support (True) or not (False).
+            Each row corresponds to an input sample.
         """
         if node_ids is None:
             node_ids = list(range(self.n_out))
@@ -156,7 +233,7 @@ class CondPoissonLayer(Module):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: CondPoissonLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondPoissonLayer, CondPoisson, None]:
     """TODO"""
     # initialize dispatch context
@@ -183,13 +260,29 @@ def marginalize(layer: CondPoissonLayer, marg_rvs: Iterable[int], prune: bool=Tr
         return CondPoissonLayer(scope=marginalized_scopes)
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(layer: BaseCondPoissonLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondPoissonLayer:
+    """Conversion for ``CondPoissonLayer`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondPoissonLayer(scope=layer.scopes_out)
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toBase(torch_layer: CondPoissonLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondPoissonLayer:
+    """Conversion for ``CondPoissonLayer`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondPoissonLayer(scope=torch_layer.scopes_out)

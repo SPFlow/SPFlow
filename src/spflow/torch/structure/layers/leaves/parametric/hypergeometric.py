@@ -210,6 +210,7 @@ class HypergeometricLayer(Module):
             scope_data:
                 Two-dimensional PyTorch tensor containing sample instances.
                 Each row is regarded as a sample.
+
         Returns:
             Two dimensional PyTorch tensor indicating for each instance and node, whether they are part of the support (True) or not (False).
             Each row corresponds to an input sample.

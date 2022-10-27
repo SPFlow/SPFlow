@@ -1,7 +1,5 @@
-"""
-Created on October 22, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Multivariate Gaussian leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
 from functools import reduce
@@ -19,16 +17,61 @@ from spflow.base.structure.layers.leaves.parametric.cond_multivariate_gaussian i
 
 
 class CondMultivariateGaussianLayer(Module):
-    """Layer representing multiple conditional multivariate gaussian leaf nodes in the Torch backend.
+    r"""Layer of multiple conditional multivariate Gaussian distribution leaf node in the ``torch`` backend.
 
-    Args:
-        scope: TODO
-        cond_f: TODO
-        n_nodes: number of output nodes.
+    Represents multiple conditional multivariate Gaussian distributions with independent scopes, each with the following probability distribution function (PDF):
+
+    .. math::
+
+        \text{PDF}(x) = \frac{1}{\sqrt{(2\pi)^d\det\Sigma}}\exp\left(-\frac{1}{2} (x-\mu)^T\Sigma^{-1}(x-\mu)\right)
+
+    where
+        - :math:`d` is the dimension of the distribution
+        - :math:`x` is the :math:`d`-dim. vector of observations
+        - :math:`\mu` is the :math:`d`-dim. mean vector
+        - :math:`\Sigma` is the :math:`d\times d` covariance matrix
+
+    Attributes:
+        cond_f:
+            Optional callable or list of callables to retrieve parameters for the leaf nodes.
+            If a single callable, its output should be a dictionary contain ``mean``,``cov`` as keys.
+            The value for ``mean`` should be a list of floats, list of lists of floats, a one-dimensional NumPy array or PyTorch tensor, or a list of one-dimensional NumPy arrays or PyTorch tensors
+            containing the means of the distributions. If a list of floats or a one-dimensional NumPy array or PyTorch tensor is given, it is broadcast to all nodes.
+            The value for ``cov`` should be a list of lists of floats, a list of list of list of floats, a two-dimensional NumPy array or PyTorch tensor, or a list of two-dimensional NumPy arrays or PyTorch tensors
+            containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats or one-dimensional NumPy array or PyTorch is given, it is broadcast to all nodes.
+            If ``cond_f`` is a list of callables, each one should return a dictionary containing ``mean``,``cov`` as keys.
+            The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array or PyTorch Tensor
+            containing the means.
+            The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array or PyTorch tensor
+            containing a symmetric positive semi-definite covariance matrix.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``CondMultivariateGaussian`` objects for the nodes in this layer.
     """
     def __init__(self, scope: Union[Scope, List[Scope]], cond_f: Optional[Union[Callable,List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
-        """TODO"""
-        
+        r"""Initializes ``CondMultivariateGaussianLayer`` object.
+
+        Args:
+            scope:
+                Scope or list of scopes specifying the scopes of the individual distribution.
+                If a single scope is given, it is used for all nodes.
+            cond_f:
+                Optional callable or list of callables to retrieve parameters for the leaf nodes.
+                If a single callable, its output should be a dictionary contain ``mean``,``cov`` as keys.
+                The value for ``mean`` should be a list of floats, list of lists of floats, a one-dimensional NumPy array or PyTorch tensor, or a list of one-dimensional NumPy arrays or PyTorch tensors
+                containing the means of the distributions. If a list of floats or a one-dimensional NumPy array or PyTorch tensor is given, it is broadcast to all nodes.
+                The value for ``cov`` should be a list of lists of floats, a list of list of list of floats, a two-dimensional NumPy array or PyTorch tensor, or a list of two-dimensional NumPy arrays or PyTorch tensors
+                containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats or one-dimensional NumPy array or PyTorch is given, it is broadcast to all nodes.
+                If ``cond_f`` is a list of callables, each one should return a dictionary containing ``mean``,``cov`` as keys.
+                The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array or PyTorch Tensor
+                containing the means.
+                The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array or PyTorch tensor
+                containing a symmetric positive semi-definite covariance matrix.
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
+                Defaults to 1.
+        """
         if isinstance(scope, Scope):
             if n_nodes < 1:
                 raise ValueError(f"Number of nodes for 'CondMultivariateGaussianLayer' must be greater or equal to 1, but was {n_nodes}")
@@ -54,24 +97,76 @@ class CondMultivariateGaussianLayer(Module):
 
     @property
     def n_out(self) -> int:
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
     
     def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+        r"""Sets the ``cond_f`` property.
 
+        Args:
+            cond_f:
+                Optional callable or list of callables to retrieve parameters for the leaf nodes.
+                If a single callable, its output should be a dictionary contain ``mean``,``cov`` as keys.
+                The value for ``mean`` should be a list of floats, list of lists of floats, a one-dimensional NumPy array or PyTorch tensor, or a list of one-dimensional NumPy arrays or PyTorch tensors
+                containing the means of the distributions. If a list of floats or a one-dimensional NumPy array or PyTorch tensor is given, it is broadcast to all nodes.
+                The value for ``cov`` should be a list of lists of floats, a list of list of list of floats, a two-dimensional NumPy array or PyTorch tensor, or a list of two-dimensional NumPy arrays or PyTorch tensors
+                containing the symmetric positive semi-definite covariance matrices.  If a list of lists of floats or one-dimensional NumPy array or PyTorch is given, it is broadcast to all nodes.
+                If ``cond_f`` is a list of callables, each one should return a dictionary containing ``mean``,``cov`` as keys.
+                The value for ``mean`` should be a list of floating point values or one-dimensional NumPy array or PyTorch Tensor
+                containing the means.
+                The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array or PyTorch tensor
+                containing a symmetric positive semi-definite covariance matrix.
+
+        Raises:
+            ValueError: If list of callables does not match number of nodes represented by the layer.
+        """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
             raise ValueError("'CondMultivariateGaussianLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
 
         self.cond_f = cond_f
 
     def dist(self, mean: List[torch.Tensor], cov: List[torch.Tensor], node_ids: Optional[List[int]]=None) -> List[D.Distribution]:
-    
+        r"""Returns the PyTorch distributions represented by the leaf layer.
+
+        Args:
+            mean:
+                List of one-dimensional PyTorch tensors representing the means of all distributions (not just the ones specified by ``node_ids``).
+            cov:
+                List of two-dimensional PyTorch tensors representing the covariance matrices of all distributions (not just the ones specified by ``node_ids``).
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
+
+        Returns:
+            List of ``torch.distributions.MultivariateNormal`` instances.
+        """
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
         return [self.nodes[i].dist(mean[i], cov[i]) for i in node_ids]
     
     def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
+        r"""Retrieves the conditional parameters of the leaf layer.
 
+        First, checks if conditional parameters (``mean``,``cov``) are passed as additional arguments in the dispatch context.
+        Secondly, checks if a function or list of functions (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
+
+        Args:
+            data:
+                Two-dimensional NumPy array containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            Tuple of two lists of PyTorch tensors.
+            The first list contains one-dimensional PyTorch tensors representing the means.
+            The second list contains two-dimensional PyTorch tensors representing the covariance matrices.
+        
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         mean, cov, cond_f = None, None, None
 
         # check dispatch cache for required conditional parameters 'mean','cov'
@@ -168,33 +263,56 @@ class CondMultivariateGaussianLayer(Module):
                 raise ValueError(f"Dimensions of a covariance matrix for 'CondMultivariateGaussianLayer' do not match corresponding scope size.")
 
         return mean, cov
-
-    def get_params(self) -> Tuple:
-        return tuple([])
     
     def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the MultivariateGaussian distribution.
+        r"""Checks if specified data is in support of the represented distributions.
+
+        Determines whether or note instances are part of the supports of the Multivariate Gaussian distributions, which are:
 
         .. math::
 
-            TODO
-
+            \text{supp}(\text{MultivariateGaussian})=(-\infty,+\infty)^k
+        
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
-            data:
-                Torch tensor containing possible distribution instances.
-            node_ids: TODO
-        Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
-        """
+            TODO
+            scope_data:
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
 
+        Returns:
+            Two dimensional PyTorch tensor indicating for each instance and node, whether they are part of the support (True) or not (False).
+            Each row corresponds to an input sample.
+        """
         return [node.check_support(data) for node in self.nodes]
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: CondMultivariateGaussianLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussianLayer, CondMultivariateGaussian, CondGaussian, None]:
-    """TODO"""
+    """Structural marginalization for ``CondMultivariateGaussianLayer`` objects in the ``torch`` backend.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        Unaltered leaf layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -218,13 +336,29 @@ def marginalize(layer: CondMultivariateGaussianLayer, marg_rvs: Iterable[int], p
         return new_layer
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(layer: BaseCondMultivariateGaussianLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondMultivariateGaussianLayer:
+    """Conversion for ``CondMultivariateGaussianLayer`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondMultivariateGaussianLayer(scope=layer.scopes_out)
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toBase(torch_layer: CondMultivariateGaussianLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondMultivariateGaussianLayer:
+    """Conversion for ``CondMultivariateGaussianLayer`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        layer:
+            Leaf to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondMultivariateGaussianLayer(scope=torch_layer.scopes_out)
