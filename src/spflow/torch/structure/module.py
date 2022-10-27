@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Contains the abstract 'Module' class for SPFlow modules in the 'torch' backend.
+"""Contains the abstract ``Module`` class for SPFlow modules in the 'torch' backend.
 
-All valid SPFlow modules in the 'torch' backend should inherit from this class or a subclass of it.
+All valid SPFlow modules in the ``torch`` backend should inherit from this class or a subclass of it.
 """
 from abc import ABC
 from typing import List, Tuple, Optional, Union

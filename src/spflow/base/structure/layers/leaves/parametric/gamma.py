@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Gamma leaf layer for SPFlow in the 'base' backend.
+"""Contains Gamma leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
 
 
 class GammaLayer(Module):
-    r"""Layer of multiple (univariate) Gamma distribution leaf nodes in the 'base' backend.
+    r"""Layer of multiple (univariate) Gamma distribution leaf nodes in the ``base`` backend.
 
     Represents multiple univariate Gamma distributions with independent scopes, each with the following probability distribution function (PDF):
 
@@ -143,7 +143,7 @@ class GammaLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: GammaLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[GammaLayer, Gamma, None]:
-    r"""Structural marginalization for ``GammaLayer`` objects.
+    r"""Structural marginalization for ``GammaLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

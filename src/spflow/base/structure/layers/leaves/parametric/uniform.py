@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Uniform leaf node for SPFlow in the 'base' backend.
+"""Contains conditional Uniform leaf node for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
 
 
 class UniformLayer(Module):
-    r"""Layer of multiple (univariate) continuous Uniform distribution leaf nodes in the 'base' backend.
+    r"""Layer of multiple (univariate) continuous Uniform distribution leaf nodes in the ``base`` backend.
 
     Represents multiple univariate Poisson distributions with independent scopes, each with the following probability distribution function (PDF):
 
@@ -93,7 +93,7 @@ class UniformLayer(Module):
         return np.array([node.support_outside for node in self.nodes])
 
     def set_params(self, start: Union[int, float, List[float], np.ndarray], end: Union[int, float, List[float], np.ndarray], support_outside: Union[bool, List[bool], np.ndarray]=True) -> None:
-        """Sets the parameters for the represented distributions.
+        """Sets the parameters for the represented distributions in the ``base`` backend.
 
         Args:
             start:

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Hypergeometric leaf layer for SPFlow in the 'base' backend.
+"""Contains Hypergeometric leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hyperge
 
 
 class HypergeometricLayer(Module):
-    r"""Layer of multiple (univariate) Hypergeometric distribution leaf node in the 'base' backend.
+    r"""Layer of multiple (univariate) Hypergeometric distribution leaf node in the ``base`` backend.
 
     Represents multiple univariate Hypergeometric distributions with independent scopes, each with the following probability mass function (PMF):
 
@@ -195,7 +195,7 @@ class HypergeometricLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: HypergeometricLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[HypergeometricLayer, Hypergeometric, None]:
-    """Structural marginalization for ``HypergeometricLayer`` objects.
+    """Structural marginalization for ``HypergeometricLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

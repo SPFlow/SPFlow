@@ -28,7 +28,7 @@ class Gaussian(LeafNode):
         - :math:`\mu` is the mean
         - :math:`\sigma` is the standard deviation
 
-    Internally :math:`\mu,\sigma` are represented as unbounded parameters that are projected onto the bounded range :math:`(0,\infty)` for representing the actual shape and rate parameters, respectively.
+    Internally :math:`\mu,\sigma` are represented as unbounded parameters that are projected onto the bounded range :math:`(0,\infty)` for representing the actual mean and standard deviation, respectively.
 
     Attributes:
         mean:

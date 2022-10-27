@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Gaussian leaf layer for SPFlow in the 'base' backend.
+"""Contains Gaussian leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 
 
 class GaussianLayer(Module):
-    r"""Layer of multiple (univariate) Gaussian distribution leaf nodes in the 'base' backend.
+    r"""Layer of multiple (univariate) Gaussian distribution leaf nodes in the ``base`` backend.
 
     Represents multiple univariate Gaussian distributions with independent scopes, each with the following probability distribution function (PDF):
 
@@ -141,7 +141,7 @@ class GaussianLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: GaussianLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[GaussianLayer, Gaussian, None]:
-    r"""Structural marginalization for ``GaussianLayer`` objects.
+    r"""Structural marginalization for ``GaussianLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

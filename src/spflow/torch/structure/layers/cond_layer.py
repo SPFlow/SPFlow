@@ -1,7 +1,7 @@
-"""
-Created on October 24, 2022
+# -*- coding: utf-8 -*-
+"""Contains basic conditional layer classes for SPFlow in the ``torch`` backend.
 
-@authors: Philipp Deibert
+Contains classes for layers of conditional SPN-like sum- and product nodes.
 """
 from typing import List, Union, Optional, Iterable, Callable
 from copy import deepcopy
@@ -17,16 +17,50 @@ from spflow.base.structure.layers.cond_layer import SPNCondSumLayer as BaseSPNCo
 
 
 class SPNCondSumLayer(Module):
-    """Layer representing multiple conditional SPN-like sum nodes over all children.
+    r"""Layer representing multiple SPN-like sum nodes over all children in the ``torch`` backend.
 
-    Args:
-        n: number of output nodes.
-        children: list of child modules.
-        cond_f: TODO
+    Represents multiple convex combinations of its children over the same scope.
+
+    Methods:
+        children():
+            Iterator over all modules that are children to the module in a directed graph.
+
+    Attributes:
+        cond_f:
+            Optional callable or list of callables to retrieve weights for the sum nodes.
+            If a single callable, its output should be a dictionary containing ``weights`` as a key, and the value should be
+            a list of floats, list of lists of floats, one- to two-dimensional NumPy array or PyTorch tensor,
+            containing non-negative weights. There should be weights for each of the node and inputs.
+            Each row corresponds to a sum node and values should sum up to one. If it is a list of floats
+            or one-dimensional NumPy array, the same weights are reused for all sum nodes.
+            If a list of callables, each one should return a dictionary containing ``weights`` as a key, and the value should
+            be a list of floats or a one-dimensional NumPy array or PyTorch tensor containing non-zero values, summing up to one.
+        n_out:
+            Integer indicating the number of outputs. Equal to the number of nodes represented by the layer.
+        scopes_out:
+            List of scopes representing the output scopes.
+        nodes:
+            List of ``SPNSumNode`` objects for the nodes in this layer.
     """
     def __init__(self, n_nodes: int, children: List[Module], cond_f: Optional[Union[Callable,List[Callable]]]=None, **kwargs) -> None:
-        """TODO"""
+        r"""Initializes ``SPNCondSumLayer`` object.
 
+        Args:
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent.
+            cond_f:
+                Optional callable or list of callables to retrieve weights for the sum nodes.
+                If a single callable, its output should be a dictionary containing ``weights`` as a key, and the value should be
+                a list of floats, list of lists of floats, one- to two-dimensional NumPy array or PyTorch tensor,
+                containing non-negative weights. There should be weights for each of the node and inputs.
+                Each row corresponds to a sum node and values should sum up to one. If it is a list of floats
+                or one-dimensional NumPy array, the same weights are reused for all sum nodes.
+                If a list of callables, each one should return a dictionary containing ``weights`` as a key, and the value should
+                be a list of floats or a one-dimensional NumPy array or PyTorch tensor containing non-zero values, summing up to one.
+
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if(n_nodes < 1):
             raise ValueError("Number of nodes for 'SPNCondSumLayer' must be greater of equal to 1.")
 
@@ -57,23 +91,56 @@ class SPNCondSumLayer(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module."""
+        """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
+
+    @property
+    def scopes_out(self) -> List[Scope]:
+        """Returns the output scopes this layer represents."""
+        return [self.scope for _ in range(self.n_out)]
     
     def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+        r"""Sets the ``cond_f`` property.
 
+        Args:
+            cond_f:
+                Optional callable or list of callables to retrieve weights for the sum nodes.
+                If a single callable, its output should be a dictionary containing ``weights`` as a key, and the value should be
+                a list of floats, list of lists of floats, one- to two-dimensional NumPy array or PyTorch tensor,
+                containing non-negative weights. There should be weights for each of the node and inputs.
+                Each row corresponds to a sum node and values should sum up to one. If it is a list of floats
+                or one-dimensional NumPy array, the same weights are reused for all sum nodes.
+                If a list of callables, each one should return a dictionary containing ``weights`` as a key, and the value should
+                be a list of floats or a one-dimensional NumPy array or PyTorch tensor containing non-zero values, summing up to one.
+
+        Raises:
+            ValueError: If list of callables does not match number of nodes represented by the layer.
+        """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
             raise ValueError("'SPNCondSumLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
 
         self.cond_f = cond_f
-    
-    @property
-    def scopes_out(self) -> List[Scope]:
-        """TODO"""
-        return [self.scope for _ in range(self.n_out)]
 
     def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> torch.Tensor:
-        """TODO"""
+        r"""Retrieves the conditional parameters of the leaf node.
+
+        First, checks if conditional parameter (``weights``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function or list of functions (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameter.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
+
+        Args:
+            data:
+                Two-dimensional NumPy array containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            Two-dimensional PyTorch tensor of non-zero weights summing up to one per row.
+        
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         weights, cond_f = None, None
 
         # check dispatch cache for required conditional parameter 'weights'
@@ -135,9 +202,29 @@ class SPNCondSumLayer(Module):
         return weights
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(layer: SPNCondSumLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[None, SPNCondSumLayer]:
-    """TODO"""
+    """Structural marginalization for conditional SPN-like sum layer objects in the ``torch`` backend.
+
+    Structurally marginalizes the specified layer module.
+    If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
+    If the layer's scope is fully marginalized over, then None is returned.
+    If the layer's scope is partially marginalized over, then a new sum layer over the marginalized child modules is returned.
+
+    Args:
+        layer:
+            Layer module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+        (Marginalized) sum layer or None if it is completely marginalized.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -167,13 +254,29 @@ def marginalize(layer: SPNCondSumLayer, marg_rvs: Iterable[int], prune: bool=Tru
         return deepcopy(layer)
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toBase(sum_layer: SPNCondSumLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNCondSumLayer:
+    """Conversion for ``SPNCondSumLayer`` from ``torch`` backend to ``base`` backend.
+    
+    Args:
+        sum_layer:
+            Layer to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseSPNCondSumLayer(n_nodes=sum_layer.n_out, children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()])
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(sum_layer: BaseSPNCondSumLayer, dispatch_ctx: Optional[DispatchContext]=None) -> SPNCondSumLayer:
+    """Conversion for ``SPNCondSumLayer`` from ``base`` backend to ``torch`` backend.
+    
+    Args:
+        sum_layer:
+            Layer to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return SPNCondSumLayer(n_nodes=sum_layer.n_out, children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children])

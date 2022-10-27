@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Poisson leaf layer for SPFlow in the 'base' backend.
+"""Contains Poisson leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.poisson import Poisson
 
 
 class PoissonLayer(Module):
-    r"""Layer of multiple (univariate) Poisson distribution leaf node in the 'base' backend.
+    r"""Layer of multiple (univariate) Poisson distribution leaf node in the ``base`` backend.
 
     Represents multiple univariate Poisson distributions with independent scopes, each with the following probability mass function (PMF):
 
@@ -105,7 +105,7 @@ class PoissonLayer(Module):
         """Returns the parameters of the represented distribution.
 
         Returns:
-            One-dimensional NumPy arrays representing the rate parameters.
+            One-dimensional NumPy array representing the rate parameters.
         """
         return (self.l,)
     
@@ -116,7 +116,7 @@ class PoissonLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: PoissonLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[PoissonLayer, Poisson, None]:
-    r"""Structural marginalization for ``PoissonLayer`` objects.
+    r"""Structural marginalization for ``PoissonLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

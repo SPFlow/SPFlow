@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Log-Normal leaf layer for SPFlow in the 'base' backend.
+"""Contains Log-Normal leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.log_normal import LogNormal
 
 
 class LogNormalLayer(Module):
-    r"""Layer of multiple (univariate) Log-Normal distribution leaf nodes in the 'base' backend.
+    r"""Layer of multiple (univariate) Log-Normal distribution leaf nodes in the ``base`` backend.
 
     Represents multiple univariate Log-Normal distributions with independent scopes, each with the following probability distribution function (PDF):
 
@@ -141,7 +141,7 @@ class LogNormalLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: LogNormalLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[LogNormalLayer, LogNormal, None]:
-    r"""Structural marginalization for ``LogNormalLayer`` objects.
+    r"""Structural marginalization for ``LogNormalLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

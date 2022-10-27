@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains basic conditional layer classes for SPFlow in the 'base' backend.
+"""Contains basic conditional layer classes for SPFlow in the ``base`` backend.
 
 Contains classes for layers of conditional SPN-like sum- and product nodes.
 """
@@ -7,7 +7,6 @@ from typing import List, Union, Optional, Iterable, Callable
 from copy import deepcopy
 
 import numpy as np
-import itertools
 
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -17,7 +16,7 @@ from spflow.base.structure.nodes.cond_node import SPNCondSumNode
 
 
 class SPNCondSumLayer(NestedModule):
-    r"""Layer representing multiple SPN-like sum nodes over all children in the 'base' backend.
+    r"""Layer representing multiple SPN-like sum nodes over all children in the ``base`` backend.
 
     Represents multiple convex combinations of its children over the same scope.
 
@@ -26,12 +25,12 @@ class SPNCondSumLayer(NestedModule):
             Non-empty list of modules that are children to the node in a directed graph.
         cond_f:
             Optional callable or list of callables to retrieve weights for the sum nodes.
-            If a single callable, its output should be a dictionary containing 'weights' as a key, and the value should be
+            If a single callable, its output should be a dictionary containing ``weights`` as a key, and the value should be
             a list of floats, list of lists of floats or one- to two-dimensional NumPy array,
             containing non-negative weights. There should be weights for each of the node and inputs.
             Each row corresponds to a sum node and values should sum up to one. If it is a list of floats
             or one-dimensional NumPy array, the same weights are reused for all sum nodes.
-            If a list of callables, each one should return a dictionary containing 'weights' as a key, and the value should
+            If a list of callables, each one should return a dictionary containing ``weights`` as a key, and the value should
             be a list of floats or a one-dimensional NumPy array containing non-zero values, summing up to one.
         n_out:
             Integer indicating the number of outputs. Equal to the number of nodes represented by the layer.
@@ -196,7 +195,7 @@ class SPNCondSumLayer(NestedModule):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: SPNCondSumLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNCondSumLayer, Module, None]:
-    """Structural marginalization for conditional SPN-like sum layer objects.
+    """Structural marginalization for conditional SPN-like sum layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.

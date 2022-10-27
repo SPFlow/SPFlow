@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Geometric leaf layer for SPFlow in the 'base' backend.
+"""Contains Geometric leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
@@ -12,7 +12,7 @@ from spflow.base.structure.nodes.leaves.parametric.geometric import Geometric
 
 
 class GeometricLayer(Module):
-    r"""Layer of multiple (univariate) Geometric distribution leaf nodes in the 'base' backend.
+    r"""Layer of multiple (univariate) Geometric distribution leaf nodes in the ``base`` backend.
 
     Represents multiple univariate Geometric distributions with independent scopes, each with the following probability mass function (PMF):
 
@@ -116,7 +116,7 @@ class GeometricLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(layer: GeometricLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[GeometricLayer, Geometric, None]:
-    r"""Structural marginalization for ``GeometricLayer`` objects.
+    r"""Structural marginalization for ``GeometricLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
