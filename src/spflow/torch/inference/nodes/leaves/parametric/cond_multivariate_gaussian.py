@@ -1,7 +1,5 @@
-"""
-Created on October 20, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains inference methods for ``CondMultivariateGaussian`` nodes for SPFlow in the ``torch`` backend.
 """
 import torch
 import torch.distributions as D
@@ -11,9 +9,37 @@ from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_
 from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import CondMultivariateGaussian
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignores
 def log_likelihood(leaf: CondMultivariateGaussian, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
-    
+    r"""Computes log-likelihoods for ``CondMultivariateGaussian`` node given input data in the ``torch`` backend.
+
+    Log-likelihood for ``CondMultivariateGaussian`` is given by the logarithm of its probability distribution function (PDF):
+
+    .. math::
+
+        \log(\text{PDF}(x)) = \log(\frac{1}{\sqrt{(2\pi)^d\det\Sigma}}\exp\left(-\frac{1}{2} (x-\mu)^T\Sigma^{-1}(x-\mu)\right))
+
+    where
+        - :math:`d` is the dimension of the distribution
+        - :math:`x` is the :math:`d`-dim. vector of observations
+        - :math:`\mu` is the :math:`d`-dim. mean vector
+        - :math:`\Sigma` is the :math:`d\times d` covariance matrix
+
+    Missing values (i.e., NaN) are marginalized over.
+
+    Args:
+        node:
+            Leaf node to perform inference for.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Returns:
+        Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
+        Each row corresponds to an input sample.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     batch_size: int = data.shape[0]

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains inference methods for SPN-like conditional nodes for SPFlow in the 'base' backend.
+"""Contains inference methods for SPN-like conditional nodes for SPFlow in the ``base`` backend.
 """
 import numpy as np
 from scipy.special import logsumexp  # type: ignore
@@ -11,7 +11,7 @@ from spflow.base.structure.nodes.cond_node import SPNCondSumNode
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(sum_node: SPNCondSumNode, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    """Computes log-likelihoods for conditional SPN-like sum node given input data.
+    """Computes log-likelihoods for conditional SPN-like sum node given input data in the ``base`` backend.
 
     Log-likelihood for sum node is the logarithm of the sum of weighted exponentials (LogSumExp) of its input likelihoods (weighted sum in linear space).
     Missing values (i.e., NaN) are marginalized over.

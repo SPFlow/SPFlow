@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains learning methods for ``GeometricLayer`` leaves for SPFlow in the 'base' backend.
+"""Contains learning methods for ``GeometricLayer`` leaves for SPFlow in the ``base`` backend.
 """
 from typing import Optional, Union, Callable
 import numpy as np
@@ -11,7 +11,7 @@ from spflow.base.structure.layers.leaves.parametric.geometric import GeometricLa
 
 @dispatch(memoize=True)  # type: ignore
 def maximum_likelihood_estimation(layer: GeometricLayer, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, dispatch_ctx: Optional[DispatchContext]=None) -> None:
-    r"""Maximum (weighted) likelihood estimation (MLE) of ``GeometricLayer`` leaves' parameters in the 'base' backend.
+    r"""Maximum (weighted) likelihood estimation (MLE) of ``GeometricLayer`` leaves' parameters in the ``base`` backend.
 
     Estimates the success probabilities :math:`p` of each Geometric distribution from data, as follows:
 

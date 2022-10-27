@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains sampling methods for conditional SPN-like nodes for SPFlow in the 'base' backend.
+"""Contains sampling methods for conditional SPN-like nodes for SPFlow in the ``base`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -14,7 +14,7 @@ from typing import Optional
 
 @dispatch  # type: ignore
 def sample(node: SPNCondSumNode, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
-    """Samples from conditional SPN-like sum nodes in the 'base' backend given potential evidence.
+    """Samples from conditional SPN-like sum nodes in the ``base`` backend given potential evidence.
 
     Samples from each input proportionally to its weighted likelihoods given the evidence.
     Missing values (i.e., NaN) are filled with sampled values.

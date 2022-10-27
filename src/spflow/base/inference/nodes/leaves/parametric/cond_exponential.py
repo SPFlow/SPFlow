@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains inference methods for ``CondExponential`` nodes for SPFlow in the 'base' backend.
+"""Contains inference methods for ``CondExponential`` nodes for SPFlow in the ``base`` backend.
 """
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.meta.dispatch.dispatch import dispatch
@@ -11,7 +11,7 @@ import numpy as np
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(node: CondExponential, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    r"""Computes log-likelihoods for ``CondExponential`` node given input data.
+    r"""Computes log-likelihoods for ``CondExponential`` node given input data in the ``base`` backend.
 
     Log-likelihood for ``CondExponential`` is given by the logarithm of its probability distribution function (PDF):
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains the LearnSPN structure and parameter learner for SPFlow in the 'base' backend.
+"""Contains the LearnSPN structure and parameter learner for SPFlow in the ``base`` backend.
 """
 import numpy as np
 from functools import partial
@@ -15,7 +15,7 @@ from sklearn.cluster import KMeans
 
 
 def partition_by_rdc(data: np.ndarray, threshold: float=0.3, preprocessing: Optional[Callable]=None) -> np.ndarray:
-    """Performs partitioning usig randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the 'base' backend.
+    """Performs partitioning usig randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``base`` backend.
 
     Args:
         data:
@@ -23,7 +23,7 @@ def partition_by_rdc(data: np.ndarray, threshold: float=0.3, preprocessing: Opti
             Each row corresponds to a sample.
         threshold:
             Floating point value specifying the threshold for independence testing between two features.
-            Defaults to 0.3
+            Defaults to 0.3.
         preprocessing:
             Optional callable that is called with ``data`` and returns another NumPy array of the same shape.
             Defaults to None.
@@ -53,7 +53,7 @@ def partition_by_rdc(data: np.ndarray, threshold: float=0.3, preprocessing: Opti
 
 
 def cluster_by_kmeans(data: np.ndarray, n_clusters: int=2, preprocessing: Optional[Callable]=None) -> np.ndarray:
-    """Performs clustering usig k-Means to be used with the LearnSPN algorithm in the 'base' backend.
+    """Performs clustering usig k-Means to be used with the LearnSPN algorithm in the ``base`` backend.
 
     Args:
         data:
@@ -83,7 +83,7 @@ def cluster_by_kmeans(data: np.ndarray, n_clusters: int=2, preprocessing: Option
 
 
 def learn_spn(data: np.ndarray, scope: Optional[Scope]=None, min_features_slice: int=2, min_instances_slice: int=100, fit_params: bool=True, clustering_method: Union[str, Callable]="kmeans", partitioning_method: Union[str, Callable]="rdc", clustering_args: Optional[Dict[str, Any]]=None, partitioning_args: Optional[Dict[str, Any]]=None) -> Module:
-    """LearnSPN structure and parameter learner for the 'base' backend.
+    """LearnSPN structure and parameter learner for the ``base`` backend.
 
     LearnSPN algorithm as described in (Gens & Domingos, 2013): "Learning the Structure of Sum-Product Networks".
 

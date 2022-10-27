@@ -1,7 +1,5 @@
-"""
-Created on October 24, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains inference methods for SPN-like conditional layers for SPFlow in the ``torch`` backend.
 """
 import torch
 import numpy as np
@@ -11,9 +9,26 @@ from spflow.meta.dispatch.dispatch import dispatch
 from spflow.torch.structure.layers.cond_layer import SPNCondSumLayer
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def log_likelihood(sum_layer: SPNCondSumLayer, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
-    """TODO"""
+    """Computes log-likelihoods for conditional SPN-like sum layers given input data in the ``torch`` backend.
+
+    Log-likelihoods for sum nodes are the logarithm of the sum of weighted exponentials (LogSumExp) of its input likelihoods (weighted sum in linear space).
+    Missing values (i.e., NaN) are marginalized over.
+
+    Args:
+        sum_layer:
+            Sum layer to perform inference for.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        dispatch_ctx:
+            Optional dispatch context.
+
+    Returns:
+        Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
+        Each row corresponds to an input sample.
+    """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

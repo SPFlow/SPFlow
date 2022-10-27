@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains sampling methods for modules for SPFlow in the 'base' backend.
+"""Contains sampling methods for modules for SPFlow in the ``base`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -13,7 +13,7 @@ from functools import reduce
 
 @dispatch  # type: ignore
 def sample(module: Module, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    r"""Samples from modules in the 'base' backend without any evidence.
+    r"""Samples from modules in the ``base`` backend without any evidence.
 
     Samples a single instance from the module.
 
@@ -38,7 +38,7 @@ def sample(module: Module, dispatch_ctx: Optional[DispatchContext]=None, samplin
 
 @dispatch  # type: ignore
 def sample(module: Module, n: int, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    r"""Samples specified numbers of instances from modules in the 'base' backend without any evidence.
+    r"""Samples specified numbers of instances from modules in the ``base`` backend without any evidence.
 
     Samples a specified number of instance from the module by creating an empty two-dimensional NumPy array (i.e., filled with NaN values) of appropriate size and filling it.
 
@@ -69,7 +69,7 @@ def sample(module: Module, n: int, dispatch_ctx: Optional[DispatchContext]=None,
 
 @dispatch  # type: ignore
 def sample(placeholder: NestedModule.Placeholder, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
-    r"""Samples from a placeholder modules in the 'base' with potential evidence.
+    r"""Samples from a placeholder modules in the ``base`` with potential evidence.
 
     Samples from the actual inputs represented by the placeholder module.
 

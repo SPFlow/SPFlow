@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains inference methods for ``GaussianLayer`` leaves for SPFlow in the 'base' backend.
+"""Contains inference methods for ``GaussianLayer`` leaves for SPFlow in the ``base`` backend.
 """
 import numpy as np
 from typing import Optional
@@ -10,7 +10,7 @@ from spflow.base.structure.layers.leaves.parametric.gaussian import GaussianLaye
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(layer: GaussianLayer, data: np.ndarray, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
-    r"""Computes log-likelihoods for ``GaussianLayer`` leaves in the 'base' backend given input data.
+    r"""Computes log-likelihoods for ``GaussianLayer`` leaves in the ``base`` backend given input data.
 
     Log-likelihood for ``GaussianLayer`` is given by the logarithm of its individual probability distribution functions (PDFs):
 
