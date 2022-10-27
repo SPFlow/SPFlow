@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Binomial leaf node for SPFlow in the 'base' backend.
+"""Contains Binomial leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional
 import numpy as np
@@ -11,7 +11,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class Binomial(LeafNode):
-    r"""(Univariate) Binomial distribution leaf node in the 'base' backend.
+    r"""(Univariate) Binomial distribution leaf node in the ``base`` backend.
 
     Represents an univariate Binomial distribution, with the following probability mass function (PMF):
 
@@ -49,6 +49,8 @@ class Binomial(LeafNode):
             raise ValueError(f"Evidence scope for 'Binomial' should be empty, but was {scope.evidence}.")
 
         super(Binomial, self).__init__(scope=scope)
+
+        # set parameters
         self.set_params(n, p)
     
     @property

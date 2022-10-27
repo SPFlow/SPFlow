@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Contains the SPFlow architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the 'base' backend.
+"""Contains the SPFlow architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the ``base`` backend.
 """
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.base.structure.rat.region_graph import RegionGraph, Partition, Region, random_region_graph
+from spflow.base.structure.rat.region_graph import RegionGraph, Partition, Region
 from spflow.base.structure.nodes.node import SPNSumNode
 from spflow.base.structure.layers.layer import SPNSumLayer, SPNPartitionLayer, SPNHadamardLayer
 from spflow.base.structure.layers.leaves.parametric.gaussian import GaussianLayer
@@ -14,7 +14,7 @@ from typing import Union, Iterable, Optional, List
 
 
 class RatSPN(Module):
-    r"""Module architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the 'base' backend.
+    r"""Module architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the ``base`` backend.
 
     Constructs a RAT-SPN from a specified ``RegionGraph`` instance.
     For details see (Peharz et al., 2020): "Random Sum-Product Networks: A Simple and Effective Approach to Probabilistic Deep Learning".
@@ -121,9 +121,11 @@ class RatSPN(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(rat_spn: RatSPN, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumLayer, Module, None]:
-    r"""Structural marginalization for ``RatSPN`` objects.
+    r"""Structural marginalization for ``RatSPN`` objects in the ``base`` backend.
 
     Raises a ``NoteImplementedError`` since structural marginalization is not yet supported for RAT-SPNs.
+
+    TODO
 
     Args:
         rat_spn:

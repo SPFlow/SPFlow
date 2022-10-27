@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Multivariate Normal leaf node for SPFlow in the 'base' backend.
+"""Contains conditional Multivariate Normal leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List, Union, Optional, Iterable, Union, Callable
 import numpy as np
@@ -14,7 +14,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondMultivariateGaussian(LeafNode):
-    r"""Conditional Multivariate Gaussian distribution leaf node in the 'base' backend.
+    r"""Conditional Multivariate Gaussian distribution leaf node in the ``base`` backend.
 
     Represents a conditional multivariate Gaussian distribution, with the following probability distribution function (PDF):
 
@@ -96,7 +96,7 @@ class CondMultivariateGaussian(LeafNode):
                 Dispatch context.
 
         Returns:
-            One-dimensional NumPy array of non-zero weights
+            Tuple of a one- and a two-dimensional NumPy array representing the mean and covariance matrix.
         
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
@@ -152,7 +152,7 @@ class CondMultivariateGaussian(LeafNode):
         if np.any(np.isinf(mean)):
             raise ValueError("Value of 'mean' for 'CondMultivariateGaussian' may not contain infinite values.")
         if np.any(np.isnan(mean)):
-            raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' may not contain NaN values.")
+            raise ValueError("Value of 'mean' for 'CondMultivariateGaussian' may not contain NaN values.")
 
         # test whether or not matrix has correct shape
         if cov.ndim != 2 or (
@@ -223,7 +223,7 @@ class CondMultivariateGaussian(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
@@ -244,7 +244,7 @@ class CondMultivariateGaussian(LeafNode):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussian,CondGaussian,None]:
-    """Structural marginalization for node objects.
+    """Structural marginalization for ``CondMultivariateGaussian`` nodes in the ``base`` backend.
 
     Structurally marginalizes the leaf node.
     If the node's scope contains non of the random variables to marginalize, then the node is returned unaltered.

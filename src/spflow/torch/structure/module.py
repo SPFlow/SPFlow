@@ -3,17 +3,16 @@
 
 All valid SPFlow modules in the 'torch' backend should inherit from this class or a subclass of it.
 """
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import List, Tuple, Optional, Union
 import torch
 import torch.nn as nn
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.meta.scope.scope import Scope
 from spflow.meta.structure.module import MetaModule
 
 
 class Module(MetaModule, nn.Module, ABC):
-    """Abstract module class for building graph-based models in the 'torch' backend.
+    r"""Abstract module class for building graph-based models in the ``torch`` backend.
 
     Methods:
         children():
@@ -26,13 +25,13 @@ class Module(MetaModule, nn.Module, ABC):
             List of scopes representing the output scopes.
     """
     def __init__(self, children: Optional[List["Module"]]=None) -> None:
-        """Initializes 'Module' object.
+        r"""Initializes ``Module`` object.
 
         Initializes module by correctly setting its children.
 
         Args:
             children:
-                List of modules that are children to the module in a directed graph.
+                List of modules that are children to the module.
 
         Raises:
             ValueError: children of invalid type.
@@ -57,7 +56,7 @@ class Module(MetaModule, nn.Module, ABC):
 
         Args:
             input_ids:
-                List of integers or one-dimensional NumPy array of integers specifying input indices to the module.
+                List of integers or one-dimensional PyTorch tensor of integers specifying input indices to the module.
 
         Returns:
             A tuple of two lists of integers. The first list contains indices of child modules and the
@@ -91,7 +90,7 @@ class Module(MetaModule, nn.Module, ABC):
 
 
 class NestedModule(Module, ABC):
-    """Convenient abstract module class for modules in the 'torch' backend that nest non-terminal modules.
+    """Convenient abstract module class for modules in the ``torch`` backend that nest non-terminal modules.
 
     Methods:
         children():
@@ -104,13 +103,13 @@ class NestedModule(Module, ABC):
             List of scopes representing the output scopes.
     """
     def __init__(self, children: Optional[List[Module]]=None, **kwargs) -> None:
-        """Initializes 'NestedModule' object.
+        """Initializes ``NestedModule`` object.
 
         Initializes module by correctly setting its children.
 
         Args:
             children:
-                List of modules that are children to this module in a directed graph.
+                List of modules that are children to the module.
         """
         if children is None:
             children = []
@@ -143,7 +142,7 @@ class NestedModule(Module, ABC):
             f_name:
                 String of the function name to set the cache of the placeholders for.
             inputs:
-                NumPy array of all inputs. Inputs to be cached are selected based on input indices the placeholders represent. 
+                PyTorch tensor of all inputs. Inputs to be cached are selected based on input indices the placeholders represent. 
             dispatch_ctx:
                 Dispatch context to use cache of.
             overwrite:
@@ -155,7 +154,7 @@ class NestedModule(Module, ABC):
 
 
     class Placeholder(Module):
-        """Placeholder module as an intermediary module between nested non-terminal modules and actual child modules.
+        """Placeholder module as an intermediary module between nested non-terminal modules and actual child modules in the ``torch`` backend.
 
         Since all non-terminal modules need their children to be specified at creation, internal non-terminal modules would
         have to have the same children as the outer host module. This is not ideal, therefore placeholders can be used instead
@@ -169,7 +168,7 @@ class NestedModule(Module, ABC):
                 List of scopes representing the output scopes (equal to the scopes of the inputs it represents).
         """
         def __init__(self, host: Module, input_ids: List[int]) -> None:
-            """Initializes 'Placeholder' object.
+            """Initializes ``Placeholder`` object.
 
             Initializes module by correctly setting its children.
 
@@ -192,7 +191,7 @@ class NestedModule(Module, ABC):
             # compute scope for placeholder
             self.scopes_out = [child_scopes[i] for i in input_ids]
 
-        def input_to_output_ids(self, input_ids: List[int]) -> Tuple[List[int], List[int]]:
+        def input_to_output_ids(self, input_ids: Union[List[int], torch.Tensor]) -> Tuple[List[int], List[int]]:
             """Translates input indices to the host module into corresponding child module indices and child module output indices.
 
             For a given sequence of input indices to the host module (taking the inputs of all child modules into account), computes
@@ -200,7 +199,7 @@ class NestedModule(Module, ABC):
 
             Args:
                 input_ids:
-                    List of integers or one-dimensional NumPy array of integers specifying input indices to the module.
+                    List of integers or one-dimensional PyTorch tensor of integers specifying input indices to the module.
 
             Returns:
                 A tuple of two lists of integers. The first list contains indices of child modules and the

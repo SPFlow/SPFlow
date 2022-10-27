@@ -1,25 +1,22 @@
-"""
-Created on October 20, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Multivariate Normal leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
 import torch
 import torch.distributions as D
-from torch.nn.parameter import Parameter
-from typing import List, Tuple, Union, Optional, Iterable, Callable
+from typing import Tuple, Union, Optional, Iterable, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.torch.utils.nearest_sym_pd import nearest_sym_pd
 from spflow.torch.structure.nodes.node import LeafNode
 from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import CondGaussian
 from spflow.base.structure.nodes.leaves.parametric.cond_multivariate_gaussian import CondMultivariateGaussian as BaseCondMultivariateGaussian
-import warnings
 
 
 class CondMultivariateGaussian(LeafNode):
-    r"""Conditional multivariate Normal distribution for Torch backend.
+    r"""Conditional Multivariate Gaussian distribution leaf node in the ``torch`` backend.
+
+    Represents a conditional multivariate Gaussian distribution, with the following probability distribution function (PDF):
 
     .. math::
 
@@ -31,25 +28,40 @@ class CondMultivariateGaussian(LeafNode):
         - :math:`\mu` is the :math:`d`-dim. mean vector
         - :math:`\Sigma` is the :math:`d\times d` covariance matrix
 
-    Args:
-        scope:
-            List of integers specifying the variable scope.
+    Attributes
         cond_f:
-            TODO
+            Optional callable to retrieve the conditional parameter for the leaf node.
+            Its output should be a dictionary containing ``mean``,``cov`` as keys.
+            The value for ``mean`` should be a list of floating point values, one-dimensional NumPy array
+            or one-dimensional PyTorch tensor containing the means.
+            The value for ``cov`` should be a list of lists of floating points, two-dimensional NumPy array
+            or two-dimensional PyTorch tensor containing a symmetric positive semi-definite matrix.
     """
     def __init__(
         self,
         scope: Scope,
         cond_f: Optional[Callable]=None,
     ) -> None:
+        r"""Initializes ``CondMultivariateGaussian`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``mean``,``cov`` as keys.
+                The value for ``mean`` should be a list of floating point values, one-dimensional NumPy array
+                or one-dimensional PyTorch tensor containing the means.
+                The value for ``cov`` should be a list of lists of floating points, two-dimensional NumPy array
+                or two-dimensional PyTorch tensor containing a symmetric positive semi-definite matrix.
+        """
         # check if scope contains duplicates
         if(len(set(scope.query)) != len(scope.query)):
-            raise ValueError("Query scope for CondMultivariateGaussian contains duplicate variables.")
+            raise ValueError("Query scope for 'CondMultivariateGaussian' contains duplicate variables.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for CondMultivariateGaussian should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'CondMultivariateGaussian' should be empty, but was {scope.evidence}.")
         if len(scope.query) < 1:
-            raise ValueError("Size of query scope for COndMultivariateGaussian must be at least 1.")
+            raise ValueError("Size of query scope for 'CondMultivariateGaussian' must be at least 1.")
 
         super(CondMultivariateGaussian, self).__init__(scope=scope)
 
@@ -59,9 +71,35 @@ class CondMultivariateGaussian(LeafNode):
         self.set_cond_f(cond_f)
 
     def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+        r"""Sets the function to retrieve the node's conditonal parameter.
+
+        Args:
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``mean``,``cov`` as keys.
+                The value for ``mean`` should be a list of floating point values, one-dimensional NumPy array
+                or one-dimensional PyTorch tensor containing the means.
+                The value for ``cov`` should be a list of lists of floating points, two-dimensional NumPy array
+                or two-dimensional PyTorch tensor containing a symmetric positive semi-definite matrix.
+        """
         self.cond_f = cond_f
 
     def dist(self, mean: torch.Tensor, cov: Optional[torch.Tensor]=None, cov_tril: Optional[torch.Tensor]=None) -> D.Distribution:
+        r"""Returns the PyTorch distribution represented by the leaf node.
+
+        Args:
+            mean:
+                A one-dimensional PyTorch tensor containing the means (:math:`\mu`) of each of the one-dimensional Normal distributions.
+                Must have exactly as many elements as the scope of this leaf.
+                Defaults to all zeros. 
+            cov:
+                A two-dimensional PyTorch tensor (representing a :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
+                of the scope) describing the covariances of the distribution. The diagonal holds the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
+                Defaults to the identity matrix.
+
+        Returns:
+            ``torch.distributions.MultivariateNormal`` instance.
+        """
         if cov is None and cov_tril is None:
             raise ValueError("Calling 'dist' of CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified.")
         elif cov is not None and cov_tril is not None:
@@ -73,7 +111,25 @@ class CondMultivariateGaussian(LeafNode):
             return D.MultivariateNormal(loc=mean, scale_tril=cov_tril)
     
     def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor,Optional[torch.Tensor],Optional[torch.Tensor]]:
-        
+        r"""Retrieves the conditional parameter of the leaf node.
+    
+        First, checks if conditional parameters (``mean``,``cov``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
+
+        Args:
+            data:
+                Two-dimensional PyTorch tensor containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            Tuple of a one- and a two-dimensional PyTorch tensor representing the mean and covariance matrix.
+
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         mean, cov, cov_tril, cond_f = None, None, None, None
         specified_tril = False
 
@@ -138,10 +194,10 @@ class CondMultivariateGaussian(LeafNode):
             # check mean vector for nan or inf values
             if torch.any(torch.isinf(mean)):
                 raise ValueError(
-                    "Mean vector for MultivariateGaussian may not contain infinite values"
+                    "Value of 'mean' for 'CondMultivariateGaussian' may not contain infinite values"
                 )
             if torch.any(torch.isnan(mean)):
-                raise ValueError("Mean vector for MultivariateGaussian may not contain NaN values")
+                raise ValueError("Value of 'mean' for 'CondMultivariateGaussian' may not contain NaN values")
             
             # make sure that number of dimensions matches scope length
             if (
@@ -150,7 +206,7 @@ class CondMultivariateGaussian(LeafNode):
                 or mean.ndim > 2
             ):
                 raise ValueError(
-                    f"Dimensions of mean vector for MultivariateGaussian should match scope size {len(self.scope.query)}, but was: {mean.shape}"
+                    f"Dimensions of 'mean' for 'CondMultivariateGaussian' should match scope size {len(self.scope.query)}, but was: {mean.shape}"
                 )
         
             if(mean.ndim == 2):
@@ -165,17 +221,17 @@ class CondMultivariateGaussian(LeafNode):
                 )
             ):
                 raise ValueError(
-                    f"Covariance matrix for MultivariateGaussian expected to be of shape ({len(self.scope.query), len(self.scope.query)}), but was: {cov.shape}"
+                    f"Value of 'cov' for 'CondMultivariateGaussian' expected to be of shape ({len(self.scope.query), len(self.scope.query)}), but was: {cov.shape}"
                 )
 
             # check covariance matrix for nan or inf values
             if torch.any(torch.isinf(cov)):
                 raise ValueError(
-                    "Covariance matrix vector for MultivariateGaussian may not contain infinite values"
+                    "Value of 'cov for 'CondMultivariateGaussian' may not contain infinite values"
                 )
             if torch.any(torch.isnan(cov)):
                 raise ValueError(
-                    "Covariance matrix for MultivariateGaussian may not contain NaN values"
+                    "Value of 'cov' for 'CondMultivariateGaussian' may not contain NaN values"
                 )
 
             if specified_tril:
@@ -186,18 +242,17 @@ class CondMultivariateGaussian(LeafNode):
                 eigvals = torch.linalg.eigvalsh(cov)
 
             if torch.any(eigvals < 0.0):
-                raise ValueError("Covariance matrix for MultivariateGaussian is not symmetric positive semi-definite (contains negative real eigenvalues).")
+                raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' is not symmetric positive semi-definite (contains negative real eigenvalues).")
 
         if specified_tril:
             return mean, None, cov_tril
         else:
             return mean, cov, None
 
-    def get_params(self) -> Tuple:
-        return tuple([])
-
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the MultivariateGaussian distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Multivariate Gaussian distribution, which is:
 
         .. math::
 
@@ -207,11 +262,11 @@ class CondMultivariateGaussian(LeafNode):
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scopes_out[0].query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scopes_out[0].query)}), but was: {scope_data.shape}"
@@ -224,42 +279,78 @@ class CondMultivariateGaussian(LeafNode):
         valid &= ~scope_data.isinf().sum(dim=1, keepdim=True).bool()
 
         return valid
-    
-    def marginalize(self, marg_rvs: Iterable[int]) -> Union["CondMultivariateGaussian", CondGaussian, None]:
-
-        # scope after marginalization (important: must remain order of scope indices since they map to the indices of the mean vector and covariance matrix!)
-        marg_scope = []
-        marg_scope_ids = []
-
-        for rv in self.scope.query:
-            if rv not in marg_rvs:
-                marg_scope.append(rv)
-                marg_scope_ids.append(self.scope.query.index(rv))
-
-        # return univariate Gaussian if one-dimensional
-        if(len(marg_scope) == 1):
-            return CondGaussian(Scope(marg_scope))
-        # entire node is marginalized over
-        elif len(marg_scope) == 0:
-            return None
-        # node is partially marginalized over
-        else:
-            return CondMultivariateGaussian(Scope(marg_scope))
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussian,CondGaussian,None]:
+    """Structural marginalization for ``CondMultivariateGaussian`` nodes in the ``torch`` backend.
+
+    Structurally marginalizes the leaf node.
+    If the node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
+    If the node's scope is fully marginalized over, then None is returned.
+    If the node's scope is partially marginalized over, a marginal uni- or multivariate Gaussian is returned instead.
+
+    Args:
+        node:
+            Node module to marginalize.
+        marg_rvs:
+            Iterable of integers representing the indices of the random variables to marginalize.
+        prune:
+            Boolean indicating whether or not to prune nodes and modules where possible.
+            Has no effect here. Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    
+    Returns:
+            Unaltered node if module is not marginalized, marginalized uni- or multivariate Gaussian leaf node, or None if it is completely marginalized.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return node.marginalize(marg_rvs)
+
+    # scope after marginalization (important: must remain order of scope indices since they map to the indices of the mean vector and covariance matrix!)
+    marg_scope = []
+    marg_scope_ids = []
+
+    scope = node.scope
+
+    for rv in scope.query:
+        if rv not in marg_rvs:
+            marg_scope.append(rv)
+            marg_scope_ids.append(scope.query.index(rv))
+
+    # return univariate Gaussian if one-dimensional
+    if(len(marg_scope) == 1):
+        return CondGaussian(Scope(marg_scope))
+    # entire node is marginalized over
+    elif len(marg_scope) == 0:
+        return None
+    # node is partially marginalized over
+    else:
+        return CondMultivariateGaussian(Scope(marg_scope))
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(node: BaseCondMultivariateGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> CondMultivariateGaussian:
+    """Conversion for ``CondMultivariateGaussian`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondMultivariateGaussian(node.scope)
 
 
-@dispatch(memoize=True)
-def toBase(torch_node: CondMultivariateGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondMultivariateGaussian:
+@dispatch(memoize=True)  # type: ignore
+def toBase(node: CondMultivariateGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondMultivariateGaussian:
+    """Conversion for ``CondMultivariateGaussian`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseCondMultivariateGaussian(torch_node.scope)
+    return BaseCondMultivariateGaussian(node.scope)

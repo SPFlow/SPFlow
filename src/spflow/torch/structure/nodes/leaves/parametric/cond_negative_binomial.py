@@ -1,7 +1,5 @@
-"""
-Created on October 20, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Negative Binomial leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
 import torch
@@ -16,7 +14,9 @@ from spflow.base.structure.nodes.leaves.parametric.cond_negative_binomial import
 
 
 class CondNegativeBinomial(LeafNode):
-    r"""(Univariate) Negative Binomial distribution for Torch backend.
+    r"""Conditional (univariate) Negative Binomial distribution leaf node in the ``torch`` backend.
+
+    Represents a conditional univariate Negative Binomial distribution, with the following probability mass function (PMF):
 
     .. math::
 
@@ -27,20 +27,31 @@ class CondNegativeBinomial(LeafNode):
         - :math:`n` is the maximum number of successes
         - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
 
-    Args:
-        scope:
-            List of integers specifying the variable scope.
+    Attributes:
         n:
-            Number of i.i.d. successes (greater or equal to 0).
+            Integer representing the number of successes (greater or equal to 0).
         cond_f:
-            TODO
+            Optional callable to retrieve the conditional parameter for the leaf node.
+            Its output should be a dictionary containing ``p`` as a key, and the value should be
+            a floating point, scalar NumPy array or scalar PyTorch tensor representing the success probability in :math:`(0,1]`.
     """
     def __init__(self, scope: Scope, n: int, cond_f: Optional[Callable]=None) -> None:
+        r"""Initializes ``CondBernoulli`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            n:
+                Integer representing the number of successes (greater or equal to 0).
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``p`` as a key, and the value should be
+                a floating point, scalar NumPy array or scalar PyTorch tensor representing the success probability in :math:`(0,1]`.
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for CondNegativeBinomial should be 1, but was: {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'CondNegativeBinomial' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for CondNegativeBinomial should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'CondNegativeBinomial' should be empty, but was {scope.evidence}.")
 
         super(CondNegativeBinomial, self).__init__(scope=scope)
 
@@ -53,14 +64,35 @@ class CondNegativeBinomial(LeafNode):
         self.set_cond_f(cond_f)
 
     def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+        r"""Sets the function to retrieve the node's conditonal parameter.
+
+        Args:
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``p`` as a key, and the value should be
+                a floating point, scalar NumPy array or scalar PyTorch tensor representing the success probability in :math:`(0,1]`.
+        """
         self.cond_f = cond_f
 
     def dist(self, p: torch.Tensor) -> D.Distribution:
-        # note: the distribution is not stored as an attribute due to mismatching parameters after gradient updates (gradients don't flow back to p when initializing with 1.0-p)
+        r"""Returns the PyTorch distribution represented by the leaf node.
+
+        Args:
+            p:
+                Scalar PyTorch tensor representing the success probability of each trial in the range :math:`(0,1]`.
+
+        Returns:
+            ``torch.distributions.NegativeBinomial`` instance.
+        """
         return D.NegativeBinomial(total_count=self.n, probs=torch.ones(1) - p)
 
     def set_params(self, n: int) -> None:
+        """Sets the parameters for the represented distribution.
 
+        Args:
+            n:
+                Integer representing the number of successes (greater or equal to 0).
+        """
         if n < 0 or not np.isfinite(n):
             raise ValueError(
                 f"Value of n for NegativeBinomial distribution must to greater of equal to 0, but was: {n}"
@@ -74,7 +106,25 @@ class CondNegativeBinomial(LeafNode):
         self.n.data = torch.tensor(int(n))  # type: ignore
     
     def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> torch.Tensor:
+        r"""Retrieves the conditional parameter of the leaf node.
+    
+        First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameter.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
+
+        Args:
+            data:
+                Two-dimensional PyTorch tensor containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            Scalar PyTorch tensor representing the success probability.
         
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         p, cond_f = None, None
 
         # check dispatch cache for required conditional parameter 'p'
@@ -105,30 +155,37 @@ class CondNegativeBinomial(LeafNode):
         # check if value for 'p' is valid
         if p <= 0.0 or p > 1.0 or not torch.isfinite(p):
             raise ValueError(
-                f"Value of p for conditional NegativeBinomial distribution must to be between 0.0 (excluding) and 1.0 (including), but was: {p}"
+                f"Value of 'p' for 'CondNegativeBinomial' must to be between 0.0 (excluding) and 1.0 (including), but was: {p}"
             )
         
         return p
 
     def get_params(self) -> Tuple[int]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Integer representing the number of successes (greater or equal to 0).
+        """
         return (self.n.data.cpu().numpy(),)
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the NegativeBinomial distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Negative Binomial distribution, which is:
 
         .. math::
 
             \text{supp}(\text{NegativeBinomial})=\mathbb{N}\cup\{0\}
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
@@ -149,13 +206,29 @@ class CondNegativeBinomial(LeafNode):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(node: BaseCondNegativeBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> CondNegativeBinomial:
+    """Conversion for ``CondNegativeBinomial`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondNegativeBinomial(node.scope, *node.get_params())
 
 
-@dispatch(memoize=True)
-def toBase(torch_node: CondNegativeBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondNegativeBinomial:
+@dispatch(memoize=True)  # type: ignore
+def toBase(node: CondNegativeBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondNegativeBinomial:
+    """Conversion for ``CondNegativeBinomial`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseCondNegativeBinomial(torch_node.scope, *torch_node.get_params())
+    return BaseCondNegativeBinomial(node.scope, *node.get_params())

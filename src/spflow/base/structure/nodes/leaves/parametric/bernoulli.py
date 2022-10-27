@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains Bernoulli leaf node for SPFlow in the 'base' backend.
+"""Contains Bernoulli leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional
 import numpy as np
@@ -11,7 +11,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class Bernoulli(LeafNode):
-    r"""(Univariate) Bernoulli distribution leaf node in the 'base' backend.
+    r"""(Univariate) Bernoulli distribution leaf node in the ``base`` backend.
 
     Represents an univariate Bernoulli distribution, with the following probability mass function (PMF):
 
@@ -37,6 +37,9 @@ class Bernoulli(LeafNode):
             p:
                 Floating point value representing the success probability of the Bernoulli distribution between zero and one.
                 Defaults to 0.5.
+        
+        Raises:
+            ValueError: Invalid arguments.
         """
         if len(scope.query) != 1:
             raise ValueError(f"Query scope size for 'Bernoulli' should be 1, but was {len(scope.query)}.")
@@ -44,8 +47,10 @@ class Bernoulli(LeafNode):
             raise ValueError(f"Evidence scope for 'Bernoulli' should be empty, but was {scope.evidence}.")
 
         super(Bernoulli, self).__init__(scope=scope)
+
+        # set parameters
         self.set_params(p)
-    
+
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.

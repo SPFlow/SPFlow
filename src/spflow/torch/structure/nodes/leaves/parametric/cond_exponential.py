@@ -1,7 +1,5 @@
-"""
-Created on October 20, 2022
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains conditional Binomial leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
 import torch
@@ -17,7 +15,9 @@ from spflow.base.structure.nodes.leaves.parametric.cond_exponential import CondE
 
 
 class CondExponential(LeafNode):
-    r"""Conditional (univariate) Exponential distribution for Torch backend.
+    r"""Conditional (univariate) Exponential distribution leaf node in the ``torch`` backend.
+
+    Represents a conditional univariate Exponential distribution, with the following probability distribution function (PDF):
 
     .. math::
         
@@ -28,28 +28,63 @@ class CondExponential(LeafNode):
         - :math:`x` is the input observation
         - :math:`\lambda` is the rate parameter
     
-    Args:
-        scope:
-            List of integers specifying the variable scope.
+    Attributes:
         cond_f:
-            TODO
+            Optional callable to retrieve the conditional parameter for the leaf node.
+            Its output should be a dictionary containing ``l`` as a key, and the value should be
+            a floating point, scalar NumPy array or scalar PyTorch tensor representing the rate parameter.
     """
     def __init__(self, scope: Scope, cond_f: Optional[Callable]=None) -> None:
+        r"""Initializes ``CondExponential`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``l`` as a key, and the value should be
+                a floating point, scalar NumPy array or scalar PyTorch tensor representing the rate parameter.
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for CondExponential should be 1, but was {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'CondExponential' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for CondExponential should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'CondExponential' should be empty, but was {scope.evidence}.")
 
         super(CondExponential, self).__init__(scope=scope)
 
         self.set_cond_f(cond_f)
     
     def set_cond_f(self, cond_f: Callable) -> None:
+        r"""Sets the function to retrieve the node's conditonal parameter.
+
+        Args:
+            cond_f:
+                Optional callable to retrieve the conditional parameter for the leaf node.
+                Its output should be a dictionary containing ``l`` as a key, and the value should be
+                a floating point, scalar NumPy array or scalar PyTorch tensor representing the rate parameter.
+        """
         self.cond_f = cond_f
 
     def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor]:
-        
+        r"""Retrieves the conditional parameter of the leaf node.
+    
+        First, checks if conditional parameter (``l``) is passed as an additional argument in the dispatch context.
+        Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameter.
+        Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
+
+        Args:
+            data:
+                Two-dimensional PyTorch tensor containing the data to compute the conditional parameters.
+                Each row is regarded as a sample.
+            dispatch_ctx:
+                Dispatch context.
+
+        Returns:
+            Scalar PyTorch tensor representing the rate parameter.
+
+        Raises:
+            ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
+        """
         l, cond_f = None, None
 
         # check dispatch cache for required conditional parameter 'l'
@@ -80,35 +115,41 @@ class CondExponential(LeafNode):
         # check if value for 'l' is valid
         if l <= 0.0 or not torch.isfinite(l):
             raise ValueError(
-                f"Value of l for conditional Exponential distribution must be greater than 0, but was: {l}"
+                f"Value of 'l' for conditional Exponential distribution must be greater than 0, but was: {l}"
             )
 
         return l
 
-    def get_params(self) -> Tuple:
-        return tuple([])
-
     def dist(self, l: torch.Tensor) -> D.Distribution:
+        r"""Returns the PyTorch distribution represented by the leaf node.
+        
+        Args:
+            l:
+                Scalar PyTorch tensor representing the rate parameter (:math:`\lambda`) of the Exponential distribution (must be greater than 0).
+
+        Returns:
+            ``torch.distributions.Exponential`` instance.
+        """
         return D.Exponential(rate=l)
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the Exponential distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Exponential distribution, which is:
 
         .. math::
 
-            \text{supp}(\text{Exponential})=(0,+\infty)
-
-        Note: for PyTorch version < 1.11.0 zero is not part of the support Exponential, even though it is for Exponential.
+            \text{supp}(\text{Exponential})=[0,+\infty)
 
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
@@ -126,13 +167,29 @@ class CondExponential(LeafNode):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(node: BaseCondExponential, dispatch_ctx: Optional[DispatchContext]=None) -> CondExponential:
+    """Conversion for ``CondExponential`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondExponential(node.scope)
 
 
-@dispatch(memoize=True)
-def toBase(torch_node: CondExponential, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondExponential:
+@dispatch(memoize=True)  # type: ignore
+def toBase(node: CondExponential, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondExponential:
+    """Conversion for ``CondExponential`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseCondExponential(torch_node.scope)
+    return BaseCondExponential(node.scope)

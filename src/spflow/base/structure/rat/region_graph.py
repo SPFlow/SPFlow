@@ -26,7 +26,7 @@ class Region:
                 Scope represented by the region.
             partitions:
                 Optional list of ``Partition`` objects belonging to the region.
-                Defaults to None, in which case it is initialized to an empty list.
+                Defaults to ``None``, in which case it is initialized to an empty list.
 
         Raises:
             ValueError: Invalid arguments.

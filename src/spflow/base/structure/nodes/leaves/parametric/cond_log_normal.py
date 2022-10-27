@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contains conditional Log-Normal leaf node for SPFlow in the 'base' backend.
+"""Contains conditional Log-Normal leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Optional, Tuple, Callable, Union
 import numpy as np
@@ -12,7 +12,7 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondLogNormal(LeafNode):
-    r"""Conditional (univariate) Log-Normal distribution leaf node in the 'base' backend.
+    r"""Conditional (univariate) Log-Normal distribution leaf node in the ``base`` backend.
 
     Represents a conditional univariate Log-Normal distribution, with the following probability distribution function (PDF):
 
@@ -77,8 +77,8 @@ class CondLogNormal(LeafNode):
                 Dispatch context.
 
         Returns:
-            One-dimensional NumPy array of non-zero weights
-        
+            Tuple of two floats or scalar NumPy arrays representing the mean and standard deviation.
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -102,7 +102,7 @@ class CondLogNormal(LeafNode):
 
         # if neither 'mean' or 'std' nor 'cond_f' is specified (via node or arguments)
         if (mean is None or std is None) and cond_f is None:
-            raise ValueError("'CondLogNormal' requires either 'alpha' and 'beta' or 'cond_f' to retrieve 'alpha', 'beta' to be specified.")
+            raise ValueError("'CondLogNormal' requires either 'mean' and 'std' or 'cond_f' to retrieve 'alpha', 'beta' to be specified.")
 
         # if 'mean' or 'std' not already specified, retrieve them
         if mean is None or std is None:
@@ -152,7 +152,7 @@ class CondLogNormal(LeafNode):
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
         Returns:
-            Two dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
+            Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
