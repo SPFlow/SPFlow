@@ -168,7 +168,7 @@ def toTorch(node: BaseNegativeBinomial, dispatch_ctx: Optional[DispatchContext]=
     return NegativeBinomial(node.scope, *node.get_params())
 
 
-@dispatch(memoize=True)  # type: ignor
+@dispatch(memoize=True)  # type: ignore
 def toBase(node: NegativeBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseNegativeBinomial:
     """Conversion for ``NegativeBinomial`` from ``torch`` backend to ``base`` backend.
 
