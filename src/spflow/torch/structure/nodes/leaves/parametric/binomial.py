@@ -35,11 +35,11 @@ class Binomial(LeafNode):
         n:
             Scalar PyTorch tensor representing the number of i.i.d. Bernoulli trials (greater or equal to 0).
         p_aux:
-            Unbounded PyTorch parameter that is projected to yield the actual success probability.
+            Unbounded scalar PyTorch parameter that is projected to yield the actual success probability.
         p:
-            Floating point value representing the success probability of the Bernoulli distribution (projected from ``p_aux``).
+            Scalar PyTorch tensor representing the success probability of the Bernoulli distribution (projected from ``p_aux``).
     """
-    def __init__(self, scope: Scope, n: int, p: Optional[float]=0.5) -> None:
+    def __init__(self, scope: Scope, n: int, p: float=0.5) -> None:
         r"""Initializes ``Binomial`` leaf node.
 
         Args:

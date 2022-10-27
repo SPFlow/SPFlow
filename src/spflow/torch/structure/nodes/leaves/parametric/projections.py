@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""TODO.
+"""Projections between unbounded and bounded intervals.
+
+Used for internal projections of PyTorch parameters.
 """
 from typing import Union, Optional
-
 import torch
 
 
@@ -11,9 +12,7 @@ def proj_real_to_bounded(
     lb: Optional[Union[float, torch.Tensor]] = None,
     ub: Optional[Union[float, torch.Tensor]] = None,
 ) -> torch.Tensor:
-    r"""Projects the real numbers onto a bounded interval.
-
-    TODO
+    r"""Projects real numbers onto a bounded interval.
 
     .. math::
 
@@ -35,7 +34,7 @@ def proj_real_to_bounded(
             Float or scalar PyTorch Tensor defining the lower bound (:math:`u`) of the codomain/projection or None (default), in which case the projection is not upper bounded.
     
     Returns:
-        Projected PyTorch tensor.
+        PyTorch tensor of same shape as ``x`` containing the projected values.
     """
     if lb is not None and ub is not None:
         # project to bounded interval
@@ -75,7 +74,7 @@ def proj_bounded_to_real(
             Float or scalar PyTorch Tensor defining the lower bound (:math:`u`) of the domain or None (default), in which case the input domain is not upper bounded.
     
     Returns:
-        Projected PyTorch tensor.
+        PyTorch tensor of same shape as ``x`` containing the projected values.
     """
     if lb is not None and ub is not None:
         # project from bounded interval

@@ -1,13 +1,11 @@
-"""
-Created on November 06, 2021
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Negative Binomial leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from typing import List, Tuple, Optional
+from typing import Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
@@ -17,7 +15,9 @@ from spflow.base.structure.nodes.leaves.parametric.negative_binomial import Nega
 
 
 class NegativeBinomial(LeafNode):
-    r"""(Univariate) Negative Binomial distribution for Torch backend.
+    r"""(Univariate) Negative Binomial distribution leaf node in the 'base' backend.
+
+    Represents an univariate Negative Binomial distribution, with the following probability mass function (PMF):
 
     .. math::
 
@@ -28,20 +28,32 @@ class NegativeBinomial(LeafNode):
         - :math:`n` is the maximum number of successes
         - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
 
-    Args:
-        scope:
-            List of integers specifying the variable scope.
+    Internally :math:`p` is represented as an unbounded parameter that is projected onto the bounded range :math:`[0,1]` for representing the actual success probability.
+
+    Attributes:
         n:
-            Number of i.i.d. successes (greater or equal to 0).
+            Scalar PyTorch tensor representing the number successes (greater or equal to 0).
+        p_aux:
+            Unbounded scalar PyTorch parameter that is projected to yield the actual success probability.
         p:
-            Probability of success for each trial in the range :math:`(0,1]` (default 0.5).
+            Scalar PyTorch tensor representing the success probability (projected from ``p_aux``).
     """
     def __init__(self, scope: Scope, n: int, p: Optional[float]=0.5) -> None:
+        r"""Initializes ``NegativeBinomial`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            n:
+                Integer representing the number of successes (greater or equal to 0).
+            p:
+                Floating point value representing the success probability of each trial in the range :math:`(0,1]`.
+                Defaults to 0.5.
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for NegativeBinomial should be 1, but was: {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'NegativeBinomial' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for NegativeBinomial should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'NegativeBinomial' should be empty, but was {scope.evidence}.")
 
         super(NegativeBinomial, self).__init__(scope=scope)
 
@@ -56,52 +68,72 @@ class NegativeBinomial(LeafNode):
 
     @property
     def p(self) -> torch.Tensor:
+        """TODO"""
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)  # type: ignore
 
     @property
     def dist(self) -> D.Distribution:
+        r"""Returns the PyTorch distribution represented by the leaf node.
+        
+        Returns:
+            ``torch.distributions.NegativeBinomial`` instance.
+        """
         # note: the distribution is not stored as an attribute due to mismatching parameters after gradient updates (gradients don't flow back to p when initializing with 1.0-p)
         return D.NegativeBinomial(total_count=self.n, probs=torch.ones(1) - self.p)
 
     def set_params(self, n: int, p: float) -> None:
+        r"""Sets the parameters for the represented distribution.
 
+        Args:
+            n:
+               Integer representing the number of successes (greater or equal to 0).
+            p:
+                Floating point value representing the success probability of each trial in the range :math:`(0,1]`.
+        """
         if p <= 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
-                f"Value of p for NegativeBinomial distribution must to be between 0.0 and 1.0, but was: {p}"
+                f"Value of 'p' for 'NegativeBinomial' must to be between 0.0 and 1.0, but was: {p}"
             )
         if n < 0 or not np.isfinite(n):
             raise ValueError(
-                f"Value of n for NegativeBinomial distribution must to greater of equal to 0, but was: {n}"
+                f"Value of 'n' for 'NegativeBinomial' must to greater of equal to 0, but was: {n}"
             )
 
         if not (np.remainder(n, 1.0) == 0.0):
             raise ValueError(
-                f"Value of n for NegativeBinomial distribution must be (equal to) an integer value, but was: {n}"
+                f"Value of 'n' for 'NegativeBinomial' must be (equal to) an integer value, but was: {n}"
             )
 
         self.n.data = torch.tensor(int(n))  # type: ignore
         self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)  # type: ignore
 
     def get_params(self) -> Tuple[int, float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the number of successes and the floating point value representing the success probability.
+        """
         return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the NegativeBinomial distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Negative Binomial distribution, which is:
 
         .. math::
 
             \text{supp}(\text{NegativeBinomial})=\mathbb{N}\cup\{0\}
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
@@ -122,13 +154,29 @@ class NegativeBinomial(LeafNode):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(node: BaseNegativeBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> NegativeBinomial:
+    """Conversion for ``NegativeBinomial`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return NegativeBinomial(node.scope, *node.get_params())
 
 
-@dispatch(memoize=True)
-def toBase(torch_node: NegativeBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseNegativeBinomial:
+@dispatch(memoize=True)  # type: ignor
+def toBase(node: NegativeBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseNegativeBinomial:
+    """Conversion for ``NegativeBinomial`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseNegativeBinomial(torch_node.scope, *torch_node.get_params())
+    return BaseNegativeBinomial(node.scope, *node.get_params())

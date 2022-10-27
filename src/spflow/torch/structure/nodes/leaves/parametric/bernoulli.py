@@ -32,7 +32,7 @@ class Bernoulli(LeafNode):
 
     Attributes:
         p_aux:
-            Unbounded PyTorch parameter that is projected to yield the actual success probability.
+            Unbounded scalar PyTorch parameter that is projected to yield the actual success probability.
         p:
             Scalar PyTorch tensor representing the success probability of the Bernoulli distribution (projected from ``p_aux``).
     """
@@ -73,7 +73,7 @@ class Bernoulli(LeafNode):
         """TODO"""
         if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
-                f"Value of p for Bernoulli distribution must to be between 0.0 and 1.0, but was: {p}"
+                f"Value of 'p' for 'Bernoulli' must to be between 0.0 and 1.0, but was: {p}"
             )
 
         self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)
