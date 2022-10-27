@@ -66,7 +66,7 @@ def sample(layer: CondExponentialLayer, data: torch.Tensor, dispatch_ctx: Option
 
         node_scope = layer.scopes_out[node_id]
 
-        # TODO: what to do in case of instance ids that are already specified (i.e. not nan)?
+        # : what to do in case of instance ids that are already specified (i.e. not nan)?
         marg_ids = (torch.isnan(data[:, node_scope.query]) == len(node_scope.query)).squeeze(1)
 
         instance_ids_mask = torch.zeros(data.shape[0])

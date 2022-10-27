@@ -27,7 +27,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
     def test_retrieve_params(self):
 
-        # Valid parameters for Multivariate Gaussian distribution: mean vector in R^k, covariance matrix in R^(k x k) symmetric positive semi-definite (TODO: PDF only exists if p.d.?)
+        # Valid parameters for Multivariate Gaussian distribution: mean vector in R^k, covariance matrix in R^(k x k) symmetric positive semi-definite
 
         multivariate_gaussian = CondMultivariateGaussian(Scope([0,1]))
 

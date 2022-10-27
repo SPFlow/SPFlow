@@ -40,7 +40,6 @@ def sample(leaf: CondBinomial, data: torch.Tensor, dispatch_ctx: Optional[Dispat
     # retrieve value for 'p'
     p = leaf.retrieve_params(data, dispatch_ctx)
 
-    # TODO: what to do in case of instance ids that are already specified (i.e. not nan)?
     marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = torch.zeros(data.shape[0])
