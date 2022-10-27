@@ -9,7 +9,7 @@ from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_
 from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import CondMultivariateGaussian
 
 
-@dispatch(memoize=True)  # type: ignores
+@dispatch(memoize=True)  # type: ignore
 def log_likelihood(leaf: CondMultivariateGaussian, data: torch.Tensor, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
     r"""Computes log-likelihoods for ``CondMultivariateGaussian`` node given input data in the ``torch`` backend.
 
