@@ -17,7 +17,7 @@ def substitutable(f) -> Callable:
     """Decorator that wraps a function and automatically checks for alternative functions during dispatching.
 
     Wraps a function in order to automatically check the dispatch context for specified alternative functions for a given module type.
-    The first argument to the original function must be an instance of (a subclass of) 'MetaModule' to check for corresponding alternative functions.
+    The first argument to the original function must be an instance of (a subclass of) ``MetaModule`` to check for corresponding alternative functions.
 
     Returns:
         Wrapped function that automatically checks for alternative functions.

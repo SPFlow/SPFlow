@@ -19,7 +19,7 @@ class SamplingContext:
             Required to correctly place sampled values into target data set and take potential evidence into account.
         output_ids:
             List of lists of integers representing the output ids for the corresponding instances to sample from (relevant for multi-output module).
-            As a shorthand convention, '[]' implies to sample from all outputs for a given instance.
+            As a shorthand convention, ``[]`` implies to sample from all outputs for a given instance.
     """
     def __init__(self, instance_ids: List[int], output_ids: Optional[List[List[int]]]=None) -> None:
         """Initializes 'SamplingContext' object.
@@ -30,8 +30,8 @@ class SamplingContext:
                 Required to correctly place sampled values into target data set and take potential evidence into account.
             output_ids:
                 Optional list of lists of integers representing the output ids for the corresponding instances to sample from (relevant for multi-output module).
-                As a shorthand convention, an empty list ('[]') implies to sample from all outputs for the corresponding instance.
-                Defaults to None, in which case the output indices for all instances are set to an empty list ('[]').
+                As a shorthand convention, an empty list (``[]``) implies to sample from all outputs for the corresponding instance.
+                Defaults to None, in which case the output indices for all instances are set to an empty list (``[]``).
 
         Raises:
             ValueError: Number of instance indices does not match number of output indices.
@@ -72,14 +72,14 @@ class SamplingContext:
 
 
 def default_sampling_context(n: int) -> SamplingContext:
-    """Returns an initialized 'SamplingContext' object.
+    """Returns an initialized ``SamplingContext`` object.
     
     Args:
         n:
             Integer specifying the number of instance indices to intialize.
 
     Returns:
-        Sampling context initialized with instance indices from 0 to 'n' and corresponding output indices as '[]'.
+        Sampling context initialized with instance indices from 0 to ``n`` and corresponding output indices as ``[]``.
     """
     return SamplingContext(list(range(n)), [[] for _ in range(n)])
 
@@ -89,7 +89,7 @@ def init_default_sampling_context(sampling_ctx: Union[SamplingContext, None], n:
 
     Args
         sampling_ctx:
-            'SamplingContext' object or None.
+            ``SamplingContext`` object or None.
         n:
             Integer specifying the number of instance indices to intialize.
 

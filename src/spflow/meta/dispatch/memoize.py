@@ -17,7 +17,7 @@ def memoize(f) -> Callable:
     """Cecorator that wraps a function and automatically checks for cached values during dispatching.
 
     Wraps a function in order to automatically check the dispatch cache for stored values.
-    The first argument to the original function must be an instance of (a subclass of) 'MetaModule' to use as a key for the cache.
+    The first argument to the original function must be an instance of (a subclass of) ``MetaModule`` to use as a key for the cache.
 
     Returns:
         Wrapped function that automatically checks against a dispatch cache
