@@ -1,7 +1,5 @@
-"""
-Created on November 06, 2021
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Hypergeometric leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
 import torch
@@ -14,7 +12,9 @@ from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hyperge
 
 
 class Hypergeometric(LeafNode):
-    r"""(Univariate) Hypergeometric distribution for Torch backend.
+    r"""(Univariate) Hypergeometric distribution leaf node in the 'base' backend.
+
+    Represents an univariate Hypergeometric distribution, with the following probability mass function (PMF):
 
     .. math::
 
@@ -27,22 +27,31 @@ class Hypergeometric(LeafNode):
         - :math:`n` is the number of draws
         - :math:`k` s the number of observed entities
 
-    Args:
-        scope:
-            List of integers specifying the variable scope.
+    Attributes:
         N:
-            Total number of entities (in the population), greater or equal to 0.
+            Scalar PyTorch tensor specifying the total number of entities (in the population), greater or equal to 0.
         M:
-            Number of entities with property of interest (in the population), greater or equal to zero and less than or equal to N.
+            Scalar PyTorch tensor specifying the number of entities with property of interest (in the population), greater or equal to zero and less than or equal to N.
         n:
-            Number of draws, greater of equal to zero and less than or equal to N.
+            Scalar PyTorch tensor specifying the number of draws, greater of equal to zero and less than or equal to N.
     """
     def __init__(self, scope: Scope, N: int, M: int, n: int) -> None:
+        r"""Initializes 'Hypergeometric' leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            N:
+                Integer specifying the total number of entities (in the population), greater or equal to 0.
+            M:
+                Integer specifying the number of entities with property of interest (in the population), greater or equal to zero and less than or equal to N.
+            n:
+                Integer specifying the number of draws, greater of equal to zero and less than or equal to N.
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for Hypergeometric should be 1, but was: {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'Hypergeometric' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for Hypergeometric should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}.")
 
         super(Hypergeometric, self).__init__(scope=scope)
 
@@ -55,7 +64,18 @@ class Hypergeometric(LeafNode):
         self.set_params(N, M, n)
 
     def log_prob(self, k: torch.Tensor) -> torch.Tensor:
+        """Computes the log-likelihood for specified input data.
 
+        The log-likelihoods of the Hypergeometric distribution are computed according to the logarithm of its probability mass function (PMF).
+
+        Args:
+            k:
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
+
+        Returns:
+            Two-dimensional PyTorch tensor containing the log-likelihoods of the corresponding input samples.
+        """
         N_minus_M = self.N - self.M  # type: ignore
         n_minus_k = self.n - k  # type: ignore
 
@@ -99,43 +119,59 @@ class Hypergeometric(LeafNode):
         return result
 
     def set_params(self, N: int, M: int, n: int) -> None:
+        """Sets the parameters for the represented distribution.
 
+        Args:
+            N:
+                Integer specifying the total number of entities (in the population), greater or equal to 0.
+            M:
+                Integer specifying the number of entities with property of interest (in the population), greater or equal to zero and less than or equal to N.
+            n:
+                Integer specifying the number of draws, greater of equal to zero and less than or equal to N.
+        """
         if N < 0 or not np.isfinite(N):
             raise ValueError(
-                f"Value of N for Hypergeometric distribution must be greater of equal to 0, but was: {N}"
+                f"Value of 'N' for 'Hypergeometric' must be greater of equal to 0, but was: {N}"
             )
         if not (torch.remainder(torch.tensor(N), 1.0) == torch.tensor(0.0)):
             raise ValueError(
-                f"Value of N for Hypergeometric distribution must be (equal to) an integer value, but was: {N}"
+                f"Value of 'N' for 'Hypergeometric' must be (equal to) an integer value, but was: {N}"
             )
 
         if M < 0 or M > N or not np.isfinite(M):
             raise ValueError(
-                f"Value of M for Hypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {M}"
+                f"Value of 'M' for 'Hypergeometric' must be greater of equal to 0 and less or equal to N, but was: {M}"
             )
         if not (torch.remainder(torch.tensor(M), 1.0) == torch.tensor(0.0)):
             raise ValueError(
-                f"Value of M for Hypergeometric distribution must be (equal to) an integer value, but was: {M}"
+                f"Value of 'M' for 'Hypergeometric' must be (equal to) an integer value, but was: {M}"
             )
 
         if n < 0 or n > N or not np.isfinite(n):
             raise ValueError(
-                f"Value of n for Hypergeometric distribution must be greater of equal to 0 and less or equal to N, but was: {n}"
+                f"Value of 'n' for 'Hypergeometric' must be greater of equal to 0 and less or equal to N, but was: {n}"
             )
         if not (torch.remainder(torch.tensor(n), 1.0) == torch.tensor(0.0)):
             raise ValueError(
-                f"Value of n for Hypergeometric distribution must be (equal to) an integer value, but was: {n}"
+                f"Value of 'n' for 'Hypergeometric' must be (equal to) an integer value, but was: {n}"
             )
 
-        self.M.data = torch.tensor(int(M)) # float(M)
-        self.N.data = torch.tensor(int(N)) # float(N)
-        self.n.data = torch.tensor(int(n)) # float(n)
+        self.M.data = torch.tensor(int(M))
+        self.N.data = torch.tensor(int(N))
+        self.n.data = torch.tensor(int(n))
 
     def get_params(self) -> Tuple[int, int, int]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of integer values representing the size of the total population, the size of the population of interest and the number of draws.
+        """
         return self.N.data.cpu().numpy(), self.M.data.cpu().numpy(), self.n.data.cpu().numpy()  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the Hypergeometric distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Hypergeometric distribution, which is:
 
         .. math::
 
@@ -150,11 +186,11 @@ class Hypergeometric(LeafNode):
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
@@ -179,13 +215,29 @@ class Hypergeometric(LeafNode):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(node: BaseHypergeometric, dispatch_ctx: Optional[DispatchContext]=None) -> Hypergeometric:
+    """Conversion for ``Hypergeometric`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return Hypergeometric(node.scope, *node.get_params())
 
 
-@dispatch(memoize=True)
-def toBase(torch_node: Hypergeometric, dispatch_ctx: Optional[DispatchContext]=None) -> BaseHypergeometric:
+@dispatch(memoize=True)  # type: ignore
+def toBase(node: Hypergeometric, dispatch_ctx: Optional[DispatchContext]=None) -> BaseHypergeometric:
+    """Conversion for ``Hypergeometric`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseHypergeometric(torch_node.scope, *torch_node.get_params())
+    return BaseHypergeometric(node.scope, *node.get_params())

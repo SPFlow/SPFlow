@@ -1,12 +1,10 @@
-"""
-Created on November 06, 2021
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Uniform leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
 import torch
 import torch.distributions as D
-from typing import List, Tuple, Optional
+from typing import Tuple, Optional
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
@@ -15,7 +13,9 @@ from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform as Bas
 
 
 class Uniform(LeafNode):
-    r"""(Univariate) continuous Uniform distribution for Torch backend.
+    r"""(Univariate) continuous Uniform distribution leaf node in the ``torch`` backend.
+
+    Represents an univariate Uniform distribution, with the following probability distribution function (PDF):
 
     .. math::
 
@@ -25,24 +25,36 @@ class Uniform(LeafNode):
         - :math:`x` is the input observation
         - :math:`\mathbf{1}_{[\text{start}, \text{end}]}` is the indicator function for the given interval (evaluating to 0 if x is not in the interval)
 
-    Args:
-        scope:
-            List of integers specifying the variable scope.
+    Attributes:
+        dist:
+            ``torch.distributions.Uniform`` instance of the PyTorch distribution represented by the leaf node.
         start:
-            Start of the interval.
+            Scalar PyTorch tensor representing the start of the interval (including).
         end:
-            End of interval (must be larger than start).
+            Scalar PyTorch tensor representing the end of the interval (including). Must be larger than 'start'.
         support_outside:
-            Boolean specifying whether or not values outside of the interval are part of the support (defaults to False).
+            Scalar PyTorch tensor indicating whether or not values outside of the interval are part of the support.
     """
     def __init__(
         self, scope: Scope, start: float, end: float, support_outside: bool = True
     ) -> None:
+        r"""Initializes ``Uniform`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            start:
+                Floating point value representing the start of the interval (including).
+            end:
+                Floating point value representing the end of the interval (including). Must be larger than 'start'.
+            support_outside:
+                Boolean indicating whether or not values outside of the interval are part of the support.
+                Defaults to True.
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for Poisson should be 1, but was: {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'Poisson' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for Poisson should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}.")
 
         super(Uniform, self).__init__(scope=scope)
 
@@ -55,13 +67,23 @@ class Uniform(LeafNode):
         self.set_params(start, end, support_outside)
 
     def set_params(self, start: float, end: float, support_outside: bool = True) -> None:
+        r"""Sets the parameters for the represented distribution.
 
+        Args:
+            start:
+                Floating point value representing the start of the interval (including).
+            end:
+                Floating point value representing the end of the interval (including). Must be larger than ``start``.
+            support_outside:
+                Boolean indicating whether or not values outside of the interval are part of the support.
+                Defaults to True.
+        """
         if not start < end:
             raise ValueError(
-                f"Lower bound for Uniform distribution must be less than upper bound, but were: {start}, {end}"
+                f"Value of 'start' for 'Uniform' must be less than value of 'end', but were: {start}, {end}"
             )
         if not (np.isfinite(start) and np.isfinite(end)):
-            raise ValueError(f"Lower and upper bound must be finite, but were: {start}, {end}")
+            raise ValueError(f"Values of 'start' and 'end' for 'Uniform' must be finite, but were: {start}, {end}")
 
         # since torch Uniform distribution excludes the upper bound, compute next largest number
         end_next = torch.nextafter(torch.tensor(end), torch.tensor(float("Inf")))  # type: ignore
@@ -75,10 +97,17 @@ class Uniform(LeafNode):
         self.dist = D.Uniform(low=self.start, high=end_next)
 
     def get_params(self) -> Tuple[float, float, bool]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the floating point values representing the start and end of the interval and the boolean indicating whether or not values outside of the interval are part of the support.
+        """
         return self.start.cpu().numpy(), self.end.cpu().numpy(), self.support_outside  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the Uniform distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Uniform distribution, which is:
 
         .. math::
 
@@ -88,16 +117,16 @@ class Uniform(LeafNode):
             - :math:`start` is the start of the interval
             - :math:`end` is the end of the interval
             - :math:`\text{support\_outside}` is a truth value indicating whether values outside of the interval are part of the support
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
@@ -121,13 +150,29 @@ class Uniform(LeafNode):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(node: BaseUniform, dispatch_ctx: Optional[DispatchContext]=None) -> Uniform:
+    """Conversion for ``Uniform`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return Uniform(node.scope, node.start, node.end)
 
 
-@dispatch(memoize=True)
-def toBase(torch_node: Uniform, dispatch_ctx: Optional[DispatchContext]=None) -> BaseUniform:
+@dispatch(memoize=True)  # type: ignore
+def toBase(node: Uniform, dispatch_ctx: Optional[DispatchContext]=None) -> BaseUniform:
+    """Conversion for ``Uniform`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseUniform(torch_node.scope, torch_node.start.cpu().numpy(), torch_node.end.cpu().numpy())
+    return BaseUniform(node.scope, node.start.cpu().numpy(), node.end.cpu().numpy())

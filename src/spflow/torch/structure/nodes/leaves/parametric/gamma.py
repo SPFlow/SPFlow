@@ -1,13 +1,11 @@
-"""
-Created on November 06, 2021
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Gamma leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from typing import List, Tuple, Optional
+from typing import Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
@@ -17,8 +15,10 @@ from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma as BaseGam
 
 
 class Gamma(LeafNode):
-    r"""(Univariate) Gamma distribution for Torch backend.
-    
+    r"""(Univariate) Gamma distribution leaf node in the ``base`` backend.
+
+    Represents an univariate Exponential distribution, with the following probability distribution function (PDF):
+
     .. math::
     
         \text{PDF}(x) = \begin{cases} \frac{\beta^\alpha}{\Gamma(\alpha)}x^{\alpha-1}e^{-\beta x} & \text{if } x > 0\\
@@ -30,22 +30,35 @@ class Gamma(LeafNode):
         - :math:`\alpha` is the shape parameter
         - :math:`\beta` is the rate parameter
 
-    TODO: check
-    
-    Args:
-        scope:
-            List of integers specifying the variable scope.
-        alpha:
-            Shape parameter (:math:`\alpha`), greater than 0 (default 1.0).
-        beta:
-            Rate parameter (:math:`\beta`), greater than 0 (default 1.0).
-    """
-    def __init__(self, scope: Scope, alpha: Optional[float]=1.0, beta: Optional[float]=1.0) -> None:
+    Internally :math:`\alpha,\beta` are represented as unbounded parameters that are projected onto the bounded range :math:`(0,\infty)` for representing the actual shape and rate parameters, respectively.
 
+    Attributes:
+        alpha_aux:
+            Unbounded scalar PyTorch parameter that is projected to yield the actual shape parameter.
+        alpha:
+            Scalar PyTorch tensor representing the shape parameter (:math:`\alpha`) of the Gamma distribution, greater than 0 (projected from ``l_aux``).
+        beta_aux:
+            Unbounded scalar PyTorch parameter that is projected to yield the actual rate parameter.
+        beta:
+            Scalar PyTorch tensor representing the rate parameter (:math:`\beta`) of the Gamma distribution, greater than 0 (projected from ``l_aux``).
+    """
+    def __init__(self, scope: Scope, alpha: float=1.0, beta: float=1.0) -> None:
+        r"""Initializes ``Exponential`` leaf node.
+
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            alpha:
+                Floating point value representing the shape parameter (:math:`\alpha`), greater than 0.
+                Defaults to 1.0.
+            beta:
+                Floating point value representing the rate parameter (:math:`\beta`), greater than 0.
+                Defaults to 1.0.    
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for Gamma should be 1, but was {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'Gamma' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for Gamma should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'Gamma' should be empty, but was {scope.evidence}.")
 
         super(Gamma, self).__init__(scope=scope)
 
@@ -58,20 +71,34 @@ class Gamma(LeafNode):
 
     @property
     def alpha(self) -> torch.Tensor:
+        """TODO"""
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.alpha_aux, lb=0.0)  # type: ignore
 
     @property
     def beta(self) -> torch.Tensor:
+        """TODO"""
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.beta_aux, lb=0.0)  # type: ignore
 
     @property
     def dist(self) -> D.Distribution:
+        r"""Returns the PyTorch distribution represented by the leaf node.
+        
+        Returns:
+            ``torch.distributions.Gamma`` instance.
+        """
         return D.Gamma(concentration=self.alpha, rate=self.beta)
 
     def set_params(self, alpha: float, beta: float) -> None:
+        r"""Sets the parameters for the represented distribution.
 
+        Args:
+            alpha:
+                Floating point value representing the shape parameter (:math:`\alpha`), greater than 0.
+            beta:
+                Floating point value representing the rate parameter (:math:`\beta`), greater than 0.
+        """
         if alpha <= 0.0 or not np.isfinite(alpha):
             raise ValueError(
                 f"Value of alpha for Gamma distribution must be greater than 0, but was: {alpha}"
@@ -85,24 +112,31 @@ class Gamma(LeafNode):
         self.beta_aux.data = proj_bounded_to_real(torch.tensor(float(beta)), lb=0.0)
 
     def get_params(self) -> Tuple[float, float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the floating points representing the shape and rate parameters.
+        """
         return self.alpha.data.cpu().numpy(), self.beta.data.cpu().numpy()  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the Gamma distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Gamma distribution, which is:
 
         .. math::
 
             \text{supp}(\text{Gamma})=(0,+\infty)
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
@@ -120,13 +154,29 @@ class Gamma(LeafNode):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(node: BaseGamma, dispatch_ctx: Optional[DispatchContext]=None) -> Gamma:
+    """Conversion for ``Gamma`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return Gamma(node.scope, *node.get_params())
 
 
-@dispatch(memoize=True)
-def toBase(torch_node: Gamma, dispatch_ctx: Optional[DispatchContext]=None) -> BaseGamma:
+@dispatch(memoize=True)  # type: ignore
+def toBase(node: Gamma, dispatch_ctx: Optional[DispatchContext]=None) -> BaseGamma:
+    """Conversion for ``Gamma`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseGamma(torch_node.scope, *torch_node.get_params())
+    return BaseGamma(node.scope, *node.get_params())

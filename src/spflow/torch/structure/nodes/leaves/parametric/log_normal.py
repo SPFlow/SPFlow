@@ -1,7 +1,5 @@
-"""
-Created on November 06, 2021
-
-@authors: Philipp Deibert
+# -*- coding: utf-8 -*-
+"""Contains Log-Normal leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
 import torch
@@ -17,7 +15,9 @@ from spflow.base.structure.nodes.leaves.parametric.log_normal import LogNormal a
 
 
 class LogNormal(LeafNode):
-    r"""(Univariate) Log-Normal distribution for Torch backend.
+    r"""(Univariate) Log-Normal distribution leaf node in the ``torch`` backend.
+
+    Represents an univariate Log-Normal distribution, with the following probability distribution function (PDF):
 
     .. math::
 
@@ -28,20 +28,33 @@ class LogNormal(LeafNode):
         - :math:`\mu` is the mean
         - :math:`\sigma` is the standard deviation
 
-    Args:
-        scope:
-            List of integers specifying the variable scope.
+    Internally :math:`\mu,\sigma` are represented as unbounded parameters that are projected onto the bounded range :math:`(0,\infty)` for representing the actual shape and rate parameters, respectively.
+
+    Attributes:
         mean:
-            mean (:math:`\mu`) of the distribution (default 0.0).
+            Scalar PyTorch tensor representing the mean (:math:`\mu`) of the Gamma distribution.
+        std_aux:
+            Unbounded scalar PyTorch parameter that is projected to yield the actual standard deviation.
         std:
-            standard deviation (:math:`\sigma`) of the distribution (must be greater than 0; default 1.0).
+            Scalar PyTorch tensor representing the standard deviation (:math:`\sigma`) of the Gaussian distribution, greater than 0 (projected from ``std_aux``).
     """
     def __init__(self, scope: Scope, mean: Optional[float]=0.0, std: Optional[float]=1.0) -> None:
+        r"""Initializes ``LogNormal`` leaf node.
 
+        Args:
+            scope:
+                Scope object specifying the scope of the distribution.
+            mean:
+                Floating point value representing the mean (:math:`\mu`) of the distribution.
+                Defaults to 0.0.
+            std:
+                Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
+                Defaults to 1.0.
+        """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for LogNormal should be 1, but was: {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'LogNormal' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for LogNormal should be empty, but was {scope.evidence}.")
+            raise ValueError(f"Evidence scope for 'LogNormal' should be empty, but was {scope.evidence}.")
 
         super(LogNormal, self).__init__(scope=scope)
 
@@ -55,32 +68,52 @@ class LogNormal(LeafNode):
 
     @property
     def std(self) -> torch.Tensor:
+        """TODO"""
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.std_aux, lb=0.0)  # type: ignore
 
     @property
     def dist(self) -> D.Distribution:
+        r"""Returns the PyTorch distribution represented by the leaf node.
+        
+        Returns:
+            ``torch.distributions.LogNormal`` instance.
+        """
         return D.LogNormal(loc=self.mean, scale=self.std)
 
     def set_params(self, mean: float, std: float) -> None:
+        r"""Sets the parameters for the represented distribution.
 
+        Args:
+            mean:
+                Floating point value representing the mean (:math:`\mu`) of the distribution.
+            std:
+                Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
+        """
         if not (np.isfinite(mean) and np.isfinite(std)):
             raise ValueError(
-                f"Mean and standard deviation for Gaussian distribution must be finite, but were: {mean}, {std}"
+                f"Values for 'mean' and 'std' for 'Gaussian' must be finite, but were: {mean}, {std}"
             )
         if std <= 0.0:
             raise ValueError(
-                f"Standard deviation for Gaussian distribution must be greater than 0.0, but was: {std}"
+                f"Value for 'std' for 'Gaussian' must be greater than 0.0, but was: {std}"
             )
 
         self.mean.data = torch.tensor(float(mean))
         self.std_aux.data = proj_bounded_to_real(torch.tensor(float(std)), lb=0.0)
 
     def get_params(self) -> Tuple[float, float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the floating point values representing the mean and standard deviation.
+        """
         return self.mean.data.cpu().numpy(), self.std.data.cpu().numpy()  # type: ignore
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
-        r"""Checks if instances are part of the support of the LogNormal distribution.
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of the Log-Normal distribution, which is:
 
         .. math::
 
@@ -90,11 +123,11 @@ class LogNormal(LeafNode):
 
         Args:
             scope_data:
-                Torch tensor containing possible distribution instances.
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
         Returns:
-            Torch tensor indicating for each possible distribution instance, whether they are part of the support (True) or not (False).
+            Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
@@ -112,13 +145,29 @@ class LogNormal(LeafNode):
         return valid
 
 
-@dispatch(memoize=True)
+@dispatch(memoize=True)  # type: ignore
 def toTorch(node: BaseLogNormal, dispatch_ctx: Optional[DispatchContext]=None) -> LogNormal:
+    """Conversion for ``LogNormal`` from ``base`` backend to ``torch`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return LogNormal(node.scope, *node.get_params())
 
 
-@dispatch(memoize=True)
-def toBase(torch_node: LogNormal, dispatch_ctx: Optional[DispatchContext]=None) -> BaseLogNormal:
+@dispatch(memoize=True)  # type: ignore
+def toBase(node: LogNormal, dispatch_ctx: Optional[DispatchContext]=None) -> BaseLogNormal:
+    """Conversion for ``LogNormal`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        node:
+            Leaf node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseLogNormal(torch_node.scope, *torch_node.get_params())
+    return BaseLogNormal(node.scope, *node.get_params())
