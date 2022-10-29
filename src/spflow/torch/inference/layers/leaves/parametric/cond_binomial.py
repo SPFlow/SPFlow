@@ -5,17 +5,27 @@ import torch
 import numpy as np
 from typing import Optional
 from spflow.meta.scope.scope import Scope
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.torch.structure.layers.leaves.parametric.cond_binomial import CondBinomialLayer
+from spflow.torch.structure.layers.leaves.parametric.cond_binomial import (
+    CondBinomialLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(layer: CondBinomialLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    layer: CondBinomialLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     r"""Computes log-likelihoods for ``CondBinomialLayer`` leaves in the ``torch`` backend given input data.
 
     Log-likelihood for ``CondBinomialLayer`` is given by the logarithm of its individual probability mass functions (PMFs):
-    
+
     .. math::
 
         \log(\text{PMF}(k)) = \log(\binom{n}{k}p^k(1-p)^{n-k})
@@ -43,7 +53,7 @@ def log_likelihood(layer: CondBinomialLayer, data: torch.Tensor, check_support: 
     Returns:
         Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
         Each row corresponds to an input sample.
-        
+
     Raises:
         ValueError: Data outside of support.
     """
@@ -65,9 +75,11 @@ def log_likelihood(layer: CondBinomialLayer, data: torch.Tensor, check_support: 
     for query_signature in np.unique(query_rvs, axis=0):
 
         # compute all nodes with this scope
-        node_ids = np.where((query_rvs == query_signature).all(axis=1))[0].tolist()
+        node_ids = np.where((query_rvs == query_signature).all(axis=1))[
+            0
+        ].tolist()
         node_ids_tensor = torch.tensor(node_ids)
-    
+
         # get data for scope (since all "nodes" are univariate, order does not matter)
         scope_data = data[:, layer.scopes_out[node_ids[0]].query]
 
@@ -78,7 +90,7 @@ def log_likelihood(layer: CondBinomialLayer, data: torch.Tensor, check_support: 
         non_marg_ids = torch.where(~marg_mask)[0]
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.meshgrid(marg_ids, node_ids_tensor, indexing='ij')] = 0.0
+        log_prob[torch.meshgrid(marg_ids, node_ids_tensor, indexing="ij")] = 0.0
 
         # ----- log probabilities -----
 
@@ -90,9 +102,11 @@ def log_likelihood(layer: CondBinomialLayer, data: torch.Tensor, check_support: 
                 raise ValueError(
                     f"Encountered data instances that are not in the support of the Binomial distribution."
                 )
-        
+
         # compute probabilities for values inside distribution support
-        log_prob[torch.meshgrid(non_marg_ids, node_ids_tensor, indexing='ij')] = layer.dist(p=p, node_ids=node_ids).log_prob(
+        log_prob[
+            torch.meshgrid(non_marg_ids, node_ids_tensor, indexing="ij")
+        ] = layer.dist(p=p, node_ids=node_ids).log_prob(
             scope_data[non_marg_ids, :].type(torch.get_default_dtype())
         )
 

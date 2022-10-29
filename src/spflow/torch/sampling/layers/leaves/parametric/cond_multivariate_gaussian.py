@@ -6,14 +6,28 @@ import numpy as np
 from typing import Optional
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
-from spflow.torch.structure.layers.leaves.parametric.cond_multivariate_gaussian import CondMultivariateGaussianLayer
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.contexts.sampling_context import (
+    SamplingContext,
+    init_default_sampling_context,
+)
+from spflow.torch.structure.layers.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussianLayer,
+)
 from spflow.torch.sampling.module import sample
 
 
 @dispatch  # type: ignore
-def sample(layer: CondMultivariateGaussianLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(
+    layer: CondMultivariateGaussianLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> torch.Tensor:
     r"""Samples from ``CondMultivariateGaussianLayer`` leaves in the ``torch`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
@@ -37,7 +51,7 @@ def sample(layer: CondMultivariateGaussianLayer, data: torch.Tensor, check_suppo
     Returns:
         Two-dimensional PyTorch tensor containing the sampled values together with the specified evidence.
         Each row corresponds to a sample.
-    
+
     Raises:
         ValueError: Sampling from invalid number of outputs.
     """
@@ -52,18 +66,28 @@ def sample(layer: CondMultivariateGaussianLayer, data: torch.Tensor, check_suppo
     mean_values, cov_values = layer.retrieve_params(data, dispatch_ctx)
 
     for node, mean, cov in zip(layer.nodes, mean_values, cov_values):
-        dispatch_ctx.update_args(node, {'mean': mean, 'cov': cov})
+        dispatch_ctx.update_args(node, {"mean": mean, "cov": cov})
 
     # sample
     for output_ids in np.unique(sampling_ctx.output_ids, axis=0):
         if len(output_ids) == 0:
             output_ids = list(range(layer.n_out))
 
-        if not Scope.all_pairwise_disjoint([layer_scopes[id] for id in output_ids]):
-            raise ValueError("Sampling from non-pairwise-disjoint scopes for instances is not allowed.")
+        if not Scope.all_pairwise_disjoint(
+            [layer_scopes[id] for id in output_ids]
+        ):
+            raise ValueError(
+                "Sampling from non-pairwise-disjoint scopes for instances is not allowed."
+            )
 
     # all product nodes are over (all) children
     for node_id, instances in sampling_ctx.group_output_ids(layer.n_out):
-        sample(layer.nodes[node_id], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instances, [[] for _ in instances]))
+        sample(
+            layer.nodes[node_id],
+            data,
+            check_support=check_support,
+            dispatch_ctx=dispatch_ctx,
+            sampling_ctx=SamplingContext(instances, [[] for _ in instances]),
+        )
 
     return data

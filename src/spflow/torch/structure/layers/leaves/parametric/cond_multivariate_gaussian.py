@@ -8,12 +8,21 @@ import torch
 import torch.distributions as D
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import CondMultivariateGaussian
-from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import CondGaussian
-from spflow.base.structure.layers.leaves.parametric.cond_multivariate_gaussian import CondMultivariateGaussianLayer as BaseCondMultivariateGaussianLayer
+from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussian,
+)
+from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import (
+    CondGaussian,
+)
+from spflow.base.structure.layers.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussianLayer as BaseCondMultivariateGaussianLayer,
+)
 
 
 class CondMultivariateGaussianLayer(Module):
@@ -49,7 +58,14 @@ class CondMultivariateGaussianLayer(Module):
         nodes:
             List of ``CondMultivariateGaussian`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], cond_f: Optional[Union[Callable,List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        cond_f: Optional[Union[Callable, List[Callable]]] = None,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``CondMultivariateGaussianLayer`` object.
 
         Args:
@@ -74,24 +90,34 @@ class CondMultivariateGaussianLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'CondMultivariateGaussianLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'CondMultivariateGaussianLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'CondMultivariateGaussianLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'CondMultivariateGaussianLayer' was empty."
+                )
 
             self._n_out = len(scope)
 
-        super(CondMultivariateGaussianLayer, self).__init__(children=[], **kwargs)
+        super(CondMultivariateGaussianLayer, self).__init__(
+            children=[], **kwargs
+        )
 
         # create leaf nodes
-        self.nodes = torch.nn.ModuleList([CondMultivariateGaussian(s) for s in scope])
+        self.nodes = torch.nn.ModuleList(
+            [CondMultivariateGaussian(s) for s in scope]
+        )
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(lambda s1, s2: s1.union(s2), self.scopes_out)
+        self.combined_scope = reduce(
+            lambda s1, s2: s1.union(s2), self.scopes_out
+        )
 
         self.set_cond_f(cond_f)
 
@@ -99,8 +125,10 @@ class CondMultivariateGaussianLayer(Module):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
-    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+
+    def set_cond_f(
+        self, cond_f: Optional[Union[List[Callable], Callable]] = None
+    ) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -121,11 +149,18 @@ class CondMultivariateGaussianLayer(Module):
             ValueError: If list of callables does not match number of nodes represented by the layer.
         """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
-            raise ValueError("'CondMultivariateGaussianLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
+            raise ValueError(
+                "'CondMultivariateGaussianLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
+            )
 
         self.cond_f = cond_f
 
-    def dist(self, mean: List[torch.Tensor], cov: List[torch.Tensor], node_ids: Optional[List[int]]=None) -> List[D.Distribution]:
+    def dist(
+        self,
+        mean: List[torch.Tensor],
+        cov: List[torch.Tensor],
+        node_ids: Optional[List[int]] = None,
+    ) -> List[D.Distribution]:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -144,8 +179,10 @@ class CondMultivariateGaussianLayer(Module):
             node_ids = list(range(self.n_out))
 
         return [self.nodes[i].dist(mean[i], cov[i]) for i in node_ids]
-    
-    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
+
+    def retrieve_params(
+        self, data: torch.Tensor, dispatch_ctx: DispatchContext
+    ) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameters (``mean``,``cov``) are passed as additional arguments in the dispatch context.
@@ -163,7 +200,7 @@ class CondMultivariateGaussianLayer(Module):
             Tuple of two lists of PyTorch tensors.
             The first list contains one-dimensional PyTorch tensors representing the means.
             The second list contains two-dimensional PyTorch tensors representing the covariance matrices.
-        
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -184,10 +221,12 @@ class CondMultivariateGaussianLayer(Module):
         elif self.cond_f:
             # check if module has a 'cond_f' to provide 'mean','cov' specified (lowest priority)
             cond_f = self.cond_f
-        
+
         # if neither 'mean' and 'cov' nor 'cond_f' is specified (via node or arguments)
         if (mean is None or cov is None) and cond_f is None:
-            raise ValueError("'CondMultivariateGaussianLayer' requires either 'mean' and 'cov' or 'cond_f' to retrieve 'mean','std' to be specified.")
+            raise ValueError(
+                "'CondMultivariateGaussianLayer' requires either 'mean' and 'cov' or 'cond_f' to retrieve 'mean','std' to be specified."
+            )
 
         # if 'mean' or 'cov' was not already specified, retrieve it
         if mean is None or cov is None:
@@ -198,13 +237,13 @@ class CondMultivariateGaussianLayer(Module):
 
                 for f in cond_f:
                     args = f(data)
-                    mean.append(args['mean'])
-                    cov.append(args['cov'])
+                    mean.append(args["mean"])
+                    cov.append(args["cov"])
 
             else:
                 args = cond_f(data)
-                mean = args['mean']
-                cov = args['cov']
+                mean = args["mean"]
+                cov = args["cov"]
 
         if isinstance(mean, list):
             # can be a list of values specifying a single mean (broadcast to all nodes)
@@ -212,59 +251,86 @@ class CondMultivariateGaussianLayer(Module):
                 mean = [torch.tensor(mean) for _ in range(self.n_out)]
             # can also be a list of different means
             else:
-                mean = [m if isinstance(m, torch.Tensor) else torch.tensor(m) for m in mean]
+                mean = [
+                    m if isinstance(m, torch.Tensor) else torch.tensor(m)
+                    for m in mean
+                ]
         elif isinstance(mean, torch.Tensor) or isinstance(mean, np.ndarray):
             if isinstance(mean, np.ndarray):
                 mean = torch.tensor(mean)
             # can be a one-dimensional numpy array specifying single mean (broadcast to all nodes)
-            if(mean.ndim == 1):
+            if mean.ndim == 1:
                 mean = [mean for _ in range(self.n_out)]
             # can also be an array of different means
             else:
                 mean = [m for m in mean]
         else:
-            raise ValueError(f"Specified 'mean' for 'CondMultivariateGaussianLayer' is of unknown type {type(mean)}.")
+            raise ValueError(
+                f"Specified 'mean' for 'CondMultivariateGaussianLayer' is of unknown type {type(mean)}."
+            )
 
         if isinstance(cov, list):
             # can be a list of lists of values specifying a single cov (broadcast to all nodes)
-            if all([
-                all([isinstance(c, float) or isinstance(c, int) for c in l]) for l in cov
-            ]):
+            if all(
+                [
+                    all([isinstance(c, float) or isinstance(c, int) for c in l])
+                    for l in cov
+                ]
+            ):
                 cov = [torch.tensor(cov) for _ in range(self.n_out)]
             # can also be a list of different covs
             else:
-                cov = [c if isinstance(c, torch.Tensor) else torch.tensor(c) for c in cov]
+                cov = [
+                    c if isinstance(c, torch.Tensor) else torch.tensor(c)
+                    for c in cov
+                ]
         elif isinstance(cov, torch.Tensor) or isinstance(cov, np.ndarray):
             if isinstance(cov, np.ndarray):
                 cov = torch.tensor(cov)
             # can be a two-dimensional numpy array specifying single cov (broadcast to all nodes)
-            if(cov.ndim == 2):
+            if cov.ndim == 2:
                 cov = [cov for _ in range(self.n_out)]
             # can also be an array of different covs
             else:
                 cov = [c for c in cov]
         else:
-            raise ValueError(f"Specified 'cov' for 'CondMultivariateGaussianLayer' is of unknown type {type(cov)}.")
+            raise ValueError(
+                f"Specified 'cov' for 'CondMultivariateGaussianLayer' is of unknown type {type(cov)}."
+            )
 
         if len(mean) != self.n_out:
-            raise ValueError(f"Length of list of 'mean' values for 'CondMultivariateGaussianLayer' must match number of output nodes {self.n_out}, but is {len(mean)}")
+            raise ValueError(
+                f"Length of list of 'mean' values for 'CondMultivariateGaussianLayer' must match number of output nodes {self.n_out}, but is {len(mean)}"
+            )
         if len(cov) != self.n_out:
-            raise ValueError(f"Length of list of 'cov' values for 'CondMultivariateGaussianLayer' must match number of output nodes {self.n_out}, but is {len(cov)}")
+            raise ValueError(
+                f"Length of list of 'cov' values for 'CondMultivariateGaussianLayer' must match number of output nodes {self.n_out}, but is {len(cov)}"
+            )
 
         for m, c, s in zip(mean, cov, self.scopes_out):
-            if(m.ndim != 1):
-                raise ValueError(f"All numpy arrays of 'mean' values for 'CondMultivariateGaussianLayer' are expected to be one-dimensional, but at least one is {m.ndim}-dimensional.")
-            if(m.shape[0] != len(s.query)):
-                raise ValueError(f"Dimensions of a mean vector for 'CondMultivariateGaussianLayer' do not match corresponding scope size.")
+            if m.ndim != 1:
+                raise ValueError(
+                    f"All numpy arrays of 'mean' values for 'CondMultivariateGaussianLayer' are expected to be one-dimensional, but at least one is {m.ndim}-dimensional."
+                )
+            if m.shape[0] != len(s.query):
+                raise ValueError(
+                    f"Dimensions of a mean vector for 'CondMultivariateGaussianLayer' do not match corresponding scope size."
+                )
 
-            if(c.ndim != 2):
-                raise ValueError(f"All numpy arrays of 'cov' values for 'CondMultivariateGaussianLayer' are expected to be two-dimensional, but at least one is {c.ndim}-dimensional.")
-            if(c.shape[0] != len(s.query) or c.shape[1] != len(s.query)):
-                raise ValueError(f"Dimensions of a covariance matrix for 'CondMultivariateGaussianLayer' do not match corresponding scope size.")
+            if c.ndim != 2:
+                raise ValueError(
+                    f"All numpy arrays of 'cov' values for 'CondMultivariateGaussianLayer' are expected to be two-dimensional, but at least one is {c.ndim}-dimensional."
+                )
+            if c.shape[0] != len(s.query) or c.shape[1] != len(s.query):
+                raise ValueError(
+                    f"Dimensions of a covariance matrix for 'CondMultivariateGaussianLayer' do not match corresponding scope size."
+                )
 
         return mean, cov
-    
-    def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
+
+    def check_support(
+        self, data: torch.Tensor, node_ids: Optional[List[int]] = None
+    ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Multivariate Gaussian distributions, which are:
@@ -272,7 +338,7 @@ class CondMultivariateGaussianLayer(Module):
         .. math::
 
             \text{supp}(\text{MultivariateGaussian})=(-\infty,+\infty)^k
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
@@ -291,12 +357,20 @@ class CondMultivariateGaussianLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return torch.concat([self.nodes[i].check_support(data) for i in node_ids], dim=1)
-
+        return torch.concat(
+            [self.nodes[i].check_support(data) for i in node_ids], dim=1
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: CondMultivariateGaussianLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussianLayer, CondMultivariateGaussian, CondGaussian, None]:
+def marginalize(
+    layer: CondMultivariateGaussianLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[
+    CondMultivariateGaussianLayer, CondMultivariateGaussian, CondGaussian, None
+]:
     """Structural marginalization for ``CondMultivariateGaussianLayer`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -313,7 +387,7 @@ def marginalize(layer: CondMultivariateGaussianLayer, marg_rvs: Iterable[int], p
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -341,7 +415,10 @@ def marginalize(layer: CondMultivariateGaussianLayer, marg_rvs: Iterable[int], p
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(layer: BaseCondMultivariateGaussianLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondMultivariateGaussianLayer:
+def toTorch(
+    layer: BaseCondMultivariateGaussianLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> CondMultivariateGaussianLayer:
     """Conversion for ``CondMultivariateGaussianLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -355,7 +432,10 @@ def toTorch(layer: BaseCondMultivariateGaussianLayer, dispatch_ctx: Optional[Dis
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(torch_layer: CondMultivariateGaussianLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondMultivariateGaussianLayer:
+def toBase(
+    torch_layer: CondMultivariateGaussianLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> BaseCondMultivariateGaussianLayer:
     """Conversion for ``CondMultivariateGaussianLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:

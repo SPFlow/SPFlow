@@ -9,7 +9,22 @@ from typing import Tuple
 import torch
 
 
-def cca(x: torch.Tensor, y: torch.Tensor, n_components: int=2, center: bool=True, scale: bool=True) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+def cca(
+    x: torch.Tensor,
+    y: torch.Tensor,
+    n_components: int = 2,
+    center: bool = True,
+    scale: bool = True,
+) -> Tuple[
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+]:
     """Performs canonical correlation analysis (CCA) between two data sets.
 
     Performs canonical correlation analysis (CCA) between two (possibly multivariate) data sets. Implemented in close reference to Scikit-learn's 'cross_decomposition.CCA'.
@@ -50,33 +65,41 @@ def cca(x: torch.Tensor, y: torch.Tensor, n_components: int=2, center: bool=True
         y = y.reshape(-1, 1)
 
     if x.ndim != 2:
-        raise ValueError(f"Observations for 'x' must be either one- or two-dimensional, but was {x.ndim}-dimensional.")
+        raise ValueError(
+            f"Observations for 'x' must be either one- or two-dimensional, but was {x.ndim}-dimensional."
+        )
     if y.ndim != 2:
-        raise ValueError(f"Observations for 'y' must be either one- or two-dimensional, but was {y.ndim}-dimensional.")
-    
+        raise ValueError(
+            f"Observations for 'y' must be either one- or two-dimensional, but was {y.ndim}-dimensional."
+        )
+
     if x.shape[0] != y.shape[0]:
-        raise ValueError(f"'x' and 'y' must have same number of observations, but have {x.shape[0]} and {y.shape[0]} observations, respectively.")
+        raise ValueError(
+            f"'x' and 'y' must have same number of observations, but have {x.shape[0]} and {y.shape[0]} observations, respectively."
+        )
 
     if torch.any(torch.isnan(x)) or torch.any(torch.isinf(x)):
         raise ValueError("Observations for 'x' contain invalid values.")
     if torch.any(torch.isnan(y)) or torch.any(torch.isinf(y)):
         raise ValueError("Observations for 'y' contain invalid values.")
-    
+
     n_samples = x.shape[0]
     n_features_x = x.shape[1]
     n_features_y = y.shape[1]
 
     rank_upper_bound = min(n_samples, n_features_x, n_features_y)
-    
+
     if n_components < 1 or n_components > rank_upper_bound:
-        raise ValueError(f"Invalid number of components {n_components} for 'cca'.")
+        raise ValueError(
+            f"Invalid number of components {n_components} for 'cca'."
+        )
 
     # standardize data
     if center:
         x_mean = x.mean(dim=0)
         x -= x_mean
-    
-        y_mean = y.mean(dim=0)    
+
+        y_mean = y.mean(dim=0)
         y -= y_mean
 
     if scale:
@@ -127,7 +150,20 @@ def cca(x: torch.Tensor, y: torch.Tensor, n_components: int=2, center: bool=True
         y -= torch.outer(y_s, y_l)
 
     # compute transformation matrices
-    x_rotations = torch.matmul(x_weights, torch.matmul(x_loadings.T, x_weights).pinverse())
-    y_rotations = torch.matmul(y_weights, torch.matmul(y_loadings.T, y_weights).pinverse())
+    x_rotations = torch.matmul(
+        x_weights, torch.matmul(x_loadings.T, x_weights).pinverse()
+    )
+    y_rotations = torch.matmul(
+        y_weights, torch.matmul(y_loadings.T, y_weights).pinverse()
+    )
 
-    return x_rotations, y_rotations, x_weights, y_weights, x_scores, y_scores, x_loadings, y_loadings
+    return (
+        x_rotations,
+        y_rotations,
+        x_weights,
+        y_weights,
+        x_scores,
+        y_scores,
+        x_loadings,
+        y_loadings,
+    )

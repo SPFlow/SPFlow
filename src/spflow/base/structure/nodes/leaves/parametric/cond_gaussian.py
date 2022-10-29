@@ -31,10 +31,11 @@ class CondGaussian(LeafNode):
             Its output should be a dictionary containing ``mean``,``std`` as keys, and the values should be
             floating point values, where the latter should be greater than 0.
     """
+
     def __init__(
         self,
         scope: Scope,
-        cond_f: Optional[Callable]=None,
+        cond_f: Optional[Callable] = None,
     ) -> None:
         r"""Initializes ``CondGaussian`` leaf node.
 
@@ -47,15 +48,19 @@ class CondGaussian(LeafNode):
                 floating point values, where the latter should be greater than 0.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'CondGaussian' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'CondGaussian' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'CondGaussian' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'CondGaussian' should be empty, but was {scope.evidence}."
+            )
 
         super(CondGaussian, self).__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 
-    def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+    def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         r"""Sets the function to retrieve the node's conditonal parameter.
 
         Args:
@@ -66,9 +71,11 @@ class CondGaussian(LeafNode):
         """
         self.cond_f = cond_f
 
-    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[Union[np.ndarray, float],Union[np.ndarray, float]]:
+    def retrieve_params(
+        self, data: np.ndarray, dispatch_ctx: DispatchContext
+    ) -> Tuple[Union[np.ndarray, float], Union[np.ndarray, float]]:
         r"""Retrieves the conditional parameter of the leaf node.
-    
+
         First, checks if conditional parameters (``mean``,``std``) is passed as an additional argument in the dispatch context.
         Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
         Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
@@ -82,7 +89,7 @@ class CondGaussian(LeafNode):
 
         Returns:
             Tuple of two floats or scalar NumPy arrays representing the mean and standard deviation.
-        
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -106,13 +113,15 @@ class CondGaussian(LeafNode):
 
         # if neither 'mean' or 'std' nor 'cond_f' is specified (via node or arguments)
         if (mean is None or std is None) and cond_f is None:
-            raise ValueError("'CondExponential' requires either 'mean' and 'std' or 'cond_f' to retrieve 'mean', 'std' to be specified.")
+            raise ValueError(
+                "'CondExponential' requires either 'mean' and 'std' or 'cond_f' to retrieve 'mean', 'std' to be specified."
+            )
 
         # if 'mean' or 'std' not already specified, retrieve them
         if mean is None or std is None:
             params = cond_f(data)
-            mean = params['mean']
-            std = params['std']
+            mean = params["mean"]
+            std = params["std"]
 
         # check if values for 'mean', 'std' are valid
         if not (np.isfinite(mean) and np.isfinite(std)):
@@ -128,7 +137,7 @@ class CondGaussian(LeafNode):
 
     def dist(self, mean: float, std: float) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Args:
             mean:
                 Floating point value representing the mean (:math:`\mu`) of the distribution.

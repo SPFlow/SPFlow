@@ -4,12 +4,22 @@
 import torch
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric,
+)
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(leaf: Hypergeometric, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    leaf: Hypergeometric,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     r"""Computes log-likelihoods for ``Hypergeometric`` node in the ``torch`` backend given input data.
 
     Log-likelihood for ``Hypergeometric`` is given by the logarithm of its probability mass function (PMF):
@@ -54,7 +64,7 @@ def log_likelihood(leaf: Hypergeometric, data: torch.Tensor, check_support: bool
     scope_data = data[:, leaf.scope.query]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, 1) # TODO: device
+    log_prob: torch.Tensor = torch.empty(batch_size, 1)  # TODO: device
 
     # ----- marginalization -----
 

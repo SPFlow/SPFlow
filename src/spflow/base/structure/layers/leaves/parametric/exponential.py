@@ -6,10 +6,15 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
-from spflow.base.structure.nodes.leaves.parametric.exponential import Exponential
+from spflow.base.structure.nodes.leaves.parametric.exponential import (
+    Exponential,
+)
 
 
 class ExponentialLayer(Module):
@@ -34,7 +39,14 @@ class ExponentialLayer(Module):
         nodes:
             List of ``Exponential`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], l: Union[int, float, List[float], np.ndarray]=1.0, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        l: Union[int, float, List[float], np.ndarray] = 1.0,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``ExponentialLayer`` object.
 
         Args:
@@ -51,13 +63,17 @@ class ExponentialLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'ExponentialLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'ExponentialLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'ExponentialLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'ExponentialLayer' was empty."
+                )
 
             self._n_out = len(scope)
 
@@ -94,14 +110,18 @@ class ExponentialLayer(Module):
             l = np.array([float(l) for _ in range(self.n_out)])
         if isinstance(l, list):
             l = np.array(l)
-        if(l.ndim != 1):
-            raise ValueError(f"Numpy array of 'l' values for 'ExponentialLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional.")
-        if(l.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'l' values for 'ExponentialLayer' must match number of output nodes {self.n_out}, but is {l.shape[0]}")
+        if l.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'l' values for 'ExponentialLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional."
+            )
+        if l.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'l' values for 'ExponentialLayer' must match number of output nodes {self.n_out}, but is {l.shape[0]}"
+            )
 
         for node_l, node in zip(l, self.nodes):
             node.set_params(node_l)
-    
+
     def get_params(self) -> Tuple[np.ndarray]:
         """Returns the parameters of the represented distribution.
 
@@ -110,9 +130,9 @@ class ExponentialLayer(Module):
         """
         return (self.l,)
 
-    def dist(self, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+    def dist(self, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
-        
+
         Args:
             node_ids:
                 Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
@@ -126,7 +146,9 @@ class ExponentialLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Exponential distributions, which are:
@@ -150,11 +172,18 @@ class ExponentialLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+        return np.concatenate(
+            [self.nodes[i].check_support(data) for i in node_ids], axis=1
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: ExponentialLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[ExponentialLayer, Exponential, None]:
+def marginalize(
+    layer: ExponentialLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[ExponentialLayer, Exponential, None]:
     r"""Structural marginalization for ``ExponentialLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -171,7 +200,7 @@ def marginalize(layer: ExponentialLayer, marg_rvs: Iterable[int], prune: bool=Tr
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -195,5 +224,7 @@ def marginalize(layer: ExponentialLayer, marg_rvs: Iterable[int], prune: bool=Tr
         new_node = Exponential(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = ExponentialLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
+        new_layer = ExponentialLayer(
+            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
+        )
         return new_layer

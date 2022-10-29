@@ -6,7 +6,10 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli
@@ -34,7 +37,14 @@ class BernoulliLayer(Module):
         nodes:
             List of ``Bernoulli`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], p: Union[int, float, List[float], np.ndarray]=0.5, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        p: Union[int, float, List[float], np.ndarray] = 0.5,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``BernoulliLayer`` object.
 
         Args:
@@ -51,16 +61,20 @@ class BernoulliLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'BernoulliLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'BernoulliLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'BernoulliLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'BernoulliLayer' was empty."
+                )
 
             self._n_out = len(scope)
-        
+
         super(BernoulliLayer, self).__init__(children=[], **kwargs)
 
         # create leaf nodes
@@ -72,7 +86,6 @@ class BernoulliLayer(Module):
         # parse weights
         self.set_params(p)
 
-
     @property
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
@@ -83,7 +96,9 @@ class BernoulliLayer(Module):
         """Returns the success probabilities of the represented distributions."""
         return np.array([node.p for node in self.nodes])
 
-    def set_params(self, p: Union[int, float, List[float], np.ndarray]=0.5) -> None:
+    def set_params(
+        self, p: Union[int, float, List[float], np.ndarray] = 0.5
+    ) -> None:
         """Sets the parameters for the represented distributions.
 
         Args:
@@ -96,10 +111,14 @@ class BernoulliLayer(Module):
             p = np.array([p for _ in range(self.n_out)])
         if isinstance(p, list):
             p = np.array(p)
-        if(p.ndim != 1):
-            raise ValueError(f"Numpy array of 'p' values for 'BernoulliLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional.")
-        if(p.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'p' values for 'BernoulliLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}")
+        if p.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'p' values for 'BernoulliLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
+            )
+        if p.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'p' values for 'BernoulliLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
+            )
         for node_p, node in zip(p, self.nodes):
             node.set_params(node_p)
 
@@ -111,9 +130,9 @@ class BernoulliLayer(Module):
         """
         return (self.p,)
 
-    def dist(self, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+    def dist(self, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
-        
+
         Args:
             node_ids:
                 Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
@@ -127,7 +146,9 @@ class BernoulliLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or not instances are part of the supports of the Bernoulli distributions, which are:
@@ -135,9 +156,9 @@ class BernoulliLayer(Module):
         .. math::
 
             \text{supp}(\text{Bernoulli})=\{0,1\}
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
-    
+
         Args:
             TODO
             scope_data:
@@ -151,10 +172,18 @@ class BernoulliLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+        return np.concatenate(
+            [self.nodes[i].check_support(data) for i in node_ids], axis=1
+        )
+
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: BernoulliLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[BernoulliLayer, Bernoulli, None]:
+def marginalize(
+    layer: BernoulliLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[BernoulliLayer, Bernoulli, None]:
     """Structural marginalization for ``BernoulliLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -171,7 +200,7 @@ def marginalize(layer: BernoulliLayer, marg_rvs: Iterable[int], prune: bool=True
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -195,5 +224,7 @@ def marginalize(layer: BernoulliLayer, marg_rvs: Iterable[int], prune: bool=True
         new_node = Bernoulli(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = BernoulliLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
+        new_layer = BernoulliLayer(
+            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
+        )
         return new_layer

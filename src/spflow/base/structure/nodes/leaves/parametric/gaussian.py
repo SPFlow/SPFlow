@@ -30,11 +30,12 @@ class Gaussian(LeafNode):
         std:
             Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
     """
+
     def __init__(
         self,
         scope: Scope,
-        mean: float=0.0,
-        std: float=1.0,
+        mean: float = 0.0,
+        std: float = 1.0,
     ) -> None:
         r"""Initializes ``Gaussian`` leaf node.
 
@@ -49,17 +50,21 @@ class Gaussian(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Gaussian' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Gaussian' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Gaussian' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Gaussian' should be empty, but was {scope.evidence}."
+            )
 
         super(Gaussian, self).__init__(scope=scope)
         self.set_params(mean, std)
-    
+
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """

@@ -4,7 +4,10 @@
 from typing import Tuple, List, Union, Optional, Iterable
 import numpy as np
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
@@ -36,11 +39,12 @@ class MultivariateGaussian(LeafNode):
             A list of lists of floating points or a two-dimensional NumPy array (representing a :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
             of the scope) describing the covariances of the distribution. The diagonal holds the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
     """
+
     def __init__(
         self,
         scope: Scope,
-        mean: Optional[Union[List[float], np.ndarray]]=None,
-        cov: Optional[Union[List[List[float]], np.ndarray]]=None,
+        mean: Optional[Union[List[float], np.ndarray]] = None,
+        cov: Optional[Union[List[List[float]], np.ndarray]] = None,
     ) -> None:
         r"""Initializes ``MultivariateGaussian`` leaf node.
 
@@ -48,33 +52,39 @@ class MultivariateGaussian(LeafNode):
             mean:
                 A list of floating points or one-dimensional NumPy array containing the means (:math:`\mu`) of each of the one-dimensional Normal distributions.
                 Must have exactly as many elements as the scope of this leaf.
-                Defaults to all zeros. 
+                Defaults to all zeros.
             cov:
                 A list of lists of floating points or a two-dimensional NumPy array (representing a :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
                 of the scope) describing the covariances of the distribution. The diagonal holds the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
                 Defaults to the identity matrix.
         """
         # check if scope contains duplicates
-        if(len(set(scope.query)) != len(scope.query)):
-            raise ValueError("Query scope for 'MultivariateGaussian' contains duplicate variables.")
+        if len(set(scope.query)) != len(scope.query):
+            raise ValueError(
+                "Query scope for 'MultivariateGaussian' contains duplicate variables."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'MultivariateGaussian' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'MultivariateGaussian' should be empty, but was {scope.evidence}."
+            )
         if len(scope.query) < 1:
-            raise ValueError("Size of query scope for 'MultivariateGaussian' must be at least 1.")
+            raise ValueError(
+                "Size of query scope for 'MultivariateGaussian' must be at least 1."
+            )
 
         super(MultivariateGaussian, self).__init__(scope=scope)
 
-        if(mean is None):
-            mean = np.zeros((1,len(scope.query)))
-        if(cov is None):
+        if mean is None:
+            mean = np.zeros((1, len(scope.query)))
+        if cov is None:
             cov = np.eye(len(scope.query))
 
         self.set_params(mean, cov)
-    
+
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """
@@ -91,7 +101,7 @@ class MultivariateGaussian(LeafNode):
             mean:
                 A list of floating points or one-dimensional NumPy array containing the means (:math:`\mu`) of each of the one-dimensional Normal distributions.
                 Must have exactly as many elements as the scope of this leaf.
-                Defaults to all zeros. 
+                Defaults to all zeros.
             cov:
                 A list of lists of floating points or a two-dimensional NumPy array (representing a :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
                 of the scope) describing the covariances of the distribution. The diagonal holds the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
@@ -112,15 +122,19 @@ class MultivariateGaussian(LeafNode):
             raise ValueError(
                 f"Dimensions of 'mean' for 'MultivariateGaussian' should match scope size {len(self.scope.query)}, but was: {mean.shape}."
             )
-        
-        if(mean.ndim == 2):
+
+        if mean.ndim == 2:
             mean = mean.squeeze(0)
 
         # check mean vector for nan or inf values
         if np.any(np.isinf(mean)):
-            raise ValueError("Value of 'mean' for 'MultivariateGaussian' may not contain infinite values.")
+            raise ValueError(
+                "Value of 'mean' for 'MultivariateGaussian' may not contain infinite values."
+            )
         if np.any(np.isnan(mean)):
-            raise ValueError("Value of 'mean' for 'MultivariateGaussian' may not contain NaN values.")
+            raise ValueError(
+                "Value of 'mean' for 'MultivariateGaussian' may not contain NaN values."
+            )
 
         # test whether or not matrix has correct shape
         if cov.ndim != 2 or (
@@ -146,7 +160,9 @@ class MultivariateGaussian(LeafNode):
 
         # test covariance matrix for symmetry
         if not np.all(cov == cov.T):
-            raise ValueError("Value of 'cov' for 'MultivariateGaussian' must be symmetric.")
+            raise ValueError(
+                "Value of 'cov' for 'MultivariateGaussian' must be symmetric."
+            )
 
         # test covariance matrix for positive semi-definiteness
         # NOTE: since we established in the test right before that matrix is symmetric we can use numpy's eigvalsh instead of eigvals
@@ -176,7 +192,7 @@ class MultivariateGaussian(LeafNode):
         .. math::
 
             \text{supp}(\text{MultivariateGaussian})=(-\infty,+\infty)^k
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
@@ -204,7 +220,12 @@ class MultivariateGaussian(LeafNode):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(node: MultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[MultivariateGaussian,Gaussian,None]:
+def marginalize(
+    node: MultivariateGaussian,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[MultivariateGaussian, Gaussian, None]:
     """Structural marginalization for node objects.
 
     Structurally marginalizes the leaf node.
@@ -222,7 +243,7 @@ def marginalize(node: MultivariateGaussian, marg_rvs: Iterable[int], prune: bool
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
             Unaltered node if module is not marginalized, marginalized uni- or multivariate Gaussian leaf node, or None if it is completely marginalized.
     """
@@ -241,9 +262,13 @@ def marginalize(node: MultivariateGaussian, marg_rvs: Iterable[int], prune: bool
             marg_scope_ids.append(scope.query.index(rv))
 
     # return univariate Gaussian if one-dimensional
-    if(len(marg_scope) == 1):
+    if len(marg_scope) == 1:
         # note: Gaussian requires standard deviations instead of variance (take square root)
-        return Gaussian(Scope(marg_scope), node.mean[marg_scope_ids[0]], np.sqrt(node.cov[marg_scope_ids[0]][marg_scope_ids[0]]))
+        return Gaussian(
+            Scope(marg_scope),
+            node.mean[marg_scope_ids[0]],
+            np.sqrt(node.cov[marg_scope_ids[0]][marg_scope_ids[0]]),
+        )
     # entire node is marginalized over
     elif len(marg_scope) == 0:
         return None

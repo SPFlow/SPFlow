@@ -5,13 +5,23 @@ import torch
 import numpy as np
 from typing import Optional
 from spflow.meta.scope.scope import Scope
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.torch.structure.layers.leaves.parametric.bernoulli import BernoulliLayer
+from spflow.torch.structure.layers.leaves.parametric.bernoulli import (
+    BernoulliLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(layer: BernoulliLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    layer: BernoulliLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     r"""Computes log-likelihoods for ``BernoulliLayer`` leaves in the ``torch`` backend given input data.
 
     Log-likelihood for ``BernoulliLayer`` is given by the logarithm of its individual probability mass functions (PMFs):
@@ -52,7 +62,9 @@ def log_likelihood(layer: BernoulliLayer, data: torch.Tensor, check_support: boo
     batch_size: int = data.shape[0]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).to(layer.p.device)
+    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).to(
+        layer.p.device
+    )
 
     # query rvs of all node scopes
     query_rvs = [list(set(scope.query)) for scope in layer.scopes_out]
@@ -61,9 +73,11 @@ def log_likelihood(layer: BernoulliLayer, data: torch.Tensor, check_support: boo
     for query_signature in np.unique(query_rvs, axis=0):
 
         # compute all nodes with this scope
-        node_ids = np.where((query_rvs == query_signature).all(axis=1))[0].tolist()
+        node_ids = np.where((query_rvs == query_signature).all(axis=1))[
+            0
+        ].tolist()
         node_ids_tensor = torch.tensor(node_ids)
-    
+
         # get data for scope (since all "nodes" are univariate, order does not matter)
         scope_data = data[:, layer.scopes_out[node_ids[0]].query]
 
@@ -74,7 +88,7 @@ def log_likelihood(layer: BernoulliLayer, data: torch.Tensor, check_support: boo
         non_marg_ids = torch.where(~marg_mask)[0]
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.meshgrid(marg_ids, node_ids_tensor, indexing='ij')] = 0.0
+        log_prob[torch.meshgrid(marg_ids, node_ids_tensor, indexing="ij")] = 0.0
 
         # ----- log probabilities -----
 
@@ -88,7 +102,9 @@ def log_likelihood(layer: BernoulliLayer, data: torch.Tensor, check_support: boo
                 )
 
         # compute probabilities for values inside distribution support
-        log_prob[torch.meshgrid(non_marg_ids, node_ids_tensor, indexing='ij')] = layer.dist(node_ids=node_ids).log_prob(
+        log_prob[
+            torch.meshgrid(non_marg_ids, node_ids_tensor, indexing="ij")
+        ] = layer.dist(node_ids=node_ids).log_prob(
             scope_data[non_marg_ids, :].type(torch.get_default_dtype())
         )
 

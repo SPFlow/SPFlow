@@ -6,7 +6,10 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial
@@ -37,7 +40,15 @@ class BinomialLayer(Module):
         nodes:
             List of ``Binomial`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], n: Union[int, List[int], np.ndarray], p: Union[int, float, List[float], np.ndarray]=0.5, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        n: Union[int, List[int], np.ndarray],
+        p: Union[int, float, List[float], np.ndarray] = 0.5,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``BinomialLayer`` object.
 
         Args:
@@ -57,16 +68,20 @@ class BinomialLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'BinomialLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'BinomialLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'BinomialLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'BinomialLayer' was empty."
+                )
 
             self._n_out = len(scope)
-        
+
         super(BinomialLayer, self).__init__(children=[], **kwargs)
 
         # create leaf nodes
@@ -87,13 +102,17 @@ class BinomialLayer(Module):
     def n(self) -> np.ndarray:
         """Returns the numbers of i.i.d. Bernoulli trials of the represented distributions."""
         return np.array([node.n for node in self.nodes])
-    
+
     @property
     def p(self) -> np.ndarray:
         """Returns the success probabilities of the represented distributions."""
         return np.array([node.p for node in self.nodes])
 
-    def set_params(self, n: Union[int, List[int], np.ndarray], p: Union[int, float, List[float], np.ndarray]=0.5) -> None:
+    def set_params(
+        self,
+        n: Union[int, List[int], np.ndarray],
+        p: Union[int, float, List[float], np.ndarray] = 0.5,
+    ) -> None:
         """Sets the parameters for the represented distributions.
 
         Args:
@@ -109,19 +128,27 @@ class BinomialLayer(Module):
             n = np.array([n for _ in range(self.n_out)])
         if isinstance(n, list):
             n = np.array(n)
-        if(n.ndim != 1):
-            raise ValueError(f"Numpy array of 'n' values for 'BinomialLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional.")
-        if(n.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'n' values for 'BinomialLayer' must match number of output nodes {self.n_out}, but is {n.shape[0]}")
+        if n.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'n' values for 'BinomialLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional."
+            )
+        if n.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'n' values for 'BinomialLayer' must match number of output nodes {self.n_out}, but is {n.shape[0]}"
+            )
 
         if isinstance(p, int) or isinstance(p, float):
             p = np.array([float(p) for _ in range(self.n_out)])
         if isinstance(p, list):
             p = np.array(p)
-        if(p.ndim != 1):
-            raise ValueError(f"Numpy array of 'p' values for 'BinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional.")
-        if(p.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'p' values for 'BinomialLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}")
+        if p.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'p' values for 'BinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
+            )
+        if p.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'p' values for 'BinomialLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
+            )
 
         node_scopes = np.array([s.query[0] for s in self.scopes_out])
 
@@ -129,11 +156,13 @@ class BinomialLayer(Module):
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not np.all(n_values == n_values[0]):
-                raise ValueError("All values of 'n' for 'BinomialLayer' over the same scope must be identical.")
+                raise ValueError(
+                    "All values of 'n' for 'BinomialLayer' over the same scope must be identical."
+                )
 
         for node_n, node_p, node in zip(n, p, self.nodes):
             node.set_params(node_n, node_p)
-    
+
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
         """Returns the parameters of the represented distribution.
 
@@ -141,10 +170,10 @@ class BinomialLayer(Module):
             Tuple of one-dimensional NumPy arrays representing the number of i.i.d. Bernoulli trials and success probabilities.
         """
         return self.n, self.p
-    
-    def dist(self, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+
+    def dist(self, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
-        
+
         Args:
             node_ids:
                 Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
@@ -158,7 +187,9 @@ class BinomialLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Binomial distributions, which are:
@@ -166,7 +197,7 @@ class BinomialLayer(Module):
         .. math::
 
             \text{supp}(\text{Binomial})=\{0,\hdots,n\}
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
@@ -182,11 +213,18 @@ class BinomialLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+        return np.concatenate(
+            [self.nodes[i].check_support(data) for i in node_ids], axis=1
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: BinomialLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[BinomialLayer, Binomial, None]:
+def marginalize(
+    layer: BinomialLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[BinomialLayer, Binomial, None]:
     """Structural marginalization for ``BinomialLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -203,7 +241,7 @@ def marginalize(layer: BinomialLayer, marg_rvs: Iterable[int], prune: bool=True,
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -227,5 +265,7 @@ def marginalize(layer: BinomialLayer, marg_rvs: Iterable[int], prune: bool=True,
         new_node = Binomial(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = BinomialLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
+        new_layer = BinomialLayer(
+            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
+        )
         return new_layer

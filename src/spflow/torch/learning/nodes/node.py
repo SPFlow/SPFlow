@@ -6,12 +6,20 @@ Created on October 13, 2022
 from typing import Optional
 import torch
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(node: SPNSumNode, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(
+    node: SPNSumNode,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNSumNode`` in the ``torch`` backend.
 
     Args:
@@ -31,13 +39,22 @@ def em(node: SPNSumNode, data: torch.Tensor, check_support: bool=True, dispatch_
 
     with torch.no_grad():
         # ----- expectation step -----
-        child_lls = torch.hstack([dispatch_ctx.cache['log_likelihood'][child] for child in node.children()])
+        child_lls = torch.hstack(
+            [
+                dispatch_ctx.cache["log_likelihood"][child]
+                for child in node.children()
+            ]
+        )
 
         # get cached log-likelihood gradients w.r.t. module log-likelihoods
-        expectations = node.weights.data * (dispatch_ctx.cache['log_likelihood'][node].grad * torch.exp(child_lls) / torch.exp(dispatch_ctx.cache['log_likelihood'][node])).sum(dim=0)
+        expectations = node.weights.data * (
+            dispatch_ctx.cache["log_likelihood"][node].grad
+            * torch.exp(child_lls)
+            / torch.exp(dispatch_ctx.cache["log_likelihood"][node])
+        ).sum(dim=0)
 
         # ----- maximization step -----
-        node.weights = expectations/expectations.sum()
+        node.weights = expectations / expectations.sum()
 
         # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
 
@@ -47,7 +64,12 @@ def em(node: SPNSumNode, data: torch.Tensor, check_support: bool=True, dispatch_
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(node: SPNProductNode, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(
+    node: SPNProductNode,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNProductNode`` in the ``torch`` backend.
 
     Args:

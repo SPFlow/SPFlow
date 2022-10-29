@@ -12,8 +12,8 @@ from packaging import version
 def torch_spacing(A: torch.Tensor) -> torch.Tensor:
     """TODO."""
     return torch.min(
-        torch.nextafter(A,  torch.tensor(float("inf")))-A, 
-        torch.nextafter(A, -torch.tensor(float("inf")))-A
+        torch.nextafter(A, torch.tensor(float("inf"))) - A,
+        torch.nextafter(A, -torch.tensor(float("inf"))) - A,
     )
 
 
@@ -46,16 +46,16 @@ def nearest_sym_pd(A: torch.Tensor) -> torch.Tensor:
             return False
 
     # make sure matrix is symmetric
-    B = (A + A)/2
+    B = (A + A) / 2
 
     # compute symmetric polar factor of B from SVD (which is symmetric positive definite)
     U, s, _ = torch.linalg.svd(B)
     H = torch.matmul(U, torch.matmul(torch.diag(s), U.T))
-    
+
     # compute closest symmetric positive semi-definite matrix to A in Frobenius norm (see paper linked above)
-    A_hat = (B+H)/2
+    A_hat = (B + H) / 2
     # again, make sure matrix is symmetric
-    A_hat = (A_hat + A_hat.T)/2
+    A_hat = (A_hat + A_hat.T) / 2
 
     # check if matrix is actually symmetric positive-definite
     if is_pd(A_hat):
@@ -72,11 +72,11 @@ def nearest_sym_pd(A: torch.Tensor) -> torch.Tensor:
 
         if torch.is_complex(eigvals):
             eigval = torch.real(eigvals)
-        
+
         min_eigval = torch.min(eigvals)
-        
+
         # adjust matrix
-        A_hat += I*(-min_eigval*(k**2) + spacing)
+        A_hat += I * (-min_eigval * (k ** 2) + spacing)
         k += 1
 
     return A_hat

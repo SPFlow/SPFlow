@@ -29,7 +29,7 @@ def empirical_cdf(data: np.ndarray) -> np.ndarray:
     nan_mask = np.isnan(data)
 
     # rank data values from min to max
-    ecd = rankdata(data, axis=0, method='max').astype(float)
+    ecd = rankdata(data, axis=0, method="max").astype(float)
 
     # set nan values to 0
     ecd[nan_mask] = 0

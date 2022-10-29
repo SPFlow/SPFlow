@@ -9,9 +9,14 @@ import torch
 import numpy as np
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.cond_node import SPNCondSumNode as BaseSPNCondSumNode
+from spflow.base.structure.nodes.cond_node import (
+    SPNCondSumNode as BaseSPNCondSumNode,
+)
 from spflow.torch.structure.nodes.node import Node
 from spflow.torch.structure.module import Module
 
@@ -35,7 +40,10 @@ class SPNCondSumNode(Node):
         scopes_out:
             List of scopes representing the output scopes.
     """
-    def __init__(self, children: List[Module], cond_f: Optional[Callable]=None) -> None:
+
+    def __init__(
+        self, children: List[Module], cond_f: Optional[Callable] = None
+    ) -> None:
         """Initializes ``SPNCondSumNode`` object.
 
         Args:
@@ -53,25 +61,29 @@ class SPNCondSumNode(Node):
         super(SPNCondSumNode, self).__init__(children=children)
 
         if not children:
-            raise ValueError("'SPNCondSumNode' requires at least one child to be specified.")
-        
+            raise ValueError(
+                "'SPNCondSumNode' requires at least one child to be specified."
+            )
+
         scope = None
 
         for child in children:
             for s in child.scopes_out:
-                if(scope is None):
+                if scope is None:
                     scope = s
                 else:
                     if not scope.equal_query(s):
-                        raise ValueError(f"'SPNCondSumNode' requires child scopes to have the same query variables.")
-                
+                        raise ValueError(
+                            f"'SPNCondSumNode' requires child scopes to have the same query variables."
+                        )
+
                 scope = scope.union(s)
 
         self.scope = scope
         self.n_in = sum(child.n_out for child in children)
 
         self.set_cond_f(cond_f)
-    
+
     def set_cond_f(self, cond_f: Callable) -> None:
         """Sets the function to retrieve the node's conditonal weights.
 
@@ -82,10 +94,12 @@ class SPNCondSumNode(Node):
                 a list of floats or, one-dimensional NumPy array or a one-dimensional PyTorch tensor containing non-zero values, summing up to one.
         """
         self.cond_f = cond_f
-    
-    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> torch.Tensor:
+
+    def retrieve_params(
+        self, data: torch.Tensor, dispatch_ctx: DispatchContext
+    ) -> torch.Tensor:
         """Retrieves the conditional weights of the sum node.
-    
+
         First, checks if conditional weights (``weights``) are passed as an additional argument in the dispatch context.
         Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
         Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
@@ -99,7 +113,7 @@ class SPNCondSumNode(Node):
 
         Returns:
             One-dimensional PyTorch array of non-zero weights
-        
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -118,31 +132,46 @@ class SPNCondSumNode(Node):
         elif self.cond_f:
             # check if module has a 'cond_f' to provide 'weights' specified (lowest priority)
             cond_f = self.cond_f
-        
+
         # if 'weights' was not already specified, retrieve it
         if weights is None:
-            weights = cond_f(data)['weights']
+            weights = cond_f(data)["weights"]
 
         # if neither 'weights' nor 'cond_f' is specified (via node or arguments)
         if weights is None and cond_f is None:
-            raise ValueError("'SPNCondSumNode' requires either 'weights' or 'cond_f' to retrieve 'weights' to be specified.")
+            raise ValueError(
+                "'SPNCondSumNode' requires either 'weights' or 'cond_f' to retrieve 'weights' to be specified."
+            )
 
         if isinstance(weights, list) or isinstance(weights, np.ndarray):
             weights = torch.tensor(weights).float()
-        if(weights.ndim != 1):
-            raise ValueError(f"Torch tensor of weight values for 'SPNCondSumNode' is expected to be one-dimensional, but is {weights.ndim}-dimensional.")
+        if weights.ndim != 1:
+            raise ValueError(
+                f"Torch tensor of weight values for 'SPNCondSumNode' is expected to be one-dimensional, but is {weights.ndim}-dimensional."
+            )
         if not torch.all(weights > 0):
-            raise ValueError("Weights for 'SPNCondSumNode' must be all positive.")
-        if not torch.isclose(weights.sum(), torch.tensor(1.0, dtype=weights.dtype)):
+            raise ValueError(
+                "Weights for 'SPNCondSumNode' must be all positive."
+            )
+        if not torch.isclose(
+            weights.sum(), torch.tensor(1.0, dtype=weights.dtype)
+        ):
             raise ValueError("Weights for 'SPNCondSumNode' must sum up to one.")
         if not (len(weights) == self.n_in):
-            raise ValueError("Number of weights for 'SPNCondSumNode' does not match total number of child outputs.")
+            raise ValueError(
+                "Number of weights for 'SPNCondSumNode' does not match total number of child outputs."
+            )
 
         return weights
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(sum_node: SPNCondSumNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None):
+def marginalize(
+    sum_node: SPNCondSumNode,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+):
     """Structural marginalization for ``SPNCondSumNode`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified sum node.
@@ -160,7 +189,7 @@ def marginalize(sum_node: SPNCondSumNode, marg_rvs: Iterable[int], prune: bool=T
             Has no effect when marginalizing sum nodes. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         (Marginalized) sum node or None if it is completely marginalized.
     """
@@ -173,7 +202,7 @@ def marginalize(sum_node: SPNCondSumNode, marg_rvs: Iterable[int], prune: bool=T
     mutual_rvs = set(node_scope.query).intersection(set(marg_rvs))
 
     # node scope is being fully marginalized
-    if(len(mutual_rvs) == len(node_scope.query)):
+    if len(mutual_rvs) == len(node_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
@@ -181,21 +210,25 @@ def marginalize(sum_node: SPNCondSumNode, marg_rvs: Iterable[int], prune: bool=T
 
         # marginalize child modules
         for child in sum_node.children():
-            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+            marg_child = marginalize(
+                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
+            )
 
             # if marginalized child is not None
             if marg_child:
                 marg_children.append(marg_child)
-        
+
         return SPNCondSumNode(children=marg_children)
     else:
         return deepcopy(sum_node)
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(sum_node: SPNCondSumNode, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNCondSumNode:
+def toBase(
+    sum_node: SPNCondSumNode, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseSPNCondSumNode:
     """Conversion for ``SPNCondSumNode`` from ``torch`` backend to ``base`` backend.
-    
+
     Args:
         sum_node:
             Conditional sum node to be converted.
@@ -203,13 +236,20 @@ def toBase(sum_node: SPNCondSumNode, dispatch_ctx: Optional[DispatchContext]=Non
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseSPNCondSumNode(children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children()])
+    return BaseSPNCondSumNode(
+        children=[
+            toBase(child, dispatch_ctx=dispatch_ctx)
+            for child in sum_node.children()
+        ]
+    )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(sum_node: BaseSPNCondSumNode, dispatch_ctx: Optional[DispatchContext]=None) -> SPNCondSumNode:
+def toTorch(
+    sum_node: BaseSPNCondSumNode, dispatch_ctx: Optional[DispatchContext] = None
+) -> SPNCondSumNode:
     """Conversion for ``SPNCondSumNode`` from ``base`` backend to ``torch`` backend.
-    
+
     Args:
         sum_node:
             Conditional sum node to be converted.
@@ -217,4 +257,9 @@ def toTorch(sum_node: BaseSPNCondSumNode, dispatch_ctx: Optional[DispatchContext
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return SPNCondSumNode(children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children])
+    return SPNCondSumNode(
+        children=[
+            toTorch(child, dispatch_ctx=dispatch_ctx)
+            for child in sum_node.children
+        ]
+    )

@@ -31,8 +31,13 @@ class Uniform(LeafNode):
         support_outside:
             Boolean indicating whether or not values outside of the interval are part of the support.
     """
+
     def __init__(
-        self, scope: Scope, start: float, end: float, support_outside: bool=True
+        self,
+        scope: Scope,
+        start: float,
+        end: float,
+        support_outside: bool = True,
     ) -> None:
         r"""Initializes ``Uniform`` leaf node.
 
@@ -48,23 +53,29 @@ class Uniform(LeafNode):
                 Defaults to True.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Uniform' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Uniform' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Uniform' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Uniform' should be empty, but was {scope.evidence}."
+            )
 
         super(Uniform, self).__init__(scope=scope)
         self.set_params(start, end, support_outside)
-    
+
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """
-        return uniform(loc=self.start, scale=self.end-self.start)
+        return uniform(loc=self.start, scale=self.end - self.start)
 
-    def set_params(self, start: float, end: float, support_outside: bool=True) -> None:
+    def set_params(
+        self, start: float, end: float, support_outside: bool = True
+    ) -> None:
         r"""Sets the parameters for the represented distribution.
 
         Args:
@@ -81,7 +92,9 @@ class Uniform(LeafNode):
                 f"Value of 'start' for 'Uniform' must be less than value of 'end', but were: {start}, {end}."
             )
         if not (np.isfinite(start) and np.isfinite(end)):
-            raise ValueError(f"Values of 'start' and 'end' for 'Uniform' must be finite, but were: {start}, {end}.")
+            raise ValueError(
+                f"Values of 'start' and 'end' for 'Uniform' must be finite, but were: {start}, {end}."
+            )
 
         self.start = start
         self.end = end
@@ -134,7 +147,7 @@ class Uniform(LeafNode):
         # check if values are in valid range
         if not self.support_outside:
             valid[valid & ~nan_mask] &= (
-                (scope_data[valid & ~nan_mask] >= self.start) & (scope_data[valid & ~nan_mask] <= self.end)
-            )
+                scope_data[valid & ~nan_mask] >= self.start
+            ) & (scope_data[valid & ~nan_mask] <= self.end)
 
         return valid

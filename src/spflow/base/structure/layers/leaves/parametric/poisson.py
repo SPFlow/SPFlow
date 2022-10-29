@@ -6,7 +6,10 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.poisson import Poisson
@@ -33,7 +36,14 @@ class PoissonLayer(Module):
         nodes:
             List of ``Poisson`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], l: Union[int, float, List[float], np.ndarray]=1.0, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        l: Union[int, float, List[float], np.ndarray] = 1.0,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``PoissonLayer`` object.
 
         Args:
@@ -50,7 +60,9 @@ class PoissonLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'PoissonLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'PoissonLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
@@ -75,7 +87,7 @@ class PoissonLayer(Module):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
+
     @property
     def l(self) -> np.ndarray:
         """Returns the rate parameters of the represented distributions."""
@@ -94,14 +106,18 @@ class PoissonLayer(Module):
             l = np.array([float(l) for _ in range(self.n_out)])
         if isinstance(l, list):
             l = np.array(l)
-        if(l.ndim != 1):
-            raise ValueError(f"Numpy array of 'l' values for 'PoissonLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional.")
-        if(l.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'l' values for 'PoissonLayer' must match number of output nodes {self.n_out}, but is {l.shape[0]}")
+        if l.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'l' values for 'PoissonLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional."
+            )
+        if l.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'l' values for 'PoissonLayer' must match number of output nodes {self.n_out}, but is {l.shape[0]}"
+            )
 
         for node_l, node in zip(l, self.nodes):
             node.set_params(node_l)
-    
+
     def get_params(self) -> Tuple[np.ndarray]:
         """Returns the parameters of the represented distribution.
 
@@ -109,10 +125,10 @@ class PoissonLayer(Module):
             One-dimensional NumPy array representing the rate parameters.
         """
         return (self.l,)
-    
-    def dist(self, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+
+    def dist(self, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
-        
+
         Args:
             node_ids:
                 Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
@@ -126,7 +142,9 @@ class PoissonLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Poisson distributions, which are:
@@ -150,11 +168,18 @@ class PoissonLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+        return np.concatenate(
+            [self.nodes[i].check_support(data) for i in node_ids], axis=1
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: PoissonLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[PoissonLayer, Poisson, None]:
+def marginalize(
+    layer: PoissonLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[PoissonLayer, Poisson, None]:
     r"""Structural marginalization for ``PoissonLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -171,7 +196,7 @@ def marginalize(layer: PoissonLayer, marg_rvs: Iterable[int], prune: bool=True, 
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -195,5 +220,7 @@ def marginalize(layer: PoissonLayer, marg_rvs: Iterable[int], prune: bool=True, 
         new_node = Poisson(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = PoissonLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
+        new_layer = PoissonLayer(
+            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
+        )
         return new_layer

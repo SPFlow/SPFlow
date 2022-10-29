@@ -3,13 +3,26 @@
 """
 import numpy as np
 from typing import Optional
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.base.structure.layers.layer import SPNSumLayer, SPNProductLayer, SPNPartitionLayer, SPNHadamardLayer
+from spflow.base.structure.layers.layer import (
+    SPNSumLayer,
+    SPNProductLayer,
+    SPNPartitionLayer,
+    SPNHadamardLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(sum_layer: SPNSumLayer, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(
+    sum_layer: SPNSumLayer,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> np.ndarray:
     """Computes log-likelihoods for SPN-like sum layers in the ``base`` backend given input data.
 
     Log-likelihoods for sum nodes are the logarithm of the sum of weighted exponentials (LogSumExp) of its input likelihoods (weighted sum in linear space).
@@ -35,17 +48,46 @@ def log_likelihood(sum_layer: SPNSumLayer, data: np.ndarray, check_support: bool
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # compute child log-likelihoods
-    child_lls = np.concatenate([log_likelihood(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for child in sum_layer.children], axis=1)
+    child_lls = np.concatenate(
+        [
+            log_likelihood(
+                child,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for child in sum_layer.children
+        ],
+        axis=1,
+    )
 
     # set placeholder values
-    sum_layer.set_placeholders("log_likelihood", child_lls, dispatch_ctx, overwrite=False)
+    sum_layer.set_placeholders(
+        "log_likelihood", child_lls, dispatch_ctx, overwrite=False
+    )
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return np.concatenate([log_likelihood(node, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for node in sum_layer.nodes], axis=1)
+    return np.concatenate(
+        [
+            log_likelihood(
+                node,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for node in sum_layer.nodes
+        ],
+        axis=1,
+    )
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(product_layer: SPNProductLayer, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(
+    product_layer: SPNProductLayer,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> np.ndarray:
     """Computes log-likelihoods for SPN-like product layers in the 'base' backend given input data.
 
     Log-likelihoods for product nodes are the sum of its input likelihoods (product in linear space).
@@ -71,17 +113,46 @@ def log_likelihood(product_layer: SPNProductLayer, data: np.ndarray, check_suppo
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # compute child log-likelihoods
-    child_lls = np.concatenate([log_likelihood(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for child in product_layer.children], axis=1)
+    child_lls = np.concatenate(
+        [
+            log_likelihood(
+                child,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for child in product_layer.children
+        ],
+        axis=1,
+    )
 
     # set placeholder values
-    product_layer.set_placeholders("log_likelihood", child_lls, dispatch_ctx, overwrite=False)
+    product_layer.set_placeholders(
+        "log_likelihood", child_lls, dispatch_ctx, overwrite=False
+    )
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return np.concatenate([log_likelihood(node, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for node in product_layer.nodes], axis=1)
+    return np.concatenate(
+        [
+            log_likelihood(
+                node,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for node in product_layer.nodes
+        ],
+        axis=1,
+    )
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(partition_layer: SPNPartitionLayer, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(
+    partition_layer: SPNPartitionLayer,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> np.ndarray:
     """Computes log-likelihoods for SPN-like partition layers in the 'base' backend given input data.
 
     Log-likelihoods for product nodes are the sum of its input likelihoods (product in linear space).
@@ -107,17 +178,46 @@ def log_likelihood(partition_layer: SPNPartitionLayer, data: np.ndarray, check_s
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # compute child log-likelihoods
-    child_lls = np.concatenate([log_likelihood(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for child in partition_layer.children], axis=1)
+    child_lls = np.concatenate(
+        [
+            log_likelihood(
+                child,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for child in partition_layer.children
+        ],
+        axis=1,
+    )
 
     # set placeholder values
-    partition_layer.set_placeholders("log_likelihood", child_lls, dispatch_ctx, overwrite=False)
+    partition_layer.set_placeholders(
+        "log_likelihood", child_lls, dispatch_ctx, overwrite=False
+    )
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return np.concatenate([log_likelihood(node, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for node in partition_layer.nodes], axis=1)
+    return np.concatenate(
+        [
+            log_likelihood(
+                node,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for node in partition_layer.nodes
+        ],
+        axis=1,
+    )
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(hadamard_layer: SPNHadamardLayer, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(
+    hadamard_layer: SPNHadamardLayer,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> np.ndarray:
     """Computes log-likelihoods for SPN-like element-wise product layers in the 'base' backend given input data.
 
     Log-likelihoods for product nodes are the sum of its input likelihoods (product in linear space).
@@ -143,10 +243,34 @@ def log_likelihood(hadamard_layer: SPNHadamardLayer, data: np.ndarray, check_sup
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # compute child log-likelihoods
-    child_lls = np.concatenate([log_likelihood(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for child in hadamard_layer.children], axis=1)
+    child_lls = np.concatenate(
+        [
+            log_likelihood(
+                child,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for child in hadamard_layer.children
+        ],
+        axis=1,
+    )
 
     # set placeholder values
-    hadamard_layer.set_placeholders("log_likelihood", child_lls, dispatch_ctx, overwrite=False)
+    hadamard_layer.set_placeholders(
+        "log_likelihood", child_lls, dispatch_ctx, overwrite=False
+    )
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return np.concatenate([log_likelihood(node, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for node in hadamard_layer.nodes], axis=1)
+    return np.concatenate(
+        [
+            log_likelihood(
+                node,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for node in hadamard_layer.nodes
+        ],
+        axis=1,
+    )

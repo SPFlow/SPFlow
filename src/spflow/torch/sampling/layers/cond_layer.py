@@ -2,8 +2,14 @@
 """Contains sampling methods for conditional SPN-like layers for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.contexts.sampling_context import (
+    SamplingContext,
+    init_default_sampling_context,
+)
 from spflow.torch.structure.layers.cond_layer import SPNCondSumLayer
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
@@ -14,7 +20,13 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(sum_layer: SPNCondSumLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(
+    sum_layer: SPNCondSumLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> torch.Tensor:
     """Samples from conditional SPN-like sum layers in the ``torch`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
@@ -38,7 +50,7 @@ def sample(sum_layer: SPNCondSumLayer, data: torch.Tensor, check_support: bool=T
     Returns:
         Two-dimensional PyTorch tensor containing the sampled values together with the specified evidence.
         Each row corresponds to a sample.
-    
+
     Raises:
         ValueError: Sampling from invalid number of outputs.
     """
@@ -49,7 +61,7 @@ def sample(sum_layer: SPNCondSumLayer, data: torch.Tensor, check_support: bool=T
     # all nodes in sum layer have same scope
     if any([len(out) != 1 for out in sampling_ctx.output_ids]):
         raise ValueError("'SPNCondSumLayer only allows single output sampling.")
-    
+
     # retrieve value for 'weights'
     weights = sum_layer.retrieve_params(data, dispatch_ctx)
 
@@ -58,14 +70,27 @@ def sample(sum_layer: SPNCondSumLayer, data: torch.Tensor, check_support: bool=T
     instance_ids_mask[sampling_ctx.instance_ids] = True
 
     # compute log likelihoods for sum "nodes"
-    partition_ll = torch.concat([log_likelihood(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()], dim=1)
+    partition_ll = torch.concat(
+        [
+            log_likelihood(
+                child,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for child in sum_layer.children()
+        ],
+        dim=1,
+    )
 
     children = list(sum_layer.children())
 
     for node_id, instances in sampling_ctx.group_output_ids(sum_layer.n_out):
 
         # sample branches
-        input_ids = torch.multinomial(weights[node_id]*partition_ll[instances].exp(), num_samples=1).flatten()
+        input_ids = torch.multinomial(
+            weights[node_id] * partition_ll[instances].exp(), num_samples=1
+        ).flatten()
 
         # get correct child id and corresponding output id
         child_ids, output_ids = sum_layer.input_to_output_ids(input_ids)
@@ -73,10 +98,24 @@ def sample(sum_layer: SPNCondSumLayer, data: torch.Tensor, check_support: bool=T
         # group by child ids
         for child_id in torch.unique(torch.tensor(child_ids)):
 
-            child_instance_ids = torch.tensor(instances)[torch.tensor(child_ids) == child_id].tolist()
-            child_output_ids = torch.tensor(output_ids)[torch.tensor(child_ids) == child_id].unsqueeze(1).tolist()
+            child_instance_ids = torch.tensor(instances)[
+                torch.tensor(child_ids) == child_id
+            ].tolist()
+            child_output_ids = (
+                torch.tensor(output_ids)[torch.tensor(child_ids) == child_id]
+                .unsqueeze(1)
+                .tolist()
+            )
 
             # sample from partition node
-            sample(children[child_id], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(child_instance_ids, child_output_ids))
+            sample(
+                children[child_id],
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+                sampling_ctx=SamplingContext(
+                    child_instance_ids, child_output_ids
+                ),
+            )
 
     return data

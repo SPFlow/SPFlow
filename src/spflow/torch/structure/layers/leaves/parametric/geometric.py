@@ -7,14 +7,22 @@ import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from ....nodes.leaves.parametric.projections import proj_bounded_to_real, proj_real_to_bounded
+from ....nodes.leaves.parametric.projections import (
+    proj_bounded_to_real,
+    proj_real_to_bounded,
+)
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.geometric import Geometric
-from spflow.base.structure.layers.leaves.parametric.geometric import GeometricLayer as BaseGeometricLayer
+from spflow.base.structure.layers.leaves.parametric.geometric import (
+    GeometricLayer as BaseGeometricLayer,
+)
 
 
 class GeometricLayer(Module):
@@ -38,7 +46,14 @@ class GeometricLayer(Module):
         p:
             One-dimensional PyTorch tensor representing the success probabilities in the range :math:`(0,1]` (projected from ``p_aux``).
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], p: Union[int, float, List[float], np.ndarray, torch.Tensor]=0.5, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        p: Union[int, float, List[float], np.ndarray, torch.Tensor] = 0.5,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``GeometricLayer`` object.
 
         Args:
@@ -55,13 +70,17 @@ class GeometricLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'GeometricLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'GeometricLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'GeometricLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'GeometricLayer' was empty."
+                )
 
             self._n_out = len(scope)
 
@@ -76,7 +95,9 @@ class GeometricLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(lambda s1, s2: s1.union(s2), self.scopes_out)
+        self.combined_scope = reduce(
+            lambda s1, s2: s1.union(s2), self.scopes_out
+        )
 
         # parse weights
         self.set_params(p)
@@ -92,7 +113,7 @@ class GeometricLayer(Module):
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)  # type: ignore
 
-    def dist(self, node_ids: Optional[List[int]]=None) -> D.Distribution:
+    def dist(self, node_ids: Optional[List[int]] = None) -> D.Distribution:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -108,7 +129,9 @@ class GeometricLayer(Module):
 
         return D.Geometric(probs=self.p[node_ids])
 
-    def set_params(self, p: Union[int, float, List[float], np.ndarray, torch.Tensor]) -> None:
+    def set_params(
+        self, p: Union[int, float, List[float], np.ndarray, torch.Tensor]
+    ) -> None:
         r"""Sets the parameters for the represented distributions.
 
         TODO: projection function
@@ -123,11 +146,15 @@ class GeometricLayer(Module):
             p = torch.tensor([p for _ in range(self.n_out)])
         elif isinstance(p, list) or isinstance(p, np.ndarray):
             p = torch.tensor(p)
-        if(p.ndim != 1):
-            raise ValueError(f"Numpy array of 'p' values for 'GeometricLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional.")
-        if(p.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'p' values for 'GeometricLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}")
-        
+        if p.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'p' values for 'GeometricLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
+            )
+        if p.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'p' values for 'GeometricLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
+            )
+
         if torch.any(p <= 0) or not torch.any(torch.isfinite(p)):
             raise ValueError(
                 f"Values for 'p' of 'GeometricLayer' must to greater of equal to 0, but was: {p}"
@@ -142,8 +169,10 @@ class GeometricLayer(Module):
             One-dimensional PyTorch tensor representing the success probabilities.
         """
         return (self.p,)
-    
-    def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
+
+    def check_support(
+        self, data: torch.Tensor, node_ids: Optional[List[int]] = None
+    ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Geometric distributions, which are:
@@ -166,9 +195,11 @@ class GeometricLayer(Module):
         """
         if node_ids is None:
             node_ids = list(range(self.n_out))
-        
+
         # all query scopes are univariate
-        scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
+        scope_data = data[
+            :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
+        ]
 
         # NaN values do not throw an error but are simply flagged as False
         # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch
@@ -187,7 +218,12 @@ class GeometricLayer(Module):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: GeometricLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[GeometricLayer, Geometric, None]:
+def marginalize(
+    layer: GeometricLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[GeometricLayer, Geometric, None]:
     """Structural marginalization for ``GeometricLayer`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -204,7 +240,7 @@ def marginalize(layer: GeometricLayer, marg_rvs: Iterable[int], prune: bool=True
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -223,18 +259,24 @@ def marginalize(layer: GeometricLayer, marg_rvs: Iterable[int], prune: bool=True
         if len(marg_scope) == 1:
             marginalized_node_ids.append(i)
             marginalized_scopes.append(scope)
-    
+
     if len(marginalized_node_ids) == 0:
         return None
     elif len(marginalized_node_ids) == 1 and prune:
         node_id = marginalized_node_ids.pop()
-        return Geometric(scope=marginalized_scopes[0], p=layer.p[node_id].item())
+        return Geometric(
+            scope=marginalized_scopes[0], p=layer.p[node_id].item()
+        )
     else:
-        return GeometricLayer(scope=marginalized_scopes, p=layer.p[marginalized_node_ids].detach())
+        return GeometricLayer(
+            scope=marginalized_scopes, p=layer.p[marginalized_node_ids].detach()
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(layer: BaseGeometricLayer, dispatch_ctx: Optional[DispatchContext]=None) -> GeometricLayer:
+def toTorch(
+    layer: BaseGeometricLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> GeometricLayer:
     """Conversion for ``GeometricLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -248,7 +290,9 @@ def toTorch(layer: BaseGeometricLayer, dispatch_ctx: Optional[DispatchContext]=N
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(layer: GeometricLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseGeometricLayer:
+def toBase(
+    layer: GeometricLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseGeometricLayer:
     """Conversion for ``GeometricLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -258,4 +302,6 @@ def toBase(layer: GeometricLayer, dispatch_ctx: Optional[DispatchContext]=None) 
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseGeometricLayer(scope=layer.scopes_out, p=layer.p.detach().numpy())
+    return BaseGeometricLayer(
+        scope=layer.scopes_out, p=layer.p.detach().numpy()
+    )

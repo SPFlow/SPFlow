@@ -2,16 +2,30 @@
 """Contains sampling methods for ``Exponential`` nodes for SPFlow in the ``base`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
-from spflow.base.structure.nodes.leaves.parametric.exponential import Exponential
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.contexts.sampling_context import (
+    SamplingContext,
+    init_default_sampling_context,
+)
+from spflow.base.structure.nodes.leaves.parametric.exponential import (
+    Exponential,
+)
 
 import numpy as np
 from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(leaf: Exponential, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
+def sample(
+    leaf: Exponential,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> np.ndarray:
     r"""Samples from ``Exponential`` nodes in the ``base`` backend given potential evidence.
 
     Samples missing values proportionally to its probability distribution function (PDF).
@@ -40,7 +54,9 @@ def sample(leaf: Exponential, data: np.ndarray, check_support: bool=True, dispat
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    marg_ids = (np.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
+    marg_ids = (
+        np.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)
+    ).squeeze(1)
 
     instance_ids_mask = np.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1

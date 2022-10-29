@@ -32,7 +32,10 @@ class LogNormal(LeafNode):
         std:
             Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
     """
-    def __init__(self, scope: Scope, mean: float=0.0, std: float=1.0) -> None:
+
+    def __init__(
+        self, scope: Scope, mean: float = 0.0, std: float = 1.0
+    ) -> None:
         r"""Initializes ``LogNormal`` leaf node.
 
         Args:
@@ -46,17 +49,21 @@ class LogNormal(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'LogNormal' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'LogNormal' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'LogNormal' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'LogNormal' should be empty, but was {scope.evidence}."
+            )
 
         super(LogNormal, self).__init__(scope=scope)
         self.set_params(mean, std)
-    
+
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """
@@ -123,6 +130,6 @@ class LogNormal(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if values are in valid range
-        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] > 0)
+        valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] > 0
 
         return valid

@@ -2,16 +2,30 @@
 """Contains sampling methods for ``CondMultivariateGaussian`` nodes for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
-from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import CondMultivariateGaussian
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.contexts.sampling_context import (
+    SamplingContext,
+    init_default_sampling_context,
+)
+from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussian,
+)
 
 import torch
 from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(leaf: CondMultivariateGaussian, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(
+    leaf: CondMultivariateGaussian,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> torch.Tensor:
     r"""Samples from ``CondMultivariateGaussian`` nodes in the ``torch`` backend given potential evidence.
 
     Samples missing values proportionally to its probability distribution function (PDF).
@@ -51,7 +65,15 @@ def sample(leaf: CondMultivariateGaussian, data: torch.Tensor, check_support: bo
     instances_mask = torch.zeros(data.shape[0]).bool()
     instances_mask[torch.tensor(sampling_ctx.instance_ids)] = True
 
-    nan_data = torch.isnan(data[torch.meshgrid(torch.where(instances_mask)[0], torch.tensor(leaf.scope.query), indexing='ij')])
+    nan_data = torch.isnan(
+        data[
+            torch.meshgrid(
+                torch.where(instances_mask)[0],
+                torch.tensor(leaf.scope.query),
+                indexing="ij",
+            )
+        ]
+    )
 
     # group by scope rvs to sample
     for nan_mask in torch.unique(nan_data, dim=0):
@@ -60,33 +82,65 @@ def sample(leaf: CondMultivariateGaussian, data: torch.Tensor, check_support: bo
         non_cond_rvs = torch.tensor(leaf.scope.query)[torch.where(nan_mask)[0]]
 
         # no 'NaN' values (nothing to sample)
-        if(torch.sum(nan_mask) == 0):
+        if torch.sum(nan_mask) == 0:
             continue
         # sample from full distribution
-        elif(torch.sum(nan_mask) == len(leaf.scope.query)):
-            sampling_ids = torch.tensor(sampling_ctx.instance_ids)[(nan_data == nan_mask).sum(dim=1) == nan_mask.shape[0]]
+        elif torch.sum(nan_mask) == len(leaf.scope.query):
+            sampling_ids = torch.tensor(sampling_ctx.instance_ids)[
+                (nan_data == nan_mask).sum(dim=1) == nan_mask.shape[0]
+            ]
 
             if cov_tril is not None:
-                data[torch.meshgrid(sampling_ids, non_cond_rvs, indexing='ij')] = leaf.dist(mean=mean, cov_tril=cov_tril).sample((sampling_ids.shape[0],)).squeeze(1)
+                data[
+                    torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")
+                ] = (
+                    leaf.dist(mean=mean, cov_tril=cov_tril)
+                    .sample((sampling_ids.shape[0],))
+                    .squeeze(1)
+                )
             else:
-                data[torch.meshgrid(sampling_ids, non_cond_rvs, indexing='ij')] = leaf.dist(mean=mean, cov=cov).sample((sampling_ids.shape[0],)).squeeze(1)
+                data[
+                    torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")
+                ] = (
+                    leaf.dist(mean=mean, cov=cov)
+                    .sample((sampling_ids.shape[0],))
+                    .squeeze(1)
+                )
         # sample from conditioned distribution
         else:
             # note: the conditional sampling implemented here is based on the algorithm described in Arnaud Doucet (2010): "A Note on Efficient Conditional Simulation of Gaussian Distributions" (https://www.stats.ox.ac.uk/~doucet/doucet_simulationconditionalgaussian.pdf)
-            sampling_ids = torch.tensor(sampling_ctx.instance_ids)[(nan_data == nan_mask).sum(dim=1) == nan_mask.shape[0]]
+            sampling_ids = torch.tensor(sampling_ctx.instance_ids)[
+                (nan_data == nan_mask).sum(dim=1) == nan_mask.shape[0]
+            ]
 
             # sample from full distribution
             if cov_tril is not None:
-                joint_samples = leaf.dist(mean=mean, cov_tril=cov_tril).sample((sampling_ids.shape[0],))
+                joint_samples = leaf.dist(mean=mean, cov_tril=cov_tril).sample(
+                    (sampling_ids.shape[0],)
+                )
             else:
-                joint_samples = leaf.dist(mean=mean, cov=cov).sample((sampling_ids.shape[0],))
+                joint_samples = leaf.dist(mean=mean, cov=cov).sample(
+                    (sampling_ids.shape[0],)
+                )
 
             # compute inverse of marginal covariance matrix of conditioning RVs
-            marg_cov_inv = torch.linalg.inv(cov[torch.meshgrid(cond_rvs, cond_rvs, indexing='ij')])
+            marg_cov_inv = torch.linalg.inv(
+                cov[torch.meshgrid(cond_rvs, cond_rvs, indexing="ij")]
+            )
 
             # get conditional covariance matrix
-            cond_cov = cov[torch.meshgrid(cond_rvs, non_cond_rvs, indexing='ij')]
+            cond_cov = cov[
+                torch.meshgrid(cond_rvs, non_cond_rvs, indexing="ij")
+            ]
 
-            data[torch.meshgrid(sampling_ids, non_cond_rvs, indexing='ij')] = joint_samples[:, nan_mask] + ((data[torch.meshgrid(sampling_ids, cond_rvs, indexing='ij')]-joint_samples[:, ~nan_mask])@(marg_cov_inv@cond_cov))
+            data[
+                torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")
+            ] = joint_samples[:, nan_mask] + (
+                (
+                    data[torch.meshgrid(sampling_ids, cond_rvs, indexing="ij")]
+                    - joint_samples[:, ~nan_mask]
+                )
+                @ (marg_cov_inv @ cond_cov)
+            )
 
     return data

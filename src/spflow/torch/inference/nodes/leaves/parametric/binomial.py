@@ -4,16 +4,24 @@
 import torch
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.leaves.parametric.binomial import Binomial
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(leaf: Binomial, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    leaf: Binomial,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     r"""Computes log-likelihoods for ``Binomial`` node in the ``torch`` backend given input data.
 
     Log-likelihood for ``Binomial`` is given by the logarithm of its probability mass function (PMF):
-    
+
     .. math::
 
         \log(\text{PMF}(k)) = \log(\binom{n}{k}p^k(1-p)^{n-k})
@@ -41,7 +49,7 @@ def log_likelihood(leaf: Binomial, data: torch.Tensor, check_support: bool=True,
     Returns:
         Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
         Each row corresponds to an input sample.
-        
+
     Raises:
         ValueError: Data outside of support.
     """

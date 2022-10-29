@@ -6,10 +6,15 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
-from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric
+from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric,
+)
 
 
 class HypergeometricLayer(Module):
@@ -40,7 +45,16 @@ class HypergeometricLayer(Module):
         nodes:
             List of ``Hypergeometric`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], N: Union[int, List[int], np.ndarray], M: Union[int, List[int], np.ndarray], n: Union[int, List[int], np.ndarray], n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        N: Union[int, List[int], np.ndarray],
+        M: Union[int, List[int], np.ndarray],
+        n: Union[int, List[int], np.ndarray],
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``HypergeometricLayer`` object.
 
         Args:
@@ -62,16 +76,20 @@ class HypergeometricLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'HypergeometricLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'HypergeometricLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'HypergeometricLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'HypergeometricLayer' was empty."
+                )
 
             self._n_out = len(scope)
-        
+
         super(HypergeometricLayer, self).__init__(children=[], **kwargs)
 
         # create leaf nodes
@@ -92,7 +110,7 @@ class HypergeometricLayer(Module):
     def N(self) -> np.ndarray:
         """Returns the total numbers of entities (in the populations)"""
         return np.array([node.N for node in self.nodes])
-    
+
     @property
     def M(self) -> np.ndarray:
         """Returns the numbers of entities with property of interest (in the populations)."""
@@ -103,7 +121,12 @@ class HypergeometricLayer(Module):
         """Returns the numbers of draws."""
         return np.array([node.n for node in self.nodes])
 
-    def set_params(self, N: Union[int, List[int], np.ndarray], M: Union[int, List[int], np.ndarray], n: Union[int, List[int], np.ndarray]) -> None:
+    def set_params(
+        self,
+        N: Union[int, List[int], np.ndarray],
+        M: Union[int, List[int], np.ndarray],
+        n: Union[int, List[int], np.ndarray],
+    ) -> None:
         """Sets the parameters for the represented distributions.
 
         Args:
@@ -121,28 +144,40 @@ class HypergeometricLayer(Module):
             N = np.array([N for _ in range(self.n_out)])
         if isinstance(N, list):
             N = np.array(N)
-        if(N.ndim != 1):
-            raise ValueError(f"Numpy array of 'N' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {N.ndim}-dimensional.")
-        if(N.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'N' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {N.shape[0]}")
+        if N.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'N' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {N.ndim}-dimensional."
+            )
+        if N.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'N' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {N.shape[0]}"
+            )
 
         if isinstance(M, int):
             M = np.array([M for _ in range(self.n_out)])
         if isinstance(M, list):
             M = np.array(M)
-        if(M.ndim != 1):
-            raise ValueError(f"Numpy array of 'M' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {M.ndim}-dimensional.")
-        if(M.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'M' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {M.shape[0]}")
+        if M.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'M' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {M.ndim}-dimensional."
+            )
+        if M.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'M' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {M.shape[0]}"
+            )
 
         if isinstance(n, int):
             n = np.array([n for _ in range(self.n_out)])
         if isinstance(n, list):
             n = np.array(n)
-        if(n.ndim != 1):
-            raise ValueError(f"Numpy array of 'n' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional.")
-        if(n.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'n' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {n.shape[0]}")
+        if n.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'n' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional."
+            )
+        if n.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'n' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {n.shape[0]}"
+            )
 
         node_scopes = np.array([s.query[0] for s in self.scopes_out])
 
@@ -150,19 +185,25 @@ class HypergeometricLayer(Module):
             # at least one such element exists
             N_values = N[node_scopes == node_scope]
             if not np.all(N_values == N_values[0]):
-                raise ValueError("All values of 'N' for 'HypergeometricLayer' over the same scope must be identical.")
+                raise ValueError(
+                    "All values of 'N' for 'HypergeometricLayer' over the same scope must be identical."
+                )
             # at least one such element exists
             M_values = M[node_scopes == node_scope]
             if not np.all(M_values == M_values[0]):
-                raise ValueError("All values of 'M' for 'HypergeometricLayer' over the same scope must be identical.")
+                raise ValueError(
+                    "All values of 'M' for 'HypergeometricLayer' over the same scope must be identical."
+                )
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not np.all(n_values == n_values[0]):
-                raise ValueError("All values of 'n' for 'HypergeometricLayer' over the same scope must be identical.")
+                raise ValueError(
+                    "All values of 'n' for 'HypergeometricLayer' over the same scope must be identical."
+                )
 
         for node_N, node_M, node_n, node in zip(N, M, n, self.nodes):
             node.set_params(node_N, node_M, node_n)
-    
+
     def get_params(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Returns the parameters of the represented distribution.
 
@@ -170,8 +211,10 @@ class HypergeometricLayer(Module):
             Thee one-dimensional NumPy arrays representing the total numbers of entities, the numbers of entities of interest and the numbers of draws.
         """
         return self.N, self.M, self.n
-    
-    def check_support(self, scope_data: np.ndarray, node_ids: List[int]) -> np.ndarray:
+
+    def check_support(
+        self, scope_data: np.ndarray, node_ids: List[int]
+    ) -> np.ndarray:
         "TODO"
         valid = np.ones(scope_data.shape, dtype=bool)
 
@@ -188,10 +231,10 @@ class HypergeometricLayer(Module):
         )
 
         return valid
-    
-    def dist(self, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+
+    def dist(self, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
-        
+
         Args:
             node_ids:
                 Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
@@ -205,7 +248,9 @@ class HypergeometricLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Hypergeometric distributions, which are:
@@ -234,11 +279,18 @@ class HypergeometricLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+        return np.concatenate(
+            [self.nodes[i].check_support(data) for i in node_ids], axis=1
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: HypergeometricLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[HypergeometricLayer, Hypergeometric, None]:
+def marginalize(
+    layer: HypergeometricLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[HypergeometricLayer, Hypergeometric, None]:
     """Structural marginalization for ``HypergeometricLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -255,7 +307,7 @@ def marginalize(layer: HypergeometricLayer, marg_rvs: Iterable[int], prune: bool
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -279,5 +331,7 @@ def marginalize(layer: HypergeometricLayer, marg_rvs: Iterable[int], prune: bool
         new_node = Hypergeometric(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = HypergeometricLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
+        new_layer = HypergeometricLayer(
+            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
+        )
         return new_layer

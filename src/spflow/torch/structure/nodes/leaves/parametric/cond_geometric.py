@@ -6,9 +6,14 @@ import torch.distributions as D
 from typing import Tuple, Optional, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.cond_geometric import CondGeometric as BaseCondGeometric
+from spflow.base.structure.nodes.leaves.parametric.cond_geometric import (
+    CondGeometric as BaseCondGeometric,
+)
 
 
 class CondGeometric(LeafNode):
@@ -30,7 +35,8 @@ class CondGeometric(LeafNode):
             Its output should be a dictionary containing ``p`` as a key, and the value should be
             a floating point, scalar NumPy array or scalar PyTorch tensor in :math:`(0,1]`.
     """
-    def __init__(self, scope: Scope, cond_f: Optional[Callable]=None) -> None:
+
+    def __init__(self, scope: Scope, cond_f: Optional[Callable] = None) -> None:
         r"""Initializes ``CondGeometric`` leaf node.
 
         Args:
@@ -42,15 +48,19 @@ class CondGeometric(LeafNode):
                 a floating point, scalar NumPy array or scalar PyTorch tensor in :math:`(0,1]`.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'CondGeometric' should be 1, but was {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'CondGeometric' should be 1, but was {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'CondGeometric' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'CondGeometric' should be empty, but was {scope.evidence}."
+            )
 
         super(CondGeometric, self).__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 
-    def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+    def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         r"""Sets the function to retrieve the node's conditonal parameter.
 
         Args:
@@ -63,7 +73,7 @@ class CondGeometric(LeafNode):
 
     def dist(self, p: torch.Tensor) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
-        
+
         Args:
             p:
                 Scalar PyTorch tensor representing the probability of success in the range :math:`(0,1]`.
@@ -72,10 +82,12 @@ class CondGeometric(LeafNode):
             ``torch.distributions.Geometric`` distribution.
         """
         return D.Geometric(probs=p)
-    
-    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor]:
+
+    def retrieve_params(
+        self, data: torch.Tensor, dispatch_ctx: DispatchContext
+    ) -> Tuple[torch.Tensor]:
         r"""Retrieves the conditional parameter of the leaf node.
-    
+
         First, checks if conditional parameters (``p``) is passed as an additional argument in the dispatch context.
         Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
         Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
@@ -111,12 +123,14 @@ class CondGeometric(LeafNode):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError("'CondGeometric' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
+            raise ValueError(
+                "'CondGeometric' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
+            )
 
         # if 'p' was not already specified, retrieve it
         if p is None:
-            p = cond_f(data)['p']
-        
+            p = cond_f(data)["p"]
+
         if isinstance(p, float):
             p = torch.tensor(p)
 
@@ -125,7 +139,7 @@ class CondGeometric(LeafNode):
             raise ValueError(
                 f"Value of 'p' for 'CondGeometric' must to be between 0.0 and 1.0, but was: {p}"
             )
-        
+
         return p
 
     def check_support(self, scope_data: torch.Tensor) -> torch.Tensor:
@@ -159,13 +173,17 @@ class CondGeometric(LeafNode):
         valid[~nan_mask] = self.dist(torch.tensor(0.5)).support.check(scope_data[~nan_mask] - 1).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        valid[~nan_mask & valid] &= (
+            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        )
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BaseCondGeometric, dispatch_ctx: Optional[DispatchContext]=None) -> CondGeometric:
+def toTorch(
+    node: BaseCondGeometric, dispatch_ctx: Optional[DispatchContext] = None
+) -> CondGeometric:
     """Conversion for ``CondGeometric`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -179,7 +197,9 @@ def toTorch(node: BaseCondGeometric, dispatch_ctx: Optional[DispatchContext]=Non
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: CondGeometric, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondGeometric:
+def toBase(
+    node: CondGeometric, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseCondGeometric:
     """Conversion for ``CondGeometric`` from ``torch`` backend to ``base`` backend.
 
     Args:

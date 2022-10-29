@@ -2,8 +2,14 @@
 """Contains sampling methods for SPN-like nodes for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.contexts.sampling_context import (
+    SamplingContext,
+    init_default_sampling_context,
+)
 from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
 from spflow.torch.inference.nodes.node import log_likelihood
 from spflow.torch.sampling.module import sample
@@ -13,7 +19,13 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(node: SPNSumNode, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(
+    node: SPNSumNode,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> torch.Tensor:
     """Samples from SPN-like sum nodes in the ``torch`` backend given potential evidence.
 
     Samples from each input proportionally to its weighted likelihoods given the evidence.
@@ -43,7 +55,16 @@ def sample(node: SPNSumNode, data: torch.Tensor, check_support: bool=True, dispa
 
     # compute log likelihoods of data instances (TODO: only compute for relevant instances? might clash with cashed values or cashing in general)
     child_lls = torch.concat(
-        [log_likelihood(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for child in node.children()], dim=1
+        [
+            log_likelihood(
+                child,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for child in node.children()
+        ],
+        dim=1,
     )
 
     # take child likelihoods into account when sampling
@@ -56,21 +77,36 @@ def sample(node: SPNSumNode, data: torch.Tensor, check_support: bool=True, dispa
     for branch in branches.unique():
 
         # group instances by sampled branch
-        branch_instance_ids = torch.tensor(sampling_ctx.instance_ids)[branches == branch].tolist()
+        branch_instance_ids = torch.tensor(sampling_ctx.instance_ids)[
+            branches == branch
+        ].tolist()
 
         # get corresponding child and output id for sampled branch
         child_ids, output_ids = node.input_to_output_ids([branch.item()])
 
         # sample from child module
         sample(
-            list(node.children())[child_ids[0]], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(branch_instance_ids, [[output_ids[0]] for _ in range(len(branch_instance_ids))])
+            list(node.children())[child_ids[0]],
+            data,
+            check_support=check_support,
+            dispatch_ctx=dispatch_ctx,
+            sampling_ctx=SamplingContext(
+                branch_instance_ids,
+                [[output_ids[0]] for _ in range(len(branch_instance_ids))],
+            ),
         )
 
     return data
 
 
 @dispatch  # type: ignore
-def sample(node: SPNProductNode, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(
+    node: SPNProductNode,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> torch.Tensor:
     """Samples from SPN-like product nodes in the ``torch`` backend given potential evidence.
 
     Recursively samples from each input.
@@ -100,6 +136,15 @@ def sample(node: SPNProductNode, data: torch.Tensor, check_support: bool=True, d
 
     # sample from all child outputs
     for child in node.children():
-        sample(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(sampling_ctx.instance_ids, [list(range(child.n_out)) for _ in sampling_ctx.instance_ids]))
+        sample(
+            child,
+            data,
+            check_support=check_support,
+            dispatch_ctx=dispatch_ctx,
+            sampling_ctx=SamplingContext(
+                sampling_ctx.instance_ids,
+                [list(range(child.n_out)) for _ in sampling_ctx.instance_ids],
+            ),
+        )
 
     return data

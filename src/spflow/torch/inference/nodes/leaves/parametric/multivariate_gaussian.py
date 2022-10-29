@@ -5,12 +5,22 @@ import torch
 import torch.distributions as D
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussian,
+)
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(leaf: MultivariateGaussian, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    leaf: MultivariateGaussian,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     r"""Computes log-likelihoods for ``MultivariateGaussian`` node in the ``torch`` backend given input data.
 
     Log-likelihood for ``MultivariateGaussian`` is given by the logarithm of its probability distribution function (PDF):
@@ -80,7 +90,9 @@ def log_likelihood(leaf: MultivariateGaussian, data: torch.Tensor, check_support
     for marg_mask in marg.unique(dim=0):
 
         # get all instances with the same (marginalized) scope
-        marg_ids = torch.where((marg == marg_mask).sum(dim=-1) == len(leaf.scope.query))[0]
+        marg_ids = torch.where(
+            (marg == marg_mask).sum(dim=-1) == len(leaf.scope.query)
+        )[0]
         marg_data = scope_data[marg_ids]
 
         # all random variables are marginalized over
@@ -93,9 +105,7 @@ def log_likelihood(leaf: MultivariateGaussian, data: torch.Tensor, check_support
 
             # marginalize distribution and compute (log) probabilities
             marg_mean = leaf.mean[~marg_mask]
-            marg_cov = leaf.cov[~marg_mask][
-                :, ~marg_mask
-            ]  # TODO: better way?
+            marg_cov = leaf.cov[~marg_mask][:, ~marg_mask]  # TODO: better way?
 
             # create marginalized torch distribution
             marg_dist = D.MultivariateNormal(

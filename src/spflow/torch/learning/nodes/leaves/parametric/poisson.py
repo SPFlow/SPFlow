@@ -4,12 +4,23 @@
 from typing import Optional, Union, Callable
 import torch
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.leaves.parametric.poisson import Poisson
 
 
 @dispatch(memoize=True)  # type: ignore
-def maximum_likelihood_estimation(leaf: Poisson, data: torch.Tensor, weights: Optional[torch.Tensor]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def maximum_likelihood_estimation(
+    leaf: Poisson,
+    data: torch.Tensor,
+    weights: Optional[torch.Tensor] = None,
+    bias_correction: bool = True,
+    nan_strategy: Optional[Union[str, Callable]] = None,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> None:
     r"""Maximum (weighted) likelihood estimation (MLE) of ``Poisson`` node parameters in the ``torch`` backend.
 
     Estimates the rate parameter :math:`l` of a Poisson distribution from data, as follows:
@@ -63,36 +74,48 @@ def maximum_likelihood_estimation(leaf: Poisson, data: torch.Tensor, weights: Op
         weights = torch.ones(data.shape[0])
 
     if weights.ndim != 1 or weights.shape[0] != data.shape[0]:
-        raise ValueError("Number of specified weights for maximum-likelihood estimation does not match number of data points.")
+        raise ValueError(
+            "Number of specified weights for maximum-likelihood estimation does not match number of data points."
+        )
 
     # reshape weights
     weights = weights.reshape(-1, 1)
 
     if check_support:
         if torch.any(~leaf.check_support(scope_data)):
-            raise ValueError("Encountered values outside of the support for 'Poisson'.")
+            raise ValueError(
+                "Encountered values outside of the support for 'Poisson'."
+            )
 
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
 
     if torch.all(nan_mask):
-        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
+        raise ValueError(
+            "Cannot compute maximum-likelihood estimation on nan-only data."
+        )
 
     if nan_strategy is None and torch.any(nan_mask):
-        raise ValueError("Maximum-likelihood estimation cannot be performed on missing data by default. Set a strategy for handling missing values if this is intended.")
-    
+        raise ValueError(
+            "Maximum-likelihood estimation cannot be performed on missing data by default. Set a strategy for handling missing values if this is intended."
+        )
+
     if isinstance(nan_strategy, str):
         if nan_strategy == "ignore":
             # simply ignore missing data
             scope_data = scope_data[~nan_mask]
             weights = weights[~nan_mask.squeeze(1)]
         else:
-            raise ValueError("Unknown strategy for handling missing (NaN) values for 'Poisson'.")
+            raise ValueError(
+                "Unknown strategy for handling missing (NaN) values for 'Poisson'."
+            )
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
         # TODO: how to handle missing data?
     elif nan_strategy is not None:
-        raise ValueError(f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}.")
+        raise ValueError(
+            f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}."
+        )
 
     # normalize weights to sum to n_samples
     weights /= weights.sum() / data.shape[0]
@@ -101,7 +124,9 @@ def maximum_likelihood_estimation(leaf: Poisson, data: torch.Tensor, weights: Op
     n_total = weights.sum(dtype=torch.get_default_dtype())
 
     # estimate rate parameter from data
-    l_est = (weights * scope_data.type(torch.get_default_dtype())).sum() / n_total
+    l_est = (
+        weights * scope_data.type(torch.get_default_dtype())
+    ).sum() / n_total
 
     # edge case: if rate 0, set to larger value (should not happen, but just in case)
     if torch.isclose(l_est, torch.tensor(0.0)):
@@ -112,7 +137,12 @@ def maximum_likelihood_estimation(leaf: Poisson, data: torch.Tensor, weights: Op
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(leaf: Poisson, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(
+    leaf: Poisson,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> None:
     """Performs a single expectation maximizaton (EM) step for ``Poisson`` in the ``torch`` backend.
 
     Args:
@@ -134,13 +164,20 @@ def em(leaf: Poisson, data: torch.Tensor, check_support: bool=True, dispatch_ctx
         # ----- expectation step -----
 
         # get cached log-likelihood gradients w.r.t. module log-likelihoods
-        expectations = dispatch_ctx.cache['log_likelihood'][leaf].grad
+        expectations = dispatch_ctx.cache["log_likelihood"][leaf].grad
         # normalize expectations for better numerical stability
         expectations /= expectations.sum()
 
         # ----- maximization step -----
 
         # update parameters through maximum weighted likelihood estimation
-        maximum_likelihood_estimation(leaf, data, weights=expectations.squeeze(1), bias_correction=False, check_support=check_support, dispatch_ctx=dispatch_ctx)
+        maximum_likelihood_estimation(
+            leaf,
+            data,
+            weights=expectations.squeeze(1),
+            bias_correction=False,
+            check_support=check_support,
+            dispatch_ctx=dispatch_ctx,
+        )
 
     # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients

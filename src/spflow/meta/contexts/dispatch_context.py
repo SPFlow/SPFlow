@@ -9,7 +9,7 @@ from spflow.meta.structure.module import MetaModule
 from typing import Any, Union, Dict, Any
 
 
-class DispatchContext():
+class DispatchContext:
     """Class for storing context information for dispatched functions.
 
     Stores context information on dispatched functions. Is supposed to be passed along recursive calls.
@@ -24,13 +24,16 @@ class DispatchContext():
         cache:
             Dictionary mapping module instances to objects (can be used for memoization).
     """
+
     def __init__(self) -> None:
         """Initializes 'DispatchContext' object."""
         self.args = {}
         self.funcs = {}
         self.cache = {}
-    
-    def cache_value(self, f_name: str, key: MetaModule, value: Any, overwrite=True) -> None:
+
+    def cache_value(
+        self, f_name: str, key: MetaModule, value: Any, overwrite=True
+    ) -> None:
         """Caches an object for a given function name and key.
 
         Args:
@@ -44,9 +47,9 @@ class DispatchContext():
                 Boolean specifying whether or not to overwrite any potentially existing cached object.
                 Defaults to True.
         """
-        if(not overwrite):
+        if not overwrite:
             # if value is already cached don't overwrite
-            if(self.is_cached(f_name, key)):
+            if self.is_cached(f_name, key):
                 return
 
         # store value
@@ -60,13 +63,15 @@ class DispatchContext():
                 String denoting the function for which to check the cache.
             key:
                 Instance of (a subclass of) ``MetaModule`` for which to check the cache.
-        
+
         Returns:
             Boolean indicating whether there is a corresponding cached object (True) or not (False).
         """
-        return (f_name in self.cache and key in self.cache[f_name])
+        return f_name in self.cache and key in self.cache[f_name]
 
-    def get_cached_value(self, f_name: str, key: MetaModule) -> Union[Any, None]:
+    def get_cached_value(
+        self, f_name: str, key: MetaModule
+    ) -> Union[Any, None]:
         """Tries to retrieve a cached object for a given function name and key.
 
         Args:
@@ -74,17 +79,17 @@ class DispatchContext():
                 String denoting the function for which to retrive the cached object.
             key:
                 Instance of (a subclass of) ``MetaModule`` for which to retrieve the cached object.
-        
+
         Returns:
             Cached object (if it exists) or None.
         """
         # if no value is cached, return None
-        if(not self.is_cached(f_name, key)):
+        if not self.is_cached(f_name, key):
             return None
-        
+
         # return cached value
         return self.cache[f_name][key]
-    
+
     def update_args(self, key: MetaModule, kwargs: Dict[str, Any]) -> None:
         """Updates additional kword arguments for a given key.
 
@@ -111,7 +116,9 @@ def default_dispatch_context() -> DispatchContext:
     return DispatchContext()
 
 
-def init_default_dispatch_context(dispatch_ctx: Union[DispatchContext, None]) -> DispatchContext:
+def init_default_dispatch_context(
+    dispatch_ctx: Union[DispatchContext, None]
+) -> DispatchContext:
     """Initializes dispatch context, if it is not already initialized.
 
     Args
@@ -121,4 +128,6 @@ def init_default_dispatch_context(dispatch_ctx: Union[DispatchContext, None]) ->
     Returns:
         Original dispatch context if not None or a new empty dispatch context.
     """
-    return dispatch_ctx if dispatch_ctx is not None else default_dispatch_context()
+    return (
+        dispatch_ctx if dispatch_ctx is not None else default_dispatch_context()
+    )

@@ -28,10 +28,12 @@ def connected_components(adjacency_matrix: torch.Tensor) -> List[Set[int]]:
     """
 
     if not torch.all(adjacency_matrix == adjacency_matrix.T):
-        raise ValueError("Connected components expects input to be an undirected graph, but specified adjacency matrix was not symmetrical.")
+        raise ValueError(
+            "Connected components expects input to be an undirected graph, but specified adjacency matrix was not symmetrical."
+        )
 
     # convert adjacency matrix to boolean (any non-zero entries are treated as an edge)
-    adjacency_matrix = (adjacency_matrix != 0)
+    adjacency_matrix = adjacency_matrix != 0
 
     # set of all vertices
     vertices = set(range(adjacency_matrix.shape[0]))

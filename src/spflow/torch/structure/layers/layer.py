@@ -10,14 +10,26 @@ import numpy as np
 import torch
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.nodes.node import proj_real_to_convex, proj_convex_to_real
+from spflow.torch.structure.nodes.node import (
+    proj_real_to_convex,
+    proj_convex_to_real,
+)
 from spflow.base.structure.layers.layer import SPNSumLayer as BaseSPNSumLayer
-from spflow.base.structure.layers.layer import SPNProductLayer as BaseSPNProductLayer
-from spflow.base.structure.layers.layer import SPNPartitionLayer as BaseSPNPartitionLayer
-from spflow.base.structure.layers.layer import SPNHadamardLayer as BaseSPNHadamardLayer
+from spflow.base.structure.layers.layer import (
+    SPNProductLayer as BaseSPNProductLayer,
+)
+from spflow.base.structure.layers.layer import (
+    SPNPartitionLayer as BaseSPNPartitionLayer,
+)
+from spflow.base.structure.layers.layer import (
+    SPNHadamardLayer as BaseSPNHadamardLayer,
+)
 
 
 class SPNSumLayer(Module):
@@ -42,7 +54,16 @@ class SPNSumLayer(Module):
         scopes_out:
             List of scopes representing the output scopes.
     """
-    def __init__(self, n_nodes: int, children: List[Module], weights: Optional[Union[np.ndarray, torch.Tensor, List[List[float]], List[float]]]=None, **kwargs) -> None:
+
+    def __init__(
+        self,
+        n_nodes: int,
+        children: List[Module],
+        weights: Optional[
+            Union[np.ndarray, torch.Tensor, List[List[float]], List[float]]
+        ] = None,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``SPNSumLayer`` object.
 
         Args:
@@ -61,11 +82,15 @@ class SPNSumLayer(Module):
         Raises:
             ValueError: Invalid arguments.
         """
-        if(n_nodes < 1):
-            raise ValueError("Number of nodes for 'SPNSumLayer' must be greater of equal to 1.")
+        if n_nodes < 1:
+            raise ValueError(
+                "Number of nodes for 'SPNSumLayer' must be greater of equal to 1."
+            )
 
         if not children:
-            raise ValueError("'SPNSumLayer' requires at least one child to be specified.")
+            raise ValueError(
+                "'SPNSumLayer' requires at least one child to be specified."
+            )
 
         super(SPNSumLayer, self).__init__(children=children, **kwargs)
 
@@ -73,7 +98,7 @@ class SPNSumLayer(Module):
         self.n_in = sum(child.n_out for child in self.children())
 
         # parse weights
-        if(weights is None):
+        if weights is None:
             weights = torch.rand(self.n_out, self.n_in) + 1e-08  # avoid zeros
             weights /= weights.sum(dim=-1, keepdims=True)
 
@@ -87,21 +112,23 @@ class SPNSumLayer(Module):
 
         for child in children:
             for s in child.scopes_out:
-                if(scope is None):
+                if scope is None:
                     scope = s
                 else:
                     if not scope.equal_query(s):
-                        raise ValueError(f"'SPNSumLayer' requires child scopes to have the same query variables.")
-                
+                        raise ValueError(
+                            f"'SPNSumLayer' requires child scopes to have the same query variables."
+                        )
+
                 scope = scope.union(s)
-        
+
         self.scope = scope
 
     @property
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
+
     @property
     def scopes_out(self) -> List[Scope]:
         """Returns the output scopes this layer represents."""
@@ -114,7 +141,10 @@ class SPNSumLayer(Module):
         return proj_real_to_convex(self.weights_aux)
 
     @weights.setter
-    def weights(self, values: Union[np.ndarray, torch.Tensor, List[List[float]], List[float]]) -> None:
+    def weights(
+        self,
+        values: Union[np.ndarray, torch.Tensor, List[List[float]], List[float]],
+    ) -> None:
         """Sets the weights of all nodes to specified values.
 
         Args:
@@ -130,32 +160,49 @@ class SPNSumLayer(Module):
         """
         if isinstance(values, list) or isinstance(values, np.ndarray):
             values = torch.tensor(values).type(torch.get_default_dtype())
-        if(values.ndim != 1 and values.ndim != 2):
-            raise ValueError(f"Torch tensor of weight values for 'SPNSumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional.")
+        if values.ndim != 1 and values.ndim != 2:
+            raise ValueError(
+                f"Torch tensor of weight values for 'SPNSumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional."
+            )
         if not torch.all(values > 0):
             raise ValueError("Weights for 'SPNSumLayer' must be all positive.")
         if not torch.allclose(values.sum(dim=-1), torch.tensor(1.0)):
-            raise ValueError("Weights for 'SPNSumLayer' must sum up to one in last dimension.")
+            raise ValueError(
+                "Weights for 'SPNSumLayer' must sum up to one in last dimension."
+            )
         if not (values.shape[-1] == self.n_in):
-            raise ValueError("Number of weights for 'SPNSumLayer' in last dimension does not match total number of child outputs.")
-        
+            raise ValueError(
+                "Number of weights for 'SPNSumLayer' in last dimension does not match total number of child outputs."
+            )
+
         # same weights for all sum nodes
-        if(values.ndim == 1):
-            self.weights_aux.data = proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
-        if(values.ndim == 2):
+        if values.ndim == 1:
+            self.weights_aux.data = proj_convex_to_real(
+                values.repeat((self.n_out, 1)).clone()
+            )
+        if values.ndim == 2:
             # same weights for all sum nodes
-            if(values.shape[0] == 1):
-                self.weights_aux.data = proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
+            if values.shape[0] == 1:
+                self.weights_aux.data = proj_convex_to_real(
+                    values.repeat((self.n_out, 1)).clone()
+                )
             # different weights for all sum nodes
-            elif(values.shape[0] == self.n_out):
+            elif values.shape[0] == self.n_out:
                 self.weights_aux.data = proj_convex_to_real(values.clone())
             # incorrect number of specified weights
             else:
-                raise ValueError(f"Incorrect number of weights for 'SPNSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}.")
+                raise ValueError(
+                    f"Incorrect number of weights for 'SPNSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
+                )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[None, SPNSumLayer]:
+def marginalize(
+    layer: SPNSumLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[None, SPNSumLayer]:
     """Structural marginalization for SPN-like sum layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -173,7 +220,7 @@ def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, d
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         (Marginalized) sum layer or None if it is completely marginalized.
     """
@@ -186,7 +233,7 @@ def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, d
     mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
     # node scope is being fully marginalized
-    if(len(mutual_rvs) == len(layer_scope.query)):
+    if len(mutual_rvs) == len(layer_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
@@ -195,21 +242,27 @@ def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, d
 
         # marginalize child modules
         for child in layer.children():
-            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+            marg_child = marginalize(
+                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
+            )
 
             # if marginalized child is not None
             if marg_child:
                 marg_children.append(marg_child)
-        
-        return SPNSumLayer(n_nodes=layer.n_out, children=marg_children, weights=layer.weights)
+
+        return SPNSumLayer(
+            n_nodes=layer.n_out, children=marg_children, weights=layer.weights
+        )
     else:
         return deepcopy(layer)
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(sum_layer: SPNSumLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNSumLayer:
+def toBase(
+    sum_layer: SPNSumLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseSPNSumLayer:
     """Conversion for ``SPNSumLayer`` from ``torch`` backend to ``base`` backend.
-    
+
     Args:
         sum_layer:
             Layer to be converted.
@@ -217,13 +270,22 @@ def toBase(sum_layer: SPNSumLayer, dispatch_ctx: Optional[DispatchContext]=None)
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseSPNSumLayer(n_nodes=sum_layer.n_out, children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()], weights=sum_layer.weights.detach().cpu().numpy())
+    return BaseSPNSumLayer(
+        n_nodes=sum_layer.n_out,
+        children=[
+            toBase(child, dispatch_ctx=dispatch_ctx)
+            for child in sum_layer.children()
+        ],
+        weights=sum_layer.weights.detach().cpu().numpy(),
+    )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(sum_layer: BaseSPNSumLayer, dispatch_ctx: Optional[DispatchContext]=None) -> SPNSumLayer:
+def toTorch(
+    sum_layer: BaseSPNSumLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> SPNSumLayer:
     """Conversion for ``SPNSumLayer`` from ``base`` backend to ``torch`` backend.
-    
+
     Args:
         sum_layer:
             Layer to be converted.
@@ -231,7 +293,14 @@ def toTorch(sum_layer: BaseSPNSumLayer, dispatch_ctx: Optional[DispatchContext]=
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return SPNSumLayer(n_nodes=sum_layer.n_out, children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children], weights=sum_layer.weights)
+    return SPNSumLayer(
+        n_nodes=sum_layer.n_out,
+        children=[
+            toTorch(child, dispatch_ctx=dispatch_ctx)
+            for child in sum_layer.children
+        ],
+        weights=sum_layer.weights,
+    )
 
 
 class SPNProductLayer(Module):
@@ -249,6 +318,7 @@ class SPNProductLayer(Module):
         scopes_out:
             List of scopes representing the output scopes.
     """
+
     def __init__(self, n_nodes: int, children: List[Module], **kwargs) -> None:
         r"""Initializes ``SPNProductLayer`` object.
 
@@ -261,13 +331,17 @@ class SPNProductLayer(Module):
         Raises:
             ValueError: Invalid arguments.
         """
-        if(n_nodes < 1):
-            raise ValueError("Number of nodes for 'SPNProductLayer' must be greater of equal to 1.")
+        if n_nodes < 1:
+            raise ValueError(
+                "Number of nodes for 'SPNProductLayer' must be greater of equal to 1."
+            )
 
         self._n_out = n_nodes
 
         if not children:
-            raise ValueError("'SPNProductLayer' requires at least one child to be specified.")
+            raise ValueError(
+                "'SPNProductLayer' requires at least one child to be specified."
+            )
 
         super(SPNProductLayer, self).__init__(children=children, **kwargs)
 
@@ -277,7 +351,9 @@ class SPNProductLayer(Module):
         for child in children:
             for s in child.scopes_out:
                 if not scope.isdisjoint(s):
-                    raise ValueError(f"'SPNProductNode' requires child scopes to be pair-wise disjoint.")
+                    raise ValueError(
+                        f"'SPNProductNode' requires child scopes to be pair-wise disjoint."
+                    )
 
                 scope = scope.union(s)
 
@@ -287,7 +363,7 @@ class SPNProductLayer(Module):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
+
     @property
     def scopes_out(self) -> List[Scope]:
         """Returns the output scopes this layer represents."""
@@ -295,7 +371,12 @@ class SPNProductLayer(Module):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNProductLayer, Module, None]:
+def marginalize(
+    layer: SPNProductLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[SPNProductLayer, Module, None]:
     """Structural marginalization for SPN-like product layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -315,7 +396,7 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
             Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         (Marginalized) product layer or None if it is completely marginalized.
     """
@@ -328,7 +409,7 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
     mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
     # layer scope is being fully marginalized over
-    if(len(mutual_rvs) == len(layer_scope.query)):
+    if len(mutual_rvs) == len(layer_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
@@ -337,14 +418,16 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
 
         # marginalize child modules
         for child in layer.children():
-            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+            marg_child = marginalize(
+                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
+            )
 
             # if marginalized child is not None
             if marg_child:
                 marg_children.append(marg_child)
-       
+
         # if product node has only one child after marginalization and pruning is true, return child directly
-        if(len(marg_children) == 1 and prune):
+        if len(marg_children) == 1 and prune:
             return marg_children[0]
         else:
             return SPNProductLayer(n_nodes=layer.n_out, children=marg_children)
@@ -353,9 +436,12 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(product_layer: SPNProductLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNProductLayer:
+def toBase(
+    product_layer: SPNProductLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> BaseSPNProductLayer:
     """Conversion for ``SPNProductLayer`` from ``torch`` backend to ``base`` backend.
-    
+
     Args:
         product_layer:
             Layer to be converted.
@@ -363,13 +449,22 @@ def toBase(product_layer: SPNProductLayer, dispatch_ctx: Optional[DispatchContex
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseSPNProductLayer(n_nodes=product_layer.n_out, children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children()])
+    return BaseSPNProductLayer(
+        n_nodes=product_layer.n_out,
+        children=[
+            toBase(child, dispatch_ctx=dispatch_ctx)
+            for child in product_layer.children()
+        ],
+    )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(product_layer: BaseSPNProductLayer, dispatch_ctx: Optional[DispatchContext]=None) -> SPNProductLayer:
+def toTorch(
+    product_layer: BaseSPNProductLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> SPNProductLayer:
     """Conversion for ``SPNProductLayer`` from ``base`` backend to ``torch`` backend.
-    
+
     Args:
         product_layer:
             Layer to be converted.
@@ -377,7 +472,13 @@ def toTorch(product_layer: BaseSPNProductLayer, dispatch_ctx: Optional[DispatchC
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return SPNProductLayer(n_nodes=product_layer.n_out, children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children])
+    return SPNProductLayer(
+        n_nodes=product_layer.n_out,
+        children=[
+            toTorch(child, dispatch_ctx=dispatch_ctx)
+            for child in product_layer.children
+        ],
+    )
 
 
 class SPNPartitionLayer(Module):
@@ -390,7 +491,7 @@ class SPNPartitionLayer(Module):
     Example:
 
         layer = SPNPartitionLayer([[node1, node2], [node3], [node4, node5, node6]])
-    
+
         In this example the layer will have 2*1*3=6 product nodes over the following inputs (in this order):
 
             node1, node3, node4
@@ -414,6 +515,7 @@ class SPNPartitionLayer(Module):
         partition_scopes:
             List of scopes keeping track of the scopes each partition represents.
     """
+
     def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
         r"""Initializes ``SPNPartitionLayer`` object.
 
@@ -435,10 +537,12 @@ class SPNPartitionLayer(Module):
 
         # parse partitions
         for partition in child_partitions:
-            # check if partition is empty 
+            # check if partition is empty
             if len(partition) == 0:
-                raise ValueError("All partitions for 'SPNPartitionLayer' must be non-empty")
-            
+                raise ValueError(
+                    "All partitions for 'SPNPartitionLayer' must be non-empty"
+                )
+
             self.modules_per_partition.append(len(partition))
             partition_scope = Scope()
             size = 0
@@ -451,11 +555,16 @@ class SPNPartitionLayer(Module):
                 # for each output scope
                 for s in child.scopes_out:
                     # check if query scope is the same
-                    if partition_scope.equal_query(s) or partition_scope.isempty():
+                    if (
+                        partition_scope.equal_query(s)
+                        or partition_scope.isempty()
+                    ):
                         partition_scope = partition_scope.union(s)
                     else:
-                        raise ValueError("Scopes of modules inside a partition must have same query scope.")
-            
+                        raise ValueError(
+                            "Scopes of modules inside a partition must have same query scope."
+                        )
+
             # add partition size to list
             self.partition_sizes.append(size)
             self.partition_scopes.append(partition_scope)
@@ -464,9 +573,13 @@ class SPNPartitionLayer(Module):
             if partition_scope.isdisjoint(scope):
                 scope = scope.union(partition_scope)
             else:
-                raise ValueError("Scopes of partitions must be pair-wise disjoint.")
+                raise ValueError(
+                    "Scopes of partitions must be pair-wise disjoint."
+                )
 
-        super(SPNPartitionLayer, self).__init__(children=sum(child_partitions, []), **kwargs)
+        super(SPNPartitionLayer, self).__init__(
+            children=sum(child_partitions, []), **kwargs
+        )
 
         self.n_in = sum(self.partition_sizes)
         self._n_out = torch.prod(torch.tensor(self.partition_sizes)).item()
@@ -476,7 +589,7 @@ class SPNPartitionLayer(Module):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
+
     @property
     def scopes_out(self) -> List[Scope]:
         """Returns the output scopes this layer represents."""
@@ -484,7 +597,12 @@ class SPNPartitionLayer(Module):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNPartitionLayer, Module, None]:
+def marginalize(
+    layer: SPNPartitionLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[SPNPartitionLayer, Module, None]:
     """Structural marginalization for SPN-like partition layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -504,7 +622,7 @@ def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=T
             Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         (Marginalized) partition layer or None if it is completely marginalized.
     """
@@ -517,32 +635,48 @@ def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=T
     mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
     # layer scope is being fully marginalized over
-    if(len(mutual_rvs) == len(layer_scope.query)):
+    if len(mutual_rvs) == len(layer_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
         marg_partitions = []
 
         children = list(layer.children())
-        partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
+        partitions = np.split(
+            children, np.cumsum(layer.modules_per_partition[:-1])
+        )
 
-        for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
+        for partition_scope, partition_children in zip(
+            layer.partition_scopes, partitions
+        ):
             partition_children = partition_children.tolist()
-            partition_mutual_rvs = set(partition_scope.query).intersection(set(marg_rvs))
+            partition_mutual_rvs = set(partition_scope.query).intersection(
+                set(marg_rvs)
+            )
 
             # partition scope is being fully marginalized over
-            if(len(partition_mutual_rvs) == len(partition_scope.query)):
+            if len(partition_mutual_rvs) == len(partition_scope.query):
                 # drop partition entirely
                 continue
             # node scope is being partially marginalized
             elif partition_mutual_rvs:
                 # marginalize child modules
-                marg_partitions.append([marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx) for child in partition_children])
+                marg_partitions.append(
+                    [
+                        marginalize(
+                            child,
+                            marg_rvs,
+                            prune=prune,
+                            dispatch_ctx=dispatch_ctx,
+                        )
+                        for child in partition_children
+                    ]
+                )
             else:
                 marg_partitions.append(deepcopy(partition_children))
 
         # if product node has only one child after marginalization and pruning is true, return child directly
-        if(len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and prune):
+        if len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and prune:
             return marg_partitions[0][0]
         else:
             return SPNPartitionLayer(child_partitions=marg_partitions)
@@ -551,7 +685,10 @@ def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=T
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(partition_layer: SPNPartitionLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNPartitionLayer:
+def toBase(
+    partition_layer: SPNPartitionLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> BaseSPNPartitionLayer:
     """Conversion for ``SPNPartitionLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -561,17 +698,27 @@ def toBase(partition_layer: SPNPartitionLayer, dispatch_ctx: Optional[DispatchCo
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    
-    children = list(partition_layer.children())
-    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
 
-    return BaseSPNPartitionLayer(child_partitions=[[toBase(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions])
+    children = list(partition_layer.children())
+    partitions = np.split(
+        children, np.cumsum(partition_layer.modules_per_partition[:-1])
+    )
+
+    return BaseSPNPartitionLayer(
+        child_partitions=[
+            [toBase(child, dispatch_ctx=dispatch_ctx) for child in partition]
+            for partition in partitions
+        ]
+    )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(partition_layer: BaseSPNPartitionLayer, dispatch_ctx: Optional[DispatchContext]=None) -> SPNPartitionLayer:
+def toTorch(
+    partition_layer: BaseSPNPartitionLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> SPNPartitionLayer:
     """Conversion for ``SPNPartitionLayer`` from ``base`` backend to ``torch`` backend.
-    
+
     Args:
         partition_layer:
             Layer to be converted.
@@ -579,11 +726,18 @@ def toTorch(partition_layer: BaseSPNPartitionLayer, dispatch_ctx: Optional[Dispa
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    
+
     children = list(partition_layer.children)
-    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
-    
-    return SPNPartitionLayer(child_partitions=[[toTorch(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions])
+    partitions = np.split(
+        children, np.cumsum(partition_layer.modules_per_partition[:-1])
+    )
+
+    return SPNPartitionLayer(
+        child_partitions=[
+            [toTorch(child, dispatch_ctx=dispatch_ctx) for child in partition]
+            for partition in partitions
+        ]
+    )
 
 
 class SPNHadamardLayer(Module):
@@ -597,7 +751,7 @@ class SPNHadamardLayer(Module):
     Example:
 
         layer = SPNHadamardLayer([[node1, node2], [node3], [node4, node5]])
-    
+
         In this example the layer will have 2 product nodes over the following inputs (in this order):
 
             node1, node3, node4
@@ -617,6 +771,7 @@ class SPNHadamardLayer(Module):
         partition_scopes:
             List of scopes keeping track of the scopes each partition represents.
     """
+
     def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
         r"""Initializes ``SPNHadamardLayer`` object.
 
@@ -641,10 +796,12 @@ class SPNHadamardLayer(Module):
 
         # parse partitions
         for partition in child_partitions:
-            # check if partition is empty 
+            # check if partition is empty
             if len(partition) == 0:
-                raise ValueError("All partitions for 'SPNPartitionLayer' must be non-empty")
-            
+                raise ValueError(
+                    "All partitions for 'SPNPartitionLayer' must be non-empty"
+                )
+
             self.modules_per_partition.append(len(partition))
             partition_scope = Scope()
             size = 0
@@ -657,18 +814,25 @@ class SPNHadamardLayer(Module):
                 # for each output scope
                 for s in child.scopes_out:
                     # check if query scope is the same
-                    if partition_scope.equal_query(s) or partition_scope.isempty():
+                    if (
+                        partition_scope.equal_query(s)
+                        or partition_scope.isempty()
+                    ):
                         partition_scope = partition_scope.union(s)
                     else:
-                        raise ValueError("Scopes of modules inside a partition must have same query scope.")
+                        raise ValueError(
+                            "Scopes of modules inside a partition must have same query scope."
+                        )
 
-            # add partition size to list            
-            if(size == 1 or size == max_size or max_size == 1):
+            # add partition size to list
+            if size == 1 or size == max_size or max_size == 1:
                 # either max_size is 1, then set max size to size (greater or equal to 1) or max_size is greater than 1 in which case size must be max_size or 1
                 max_size = max(size, max_size)
                 self.partition_sizes.append(size)
             else:
-                raise ValueError(f"Total number of outputs per partition must be 1 or match the number of outputs of other partitions, but was {size}.")
+                raise ValueError(
+                    f"Total number of outputs per partition must be 1 or match the number of outputs of other partitions, but was {size}."
+                )
 
             self.partition_scopes.append(partition_scope)
 
@@ -676,9 +840,13 @@ class SPNHadamardLayer(Module):
             if partition_scope.isdisjoint(scope):
                 scope = scope.union(partition_scope)
             else:
-                raise ValueError("Scopes of partitions must be pair-wise disjoint.")
+                raise ValueError(
+                    "Scopes of partitions must be pair-wise disjoint."
+                )
 
-        super(SPNHadamardLayer, self).__init__(children=sum(child_partitions, []), **kwargs)
+        super(SPNHadamardLayer, self).__init__(
+            children=sum(child_partitions, []), **kwargs
+        )
 
         self.n_in = sum(self.partition_sizes)
         self._n_out = max_size
@@ -688,7 +856,7 @@ class SPNHadamardLayer(Module):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
+
     @property
     def scopes_out(self) -> List[Scope]:
         """Returns the output scopes this layer represents."""
@@ -696,7 +864,12 @@ class SPNHadamardLayer(Module):
 
 
 @dispatch(memoize=True)  # typ: ignore
-def marginalize(layer: SPNHadamardLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNHadamardLayer, Module, None]:
+def marginalize(
+    layer: SPNHadamardLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[SPNHadamardLayer, Module, None]:
     """Structural marginalization for SPN-like Hadamard layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -716,7 +889,7 @@ def marginalize(layer: SPNHadamardLayer, marg_rvs: Iterable[int], prune: bool=Tr
             Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         (Marginalized) Hadamard layer or None if it is completely marginalized.
     """
@@ -729,32 +902,48 @@ def marginalize(layer: SPNHadamardLayer, marg_rvs: Iterable[int], prune: bool=Tr
     mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
     # layer scope is being fully marginalized over
-    if(len(mutual_rvs) == len(layer_scope.query)):
+    if len(mutual_rvs) == len(layer_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
         marg_partitions = []
 
         children = list(layer.children())
-        partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
+        partitions = np.split(
+            children, np.cumsum(layer.modules_per_partition[:-1])
+        )
 
-        for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
+        for partition_scope, partition_children in zip(
+            layer.partition_scopes, partitions
+        ):
             partition_children = partition_children.tolist()
-            partition_mutual_rvs = set(partition_scope.query).intersection(set(marg_rvs))
+            partition_mutual_rvs = set(partition_scope.query).intersection(
+                set(marg_rvs)
+            )
 
             # partition scope is being fully marginalized over
-            if(len(partition_mutual_rvs) == len(partition_scope.query)):
+            if len(partition_mutual_rvs) == len(partition_scope.query):
                 # drop partition entirely
                 continue
             # node scope is being partially marginalized
             elif partition_mutual_rvs:
                 # marginalize child modules
-                marg_partitions.append([marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx) for child in partition_children])
+                marg_partitions.append(
+                    [
+                        marginalize(
+                            child,
+                            marg_rvs,
+                            prune=prune,
+                            dispatch_ctx=dispatch_ctx,
+                        )
+                        for child in partition_children
+                    ]
+                )
             else:
                 marg_partitions.append(deepcopy(partition_children))
 
         # if product node has only one child after marginalization and pruning is true, return child directly
-        if(len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and prune):
+        if len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and prune:
             return marg_partitions[0][0]
         else:
             return SPNHadamardLayer(child_partitions=marg_partitions)
@@ -763,9 +952,12 @@ def marginalize(layer: SPNHadamardLayer, marg_rvs: Iterable[int], prune: bool=Tr
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(hadamard_layer: SPNHadamardLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseSPNHadamardLayer:
+def toBase(
+    hadamard_layer: SPNHadamardLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> BaseSPNHadamardLayer:
     """Conversion for ``SPNHadamardLayer`` from ``torch`` backend to ``base`` backend.
-    
+
     Args:
         hadamard_layer:
             Layer to be converted.
@@ -773,17 +965,27 @@ def toBase(hadamard_layer: SPNHadamardLayer, dispatch_ctx: Optional[DispatchCont
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    
-    children = list(hadamard_layer.children())
-    partitions = np.split(children, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
 
-    return BaseSPNHadamardLayer(child_partitions=[[toBase(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions])
+    children = list(hadamard_layer.children())
+    partitions = np.split(
+        children, np.cumsum(hadamard_layer.modules_per_partition[:-1])
+    )
+
+    return BaseSPNHadamardLayer(
+        child_partitions=[
+            [toBase(child, dispatch_ctx=dispatch_ctx) for child in partition]
+            for partition in partitions
+        ]
+    )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(hadamard_layer: BaseSPNHadamardLayer, dispatch_ctx: Optional[DispatchContext]=None) -> SPNHadamardLayer:
+def toTorch(
+    hadamard_layer: BaseSPNHadamardLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> SPNHadamardLayer:
     """Conversion for ``SPNHadamardLayer`` from ``base`` backend to ``torch`` backend.
-    
+
     Args:
         hadamard_layer:
             Layer to be converted.
@@ -791,8 +993,15 @@ def toTorch(hadamard_layer: BaseSPNHadamardLayer, dispatch_ctx: Optional[Dispatc
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    
+
     children = list(hadamard_layer.children)
-    partitions = np.split(children, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
-    
-    return SPNHadamardLayer(child_partitions=[[toTorch(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions])
+    partitions = np.split(
+        children, np.cumsum(hadamard_layer.modules_per_partition[:-1])
+    )
+
+    return SPNHadamardLayer(
+        child_partitions=[
+            [toTorch(child, dispatch_ctx=dispatch_ctx) for child in partition]
+            for partition in partitions
+        ]
+    )

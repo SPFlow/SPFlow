@@ -6,10 +6,15 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
-from spflow.base.structure.nodes.leaves.parametric.cond_geometric import CondGeometric
+from spflow.base.structure.nodes.leaves.parametric.cond_geometric import (
+    CondGeometric,
+)
 
 
 class CondGeometricLayer(Module):
@@ -38,7 +43,14 @@ class CondGeometricLayer(Module):
         nodes:
             List of ``CondGeometric`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], cond_f: Optional[Union[Callable,List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        cond_f: Optional[Union[Callable, List[Callable]]] = None,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``CondGeometricLayer`` object.
 
         Args:
@@ -58,16 +70,20 @@ class CondGeometricLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'CondGeometricLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'CondGeometricLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'CondGeometricLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'CondGeometricLayer' was empty."
+                )
 
             self._n_out = len(scope)
-        
+
         super(CondGeometricLayer, self).__init__(children=[], **kwargs)
 
         # create leaf nodes
@@ -83,7 +99,9 @@ class CondGeometricLayer(Module):
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
-    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+    def set_cond_f(
+        self, cond_f: Optional[Union[List[Callable], Callable]] = None
+    ) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -99,11 +117,15 @@ class CondGeometricLayer(Module):
             ValueError: If list of callables does not match number of nodes represented by the layer.
         """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
-            raise ValueError("'CondGeometricLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
+            raise ValueError(
+                "'CondGeometricLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
+            )
 
         self.cond_f = cond_f
 
-    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> np.ndarray:
+    def retrieve_params(
+        self, data: np.ndarray, dispatch_ctx: DispatchContext
+    ) -> np.ndarray:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -138,33 +160,41 @@ class CondGeometricLayer(Module):
         elif self.cond_f:
             # check if module has a 'cond_f' to provide 'p' specified (lowest priority)
             cond_f = self.cond_f
-        
+
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError("'CondGeometricLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
+            raise ValueError(
+                "'CondGeometricLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
+            )
 
         # if 'p' was not already specified, retrieve it
         if p is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                p = np.array([f(data)['p'] for f in cond_f])
+                p = np.array([f(data)["p"] for f in cond_f])
             else:
-                p = cond_f(data)['p']
+                p = cond_f(data)["p"]
 
         if isinstance(p, int) or isinstance(p, float):
             p = np.array([p for _ in range(self.n_out)])
         if isinstance(p, list):
             p = np.array(p)
-        if(p.ndim != 1):
-            raise ValueError(f"Numpy array of 'p' values for 'CondGeometricLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional.")
-        if(p.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'p' values for 'CondGeometricLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}")
+        if p.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'p' values for 'CondGeometricLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
+            )
+        if p.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'p' values for 'CondGeometricLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
+            )
 
         return p
 
-    def dist(self, p: np.ndarray, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+    def dist(
+        self, p: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
-        
+
         Args:
             p:
                 One-dimensional NumPy array representing the success probabilities of all distributions in :math:`(0,1]` (not just the ones specified by ``node_ids``).
@@ -180,7 +210,9 @@ class CondGeometricLayer(Module):
 
         return [self.nodes[i].dist(p[i]) for i in node_ids]
 
-    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Geometric distributions, which are:
@@ -207,11 +239,18 @@ class CondGeometricLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+        return np.concatenate(
+            [self.nodes[i].check_support(data) for i in node_ids], axis=1
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: CondGeometricLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondGeometricLayer, CondGeometric, None]:
+def marginalize(
+    layer: CondGeometricLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[CondGeometricLayer, CondGeometric, None]:
     r"""Structural marginalization for ``CondGeometricLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -228,7 +267,7 @@ def marginalize(layer: CondGeometricLayer, marg_rvs: Iterable[int], prune: bool=
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """

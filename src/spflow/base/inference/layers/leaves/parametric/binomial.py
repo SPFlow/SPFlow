@@ -4,16 +4,26 @@
 import numpy as np
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.base.structure.layers.leaves.parametric.binomial import BinomialLayer
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.base.structure.layers.leaves.parametric.binomial import (
+    BinomialLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(layer: BinomialLayer, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(
+    layer: BinomialLayer,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> np.ndarray:
     r"""Computes log-likelihoods for ``BinomialLayer`` leaves in the 'base' backend given input data.
 
     Log-likelihood for ``BinomialLayer`` is given by the logarithm of its individual probability mass functions (PMFs):
-    
+
     .. math::
 
         \log(\text{PMF}(k)) = \log(\binom{n}{k}p^k(1-p)^{n-k})
@@ -41,7 +51,7 @@ def log_likelihood(layer: BinomialLayer, data: np.ndarray, check_support: bool=T
     Returns:
         Two-dimensional NumPy array containing the log-likelihoods of the input data for the sum node.
         Each row corresponds to an input sample.
-        
+
     Raises:
         ValueError: Data outside of support.
     """
@@ -49,4 +59,15 @@ def log_likelihood(layer: BinomialLayer, data: np.ndarray, check_support: bool=T
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return np.concatenate([log_likelihood(node, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for node in layer.nodes], axis=1)
+    return np.concatenate(
+        [
+            log_likelihood(
+                node,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for node in layer.nodes
+        ],
+        axis=1,
+    )

@@ -4,10 +4,15 @@
 from typing import Tuple, List, Union, Optional, Iterable, Union, Callable
 import numpy as np
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import CondGaussian
+from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import (
+    CondGaussian,
+)
 
 from scipy.stats import multivariate_normal  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
@@ -37,10 +42,11 @@ class CondMultivariateGaussian(LeafNode):
             The value for ``cov`` should be a list of lists of floating points or two-dimensional NumPy array
             containing a symmetric positive semi-definite matrix.
     """
+
     def __init__(
         self,
         scope: Scope,
-        cond_f: Optional[Callable]=None,
+        cond_f: Optional[Callable] = None,
     ) -> None:
         r"""Initializes ``CondMultivariateGaussian`` leaf node.
 
@@ -56,18 +62,24 @@ class CondMultivariateGaussian(LeafNode):
                 containing a symmetric positive semi-definite matrix.
         """
         # check if scope contains duplicates
-        if(len(set(scope.query)) != len(scope.query)):
-            raise ValueError("Query scope for 'CondMultivariateGaussian' contains duplicate variables.")
+        if len(set(scope.query)) != len(scope.query):
+            raise ValueError(
+                "Query scope for 'CondMultivariateGaussian' contains duplicate variables."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'CondMultivariateGaussian' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'CondMultivariateGaussian' should be empty, but was {scope.evidence}."
+            )
         if len(scope.query) < 1:
-            raise ValueError("Size of query scope for 'CondMultivariateGaussian' must be at least 1.")
+            raise ValueError(
+                "Size of query scope for 'CondMultivariateGaussian' must be at least 1."
+            )
 
         super(CondMultivariateGaussian, self).__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 
-    def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+    def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         r"""Sets the function to retrieve the node's conditonal parameter.
 
         Args:
@@ -81,9 +93,11 @@ class CondMultivariateGaussian(LeafNode):
         """
         self.cond_f = cond_f
 
-    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[np.ndarray,np.ndarray]:
+    def retrieve_params(
+        self, data: np.ndarray, dispatch_ctx: DispatchContext
+    ) -> Tuple[np.ndarray, np.ndarray]:
         r"""Retrieves the conditional parameter of the leaf node.
-    
+
         First, checks if conditional parameters (``mean``,``cov``) is passed as an additional argument in the dispatch context.
         Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
         Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
@@ -97,7 +111,7 @@ class CondMultivariateGaussian(LeafNode):
 
         Returns:
             Tuple of a one- and a two-dimensional NumPy array representing the mean and covariance matrix.
-        
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -121,20 +135,22 @@ class CondMultivariateGaussian(LeafNode):
 
         # if neither 'mean' or 'cov' nor 'cond_f' is specified (via node or arguments)
         if (mean is None or cov is None) and cond_f is None:
-            raise ValueError("'CondMultivariateGaussian' requires either 'mean' and 'cov' or 'cond_f' to retrieve 'mean', 'cov' to be specified.")
+            raise ValueError(
+                "'CondMultivariateGaussian' requires either 'mean' and 'cov' or 'cond_f' to retrieve 'mean', 'cov' to be specified."
+            )
 
         # if 'mean' or 'cov' not already specified, retrieve them
         if mean is None or cov is None:
             params = cond_f(data)
-            mean = params['mean']
-            cov = params['cov']
-        
+            mean = params["mean"]
+            cov = params["cov"]
+
         # cast lists to numpy arrays
         if isinstance(mean, List):
             mean = np.array(mean)
         if isinstance(cov, List):
             cov = np.array(cov)
-        
+
         # check mean vector dimensions
         if (
             (mean.ndim == 1 and mean.shape[0] != len(self.scope.query))
@@ -144,15 +160,19 @@ class CondMultivariateGaussian(LeafNode):
             raise ValueError(
                 f"Dimensions of 'mean' for 'CondMultivariateGaussian' should match scope size {len(self.scope.query)}, but was: {mean.shape}."
             )
-        
-        if(mean.ndim == 2):
+
+        if mean.ndim == 2:
             mean = mean.squeeze(0)
 
         # check mean vector for nan or inf values
         if np.any(np.isinf(mean)):
-            raise ValueError("Value of 'mean' for 'CondMultivariateGaussian' may not contain infinite values.")
+            raise ValueError(
+                "Value of 'mean' for 'CondMultivariateGaussian' may not contain infinite values."
+            )
         if np.any(np.isnan(mean)):
-            raise ValueError("Value of 'mean' for 'CondMultivariateGaussian' may not contain NaN values.")
+            raise ValueError(
+                "Value of 'mean' for 'CondMultivariateGaussian' may not contain NaN values."
+            )
 
         # test whether or not matrix has correct shape
         if cov.ndim != 2 or (
@@ -178,7 +198,9 @@ class CondMultivariateGaussian(LeafNode):
 
         # test covariance matrix for symmetry
         if not np.all(cov == cov.T):
-            raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' must be symmetric.")
+            raise ValueError(
+                "Value of 'cov' for 'CondMultivariateGaussian' must be symmetric."
+            )
 
         # test covariance matrix for positive semi-definiteness
         # NOTE: since we established in the test right before that matrix is symmetric we can use numpy's eigvalsh instead of eigvals
@@ -191,12 +213,12 @@ class CondMultivariateGaussian(LeafNode):
 
     def dist(self, mean: np.ndarray, cov: np.ndarray) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Args:
             mean:
                 A list of floating points or one-dimensional NumPy array containing the means (:math:`\mu`) of each of the one-dimensional Normal distributions.
                 Must have exactly as many elements as the scope of this leaf.
-                Defaults to all zeros. 
+                Defaults to all zeros.
             cov:
                 A list of lists of floating points or a two-dimensional NumPy array (representing a :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
                 of the scope) describing the covariances of the distribution. The diagonal holds the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
@@ -215,7 +237,7 @@ class CondMultivariateGaussian(LeafNode):
         .. math::
 
             \text{supp}(\text{MultivariateGaussian})=(-\infty,+\infty)^k
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
@@ -243,7 +265,12 @@ class CondMultivariateGaussian(LeafNode):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussian,CondGaussian,None]:
+def marginalize(
+    node: CondMultivariateGaussian,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[CondMultivariateGaussian, CondGaussian, None]:
     """Structural marginalization for ``CondMultivariateGaussian`` nodes in the ``base`` backend.
 
     Structurally marginalizes the leaf node.
@@ -261,7 +288,7 @@ def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: 
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
             Unaltered node if module is not marginalized, marginalized uni- or multivariate Gaussian leaf node, or None if it is completely marginalized.
     """
@@ -280,7 +307,7 @@ def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: 
             marg_scope_ids.append(scope.query.index(rv))
 
     # return univariate Gaussian if one-dimensional
-    if(len(marg_scope) == 1):
+    if len(marg_scope) == 1:
         # note: Gaussian requires standard deviations instead of variance (take square root)
         return CondGaussian(Scope(marg_scope))
     # entire node is marginalized over

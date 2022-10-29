@@ -21,7 +21,8 @@ class Module(MetaModule, ABC):
         scopes_out:
             List of scopes representing the output scopes.
     """
-    def __init__(self, children: Optional[List["Module"]]=None) -> None:
+
+    def __init__(self, children: Optional[List["Module"]] = None) -> None:
         r"""Initializes ``Module`` object.
 
         Initializes module by correctly setting its children.
@@ -41,7 +42,9 @@ class Module(MetaModule, ABC):
 
         self.children = children
 
-    def input_to_output_ids(self, input_ids: Union[List[int], np.ndarray]) -> Tuple[List[int], List[int]]:
+    def input_to_output_ids(
+        self, input_ids: Union[List[int], np.ndarray]
+    ) -> Tuple[List[int], List[int]]:
         """Translates input indices into corresponding child module indices and child module output indices.
 
         For a given sequence of input indices (taking the inputs of all child modules into account), computes
@@ -57,7 +60,7 @@ class Module(MetaModule, ABC):
         """
         if len(input_ids) == 0:
             input_ids = list(range(self.n_out))
-        
+
         if isinstance(input_ids, list):
             input_ids = np.array(input_ids)
 
@@ -71,9 +74,14 @@ class Module(MetaModule, ABC):
         child_cum_outputs = np.cumsum(child_num_outputs)
 
         # get child module for corresponding input
-        child_ids = np.sum(child_cum_outputs <= input_ids.reshape(-1,1), axis=1)
+        child_ids = np.sum(
+            child_cum_outputs <= input_ids.reshape(-1, 1), axis=1
+        )
         # get output id of child module for corresponding input
-        output_ids = (input_ids-(child_cum_outputs[child_ids.tolist()]-child_num_outputs[child_ids.tolist()]))
+        output_ids = input_ids - (
+            child_cum_outputs[child_ids.tolist()]
+            - child_num_outputs[child_ids.tolist()]
+        )
 
         # restore original shape
         child_ids = child_ids.reshape(shape)
@@ -93,7 +101,10 @@ class NestedModule(Module, ABC):
         scopes_out:
             List of scopes representing the output scopes.
     """
-    def __init__(self, children: Optional[List[Module]]=None, **kwargs) -> None:
+
+    def __init__(
+        self, children: Optional[List[Module]] = None, **kwargs
+    ) -> None:
         """Initializes ``NestedModule`` object.
 
         Initializes module by correctly setting its children.
@@ -104,7 +115,7 @@ class NestedModule(Module, ABC):
         """
         if children is None:
             children = []
-        
+
         super(NestedModule, self).__init__(children=children, **kwargs)
         self.placeholders = []
 
@@ -125,15 +136,21 @@ class NestedModule(Module, ABC):
         self.placeholders.append(ph)
 
         return ph
-    
-    def set_placeholders(self, f_name: str, inputs: np.ndarray, dispatch_ctx: DispatchContext, overwrite=True) -> None:
+
+    def set_placeholders(
+        self,
+        f_name: str,
+        inputs: np.ndarray,
+        dispatch_ctx: DispatchContext,
+        overwrite=True,
+    ) -> None:
         """Fills the cache for all registered placeholder modules given a function name and specified input values.
 
         Args:
             f_name:
                 String of the function name to set the cache of the placeholders for.
             inputs:
-                NumPy array of all inputs. Inputs to be cached are selected based on input indices the placeholders represent. 
+                NumPy array of all inputs. Inputs to be cached are selected based on input indices the placeholders represent.
             dispatch_ctx:
                 Dispatch context to use cache of.
             overwrite:
@@ -141,7 +158,9 @@ class NestedModule(Module, ABC):
         """
         for ph in self.placeholders:
             # fill placeholder cache with specified input values
-            dispatch_ctx.cache_value(f_name, ph, inputs[:, ph.input_ids], overwrite=overwrite)
+            dispatch_ctx.cache_value(
+                f_name, ph, inputs[:, ph.input_ids], overwrite=overwrite
+            )
 
     class Placeholder(Module):
         """Placeholder module as an intermediary module between nested non-terminal modules and actual child modules in the ``base`` backend.
@@ -157,6 +176,7 @@ class NestedModule(Module, ABC):
             scopes_out:
                 List of scopes representing the output scopes (equal to the scopes of the inputs it represents).
         """
+
         def __init__(self, host: Module, input_ids: List[int]) -> None:
             """Initializes ``Placeholder`` object.
 
@@ -173,15 +193,22 @@ class NestedModule(Module, ABC):
             self.host = host
             self.input_ids = input_ids
 
-            self.child_ids_actual, self.output_ids_actual = self.input_to_output_ids(list(range(len(input_ids))))
-            
+            (
+                self.child_ids_actual,
+                self.output_ids_actual,
+            ) = self.input_to_output_ids(list(range(len(input_ids))))
+
             # get child scopes
-            child_scopes = sum([child.scopes_out for child in host.children], [])
-            
+            child_scopes = sum(
+                [child.scopes_out for child in host.children], []
+            )
+
             # compute scope for placeholder
             self.scopes_out = [child_scopes[i] for i in input_ids]
-        
-        def input_to_output_ids(self, input_ids: Union[List[int], np.ndarray]) -> Tuple[List[int], List[int]]:
+
+        def input_to_output_ids(
+            self, input_ids: Union[List[int], np.ndarray]
+        ) -> Tuple[List[int], List[int]]:
             """Translates input indices to the host module into corresponding child module indices and child module output indices.
 
             For a given sequence of input indices to the host module (taking the inputs of all child modules into account), computes
@@ -197,8 +224,10 @@ class NestedModule(Module, ABC):
             """
             if len(input_ids) == 0:
                 input_ids = list(range(len(self.input_ids)))
-            
-            return self.host.input_to_output_ids([self.input_ids[i] for i in input_ids])
+
+            return self.host.input_to_output_ids(
+                [self.input_ids[i] for i in input_ids]
+            )
 
         @property
         def n_out(self) -> int:

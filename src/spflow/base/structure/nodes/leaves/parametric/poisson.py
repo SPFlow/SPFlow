@@ -27,7 +27,8 @@ class Poisson(LeafNode):
         l:
             Floating point value representing the rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0).
     """
-    def __init__(self, scope: Scope, l: float=1.0) -> None:
+
+    def __init__(self, scope: Scope, l: float = 1.0) -> None:
         r"""Initializes ``Poisson`` leaf node.
 
         Args:
@@ -38,17 +39,21 @@ class Poisson(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Poisson' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Poisson' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}."
+            )
 
         super(Poisson, self).__init__(scope=scope)
         self.set_params(l)
-    
+
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """
@@ -62,7 +67,9 @@ class Poisson(LeafNode):
                 Floating point value representing the rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0).
         """
         if not np.isfinite(l):
-            raise ValueError(f"Value of 'l' for 'Poisson' must be finite, but was: {l}")
+            raise ValueError(
+                f"Value of 'l' for 'Poisson' must be finite, but was: {l}"
+            )
 
         if l < 0:
             raise ValueError(
@@ -97,7 +104,9 @@ class Poisson(LeafNode):
         Returns:
             Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scopes_out[0].query):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(
+            self.scopes_out[0].query
+        ):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scopes_out[0].query)}), but was: {scope_data.shape}"
             )
@@ -111,9 +120,11 @@ class Poisson(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= (np.remainder(scope_data[valid & ~nan_mask], 1) == 0)
+        valid[valid & ~nan_mask] &= (
+            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        )
 
         # check if values are in valid range
-        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0)
+        valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] >= 0
 
         return valid

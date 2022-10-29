@@ -24,7 +24,8 @@ class Module(MetaModule, nn.Module, ABC):
         scopes_out:
             List of scopes representing the output scopes.
     """
-    def __init__(self, children: Optional[List["Module"]]=None) -> None:
+
+    def __init__(self, children: Optional[List["Module"]] = None) -> None:
         r"""Initializes ``Module`` object.
 
         Initializes module by correctly setting its children.
@@ -48,7 +49,9 @@ class Module(MetaModule, nn.Module, ABC):
         for i, child in enumerate(children):
             self.add_module("child_{}".format(i + 1), child)
 
-    def input_to_output_ids(self, input_ids: Union[List[int], torch.Tensor]) -> Tuple[List[int], List[int]]:
+    def input_to_output_ids(
+        self, input_ids: Union[List[int], torch.Tensor]
+    ) -> Tuple[List[int], List[int]]:
         """Translates input indices into corresponding child module indices and child module output indices.
 
         For a given sequence of input indices (taking the inputs of all child modules into account), computes
@@ -64,7 +67,7 @@ class Module(MetaModule, nn.Module, ABC):
         """
         if len(input_ids) == 0:
             input_ids = list(range(self.n_out))
-        
+
         if isinstance(input_ids, list):
             input_ids = torch.tensor(input_ids)
 
@@ -74,13 +77,20 @@ class Module(MetaModule, nn.Module, ABC):
         input_ids = input_ids.ravel()
 
         # infer number of inputs from children (and their numbers of outputs)
-        child_num_outputs = torch.tensor([child.n_out for child in self.children()])
+        child_num_outputs = torch.tensor(
+            [child.n_out for child in self.children()]
+        )
         child_cum_outputs = torch.cumsum(child_num_outputs, dim=-1)
 
         # get child module for corresponding input
-        child_ids = torch.sum(child_cum_outputs <= input_ids.reshape(-1,1), dim=1)
+        child_ids = torch.sum(
+            child_cum_outputs <= input_ids.reshape(-1, 1), dim=1
+        )
         # get output id of child module for corresponding input
-        output_ids = (input_ids-(child_cum_outputs[child_ids.tolist()]-child_num_outputs[child_ids.tolist()]))
+        output_ids = input_ids - (
+            child_cum_outputs[child_ids.tolist()]
+            - child_num_outputs[child_ids.tolist()]
+        )
 
         # restore original shape
         child_ids = child_ids.reshape(shape)
@@ -102,7 +112,10 @@ class NestedModule(Module, ABC):
         scopes_out:
             List of scopes representing the output scopes.
     """
-    def __init__(self, children: Optional[List[Module]]=None, **kwargs) -> None:
+
+    def __init__(
+        self, children: Optional[List[Module]] = None, **kwargs
+    ) -> None:
         """Initializes ``NestedModule`` object.
 
         Initializes module by correctly setting its children.
@@ -113,7 +126,7 @@ class NestedModule(Module, ABC):
         """
         if children is None:
             children = []
-        
+
         super(NestedModule, self).__init__(children=children, **kwargs)
         self.placeholders = []
 
@@ -134,15 +147,21 @@ class NestedModule(Module, ABC):
         self.placeholders.append(ph)
 
         return ph
-    
-    def set_placeholders(self, f_name: str, inputs: torch.Tensor, dispatch_ctx: DispatchContext, overwrite=True) -> None:
+
+    def set_placeholders(
+        self,
+        f_name: str,
+        inputs: torch.Tensor,
+        dispatch_ctx: DispatchContext,
+        overwrite=True,
+    ) -> None:
         """Fills the cache for all registered placeholder modules given a function name and specified input values.
 
         Args:
             f_name:
                 String of the function name to set the cache of the placeholders for.
             inputs:
-                PyTorch tensor of all inputs. Inputs to be cached are selected based on input indices the placeholders represent. 
+                PyTorch tensor of all inputs. Inputs to be cached are selected based on input indices the placeholders represent.
             dispatch_ctx:
                 Dispatch context to use cache of.
             overwrite:
@@ -150,8 +169,9 @@ class NestedModule(Module, ABC):
         """
         for ph in self.placeholders:
             # fill placeholder cache with specified input values
-            dispatch_ctx.cache_value(f_name, ph, inputs[:, ph.input_ids], overwrite=overwrite)
-
+            dispatch_ctx.cache_value(
+                f_name, ph, inputs[:, ph.input_ids], overwrite=overwrite
+            )
 
     class Placeholder(Module):
         """Placeholder module as an intermediary module between nested non-terminal modules and actual child modules in the ``torch`` backend.
@@ -167,6 +187,7 @@ class NestedModule(Module, ABC):
             scopes_out:
                 List of scopes representing the output scopes (equal to the scopes of the inputs it represents).
         """
+
         def __init__(self, host: Module, input_ids: List[int]) -> None:
             """Initializes ``Placeholder`` object.
 
@@ -182,16 +203,23 @@ class NestedModule(Module, ABC):
 
             self.host = host
             self.input_ids = input_ids
-            
-            self.child_ids_actual, self.output_ids_actual = self.input_to_output_ids(list(range(len(input_ids))))
+
+            (
+                self.child_ids_actual,
+                self.output_ids_actual,
+            ) = self.input_to_output_ids(list(range(len(input_ids))))
 
             # get child scopes
-            child_scopes = sum([child.scopes_out for child in host.children()], [])
-            
+            child_scopes = sum(
+                [child.scopes_out for child in host.children()], []
+            )
+
             # compute scope for placeholder
             self.scopes_out = [child_scopes[i] for i in input_ids]
 
-        def input_to_output_ids(self, input_ids: Union[List[int], torch.Tensor]) -> Tuple[List[int], List[int]]:
+        def input_to_output_ids(
+            self, input_ids: Union[List[int], torch.Tensor]
+        ) -> Tuple[List[int], List[int]]:
             """Translates input indices to the host module into corresponding child module indices and child module output indices.
 
             For a given sequence of input indices to the host module (taking the inputs of all child modules into account), computes
@@ -207,8 +235,10 @@ class NestedModule(Module, ABC):
             """
             if len(input_ids) == 0:
                 input_ids = list(range(len(self.input_ids)))
-            
-            return self.host.input_to_output_ids([self.input_ids[i] for i in input_ids])
+
+            return self.host.input_to_output_ids(
+                [self.input_ids[i] for i in input_ids]
+            )
 
         @property
         def n_out(self) -> int:

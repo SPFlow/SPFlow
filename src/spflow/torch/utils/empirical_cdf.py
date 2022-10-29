@@ -29,7 +29,7 @@ def empirical_cdf(data: torch.Tensor) -> torch.Tensor:
     nan_mask = torch.isnan(data)
 
     # rank data values from min to max (with tie-breaking)
-    ecd = rankdata(data, method='max').type(torch.get_default_dtype())
+    ecd = rankdata(data, method="max").type(torch.get_default_dtype())
 
     # set nan values to 0
     ecd[nan_mask] = 0

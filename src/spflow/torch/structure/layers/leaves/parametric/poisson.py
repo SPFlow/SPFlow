@@ -7,14 +7,22 @@ import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from ....nodes.leaves.parametric.projections import proj_bounded_to_real, proj_real_to_bounded
+from ....nodes.leaves.parametric.projections import (
+    proj_bounded_to_real,
+    proj_real_to_bounded,
+)
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.poisson import Poisson
-from spflow.base.structure.layers.leaves.parametric.poisson import PoissonLayer as BasePoissonLayer
+from spflow.base.structure.layers.leaves.parametric.poisson import (
+    PoissonLayer as BasePoissonLayer,
+)
 
 
 class PoissonLayer(Module):
@@ -38,7 +46,14 @@ class PoissonLayer(Module):
         l:
             One-dimensional PyTorch tensor representing the rate parameters (:math:`\lambda`) of the Poisson distributions (projected from ``l_aux``).
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], l: Union[int, float, List[float], np.ndarray, torch.Tensor]=1.0, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        l: Union[int, float, List[float], np.ndarray, torch.Tensor] = 1.0,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``PoissonLayer`` object.
 
         Args:
@@ -55,7 +70,9 @@ class PoissonLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'PoissonLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'PoissonLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
@@ -76,8 +93,10 @@ class PoissonLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(lambda s1, s2: s1.union(s2), self.scopes_out)
-    
+        self.combined_scope = reduce(
+            lambda s1, s2: s1.union(s2), self.scopes_out
+        )
+
         # parse weights
         self.set_params(l)
 
@@ -92,7 +111,7 @@ class PoissonLayer(Module):
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.l_aux, lb=0.0)  # type: ignore
 
-    def dist(self, node_ids: Optional[List[int]]=None) -> D.Distribution:
+    def dist(self, node_ids: Optional[List[int]] = None) -> D.Distribution:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -108,7 +127,9 @@ class PoissonLayer(Module):
 
         return D.Poisson(rate=self.l[node_ids])
 
-    def set_params(self, l: Union[int, float, List[float], np.ndarray, torch.Tensor]) -> None:
+    def set_params(
+        self, l: Union[int, float, List[float], np.ndarray, torch.Tensor]
+    ) -> None:
         """Sets the parameters for the represented distributions in the ``base`` backend.
 
         Args:
@@ -127,11 +148,15 @@ class PoissonLayer(Module):
             l = torch.tensor([l for _ in range(self.n_out)])
         elif isinstance(l, list) or isinstance(l, np.ndarray):
             l = torch.tensor(l)
-        if(l.ndim != 1):
-            raise ValueError(f"Numpy array of 'l' values for 'PoissonLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional.")
-        if(l.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'l' values for 'PoissonLayer' must match number of output nodes {self.n_out}, but is {l.shape[0]}")
-        
+        if l.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'l' values for 'PoissonLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional."
+            )
+        if l.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'l' values for 'PoissonLayer' must match number of output nodes {self.n_out}, but is {l.shape[0]}"
+            )
+
         if torch.any(l < 0) or not torch.any(torch.isfinite(l)):
             raise ValueError(
                 f"Values for 'l' of 'PoissonLayer' must to greater of equal to 0, but was: {l}"
@@ -146,8 +171,10 @@ class PoissonLayer(Module):
             One-dimensional PyTorch tensor representing the rate parameters.
         """
         return (self.l,)
-    
-    def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
+
+    def check_support(
+        self, data: torch.Tensor, node_ids: Optional[List[int]] = None
+    ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Poisson distributions, which are:
@@ -170,9 +197,11 @@ class PoissonLayer(Module):
         """
         if node_ids is None:
             node_ids = list(range(self.n_out))
-        
+
         # all query scopes are univariate
-        scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
+        scope_data = data[
+            :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
+        ]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(node_ids).support.check(scope_data)  # type: ignore
@@ -190,7 +219,12 @@ class PoissonLayer(Module):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: PoissonLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[PoissonLayer, Poisson, None]:
+def marginalize(
+    layer: PoissonLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[PoissonLayer, Poisson, None]:
     """Structural marginalization for ``PoissonLayer`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -207,7 +241,7 @@ def marginalize(layer: PoissonLayer, marg_rvs: Iterable[int], prune: bool=True, 
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -226,18 +260,22 @@ def marginalize(layer: PoissonLayer, marg_rvs: Iterable[int], prune: bool=True, 
         if len(marg_scope) == 1:
             marginalized_node_ids.append(i)
             marginalized_scopes.append(scope)
-    
+
     if len(marginalized_node_ids) == 0:
         return None
     elif len(marginalized_node_ids) == 1 and prune:
         node_id = marginalized_node_ids.pop()
         return Poisson(scope=marginalized_scopes[0], l=layer.l[node_id].item())
     else:
-        return PoissonLayer(scope=marginalized_scopes, l=layer.l[marginalized_node_ids].detach())
+        return PoissonLayer(
+            scope=marginalized_scopes, l=layer.l[marginalized_node_ids].detach()
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(layer: BasePoissonLayer, dispatch_ctx: Optional[DispatchContext]=None) -> PoissonLayer:
+def toTorch(
+    layer: BasePoissonLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> PoissonLayer:
     """Conversion for ``PoissonLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -251,7 +289,9 @@ def toTorch(layer: BasePoissonLayer, dispatch_ctx: Optional[DispatchContext]=Non
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(layer: PoissonLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BasePoissonLayer:
+def toBase(
+    layer: PoissonLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> BasePoissonLayer:
     """Conversion for ``PoissonLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:

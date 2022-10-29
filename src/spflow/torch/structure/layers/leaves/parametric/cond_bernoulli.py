@@ -8,11 +8,18 @@ import torch
 import torch.distributions as D
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.nodes.leaves.parametric.cond_bernoulli import CondBernoulli
-from spflow.base.structure.layers.leaves.parametric.cond_bernoulli import CondBernoulliLayer as BaseCondBernoulliLayer
+from spflow.torch.structure.nodes.leaves.parametric.cond_bernoulli import (
+    CondBernoulli,
+)
+from spflow.base.structure.layers.leaves.parametric.cond_bernoulli import (
+    CondBernoulliLayer as BaseCondBernoulliLayer,
+)
 
 
 class CondBernoulliLayer(Module):
@@ -40,7 +47,14 @@ class CondBernoulliLayer(Module):
         scopes_out:
             List of scopes representing the output scopes.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], cond_f: Optional[Union[Callable,List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        cond_f: Optional[Union[Callable, List[Callable]]] = None,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``CondBernoulliLayer`` object.
 
         Args:
@@ -62,13 +76,17 @@ class CondBernoulliLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'CondBernoulliLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'CondBernoulliLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'CondBernoulliLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'CondBernoulliLayer' was empty."
+                )
 
             self._n_out = len(scope)
 
@@ -80,8 +98,10 @@ class CondBernoulliLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(lambda s1, s2: s1.union(s2), self.scopes_out)
-    
+        self.combined_scope = reduce(
+            lambda s1, s2: s1.union(s2), self.scopes_out
+        )
+
         self.set_cond_f(cond_f)
 
     @property
@@ -89,7 +109,9 @@ class CondBernoulliLayer(Module):
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
-    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+    def set_cond_f(
+        self, cond_f: Optional[Union[List[Callable], Callable]] = None
+    ) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -105,11 +127,15 @@ class CondBernoulliLayer(Module):
             ValueError: If list of callables does not match number of nodes represented by the layer.
         """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
-            raise ValueError("'CondBernoulliLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
+            raise ValueError(
+                "'CondBernoulliLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
+            )
 
         self.cond_f = cond_f
 
-    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> torch.Tensor:
+    def retrieve_params(
+        self, data: np.ndarray, dispatch_ctx: DispatchContext
+    ) -> torch.Tensor:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -144,37 +170,49 @@ class CondBernoulliLayer(Module):
         elif self.cond_f:
             # check if module has a 'cond_f' to provide 'p' specified (lowest priority)
             cond_f = self.cond_f
-        
+
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError("'CondBernoulliLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
+            raise ValueError(
+                "'CondBernoulliLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
+            )
 
         # if 'p' was not already specified, retrieve it
         if p is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                p = torch.tensor([f(data)['p'] for f in cond_f])
+                p = torch.tensor([f(data)["p"] for f in cond_f])
             else:
-                p = cond_f(data)['p']
-        
+                p = cond_f(data)["p"]
+
         if isinstance(p, float) or isinstance(p, int):
             p = torch.tensor([p for _ in range(self.n_out)])
         elif isinstance(p, list) or isinstance(p, np.ndarray):
             p = torch.tensor(p)
         if p.ndim != 1:
-            raise ValueError(f"Numpy array of 'p' values for 'CondBernoulliLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional.")
+            raise ValueError(
+                f"Numpy array of 'p' values for 'CondBernoulliLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
+            )
         if p.shape[0] == 1:
             p = torch.hstack([p for _ in range(self.n_out)])
-        if(p.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'p' values for 'CondBernoulliLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}")
-        if torch.any(p < 0.0) or torch.any(p > 1.0) or not all(torch.isfinite(p)):
+        if p.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'p' values for 'CondBernoulliLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
+            )
+        if (
+            torch.any(p < 0.0)
+            or torch.any(p > 1.0)
+            or not all(torch.isfinite(p))
+        ):
             raise ValueError(
                 f"Values of 'p' for 'CondBernoulliLayer' distribution must to be between 0.0 and 1.0, but are: {p}"
             )
 
         return p
 
-    def dist(self, p: torch.Tensor, node_ids: Optional[List[int]]=None) -> D.Distribution:
+    def dist(
+        self, p: torch.Tensor, node_ids: Optional[List[int]] = None
+    ) -> D.Distribution:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -192,7 +230,9 @@ class CondBernoulliLayer(Module):
 
         return D.Bernoulli(probs=p[node_ids])
 
-    def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
+    def check_support(
+        self, data: torch.Tensor, node_ids: Optional[List[int]] = None
+    ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or not instances are part of the supports of the Bernoulli distributions, which are:
@@ -200,9 +240,9 @@ class CondBernoulliLayer(Module):
         .. math::
 
             \text{supp}(\text{Bernoulli})=\{0,1\}
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
-    
+
         Args:
             TODO
             scope_data:
@@ -217,10 +257,12 @@ class CondBernoulliLayer(Module):
             Each row corresponds to an input sample.
         """
         if node_ids is None:
-            node_ids = list(range(self.n_out))  
+            node_ids = list(range(self.n_out))
 
         # all query scopes are univariate
-        scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
+        scope_data = data[
+            :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
+        ]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(torch.zeros(self.n_out), node_ids).support.check(scope_data)  # type: ignore
@@ -238,7 +280,12 @@ class CondBernoulliLayer(Module):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: CondBernoulliLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondBernoulliLayer, CondBernoulli, None]:
+def marginalize(
+    layer: CondBernoulliLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[CondBernoulliLayer, CondBernoulli, None]:
     """Structural marginalization for ``CondBernoulliLayer`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -255,7 +302,7 @@ def marginalize(layer: CondBernoulliLayer, marg_rvs: Iterable[int], prune: bool=
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -274,7 +321,7 @@ def marginalize(layer: CondBernoulliLayer, marg_rvs: Iterable[int], prune: bool=
         if len(marg_scope) == 1:
             marginalized_node_ids.append(i)
             marginalized_scopes.append(scope)
-    
+
     if len(marginalized_node_ids) == 0:
         return None
     elif len(marginalized_node_ids) == 1 and prune:
@@ -284,9 +331,12 @@ def marginalize(layer: CondBernoulliLayer, marg_rvs: Iterable[int], prune: bool=
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(layer: BaseCondBernoulliLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondBernoulliLayer:
+def toTorch(
+    layer: BaseCondBernoulliLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> CondBernoulliLayer:
     """Conversion for ``CondBernoulliLayer`` from ``base`` backend to ``torch`` backend.
-    
+
     Args:
         layer:
             Leaf to be converted.
@@ -298,7 +348,10 @@ def toTorch(layer: BaseCondBernoulliLayer, dispatch_ctx: Optional[DispatchContex
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(torch_layer: CondBernoulliLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondBernoulliLayer:
+def toBase(
+    torch_layer: CondBernoulliLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> BaseCondBernoulliLayer:
     """Conversion for ``CondBernoulliLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:

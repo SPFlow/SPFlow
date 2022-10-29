@@ -6,7 +6,10 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
@@ -38,7 +41,15 @@ class GammaLayer(Module):
         nodes:
             List of ``Gamma`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], alpha: Union[float, List[float], np.ndarray]=1.0, beta: Union[float, List[float], np.ndarray]=1.0, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        alpha: Union[float, List[float], np.ndarray] = 1.0,
+        beta: Union[float, List[float], np.ndarray] = 1.0,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``GammaLayer`` object.
 
         Args:
@@ -52,14 +63,16 @@ class GammaLayer(Module):
             beta:
                 Floating point, list of floats or one-dimensional NumPy array representing the rate parameters (:math:`\beta`), greater than 0.
                 If a single floating point value is given it is broadcast to all nodes.
-                Defaults to 1.0. 
+                Defaults to 1.0.
             n_nodes:
                 Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
                 Defaults to 1.
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'GammaLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'GammaLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
@@ -68,7 +81,7 @@ class GammaLayer(Module):
                 raise ValueError("List of scopes for 'GammaLayer' was empty.")
 
             self._n_out = len(scope)
-        
+
         super(GammaLayer, self).__init__(children=[], **kwargs)
 
         # create leaf nodes
@@ -89,13 +102,17 @@ class GammaLayer(Module):
     def alpha(self) -> np.ndarray:
         """Returns the shape parameters of the represented distributions."""
         return np.array([node.alpha for node in self.nodes])
-    
+
     @property
     def beta(self) -> np.ndarray:
         """Returns the rate parameters of the represented distributions."""
         return np.array([node.beta for node in self.nodes])
 
-    def set_params(self, alpha: Union[int, float, List[float], np.ndarray]=1.0, beta: Union[int, float, List[float], np.ndarray]=1.0) -> None:
+    def set_params(
+        self,
+        alpha: Union[int, float, List[float], np.ndarray] = 1.0,
+        beta: Union[int, float, List[float], np.ndarray] = 1.0,
+    ) -> None:
         r"""Sets the parameters for the represented distributions.
 
         Args:
@@ -112,23 +129,31 @@ class GammaLayer(Module):
             alpha = np.array([alpha for _ in range(self.n_out)])
         if isinstance(alpha, list):
             alpha = np.array(alpha)
-        if(alpha.ndim != 1):
-            raise ValueError(f"Numpy array of 'alpha' values for 'GammaLayer' is expected to be one-dimensional, but is {alpha.ndim}-dimensional.")
-        if(alpha.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'alpha' values for 'GammaLayer' must match number of output nodes {self.n_out}, but is {alpha.shape[0]}")
+        if alpha.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'alpha' values for 'GammaLayer' is expected to be one-dimensional, but is {alpha.ndim}-dimensional."
+            )
+        if alpha.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'alpha' values for 'GammaLayer' must match number of output nodes {self.n_out}, but is {alpha.shape[0]}"
+            )
 
         if isinstance(beta, int) or isinstance(beta, float):
             beta = np.array([float(beta) for _ in range(self.n_out)])
         if isinstance(beta, list):
             beta = np.array(beta)
-        if(beta.ndim != 1):
-            raise ValueError(f"Numpy array of 'beta' values for 'GammaLayer' is expected to be one-dimensional, but is {beta.ndim}-dimensional.")
-        if(beta.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'beta' values for 'GammaLayer' must match number of output nodes {self.n_out}, but is {beta.shape[0]}")
+        if beta.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'beta' values for 'GammaLayer' is expected to be one-dimensional, but is {beta.ndim}-dimensional."
+            )
+        if beta.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'beta' values for 'GammaLayer' must match number of output nodes {self.n_out}, but is {beta.shape[0]}"
+            )
 
         for node_mean, node_beta, node in zip(alpha, beta, self.nodes):
             node.set_params(node_mean, node_beta)
-    
+
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
         """Returns the parameters of the represented distribution.
 
@@ -137,9 +162,9 @@ class GammaLayer(Module):
         """
         return self.alpha, self.beta
 
-    def dist(self, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+    def dist(self, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
-        
+
         Args:
             node_ids:
                 Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
@@ -153,7 +178,9 @@ class GammaLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Gamma distributions, which are:
@@ -177,11 +204,18 @@ class GammaLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+        return np.concatenate(
+            [self.nodes[i].check_support(data) for i in node_ids], axis=1
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: GammaLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[GammaLayer, Gamma, None]:
+def marginalize(
+    layer: GammaLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[GammaLayer, Gamma, None]:
     r"""Structural marginalization for ``GammaLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -198,7 +232,7 @@ def marginalize(layer: GammaLayer, marg_rvs: Iterable[int], prune: bool=True, di
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -222,5 +256,7 @@ def marginalize(layer: GammaLayer, marg_rvs: Iterable[int], prune: bool=True, di
         new_node = Gamma(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = GammaLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
+        new_layer = GammaLayer(
+            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
+        )
         return new_layer

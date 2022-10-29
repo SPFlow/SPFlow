@@ -6,10 +6,15 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
-from spflow.base.structure.nodes.leaves.parametric.cond_negative_binomial import CondNegativeBinomial
+from spflow.base.structure.nodes.leaves.parametric.cond_negative_binomial import (
+    CondNegativeBinomial,
+)
 
 
 class CondNegativeBinomialLayer(Module):
@@ -41,7 +46,15 @@ class CondNegativeBinomialLayer(Module):
         nodes:
             List of ``CondNegativeBinomial`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], n: Union[int, List[int], np.ndarray], cond_f: Optional[Union[Callable,List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        n: Union[int, List[int], np.ndarray],
+        cond_f: Optional[Union[Callable, List[Callable]]] = None,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``CondNegativeBinomialLayer`` object.
 
         Args:
@@ -64,16 +77,20 @@ class CondNegativeBinomialLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'CondNegativeBinomialLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'CondNegativeBinomialLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'ConNegativeBinomialLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'ConNegativeBinomialLayer' was empty."
+                )
 
             self._n_out = len(scope)
-        
+
         super(CondNegativeBinomialLayer, self).__init__(children=[], **kwargs)
 
         # create leaf nodes
@@ -96,8 +113,10 @@ class CondNegativeBinomialLayer(Module):
     def n(self) -> np.ndarray:
         """Returns the numbers of successes of the represented distributions."""
         return np.array([node.n for node in self.nodes])
-    
-    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+
+    def set_cond_f(
+        self, cond_f: Optional[Union[List[Callable], Callable]] = None
+    ) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -113,11 +132,15 @@ class CondNegativeBinomialLayer(Module):
             ValueError: If list of callables does not match number of nodes represented by the layer.
         """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
-            raise ValueError("'CondNegativeBinomialLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
+            raise ValueError(
+                "'CondNegativeBinomialLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
+            )
 
         self.cond_f = cond_f
-    
-    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> np.ndarray:
+
+    def retrieve_params(
+        self, data: np.ndarray, dispatch_ctx: DispatchContext
+    ) -> np.ndarray:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -133,7 +156,7 @@ class CondNegativeBinomialLayer(Module):
 
         Returns:
             One-dimensional NumPy array representing the success probabilities.
-        
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -152,27 +175,33 @@ class CondNegativeBinomialLayer(Module):
         elif self.cond_f:
             # check if module has a 'cond_f' to provide 'p' specified (lowest priority)
             cond_f = self.cond_f
-        
+
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError("'CondNegativeBinomialLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
+            raise ValueError(
+                "'CondNegativeBinomialLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
+            )
 
         # if 'p' was not already specified, retrieve it
         if p is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                p = np.array([f(data)['p'] for f in cond_f])
+                p = np.array([f(data)["p"] for f in cond_f])
             else:
-                p = cond_f(data)['p']
+                p = cond_f(data)["p"]
 
         if isinstance(p, int) or isinstance(p, float):
             p = np.array([float(p) for _ in range(self.n_out)])
         if isinstance(p, list):
             p = np.array(p)
-        if(p.ndim != 1):
-            raise ValueError(f"Numpy array of 'p' values for 'CondNegativeBinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional.")
-        if(p.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'p' values for 'CondNegativeBinomialLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}")
+        if p.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'p' values for 'CondNegativeBinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
+            )
+        if p.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'p' values for 'CondNegativeBinomialLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
+            )
 
         return p
 
@@ -188,18 +217,24 @@ class CondNegativeBinomialLayer(Module):
             n = np.array([n for _ in range(self.n_out)])
         if isinstance(n, list):
             n = np.array(n)
-        if(n.ndim != 1):
-            raise ValueError(f"Numpy array of 'n' values for 'CondNegativeBinomialLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional.")
-        if(n.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'n' values for 'CondNegativeBinomialLayer' must match number of output nodes {self.n_out}, but is {n.shape[0]}")
-       
+        if n.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'n' values for 'CondNegativeBinomialLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional."
+            )
+        if n.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'n' values for 'CondNegativeBinomialLayer' must match number of output nodes {self.n_out}, but is {n.shape[0]}"
+            )
+
         node_scopes = np.array([s.query[0] for s in self.scopes_out])
 
         for node_scope in np.unique(node_scopes):
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not np.all(n_values == n_values[0]):
-                raise ValueError("All values of 'n' for 'CondNegativeBinomialLayer' over the same scope must be identical.")
+                raise ValueError(
+                    "All values of 'n' for 'CondNegativeBinomialLayer' over the same scope must be identical."
+                )
 
         for node_n, node in zip(n, self.nodes):
             node.set_params(node_n)
@@ -212,9 +247,11 @@ class CondNegativeBinomialLayer(Module):
         """
         return (self.n,)
 
-    def dist(self, p: np.ndarray, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+    def dist(
+        self, p: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
-        
+
         Args:
             p:
                 One-dimensional NumPy array representing the success probabilities of all distributions between zero and one (not just the ones specified by ``node_ids``).
@@ -230,7 +267,9 @@ class CondNegativeBinomialLayer(Module):
 
         return [self.nodes[i].dist(p[i]) for i in node_ids]
 
-    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Negative Binomial distributions, which are:
@@ -257,11 +296,18 @@ class CondNegativeBinomialLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+        return np.concatenate(
+            [self.nodes[i].check_support(data) for i in node_ids], axis=1
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: CondNegativeBinomialLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondNegativeBinomialLayer, CondNegativeBinomial, None]:
+def marginalize(
+    layer: CondNegativeBinomialLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[CondNegativeBinomialLayer, CondNegativeBinomial, None]:
     r"""Structural marginalization for ``CondNegativeBinomialLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -278,7 +324,7 @@ def marginalize(layer: CondNegativeBinomialLayer, marg_rvs: Iterable[int], prune
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -299,8 +345,12 @@ def marginalize(layer: CondNegativeBinomialLayer, marg_rvs: Iterable[int], prune
     if len(marg_scopes) == 0:
         return None
     elif len(marg_scopes) == 1 and prune:
-        new_node = CondNegativeBinomial(marg_scopes[0], np.array(marg_params[0]))
+        new_node = CondNegativeBinomial(
+            marg_scopes[0], np.array(marg_params[0])
+        )
         return new_node
     else:
-        new_layer = CondNegativeBinomialLayer(marg_scopes, np.array(sum(marg_params, tuple())))
+        new_layer = CondNegativeBinomialLayer(
+            marg_scopes, np.array(sum(marg_params, tuple()))
+        )
         return new_layer

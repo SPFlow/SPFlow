@@ -3,9 +3,17 @@
 """
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
-from spflow.torch.structure.layers.leaves.parametric.hypergeometric import HypergeometricLayer
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.contexts.sampling_context import (
+    SamplingContext,
+    init_default_sampling_context,
+)
+from spflow.torch.structure.layers.leaves.parametric.hypergeometric import (
+    HypergeometricLayer,
+)
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 
@@ -16,7 +24,13 @@ import itertools
 
 
 @dispatch  # type: ignore
-def sample(layer: HypergeometricLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(
+    layer: HypergeometricLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> torch.Tensor:
     r"""Samples from ``HypergeometricLayer`` leaves in the ``torch`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
@@ -39,7 +53,7 @@ def sample(layer: HypergeometricLayer, data: torch.Tensor, check_support: bool=T
     Returns:
         Two-dimensional PyTorch tensor containing the sampled values together with the specified evidence.
         Each row corresponds to a sample.
-    
+
     Raises:
         ValueError: Sampling from invalid number of outputs.
     """
@@ -50,7 +64,9 @@ def sample(layer: HypergeometricLayer, data: torch.Tensor, check_support: bool=T
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    unique_output_signatures = set(frozenset(l) for l in sampling_ctx.output_ids)
+    unique_output_signatures = set(
+        frozenset(l) for l in sampling_ctx.output_ids
+    )
 
     # make sure that no scopes are overlapping
     # TODO: suppress check
@@ -58,15 +74,21 @@ def sample(layer: HypergeometricLayer, data: torch.Tensor, check_support: bool=T
         if len(output_ids) == 0:
             output_ids = list(range(layer.n_out))
 
-        if not Scope.all_pairwise_disjoint([layer.scopes_out[id] for id in output_ids]):
-            raise ValueError("Sampling from output with non-pair-wise disjoint scopes is not permitted for 'HypergeometricLayer'.")
+        if not Scope.all_pairwise_disjoint(
+            [layer.scopes_out[id] for id in output_ids]
+        ):
+            raise ValueError(
+                "Sampling from output with non-pair-wise disjoint scopes is not permitted for 'HypergeometricLayer'."
+            )
 
     # group sampling instances by node
     for node_id, instances in sampling_ctx.group_output_ids(layer.n_out):
 
         node_scope = layer.scopes_out[node_id]
 
-        marg_ids = (torch.isnan(data[:, node_scope.query]) == len(node_scope.query)).squeeze(1)
+        marg_ids = (
+            torch.isnan(data[:, node_scope.query]) == len(node_scope.query)
+        ).squeeze(1)
 
         instance_ids_mask = torch.zeros(data.shape[0])
         instance_ids_mask[torch.tensor(instances)] = 1
@@ -76,9 +98,20 @@ def sample(layer: HypergeometricLayer, data: torch.Tensor, check_support: bool=T
 
         # TODO: may be inefficient
         # create random permutations of N elements
-        rand_perm = torch.argsort(torch.rand(sampling_ids.shape[0], layer.N[node_id]), dim=1)
-    
+        rand_perm = torch.argsort(
+            torch.rand(sampling_ids.shape[0], layer.N[node_id]), dim=1
+        )
+
         # assuming that first M indices are the M objects of interest, count how many of these indices were "drawn" in the first n draws (with replacement since all indices are unique per row)
-        data[torch.meshgrid(sampling_ids, torch.tensor(node_scope.query), indexing='ij')] = (rand_perm[:, :layer.n[node_id]] < layer.M[node_id]).sum(dim=1).type(torch.get_default_dtype()).unsqueeze(1)
+        data[
+            torch.meshgrid(
+                sampling_ids, torch.tensor(node_scope.query), indexing="ij"
+            )
+        ] = (
+            (rand_perm[:, : layer.n[node_id]] < layer.M[node_id])
+            .sum(dim=1)
+            .type(torch.get_default_dtype())
+            .unsqueeze(1)
+        )
 
     return data

@@ -34,6 +34,7 @@ class Hypergeometric(LeafNode):
         n:
             Integer specifying the number of draws, greater of equal to zero and less than or equal to N.
     """
+
     def __init__(self, scope: Scope, N: int, M: int, n: int) -> None:
         r"""Initializes 'Hypergeometric' leaf node.
 
@@ -48,17 +49,21 @@ class Hypergeometric(LeafNode):
                 Integer specifying the number of draws, greater of equal to zero and less than or equal to N.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Hypergeometric' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Hypergeometric' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}."
+            )
 
         super(Hypergeometric, self).__init__(scope=scope)
         self.set_params(N, M, n)
-    
+
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """
@@ -151,12 +156,13 @@ class Hypergeometric(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= (np.remainder(scope_data[valid & ~nan_mask], 1) == 0)
+        valid[valid & ~nan_mask] &= (
+            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        )
 
         # check if values are in valid range
         valid[valid & ~nan_mask] &= (
-                (scope_data[valid & ~nan_mask] >= max(0, self.n + self.M - self.N))
-                & (scope_data[valid & ~nan_mask] <= min(self.n, self.M))
-        )
+            scope_data[valid & ~nan_mask] >= max(0, self.n + self.M - self.N)
+        ) & (scope_data[valid & ~nan_mask] <= min(self.n, self.M))
 
         return valid
