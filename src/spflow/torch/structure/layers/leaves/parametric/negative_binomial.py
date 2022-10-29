@@ -235,7 +235,10 @@ class NegativeBinomialLayer(Module):
         return (self.n, self.p)
 
     def check_support(
-        self, data: torch.Tensor, node_ids: Optional[List[int]] = None, is_scope_data: bool=False
+        self,
+        data: torch.Tensor,
+        node_ids: Optional[List[int]] = None,
+        is_scope_data: bool = False,
     ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.
 

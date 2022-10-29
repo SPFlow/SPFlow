@@ -1,12 +1,21 @@
-#from spflow.base.sampling.sampling_context import SamplingContext
+# from spflow.base.sampling.sampling_context import SamplingContext
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform as BaseUniform
+from spflow.base.structure.nodes.leaves.parametric.uniform import (
+    Uniform as BaseUniform,
+)
 from spflow.base.inference.nodes.leaves.parametric.uniform import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.uniform import Uniform, toBase, toTorch
+from spflow.torch.structure.nodes.leaves.parametric.uniform import (
+    Uniform,
+    toBase,
+    toTorch,
+)
 from spflow.torch.structure.nodes.node import marginalize
-from spflow.torch.inference.nodes.leaves.parametric.uniform import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.uniform import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
+
+# from spflow.torch.sampling import sample
 
 import torch
 import numpy as np
@@ -43,7 +52,7 @@ class TestUniform(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, Uniform, Scope([]), 0.0, 1.0)
         self.assertRaises(Exception, Uniform, Scope([0, 1]), 0.0, 1.0)
-        self.assertRaises(Exception, Uniform, Scope([0],[1]), 0.0, 1.0)
+        self.assertRaises(Exception, Uniform, Scope([0], [1]), 0.0, 1.0)
 
     def test_structural_marginalization(self):
 
@@ -51,7 +60,7 @@ class TestUniform(unittest.TestCase):
 
         self.assertTrue(marginalize(uniform, [1]) is not None)
         self.assertTrue(marginalize(uniform, [0]) is None)
-    
+
     def test_base_backend_conversion(self):
 
         start = random.random()

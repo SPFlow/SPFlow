@@ -1,4 +1,7 @@
-from spflow.base.structure.layers.leaves.parametric.gamma import GammaLayer, marginalize
+from spflow.base.structure.layers.leaves.parametric.gamma import (
+    GammaLayer,
+    marginalize,
+)
 from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
 from spflow.meta.scope.scope import Scope
 import numpy as np
@@ -14,18 +17,24 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
+        self.assertTrue(
+            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
+        )
         # make sure parameter properties works correctly
         alpha_values = l.alpha
         beta_values = l.beta
-        for node, node_alpha, node_beta in zip(l.nodes, alpha_values, beta_values):
+        for node, node_alpha, node_beta in zip(
+            l.nodes, alpha_values, beta_values
+        ):
             self.assertTrue(np.all(node.alpha == node_alpha))
             self.assertTrue(np.all(node.beta == node_beta))
 
-        # ----- float/int parameter values ----- 
+        # ----- float/int parameter values -----
         alpha_value = 2
         beta_value = 0.5
-        l = GammaLayer(scope=Scope([1]), n_nodes=3, alpha=alpha_value, beta=beta_value)
+        l = GammaLayer(
+            scope=Scope([1]), n_nodes=3, alpha=alpha_value, beta=beta_value
+        )
 
         for node in l.nodes:
             self.assertTrue(np.all(node.alpha == alpha_value))
@@ -34,33 +43,100 @@ class TestLayer(unittest.TestCase):
         # ----- list parameter values -----
         alpha_values = [1.0, 5.0, 3.0]
         beta_values = [0.25, 0.5, 0.3]
-        l = GammaLayer(scope=Scope([1]), n_nodes=3, alpha=alpha_values, beta=beta_values)
+        l = GammaLayer(
+            scope=Scope([1]), n_nodes=3, alpha=alpha_values, beta=beta_values
+        )
 
-        for node, node_alpha, node_beta in zip(l.nodes, alpha_values, beta_values):
+        for node, node_alpha, node_beta in zip(
+            l.nodes, alpha_values, beta_values
+        ):
             self.assertTrue(np.all(node.alpha == node_alpha))
             self.assertTrue(np.all(node.beta == node_beta))
-        
+
         # wrong number of values
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), alpha_values, beta_values[:-1], n_nodes=3)
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), alpha_values[:-1], beta_values, n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            GammaLayer,
+            Scope([0]),
+            alpha_values,
+            beta_values[:-1],
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            GammaLayer,
+            Scope([0]),
+            alpha_values[:-1],
+            beta_values,
+            n_nodes=3,
+        )
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), alpha_values, [beta_values for _ in range(3)], n_nodes=3)
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), [alpha_values for _ in range(3)], beta_values, n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            GammaLayer,
+            Scope([0]),
+            alpha_values,
+            [beta_values for _ in range(3)],
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            GammaLayer,
+            Scope([0]),
+            [alpha_values for _ in range(3)],
+            beta_values,
+            n_nodes=3,
+        )
 
         # ----- numpy parameter values -----
 
-        l = GammaLayer(scope=Scope([1]), n_nodes=3, alpha=np.array(alpha_values), beta=np.array(beta_values))
+        l = GammaLayer(
+            scope=Scope([1]),
+            n_nodes=3,
+            alpha=np.array(alpha_values),
+            beta=np.array(beta_values),
+        )
 
-        for node, node_alpha, node_beta in zip(l.nodes, alpha_values, beta_values):
+        for node, node_alpha, node_beta in zip(
+            l.nodes, alpha_values, beta_values
+        ):
             self.assertTrue(np.all(node.alpha == node_alpha))
             self.assertTrue(np.all(node.beta == node_beta))
-        
+
         # wrong number of values
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array(alpha_values), np.array(beta_values[:-1]), n_nodes=3)
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array(alpha_values[:-1]), np.array(beta_values), n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            GammaLayer,
+            Scope([0]),
+            np.array(alpha_values),
+            np.array(beta_values[:-1]),
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            GammaLayer,
+            Scope([0]),
+            np.array(alpha_values[:-1]),
+            np.array(beta_values),
+            n_nodes=3,
+        )
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), np.array([alpha_values for _ in range(3)]), beta_values, n_nodes=3)
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), alpha_values, np.array([beta_values for _ in range(3)]), n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            GammaLayer,
+            Scope([0]),
+            np.array([alpha_values for _ in range(3)]),
+            beta_values,
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            GammaLayer,
+            Scope([0]),
+            alpha_values,
+            np.array([beta_values for _ in range(3)]),
+            n_nodes=3,
+        )
 
         # ---- different scopes -----
         l = GammaLayer(scope=Scope([1]), n_nodes=3)
@@ -84,7 +160,9 @@ class TestLayer(unittest.TestCase):
 
         # ---------- same scopes -----------
 
-        l = GammaLayer(scope=Scope([1]), alpha=[0.2, 1.3], beta=[0.5, 0.3], n_nodes=2)
+        l = GammaLayer(
+            scope=Scope([1]), alpha=[0.2, 1.3], beta=[0.5, 0.3], n_nodes=2
+        )
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [1]) == None)
@@ -95,13 +173,15 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
         self.assertTrue(np.all(l.alpha == l_marg.alpha))
         self.assertTrue(np.all(l.beta == l_marg.beta))
-    
+
         # ---------- different scopes -----------
 
-        l = GammaLayer(scope=[Scope([1]), Scope([0])], alpha=[0.2, 1.3], beta=[0.5, 0.3])
+        l = GammaLayer(
+            scope=[Scope([1]), Scope([0])], alpha=[0.2, 1.3], beta=[0.5, 0.3]
+        )
 
         # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0,1]) == None)
+        self.assertTrue(marginalize(l, [0, 1]) == None)
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
@@ -125,7 +205,9 @@ class TestLayer(unittest.TestCase):
 
     def test_get_params(self):
 
-        layer = GammaLayer(scope=Scope([1]), alpha=[0.73, 0.29], beta=[1.3, 0.92], n_nodes=2)
+        layer = GammaLayer(
+            scope=Scope([1]), alpha=[0.73, 0.29], beta=[1.3, 0.92], n_nodes=2
+        )
 
         alpha, beta, *others = layer.get_params()
 

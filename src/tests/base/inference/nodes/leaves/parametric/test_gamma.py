@@ -71,7 +71,7 @@ class TestGamma(unittest.TestCase):
         # set parameter to None manually
         gamma.alpha = None
         self.assertRaises(Exception, likelihood, gamma, data)
-    
+
     def test_likelihood_beta_none(self):
 
         # dummy distribution and data
@@ -81,7 +81,7 @@ class TestGamma(unittest.TestCase):
         # set parameter to None manually
         gamma.beta = None
         self.assertRaises(Exception, likelihood, gamma, data)
-    
+
     def test_likelihood_marginalization(self):
 
         gamma = Gamma(Scope([0]), 1.0, 1.0)
@@ -105,8 +105,12 @@ class TestGamma(unittest.TestCase):
         gamma = Gamma(Scope([0]), 1.0, 1.0)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, gamma, np.array([[-np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, gamma, np.array([[np.inf]]))
+        self.assertRaises(
+            ValueError, log_likelihood, gamma, np.array([[-np.inf]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, gamma, np.array([[np.inf]])
+        )
 
         # check finite values > 0
         log_likelihood(gamma, np.array([[np.nextafter(0.0, 1.0)]]))
@@ -123,7 +127,10 @@ class TestGamma(unittest.TestCase):
         # check invalid float values (outside range)
         self.assertRaises(ValueError, log_likelihood, gamma, np.array([[0.0]]))
         self.assertRaises(
-            ValueError, log_likelihood, gamma, np.array([[np.nextafter(0.0, -1.0)]])
+            ValueError,
+            log_likelihood,
+            gamma,
+            np.array([[np.nextafter(0.0, -1.0)]]),
         )
 
         # TODO: 0

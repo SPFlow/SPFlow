@@ -1,4 +1,7 @@
-from spflow.base.structure.layers.leaves.parametric.bernoulli import BernoulliLayer, marginalize
+from spflow.base.structure.layers.leaves.parametric.bernoulli import (
+    BernoulliLayer,
+    marginalize,
+)
 from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli
 from spflow.meta.scope.scope import Scope
 import numpy as np
@@ -14,7 +17,9 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
+        self.assertTrue(
+            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
+        )
         # make sure parameter properties works correctly
         p_values = l.p
         for node, node_p in zip(l.nodes, p_values):
@@ -35,9 +40,17 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.p == node_p))
 
         # wrong number of values
-        self.assertRaises(ValueError, BernoulliLayer, Scope([0]), p_values[:-1], n_nodes=3)
+        self.assertRaises(
+            ValueError, BernoulliLayer, Scope([0]), p_values[:-1], n_nodes=3
+        )
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, BernoulliLayer, Scope([0]), [p_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            BernoulliLayer,
+            Scope([0]),
+            [p_values for _ in range(3)],
+            n_nodes=3,
+        )
 
         # ----- numpy parameter values -----
 
@@ -45,10 +58,22 @@ class TestLayer(unittest.TestCase):
 
         for node, node_p in zip(l.nodes, p_values):
             self.assertTrue(np.all(node.p == node_p))
-        
+
         # wrong number of values
-        self.assertRaises(ValueError, BernoulliLayer, Scope([0]), np.array(p_values[:-1]), n_nodes=3)
-        self.assertRaises(ValueError, BernoulliLayer, Scope([0]), np.array([p_values for _ in range(3)]), n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            BernoulliLayer,
+            Scope([0]),
+            np.array(p_values[:-1]),
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            BernoulliLayer,
+            Scope([0]),
+            np.array([p_values for _ in range(3)]),
+            n_nodes=3,
+        )
 
         # ---- different scopes -----
         l = BernoulliLayer(scope=Scope([1]), n_nodes=3)
@@ -82,13 +107,13 @@ class TestLayer(unittest.TestCase):
 
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
         self.assertTrue(np.all(l.p == l_marg.p))
-    
+
         # ---------- different scopes -----------
 
         l = BernoulliLayer(scope=[Scope([1]), Scope([0])], p=[0.73, 0.29])
 
         # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0,1]) == None)
+        self.assertTrue(marginalize(l, [0, 1]) == None)
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)

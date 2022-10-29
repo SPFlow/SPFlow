@@ -1,9 +1,17 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.leaves.parametric.hypergeometric import HypergeometricLayer
-from spflow.torch.inference.layers.leaves.parametric.hypergeometric import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric
-from spflow.torch.inference.nodes.leaves.parametric.hypergeometric import log_likelihood
+from spflow.torch.structure.layers.leaves.parametric.hypergeometric import (
+    HypergeometricLayer,
+)
+from spflow.torch.inference.layers.leaves.parametric.hypergeometric import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric,
+)
+from spflow.torch.inference.nodes.leaves.parametric.hypergeometric import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import log_likelihood
 import torch
 import unittest
@@ -21,7 +29,12 @@ class TestNode(unittest.TestCase):
 
     def test_layer_likelihood(self):
 
-        layer = HypergeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], N=[5, 7, 5], M=[2, 5, 2], n=[3, 2, 3])
+        layer = HypergeometricLayer(
+            scope=[Scope([0]), Scope([1]), Scope([0])],
+            N=[5, 7, 5],
+            M=[2, 5, 2],
+            n=[3, 2, 3],
+        )
 
         nodes = [
             Hypergeometric(Scope([0]), N=5, M=2, n=3),
@@ -32,7 +45,9 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[2, 1], [0, 2], [1, 1]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
+        nodes_ll = torch.concat(
+            [log_likelihood(node, dummy_data) for node in nodes], dim=1
+        )
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -42,7 +57,9 @@ class TestNode(unittest.TestCase):
         M = 10
         n = 10
 
-        torch_hypergeometric = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=N, M=M, n=n)
+        torch_hypergeometric = HypergeometricLayer(
+            scope=[Scope([0]), Scope([1])], N=N, M=M, n=n
+        )
 
         # create dummy input data (batch size x random variables)
         data = torch.tensor([[5, 6], [10, 5]])
@@ -64,8 +81,10 @@ class TestNode(unittest.TestCase):
         self.assertFalse(list(torch_hypergeometric.parameters()))
 
     def test_likelihood_marginalization(self):
-        
-        hypergeometric = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=5, M=3, n=4)
+
+        hypergeometric = HypergeometricLayer(
+            scope=[Scope([0]), Scope([1])], N=5, M=3, n=4
+        )
         data = torch.tensor([[float("nan"), float("nan")]])
 
         # should not raise and error and should return 1

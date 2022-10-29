@@ -17,7 +17,7 @@ class TestNode(unittest.TestCase):
         torch.set_default_dtype(torch.float32)
 
     def test_rankdata_min(self):
-        
+
         np.random.seed(0)
         torch.manual_seed(0)
         random.seed(0)
@@ -27,13 +27,13 @@ class TestNode(unittest.TestCase):
         # make sure that some elements are identical (to check tie-breaking)
         data[:10] = data[-10:]
 
-        ranks_scipy = scipy_rankdata(data, axis=0, method='min')
-        ranks_torch = rankdata(torch.tensor(data), method='min')
+        ranks_scipy = scipy_rankdata(data, axis=0, method="min")
+        ranks_torch = rankdata(torch.tensor(data), method="min")
 
         self.assertTrue(np.all(ranks_scipy == ranks_torch.numpy()))
-    
+
     def test_rankdata_max(self):
-        
+
         np.random.seed(0)
         torch.manual_seed(0)
         random.seed(0)
@@ -43,13 +43,13 @@ class TestNode(unittest.TestCase):
         # make sure that some elements are identical (to check tie-breaking)
         data[:10] = data[-10:]
 
-        ranks_scipy = scipy_rankdata(data, axis=0, method='max')
-        ranks_torch = rankdata(torch.tensor(data), method='max')
+        ranks_scipy = scipy_rankdata(data, axis=0, method="max")
+        ranks_torch = rankdata(torch.tensor(data), method="max")
 
         self.assertTrue(np.all(ranks_scipy == ranks_torch.numpy()))
-    
+
     def test_rankdata_average(self):
-        
+
         np.random.seed(0)
         torch.manual_seed(0)
         random.seed(0)
@@ -59,8 +59,8 @@ class TestNode(unittest.TestCase):
         # make sure that some elements are identical (to check tie-breaking)
         data[:10] = data[-10:]
 
-        ranks_scipy = scipy_rankdata(data, axis=0, method='average')
-        ranks_torch = rankdata(torch.tensor(data), method='average')
+        ranks_scipy = scipy_rankdata(data, axis=0, method="average")
+        ranks_torch = rankdata(torch.tensor(data), method="average")
 
         self.assertTrue(np.all(ranks_scipy == ranks_torch.numpy()))
 

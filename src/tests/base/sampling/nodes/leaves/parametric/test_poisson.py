@@ -24,7 +24,9 @@ class TestPoisson(unittest.TestCase):
 
         samples = sample(poisson, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(all(np.isnan(samples) == np.array([[False], [True], [False]])))
+        self.assertTrue(
+            all(np.isnan(samples) == np.array([[False], [True], [False]]))
+        )
 
         samples = sample(poisson, 1000)
         self.assertTrue(np.isclose(samples.mean(), np.array(1.0), rtol=0.1))
@@ -60,7 +62,13 @@ class TestPoisson(unittest.TestCase):
         poisson = Poisson(Scope([0]), 2.5)
 
         # make sure that instance ids out of bounds raise errors
-        self.assertRaises(ValueError, sample, poisson, np.array([[0]]), sampling_ctx=SamplingContext([1]))
+        self.assertRaises(
+            ValueError,
+            sample,
+            poisson,
+            np.array([[0]]),
+            sampling_ctx=SamplingContext([1]),
+        )
 
 
 if __name__ == "__main__":

@@ -1,7 +1,9 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.leaves.parametric.cond_gamma import CondGamma
-from spflow.base.inference.nodes.leaves.parametric.cond_gamma import log_likelihood
+from spflow.base.inference.nodes.leaves.parametric.cond_gamma import (
+    log_likelihood,
+)
 from spflow.base.inference.module import likelihood
 
 import numpy as np
@@ -11,22 +13,24 @@ import unittest
 class TestCondGamma(unittest.TestCase):
     def test_likelihood_no_alpha(self):
 
-        gamma = CondGamma(Scope([0]), cond_f=lambda data: {'beta': 1.0})
+        gamma = CondGamma(Scope([0]), cond_f=lambda data: {"beta": 1.0})
         self.assertRaises(KeyError, log_likelihood, gamma, np.array([[0], [1]]))
-    
+
     def test_likelihood_no_beta(self):
 
-        gamma = CondGamma(Scope([0]), cond_f=lambda data: {'alpha': 1.0})
+        gamma = CondGamma(Scope([0]), cond_f=lambda data: {"alpha": 1.0})
         self.assertRaises(KeyError, log_likelihood, gamma, np.array([[0], [1]]))
-    
+
     def test_likelihood_no_alpha_beta(self):
 
         gamma = CondGamma(Scope([0]))
-        self.assertRaises(ValueError, log_likelihood, gamma, np.array([[0], [1]]))
+        self.assertRaises(
+            ValueError, log_likelihood, gamma, np.array([[0], [1]])
+        )
 
     def test_likelihood_module_cond_f(self):
 
-        cond_f = lambda data: {'alpha': 1.0, 'beta': 1.0}
+        cond_f = lambda data: {"alpha": 1.0, "beta": 1.0}
 
         gamma = CondGamma(Scope([0]), cond_f=cond_f)
 
@@ -45,7 +49,7 @@ class TestCondGamma(unittest.TestCase):
         gamma = CondGamma(Scope([0]))
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[gamma] = {'alpha': 1.0, 'beta': 1.0}
+        dispatch_ctx.args[gamma] = {"alpha": 1.0, "beta": 1.0}
 
         # create test inputs/outputs
         data = np.array([[0.1], [1.0], [3.0]])
@@ -61,10 +65,10 @@ class TestCondGamma(unittest.TestCase):
 
         gamma = CondGamma(Scope([0]))
 
-        cond_f = lambda data: {'alpha': 1.0, 'beta': 1.0}
+        cond_f = lambda data: {"alpha": 1.0, "beta": 1.0}
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[gamma] = {'cond_f': cond_f}
+        dispatch_ctx.args[gamma] = {"cond_f": cond_f}
 
         # create test inputs/outputs
         data = np.array([[0.1], [1.0], [3.0]])
@@ -79,7 +83,9 @@ class TestCondGamma(unittest.TestCase):
     def test_likelihood_1(self):
 
         # ----- configuration 1 -----
-        gamma = CondGamma(Scope([0]), cond_f=lambda data: {'alpha': 1.0, 'beta': 1.0})
+        gamma = CondGamma(
+            Scope([0]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
+        )
 
         # create test inputs/outputs
         data = np.array([[0.1], [1.0], [3.0]])
@@ -94,7 +100,9 @@ class TestCondGamma(unittest.TestCase):
     def test_likelihood_2(self):
 
         # ----- configuration 2 -----
-        gamma = CondGamma(Scope([0]), cond_f=lambda data: {'alpha': 2.0, 'beta': 2.0})
+        gamma = CondGamma(
+            Scope([0]), cond_f=lambda data: {"alpha": 2.0, "beta": 2.0}
+        )
 
         # create test inputs/outputs
         data = np.array([[0.1], [1.0], [3.0]])
@@ -109,7 +117,9 @@ class TestCondGamma(unittest.TestCase):
     def test_likelihood_3(self):
 
         # ----- configuration 3 -----
-        gamma = CondGamma(Scope([0]), cond_f=lambda data: {'alpha': 2.0, 'beta': 1.0})
+        gamma = CondGamma(
+            Scope([0]), cond_f=lambda data: {"alpha": 2.0, "beta": 1.0}
+        )
 
         # create test inputs/outputs
         data = np.array([[0.1], [1.0], [3.0]])
@@ -124,22 +134,28 @@ class TestCondGamma(unittest.TestCase):
     def test_likelihood_alpha_none(self):
 
         # dummy distribution and data
-        gamma = CondGamma(Scope([0]), cond_f=lambda data: {'alpha': None, 'beta': 1.0})
+        gamma = CondGamma(
+            Scope([0]), cond_f=lambda data: {"alpha": None, "beta": 1.0}
+        )
         data = np.array([[0.1], [1.0], [3.0]])
 
         self.assertRaises(Exception, likelihood, gamma, data)
-    
+
     def test_likelihood_beta_none(self):
 
         # dummy distribution and data
-        gamma = CondGamma(Scope([0]), cond_f=lambda data: {'alpha': 1.0, 'beta': None})
+        gamma = CondGamma(
+            Scope([0]), cond_f=lambda data: {"alpha": 1.0, "beta": None}
+        )
         data = np.array([[0.1], [1.0], [3.0]])
 
         self.assertRaises(Exception, likelihood, gamma, data)
-    
+
     def test_likelihood_marginalization(self):
 
-        gamma = CondGamma(Scope([0]), cond_f=lambda data: {'alpha': 1.0, 'beta': 1.0})
+        gamma = CondGamma(
+            Scope([0]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
+        )
         data = np.array([[np.nan]])
 
         # should not raise and error and should return 1 (0 in log-space)
@@ -157,11 +173,17 @@ class TestCondGamma(unittest.TestCase):
         #   likelihood:     x=0 -> POS_EPS (?)
         #   log-likelihood: x=0 -> POS_EPS (?)
 
-        gamma = CondGamma(Scope([0]), cond_f=lambda data: {'alpha': 2.0, 'beta': 1.0})
+        gamma = CondGamma(
+            Scope([0]), cond_f=lambda data: {"alpha": 2.0, "beta": 1.0}
+        )
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, gamma, np.array([[-np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, gamma, np.array([[np.inf]]))
+        self.assertRaises(
+            ValueError, log_likelihood, gamma, np.array([[-np.inf]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, gamma, np.array([[np.inf]])
+        )
 
         # check finite values > 0
         log_likelihood(gamma, np.array([[np.nextafter(0.0, 1.0)]]))
@@ -178,7 +200,10 @@ class TestCondGamma(unittest.TestCase):
         # check invalid float values (outside range)
         self.assertRaises(ValueError, log_likelihood, gamma, np.array([[0.0]]))
         self.assertRaises(
-            ValueError, log_likelihood, gamma, np.array([[np.nextafter(0.0, -1.0)]])
+            ValueError,
+            log_likelihood,
+            gamma,
+            np.array([[np.nextafter(0.0, -1.0)]]),
         )
 
         # TODO: 0

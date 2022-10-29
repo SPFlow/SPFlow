@@ -1,6 +1,10 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric
-from spflow.base.inference.nodes.leaves.parametric.hypergeometric import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric,
+)
+from spflow.base.inference.nodes.leaves.parametric.hypergeometric import (
+    log_likelihood,
+)
 from spflow.base.inference.module import likelihood
 
 import numpy as np
@@ -45,7 +49,7 @@ class TestHypergeometric(unittest.TestCase):
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
-    
+
     def test_likelihood_n_none(self):
 
         # dummy distribution and data
@@ -55,7 +59,7 @@ class TestHypergeometric(unittest.TestCase):
         # set parameter to None manually
         hypergeometric.n = None
         self.assertRaises(Exception, likelihood, hypergeometric, data)
-    
+
     def test_likelihood_M_none(self):
 
         # dummy distribution and data
@@ -104,8 +108,12 @@ class TestHypergeometric(unittest.TestCase):
         hypergeometric = Hypergeometric(Scope([0]), N, M, n)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[-np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[np.inf]]))
+        self.assertRaises(
+            ValueError, log_likelihood, hypergeometric, np.array([[-np.inf]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, hypergeometric, np.array([[np.inf]])
+        )
 
         # check valid integers inside valid range
         data = np.array([[max(0, n + M - N)], [min(n, M)]])
@@ -118,10 +126,16 @@ class TestHypergeometric(unittest.TestCase):
 
         # check valid integers, but outside of valid range
         self.assertRaises(
-            ValueError, log_likelihood, hypergeometric, np.array([[max(0, n + M - N) - 1]])
+            ValueError,
+            log_likelihood,
+            hypergeometric,
+            np.array([[max(0, n + M - N) - 1]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, hypergeometric, np.array([[min(n, M) + 1]])
+            ValueError,
+            log_likelihood,
+            hypergeometric,
+            np.array([[min(n, M) + 1]]),
         )
 
         # check invalid float values
@@ -137,7 +151,9 @@ class TestHypergeometric(unittest.TestCase):
             hypergeometric,
             np.array([[np.nextafter(max(n, M), -1.0)]]),
         )
-        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[5.5]]))
+        self.assertRaises(
+            ValueError, log_likelihood, hypergeometric, np.array([[5.5]])
+        )
 
         # case n+M-N
         N = 25
@@ -155,10 +171,16 @@ class TestHypergeometric(unittest.TestCase):
 
         # check valid integers, but outside of valid range
         self.assertRaises(
-            ValueError, log_likelihood, hypergeometric, np.array([[max(0, n + M - N) - 1]])
+            ValueError,
+            log_likelihood,
+            hypergeometric,
+            np.array([[max(0, n + M - N) - 1]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, hypergeometric, np.array([[min(n, M) + 1]])
+            ValueError,
+            log_likelihood,
+            hypergeometric,
+            np.array([[min(n, M) + 1]]),
         )
 
         # check invalid float values
@@ -166,15 +188,17 @@ class TestHypergeometric(unittest.TestCase):
             ValueError,
             log_likelihood,
             hypergeometric,
-            np.array([[np.nextafter(max(0, n + M - N), 100)]])
+            np.array([[np.nextafter(max(0, n + M - N), 100)]]),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             hypergeometric,
-            np.array([[np.nextafter(max(n, M), -1.0)]])
+            np.array([[np.nextafter(max(n, M), -1.0)]]),
         )
-        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[5.5]]))
+        self.assertRaises(
+            ValueError, log_likelihood, hypergeometric, np.array([[5.5]])
+        )
 
 
 if __name__ == "__main__":

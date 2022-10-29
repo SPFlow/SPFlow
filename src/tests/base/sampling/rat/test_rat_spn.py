@@ -7,11 +7,15 @@ from spflow.base.inference.module import log_likelihood
 from spflow.base.sampling.module import sample
 from spflow.base.inference.nodes.node import log_likelihood
 from spflow.base.sampling.nodes.node import sample
-from spflow.base.inference.nodes.leaves.parametric.gaussian import log_likelihood
+from spflow.base.inference.nodes.leaves.parametric.gaussian import (
+    log_likelihood,
+)
 from spflow.base.sampling.nodes.leaves.parametric.gaussian import sample
 from spflow.base.inference.layers.layer import log_likelihood
 from spflow.base.sampling.layers.layer import sample
-from spflow.base.inference.layers.leaves.parametric.gaussian import log_likelihood
+from spflow.base.inference.layers.leaves.parametric.gaussian import (
+    log_likelihood,
+)
 from spflow.base.sampling.layers.leaves.parametric.gaussian import sample
 import unittest
 
@@ -19,7 +23,7 @@ import numpy as np
 import random
 
 
-class TestModule(unittest.TestCase):    
+class TestModule(unittest.TestCase):
     def test_sampling(self):
 
         # set seed
@@ -27,10 +31,14 @@ class TestModule(unittest.TestCase):
         random.seed(0)
 
         # create region graph
-        region_graph = random_region_graph(scope=Scope(list(range(128))), depth=5, replicas=2, n_splits=2)
+        region_graph = random_region_graph(
+            scope=Scope(list(range(128))), depth=5, replicas=2, n_splits=2
+        )
 
         # create torch rat spn from region graph
-        rat = RatSPN(region_graph, n_root_nodes=4, n_region_nodes=2, n_leaf_nodes=3)
+        rat = RatSPN(
+            region_graph, n_root_nodes=4, n_region_nodes=2, n_leaf_nodes=3
+        )
 
         # since RAT-SPNs are completely composed out of tested layers and nodes, the validity does not have to be checked specifically
         # should simply NOT raise an error

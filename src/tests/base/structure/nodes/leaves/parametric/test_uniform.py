@@ -18,12 +18,18 @@ class TestUniform(unittest.TestCase):
         start_end = random.random()
         self.assertRaises(Exception, Uniform, Scope([0]), start_end, start_end)
         # start > end
-        self.assertRaises(Exception, Uniform, Scope([0]), start_end, np.nextafter(start_end, -1.0))
+        self.assertRaises(
+            Exception,
+            Uniform,
+            Scope([0]),
+            start_end,
+            np.nextafter(start_end, -1.0),
+        )
         # start = +-inf and start = nan
         self.assertRaises(Exception, Uniform, Scope([0]), np.inf, 0.0)
         self.assertRaises(Exception, Uniform, Scope([0]), -np.inf, 0.0)
         self.assertRaises(Exception, Uniform, Scope([0]), np.nan, 0.0)
-       
+
         # end = +-inf and end = nan
         self.assertRaises(Exception, Uniform, Scope([0]), 0.0, np.inf)
         self.assertRaises(Exception, Uniform, Scope([0]), 0.0, -np.inf)
@@ -32,7 +38,7 @@ class TestUniform(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, Uniform, Scope([]), 0.0, 1.0)
         self.assertRaises(Exception, Uniform, Scope([0, 1]), 0.0, 1.0)
-        self.assertRaises(Exception, Uniform, Scope([0],[1]))
+        self.assertRaises(Exception, Uniform, Scope([0], [1]))
 
     def test_structural_marginalization(self):
 

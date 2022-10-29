@@ -1,9 +1,15 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.leaves.parametric.gaussian import GaussianLayer
-from spflow.torch.inference.layers.leaves.parametric.gaussian import log_likelihood
+from spflow.torch.structure.layers.leaves.parametric.gaussian import (
+    GaussianLayer,
+)
+from spflow.torch.inference.layers.leaves.parametric.gaussian import (
+    log_likelihood,
+)
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.torch.inference.nodes.leaves.parametric.gaussian import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import log_likelihood
 import torch
 import unittest
@@ -22,7 +28,11 @@ class TestNode(unittest.TestCase):
 
     def test_layer_likelihood(self):
 
-        layer = GaussianLayer(scope=[Scope([0]), Scope([1]), Scope([0])], mean=[0.2, 1.0, 2.3], std=[1.0, 0.3, 0.97])
+        layer = GaussianLayer(
+            scope=[Scope([0]), Scope([1]), Scope([0])],
+            mean=[0.2, 1.0, 2.3],
+            std=[1.0, 0.3, 0.97],
+        )
 
         nodes = [
             Gaussian(Scope([0]), mean=0.2, std=1.0),
@@ -33,16 +43,23 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
+        nodes_ll = torch.concat(
+            [log_likelihood(node, dummy_data) for node in nodes], dim=1
+        )
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
     def test_gradient_computation(self):
 
         mean = [random.random(), random.random()]
-        std = [random.random() + 1e-8, random.random() + 1e-8]  # offset by small number to avoid zero
+        std = [
+            random.random() + 1e-8,
+            random.random() + 1e-8,
+        ]  # offset by small number to avoid zero
 
-        torch_gaussian = GaussianLayer(scope=[Scope([0]), Scope([1])], mean=mean, std=std)
+        torch_gaussian = GaussianLayer(
+            scope=[Scope([0]), Scope([1])], mean=mean, std=std
+        )
 
         # create dummy input data (batch size x random variables)
         data = torch.randn(3, 2)
@@ -65,19 +82,32 @@ class TestNode(unittest.TestCase):
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(mean_orig - torch_gaussian.mean.grad, torch_gaussian.mean))
         self.assertTrue(
-            torch.allclose(std_aux_orig - torch_gaussian.std_aux.grad, torch_gaussian.std_aux)
+            torch.allclose(
+                mean_orig - torch_gaussian.mean.grad, torch_gaussian.mean
+            )
+        )
+        self.assertTrue(
+            torch.allclose(
+                std_aux_orig - torch_gaussian.std_aux.grad,
+                torch_gaussian.std_aux,
+            )
         )
 
         # verify that distribution parameters match parameters
-        self.assertTrue(torch.allclose(torch_gaussian.mean, torch_gaussian.dist().mean))
-        self.assertTrue(torch.allclose(torch_gaussian.std, torch_gaussian.dist().stddev))
+        self.assertTrue(
+            torch.allclose(torch_gaussian.mean, torch_gaussian.dist().mean)
+        )
+        self.assertTrue(
+            torch.allclose(torch_gaussian.std, torch_gaussian.dist().stddev)
+        )
 
     def test_gradient_optimization(self):
 
         # initialize distribution
-        torch_gaussian = GaussianLayer(scope=[Scope([0]), Scope([1])], mean=[1.0, 1.1], std=[2.0, 1.9])
+        torch_gaussian = GaussianLayer(
+            scope=[Scope([0]), Scope([1])], mean=[1.0, 1.1], std=[2.0, 1.9]
+        )
 
         torch.manual_seed(0)
 
@@ -102,22 +132,35 @@ class TestNode(unittest.TestCase):
             optimizer.step()
 
         self.assertTrue(
-            torch.allclose(torch_gaussian.mean, torch.tensor([0.0, 0.0]), atol=1e-3, rtol=1e-3)
+            torch.allclose(
+                torch_gaussian.mean,
+                torch.tensor([0.0, 0.0]),
+                atol=1e-3,
+                rtol=1e-3,
+            )
         )
         self.assertTrue(
-            torch.allclose(torch_gaussian.std, torch.tensor([1.0, 1.0]), atol=1e-3, rtol=1e-3)
+            torch.allclose(
+                torch_gaussian.std,
+                torch.tensor([1.0, 1.0]),
+                atol=1e-3,
+                rtol=1e-3,
+            )
         )
 
     def test_likelihood_marginalization(self):
-        
-        gaussian = GaussianLayer(scope=[Scope([0]), Scope([1])], mean=random.random(), std=random.random()+1e-7)
+
+        gaussian = GaussianLayer(
+            scope=[Scope([0]), Scope([1])],
+            mean=random.random(),
+            std=random.random() + 1e-7,
+        )
         data = torch.tensor([[float("nan"), float("nan")]])
 
         # should not raise and error and should return 1
         probs = log_likelihood(gaussian, data).exp()
 
         self.assertTrue(torch.allclose(probs, torch.tensor([1.0, 1.0])))
-
 
     def test_support(self):
         # TODO

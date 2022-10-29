@@ -1,7 +1,9 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.node import marginalize
-from spflow.base.structure.nodes.leaves.parametric.cond_exponential import CondExponential
+from spflow.base.structure.nodes.leaves.parametric.cond_exponential import (
+    CondExponential,
+)
 from typing import Callable
 
 import numpy as np
@@ -13,7 +15,7 @@ class TestCondExponential(unittest.TestCase):
 
         binomial = CondExponential(Scope([0]))
         self.assertTrue(binomial.cond_f is None)
-        binomial = CondExponential(Scope([0]), cond_f=lambda x: {'l': 0.5})
+        binomial = CondExponential(Scope([0]), cond_f=lambda x: {"l": 0.5})
         self.assertTrue(isinstance(binomial.cond_f, Callable))
 
         # invalid scopes
@@ -28,23 +30,46 @@ class TestCondExponential(unittest.TestCase):
         exponential = CondExponential(Scope([0]))
 
         # l > 0
-        exponential.set_cond_f(lambda data: {'l': np.nextafter(0.0, 1.0)})
-        self.assertTrue(exponential.retrieve_params(np.array([[1.0]]), DispatchContext()) == np.nextafter(0.0, 1.0))
+        exponential.set_cond_f(lambda data: {"l": np.nextafter(0.0, 1.0)})
+        self.assertTrue(
+            exponential.retrieve_params(np.array([[1.0]]), DispatchContext())
+            == np.nextafter(0.0, 1.0)
+        )
         # l = 0 and l < 0
-        exponential.set_cond_f(lambda data: {'l': 0.0})
-        self.assertRaises(ValueError, exponential.retrieve_params, np.array([[1.0]]), DispatchContext())
-        exponential.set_cond_f(lambda data: {'l': np.nextafter(0.0, -1.0)})
-        self.assertRaises(ValueError, exponential.retrieve_params, np.array([[1.0]]), DispatchContext())
+        exponential.set_cond_f(lambda data: {"l": 0.0})
+        self.assertRaises(
+            ValueError,
+            exponential.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
+        exponential.set_cond_f(lambda data: {"l": np.nextafter(0.0, -1.0)})
+        self.assertRaises(
+            ValueError,
+            exponential.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
         # l = inf and l = nan
-        exponential.set_cond_f(lambda data: {'l': np.inf})
-        self.assertRaises(ValueError, exponential.retrieve_params, np.array([[1.0]]), DispatchContext())
-        exponential.set_cond_f(lambda data: {'l': np.nan})
-        self.assertRaises(ValueError, exponential.retrieve_params, np.array([[1.0]]), DispatchContext())
+        exponential.set_cond_f(lambda data: {"l": np.inf})
+        self.assertRaises(
+            ValueError,
+            exponential.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
+        exponential.set_cond_f(lambda data: {"l": np.nan})
+        self.assertRaises(
+            ValueError,
+            exponential.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
 
         # invalid scopes
         self.assertRaises(Exception, CondExponential, Scope([]), 1.0)
         self.assertRaises(Exception, CondExponential, Scope([0, 1]), 1.0)
-        self.assertRaises(Exception, CondExponential, Scope([0],[1]), 1.0)
+        self.assertRaises(Exception, CondExponential, Scope([0], [1]), 1.0)
 
     def test_structural_marginalization(self):
 

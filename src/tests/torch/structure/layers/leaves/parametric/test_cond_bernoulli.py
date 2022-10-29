@@ -1,6 +1,15 @@
-from spflow.torch.structure.layers.leaves.parametric.cond_bernoulli import CondBernoulliLayer, marginalize, toTorch, toBase
-from spflow.torch.structure.nodes.leaves.parametric.cond_bernoulli import CondBernoulli
-from spflow.base.structure.layers.leaves.parametric.cond_bernoulli import CondBernoulliLayer as BaseCondBernoulliLayer
+from spflow.torch.structure.layers.leaves.parametric.cond_bernoulli import (
+    CondBernoulliLayer,
+    marginalize,
+    toTorch,
+    toBase,
+)
+from spflow.torch.structure.nodes.leaves.parametric.cond_bernoulli import (
+    CondBernoulli,
+)
+from spflow.base.structure.layers.leaves.parametric.cond_bernoulli import (
+    CondBernoulliLayer as BaseCondBernoulliLayer,
+)
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.meta.scope.scope import Scope
 import torch
@@ -24,8 +33,10 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
-    
+        self.assertTrue(
+            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
+        )
+
         # ---- different scopes -----
         l = CondBernoulliLayer(scope=Scope([1]), n_nodes=3)
         for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
@@ -41,51 +52,91 @@ class TestNode(unittest.TestCase):
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
         l = CondBernoulliLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
-        
+
         for layer_scope, node_scope in zip(l.scopes_out, scopes):
             self.assertEqual(layer_scope, node_scope)
-        
+
         # -----number of cond_f functions -----
-        CondBernoulliLayer(Scope([0]), n_nodes=2, cond_f=[lambda data: {'p': 0.5}, lambda data: {'p': 0.5}])
-        self.assertRaises(ValueError, CondBernoulliLayer, Scope([0]), n_nodes=2, cond_f=[lambda data: {'p': 0.5}])
+        CondBernoulliLayer(
+            Scope([0]),
+            n_nodes=2,
+            cond_f=[lambda data: {"p": 0.5}, lambda data: {"p": 0.5}],
+        )
+        self.assertRaises(
+            ValueError,
+            CondBernoulliLayer,
+            Scope([0]),
+            n_nodes=2,
+            cond_f=[lambda data: {"p": 0.5}],
+        )
 
     def test_retrieve_param(self):
 
         # ----- float/int parameter values -----
         p_value = 0.13
-        l = CondBernoulliLayer(scope=Scope([1]), n_nodes=3, cond_f=lambda data: {'p': p_value})
+        l = CondBernoulliLayer(
+            scope=Scope([1]), n_nodes=3, cond_f=lambda data: {"p": p_value}
+        )
 
         for p in l.retrieve_params(torch.tensor([[1.0]]), DispatchContext()):
             self.assertTrue(torch.all(p == p_value))
-        
+
         # ----- list parameter values -----
         p_values = [0.17, 0.8, 0.53]
-        l = CondBernoulliLayer(scope=Scope([1]), n_nodes=3, cond_f=lambda data: {'p': p_values})
+        l = CondBernoulliLayer(
+            scope=Scope([1]), n_nodes=3, cond_f=lambda data: {"p": p_values}
+        )
 
-        for p_layer_node, p_actual in zip(l.retrieve_params(torch.tensor([[1.0]]), DispatchContext()), p_values):
+        for p_layer_node, p_actual in zip(
+            l.retrieve_params(torch.tensor([[1.0]]), DispatchContext()),
+            p_values,
+        ):
             self.assertTrue(torch.all(p_layer_node == p_actual))
 
         # wrong number of values
-        l.set_cond_f(lambda data: {'p': p_values[:-1]})
-        self.assertRaises(ValueError, l.retrieve_params, torch.tensor([[1]]), DispatchContext())
+        l.set_cond_f(lambda data: {"p": p_values[:-1]})
+        self.assertRaises(
+            ValueError,
+            l.retrieve_params,
+            torch.tensor([[1]]),
+            DispatchContext(),
+        )
 
         # wrong number of dimensions (nested list)
-        l.set_cond_f(lambda data: {'p': [p_values for _ in range(3)]})
-        self.assertRaises(ValueError, l.retrieve_params, torch.tensor([[1]]), DispatchContext())
+        l.set_cond_f(lambda data: {"p": [p_values for _ in range(3)]})
+        self.assertRaises(
+            ValueError,
+            l.retrieve_params,
+            torch.tensor([[1]]),
+            DispatchContext(),
+        )
 
         # ----- numpy parameter values -----
-        l.set_cond_f(lambda data: {'p': np.array(p_values)})
+        l.set_cond_f(lambda data: {"p": np.array(p_values)})
 
-        for p_layer_node, p_actual in zip(l.retrieve_params(torch.tensor([[1.0]]), DispatchContext()), p_values):
+        for p_layer_node, p_actual in zip(
+            l.retrieve_params(torch.tensor([[1.0]]), DispatchContext()),
+            p_values,
+        ):
             self.assertTrue(p_layer_node == p_actual)
 
         # wrong number of values
-        l.set_cond_f(lambda data: {'p': np.array(p_values[:-1])})
-        self.assertRaises(ValueError, l.retrieve_params, torch.tensor([[1]]), DispatchContext())
-        
+        l.set_cond_f(lambda data: {"p": np.array(p_values[:-1])})
+        self.assertRaises(
+            ValueError,
+            l.retrieve_params,
+            torch.tensor([[1]]),
+            DispatchContext(),
+        )
+
         # wrong number of dimensions (nested list)
-        l.set_cond_f(lambda data: {'p': np.array([p_values for _ in range(3)])})
-        self.assertRaises(ValueError, l.retrieve_params, torch.tensor([[1]]), DispatchContext())
+        l.set_cond_f(lambda data: {"p": np.array([p_values for _ in range(3)])})
+        self.assertRaises(
+            ValueError,
+            l.retrieve_params,
+            torch.tensor([[1]]),
+            DispatchContext(),
+        )
 
     def test_layer_structural_marginalization(self):
 
@@ -100,13 +151,13 @@ class TestNode(unittest.TestCase):
         l_marg = marginalize(l, [2])
 
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
-    
+
         # ---------- different scopes -----------
 
         l = CondBernoulliLayer(scope=[Scope([1]), Scope([0])])
 
         # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0,1]) == None)
+        self.assertTrue(marginalize(l, [0, 1]) == None)
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
@@ -132,29 +183,33 @@ class TestNode(unittest.TestCase):
 
         for p_value, p_dist in zip(p_values, dist.probs):
             self.assertTrue(torch.allclose(p_value, p_dist))
-        
+
         # ----- partial dist -----
-        dist = l.dist(p_values, [1,2])
+        dist = l.dist(p_values, [1, 2])
 
         for p_value, p_dist in zip(p_values[1:], dist.probs):
             self.assertTrue(torch.allclose(p_value, p_dist))
 
-        dist = l.dist(p_values, [1,0])
+        dist = l.dist(p_values, [1, 0])
 
         for p_value, p_dist in zip(reversed(p_values[:-1]), dist.probs):
             self.assertTrue(torch.allclose(p_value, p_dist))
 
     def test_layer_backend_conversion_1(self):
-        
-        torch_layer = CondBernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])])
+
+        torch_layer = CondBernoulliLayer(
+            scope=[Scope([0]), Scope([1]), Scope([0])]
+        )
         base_layer = toBase(torch_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
-    
+
     def test_layer_backend_conversion_2(self):
 
-        base_layer = BaseCondBernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])])
+        base_layer = BaseCondBernoulliLayer(
+            scope=[Scope([0]), Scope([1]), Scope([0])]
+        )
         torch_layer = toTorch(base_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))

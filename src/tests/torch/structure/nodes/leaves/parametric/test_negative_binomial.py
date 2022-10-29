@@ -1,9 +1,19 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.negative_binomial import NegativeBinomial as BaseNegativeBinomial
-from spflow.base.inference.nodes.leaves.parametric.negative_binomial import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.negative_binomial import NegativeBinomial, toBase, toTorch
+from spflow.base.structure.nodes.leaves.parametric.negative_binomial import (
+    NegativeBinomial as BaseNegativeBinomial,
+)
+from spflow.base.inference.nodes.leaves.parametric.negative_binomial import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.negative_binomial import (
+    NegativeBinomial,
+    toBase,
+    toTorch,
+)
 from spflow.torch.structure.nodes.node import marginalize
-from spflow.torch.inference.nodes.leaves.parametric.negative_binomial import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.negative_binomial import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -59,10 +69,10 @@ class TestNegativeBinomial(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, NegativeBinomial, Scope([]), 1, 1.0)
         self.assertRaises(Exception, NegativeBinomial, Scope([0, 1]), 1, 1.0)
-        self.assertRaises(Exception, NegativeBinomial, Scope([0],[1]), 1, 1.0)
+        self.assertRaises(Exception, NegativeBinomial, Scope([0], [1]), 1, 1.0)
 
     def test_structural_marginalization(self):
-        
+
         negative_binomial = NegativeBinomial(Scope([0]), 1, 1.0)
 
         self.assertTrue(marginalize(negative_binomial, [1]) is not None)

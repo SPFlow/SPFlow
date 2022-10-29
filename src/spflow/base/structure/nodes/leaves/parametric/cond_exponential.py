@@ -135,7 +135,9 @@ class CondExponential(LeafNode):
         """
         return expon(scale=1.0 / l)
 
-    def check_support(self, data: np.ndarray, is_scope_data: bool=False) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, is_scope_data: bool = False
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Exponential distribution, which is:

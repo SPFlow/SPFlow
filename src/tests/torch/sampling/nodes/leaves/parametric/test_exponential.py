@@ -1,6 +1,8 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.sampling_context import SamplingContext
-from spflow.torch.structure.nodes.leaves.parametric.exponential import Exponential
+from spflow.torch.structure.nodes.leaves.parametric.exponential import (
+    Exponential,
+)
 from spflow.torch.sampling.nodes.leaves.parametric.exponential import sample
 from spflow.torch.sampling.module import sample
 
@@ -32,12 +34,18 @@ class TestExponential(unittest.TestCase):
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
-        samples = sample(exponential, data, sampling_ctx=SamplingContext([0, 2]))
+        samples = sample(
+            exponential, data, sampling_ctx=SamplingContext([0, 2])
+        )
 
-        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
+        self.assertTrue(
+            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
+        )
 
         samples = sample(exponential, 1000)
-        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0), rtol=0.1))
+        self.assertTrue(
+            torch.isclose(samples.mean(), torch.tensor(1.0), rtol=0.1)
+        )
 
     def test_sampling_2(self):
 
@@ -50,7 +58,9 @@ class TestExponential(unittest.TestCase):
 
         exponential = Exponential(Scope([0]), 0.5)
         samples = sample(exponential, 1000)
-        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0 / 0.5), rtol=0.1))
+        self.assertTrue(
+            torch.isclose(samples.mean(), torch.tensor(1.0 / 0.5), rtol=0.1)
+        )
 
     def test_sampling_3(self):
 
@@ -63,7 +73,9 @@ class TestExponential(unittest.TestCase):
 
         exponential = Exponential(Scope([0]), 2.5)
         samples = sample(exponential, 1000)
-        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0 / 2.5), rtol=0.1))
+        self.assertTrue(
+            torch.isclose(samples.mean(), torch.tensor(1.0 / 2.5), rtol=0.1)
+        )
 
 
 if __name__ == "__main__":

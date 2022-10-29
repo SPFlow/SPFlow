@@ -1,8 +1,18 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli as BaseBernoulli
-from spflow.base.inference.nodes.leaves.parametric.bernoulli import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.bernoulli import Bernoulli, toBase, toTorch
-from spflow.torch.inference.nodes.leaves.parametric.bernoulli import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.bernoulli import (
+    Bernoulli as BaseBernoulli,
+)
+from spflow.base.inference.nodes.leaves.parametric.bernoulli import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.bernoulli import (
+    Bernoulli,
+    toBase,
+    toTorch,
+)
+from spflow.torch.inference.nodes.leaves.parametric.bernoulli import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -35,7 +45,9 @@ class TestBernoulli(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_bernoulli, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+        self.assertTrue(
+            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
+        )
 
     def test_gradient_computation(self):
 
@@ -63,11 +75,15 @@ class TestBernoulli(unittest.TestCase):
 
         # make sure that parameters are correctly updated
         self.assertTrue(
-            torch.allclose(p_aux_orig - torch_bernoulli.p_aux.grad, torch_bernoulli.p_aux)
+            torch.allclose(
+                p_aux_orig - torch_bernoulli.p_aux.grad, torch_bernoulli.p_aux
+            )
         )
 
         # verify that distribution parameters match parameters
-        self.assertTrue(torch.allclose(torch_bernoulli.p, torch_bernoulli.dist.probs))
+        self.assertTrue(
+            torch.allclose(torch_bernoulli.p, torch_bernoulli.dist.probs)
+        )
 
     def test_gradient_optimization(self):
 
@@ -81,7 +97,9 @@ class TestBernoulli(unittest.TestCase):
         data = torch.bernoulli(torch.full((100000, 1), p_target))
 
         # initialize gradient optimizer
-        optimizer = torch.optim.SGD(torch_bernoulli.parameters(), lr=0.5, momentum=0.5)
+        optimizer = torch.optim.SGD(
+            torch_bernoulli.parameters(), lr=0.5, momentum=0.5
+        )
 
         # perform optimization (possibly overfitting)
         for i in range(40):
@@ -97,7 +115,9 @@ class TestBernoulli(unittest.TestCase):
             optimizer.step()
 
         self.assertTrue(
-            torch.allclose(torch_bernoulli.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3)
+            torch.allclose(
+                torch_bernoulli.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3
+            )
         )
 
     def test_likelihood_p_0(self):
@@ -113,7 +133,7 @@ class TestBernoulli(unittest.TestCase):
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
-    
+
     def test_likelihood_p_1(self):
 
         # p = 1
@@ -146,42 +166,66 @@ class TestBernoulli(unittest.TestCase):
         bernoulli = Bernoulli(Scope([0]), p)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[-float("inf")]]))
-        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[float("inf")]]))
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            torch.tensor([[-float("inf")]]),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            torch.tensor([[float("inf")]]),
+        )
 
         # check valid integers inside valid range
         log_likelihood(bernoulli, torch.tensor([[0.0], [1.0]]))
 
         # check valid integers, but outside of valid range
-        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[-1]]))
-        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[2]]))
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, torch.tensor([[-1]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, torch.tensor([[2]])
+        )
 
         # check invalid float values
         self.assertRaises(
             ValueError,
             log_likelihood,
             bernoulli,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]
+            ),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             bernoulli,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
+            ),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             bernoulli,
-            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]),
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]
+            ),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             bernoulli,
-            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]),
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]
+            ),
         )
-        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[0.5]]))
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, torch.tensor([[0.5]])
+        )
 
 
 if __name__ == "__main__":

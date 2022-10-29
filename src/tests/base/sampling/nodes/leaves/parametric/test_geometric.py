@@ -21,9 +21,11 @@ class TestGeometric(unittest.TestCase):
 
         samples = sample(geometric, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(all(np.isnan(samples) == np.array([[False], [True], [False]])))
+        self.assertTrue(
+            all(np.isnan(samples) == np.array([[False], [True], [False]]))
+        )
         self.assertTrue(all(samples[~np.isnan(samples)] == 1.0))
-    
+
     def test_sampling_2(self):
 
         # set seed
@@ -36,7 +38,9 @@ class TestGeometric(unittest.TestCase):
 
         samples = sample(geometric, 1000)
 
-        self.assertTrue(np.isclose(samples.mean(), np.array(1.0/ 0.5), rtol=0.1))
+        self.assertTrue(
+            np.isclose(samples.mean(), np.array(1.0 / 0.5), rtol=0.1)
+        )
 
     def test_sampling_3(self):
 
@@ -50,14 +54,22 @@ class TestGeometric(unittest.TestCase):
 
         samples = sample(geometric, 1000)
 
-        self.assertTrue(np.isclose(samples.mean(), np.array(1.0/0.8), rtol=0.1))
+        self.assertTrue(
+            np.isclose(samples.mean(), np.array(1.0 / 0.8), rtol=0.1)
+        )
 
     def test_sampling_4(self):
 
         geometric = Geometric(Scope([0]), 0.8)
 
         # make sure that instance ids out of bounds raise errors
-        self.assertRaises(ValueError, sample, geometric, np.array([[0]]), sampling_ctx=SamplingContext([1]))
+        self.assertRaises(
+            ValueError,
+            sample,
+            geometric,
+            np.array([[0]]),
+            sampling_ctx=SamplingContext([1]),
+        )
 
 
 if __name__ == "__main__":

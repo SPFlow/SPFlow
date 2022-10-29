@@ -135,7 +135,9 @@ class CondBernoulli(LeafNode):
         """
         return bernoulli(p=p)
 
-    def check_support(self, data: np.ndarray, is_scope_data: bool=False) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, is_scope_data: bool = False
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Bernoulli distribution, which is:

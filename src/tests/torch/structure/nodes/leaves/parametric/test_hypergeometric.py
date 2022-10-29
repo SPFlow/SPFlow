@@ -1,11 +1,22 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric as BaseHypergeometric
-from spflow.base.inference.nodes.leaves.parametric.hypergeometric import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric, toBase, toTorch
+from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric as BaseHypergeometric,
+)
+from spflow.base.inference.nodes.leaves.parametric.hypergeometric import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric,
+    toBase,
+    toTorch,
+)
 from spflow.torch.structure.nodes.node import marginalize
-from spflow.torch.inference.nodes.leaves.parametric.hypergeometric import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.hypergeometric import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
-#from spflow.torch.sampling import sample
+
+# from spflow.torch.sampling import sample
 
 import torch
 import numpy as np
@@ -56,8 +67,8 @@ class TestHypergeometric(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, Hypergeometric, Scope([]), 1, 1, 1)
         self.assertRaises(Exception, Hypergeometric, Scope([0, 1]), 1, 1, 1)
-        self.assertRaises(Exception, Hypergeometric, Scope([0],[1]), 1, 1, 1)
-    
+        self.assertRaises(Exception, Hypergeometric, Scope([0], [1]), 1, 1, 1)
+
     def test_structural_marginalization(self):
 
         hypergeometric = Hypergeometric(Scope([0]), 0, 0, 0)

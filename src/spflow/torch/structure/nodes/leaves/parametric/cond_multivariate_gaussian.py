@@ -286,7 +286,9 @@ class CondMultivariateGaussian(LeafNode):
         else:
             return mean, cov, None
 
-    def check_support(self, data: torch.Tensor, is_scope_data: bool=False) -> torch.Tensor:
+    def check_support(
+        self, data: torch.Tensor, is_scope_data: bool = False
+    ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Multivariate Gaussian distribution, which is:

@@ -1,9 +1,17 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.base.structure.layers.leaves.parametric.cond_exponential import CondExponentialLayer
-from spflow.base.inference.layers.leaves.parametric.cond_exponential import log_likelihood
-from spflow.base.structure.nodes.leaves.parametric.cond_exponential import CondExponential
-from spflow.base.inference.nodes.leaves.parametric.cond_exponential import log_likelihood
+from spflow.base.structure.layers.leaves.parametric.cond_exponential import (
+    CondExponentialLayer,
+)
+from spflow.base.inference.layers.leaves.parametric.cond_exponential import (
+    log_likelihood,
+)
+from spflow.base.structure.nodes.leaves.parametric.cond_exponential import (
+    CondExponential,
+)
+from spflow.base.inference.nodes.leaves.parametric.cond_exponential import (
+    log_likelihood,
+)
 from spflow.base.structure.nodes.node import SPNProductNode, SPNSumNode
 from spflow.base.inference.nodes.node import log_likelihood
 from spflow.base.inference.module import log_likelihood, likelihood
@@ -15,34 +23,40 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_l(self):
 
         exponential = CondExponentialLayer(Scope([0]), n_nodes=2)
-        self.assertRaises(ValueError, log_likelihood, exponential, np.array([[0], [1]]))
+        self.assertRaises(
+            ValueError, log_likelihood, exponential, np.array([[0], [1]])
+        )
 
     def test_likelihood_module_cond_f(self):
 
-        cond_f = lambda data: {'l': [0.5, 1.0]}
+        cond_f = lambda data: {"l": [0.5, 1.0]}
 
         exponential = CondExponentialLayer(Scope([0]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
-        targets = np.array([[0.5, 1.0], [0.18394, 0.135335], [0.0410425, 0.00673795]])
+        targets = np.array(
+            [[0.5, 1.0], [0.18394, 0.135335], [0.0410425, 0.00673795]]
+        )
 
         probs = likelihood(exponential, data)
         log_probs = log_likelihood(exponential, data)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
-    
+
     def test_likelihood_args_l(self):
 
         exponential = CondExponentialLayer(Scope([0]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[exponential] = {'l': [0.5, 1.0]}
+        dispatch_ctx.args[exponential] = {"l": [0.5, 1.0]}
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
-        targets = np.array([[0.5, 1.0], [0.18394, 0.135335], [0.0410425, 0.00673795]])
+        targets = np.array(
+            [[0.5, 1.0], [0.18394, 0.135335], [0.0410425, 0.00673795]]
+        )
 
         probs = likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
@@ -54,14 +68,16 @@ class TestNode(unittest.TestCase):
 
         exponential = CondExponentialLayer(Scope([0]), n_nodes=2)
 
-        cond_f = lambda data: {'l': np.array([0.5, 1.0])}
+        cond_f = lambda data: {"l": np.array([0.5, 1.0])}
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[exponential] = {'cond_f': cond_f}
+        dispatch_ctx.args[exponential] = {"cond_f": cond_f}
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
-        targets = np.array([[0.5, 1.0], [0.18394, 0.135335], [0.0410425, 0.00673795]])
+        targets = np.array(
+            [[0.5, 1.0], [0.18394, 0.135335], [0.0410425, 0.00673795]]
+        )
 
         probs = likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
@@ -71,27 +87,42 @@ class TestNode(unittest.TestCase):
 
     def test_layer_likelihood_1(self):
 
-        exponential_layer = CondExponentialLayer(scope=Scope([0]), cond_f=lambda data: {'l': [0.5, 1.0]}, n_nodes=2)
+        exponential_layer = CondExponentialLayer(
+            scope=Scope([0]), cond_f=lambda data: {"l": [0.5, 1.0]}, n_nodes=2
+        )
         s1 = SPNSumNode(children=[exponential_layer], weights=[0.3, 0.7])
 
-        exponential_nodes = [CondExponential(Scope([0]), cond_f=lambda data: {'l': 0.5}), CondExponential(Scope([0]), cond_f=lambda data: {'l': 1.0})]
+        exponential_nodes = [
+            CondExponential(Scope([0]), cond_f=lambda data: {"l": 0.5}),
+            CondExponential(Scope([0]), cond_f=lambda data: {"l": 1.0}),
+        ]
         s2 = SPNSumNode(children=exponential_nodes, weights=[0.3, 0.7])
 
         data = np.array([[0], [2], [5]])
 
-        self.assertTrue(np.all(log_likelihood(s1, data) == log_likelihood(s2, data)))
-    
+        self.assertTrue(
+            np.all(log_likelihood(s1, data) == log_likelihood(s2, data))
+        )
+
     def test_layer_likelihood_2(self):
 
-        exponential_layer = CondExponentialLayer(scope=[Scope([0]), Scope([1])], cond_f=lambda data: {'l': [0.5, 1.0]})
+        exponential_layer = CondExponentialLayer(
+            scope=[Scope([0]), Scope([1])],
+            cond_f=lambda data: {"l": [0.5, 1.0]},
+        )
         p1 = SPNProductNode(children=[exponential_layer])
 
-        exponential_nodes = [CondExponential(Scope([0]), cond_f=lambda data: {'l': 0.5}), CondExponential(Scope([1]), cond_f=lambda data: {'l': 1.0})]
+        exponential_nodes = [
+            CondExponential(Scope([0]), cond_f=lambda data: {"l": 0.5}),
+            CondExponential(Scope([1]), cond_f=lambda data: {"l": 1.0}),
+        ]
         p2 = SPNProductNode(children=exponential_nodes)
 
         data = np.array([[0, 0], [2, 2], [5, 5]])
 
-        self.assertTrue(np.all(log_likelihood(p1, data) == log_likelihood(p2, data)))
+        self.assertTrue(
+            np.all(log_likelihood(p1, data) == log_likelihood(p2, data))
+        )
 
 
 if __name__ == "__main__":

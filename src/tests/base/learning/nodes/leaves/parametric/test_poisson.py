@@ -1,6 +1,8 @@
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.poisson import Poisson
-from spflow.base.learning.nodes.leaves.parametric.poisson import maximum_likelihood_estimation
+from spflow.base.learning.nodes.leaves.parametric.poisson import (
+    maximum_likelihood_estimation,
+)
 
 import numpy as np
 import unittest
@@ -13,7 +15,7 @@ class TestNode(unittest.TestCase):
         # set seed
         np.random.seed(0)
         random.seed(0)
-        
+
         leaf = Poisson(Scope([0]))
 
         # simulate data
@@ -29,7 +31,7 @@ class TestNode(unittest.TestCase):
         # set seed
         np.random.seed(0)
         random.seed(0)
-        
+
         leaf = Poisson(Scope([0]))
 
         # simulate data
@@ -45,7 +47,7 @@ class TestNode(unittest.TestCase):
         # set seed
         np.random.seed(0)
         random.seed(0)
-        
+
         leaf = Poisson(Scope([0]))
 
         # simulate data
@@ -58,35 +60,69 @@ class TestNode(unittest.TestCase):
         self.assertTrue(leaf.l > 0.0)
 
     def test_mle_only_nans(self):
-        
+
         leaf = Poisson(Scope([0]))
 
         # simulate data
         data = np.array([[np.nan], [np.nan]])
 
         # check if exception is raised
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, data, nan_strategy='ignore')
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            data,
+            nan_strategy="ignore",
+        )
 
     def test_mle_invalid_support(self):
-        
+
         leaf = Poisson(Scope([0]))
 
         # perform MLE (should raise exceptions)
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.inf]]), bias_correction=True)
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[-0.1]]), bias_correction=True)
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            np.array([[np.inf]]),
+            bias_correction=True,
+        )
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            np.array([[-0.1]]),
+            bias_correction=True,
+        )
 
     def test_mle_nan_strategy_none(self):
 
         leaf = Poisson(Scope([0]))
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.nan], [1], [0], [2]]), nan_strategy=None)
-    
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            np.array([[np.nan], [1], [0], [2]]),
+            nan_strategy=None,
+        )
+
     def test_mle_nan_strategy_ignore(self):
 
         leaf = Poisson(Scope([0]))
-        maximum_likelihood_estimation(leaf, np.array([[np.nan], [1], [0], [2]]), nan_strategy='ignore', bias_correction=False)
+        maximum_likelihood_estimation(
+            leaf,
+            np.array([[np.nan], [1], [0], [2]]),
+            nan_strategy="ignore",
+            bias_correction=False,
+        )
         l_ignore = leaf.l
 
-        maximum_likelihood_estimation(leaf, np.array([[1], [0], [2]]), nan_strategy='ignore', bias_correction=False)
+        maximum_likelihood_estimation(
+            leaf,
+            np.array([[1], [0], [2]]),
+            nan_strategy="ignore",
+            bias_correction=False,
+        )
         l_none = leaf.l
 
         self.assertTrue(np.isclose(l_ignore, l_none))
@@ -95,26 +131,39 @@ class TestNode(unittest.TestCase):
 
         leaf = Poisson(Scope([0]))
         # should not raise an issue
-        maximum_likelihood_estimation(leaf, np.array([[2], [1]]), nan_strategy=lambda x: x)
+        maximum_likelihood_estimation(
+            leaf, np.array([[2], [1]]), nan_strategy=lambda x: x
+        )
 
     def test_mle_nan_strategy_invalid(self):
 
         leaf = Poisson(Scope([0]))
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.nan], [1], [0], [2]]), nan_strategy='invalid_string')
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.nan], [1], [0], [2]]), nan_strategy=1)
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            np.array([[np.nan], [1], [0], [2]]),
+            nan_strategy="invalid_string",
+        )
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            np.array([[np.nan], [1], [0], [2]]),
+            nan_strategy=1,
+        )
 
     def test_weighted_mle(self):
 
         leaf = Poisson(Scope([0]))
 
-        data = np.vstack([
-            np.random.poisson(1.7, size=(10000,1)),
-            np.random.poisson(0.5, size=(10000,1))
-        ])
-        weights = np.concatenate([
-            np.zeros(10000),
-            np.ones(10000)
-        ])
+        data = np.vstack(
+            [
+                np.random.poisson(1.7, size=(10000, 1)),
+                np.random.poisson(0.5, size=(10000, 1)),
+            ]
+        )
+        weights = np.concatenate([np.zeros(10000), np.ones(10000)])
 
         maximum_likelihood_estimation(leaf, data, weights)
 

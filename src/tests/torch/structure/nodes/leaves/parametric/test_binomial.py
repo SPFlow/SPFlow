@@ -1,9 +1,19 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial as BaseBinomial
-from spflow.base.inference.nodes.leaves.parametric.binomial import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.binomial import Binomial, toBase, toTorch
+from spflow.base.structure.nodes.leaves.parametric.binomial import (
+    Binomial as BaseBinomial,
+)
+from spflow.base.inference.nodes.leaves.parametric.binomial import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.binomial import (
+    Binomial,
+    toBase,
+    toTorch,
+)
 from spflow.torch.structure.nodes.node import marginalize
-from spflow.torch.inference.nodes.leaves.parametric.binomial import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.binomial import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -24,10 +34,18 @@ class TestBinomial(unittest.TestCase):
         binomial = Binomial(Scope([0]), 1, 1.0)
         # p < 0 and p > 1
         self.assertRaises(
-            Exception, Binomial, Scope([0]), 1, torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))
+            Exception,
+            Binomial,
+            Scope([0]),
+            1,
+            torch.nextafter(torch.tensor(1.0), torch.tensor(2.0)),
         )
         self.assertRaises(
-            Exception, Binomial, Scope([0]), 1, torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))
+            Exception,
+            Binomial,
+            Scope([0]),
+            1,
+            torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)),
         )
         # p = inf and p = nan
         self.assertRaises(Exception, Binomial, Scope([0]), 1, np.inf)
@@ -46,7 +64,7 @@ class TestBinomial(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, Binomial, Scope([]), 1, 0.5)
         self.assertRaises(Exception, Binomial, Scope([0, 1]), 1, 0.5)
-        self.assertRaises(Exception, Binomial, Scope([0],[1]), 1, 0.5)
+        self.assertRaises(Exception, Binomial, Scope([0], [1]), 1, 0.5)
 
     def test_structural_marginalization(self):
 

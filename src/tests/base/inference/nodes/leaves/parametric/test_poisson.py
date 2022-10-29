@@ -95,8 +95,12 @@ class TestPoisson(unittest.TestCase):
         poisson = Poisson(Scope([0]), l)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[-np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[np.inf]]))
+        self.assertRaises(
+            ValueError, log_likelihood, poisson, np.array([[-np.inf]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, poisson, np.array([[np.inf]])
+        )
 
         # check valid integers, but outside of valid range
         self.assertRaises(ValueError, log_likelihood, poisson, np.array([[-1]]))
@@ -107,12 +111,20 @@ class TestPoisson(unittest.TestCase):
 
         # check invalid float values
         self.assertRaises(
-            ValueError, log_likelihood, poisson, np.array([[np.nextafter(0.0, -1.0)]])
+            ValueError,
+            log_likelihood,
+            poisson,
+            np.array([[np.nextafter(0.0, -1.0)]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, poisson, np.array([[np.nextafter(0.0, 1.0)]])
+            ValueError,
+            log_likelihood,
+            poisson,
+            np.array([[np.nextafter(0.0, 1.0)]]),
         )
-        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[10.1]]))
+        self.assertRaises(
+            ValueError, log_likelihood, poisson, np.array([[10.1]])
+        )
 
 
 if __name__ == "__main__":

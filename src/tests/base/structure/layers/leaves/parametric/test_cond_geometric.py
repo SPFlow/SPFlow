@@ -1,5 +1,10 @@
-from spflow.base.structure.layers.leaves.parametric.cond_geometric import CondGeometricLayer, marginalize
-from spflow.base.structure.nodes.leaves.parametric.cond_geometric import CondGeometric
+from spflow.base.structure.layers.leaves.parametric.cond_geometric import (
+    CondGeometricLayer,
+    marginalize,
+)
+from spflow.base.structure.nodes.leaves.parametric.cond_geometric import (
+    CondGeometric,
+)
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.meta.scope.scope import Scope
 import numpy as np
@@ -15,8 +20,10 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
-    
+        self.assertTrue(
+            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
+        )
+
         # ---- different scopes -----
         l = CondGeometricLayer(scope=Scope([1]), n_nodes=3)
         for node, node_scope in zip(l.nodes, l.scopes_out):
@@ -34,47 +41,71 @@ class TestLayer(unittest.TestCase):
         l = CondGeometricLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
-        
+
         # -----number of cond_f functions -----
-        CondGeometricLayer(Scope([0]), n_nodes=2, cond_f=[lambda data: {'p': 0.5}, lambda data: {'p': 0.5}])
-        self.assertRaises(ValueError, CondGeometricLayer, Scope([0]), n_nodes=2, cond_f=[lambda data: {'p': 0.5}])
+        CondGeometricLayer(
+            Scope([0]),
+            n_nodes=2,
+            cond_f=[lambda data: {"p": 0.5}, lambda data: {"p": 0.5}],
+        )
+        self.assertRaises(
+            ValueError,
+            CondGeometricLayer,
+            Scope([0]),
+            n_nodes=2,
+            cond_f=[lambda data: {"p": 0.5}],
+        )
 
     def test_retrieve_params(self):
 
         # ----- float/int parameter values -----
         p_value = 0.13
-        l = CondGeometricLayer(scope=Scope([1]), n_nodes=3, cond_f=lambda data: {'p': p_value})
+        l = CondGeometricLayer(
+            scope=Scope([1]), n_nodes=3, cond_f=lambda data: {"p": p_value}
+        )
 
         for p in l.retrieve_params(np.array([[1.0]]), DispatchContext()):
             self.assertTrue(p == p_value)
 
         # ----- list parameter values -----
         p_values = [0.17, 0.8, 0.53]
-        l.set_cond_f(lambda data: {'p': p_values})
+        l.set_cond_f(lambda data: {"p": p_values})
 
-        for p_node, p_actual in zip(l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values):
+        for p_node, p_actual in zip(
+            l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values
+        ):
             self.assertTrue(p_node == p_actual)
 
         # wrong number of values
-        l.set_cond_f(lambda data: {'p': p_values[:-1]})
-        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
+        l.set_cond_f(lambda data: {"p": p_values[:-1]})
+        self.assertRaises(
+            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
+        )
 
         # wrong number of dimensions (nested list)
-        l.set_cond_f(lambda data: {'p': [p_values for _ in range(3)]})
-        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
+        l.set_cond_f(lambda data: {"p": [p_values for _ in range(3)]})
+        self.assertRaises(
+            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
+        )
 
         # ----- numpy parameter values -----
-        l.set_cond_f(lambda data: {'p': np.array(p_values)})
-        for p_node, p_actual in zip(l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values):
+        l.set_cond_f(lambda data: {"p": np.array(p_values)})
+        for p_node, p_actual in zip(
+            l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values
+        ):
             self.assertTrue(p_node == p_actual)
-        
+
         # wrong number of values
-        l.set_cond_f(lambda data: {'p': np.array(p_values[:-1])})
-        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
+        l.set_cond_f(lambda data: {"p": np.array(p_values[:-1])})
+        self.assertRaises(
+            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
+        )
 
         # wrong number of dimensions (nested list)
-        l.set_cond_f(lambda data: {'p': np.array([p_values for _ in range(3)])})
-        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
+        l.set_cond_f(lambda data: {"p": np.array([p_values for _ in range(3)])})
+        self.assertRaises(
+            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
+        )
 
     def test_layer_structural_marginalization(self):
 
@@ -89,13 +120,13 @@ class TestLayer(unittest.TestCase):
         l_marg = marginalize(l, [2])
 
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
-    
+
         # ---------- different scopes -----------
 
         l = CondGeometricLayer(scope=[Scope([1]), Scope([0])])
 
         # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0,1]) == None)
+        self.assertTrue(marginalize(l, [0, 1]) == None)
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)

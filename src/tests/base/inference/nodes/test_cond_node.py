@@ -5,7 +5,9 @@ from spflow.base.structure.nodes.node import SPNProductNode
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.inference.nodes.node import log_likelihood
 from spflow.base.inference.nodes.cond_node import log_likelihood
-from spflow.base.inference.nodes.leaves.parametric.gaussian import log_likelihood
+from spflow.base.inference.nodes.leaves.parametric.gaussian import (
+    log_likelihood,
+)
 from spflow.base.inference.module import likelihood, log_likelihood
 from ...structure.nodes.dummy_node import DummyNode
 import numpy as np
@@ -15,43 +17,43 @@ import random
 
 def create_example_spn():
     spn = SPNCondSumNode(
-            children=[
-                SPNProductNode(
-                    children=[
-                        Gaussian(Scope([0])),
-                        SPNCondSumNode(
-                            children=[
-                                SPNProductNode(
-                                    children=[
-                                        Gaussian(Scope([1])),
-                                        Gaussian(Scope([2])),
-                                    ]
-                                ),
-                                SPNProductNode(
-                                    children=[
-                                        Gaussian(Scope([1])),
-                                        Gaussian(Scope([2])),
-                                    ]
-                                ),
-                            ],
-                            cond_f=lambda data: {'weights': np.array([0.3, 0.7])},
-                        ),
-                    ],
-                ),
-                SPNProductNode(
-                    children=[
-                        SPNProductNode(
-                            children=[
-                                Gaussian(Scope([0])),
-                                Gaussian(Scope([1])),
-                            ]
-                        ),
-                        Gaussian(Scope([2])),
-                    ]
-                ),
-            ],
-            cond_f=lambda data: {'weights': np.array([0.4, 0.6])},
-        )
+        children=[
+            SPNProductNode(
+                children=[
+                    Gaussian(Scope([0])),
+                    SPNCondSumNode(
+                        children=[
+                            SPNProductNode(
+                                children=[
+                                    Gaussian(Scope([1])),
+                                    Gaussian(Scope([2])),
+                                ]
+                            ),
+                            SPNProductNode(
+                                children=[
+                                    Gaussian(Scope([1])),
+                                    Gaussian(Scope([2])),
+                                ]
+                            ),
+                        ],
+                        cond_f=lambda data: {"weights": np.array([0.3, 0.7])},
+                    ),
+                ],
+            ),
+            SPNProductNode(
+                children=[
+                    SPNProductNode(
+                        children=[
+                            Gaussian(Scope([0])),
+                            Gaussian(Scope([1])),
+                        ]
+                    ),
+                    Gaussian(Scope([2])),
+                ]
+            ),
+        ],
+        cond_f=lambda data: {"weights": np.array([0.4, 0.6])},
+    )
     return spn
 
 

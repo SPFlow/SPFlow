@@ -1,9 +1,19 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.base.structure.nodes.leaves.parametric.cond_geometric import CondGeometric as BaseCondGeometric
-from spflow.base.inference.nodes.leaves.parametric.cond_geometric import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.cond_geometric import CondGeometric, toBase, toTorch
-from spflow.torch.inference.nodes.leaves.parametric.cond_geometric import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.cond_geometric import (
+    CondGeometric as BaseCondGeometric,
+)
+from spflow.base.inference.nodes.leaves.parametric.cond_geometric import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.cond_geometric import (
+    CondGeometric,
+    toBase,
+    toTorch,
+)
+from spflow.torch.inference.nodes.leaves.parametric.cond_geometric import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -25,7 +35,7 @@ class TestGeometric(unittest.TestCase):
     def test_likelihood_module_cond_f(self):
 
         p = random.random()
-        cond_f = lambda data: {'p': 0.5}
+        cond_f = lambda data: {"p": 0.5}
 
         geometric = CondGeometric(Scope([0]), cond_f=cond_f)
 
@@ -38,13 +48,13 @@ class TestGeometric(unittest.TestCase):
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
-    
+
     def test_likelihood_args_p(self):
 
         geometric = CondGeometric(Scope([0]))
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[geometric] = {'p': 0.5}
+        dispatch_ctx.args[geometric] = {"p": 0.5}
 
         # create test inputs/outputs
         data = torch.tensor([[1], [5], [10]])
@@ -60,10 +70,10 @@ class TestGeometric(unittest.TestCase):
 
         geometric = CondGeometric(Scope([0]))
 
-        cond_f = lambda data: {'p': 0.5}
+        cond_f = lambda data: {"p": 0.5}
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[geometric] = {'cond_f': cond_f}
+        dispatch_ctx.args[geometric] = {"cond_f": cond_f}
 
         # create test inputs/outputs
         data = torch.tensor([[1], [5], [10]])
@@ -79,8 +89,12 @@ class TestGeometric(unittest.TestCase):
 
         p = random.random()
 
-        torch_geometric = CondGeometric(Scope([0]), cond_f=lambda data: {'p': p})
-        node_geometric = BaseCondGeometric(Scope([0]), cond_f=lambda data: {'p': p})
+        torch_geometric = CondGeometric(
+            Scope([0]), cond_f=lambda data: {"p": p}
+        )
+        node_geometric = BaseCondGeometric(
+            Scope([0]), cond_f=lambda data: {"p": p}
+        )
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, 10, (3, 1))
@@ -89,13 +103,17 @@ class TestGeometric(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_geometric, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+        self.assertTrue(
+            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
+        )
 
     def test_gradient_computation(self):
 
         p = torch.tensor(random.random(), requires_grad=True)
 
-        torch_geometric = CondGeometric(Scope([0]), cond_f=lambda data: {'p': p})
+        torch_geometric = CondGeometric(
+            Scope([0]), cond_f=lambda data: {"p": p}
+        )
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, 10, (3, 1))
@@ -112,7 +130,7 @@ class TestGeometric(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        geometric = CondGeometric(Scope([0]), cond_f=lambda data: {'p': 0.5})
+        geometric = CondGeometric(Scope([0]), cond_f=lambda data: {"p": 0.5})
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1
@@ -124,14 +142,26 @@ class TestGeometric(unittest.TestCase):
 
         # Support for Geometric distribution: integers N\{0}
 
-        geometric = CondGeometric(Scope([0]), cond_f=lambda data: {'p': 0.5})
+        geometric = CondGeometric(Scope([0]), cond_f=lambda data: {"p": 0.5})
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[float("inf")]]))
-        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[-float("inf")]]))
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            geometric,
+            torch.tensor([[float("inf")]]),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            geometric,
+            torch.tensor([[-float("inf")]]),
+        )
 
         # valid integers, but outside valid range
-        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[0.0]]))
+        self.assertRaises(
+            ValueError, log_likelihood, geometric, torch.tensor([[0.0]])
+        )
 
         # valid integers within valid range
         data = torch.tensor([[1], [10]])
@@ -147,15 +177,21 @@ class TestGeometric(unittest.TestCase):
             ValueError,
             log_likelihood,
             geometric,
-            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]),
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]
+            ),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             geometric,
-            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]),
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]
+            ),
         )
-        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[1.5]]))
+        self.assertRaises(
+            ValueError, log_likelihood, geometric, torch.tensor([[1.5]])
+        )
 
 
 if __name__ == "__main__":

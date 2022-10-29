@@ -1,7 +1,11 @@
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import marginalize
-from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric
-from spflow.base.inference.nodes.leaves.parametric.hypergeometric import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric,
+)
+from spflow.base.inference.nodes.leaves.parametric.hypergeometric import (
+    log_likelihood,
+)
 from spflow.base.inference.module import likelihood
 
 import numpy as np
@@ -50,7 +54,7 @@ class TestHypergeometric(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, Hypergeometric, Scope([]), 1, 1, 1)
         self.assertRaises(Exception, Hypergeometric, Scope([0, 1]), 1, 1, 1)
-        self.assertRaises(Exception, Hypergeometric, Scope([0],[1]), 1, 1, 1)
+        self.assertRaises(Exception, Hypergeometric, Scope([0], [1]), 1, 1, 1)
 
     def test_structural_marginalization(self):
 
@@ -58,6 +62,7 @@ class TestHypergeometric(unittest.TestCase):
 
         self.assertTrue(marginalize(hypergeometric, [1]) is not None)
         self.assertTrue(marginalize(hypergeometric, [0]) is None)
+
 
 if __name__ == "__main__":
     unittest.main()

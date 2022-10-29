@@ -1,6 +1,8 @@
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli
-from spflow.base.inference.nodes.leaves.parametric.bernoulli import log_likelihood
+from spflow.base.inference.nodes.leaves.parametric.bernoulli import (
+    log_likelihood,
+)
 from spflow.base.inference.module import likelihood
 import numpy as np
 
@@ -90,30 +92,52 @@ class TestBernoulli(unittest.TestCase):
         bernoulli = Bernoulli(Scope([0]), p)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, bernoulli, np.array([[-np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, bernoulli, np.array([[np.inf]]))
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, np.array([[-np.inf]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, np.array([[np.inf]])
+        )
 
         # check valid integers inside valid range
         log_likelihood(bernoulli, np.array([[0.0], [1.0]]))
 
         # check valid integers, but outside of valid range
-        self.assertRaises(ValueError, log_likelihood, bernoulli, np.array([[-1]]))
-        self.assertRaises(ValueError, log_likelihood, bernoulli, np.array([[2]]))
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, np.array([[-1]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, np.array([[2]])
+        )
 
         # check invalid float values
         self.assertRaises(
-            ValueError, log_likelihood, bernoulli, np.array([[np.nextafter(0.0, -1.0)]])
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            np.array([[np.nextafter(0.0, -1.0)]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, bernoulli, np.array([[np.nextafter(0.0, 1.0)]])
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            np.array([[np.nextafter(0.0, 1.0)]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, bernoulli, np.array([[np.nextafter(1.0, 2.0)]])
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            np.array([[np.nextafter(1.0, 2.0)]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, bernoulli, np.array([[np.nextafter(1.0, 0.0)]])
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            np.array([[np.nextafter(1.0, 0.0)]]),
         )
-        self.assertRaises(ValueError, log_likelihood, bernoulli, np.array([[0.5]]))
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, np.array([[0.5]])
+        )
 
 
 if __name__ == "__main__":

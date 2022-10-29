@@ -1,6 +1,8 @@
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.geometric import Geometric
-from spflow.base.inference.nodes.leaves.parametric.geometric import log_likelihood
+from spflow.base.inference.nodes.leaves.parametric.geometric import (
+    log_likelihood,
+)
 from spflow.base.inference.module import likelihood
 
 import numpy as np
@@ -41,7 +43,7 @@ class TestGeometric(unittest.TestCase):
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
-    
+
     def test_likelihood_3(self):
 
         # ----- configuration 3 -----
@@ -92,11 +94,17 @@ class TestGeometric(unittest.TestCase):
         geometric = Geometric(Scope([0]), 0.5)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, geometric, np.array([[np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, geometric, np.array([[-np.inf]]))
+        self.assertRaises(
+            ValueError, log_likelihood, geometric, np.array([[np.inf]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, geometric, np.array([[-np.inf]])
+        )
 
         # valid integers, but outside valid range
-        self.assertRaises(ValueError, log_likelihood, geometric, np.array([[0.0]]))
+        self.assertRaises(
+            ValueError, log_likelihood, geometric, np.array([[0.0]])
+        )
 
         # valid integers within valid range
         data = np.array([[1], [10]])
@@ -109,12 +117,20 @@ class TestGeometric(unittest.TestCase):
 
         # invalid floats
         self.assertRaises(
-            ValueError, log_likelihood, geometric, np.array([[np.nextafter(1.0, 0.0)]])
+            ValueError,
+            log_likelihood,
+            geometric,
+            np.array([[np.nextafter(1.0, 0.0)]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, geometric, np.array([[np.nextafter(1.0, 2.0)]])
+            ValueError,
+            log_likelihood,
+            geometric,
+            np.array([[np.nextafter(1.0, 2.0)]]),
         )
-        self.assertRaises(ValueError, log_likelihood, geometric, np.array([[1.5]]))
+        self.assertRaises(
+            ValueError, log_likelihood, geometric, np.array([[1.5]])
+        )
 
 
 if __name__ == "__main__":

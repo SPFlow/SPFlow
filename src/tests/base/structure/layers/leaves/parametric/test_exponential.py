@@ -1,5 +1,10 @@
-from spflow.base.structure.layers.leaves.parametric.exponential import ExponentialLayer, marginalize
-from spflow.base.structure.nodes.leaves.parametric.exponential import Exponential
+from spflow.base.structure.layers.leaves.parametric.exponential import (
+    ExponentialLayer,
+    marginalize,
+)
+from spflow.base.structure.nodes.leaves.parametric.exponential import (
+    Exponential,
+)
 from spflow.meta.scope.scope import Scope
 import numpy as np
 import unittest
@@ -14,13 +19,15 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
+        self.assertTrue(
+            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
+        )
         # make sure parameter properties works correctly
         l_values = l.l
         for node, node_l in zip(l.nodes, l_values):
             self.assertTrue(np.all(node.l == node_l))
 
-        # ----- float/int parameter values ----- 
+        # ----- float/int parameter values -----
         l_value = 2
         l = ExponentialLayer(scope=Scope([1]), n_nodes=3, l=l_value)
 
@@ -33,11 +40,19 @@ class TestLayer(unittest.TestCase):
 
         for node, node_l in zip(l.nodes, l_values):
             self.assertTrue(np.all(node.l == node_l))
-        
+
         # wrong number of values
-        self.assertRaises(ValueError, ExponentialLayer, Scope([0]), l_values[:-1], n_nodes=3)
+        self.assertRaises(
+            ValueError, ExponentialLayer, Scope([0]), l_values[:-1], n_nodes=3
+        )
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, ExponentialLayer, Scope([0]), [l_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            ExponentialLayer,
+            Scope([0]),
+            [l_values for _ in range(3)],
+            n_nodes=3,
+        )
 
         # ----- numpy parameter values -----
 
@@ -45,10 +60,22 @@ class TestLayer(unittest.TestCase):
 
         for node, node_l in zip(l.nodes, l_values):
             self.assertTrue(np.all(node.l == node_l))
-        
+
         # wrong number of values
-        self.assertRaises(ValueError, ExponentialLayer, Scope([0]), np.array(l_values[:-1]), n_nodes=3)
-        self.assertRaises(ValueError, ExponentialLayer, Scope([0]), np.array([l_values for _ in range(3)]), n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            ExponentialLayer,
+            Scope([0]),
+            np.array(l_values[:-1]),
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            ExponentialLayer,
+            Scope([0]),
+            np.array([l_values for _ in range(3)]),
+            n_nodes=3,
+        )
 
         # ---- different scopes -----
         l = ExponentialLayer(scope=Scope([1]), l=1.5, n_nodes=3)
@@ -56,10 +83,14 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, ExponentialLayer, Scope([0]), 1.5, n_nodes=0)
+        self.assertRaises(
+            ValueError, ExponentialLayer, Scope([0]), 1.5, n_nodes=0
+        )
 
         # ----- invalid scope -----
-        self.assertRaises(ValueError, ExponentialLayer, Scope([]), 1.5, n_nodes=3)
+        self.assertRaises(
+            ValueError, ExponentialLayer, Scope([]), 1.5, n_nodes=3
+        )
         self.assertRaises(ValueError, ExponentialLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
@@ -82,13 +113,13 @@ class TestLayer(unittest.TestCase):
 
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
         self.assertTrue(np.all(l.l == l_marg.l))
-    
+
         # ---------- different scopes -----------
 
         l = ExponentialLayer(scope=[Scope([1]), Scope([0])], l=[1.5, 2.0])
 
         # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0,1]) == None)
+        self.assertTrue(marginalize(l, [0, 1]) == None)
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)

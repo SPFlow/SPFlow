@@ -1,6 +1,8 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.sampling_context import SamplingContext
-from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric
+from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric,
+)
 from spflow.base.sampling.nodes.leaves.parametric.hypergeometric import sample
 from spflow.base.sampling.module import sample
 
@@ -17,7 +19,7 @@ class TestHypergeometric(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-       # ----- configuration 1 -----
+        # ----- configuration 1 -----
         N = 500
         M = 100
         n = 50
@@ -26,7 +28,11 @@ class TestHypergeometric(unittest.TestCase):
 
         samples = sample(hypergeometric, 100000)
 
-        self.assertTrue(np.isclose(samples.mean(axis=0), np.array(n*M)/N, atol=0.01, rtol=0.1))
+        self.assertTrue(
+            np.isclose(
+                samples.mean(axis=0), np.array(n * M) / N, atol=0.01, rtol=0.1
+            )
+        )
 
     def test_sampling_2(self):
 
@@ -43,14 +49,24 @@ class TestHypergeometric(unittest.TestCase):
 
         samples = sample(hypergeometric, 100000)
 
-        self.assertTrue(np.isclose(samples.mean(axis=0), np.array(n*M)/N, atol=0.01, rtol=0.1))
+        self.assertTrue(
+            np.isclose(
+                samples.mean(axis=0), np.array(n * M) / N, atol=0.01, rtol=0.1
+            )
+        )
 
     def test_sampling_5(self):
 
         hypergeometric = Hypergeometric(Scope([0]), 2, 2, 2)
 
         # make sure that instance ids out of bounds raise errors
-        self.assertRaises(ValueError, sample, hypergeometric, np.array([[0]]), sampling_ctx=SamplingContext([1]))
+        self.assertRaises(
+            ValueError,
+            sample,
+            hypergeometric,
+            np.array([[0]]),
+            sampling_ctx=SamplingContext([1]),
+        )
 
 
 if __name__ == "__main__":

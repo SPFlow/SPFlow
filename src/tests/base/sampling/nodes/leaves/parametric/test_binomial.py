@@ -21,11 +21,13 @@ class TestBinomial(unittest.TestCase):
 
         samples = sample(binomial, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(all(np.isnan(samples) == np.array([[False], [True], [False]])))
+        self.assertTrue(
+            all(np.isnan(samples) == np.array([[False], [True], [False]]))
+        )
         self.assertTrue(all(samples[~np.isnan(samples)] == 0.0))
 
     def test_sampling_2(self):
-    
+
         # ----- p = 1 -----
 
         binomial = Binomial(Scope([0]), 10, 1.0)
@@ -34,7 +36,9 @@ class TestBinomial(unittest.TestCase):
 
         samples = sample(binomial, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(all(np.isnan(samples) == np.array([[False], [True], [False]])))
+        self.assertTrue(
+            all(np.isnan(samples) == np.array([[False], [True], [False]]))
+        )
         self.assertTrue(all(samples[~np.isnan(samples)] == 10))
 
     def test_sampling_3(self):
@@ -59,7 +63,13 @@ class TestBinomial(unittest.TestCase):
         binomial = Binomial(Scope([0]), 5, 0.5)
 
         # make sure that instance ids out of bounds raise errors
-        self.assertRaises(ValueError, sample, binomial, np.array([[0]]), sampling_ctx=SamplingContext([1]))
+        self.assertRaises(
+            ValueError,
+            sample,
+            binomial,
+            np.array([[0]]),
+            sampling_ctx=SamplingContext([1]),
+        )
 
 
 if __name__ == "__main__":

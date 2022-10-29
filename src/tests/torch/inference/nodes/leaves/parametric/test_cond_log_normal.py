@@ -1,9 +1,19 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.base.structure.nodes.leaves.parametric.cond_log_normal import CondLogNormal as BaseCondLogNormal
-from spflow.base.inference.nodes.leaves.parametric.cond_log_normal import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.cond_log_normal import CondLogNormal, toBase, toTorch
-from spflow.torch.inference.nodes.leaves.parametric.cond_log_normal import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.cond_log_normal import (
+    CondLogNormal as BaseCondLogNormal,
+)
+from spflow.base.inference.nodes.leaves.parametric.cond_log_normal import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.cond_log_normal import (
+    CondLogNormal,
+    toBase,
+    toTorch,
+)
+from spflow.torch.inference.nodes.leaves.parametric.cond_log_normal import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -24,7 +34,7 @@ class TestLogNormal(unittest.TestCase):
 
     def test_likelihood_module_cond_f(self):
 
-        cond_f = lambda data: {'mean': 0.0, 'std': 1.0}
+        cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
         log_normal = CondLogNormal(Scope([0]), cond_f=cond_f)
 
@@ -37,13 +47,13 @@ class TestLogNormal(unittest.TestCase):
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
-    
+
     def test_likelihood_args_p(self):
 
         log_normal = CondLogNormal(Scope([0]))
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[log_normal] = {'mean': 0.0, 'std': 1.0}
+        dispatch_ctx.args[log_normal] = {"mean": 0.0, "std": 1.0}
 
         # create test inputs/outputs
         data = torch.tensor([[0.5], [1.0], [1.5]])
@@ -59,10 +69,10 @@ class TestLogNormal(unittest.TestCase):
 
         log_normal = CondLogNormal(Scope([0]))
 
-        cond_f = lambda data: {'mean': 0.0, 'std': 1.0}
+        cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[log_normal] = {'cond_f': cond_f}
+        dispatch_ctx.args[log_normal] = {"cond_f": cond_f}
 
         # create test inputs/outputs
         data = torch.tensor([[0.5], [1.0], [1.5]])
@@ -79,8 +89,12 @@ class TestLogNormal(unittest.TestCase):
         mean = random.random()
         std = random.random() + 1e-7  # offset by small number to avoid zero
 
-        torch_log_normal = CondLogNormal(Scope([0]), cond_f=lambda data: {'mean': mean, 'std': std})
-        node_log_normal = BaseCondLogNormal(Scope([0]), cond_f=lambda data: {'mean': mean, 'std': std})
+        torch_log_normal = CondLogNormal(
+            Scope([0]), cond_f=lambda data: {"mean": mean, "std": std}
+        )
+        node_log_normal = BaseCondLogNormal(
+            Scope([0]), cond_f=lambda data: {"mean": mean, "std": std}
+        )
 
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)
@@ -89,14 +103,20 @@ class TestLogNormal(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_log_normal, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+        self.assertTrue(
+            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
+        )
 
     def test_gradient_computation(self):
 
         mean = torch.tensor(random.random(), requires_grad=True)
-        std = torch.tensor(random.random() + 1e-7, requires_grad=True)  # offset by small number to avoid zero
+        std = torch.tensor(
+            random.random() + 1e-7, requires_grad=True
+        )  # offset by small number to avoid zero
 
-        torch_log_normal = CondLogNormal(Scope([0]), cond_f=lambda data: {'mean': mean, 'std': std})
+        torch_log_normal = CondLogNormal(
+            Scope([0]), cond_f=lambda data: {"mean": mean, "std": std}
+        )
 
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)
@@ -111,6 +131,8 @@ class TestLogNormal(unittest.TestCase):
 
         self.assertTrue(mean.grad is not None)
         self.assertTrue(std.grad is not None)
+
+
 """
     def test_likelihood_marginalization(self):
 

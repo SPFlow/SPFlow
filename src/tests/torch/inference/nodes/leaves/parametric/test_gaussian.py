@@ -1,8 +1,18 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian as BaseGaussian
-from spflow.base.inference.nodes.leaves.parametric.gaussian import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian, toBase, toTorch
-from spflow.torch.inference.nodes.leaves.parametric.gaussian import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.gaussian import (
+    Gaussian as BaseGaussian,
+)
+from spflow.base.inference.nodes.leaves.parametric.gaussian import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.gaussian import (
+    Gaussian,
+    toBase,
+    toTorch,
+)
+from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -36,7 +46,9 @@ class TestGaussian(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_gaussian, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+        self.assertTrue(
+            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
+        )
 
     def test_gradient_computation(self):
 
@@ -66,14 +78,25 @@ class TestGaussian(unittest.TestCase):
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(mean_orig - torch_gaussian.mean.grad, torch_gaussian.mean))
         self.assertTrue(
-            torch.allclose(std_aux_orig - torch_gaussian.std_aux.grad, torch_gaussian.std_aux)
+            torch.allclose(
+                mean_orig - torch_gaussian.mean.grad, torch_gaussian.mean
+            )
+        )
+        self.assertTrue(
+            torch.allclose(
+                std_aux_orig - torch_gaussian.std_aux.grad,
+                torch_gaussian.std_aux,
+            )
         )
 
         # verify that distribution parameters match parameters
-        self.assertTrue(torch.allclose(torch_gaussian.mean, torch_gaussian.dist.mean))
-        self.assertTrue(torch.allclose(torch_gaussian.std, torch_gaussian.dist.stddev))
+        self.assertTrue(
+            torch.allclose(torch_gaussian.mean, torch_gaussian.dist.mean)
+        )
+        self.assertTrue(
+            torch.allclose(torch_gaussian.std, torch_gaussian.dist.stddev)
+        )
 
     def test_gradient_optimization(self):
 
@@ -103,10 +126,14 @@ class TestGaussian(unittest.TestCase):
             optimizer.step()
 
         self.assertTrue(
-            torch.allclose(torch_gaussian.mean, torch.tensor(0.0), atol=1e-3, rtol=1e-3)
+            torch.allclose(
+                torch_gaussian.mean, torch.tensor(0.0), atol=1e-3, rtol=1e-3
+            )
         )
         self.assertTrue(
-            torch.allclose(torch_gaussian.std, torch.tensor(1.0), atol=1e-3, rtol=1e-3)
+            torch.allclose(
+                torch_gaussian.std, torch.tensor(1.0), atol=1e-3, rtol=1e-3
+            )
         )
 
     def test_likelihood_marginalization(self):
@@ -126,8 +153,15 @@ class TestGaussian(unittest.TestCase):
         gaussian = Gaussian(Scope([0]), 0.0, 1.0)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, gaussian, torch.tensor([[float("inf")]]))
-        self.assertRaises(ValueError, log_likelihood, gaussian, torch.tensor([[-float("inf")]]))
+        self.assertRaises(
+            ValueError, log_likelihood, gaussian, torch.tensor([[float("inf")]])
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            gaussian,
+            torch.tensor([[-float("inf")]]),
+        )
 
 
 if __name__ == "__main__":
