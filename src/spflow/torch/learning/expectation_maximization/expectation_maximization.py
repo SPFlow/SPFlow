@@ -5,12 +5,17 @@ from typing import List
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.module import Module
 from spflow.torch.inference.module import log_likelihood
-from spflow.torch.learning.nodes.leaves.parametric.bernoulli import em # TODO
+from spflow.torch.learning.nodes.leaves.parametric.bernoulli import em  # TODO
 
 import torch
 
 
-def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=-1, check_support: bool=True) -> torch.Tensor:
+def expectation_maximization(
+    module: Module,
+    data: torch.Tensor,
+    max_steps: int = -1,
+    check_support: bool = True,
+) -> torch.Tensor:
     """Performs partitioning usig randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``torch`` backend.
 
     Args:
@@ -21,13 +26,13 @@ def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=
             Each row corresponds to a sample.
         max_steps:
             Integer representing the maximum number of iterations.
-            Defaults to -1, in which case the optimization is performed until convergence. 
+            Defaults to -1, in which case the optimization is performed until convergence.
         check_support:
             Boolean value indicating whether or not if the data is in the support of the leaf distributions.
             Defaults to True.
 
     Returns:
-        One-dimensional PyTorch tensors, containing the average log-likelihood for each iteration step. 
+        One-dimensional PyTorch tensors, containing the average log-likelihood for each iteration step.
     """
     prev_avg_ll = torch.tensor(-float("inf"))
     ll_history = []
@@ -38,7 +43,9 @@ def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=
         dispatch_ctx = DispatchContext()
 
         # compute log likelihoods and sum them together
-        acc_ll = log_likelihood(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx).sum()
+        acc_ll = log_likelihood(
+            module, data, check_support=check_support, dispatch_ctx=dispatch_ctx
+        ).sum()
 
         avg_ll = acc_ll.detach().clone() / data.shape[0]
         ll_history.append(avg_ll)
@@ -48,7 +55,7 @@ def expectation_maximization(module: Module, data: torch.Tensor, max_steps: int=
             break
 
         # retain gradients for all module log-likelihoods
-        for ll in dispatch_ctx.cache['log_likelihood'].values():
+        for ll in dispatch_ctx.cache["log_likelihood"].values():
             if ll.requires_grad:
                 ll.retain_grad()
 

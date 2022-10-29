@@ -8,7 +8,7 @@ Typical usage example:
 from typing import List, Optional, Iterable
 
 
-class Scope():
+class Scope:
     """Scopes over random variables (RVs).
 
     Represents scope over random variables (RVs).
@@ -20,15 +20,20 @@ class Scope():
         evidence:
             List of non-negative integers representing evidence variables.
     """
-    def __init__(self, query: Optional[List[int]]=None, evidence: Optional[List[int]]=None) -> None:
+
+    def __init__(
+        self,
+        query: Optional[List[int]] = None,
+        evidence: Optional[List[int]] = None,
+    ) -> None:
         """Initializes 'Scope' object.
 
-        Args:    
+        Args:
             query:
                 List of non-negative integers representing query RVs (may not contain duplicates).
             evidence:
                 Optional list of non-negative integers representing evidence variables (may not contain duplicates or RVs that are in the query).
-        
+
         Raises:
             ValueError: Invalid arguments.
         """
@@ -39,8 +44,10 @@ class Scope():
             evidence = []
 
         if len(query) == 0 and len(evidence) != 0:
-            raise ValueError("List of query variables for 'Scope' is empty, but list of evidence variables is not.")
-        
+            raise ValueError(
+                "List of query variables for 'Scope' is empty, but list of evidence variables is not."
+            )
+
         if any(rv < 0 for rv in query):
             raise ValueError("Query variables must all be non-negative.")
 
@@ -48,13 +55,19 @@ class Scope():
             raise ValueError("Evidence variables must all be non-negative.")
 
         if len(query) != len(set(query)):
-            raise ValueError("List of query variables for 'Scope' contains duplicates.")
+            raise ValueError(
+                "List of query variables for 'Scope' contains duplicates."
+            )
 
         if len(evidence) != len(set(evidence)):
-            raise ValueError("List of evidence variables for 'Scope' contains duplicates.")
+            raise ValueError(
+                "List of evidence variables for 'Scope' contains duplicates."
+            )
 
         if not set(query).isdisjoint(evidence):
-            raise ValueError("Specified query and evidence variables for 'Scope' are not disjoint.")
+            raise ValueError(
+                "Specified query and evidence variables for 'Scope' are not disjoint."
+            )
 
         self.query = query
         self.evidence = evidence
@@ -65,11 +78,14 @@ class Scope():
         Returns:
             String containg the string representation of scope.
         """
-        return "Scope({}|{})".format(self.query if self.query else "{}", self.evidence if self.evidence else "{}")  # pragma: no cover
+        return "Scope({}|{})".format(
+            self.query if self.query else "{}",
+            self.evidence if self.evidence else "{}",
+        )  # pragma: no cover
 
     def __eq__(self, other) -> bool:
         """Equality comparison between two ``Scope`` objects.
-    
+
         Two scopes are considered equal if they represent the same query and evidence RVs.
 
         Args:
@@ -79,7 +95,7 @@ class Scope():
         Returns:
             Boolean indicating whether both scopes are considered equal (True) or not (False).
         """
-        return self.equal_query(other) and self.equal_evidence(other) 
+        return self.equal_query(other) and self.equal_evidence(other)
 
     def __len__(self) -> int:
         """Returns the number of query variables in the scope.
@@ -88,10 +104,10 @@ class Scope():
             Integer representing the number of query variables.
         """
         return len(self.query)
-    
+
     def equal_query(self, other) -> bool:
         """Checks if the query of the scope is identical to that of another.
-    
+
         Args:
             other:
                 ``Scope` object to compare to.
@@ -99,11 +115,11 @@ class Scope():
         Returns:
             Boolean indicating whether both query scopes are idential (True) or not (False).
         """
-        return (set(self.query) == set(other.query))
-    
+        return set(self.query) == set(other.query)
+
     def equal_evidence(self, other) -> bool:
         """Checks if the evidence of the scope is identical to that of another.
-    
+
         Args:
             other:
                 ``Scope`` object to compare to.
@@ -111,11 +127,11 @@ class Scope():
         Returns:
             Boolean indicating whether both evidence scopes are idential (True) or not (False).
         """
-        return (set(self.evidence) == set(other.evidence))
+        return set(self.evidence) == set(other.evidence)
 
     def isempty(self) -> bool:
         """Checks if the scope is empty.
-    
+
         A scope is considered empty if its query is empty, i.e., the scope does not represent any RVs.
 
         Returns:
@@ -145,7 +161,10 @@ class Scope():
         Returns:
             ``Scope`` object representing the union of both scopes.
         """
-        return Scope(set(self.query).union(other.query), set(self.evidence).union(other.evidence))
+        return Scope(
+            set(self.query).union(other.query),
+            set(self.evidence).union(other.evidence),
+        )
 
     @staticmethod
     def all_pairwise_disjoint(scopes: Iterable["Scope"]) -> bool:
@@ -161,13 +180,13 @@ class Scope():
         overall_scope = Scope()
 
         for scope in scopes:
-            if(overall_scope.isdisjoint(scope)):
+            if overall_scope.isdisjoint(scope):
                 overall_scope = overall_scope.union(scope)
             else:
                 return False
-    
+
         return True
-    
+
     @staticmethod
     def all_equal(scopes: Iterable["Scope"]) -> bool:
         """Checks if a sequence of scopes are all equal.
@@ -187,5 +206,5 @@ class Scope():
                 continue
             if not overall_scope == scope:
                 return False
-        
+
         return True

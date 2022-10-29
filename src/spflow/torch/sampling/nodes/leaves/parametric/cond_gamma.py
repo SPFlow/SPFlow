@@ -2,8 +2,14 @@
 """Contains sampling methods for ``CondGamma`` nodes for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.contexts.sampling_context import (
+    SamplingContext,
+    init_default_sampling_context,
+)
 from spflow.torch.structure.nodes.leaves.parametric.cond_gamma import CondGamma
 
 import torch
@@ -11,7 +17,13 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(leaf: CondGamma, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(
+    leaf: CondGamma,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> torch.Tensor:
     r"""Samples from ``CondGamma`` nodes in the ``torch`` backend given potential evidence.
 
     Samples missing values proportionally to its probability distribution function (PDF).
@@ -39,17 +51,23 @@ def sample(leaf: CondGamma, data: torch.Tensor, check_support: bool=True, dispat
 
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
-    
+
     # retrieve values for 'alpha','beta'
     alpha, beta = leaf.retrieve_params(data, dispatch_ctx)
 
-    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
+    marg_ids = (
+        torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)
+    ).squeeze(1)
 
     instance_ids_mask = torch.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
 
     sampling_ids = marg_ids & instance_ids_mask.bool().to(alpha.device)
 
-    data[sampling_ids, leaf.scope.query] = leaf.dist(alpha=alpha, beta=beta).sample((sampling_ids.sum(),)).to(alpha.device)
+    data[sampling_ids, leaf.scope.query] = (
+        leaf.dist(alpha=alpha, beta=beta)
+        .sample((sampling_ids.sum(),))
+        .to(alpha.device)
+    )
 
     return data

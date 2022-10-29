@@ -9,9 +9,14 @@ from typing import List, Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.log_normal import LogNormal as BaseLogNormal
+from spflow.base.structure.nodes.leaves.parametric.log_normal import (
+    LogNormal as BaseLogNormal,
+)
 
 
 class LogNormal(LeafNode):
@@ -38,7 +43,13 @@ class LogNormal(LeafNode):
         std:
             Scalar PyTorch tensor representing the standard deviation (:math:`\sigma`) of the Gaussian distribution, greater than 0 (projected from ``std_aux``).
     """
-    def __init__(self, scope: Scope, mean: Optional[float]=0.0, std: Optional[float]=1.0) -> None:
+
+    def __init__(
+        self,
+        scope: Scope,
+        mean: Optional[float] = 0.0,
+        std: Optional[float] = 1.0,
+    ) -> None:
         r"""Initializes ``LogNormal`` leaf node.
 
         Args:
@@ -52,9 +63,13 @@ class LogNormal(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'LogNormal' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'LogNormal' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'LogNormal' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'LogNormal' should be empty, but was {scope.evidence}."
+            )
 
         super(LogNormal, self).__init__(scope=scope)
 
@@ -75,7 +90,7 @@ class LogNormal(LeafNode):
     @property
     def dist(self) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
-        
+
         Returns:
             ``torch.distributions.LogNormal`` instance.
         """
@@ -100,7 +115,9 @@ class LogNormal(LeafNode):
             )
 
         self.mean.data = torch.tensor(float(mean))
-        self.std_aux.data = proj_bounded_to_real(torch.tensor(float(std)), lb=0.0)
+        self.std_aux.data = proj_bounded_to_real(
+            torch.tensor(float(std)), lb=0.0
+        )
 
     def get_params(self) -> Tuple[float, float]:
         """Returns the parameters of the represented distribution.
@@ -140,13 +157,17 @@ class LogNormal(LeafNode):
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        valid[~nan_mask & valid] &= (
+            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        )
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BaseLogNormal, dispatch_ctx: Optional[DispatchContext]=None) -> LogNormal:
+def toTorch(
+    node: BaseLogNormal, dispatch_ctx: Optional[DispatchContext] = None
+) -> LogNormal:
     """Conversion for ``LogNormal`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -160,7 +181,9 @@ def toTorch(node: BaseLogNormal, dispatch_ctx: Optional[DispatchContext]=None) -
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: LogNormal, dispatch_ctx: Optional[DispatchContext]=None) -> BaseLogNormal:
+def toBase(
+    node: LogNormal, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseLogNormal:
     """Conversion for ``LogNormal`` from ``torch`` backend to ``base`` backend.
 
     Args:

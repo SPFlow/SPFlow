@@ -9,9 +9,14 @@ from typing import Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian as BaseGaussian
+from spflow.base.structure.nodes.leaves.parametric.gaussian import (
+    Gaussian as BaseGaussian,
+)
 
 
 class Gaussian(LeafNode):
@@ -38,7 +43,10 @@ class Gaussian(LeafNode):
         std:
             Scalar PyTorch tensor representing the standard deviation (:math:`\sigma`) of the Gaussian distribution, greater than 0 (projected from ``std_aux``).
     """
-    def __init__(self, scope: Scope, mean: float=0.0, std: float=1.0) -> None:
+
+    def __init__(
+        self, scope: Scope, mean: float = 0.0, std: float = 1.0
+    ) -> None:
         r"""Initializes ``Gaussian`` leaf node.
 
         Args:
@@ -52,9 +60,13 @@ class Gaussian(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Gaussian' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Gaussian' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Gaussian' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Gaussian' should be empty, but was {scope.evidence}."
+            )
 
         super(Gaussian, self).__init__(scope=scope)
 
@@ -75,7 +87,7 @@ class Gaussian(LeafNode):
     @property
     def dist(self) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
-        
+
         Returns:
             ``torch.distributions.Normal`` instance.
         """
@@ -100,7 +112,9 @@ class Gaussian(LeafNode):
             )
 
         self.mean.data = torch.tensor(float(mean))
-        self.std_aux.data = proj_bounded_to_real(torch.tensor(float(std)), lb=0.0)
+        self.std_aux.data = proj_bounded_to_real(
+            torch.tensor(float(std)), lb=0.0
+        )
 
     def get_params(self) -> Tuple[float, float]:
         """Returns the parameters of the represented distribution.
@@ -140,13 +154,17 @@ class Gaussian(LeafNode):
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        valid[~nan_mask & valid] &= (
+            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        )
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BaseGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> Gaussian:
+def toTorch(
+    node: BaseGaussian, dispatch_ctx: Optional[DispatchContext] = None
+) -> Gaussian:
     """Conversion for ``Gaussian`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -160,7 +178,9 @@ def toTorch(node: BaseGaussian, dispatch_ctx: Optional[DispatchContext]=None) ->
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: Gaussian, dispatch_ctx: Optional[DispatchContext]=None) -> BaseGaussian:
+def toBase(
+    node: Gaussian, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseGaussian:
     """Conversion for ``Gaussian`` from ``torch`` backend to ``base`` backend.
 
     Args:

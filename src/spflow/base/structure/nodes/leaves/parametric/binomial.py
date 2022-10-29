@@ -31,7 +31,8 @@ class Binomial(LeafNode):
         p:
             Floating point value representing the success probability of each trial between zero and one.
     """
-    def __init__(self, scope: Scope, n: int, p: float=0.5) -> None:
+
+    def __init__(self, scope: Scope, n: int, p: float = 0.5) -> None:
         r"""Initializes ``Binomial`` leaf node.
 
         Args:
@@ -44,19 +45,23 @@ class Binomial(LeafNode):
                 Defaults to 0.5.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Binomial' should be 1, but was {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Binomial' should be 1, but was {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Binomial' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Binomial' should be empty, but was {scope.evidence}."
+            )
 
         super(Binomial, self).__init__(scope=scope)
 
         # set parameters
         self.set_params(n, p)
-    
+
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """
@@ -105,7 +110,7 @@ class Binomial(LeafNode):
         .. math::
 
             \text{supp}(\text{Binomial})=\{0,\hdots,n\}
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
@@ -129,9 +134,13 @@ class Binomial(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        valid[valid & ~nan_mask] &= (
+            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        )
 
         # check if values are in valid range
-        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0) & (scope_data[valid & ~nan_mask] <= self.n)
+        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0) & (
+            scope_data[valid & ~nan_mask] <= self.n
+        )
 
         return valid

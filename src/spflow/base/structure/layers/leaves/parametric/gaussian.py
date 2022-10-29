@@ -6,7 +6,10 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
@@ -36,7 +39,15 @@ class GaussianLayer(Module):
         nodes:
             List of ``Gaussian`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], mean: Union[float, List[float], np.ndarray]=0.0, std: Union[float, List[float], np.ndarray]=1.0, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        mean: Union[float, List[float], np.ndarray] = 0.0,
+        std: Union[float, List[float], np.ndarray] = 1.0,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``GaussianLayer`` object.
 
         Args:
@@ -50,23 +61,27 @@ class GaussianLayer(Module):
             std:
                 Floating point, list of floats or one-dimensional NumPy array representing the standard deviations (:math:`\sigma`), greater than 0.
                 If a single floating point value is given it is broadcast to all nodes.
-                Defaults to 1.0. 
+                Defaults to 1.0.
             n_nodes:
                 Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
                 Defaults to 1.
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'GaussianLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'GaussianLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'GaussianLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'GaussianLayer' was empty."
+                )
 
             self._n_out = len(scope)
-        
+
         super(GaussianLayer, self).__init__(children=[], **kwargs)
 
         # create leaf nodes
@@ -87,13 +102,17 @@ class GaussianLayer(Module):
     def mean(self) -> np.ndarray:
         """Returns the means of the represented distributions."""
         return np.array([node.mean for node in self.nodes])
-    
+
     @property
     def std(self) -> np.ndarray:
         """Returns the standard deviations of the represented distributions."""
         return np.array([node.std for node in self.nodes])
 
-    def set_params(self, mean: Union[int, float, List[float], np.ndarray]=0.0, std: Union[int, float, List[float], np.ndarray]=1.0) -> None:
+    def set_params(
+        self,
+        mean: Union[int, float, List[float], np.ndarray] = 0.0,
+        std: Union[int, float, List[float], np.ndarray] = 1.0,
+    ) -> None:
         r"""Sets the parameters for the represented distributions.
 
         Args:
@@ -104,29 +123,37 @@ class GaussianLayer(Module):
             std:
                 Floating point, list of floats or one-dimensional NumPy array representing the standard deviations (:math:`\sigma`), greater than 0.
                 If a single floating point value is given it is broadcast to all nodes.
-                Defaults to 1.0. 
+                Defaults to 1.0.
         """
         if isinstance(mean, int) or isinstance(mean, float):
             mean = np.array([mean for _ in range(self.n_out)])
         if isinstance(mean, list):
             mean = np.array(mean)
-        if(mean.ndim != 1):
-            raise ValueError(f"Numpy array of 'mean' values for 'GaussianLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional.")
-        if(mean.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'mean' values for 'GaussianLayer' must match number of output nodes {self.n_out}, but is {mean.shape[0]}")
+        if mean.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'mean' values for 'GaussianLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional."
+            )
+        if mean.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'mean' values for 'GaussianLayer' must match number of output nodes {self.n_out}, but is {mean.shape[0]}"
+            )
 
         if isinstance(std, int) or isinstance(std, float):
             std = np.array([float(std) for _ in range(self.n_out)])
         if isinstance(std, list):
             std = np.array(std)
-        if(std.ndim != 1):
-            raise ValueError(f"Numpy array of 'std' values for 'GaussianLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional.")
-        if(std.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'std' values for 'GaussianLayer' must match number of output nodes {self.n_out}, but is {std.shape[0]}")
+        if std.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'std' values for 'GaussianLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional."
+            )
+        if std.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'std' values for 'GaussianLayer' must match number of output nodes {self.n_out}, but is {std.shape[0]}"
+            )
 
         for node_mean, node_std, node in zip(mean, std, self.nodes):
             node.set_params(node_mean, node_std)
-    
+
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
         """Returns the parameters of the represented distribution.
 
@@ -134,10 +161,10 @@ class GaussianLayer(Module):
             Tuple of one-dimensional NumPy arrays representing the means and standard deviations.
         """
         return self.mean, self.std
-        
-    def dist(self, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+
+    def dist(self, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
-        
+
         Args:
             node_ids:
                 Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
@@ -151,7 +178,9 @@ class GaussianLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Gaussian distributions, which are:
@@ -175,11 +204,18 @@ class GaussianLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+        return np.concatenate(
+            [self.nodes[i].check_support(data) for i in node_ids], axis=1
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: GaussianLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[GaussianLayer, Gaussian, None]:
+def marginalize(
+    layer: GaussianLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[GaussianLayer, Gaussian, None]:
     r"""Structural marginalization for ``GaussianLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -196,7 +232,7 @@ def marginalize(layer: GaussianLayer, marg_rvs: Iterable[int], prune: bool=True,
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -220,5 +256,7 @@ def marginalize(layer: GaussianLayer, marg_rvs: Iterable[int], prune: bool=True,
         new_node = Gaussian(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = GaussianLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
+        new_layer = GaussianLayer(
+            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
+        )
         return new_layer

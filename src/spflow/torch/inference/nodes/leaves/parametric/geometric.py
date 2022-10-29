@@ -4,12 +4,20 @@
 import torch
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.leaves.parametric.geometric import Geometric
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(leaf: Geometric, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    leaf: Geometric,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     r"""Computes log-likelihoods for ``Geometric`` node in the ``torch`` backend given input data.
 
     Log-likelihood for ``Geometric`` is given by the logarithm of its probability distribution function (PDF):

@@ -12,7 +12,9 @@ from sklearn.cross_decomposition import CCA
 from spflow.base.utils.empirical_cdf import empirical_cdf
 
 
-def randomized_dependency_coefficients(data: np.ndarray, k: int=20, s: float=1/6, phi: Callable=np.sin) -> np.ndarray:
+def randomized_dependency_coefficients(
+    data: np.ndarray, k: int = 20, s: float = 1 / 6, phi: Callable = np.sin
+) -> np.ndarray:
     """Computes the randomized dependency coefficients (RDCs) for a given data set.
 
     Returns the randomized dependency coefficients (RDCs) computed from a specified data set, as described in (Lopez-Paz et al., 2013): "The Randomized Dependence Coefficient"
@@ -33,13 +35,15 @@ def randomized_dependency_coefficients(data: np.ndarray, k: int=20, s: float=1/6
 
     Returns:
         NumPy array containing the computed randomized dependency coefficients.
-    
+
     Raises:
         ValueError: Invalid inputs.
     """
     # default arguments according to paper
     if np.any(np.isnan(data)):
-        raise ValueError("Randomized dependency coefficients cannot be computed for data with missing values.")
+        raise ValueError(
+            "Randomized dependency coefficients cannot be computed for data with missing values."
+        )
 
     # compute ecd values for data
     ecdf = empirical_cdf(data)
@@ -48,11 +52,20 @@ def randomized_dependency_coefficients(data: np.ndarray, k: int=20, s: float=1/6
     ecdf_features = np.stack([ecdf.T, np.ones(ecdf.T.shape)], axis=-1)
 
     # compute random weights (and biases) generated from normal distribution
-    rand_gaussians = np.random.randn(data.shape[1], 2, k) # 2 for weight (of size 1) and bias
+    rand_gaussians = np.random.randn(
+        data.shape[1], 2, k
+    )  # 2 for weight (of size 1) and bias
 
     # compute linear combinations of ecdf feature using generated weights
-    features = np.stack([np.dot(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)])
-    features *= np.sqrt(s) # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
+    features = np.stack(
+        [
+            np.dot(features, weights)
+            for features, weights in zip(ecdf_features, rand_gaussians)
+        ]
+    )
+    features *= np.sqrt(
+        s
+    )  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
 
     # apply non-linearity phi
     features = phi(features)
@@ -62,8 +75,8 @@ def randomized_dependency_coefficients(data: np.ndarray, k: int=20, s: float=1/6
 
     cca = CCA(n_components=1)
 
-    # compute rdcs for all pairs of features    
-    for i,j in combinations(range(data.shape[1]), 2):
+    # compute rdcs for all pairs of features
+    for i, j in combinations(range(data.shape[1]), 2):
         i_cca, j_cca = cca.fit_transform(features[i], features[j])
         rdcs[j][i] = rdcs[i][j] = np.corrcoef(i_cca.T, j_cca.T)[0, 1]
 

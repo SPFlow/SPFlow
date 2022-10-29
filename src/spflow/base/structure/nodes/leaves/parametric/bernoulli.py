@@ -28,7 +28,8 @@ class Bernoulli(LeafNode):
         p:
             Floating point value representing the success probability of the Bernoulli distribution.
     """
-    def __init__(self, scope: Scope, p: float=0.5) -> None:
+
+    def __init__(self, scope: Scope, p: float = 0.5) -> None:
         r"""Initializes ``Bernoulli`` leaf node.
 
         Args:
@@ -37,14 +38,18 @@ class Bernoulli(LeafNode):
             p:
                 Floating point value representing the success probability of the Bernoulli distribution between zero and one.
                 Defaults to 0.5.
-        
+
         Raises:
             ValueError: Invalid arguments.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Bernoulli' should be 1, but was {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Bernoulli' should be 1, but was {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Bernoulli' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Bernoulli' should be empty, but was {scope.evidence}."
+            )
 
         super(Bernoulli, self).__init__(scope=scope)
 
@@ -54,7 +59,7 @@ class Bernoulli(LeafNode):
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """
@@ -90,9 +95,9 @@ class Bernoulli(LeafNode):
         .. math::
 
             \text{supp}(\text{Bernoulli})=\{0,1\}
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
-    
+
         Args:
             scope_data:
                 Two-dimensional NumPy array containing sample instances.
@@ -115,9 +120,13 @@ class Bernoulli(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        valid[valid & ~nan_mask] &= (
+            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        )
 
         # check if values are in valid range
-        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0) & (scope_data[valid & ~nan_mask] <= 1)
+        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0) & (
+            scope_data[valid & ~nan_mask] <= 1
+        )
 
         return valid

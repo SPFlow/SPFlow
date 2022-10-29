@@ -5,13 +5,21 @@ import torch
 import numpy as np
 from typing import Optional
 from spflow.meta.scope.scope import Scope
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.torch.structure.layers.leaves.parametric.uniform import UniformLayer
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(layer: UniformLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    layer: UniformLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     r"""Computes log-likelihoods for ``UniformLayer`` leaves in the ``torch`` backend given input data.
 
     Log-likelihood for ``UniformLayer`` is given by the logarithm of its individual probability distribution functions (PDFs):
@@ -51,7 +59,9 @@ def log_likelihood(layer: UniformLayer, data: torch.Tensor, check_support: bool=
     batch_size: int = data.shape[0]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).to(layer.start.device)
+    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).to(
+        layer.start.device
+    )
 
     for node_id in range(layer.n_out):
 
@@ -65,13 +75,15 @@ def log_likelihood(layer: UniformLayer, data: torch.Tensor, check_support: bool=
         marg_ids = torch.where(marg_mask)[0]
 
         # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
-        log_prob[torch.meshgrid(marg_ids, node_ids_tensor, indexing='ij')] = 0.0
+        log_prob[torch.meshgrid(marg_ids, node_ids_tensor, indexing="ij")] = 0.0
 
         # ----- log probabilities -----
 
         if check_support:
             # create masked based on distribution's support
-            valid_ids = layer.check_support(data[~marg_mask], node_ids=[node_id])
+            valid_ids = layer.check_support(
+                data[~marg_mask], node_ids=[node_id]
+            )
 
             if not all(valid_ids):
                 raise ValueError(
@@ -80,16 +92,30 @@ def log_likelihood(layer: UniformLayer, data: torch.Tensor, check_support: bool=
 
         if layer.support_outside[node_id]:
             torch_valid_mask = torch.zeros(len(marg_mask), dtype=torch.bool)
-            torch_valid_mask[~marg_mask] |= layer.dist(node_ids=[node_id]).support.check(scope_data[~marg_mask]).squeeze(1)
-            
-            outside_interval_ids = torch.where(~marg_mask & ~torch_valid_mask)[0]
+            torch_valid_mask[~marg_mask] |= (
+                layer.dist(node_ids=[node_id])
+                .support.check(scope_data[~marg_mask])
+                .squeeze(1)
+            )
+
+            outside_interval_ids = torch.where(~marg_mask & ~torch_valid_mask)[
+                0
+            ]
             inside_interval_ids = torch.where(~marg_mask & torch_valid_mask)[0]
 
             # TODO: torch_valid_ids does not necessarily have the same dimension as marg_ids
-            log_prob[torch.meshgrid(outside_interval_ids, node_ids_tensor, indexing='ij')] = -float("inf")
+            log_prob[
+                torch.meshgrid(
+                    outside_interval_ids, node_ids_tensor, indexing="ij"
+                )
+            ] = -float("inf")
 
             # compute probabilities for values inside distribution support
-            log_prob[torch.meshgrid(inside_interval_ids, node_ids_tensor, indexing='ij')] = layer.dist(node_ids=[node_id]).log_prob(
+            log_prob[
+                torch.meshgrid(
+                    inside_interval_ids, node_ids_tensor, indexing="ij"
+                )
+            ] = layer.dist(node_ids=[node_id]).log_prob(
                 scope_data[inside_interval_ids].type(torch.get_default_dtype())
             )
         else:
@@ -97,5 +123,5 @@ def log_likelihood(layer: UniformLayer, data: torch.Tensor, check_support: bool=
             log_prob[~marg_mask] = layer.dist(node_ids=[node_id]).log_prob(
                 scope_data[~marg_mask].type(torch.get_default_dtype())
             )
-    
+
     return log_prob

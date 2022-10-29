@@ -6,15 +6,31 @@ import numpy as np
 from typing import Optional
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
-from spflow.torch.structure.layers.leaves.parametric.multivariate_gaussian import MultivariateGaussianLayer
-from spflow.torch.sampling.nodes.leaves.parametric.multivariate_gaussian import sample
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.contexts.sampling_context import (
+    SamplingContext,
+    init_default_sampling_context,
+)
+from spflow.torch.structure.layers.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussianLayer,
+)
+from spflow.torch.sampling.nodes.leaves.parametric.multivariate_gaussian import (
+    sample,
+)
 from spflow.torch.sampling.module import sample
 
 
 @dispatch  # type: ignore
-def sample(layer: MultivariateGaussianLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(
+    layer: MultivariateGaussianLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> torch.Tensor:
     r"""Samples from ``MultivariateGaussianLayer`` leaves in the ``torch`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
@@ -38,7 +54,7 @@ def sample(layer: MultivariateGaussianLayer, data: torch.Tensor, check_support: 
     Returns:
         Two-dimensional PyTorch tensor containing the sampled values together with the specified evidence.
         Each row corresponds to a sample.
-    
+
     Raises:
         ValueError: Sampling from invalid number of outputs.
     """
@@ -53,11 +69,21 @@ def sample(layer: MultivariateGaussianLayer, data: torch.Tensor, check_support: 
         if len(output_ids) == 0:
             output_ids = list(range(layer.n_out))
 
-        if not Scope.all_pairwise_disjoint([layer_scopes[id] for id in output_ids]):
-            raise ValueError("Sampling from non-pairwise-disjoint scopes for instances is not allowed.")
+        if not Scope.all_pairwise_disjoint(
+            [layer_scopes[id] for id in output_ids]
+        ):
+            raise ValueError(
+                "Sampling from non-pairwise-disjoint scopes for instances is not allowed."
+            )
 
     # all product nodes are over (all) children
     for node_id, instances in sampling_ctx.group_output_ids(layer.n_out):
-        sample(layer.nodes[node_id], data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=SamplingContext(instances, [[] for _ in instances]))
+        sample(
+            layer.nodes[node_id],
+            data,
+            check_support=check_support,
+            dispatch_ctx=dispatch_ctx,
+            sampling_ctx=SamplingContext(instances, [[] for _ in instances]),
+        )
 
     return data

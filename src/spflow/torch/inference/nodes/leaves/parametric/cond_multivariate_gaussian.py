@@ -5,12 +5,22 @@ import torch
 import torch.distributions as D
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import CondMultivariateGaussian
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussian,
+)
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(leaf: CondMultivariateGaussian, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    leaf: CondMultivariateGaussian,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     r"""Computes log-likelihoods for ``CondMultivariateGaussian`` node given input data in the ``torch`` backend.
 
     Log-likelihood for ``CondMultivariateGaussian`` is given by the logarithm of its probability distribution function (PDF):
@@ -83,7 +93,9 @@ def log_likelihood(leaf: CondMultivariateGaussian, data: torch.Tensor, check_sup
     for marg_mask in marg.unique(dim=0):
 
         # get all instances with the same (marginalized) scope
-        marg_ids = torch.where((marg == marg_mask).sum(dim=-1) == len(leaf.scope.query))[0]
+        marg_ids = torch.where(
+            (marg == marg_mask).sum(dim=-1) == len(leaf.scope.query)
+        )[0]
         marg_data = scope_data[marg_ids]
 
         # all random variables are marginalized over
@@ -96,9 +108,7 @@ def log_likelihood(leaf: CondMultivariateGaussian, data: torch.Tensor, check_sup
 
             # marginalize distribution and compute (log) probabilities
             marg_mean = mean[~marg_mask]
-            marg_cov = cov[~marg_mask][
-                :, ~marg_mask
-            ]  # TODO: better way?
+            marg_cov = cov[~marg_mask][:, ~marg_mask]  # TODO: better way?
 
             # create marginalized torch distribution
             marg_dist = D.MultivariateNormal(
@@ -113,9 +123,9 @@ def log_likelihood(leaf: CondMultivariateGaussian, data: torch.Tensor, check_sup
         else:
             if cov_tril is not None:
                 # compute probabilities for values inside distribution support
-                log_prob[marg_ids, 0] = leaf.dist(mean=mean, cov_tril=cov_tril).log_prob(
-                    marg_data.type(torch.get_default_dtype())
-                )
+                log_prob[marg_ids, 0] = leaf.dist(
+                    mean=mean, cov_tril=cov_tril
+                ).log_prob(marg_data.type(torch.get_default_dtype()))
             else:
                 # compute probabilities for values inside distribution support
                 log_prob[marg_ids, 0] = leaf.dist(mean=mean, cov=cov).log_prob(

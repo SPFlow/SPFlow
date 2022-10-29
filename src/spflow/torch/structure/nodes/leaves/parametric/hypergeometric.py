@@ -6,9 +6,14 @@ import torch
 from typing import List, Tuple, Optional
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric as BaseHypergeometric
+from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric as BaseHypergeometric,
+)
 
 
 class Hypergeometric(LeafNode):
@@ -35,6 +40,7 @@ class Hypergeometric(LeafNode):
         n:
             Scalar PyTorch tensor specifying the number of draws, greater of equal to zero and less than or equal to N.
     """
+
     def __init__(self, scope: Scope, N: int, M: int, n: int) -> None:
         r"""Initializes 'Hypergeometric' leaf node.
 
@@ -49,9 +55,13 @@ class Hypergeometric(LeafNode):
                 Integer specifying the number of draws, greater of equal to zero and less than or equal to N.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Hypergeometric' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Hypergeometric' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}."
+            )
 
         super(Hypergeometric, self).__init__(scope=scope)
 
@@ -105,7 +115,7 @@ class Hypergeometric(LeafNode):
             + torch.lgamma(self.N - self.n + 1)  # type: ignore
             + torch.lgamma(self.n + 1)  # type: ignore
             - lgamma_N_p_2  # type: ignore
-            - torch.lgamma(k + 1) # .float()
+            - torch.lgamma(k + 1)  # .float()
             - torch.lgamma(self.M - k + 1)
             + lgamma_M_p_2  # type: ignore
             - torch.lgamma(n_minus_k + 1)
@@ -205,18 +215,24 @@ class Hypergeometric(LeafNode):
         valid[~nan_mask] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         # check if all values are valid integers
-        valid[~nan_mask & valid] &= torch.remainder(scope_data[~nan_mask & valid], 1).squeeze(-1) == 0
+        valid[~nan_mask & valid] &= (
+            torch.remainder(scope_data[~nan_mask & valid], 1).squeeze(-1) == 0
+        )
 
         # check if values are in valid range
         valid[~nan_mask & valid] &= (scope_data[~nan_mask & valid] >= max(0, self.n + self.M - self.N)) & (  # type: ignore
             scope_data[~nan_mask & valid] <= min(self.n, self.M)  # type: ignore
-        ).squeeze(-1)
+        ).squeeze(
+            -1
+        )
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BaseHypergeometric, dispatch_ctx: Optional[DispatchContext]=None) -> Hypergeometric:
+def toTorch(
+    node: BaseHypergeometric, dispatch_ctx: Optional[DispatchContext] = None
+) -> Hypergeometric:
     """Conversion for ``Hypergeometric`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -230,7 +246,9 @@ def toTorch(node: BaseHypergeometric, dispatch_ctx: Optional[DispatchContext]=No
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: Hypergeometric, dispatch_ctx: Optional[DispatchContext]=None) -> BaseHypergeometric:
+def toBase(
+    node: Hypergeometric, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseHypergeometric:
     """Conversion for ``Hypergeometric`` from ``torch`` backend to ``base`` backend.
 
     Args:

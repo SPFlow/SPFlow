@@ -4,13 +4,26 @@
 from typing import Optional, Union, Callable
 import numpy as np
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.base.learning.nodes.leaves.parametric.uniform import maximum_likelihood_estimation
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.base.learning.nodes.leaves.parametric.uniform import (
+    maximum_likelihood_estimation,
+)
 from spflow.base.structure.layers.leaves.parametric.uniform import UniformLayer
 
 
 @dispatch(memoize=True)  # type: ignore
-def maximum_likelihood_estimation(layer: UniformLayer, data: np.ndarray, weights: Optional[np.ndarray]=None, bias_correction: bool=True, nan_strategy: Optional[Union[str, Callable]]=None, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def maximum_likelihood_estimation(
+    layer: UniformLayer,
+    data: np.ndarray,
+    weights: Optional[np.ndarray] = None,
+    bias_correction: bool = True,
+    nan_strategy: Optional[Union[str, Callable]] = None,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> None:
     r"""Maximum (weighted) likelihood estimation (MLE) of ``UniformLayer`` leaves' parameters in the ``base`` backend.
 
     All parameters of the Uniform distribution are regarded as fixed and will not be estimated.
@@ -48,14 +61,32 @@ def maximum_likelihood_estimation(layer: UniformLayer, data: np.ndarray, weights
     if weights is None:
         weights = np.ones((data.shape[0], layer.n_out))
 
-    if (weights.ndim == 1 and weights.shape[0] != data.shape[0]) or \
-       (weights.ndim == 2 and (weights.shape[0] != data.shape[0] or weights.shape[1] != layer.n_out)) or \
-       (weights.ndim not in [1, 2]):
-            raise ValueError("Number of specified weights for maximum-likelihood estimation does not match number of data points.")
+    if (
+        (weights.ndim == 1 and weights.shape[0] != data.shape[0])
+        or (
+            weights.ndim == 2
+            and (
+                weights.shape[0] != data.shape[0]
+                or weights.shape[1] != layer.n_out
+            )
+        )
+        or (weights.ndim not in [1, 2])
+    ):
+        raise ValueError(
+            "Number of specified weights for maximum-likelihood estimation does not match number of data points."
+        )
 
     if weights.ndim == 1:
         # broadcast weights
         weights = np.expand_dims(weights, 1).repeat(layer.n_out, 1)
 
     for node, node_weights in zip(layer.nodes, weights.T):
-        maximum_likelihood_estimation(node, data, node_weights, bias_correction=bias_correction, nan_strategy=nan_strategy, check_support=check_support, dispatch_ctx=dispatch_ctx)
+        maximum_likelihood_estimation(
+            node,
+            data,
+            node_weights,
+            bias_correction=bias_correction,
+            nan_strategy=nan_strategy,
+            check_support=check_support,
+            dispatch_ctx=dispatch_ctx,
+        )

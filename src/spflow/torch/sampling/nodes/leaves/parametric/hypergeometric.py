@@ -2,16 +2,30 @@
 """Contains sampling methods for ``Hypergeometric`` nodes for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
-from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.contexts.sampling_context import (
+    SamplingContext,
+    init_default_sampling_context,
+)
+from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric,
+)
 
 import torch
 from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(leaf: Hypergeometric, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> torch.Tensor:
+def sample(
+    leaf: Hypergeometric,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> torch.Tensor:
     r"""Samples from ``Hypergeometric`` nodes in the ``torch`` backend given potential evidence.
 
     Samples missing values proportionally to its probability mass function (PMF).
@@ -39,8 +53,10 @@ def sample(leaf: Hypergeometric, data: torch.Tensor, check_support: bool=True, d
 
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
-    
-    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
+
+    marg_ids = (
+        torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)
+    ).squeeze(1)
 
     instance_ids_mask = torch.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
@@ -50,8 +66,12 @@ def sample(leaf: Hypergeometric, data: torch.Tensor, check_support: bool=True, d
     # TODO: may be inefficient
     # create random permutations of N elements
     rand_perm = torch.argsort(torch.rand(sampling_ids.shape[0], leaf.N), dim=1)
-    
+
     # assuming that first M indices are the M objects of interest, count how many of these indices were "drawn" in the first n draws (with replacement since all indices are unique per row)
-    data[sampling_ids, leaf.scope.query] = (rand_perm[:, :leaf.n] < leaf.M).sum(dim=1).type(torch.get_default_dtype())
+    data[sampling_ids, leaf.scope.query] = (
+        (rand_perm[:, : leaf.n] < leaf.M)
+        .sum(dim=1)
+        .type(torch.get_default_dtype())
+    )
 
     return data

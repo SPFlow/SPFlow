@@ -8,11 +8,18 @@ import torch
 import torch.distributions as D
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import CondGaussian
-from spflow.base.structure.layers.leaves.parametric.cond_gaussian import CondGaussianLayer as BaseCondGaussianLayer
+from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import (
+    CondGaussian,
+)
+from spflow.base.structure.layers.leaves.parametric.cond_gaussian import (
+    CondGaussianLayer as BaseCondGaussianLayer,
+)
 
 
 class CondGaussianLayer(Module):
@@ -40,7 +47,14 @@ class CondGaussianLayer(Module):
         scopes_out:
             List of scopes representing the output scopes.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], cond_f: Optional[Union[Callable,List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        cond_f: Optional[Union[Callable, List[Callable]]] = None,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``CondGaussianLayer`` object.
 
         Args:
@@ -60,13 +74,17 @@ class CondGaussianLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'CondGaussianLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'CondGaussianLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'CondGaussianLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'CondGaussianLayer' was empty."
+                )
 
             self._n_out = len(scope)
 
@@ -78,16 +96,20 @@ class CondGaussianLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(lambda s1, s2: s1.union(s2), self.scopes_out)
+        self.combined_scope = reduce(
+            lambda s1, s2: s1.union(s2), self.scopes_out
+        )
 
         self.set_cond_f(cond_f)
-    
+
     @property
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
-    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+    def set_cond_f(
+        self, cond_f: Optional[Union[List[Callable], Callable]] = None
+    ) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -103,11 +125,18 @@ class CondGaussianLayer(Module):
             ValueError: If list of callables does not match number of nodes represented by the layer.
         """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
-            raise ValueError("'CondGaussianLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
+            raise ValueError(
+                "'CondGaussianLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
+            )
 
         self.cond_f = cond_f
 
-    def dist(self, mean: torch.Tensor, std: torch.Tensor, node_ids: Optional[List[int]]=None) -> D.Distribution:
+    def dist(
+        self,
+        mean: torch.Tensor,
+        std: torch.Tensor,
+        node_ids: Optional[List[int]] = None,
+    ) -> D.Distribution:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -126,8 +155,10 @@ class CondGaussianLayer(Module):
             node_ids = list(range(self.n_out))
 
         return D.Normal(loc=mean[node_ids], scale=std[node_ids])
-    
-    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor, torch.Tensor]:
+
+    def retrieve_params(
+        self, data: np.ndarray, dispatch_ctx: DispatchContext
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameters (``mean``,``std``) are passed as additional arguments in the dispatch context.
@@ -143,7 +174,7 @@ class CondGaussianLayer(Module):
 
         Returns:
             Tuple of two one-dimensional NumPy array representing the means and standard deviations, respectively.
-        
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -164,10 +195,12 @@ class CondGaussianLayer(Module):
         elif self.cond_f:
             # check if module has a 'cond_f' to provide 'mean','std' specified (lowest priority)
             cond_f = self.cond_f
-        
+
         # if neither 'mean' and 'std' nor 'cond_f' is specified (via node or arguments)
         if (mean is None or std is None) and cond_f is None:
-            raise ValueError("'CondGaussianLayer' requires either 'mean' and 'std' or 'cond_f' to retrieve 'mean','std' to be specified.")
+            raise ValueError(
+                "'CondGaussianLayer' requires either 'mean' and 'std' or 'cond_f' to retrieve 'mean','std' to be specified."
+            )
 
         # if 'mean' or 'std' was not already specified, retrieve it
         if mean is None or std is None:
@@ -178,25 +211,29 @@ class CondGaussianLayer(Module):
 
                 for f in cond_f:
                     args = f(data)
-                    mean.append(args['mean'])
-                    std.append(args['std'])
+                    mean.append(args["mean"])
+                    std.append(args["std"])
 
                 mean = torch.tensor(mean)
                 std = torch.tensor(std)
             else:
                 args = cond_f(data)
-                mean = args['mean']
-                std = args['std']
+                mean = args["mean"]
+                std = args["std"]
 
         if isinstance(mean, int) or isinstance(mean, float):
             mean = torch.tensor([mean for _ in range(self.n_out)])
         elif isinstance(mean, list) or isinstance(mean, np.ndarray):
             mean = torch.tensor(mean)
-        if(mean.ndim != 1):
-            raise ValueError(f"Numpy array of 'mean' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional.")
-        if(mean.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'mean' values for 'CondGaussianLayer' must match number of output nodes {self.n_out}, but is {mean.shape[0]}")
-        
+        if mean.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'mean' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional."
+            )
+        if mean.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'mean' values for 'CondGaussianLayer' must match number of output nodes {self.n_out}, but is {mean.shape[0]}"
+            )
+
         if not torch.any(torch.isfinite(mean)):
             raise ValueError(
                 f"Values of 'mean' for 'CondGaussianLayer' must be finite, but was: {mean}"
@@ -206,19 +243,25 @@ class CondGaussianLayer(Module):
             std = torch.tensor([std for _ in range(self.n_out)])
         elif isinstance(std, list) or isinstance(std, np.ndarray):
             std = torch.tensor(std)
-        if(std.ndim != 1):
-            raise ValueError(f"Numpy array of 'std' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional.")
-        if(std.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'std' values for 'CondGaussianLayer' must match number of output nodes {self.n_out}, but is {std.shape[0]}")        
-        
+        if std.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'std' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional."
+            )
+        if std.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'std' values for 'CondGaussianLayer' must match number of output nodes {self.n_out}, but is {std.shape[0]}"
+            )
+
         if torch.any(std <= 0.0) or not torch.any(torch.isfinite(std)):
             raise ValueError(
                 f"Value of 'std' for 'CondGaussianLayer' must be greater than 0, but was: {std}"
             )
 
         return mean, std
-    
-    def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
+
+    def check_support(
+        self, data: torch.Tensor, node_ids: Optional[List[int]] = None
+    ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Gaussian distributions, which are:
@@ -244,9 +287,11 @@ class CondGaussianLayer(Module):
         """
         if node_ids is None:
             node_ids = list(range(self.n_out))
-        
+
         # all query scopes are univariate
-        scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
+        scope_data = data[
+            :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
+        ]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(torch.zeros(self.n_out), torch.ones(self.n_out), node_ids).support.check(scope_data)  # type: ignore
@@ -264,7 +309,12 @@ class CondGaussianLayer(Module):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: CondGaussianLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondGaussianLayer, CondGaussian, None]:
+def marginalize(
+    layer: CondGaussianLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[CondGaussianLayer, CondGaussian, None]:
     """Structural marginalization for ``CondGaussianlLayer`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -281,7 +331,7 @@ def marginalize(layer: CondGaussianLayer, marg_rvs: Iterable[int], prune: bool=T
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -300,7 +350,7 @@ def marginalize(layer: CondGaussianLayer, marg_rvs: Iterable[int], prune: bool=T
         if len(marg_scope) == 1:
             marginalized_node_ids.append(i)
             marginalized_scopes.append(scope)
-    
+
     if len(marginalized_node_ids) == 0:
         return None
     elif len(marginalized_node_ids) == 1 and prune:
@@ -310,7 +360,9 @@ def marginalize(layer: CondGaussianLayer, marg_rvs: Iterable[int], prune: bool=T
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(layer: BaseCondGaussianLayer, dispatch_ctx: Optional[DispatchContext]=None) -> CondGaussianLayer:
+def toTorch(
+    layer: BaseCondGaussianLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> CondGaussianLayer:
     """Conversion for ``CondGaussianLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -324,7 +376,10 @@ def toTorch(layer: BaseCondGaussianLayer, dispatch_ctx: Optional[DispatchContext
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(torch_layer: CondGaussianLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondGaussianLayer:
+def toBase(
+    torch_layer: CondGaussianLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> BaseCondGaussianLayer:
     """Conversion for ``CondGaussianLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:

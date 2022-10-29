@@ -6,10 +6,15 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
-from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import CondGaussian
+from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import (
+    CondGaussian,
+)
 
 
 class CondGaussianLayer(Module):
@@ -39,7 +44,14 @@ class CondGaussianLayer(Module):
         nodes:
             List of ``CondGaussian`` objects for the nodes in this layer.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], cond_f: Optional[Union[Callable, List[Callable]]]=None, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        cond_f: Optional[Union[Callable, List[Callable]]] = None,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``CondGaussianLayer`` object.
 
         Args:
@@ -59,16 +71,20 @@ class CondGaussianLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'CondGaussianLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'CondGaussianLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'CondGaussianLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'CondGaussianLayer' was empty."
+                )
 
             self._n_out = len(scope)
-        
+
         super(CondGaussianLayer, self).__init__(children=[], **kwargs)
 
         # create leaf nodes
@@ -83,8 +99,10 @@ class CondGaussianLayer(Module):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
-    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]]=None) -> None:
+
+    def set_cond_f(
+        self, cond_f: Optional[Union[List[Callable], Callable]] = None
+    ) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -100,11 +118,15 @@ class CondGaussianLayer(Module):
             ValueError: If list of callables does not match number of nodes represented by the layer.
         """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
-            raise ValueError("'CondGaussianLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes.")
+            raise ValueError(
+                "'CondGaussianLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
+            )
 
         self.cond_f = cond_f
-    
-    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[np.ndarray, np.ndarray]:
+
+    def retrieve_params(
+        self, data: np.ndarray, dispatch_ctx: DispatchContext
+    ) -> Tuple[np.ndarray, np.ndarray]:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameters (``mean``,``std``) are passed as additional arguments in the dispatch context.
@@ -120,7 +142,7 @@ class CondGaussianLayer(Module):
 
         Returns:
             Tuple of two one-dimensional NumPy array representing the means and standard deviations, respectively.
-        
+
         Raises:
             ValueError: No way to retrieve conditional parameters or invalid conditional parameters.
         """
@@ -141,10 +163,12 @@ class CondGaussianLayer(Module):
         elif self.cond_f:
             # check if module has a 'cond_f' to provide 'mean','std' specified (lowest priority)
             cond_f = self.cond_f
-        
+
         # if neither 'mean' and 'std' nor 'cond_f' is specified (via node or arguments)
         if (mean is None or std is None) and cond_f is None:
-            raise ValueError("'CondGaussianLayer' requires either 'mean' and 'std' or 'cond_f' to retrieve 'mean','std' to be specified.")
+            raise ValueError(
+                "'CondGaussianLayer' requires either 'mean' and 'std' or 'cond_f' to retrieve 'mean','std' to be specified."
+            )
 
         # if 'mean' or 'std' was not already specified, retrieve it
         if mean is None or std is None:
@@ -155,38 +179,51 @@ class CondGaussianLayer(Module):
 
                 for f in cond_f:
                     args = f(data)
-                    mean.append(args['mean'])
-                    std.append(args['std'])
+                    mean.append(args["mean"])
+                    std.append(args["std"])
 
                 mean = np.array(mean)
                 std = np.array(std)
             else:
                 args = cond_f(data)
-                mean = args['mean']
-                std = args['std']
+                mean = args["mean"]
+                std = args["std"]
 
         if isinstance(mean, int) or isinstance(mean, float):
             mean = np.array([mean for _ in range(self.n_out)])
         if isinstance(mean, list):
             mean = np.array(mean)
-        if(mean.ndim != 1):
-            raise ValueError(f"Numpy array of 'mean' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional.")
-        if(mean.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'mean' values for 'CondGaussianLayer' must match number of output nodes {self.n_out}, but is {mean.shape[0]}")
+        if mean.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'mean' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional."
+            )
+        if mean.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'mean' values for 'CondGaussianLayer' must match number of output nodes {self.n_out}, but is {mean.shape[0]}"
+            )
 
         if isinstance(std, int) or isinstance(std, float):
             std = np.array([float(std) for _ in range(self.n_out)])
         if isinstance(std, list):
             std = np.array(std)
-        if(std.ndim != 1):
-            raise ValueError(f"Numpy array of 'std' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional.")
-        if(std.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'std' values for 'CondGaussianLayer' must match number of output nodes {self.n_out}, but is {std.shape[0]}")
+        if std.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'std' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional."
+            )
+        if std.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'std' values for 'CondGaussianLayer' must match number of output nodes {self.n_out}, but is {std.shape[0]}"
+            )
         return mean, std
 
-    def dist(self, mean: np.ndarray, std: np.ndarray, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+    def dist(
+        self,
+        mean: np.ndarray,
+        std: np.ndarray,
+        node_ids: Optional[List[int]] = None,
+    ) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
-        
+
         Args:
             mean:
                 One-dimensional NumPy array representing the means of all distributions (not just the ones specified by ``node_ids``).
@@ -204,7 +241,9 @@ class CondGaussianLayer(Module):
 
         return [self.nodes[i].dist(mean[i], std[i]) for i in node_ids]
 
-    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Gaussian distributions, which are:
@@ -231,11 +270,18 @@ class CondGaussianLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+        return np.concatenate(
+            [self.nodes[i].check_support(data) for i in node_ids], axis=1
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: CondGaussianLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondGaussianLayer, CondGaussian, None]:
+def marginalize(
+    layer: CondGaussianLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[CondGaussianLayer, CondGaussian, None]:
     r"""Structural marginalization for ``CondGaussianLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -252,7 +298,7 @@ def marginalize(layer: CondGaussianLayer, marg_rvs: Iterable[int], prune: bool=T
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """

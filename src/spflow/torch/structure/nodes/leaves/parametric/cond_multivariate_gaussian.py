@@ -7,10 +7,17 @@ import torch.distributions as D
 from typing import Tuple, Union, Optional, Iterable, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import CondGaussian
-from spflow.base.structure.nodes.leaves.parametric.cond_multivariate_gaussian import CondMultivariateGaussian as BaseCondMultivariateGaussian
+from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import (
+    CondGaussian,
+)
+from spflow.base.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussian as BaseCondMultivariateGaussian,
+)
 
 
 class CondMultivariateGaussian(LeafNode):
@@ -37,10 +44,11 @@ class CondMultivariateGaussian(LeafNode):
             The value for ``cov`` should be a list of lists of floating points, two-dimensional NumPy array
             or two-dimensional PyTorch tensor containing a symmetric positive semi-definite matrix.
     """
+
     def __init__(
         self,
         scope: Scope,
-        cond_f: Optional[Callable]=None,
+        cond_f: Optional[Callable] = None,
     ) -> None:
         r"""Initializes ``CondMultivariateGaussian`` leaf node.
 
@@ -56,12 +64,18 @@ class CondMultivariateGaussian(LeafNode):
                 or two-dimensional PyTorch tensor containing a symmetric positive semi-definite matrix.
         """
         # check if scope contains duplicates
-        if(len(set(scope.query)) != len(scope.query)):
-            raise ValueError("Query scope for 'CondMultivariateGaussian' contains duplicate variables.")
+        if len(set(scope.query)) != len(scope.query):
+            raise ValueError(
+                "Query scope for 'CondMultivariateGaussian' contains duplicate variables."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'CondMultivariateGaussian' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'CondMultivariateGaussian' should be empty, but was {scope.evidence}."
+            )
         if len(scope.query) < 1:
-            raise ValueError("Size of query scope for 'CondMultivariateGaussian' must be at least 1.")
+            raise ValueError(
+                "Size of query scope for 'CondMultivariateGaussian' must be at least 1."
+            )
 
         super(CondMultivariateGaussian, self).__init__(scope=scope)
 
@@ -70,7 +84,7 @@ class CondMultivariateGaussian(LeafNode):
 
         self.set_cond_f(cond_f)
 
-    def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+    def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         r"""Sets the function to retrieve the node's conditonal parameter.
 
         Args:
@@ -84,14 +98,19 @@ class CondMultivariateGaussian(LeafNode):
         """
         self.cond_f = cond_f
 
-    def dist(self, mean: torch.Tensor, cov: Optional[torch.Tensor]=None, cov_tril: Optional[torch.Tensor]=None) -> D.Distribution:
+    def dist(
+        self,
+        mean: torch.Tensor,
+        cov: Optional[torch.Tensor] = None,
+        cov_tril: Optional[torch.Tensor] = None,
+    ) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
 
         Args:
             mean:
                 A one-dimensional PyTorch tensor containing the means (:math:`\mu`) of each of the one-dimensional Normal distributions.
                 Must have exactly as many elements as the scope of this leaf.
-                Defaults to all zeros. 
+                Defaults to all zeros.
             cov:
                 A two-dimensional PyTorch tensor (representing a :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
                 of the scope) describing the covariances of the distribution. The diagonal holds the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
@@ -101,18 +120,24 @@ class CondMultivariateGaussian(LeafNode):
             ``torch.distributions.MultivariateNormal`` instance.
         """
         if cov is None and cov_tril is None:
-            raise ValueError("Calling 'dist' of CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified.")
+            raise ValueError(
+                "Calling 'dist' of CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified."
+            )
         elif cov is not None and cov_tril is not None:
-            raise ValueError("Calling 'dist' of CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified, but not both.")
+            raise ValueError(
+                "Calling 'dist' of CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified, but not both."
+            )
 
         if cov is not None:
             return D.MultivariateNormal(loc=mean, covariance_matrix=cov)
         else:
             return D.MultivariateNormal(loc=mean, scale_tril=cov_tril)
-    
-    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor,Optional[torch.Tensor],Optional[torch.Tensor]]:
+
+    def retrieve_params(
+        self, data: torch.Tensor, dispatch_ctx: DispatchContext
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]:
         r"""Retrieves the conditional parameter of the leaf node.
-    
+
         First, checks if conditional parameters (``mean``,``cov``) is passed as an additional argument in the dispatch context.
         Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
         Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
@@ -152,24 +177,32 @@ class CondMultivariateGaussian(LeafNode):
             cond_f = self.cond_f
 
         # if neither 'mean' or 'cov'/'cov_tril' nor 'cond_f' is specified (via node or arguments)
-        if (mean is None or (cov is None and cov_tril is None)) and cond_f is None:
-            raise ValueError("'CondMultivariateGaussian' requires either 'mean' and 'cov'/'cov_tril' or 'cond_f' to retrieve 'mean', 'cov'/'cov_tril' to be specified.")
+        if (
+            mean is None or (cov is None and cov_tril is None)
+        ) and cond_f is None:
+            raise ValueError(
+                "'CondMultivariateGaussian' requires either 'mean' and 'cov'/'cov_tril' or 'cond_f' to retrieve 'mean', 'cov'/'cov_tril' to be specified."
+            )
 
         # if 'mean' or 'cov' not already specified, retrieve them
         if mean is None or (cov is None and cov_tril is None):
             params = cond_f(data)
-            mean = params['mean']
+            mean = params["mean"]
 
-            if 'cov' in params:
-                cov = params['cov']
-            if 'cov_tril' in params:
-                cov_tril = params['cov_tril']
-            
+            if "cov" in params:
+                cov = params["cov"]
+            if "cov_tril" in params:
+                cov_tril = params["cov_tril"]
+
             if cov is None and cov_tril is None:
-                raise ValueError("CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified.")
+                raise ValueError(
+                    "CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified."
+                )
             elif cov is not None and cov_tril is not None:
-                raise ValueError("CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified, but not both.")
-        
+                raise ValueError(
+                    "CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified, but not both."
+                )
+
         # cov_tril specified (and not cov)
         if cov_tril is not None:
             cov = cov_tril
@@ -197,8 +230,10 @@ class CondMultivariateGaussian(LeafNode):
                     "Value of 'mean' for 'CondMultivariateGaussian' may not contain infinite values"
                 )
             if torch.any(torch.isnan(mean)):
-                raise ValueError("Value of 'mean' for 'CondMultivariateGaussian' may not contain NaN values")
-            
+                raise ValueError(
+                    "Value of 'mean' for 'CondMultivariateGaussian' may not contain NaN values"
+                )
+
             # make sure that number of dimensions matches scope length
             if (
                 (mean.ndim == 1 and mean.shape[0] != len(self.scope.query))
@@ -208,10 +243,10 @@ class CondMultivariateGaussian(LeafNode):
                 raise ValueError(
                     f"Dimensions of 'mean' for 'CondMultivariateGaussian' should match scope size {len(self.scope.query)}, but was: {mean.shape}"
                 )
-        
-            if(mean.ndim == 2):
+
+            if mean.ndim == 2:
                 mean = mean.squeeze(0)
-        
+
             # make sure that dimensions of covariance matrix are correct
             if cov.ndim != 2 or (
                 cov.ndim == 2
@@ -238,11 +273,13 @@ class CondMultivariateGaussian(LeafNode):
                 # compute eigenvalues of cov variance matrix
                 eigvals = torch.linalg.eigvalsh(torch.matmul(cov, cov.T))
             else:
-                # compute eigenvalues (can use eigvalsh here since we already know matrix is symmetric)        
+                # compute eigenvalues (can use eigvalsh here since we already know matrix is symmetric)
                 eigvals = torch.linalg.eigvalsh(cov)
 
             if torch.any(eigvals < 0.0):
-                raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' is not symmetric positive semi-definite (contains negative real eigenvalues).")
+                raise ValueError(
+                    "Value of 'cov' for 'CondMultivariateGaussian' is not symmetric positive semi-definite (contains negative real eigenvalues)."
+                )
 
         if specified_tril:
             return mean, None, cov_tril
@@ -257,7 +294,7 @@ class CondMultivariateGaussian(LeafNode):
         .. math::
 
             \text{supp}(\text{MultivariateGaussian})=(-\infty,+\infty)^k
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
@@ -267,14 +304,16 @@ class CondMultivariateGaussian(LeafNode):
         Returns:
             Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scopes_out[0].query):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(
+            self.scopes_out[0].query
+        ):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scopes_out[0].query)}), but was: {scope_data.shape}"
             )
 
         # different to univariate distributions, cannot simply check via torch distribution's support due to possible incomplete data in multivariate case; therefore do it ourselves (not difficult here since support is R)
         valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
-        
+
         # check for infinite values (may return NaNs despite support)
         valid &= ~scope_data.isinf().sum(dim=1, keepdim=True).bool()
 
@@ -282,7 +321,12 @@ class CondMultivariateGaussian(LeafNode):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[CondMultivariateGaussian,CondGaussian,None]:
+def marginalize(
+    node: CondMultivariateGaussian,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[CondMultivariateGaussian, CondGaussian, None]:
     """Structural marginalization for ``CondMultivariateGaussian`` nodes in the ``torch`` backend.
 
     Structurally marginalizes the leaf node.
@@ -300,7 +344,7 @@ def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: 
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
             Unaltered node if module is not marginalized, marginalized uni- or multivariate Gaussian leaf node, or None if it is completely marginalized.
     """
@@ -318,7 +362,7 @@ def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: 
             marg_scope_ids.append(scope.query.index(rv))
 
     # return univariate Gaussian if one-dimensional
-    if(len(marg_scope) == 1):
+    if len(marg_scope) == 1:
         return CondGaussian(Scope(marg_scope))
     # entire node is marginalized over
     elif len(marg_scope) == 0:
@@ -329,7 +373,10 @@ def marginalize(node: CondMultivariateGaussian, marg_rvs: Iterable[int], prune: 
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BaseCondMultivariateGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> CondMultivariateGaussian:
+def toTorch(
+    node: BaseCondMultivariateGaussian,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> CondMultivariateGaussian:
     """Conversion for ``CondMultivariateGaussian`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -343,7 +390,10 @@ def toTorch(node: BaseCondMultivariateGaussian, dispatch_ctx: Optional[DispatchC
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: CondMultivariateGaussian, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondMultivariateGaussian:
+def toBase(
+    node: CondMultivariateGaussian,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> BaseCondMultivariateGaussian:
     """Conversion for ``CondMultivariateGaussian`` from ``torch`` backend to ``base`` backend.
 
     Args:

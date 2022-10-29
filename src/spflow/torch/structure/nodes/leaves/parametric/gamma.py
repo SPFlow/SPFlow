@@ -9,9 +9,14 @@ from typing import Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma as BaseGamma
+from spflow.base.structure.nodes.leaves.parametric.gamma import (
+    Gamma as BaseGamma,
+)
 
 
 class Gamma(LeafNode):
@@ -42,7 +47,10 @@ class Gamma(LeafNode):
         beta:
             Scalar PyTorch tensor representing the rate parameter (:math:`\beta`) of the Gamma distribution, greater than 0 (projected from ``beta_aux``).
     """
-    def __init__(self, scope: Scope, alpha: float=1.0, beta: float=1.0) -> None:
+
+    def __init__(
+        self, scope: Scope, alpha: float = 1.0, beta: float = 1.0
+    ) -> None:
         r"""Initializes ``Exponential`` leaf node.
 
         Args:
@@ -53,12 +61,16 @@ class Gamma(LeafNode):
                 Defaults to 1.0.
             beta:
                 Floating point value representing the rate parameter (:math:`\beta`), greater than 0.
-                Defaults to 1.0.    
+                Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Gamma' should be 1, but was {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Gamma' should be 1, but was {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Gamma' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Gamma' should be empty, but was {scope.evidence}."
+            )
 
         super(Gamma, self).__init__(scope=scope)
 
@@ -84,7 +96,7 @@ class Gamma(LeafNode):
     @property
     def dist(self) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
-        
+
         Returns:
             ``torch.distributions.Gamma`` instance.
         """
@@ -108,8 +120,12 @@ class Gamma(LeafNode):
                 f"Value of beta for Gamma distribution must be greater than 0, but was: {beta}"
             )
 
-        self.alpha_aux.data = proj_bounded_to_real(torch.tensor(float(alpha)), lb=0.0)
-        self.beta_aux.data = proj_bounded_to_real(torch.tensor(float(beta)), lb=0.0)
+        self.alpha_aux.data = proj_bounded_to_real(
+            torch.tensor(float(alpha)), lb=0.0
+        )
+        self.beta_aux.data = proj_bounded_to_real(
+            torch.tensor(float(beta)), lb=0.0
+        )
 
     def get_params(self) -> Tuple[float, float]:
         """Returns the parameters of the represented distribution.
@@ -149,13 +165,17 @@ class Gamma(LeafNode):
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        valid[~nan_mask & valid] &= (
+            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        )
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BaseGamma, dispatch_ctx: Optional[DispatchContext]=None) -> Gamma:
+def toTorch(
+    node: BaseGamma, dispatch_ctx: Optional[DispatchContext] = None
+) -> Gamma:
     """Conversion for ``Gamma`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -169,7 +189,9 @@ def toTorch(node: BaseGamma, dispatch_ctx: Optional[DispatchContext]=None) -> Ga
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: Gamma, dispatch_ctx: Optional[DispatchContext]=None) -> BaseGamma:
+def toBase(
+    node: Gamma, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseGamma:
     """Conversion for ``Gamma`` from ``torch`` backend to ``base`` backend.
 
     Args:

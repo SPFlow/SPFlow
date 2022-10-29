@@ -28,7 +28,8 @@ class Exponential(LeafNode):
         l:
             Floating point value representing the rate parameter (:math:`\lambda`) of the Exponential distribution (must be greater than 0; default 1.0).
     """
-    def __init__(self, scope: Scope, l: float=1.0) -> None:
+
+    def __init__(self, scope: Scope, l: float = 1.0) -> None:
         r"""Initializes ``Exponential`` leaf node.
 
         Args:
@@ -39,21 +40,25 @@ class Exponential(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Exponential' should be 1, but was {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Exponential' should be 1, but was {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Exponential' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Exponential' should be empty, but was {scope.evidence}."
+            )
 
         super(Exponential, self).__init__(scope=scope)
         self.set_params(l)
-    
+
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """
-        return expon(scale=1.0/self.l)
+        return expon(scale=1.0 / self.l)
 
     def set_params(self, l: float) -> None:
         r"""Sets the parameters for the represented distribution.
@@ -109,6 +114,6 @@ class Exponential(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if values are in valid range
-        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0)
+        valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] >= 0
 
         return valid

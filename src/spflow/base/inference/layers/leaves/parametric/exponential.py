@@ -4,12 +4,22 @@
 import numpy as np
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.base.structure.layers.leaves.parametric.exponential import ExponentialLayer
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.base.structure.layers.leaves.parametric.exponential import (
+    ExponentialLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(layer: ExponentialLayer, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(
+    layer: ExponentialLayer,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> np.ndarray:
     r"""Computes log-likelihoods for ``ExponentialLayer`` leaves in the ``base`` backend given input data.
 
     Log-likelihood for ``ExponentialLayer`` is given by the logarithm of its individual probability distribution functions (PDFs):
@@ -48,4 +58,15 @@ def log_likelihood(layer: ExponentialLayer, data: np.ndarray, check_support: boo
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return np.concatenate([log_likelihood(node, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for node in layer.nodes], axis=1)
+    return np.concatenate(
+        [
+            log_likelihood(
+                node,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for node in layer.nodes
+        ],
+        axis=1,
+    )

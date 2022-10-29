@@ -1,16 +1,26 @@
 # -*- coding: utf-8 -*-
 """Contains inference methods for ``CondExponential`` nodes for SPFlow in the ``base`` backend.
 """
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.base.structure.nodes.leaves.parametric.cond_exponential import CondExponential
+from spflow.base.structure.nodes.leaves.parametric.cond_exponential import (
+    CondExponential,
+)
 
 from typing import Optional
 import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(node: CondExponential, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(
+    node: CondExponential,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> np.ndarray:
     r"""Computes log-likelihoods for ``CondExponential`` node given input data in the ``base`` backend.
 
     Log-likelihood for ``CondExponential`` is given by the logarithm of its probability distribution function (PDF):
@@ -61,7 +71,7 @@ def log_likelihood(node: CondExponential, data: np.ndarray, check_support: bool=
     if check_support:
         # create masked based on distribution's support
         valid_ids = node.check_support(data[~marg_ids]).squeeze(1)
-    
+
         if not all(valid_ids):
             raise ValueError(
                 f"Encountered data instances that are not in the support of the Exponential distribution."

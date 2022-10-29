@@ -2,8 +2,14 @@
 """Contains sampling methods for RAT-SPNs for SPFlow in the ``base`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.meta.contexts.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.contexts.sampling_context import (
+    SamplingContext,
+    init_default_sampling_context,
+)
 from spflow.base.structure.rat.rat_spn import RatSPN
 
 import numpy as np
@@ -11,7 +17,13 @@ from typing import Optional
 
 
 @dispatch  # type: ignore
-def sample(rat_spn: RatSPN, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None, sampling_ctx: Optional[SamplingContext]=None) -> np.ndarray:
+def sample(
+    rat_spn: RatSPN,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> np.ndarray:
     r"""Samples from RAT-SPNs in the ``base`` backend given potential evidence.
 
     Missing values (i.e., NaN) are filled with sampled values.
@@ -37,4 +49,10 @@ def sample(rat_spn: RatSPN, data: np.ndarray, check_support: bool=True, dispatch
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    return sample(rat_spn.root_node, data, check_support=check_support, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)
+    return sample(
+        rat_spn.root_node,
+        data,
+        check_support=check_support,
+        dispatch_ctx=dispatch_ctx,
+        sampling_ctx=sampling_ctx,
+    )

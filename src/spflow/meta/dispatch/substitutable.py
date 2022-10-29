@@ -10,7 +10,10 @@ Typical usage example:
 from typing import Callable, Any
 from functools import wraps
 from spflow.meta.structure.module import MetaModule
-from spflow.meta.contexts.dispatch_context import DispatchContext, default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    default_dispatch_context,
+)
 
 
 def substitutable(f) -> Callable:
@@ -22,6 +25,7 @@ def substitutable(f) -> Callable:
     Returns:
         Wrapped function that automatically checks for alternative functions.
     """
+
     @wraps(f)
     def substitutable_f(*args, **kwargs) -> Any:
 
@@ -31,7 +35,9 @@ def substitutable(f) -> Callable:
         key = args[0]
 
         if not isinstance(key, MetaModule):
-            raise ValueError(f"First argument is expected to be of type {MetaModule}, but was {type(key)}.")
+            raise ValueError(
+                f"First argument is expected to be of type {MetaModule}, but was {type(key)}."
+            )
 
         # ----- retrieve DispatchContext -----
 
@@ -45,16 +51,18 @@ def substitutable(f) -> Callable:
 
             for arg in args:
                 if isinstance(arg, DispatchContext):
-                    
+
                     # check if another dispatch context has been found before
                     if dispatch_ctx is not None:
-                        raise LookupError(f"Multiple positional candidates of type {DispatchContext} found. Cannot determine which one to use.")
-                    
+                        raise LookupError(
+                            f"Multiple positional candidates of type {DispatchContext} found. Cannot determine which one to use."
+                        )
+
                     dispatch_ctx = kwargs["dispatch_ctx"] = arg
                 else:
                     # append argument to list of non-DispatchContext arguments
                     _args.append(arg)
-            
+
             # replace args with argument list without dispatch context (makes retrieving it easier in subsequent recursions)
             args = _args
 
@@ -72,5 +80,5 @@ def substitutable(f) -> Callable:
             _f = dispatch_ctx.funcs[type(key)]
 
         return _f(*args, **kwargs)
-    
+
     return substitutable_f

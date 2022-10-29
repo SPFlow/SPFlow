@@ -7,11 +7,18 @@ import numpy as np
 import torch
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric
-from spflow.base.structure.layers.leaves.parametric.hypergeometric import HypergeometricLayer as BaseHypergeometricLayer
+from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric,
+)
+from spflow.base.structure.layers.leaves.parametric.hypergeometric import (
+    HypergeometricLayer as BaseHypergeometricLayer,
+)
 
 
 class HypergeometricLayer(Module):
@@ -38,7 +45,16 @@ class HypergeometricLayer(Module):
         n:
             One-dimensional PyTorch tensor specifying the numbers of draws, greater of equal to zero and less than or equal to N.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], N: Union[int, List[int], np.ndarray], M: Union[int, List[int], np.ndarray], n: Union[int, List[int], np.ndarray], n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        N: Union[int, List[int], np.ndarray],
+        M: Union[int, List[int], np.ndarray],
+        n: Union[int, List[int], np.ndarray],
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         """Initializes ``HypergeometricLayer`` object.
 
         Args:
@@ -60,13 +76,17 @@ class HypergeometricLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'HypergeometricLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'HypergeometricLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError("List of scopes for 'HypergeometricLayer' was empty.")
+                raise ValueError(
+                    "List of scopes for 'HypergeometricLayer' was empty."
+                )
 
             self._n_out = len(scope)
 
@@ -75,7 +95,7 @@ class HypergeometricLayer(Module):
                 raise ValueError("Size of query scope must be 1 for all nodes.")
 
         super(HypergeometricLayer, self).__init__(children=[], **kwargs)
-    
+
         # register number of trials n as torch buffer (should not be changed)
         self.register_buffer("N", torch.empty(size=[]))
         self.register_buffer("M", torch.empty(size=[]))
@@ -83,17 +103,24 @@ class HypergeometricLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(lambda s1, s2: s1.union(s2), self.scopes_out)
+        self.combined_scope = reduce(
+            lambda s1, s2: s1.union(s2), self.scopes_out
+        )
 
         # parse weights
         self.set_params(N, M, n)
-    
+
     @property
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
-    def set_params(self, N: Union[int, List[int], np.ndarray, torch.Tensor], M: Union[int, List[int], np.ndarray, torch.Tensor], n: Union[int, List[int], np.ndarray, torch.Tensor]) -> None:
+
+    def set_params(
+        self,
+        N: Union[int, List[int], np.ndarray, torch.Tensor],
+        M: Union[int, List[int], np.ndarray, torch.Tensor],
+        n: Union[int, List[int], np.ndarray, torch.Tensor],
+    ) -> None:
         """Sets the parameters for the represented distributions.
 
         Args:
@@ -111,28 +138,40 @@ class HypergeometricLayer(Module):
             N = torch.tensor([N for _ in range(self.n_out)])
         elif isinstance(N, list) or isinstance(N, np.ndarray):
             N = torch.tensor(N)
-        if(N.ndim != 1):
-            raise ValueError(f"Torch tensor of 'N' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {N.ndim}-dimensional.")
-        if(N.shape[0] != self.n_out):
-            raise ValueError(f"Length of torch tensor of 'N' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {N.shape[0]}")
+        if N.ndim != 1:
+            raise ValueError(
+                f"Torch tensor of 'N' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {N.ndim}-dimensional."
+            )
+        if N.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of torch tensor of 'N' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {N.shape[0]}"
+            )
 
         if isinstance(M, int) or isinstance(M, float):
             M = torch.tensor([M for _ in range(self.n_out)])
         elif isinstance(n, list) or isinstance(M, np.ndarray):
             M = torch.tensor(M)
-        if(M.ndim != 1):
-            raise ValueError(f"Torch tensor of 'M' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {M.ndim}-dimensional.")
-        if(M.shape[0] != self.n_out):
-            raise ValueError(f"Length of torch tensor of 'M' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {M.shape[0]}")
+        if M.ndim != 1:
+            raise ValueError(
+                f"Torch tensor of 'M' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {M.ndim}-dimensional."
+            )
+        if M.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of torch tensor of 'M' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {M.shape[0]}"
+            )
 
         if isinstance(n, int) or isinstance(n, float):
             n = torch.tensor([n for _ in range(self.n_out)])
         elif isinstance(n, list) or isinstance(n, np.ndarray):
             n = torch.tensor(n)
-        if(n.ndim != 1):
-            raise ValueError(f"Torch tensor of 'n' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional.")
-        if(n.shape[0] != self.n_out):
-            raise ValueError(f"Length of torch tensor of 'n' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {n.shape[0]}")
+        if n.ndim != 1:
+            raise ValueError(
+                f"Torch tensor of 'n' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional."
+            )
+        if n.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of torch tensor of 'n' values for 'HypergeometricLayer' must match number of output nodes {self.n_out}, but is {n.shape[0]}"
+            )
 
         if torch.any(N < 0) or not torch.all(torch.isfinite(N)):
             raise ValueError(
@@ -143,7 +182,11 @@ class HypergeometricLayer(Module):
                 f"Value of 'N' for 'HypergeometricLayer' must be (equal to) an integer value, but was: {N}"
             )
 
-        if torch.any(M < 0) or torch.any(M > N) or not torch.all(torch.isfinite(M)):
+        if (
+            torch.any(M < 0)
+            or torch.any(M > N)
+            or not torch.all(torch.isfinite(M))
+        ):
             raise ValueError(
                 f"Values of 'M' for 'HypergeometricLayer' must be greater of equal to 0 and less or equal to 'N', but was: {M}"
             )
@@ -152,7 +195,11 @@ class HypergeometricLayer(Module):
                 f"Values of 'M' for 'HypergeometricLayer' must be (equal to) an integer value, but was: {M}"
             )
 
-        if torch.any(n < 0) or torch.any(n > N) or not torch.all(torch.isfinite(n)):
+        if (
+            torch.any(n < 0)
+            or torch.any(n > N)
+            or not torch.all(torch.isfinite(n))
+        ):
             raise ValueError(
                 f"Value of 'n' for 'HypergeometricLayer' must be greater of equal to 0 and less or equal to 'N', but was: {n}"
             )
@@ -167,20 +214,26 @@ class HypergeometricLayer(Module):
             # at least one such element exists
             N_values = N[node_scopes == node_scope]
             if not torch.all(N_values == N_values[0]):
-                raise ValueError("All values of 'N' for 'HypergeometricLayer' over the same scope must be identical.")
+                raise ValueError(
+                    "All values of 'N' for 'HypergeometricLayer' over the same scope must be identical."
+                )
             # at least one such element exists
             M_values = M[node_scopes == node_scope]
             if not torch.all(M_values == M_values[0]):
-                raise ValueError("All values of 'M' for 'HypergeometricLayer' over the same scope must be identical.")
+                raise ValueError(
+                    "All values of 'M' for 'HypergeometricLayer' over the same scope must be identical."
+                )
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not torch.all(n_values == n_values[0]):
-                raise ValueError("All values of 'n' for 'HypergeometricLayer' over the same scope must be identical.")
+                raise ValueError(
+                    "All values of 'n' for 'HypergeometricLayer' over the same scope must be identical."
+                )
 
         self.N.data = N
         self.M.data = M
         self.n.data = n
-    
+
     def get_params(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
@@ -188,8 +241,10 @@ class HypergeometricLayer(Module):
             Thee one-dimensional PyTorch tensors representing the total numbers of entities, the numbers of entities of interest and the numbers of draws.
         """
         return self.N, self.M, self.n
-    
-    def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
+
+    def check_support(
+        self, data: torch.Tensor, node_ids: Optional[List[int]] = None
+    ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Hypergeometric distributions, which are:
@@ -219,7 +274,9 @@ class HypergeometricLayer(Module):
             node_ids = list(range(self.n_out))
 
         # all query scopes are univariate
-        scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
+        scope_data = data[
+            :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
+        ]
 
         valid = torch.ones(scope_data.shape, dtype=torch.bool)
 
@@ -238,13 +295,29 @@ class HypergeometricLayer(Module):
         n_nodes = self.n[node_ids_tensor]
 
         # check if values are in valid range
-        valid[~nan_mask & valid] &= ((scope_data >= torch.max(torch.vstack([torch.zeros(scope_data.shape[1]), n_nodes + M_nodes - N_nodes]), dim=0)[0].unsqueeze(0)) & (  # type: ignore
-            scope_data <= torch.min(torch.vstack([n_nodes, M_nodes]), dim=0)[0].unsqueeze(0)  # type: ignore
-        ))[~nan_mask & valid]
+        valid[~nan_mask & valid] &= (
+            (
+                scope_data
+                >= torch.max(
+                    torch.vstack(
+                        [
+                            torch.zeros(scope_data.shape[1]),
+                            n_nodes + M_nodes - N_nodes,
+                        ]
+                    ),
+                    dim=0,
+                )[0].unsqueeze(0)
+            )
+            & (  # type: ignore
+                scope_data <= torch.min(torch.vstack([n_nodes, M_nodes]), dim=0)[0].unsqueeze(0)  # type: ignore
+            )
+        )[~nan_mask & valid]
 
         return valid
-    
-    def log_prob(self, k: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
+
+    def log_prob(
+        self, k: torch.Tensor, node_ids: Optional[List[int]] = None
+    ) -> torch.Tensor:
         """Computes the log-likelihood for specified input data.
 
         The log-likelihoods of the Hypergeometric distribution are computed according to the logarithm of its probability mass function (PMF).
@@ -263,7 +336,7 @@ class HypergeometricLayer(Module):
         """
         if node_ids is None:
             node_ids = list(range(self.n_out))
-        
+
         node_ids_tensor = torch.tensor(node_ids)
 
         N = self.N[node_ids_tensor]
@@ -298,7 +371,7 @@ class HypergeometricLayer(Module):
             + torch.lgamma(N - n + 1)  # type: ignore
             + torch.lgamma(n + 1)  # type: ignore
             - lgamma_N_p_2  # type: ignore
-            - torch.lgamma(k + 1) # .float()
+            - torch.lgamma(k + 1)  # .float()
             - torch.lgamma(M - k + 1)
             + lgamma_M_p_2  # type: ignore
             - torch.lgamma(n_minus_k + 1)
@@ -313,7 +386,12 @@ class HypergeometricLayer(Module):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: HypergeometricLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[HypergeometricLayer, Hypergeometric, None]:
+def marginalize(
+    layer: HypergeometricLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[HypergeometricLayer, Hypergeometric, None]:
     """Structural marginalization for ``HypergeometricLayer`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -330,7 +408,7 @@ def marginalize(layer: HypergeometricLayer, marg_rvs: Iterable[int], prune: bool
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -349,18 +427,31 @@ def marginalize(layer: HypergeometricLayer, marg_rvs: Iterable[int], prune: bool
         if len(marg_scope) == 1:
             marginalized_node_ids.append(i)
             marginalized_scopes.append(scope)
-    
+
     if len(marginalized_node_ids) == 0:
         return None
     elif len(marginalized_node_ids) == 1 and prune:
         node_id = marginalized_node_ids.pop()
-        return Hypergeometric(scope=marginalized_scopes[0], N=layer.N[node_id].item(), M=layer.M[node_id].item(), n=layer.n[node_id].item())
+        return Hypergeometric(
+            scope=marginalized_scopes[0],
+            N=layer.N[node_id].item(),
+            M=layer.M[node_id].item(),
+            n=layer.n[node_id].item(),
+        )
     else:
-        return HypergeometricLayer(scope=marginalized_scopes, N=layer.N[marginalized_node_ids], M=layer.M[marginalized_node_ids], n=layer.n[marginalized_node_ids])
+        return HypergeometricLayer(
+            scope=marginalized_scopes,
+            N=layer.N[marginalized_node_ids],
+            M=layer.M[marginalized_node_ids],
+            n=layer.n[marginalized_node_ids],
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(layer: BaseHypergeometricLayer, dispatch_ctx: Optional[DispatchContext]=None) -> HypergeometricLayer:
+def toTorch(
+    layer: BaseHypergeometricLayer,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> HypergeometricLayer:
     """Conversion for ``HypergeometricLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -370,11 +461,15 @@ def toTorch(layer: BaseHypergeometricLayer, dispatch_ctx: Optional[DispatchConte
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return HypergeometricLayer(scope=layer.scopes_out, N=layer.N, M=layer.M, n=layer.n)
+    return HypergeometricLayer(
+        scope=layer.scopes_out, N=layer.N, M=layer.M, n=layer.n
+    )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(layer: HypergeometricLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseHypergeometricLayer:
+def toBase(
+    layer: HypergeometricLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseHypergeometricLayer:
     """Conversion for ``HypergeometricLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -384,4 +479,9 @@ def toBase(layer: HypergeometricLayer, dispatch_ctx: Optional[DispatchContext]=N
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseHypergeometricLayer(scope=layer.scopes_out, N=layer.N.numpy(), M=layer.M.numpy(), n=layer.n.numpy())
+    return BaseHypergeometricLayer(
+        scope=layer.scopes_out,
+        N=layer.N.numpy(),
+        M=layer.M.numpy(),
+        n=layer.n.numpy(),
+    )

@@ -11,7 +11,10 @@ from copy import deepcopy
 import numpy as np
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
 
@@ -29,7 +32,10 @@ class Node(Module, ABC):
         scopes_out:
             List of scopes representing the output scopes.
     """
-    def __init__(self, children: Optional[List[Module]]=None, **kwargs) -> None:
+
+    def __init__(
+        self, children: Optional[List[Module]] = None, **kwargs
+    ) -> None:
         r"""Initializes ``Node`` object.
 
         Initializes node by correctly setting its children.
@@ -38,7 +44,7 @@ class Node(Module, ABC):
             children:
                 Optional list of modules that are children to the node.
         """
-        if(children is None):
+        if children is None:
             children = []
 
         super(Node, self).__init__(children=children, **kwargs)
@@ -47,7 +53,7 @@ class Node(Module, ABC):
     def n_out(self) -> int:
         """Returns the number of outputs for this node. Returns one since nodes represent single outputs."""
         return 1
-    
+
     @property
     def scopes_out(self) -> List[Scope]:
         """Returns the output scopes this node represents."""
@@ -55,7 +61,12 @@ class Node(Module, ABC):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(node: Node, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[Node,None]:
+def marginalize(
+    node: Node,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[Node, None]:
     """Structural marginalization for node objects in the ``base`` backend.
 
     Structurally marginalizes the specified node module.
@@ -73,7 +84,7 @@ def marginalize(node: Node, marg_rvs: Iterable[int], prune: bool=True, dispatch_
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered node if module is not marginalized or None if it is completely marginalized.
 
@@ -89,11 +100,13 @@ def marginalize(node: Node, marg_rvs: Iterable[int], prune: bool=True, dispatch_
     mutual_rvs = set(node_scope.query).intersection(set(marg_rvs))
 
     # node scope is being fully marginalized
-    if(len(mutual_rvs) == len(node_scope.query)):
+    if len(mutual_rvs) == len(node_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
-        raise NotImplementedError("Partial marginalization of 'Node' is not implemented for generic nodes. Dispatch an appropriate implementation for a specific node type.")
+        raise NotImplementedError(
+            "Partial marginalization of 'Node' is not implemented for generic nodes. Dispatch an appropriate implementation for a specific node type."
+        )
     else:
         return deepcopy(node)
 
@@ -113,7 +126,12 @@ class SPNSumNode(Node):
         scopes_out:
             List of scopes representing the output scopes.
     """
-    def __init__(self, children: List[Module], weights: Optional[Union[np.ndarray, List[float]]]=None) -> None:
+
+    def __init__(
+        self,
+        children: List[Module],
+        weights: Optional[Union[np.ndarray, List[float]]] = None,
+    ) -> None:
         r"""Initializes ``SPNSumNode`` object.
 
         Args:
@@ -123,25 +141,29 @@ class SPNSumNode(Node):
             weights:
                 Optional list of floats, or one-dimensional NumPy array containing non-negative weights for each input, summing up to one.
                 Defaults to 'None' in which case weights are initialized to random weights in (0,1) and normalized.
-        
+
         Raises:
             ValueError: Invalid arguments.
         """
         super(SPNSumNode, self).__init__(children=children)
 
         if not children:
-            raise ValueError("'SPNSumNode' requires at least one child to be specified.")
+            raise ValueError(
+                "'SPNSumNode' requires at least one child to be specified."
+            )
 
         scope = None
 
         for child in children:
             for s in child.scopes_out:
-                if(scope is None):
+                if scope is None:
                     scope = s
                 else:
                     if not scope.equal_query(s):
-                        raise ValueError(f"'SPNSumNode' requires child scopes to have the same query variables.")
-                
+                        raise ValueError(
+                            f"'SPNSumNode' requires child scopes to have the same query variables."
+                        )
+
                 scope = scope.union(s)
 
         self.scope = scope
@@ -172,20 +194,29 @@ class SPNSumNode(Node):
         """
         if isinstance(values, list):
             values = np.array(values)
-        if(values.ndim != 1):
-            raise ValueError(f"Numpy array of weight values for 'SPNSumNode' is expected to be one-dimensional, but is {values.ndim}-dimensional.")
+        if values.ndim != 1:
+            raise ValueError(
+                f"Numpy array of weight values for 'SPNSumNode' is expected to be one-dimensional, but is {values.ndim}-dimensional."
+            )
         if not np.all(values > 0):
             raise ValueError("Weights for 'SPNSumNode' must be all positive.")
         if not np.isclose(values.sum(), 1.0):
             raise ValueError("Weights for 'SPNSumNode' must sum up to one.")
         if not (len(values) == self.n_in):
-            raise ValueError("Number of weights for 'SPNSumNode' does not match total number of child outputs.")
+            raise ValueError(
+                "Number of weights for 'SPNSumNode' does not match total number of child outputs."
+            )
 
         self._weights = values
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumNode,None]:
+def marginalize(
+    sum_node: SPNSumNode,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[SPNSumNode, None]:
     r"""Structural marginalization for ``SPNSumNode`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified sum node.
@@ -203,7 +234,7 @@ def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True,
             Has no effect when marginalizing sum nodes. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         (Marginalized) sum node or None if it is completely marginalized.
     """
@@ -216,7 +247,7 @@ def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True,
     mutual_rvs = set(node_scope.query).intersection(set(marg_rvs))
 
     # node scope is being fully marginalized
-    if(len(mutual_rvs) == len(node_scope.query)):
+    if len(mutual_rvs) == len(node_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
@@ -224,12 +255,14 @@ def marginalize(sum_node: SPNSumNode, marg_rvs: Iterable[int], prune: bool=True,
 
         # marginalize child modules
         for child in sum_node.children:
-            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+            marg_child = marginalize(
+                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
+            )
 
             # if marginalized child is not None
             if marg_child:
                 marg_children.append(marg_child)
-        
+
         return SPNSumNode(children=marg_children, weights=sum_node.weights)
     else:
         return deepcopy(sum_node)
@@ -248,6 +281,7 @@ class SPNProductNode(Node):
         scopes_out:
             List of scopes representing the output scopes.
     """
+
     def __init__(self, children: List[Module]) -> None:
         r"""Initializes ``SPNProductNode`` object.
 
@@ -261,14 +295,18 @@ class SPNProductNode(Node):
         super(SPNProductNode, self).__init__(children=children)
 
         if not children:
-            raise ValueError("'SPNProductNode' requires at least one child to be specified.")
+            raise ValueError(
+                "'SPNProductNode' requires at least one child to be specified."
+            )
 
         scope = Scope()
 
         for child in children:
             for s in child.scopes_out:
                 if not scope.isdisjoint(s):
-                    raise ValueError(f"'SPNProductNode' requires child scopes to be pair-wise disjoint.")
+                    raise ValueError(
+                        f"'SPNProductNode' requires child scopes to be pair-wise disjoint."
+                    )
 
                 scope = scope.union(s)
 
@@ -276,7 +314,12 @@ class SPNProductNode(Node):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNProductNode,Node,None]:
+def marginalize(
+    product_node: SPNProductNode,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[SPNProductNode, Node, None]:
     r"""Structural marginalization for ``SPNProductNode`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified product node.
@@ -296,7 +339,7 @@ def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bo
             Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         (Marginalized) product node or None if it is completely marginalized.
     """
@@ -309,7 +352,7 @@ def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bo
     mutual_rvs = set(node_scope.query).intersection(set(marg_rvs))
 
     # node scope is being fully marginalized
-    if(len(mutual_rvs) == len(node_scope.query)):
+    if len(mutual_rvs) == len(node_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
@@ -317,14 +360,16 @@ def marginalize(product_node: SPNProductNode, marg_rvs: Iterable[int], prune: bo
 
         # marginalize child modules
         for child in product_node.children:
-            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+            marg_child = marginalize(
+                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
+            )
 
             # if marginalized child is not None
             if marg_child:
                 marg_children.append(marg_child)
-        
+
         # if product node has only one child with a single output after marginalization and pruning is true, return child directly
-        if(len(marg_children) == 1 and marg_children[0].n_out == 1 and prune):
+        if len(marg_children) == 1 and marg_children[0].n_out == 1 and prune:
             return marg_children[0]
         else:
             return SPNProductNode(marg_children)
@@ -336,13 +381,14 @@ class LeafNode(Node, ABC):
     """Abstract base class for leaf nodes in the ``base`` backend.
 
     All valid SPFlow leaf nodes in the 'base' backend should inherit from this class or a subclass of it.
-    
+
     Attributes:
         n_out:
             Integer indicating the number of outputs. One for nodes.
         scopes_out:
             List of scopes representing the output scopes.
     """
+
     def __init__(self, scope: Scope, **kwargs) -> None:
         r"""Initializes ``LeafNode`` object.
 

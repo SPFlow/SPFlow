@@ -4,12 +4,20 @@
 import torch
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.leaves.parametric.cond_gamma import CondGamma
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(leaf: CondGamma, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    leaf: CondGamma,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     r"""Computes log-likelihoods for ``CondGamma`` node given input data in the ``torch`` backend.
 
     Log-likelihood for ``CondGamma`` is given by the logarithm of its probability distribution function (PDF):

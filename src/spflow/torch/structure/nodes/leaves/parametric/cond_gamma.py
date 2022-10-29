@@ -6,9 +6,14 @@ import torch.distributions as D
 from typing import Tuple, Optional, Callable
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.cond_gamma import CondGamma as BaseCondGamma
+from spflow.base.structure.nodes.leaves.parametric.cond_gamma import (
+    CondGamma as BaseCondGamma,
+)
 
 
 class CondGamma(LeafNode):
@@ -33,7 +38,8 @@ class CondGamma(LeafNode):
             Its output should be a dictionary containing ``alpha``,``beta`` as a key, and the value should be
             a floating points, scalar NumPy arrays or scalar PyTorch tensors representing the shape and rate parameters, respectively.
     """
-    def __init__(self, scope: Scope, cond_f: Optional[Callable]=None) -> None:
+
+    def __init__(self, scope: Scope, cond_f: Optional[Callable] = None) -> None:
         r"""Initializes ``CondExponential`` leaf node.
 
         Args:
@@ -45,15 +51,19 @@ class CondGamma(LeafNode):
                 a floating points, scalar NumPy arrays or scalar PyTorch tensors representing the shape and rate parameters, respectively.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for CondGamma should be 1, but was {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for CondGamma should be 1, but was {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for CondGamma should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for CondGamma should be empty, but was {scope.evidence}."
+            )
 
         super(CondGamma, self).__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 
-    def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+    def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         r"""Sets the function to retrieve the node's conditonal parameter.
 
         Args:
@@ -66,7 +76,7 @@ class CondGamma(LeafNode):
 
     def dist(self, alpha: torch.Tensor, beta: torch.Tensor) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
-        
+
         Args:
             alpha:
                 Scalar PyTorch tensor representing the shape parameter (:math:`\alpha`), greater than 0.
@@ -77,10 +87,12 @@ class CondGamma(LeafNode):
             ``torch.distributions.Gamma`` instance.
         """
         return D.Gamma(concentration=alpha, rate=beta)
-    
-    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor,torch.Tensor]:
+
+    def retrieve_params(
+        self, data: torch.Tensor, dispatch_ctx: DispatchContext
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Retrieves the conditional parameter of the leaf node.
-    
+
         First, checks if conditional parameters (``alpha``,``beta``) is passed as an additional argument in the dispatch context.
         Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameters.
         Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameters.
@@ -118,14 +130,16 @@ class CondGamma(LeafNode):
 
         # if neither 'alpha' or 'beta' nor 'cond_f' is specified (via node or arguments)
         if (alpha is None or beta is None) and cond_f is None:
-            raise ValueError("'CondGamma' requires either 'alpha' and 'beta' or 'cond_f' to retrieve 'alpha', 'beta' to be specified.")
+            raise ValueError(
+                "'CondGamma' requires either 'alpha' and 'beta' or 'cond_f' to retrieve 'alpha', 'beta' to be specified."
+            )
 
         # if 'alpha' or 'beta' not already specified, retrieve them
         if alpha is None or beta is None:
             params = cond_f(data)
-            alpha = params['alpha']
-            beta = params['beta']
-        
+            alpha = params["alpha"]
+            beta = params["beta"]
+
         if isinstance(alpha, float):
             alpha = torch.tensor(alpha)
         if isinstance(beta, float):
@@ -173,13 +187,17 @@ class CondGamma(LeafNode):
         valid[~nan_mask] = self.dist(alpha=torch.tensor(1.0), beta=torch.tensor(1.0)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        valid[~nan_mask & valid] &= (
+            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        )
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BaseCondGamma, dispatch_ctx: Optional[DispatchContext]=None) -> CondGamma:
+def toTorch(
+    node: BaseCondGamma, dispatch_ctx: Optional[DispatchContext] = None
+) -> CondGamma:
     """Conversion for ``CondGamma`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -193,7 +211,9 @@ def toTorch(node: BaseCondGamma, dispatch_ctx: Optional[DispatchContext]=None) -
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: CondGamma, dispatch_ctx: Optional[DispatchContext]=None) -> BaseCondGamma:
+def toBase(
+    node: CondGamma, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseCondGamma:
     """Conversion for ``CondGamma`` from ``torch`` backend to ``base`` backend.
 
     Args:

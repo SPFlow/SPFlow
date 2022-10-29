@@ -10,7 +10,10 @@ import numpy as np
 import itertools
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module, NestedModule
 from spflow.base.structure.nodes.node import SPNProductNode, SPNSumNode
@@ -34,7 +37,16 @@ class SPNSumLayer(NestedModule):
         nodes:
             List of ``SPNSumNode`` objects for the nodes in this layer.
     """
-    def __init__(self, n_nodes: int, children: List[Module], weights: Optional[Union[np.ndarray, List[List[float]], List[float]]]=None, **kwargs) -> None:
+
+    def __init__(
+        self,
+        n_nodes: int,
+        children: List[Module],
+        weights: Optional[
+            Union[np.ndarray, List[List[float]], List[float]]
+        ] = None,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``SPNSumLayer`` object.
 
         Args:
@@ -53,11 +65,15 @@ class SPNSumLayer(NestedModule):
         Raises:
             ValueError: Invalid arguments.
         """
-        if(n_nodes < 1):
-            raise ValueError("Number of nodes for 'SPNSumLayer' must be greater of equal to 1.")
+        if n_nodes < 1:
+            raise ValueError(
+                "Number of nodes for 'SPNSumLayer' must be greater of equal to 1."
+            )
 
         if len(children) == 0:
-            raise ValueError("'SPNSumLayer' requires at least one child to be specified.")
+            raise ValueError(
+                "'SPNSumLayer' requires at least one child to be specified."
+            )
 
         super(SPNSumLayer, self).__init__(children=children, **kwargs)
 
@@ -71,7 +87,7 @@ class SPNSumLayer(NestedModule):
         self.nodes = [SPNSumNode(children=[ph]) for _ in range(n_nodes)]
 
         # parse weights
-        if(weights is not None):
+        if weights is not None:
             self.weights = weights
 
         # compute scope
@@ -81,7 +97,7 @@ class SPNSumLayer(NestedModule):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
+
     @property
     def scopes_out(self) -> List[Scope]:
         """Returns the output scopes this layer represents."""
@@ -93,7 +109,9 @@ class SPNSumLayer(NestedModule):
         return np.vstack([node.weights for node in self.nodes])
 
     @weights.setter
-    def weights(self, values: Union[np.ndarray, List[List[float]], List[float]]) -> None:
+    def weights(
+        self, values: Union[np.ndarray, List[List[float]], List[float]]
+    ) -> None:
         """Sets the weights of all nodes to specified values.
 
         Args:
@@ -109,35 +127,48 @@ class SPNSumLayer(NestedModule):
         """
         if isinstance(values, list):
             values = np.array(values)
-        if(values.ndim != 1 and values.ndim != 2):
-            raise ValueError(f"Numpy array of weight values for 'SPNSumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional.")
+        if values.ndim != 1 and values.ndim != 2:
+            raise ValueError(
+                f"Numpy array of weight values for 'SPNSumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional."
+            )
         if not np.all(values > 0):
             raise ValueError("Weights for 'SPNSumLayer' must be all positive.")
         if not np.allclose(values.sum(axis=-1), 1.0):
-            raise ValueError("Weights for 'SPNSumLayer' must sum up to one in last dimension.")
+            raise ValueError(
+                "Weights for 'SPNSumLayer' must sum up to one in last dimension."
+            )
         if not (values.shape[-1] == self.n_in):
-            raise ValueError("Number of weights for 'SPNSumLayer' in last dimension does not match total number of child outputs.")
-        
+            raise ValueError(
+                "Number of weights for 'SPNSumLayer' in last dimension does not match total number of child outputs."
+            )
+
         # same weights for all sum nodes
-        if(values.ndim == 1):
+        if values.ndim == 1:
             for node in self.nodes:
                 node.weights = values.copy()
-        if(values.ndim == 2):
+        if values.ndim == 2:
             # same weights for all sum nodes
-            if(values.shape[0] == 1):
+            if values.shape[0] == 1:
                 for node in self.nodes:
                     node.weights = values.squeeze(0).copy()
             # different weights for all sum nodes
-            elif(values.shape[0] == self.n_out):
+            elif values.shape[0] == self.n_out:
                 for node, node_values in zip(self.nodes, values):
                     node.weights = node_values.copy()
             # incorrect number of specified weights
             else:
-                raise ValueError(f"Incorrect number of weights for 'SPNSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}.")
+                raise ValueError(
+                    f"Incorrect number of weights for 'SPNSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
+                )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNSumLayer, Module, None]:
+def marginalize(
+    layer: SPNSumLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[SPNSumLayer, Module, None]:
     """Structural marginalization for SPN-like sum layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -155,7 +186,7 @@ def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, d
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         (Marginalized) sum layer or None if it is completely marginalized.
     """
@@ -168,7 +199,7 @@ def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, d
     mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
     # node scope is being fully marginalized
-    if(len(mutual_rvs) == len(layer_scope.query)):
+    if len(mutual_rvs) == len(layer_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
@@ -177,13 +208,17 @@ def marginalize(layer: SPNSumLayer, marg_rvs: Iterable[int], prune: bool=True, d
 
         # marginalize child modules
         for child in layer.children:
-            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+            marg_child = marginalize(
+                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
+            )
 
             # if marginalized child is not None
             if marg_child:
                 marg_children.append(marg_child)
-        
-        return SPNSumLayer(n_nodes=layer.n_out, children=marg_children, weights=layer.weights)
+
+        return SPNSumLayer(
+            n_nodes=layer.n_out, children=marg_children, weights=layer.weights
+        )
     else:
         return deepcopy(layer)
 
@@ -203,6 +238,7 @@ class SPNProductLayer(NestedModule):
         nodes:
             List of ``SPNProductNode`` objects for the nodes in this layer.
     """
+
     def __init__(self, n_nodes: int, children: List[Module], **kwargs) -> None:
         r"""Initializes ``SPNProductLayer`` object.
 
@@ -215,18 +251,24 @@ class SPNProductLayer(NestedModule):
         Raises:
             ValueError: Invalid arguments.
         """
-        if(n_nodes < 1):
-            raise ValueError("Number of nodes for 'SPNProductLayer' must be greater of equal to 1.")
+        if n_nodes < 1:
+            raise ValueError(
+                "Number of nodes for 'SPNProductLayer' must be greater of equal to 1."
+            )
 
         self._n_out = n_nodes
 
         if len(children) == 0:
-            raise ValueError("'SPNProductLayer' requires at least one child to be specified.")
+            raise ValueError(
+                "'SPNProductLayer' requires at least one child to be specified."
+            )
 
         super(SPNProductLayer, self).__init__(children=children, **kwargs)
-        
+
         # create input placeholder
-        ph = self.create_placeholder(list(range(sum(child.n_out for child in self.children))))
+        ph = self.create_placeholder(
+            list(range(sum(child.n_out for child in self.children)))
+        )
         # create prodcut nodes
         self.nodes = [SPNProductNode(children=[ph]) for _ in range(n_nodes)]
 
@@ -236,7 +278,7 @@ class SPNProductLayer(NestedModule):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
+
     @property
     def scopes_out(self) -> List[Scope]:
         """Returns the output scopes this layer represents."""
@@ -244,7 +286,12 @@ class SPNProductLayer(NestedModule):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNProductLayer, Module, None]:
+def marginalize(
+    layer: SPNProductLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[SPNProductLayer, Module, None]:
     """Structural marginalization for SPN-like product layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -264,7 +311,7 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
             Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         (Marginalized) product layer or None if it is completely marginalized.
     """
@@ -277,7 +324,7 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
     mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
     # layer scope is being fully marginalized over
-    if(len(mutual_rvs) == len(layer_scope.query)):
+    if len(mutual_rvs) == len(layer_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
@@ -286,14 +333,16 @@ def marginalize(layer: SPNProductLayer, marg_rvs: Iterable[int], prune: bool=Tru
 
         # marginalize child modules
         for child in layer.children:
-            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+            marg_child = marginalize(
+                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
+            )
 
             # if marginalized child is not None
             if marg_child:
                 marg_children.append(marg_child)
-        
+
         # if product node has only one child with a single ouput after marginalization and pruning is true, return child directly
-        if(len(marg_children) == 1 and marg_children[0].n_out == 1 and prune):
+        if len(marg_children) == 1 and marg_children[0].n_out == 1 and prune:
             return marg_children[0]
         else:
             return SPNProductLayer(n_nodes=layer.n_out, children=marg_children)
@@ -311,7 +360,7 @@ class SPNPartitionLayer(NestedModule):
     Example:
 
         layer = SPNPartitionLayer([[node1, node2], [node3], [node4, node5, node6]])
-    
+
         In this example the layer will have 2*1*3=6 product nodes over the following inputs (in this order):
 
             node1, node3, node4
@@ -335,6 +384,7 @@ class SPNPartitionLayer(NestedModule):
         partition_scopes:
             List of scopes keeping track of the scopes each partition represents.
     """
+
     def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
         r"""Initializes ``SPNPartitionLayer`` object.
 
@@ -348,7 +398,7 @@ class SPNPartitionLayer(NestedModule):
         """
         if len(child_partitions) == 0:
             raise ValueError("No partitions for 'SPNPartitionLayer' specified.")
-        
+
         scope = Scope()
         partition_sizes = []
         self.modules_per_partition = []
@@ -356,10 +406,12 @@ class SPNPartitionLayer(NestedModule):
 
         # parse partitions
         for partition in child_partitions:
-            # check if partition is empty 
+            # check if partition is empty
             if len(partition) == 0:
-                raise ValueError("All partitions for 'SPNPartitionLayer' must be non-empty")
-            
+                raise ValueError(
+                    "All partitions for 'SPNPartitionLayer' must be non-empty"
+                )
+
             self.modules_per_partition.append(len(partition))
             partition_scope = Scope()
             size = 0
@@ -372,10 +424,15 @@ class SPNPartitionLayer(NestedModule):
                 # for each output scope
                 for s in child.scopes_out:
                     # check if query scope is the same
-                    if partition_scope.equal_query(s) or partition_scope.isempty():
+                    if (
+                        partition_scope.equal_query(s)
+                        or partition_scope.isempty()
+                    ):
                         partition_scope = partition_scope.union(s)
                     else:
-                        raise ValueError("Scopes of modules inside a partition must have same query scope.")
+                        raise ValueError(
+                            "Scopes of modules inside a partition must have same query scope."
+                        )
 
             # add partition size to list
             partition_sizes.append(size)
@@ -385,18 +442,24 @@ class SPNPartitionLayer(NestedModule):
             if partition_scope.isdisjoint(scope):
                 scope = scope.union(partition_scope)
             else:
-                raise ValueError("Scopes of partitions must be pair-wise disjoint.")
+                raise ValueError(
+                    "Scopes of partitions must be pair-wise disjoint."
+                )
 
-        super(SPNPartitionLayer, self).__init__(children=sum(child_partitions, []), **kwargs)
+        super(SPNPartitionLayer, self).__init__(
+            children=sum(child_partitions, []), **kwargs
+        )
 
         self.n_in = sum(partition_sizes)
         self.nodes = []
-        
+
         # create placeholders and nodes
-        for input_ids in itertools.product(*np.split(list(range(self.n_in)), np.cumsum(partition_sizes[:-1]))):
+        for input_ids in itertools.product(
+            *np.split(list(range(self.n_in)), np.cumsum(partition_sizes[:-1]))
+        ):
             ph = self.create_placeholder(input_ids)
             self.nodes.append(SPNProductNode(children=[ph]))
-        
+
         self._n_out = len(self.nodes)
         self.scope = scope
 
@@ -404,7 +467,7 @@ class SPNPartitionLayer(NestedModule):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
+
     @property
     def scopes_out(self) -> List[Scope]:
         """Returns the output scopes this layer represents."""
@@ -412,7 +475,12 @@ class SPNPartitionLayer(NestedModule):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNPartitionLayer, Module, None]:
+def marginalize(
+    layer: SPNPartitionLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[SPNPartitionLayer, Module, None]:
     """Structural marginalization for SPN-like partition layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -432,7 +500,7 @@ def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=T
             Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         (Marginalized) partition layer or None if it is completely marginalized.
     """
@@ -445,32 +513,53 @@ def marginalize(layer: SPNPartitionLayer, marg_rvs: Iterable[int], prune: bool=T
     mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
     # layer scope is being fully marginalized over
-    if(len(mutual_rvs) == len(layer_scope.query)):
+    if len(mutual_rvs) == len(layer_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
         marg_partitions = []
 
         children = layer.children
-        partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
+        partitions = np.split(
+            children, np.cumsum(layer.modules_per_partition[:-1])
+        )
 
-        for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
+        for partition_scope, partition_children in zip(
+            layer.partition_scopes, partitions
+        ):
             partition_children = partition_children.tolist()
-            partition_mutual_rvs = set(partition_scope.query).intersection(set(marg_rvs))
+            partition_mutual_rvs = set(partition_scope.query).intersection(
+                set(marg_rvs)
+            )
 
             # partition scope is being fully marginalized over
-            if(len(partition_mutual_rvs) == len(partition_scope.query)):
+            if len(partition_mutual_rvs) == len(partition_scope.query):
                 # drop partition entirely
                 continue
             # node scope is being partially marginalized
             elif partition_mutual_rvs:
                 # marginalize child modules
-                marg_partitions.append([marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx) for child in partition_children])
+                marg_partitions.append(
+                    [
+                        marginalize(
+                            child,
+                            marg_rvs,
+                            prune=prune,
+                            dispatch_ctx=dispatch_ctx,
+                        )
+                        for child in partition_children
+                    ]
+                )
             else:
                 marg_partitions.append(deepcopy(partition_children))
 
         # if product node has only one input after marginalization and pruning is true, return input directly
-        if(len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and marg_partitions[0][0].n_out == 1 and prune):
+        if (
+            len(marg_partitions) == 1
+            and len(marg_partitions[0]) == 1
+            and marg_partitions[0][0].n_out == 1
+            and prune
+        ):
             return marg_partitions[0][0]
         else:
             return SPNPartitionLayer(child_partitions=marg_partitions)
@@ -489,7 +578,7 @@ class SPNHadamardLayer(NestedModule):
     Example:
 
         layer = SPNHadamardLayer([[node1, node2], [node3], [node4, node5]])
-    
+
         In this example the layer will have 2 product nodes over the following inputs (in this order):
 
             node1, node3, node4
@@ -509,6 +598,7 @@ class SPNHadamardLayer(NestedModule):
         partition_scopes:
             List of scopes keeping track of the scopes each partition represents.
     """
+
     def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
         r"""Initializes ``SPNHadamardLayer`` object.
 
@@ -533,9 +623,11 @@ class SPNHadamardLayer(NestedModule):
 
         # parse partitions
         for partition in child_partitions:
-            # check if partition is empty 
+            # check if partition is empty
             if len(partition) == 0:
-                raise ValueError("All partitions for 'SPNHadamardLayer' must be non-empty")
+                raise ValueError(
+                    "All partitions for 'SPNHadamardLayer' must be non-empty"
+                )
 
             self.modules_per_partition.append(len(partition))
             partition_scope = Scope([])
@@ -549,18 +641,25 @@ class SPNHadamardLayer(NestedModule):
                 # for each output scope
                 for s in child.scopes_out:
                     # check if query scope is the same
-                    if partition_scope.equal_query(s) or partition_scope.isempty():
+                    if (
+                        partition_scope.equal_query(s)
+                        or partition_scope.isempty()
+                    ):
                         partition_scope = partition_scope.union(s)
                     else:
-                        raise ValueError("Scopes of modules inside a partition must have same query scope.")
+                        raise ValueError(
+                            "Scopes of modules inside a partition must have same query scope."
+                        )
 
             # add partition size to list
-            if(size == 1 or size == max_size or max_size == 1):
+            if size == 1 or size == max_size or max_size == 1:
                 # either max_size is 1, then set max size to size (greater or equal to 1) or max_size is greater than 1 in which case size must be max_size or 1
                 max_size = max(size, max_size)
                 partition_sizes.append(size)
             else:
-                raise ValueError(f"Total number of outputs per partition must be 1 or match the number of outputs of other partitions, but was {size}.")
+                raise ValueError(
+                    f"Total number of outputs per partition must be 1 or match the number of outputs of other partitions, but was {size}."
+                )
 
             self.partition_scopes.append(partition_scope)
 
@@ -568,20 +667,31 @@ class SPNHadamardLayer(NestedModule):
             if partition_scope.isdisjoint(scope):
                 scope = scope.union(partition_scope)
             else:
-                raise ValueError("Scopes of partitions must be pair-wise disjoint.")
+                raise ValueError(
+                    "Scopes of partitions must be pair-wise disjoint."
+                )
 
-        super(SPNHadamardLayer, self).__init__(children=sum(child_partitions, []), **kwargs)
+        super(SPNHadamardLayer, self).__init__(
+            children=sum(child_partitions, []), **kwargs
+        )
 
         self.n_in = sum(partition_sizes)
         self.nodes = []
 
-        partition_indices = np.split(list(range(self.n_in)), np.cumsum(partition_sizes)[:-1])
+        partition_indices = np.split(
+            list(range(self.n_in)), np.cumsum(partition_sizes)[:-1]
+        )
 
         # create placeholders and nodes
-        for input_ids in zip(*[np.pad(indices, (0,max_size-size), mode='edge') for indices, size in zip(partition_indices, partition_sizes)]):
+        for input_ids in zip(
+            *[
+                np.pad(indices, (0, max_size - size), mode="edge")
+                for indices, size in zip(partition_indices, partition_sizes)
+            ]
+        ):
             ph = self.create_placeholder(list(input_ids))
             self.nodes.append(SPNProductNode(children=[ph]))
-        
+
         self._n_out = len(self.nodes)
         self.scope = scope
 
@@ -589,7 +699,7 @@ class SPNHadamardLayer(NestedModule):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
+
     @property
     def scopes_out(self) -> List[Scope]:
         """Returns the output scopes this layer represents."""
@@ -597,7 +707,12 @@ class SPNHadamardLayer(NestedModule):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: SPNHadamardLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[SPNHadamardLayer, Module, None]:
+def marginalize(
+    layer: SPNHadamardLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[SPNHadamardLayer, Module, None]:
     """Structural marginalization for SPN-like Hadamard layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -617,7 +732,7 @@ def marginalize(layer: SPNHadamardLayer, marg_rvs: Iterable[int], prune: bool=Tr
             Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         (Marginalized) Hadamard layer or None if it is completely marginalized.
     """
@@ -630,32 +745,53 @@ def marginalize(layer: SPNHadamardLayer, marg_rvs: Iterable[int], prune: bool=Tr
     mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
     # layer scope is being fully marginalized over
-    if(len(mutual_rvs) == len(layer_scope.query)):
+    if len(mutual_rvs) == len(layer_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
         marg_partitions = []
 
         children = layer.children
-        partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
+        partitions = np.split(
+            children, np.cumsum(layer.modules_per_partition[:-1])
+        )
 
-        for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
+        for partition_scope, partition_children in zip(
+            layer.partition_scopes, partitions
+        ):
             partition_children = partition_children.tolist()
-            partition_mutual_rvs = set(partition_scope.query).intersection(set(marg_rvs))
+            partition_mutual_rvs = set(partition_scope.query).intersection(
+                set(marg_rvs)
+            )
 
             # partition scope is being fully marginalized over
-            if(len(partition_mutual_rvs) == len(partition_scope.query)):
+            if len(partition_mutual_rvs) == len(partition_scope.query):
                 # drop partition entirely
                 continue
             # node scope is being partially marginalized
             elif partition_mutual_rvs:
                 # marginalize child modules
-                marg_partitions.append([marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx) for child in partition_children])
+                marg_partitions.append(
+                    [
+                        marginalize(
+                            child,
+                            marg_rvs,
+                            prune=prune,
+                            dispatch_ctx=dispatch_ctx,
+                        )
+                        for child in partition_children
+                    ]
+                )
             else:
                 marg_partitions.append(deepcopy(partition_children))
 
         # if product node has only one input after marginalization and pruning is true, return input directly
-        if(len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and marg_partitions[0][0].n_out == 1 and prune):
+        if (
+            len(marg_partitions) == 1
+            and len(marg_partitions[0]) == 1
+            and marg_partitions[0][0].n_out == 1
+            and prune
+        ):
             return marg_partitions[0][0]
         else:
             return SPNHadamardLayer(child_partitions=marg_partitions)

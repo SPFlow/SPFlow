@@ -5,8 +5,12 @@ import numpy as np
 from functools import partial
 from typing import Callable, Union, Optional, Dict, Any
 from spflow.meta.scope.scope import Scope
-from spflow.base.utils.randomized_dependency_coefficients import randomized_dependency_coefficients
-from spflow.base.learning.nodes.leaves.parametric.gaussian import maximum_likelihood_estimation
+from spflow.base.utils.randomized_dependency_coefficients import (
+    randomized_dependency_coefficients,
+)
+from spflow.base.learning.nodes.leaves.parametric.gaussian import (
+    maximum_likelihood_estimation,
+)
 from spflow.base.utils.connected_components import connected_components
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.structure.nodes.node import SPNSumNode, SPNProductNode
@@ -14,7 +18,11 @@ from spflow.base.structure.module import Module
 from sklearn.cluster import KMeans
 
 
-def partition_by_rdc(data: np.ndarray, threshold: float=0.3, preprocessing: Optional[Callable]=None) -> np.ndarray:
+def partition_by_rdc(
+    data: np.ndarray,
+    threshold: float = 0.3,
+    preprocessing: Optional[Callable] = None,
+) -> np.ndarray:
     """Performs partitioning usig randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``base`` backend.
 
     Args:
@@ -52,7 +60,11 @@ def partition_by_rdc(data: np.ndarray, threshold: float=0.3, preprocessing: Opti
     return partition_ids
 
 
-def cluster_by_kmeans(data: np.ndarray, n_clusters: int=2, preprocessing: Optional[Callable]=None) -> np.ndarray:
+def cluster_by_kmeans(
+    data: np.ndarray,
+    n_clusters: int = 2,
+    preprocessing: Optional[Callable] = None,
+) -> np.ndarray:
     """Performs clustering usig k-Means to be used with the LearnSPN algorithm in the ``base`` backend.
 
     Args:
@@ -75,14 +87,25 @@ def cluster_by_kmeans(data: np.ndarray, n_clusters: int=2, preprocessing: Option
         clustering_data = preprocessing(data)
     else:
         clustering_data = data
-    
+
     # compute k-Means clusters
     data_labels = KMeans(n_clusters=n_clusters).fit_predict(clustering_data)
 
     return data_labels
 
 
-def learn_spn(data: np.ndarray, scope: Optional[Scope]=None, min_features_slice: int=2, min_instances_slice: int=100, fit_params: bool=True, clustering_method: Union[str, Callable]="kmeans", partitioning_method: Union[str, Callable]="rdc", clustering_args: Optional[Dict[str, Any]]=None, partitioning_args: Optional[Dict[str, Any]]=None, check_support: bool=True) -> Module:
+def learn_spn(
+    data: np.ndarray,
+    scope: Optional[Scope] = None,
+    min_features_slice: int = 2,
+    min_instances_slice: int = 100,
+    fit_params: bool = True,
+    clustering_method: Union[str, Callable] = "kmeans",
+    partitioning_method: Union[str, Callable] = "rdc",
+    clustering_args: Optional[Dict[str, Any]] = None,
+    partitioning_args: Optional[Dict[str, Any]] = None,
+    check_support: bool = True,
+) -> Module:
     """LearnSPN structure and parameter learner for the ``base`` backend.
 
     LearnSPN algorithm as described in (Gens & Domingos, 2013): "Learning the Structure of Sum-Product Networks".
@@ -133,9 +156,13 @@ def learn_spn(data: np.ndarray, scope: Optional[Scope]=None, min_features_slice:
         scope = Scope(list(range(data.shape[1])))
     else:
         if len(scope.evidence) != 0:
-            raise ValueError("Scope specified for 'learn_spn' may not contain evidence variables.")
+            raise ValueError(
+                "Scope specified for 'learn_spn' may not contain evidence variables."
+            )
         if len(scope.query) != data.shape[1]:
-            raise ValueError(f"Number of query variables in 'scope' does not match number of features in data.")
+            raise ValueError(
+                f"Number of query variables in 'scope' does not match number of features in data."
+            )
 
     # available off-the-shelf clustering methods provided by SPFlow
     if isinstance(clustering_method, str):
@@ -143,16 +170,20 @@ def learn_spn(data: np.ndarray, scope: Optional[Scope]=None, min_features_slice:
         if clustering_method == "kmeans":
             clustering_method = cluster_by_kmeans
         else:
-            raise ValueError(f"Value '{clustering_method}' for partitioning method is invalid.")
-    
+            raise ValueError(
+                f"Value '{clustering_method}' for partitioning method is invalid."
+            )
+
     # available off-the-shelf partitioning methods provided by SPFlow
     if isinstance(partitioning_method, str):
         # Randomized Dependence Coefficients (RDCs)
         if partitioning_method == "rdc":
             partitioning_method = partition_by_rdc
         else:
-            raise ValueError(f"Value '{partitioning_method}' for partitioning method is invalid.")
-    
+            raise ValueError(
+                f"Value '{partitioning_method}' for partitioning method is invalid."
+            )
+
     # for convenience, directly bind additional keyword arguments to the methods
     if clustering_args is not None:
         clustering_method = partial(clustering_method, **clustering_args)
@@ -160,22 +191,30 @@ def learn_spn(data: np.ndarray, scope: Optional[Scope]=None, min_features_slice:
         partitioning_method = partial(partitioning_method, **partitioning_args)
 
     if not isinstance(min_instances_slice, int) or min_instances_slice < 2:
-        raise ValueError(f"Value for 'min_instances_slice' must be an integer greater than 1, but was: {min_instances_slice}.")
+        raise ValueError(
+            f"Value for 'min_instances_slice' must be an integer greater than 1, but was: {min_instances_slice}."
+        )
     if not isinstance(min_features_slice, int) or min_features_slice < 2:
-        raise ValueError(f"Value for 'min_features_slice' must be an integer greater than 1, but was: {min_features_slice}.")
+        raise ValueError(
+            f"Value for 'min_features_slice' must be an integer greater than 1, but was: {min_features_slice}."
+        )
 
     # helper functions
-    def create_uv_leaf(scope: Scope, data: np.ndarray, fit_params: bool=True):
+    def create_uv_leaf(scope: Scope, data: np.ndarray, fit_params: bool = True):
         # create leaf node
-        leaf = Gaussian(scope=scope) # TODO: infer correct leaf node
+        leaf = Gaussian(scope=scope)  # TODO: infer correct leaf node
 
         if fit_params:
             # estimate leaf node parameters from data
-            maximum_likelihood_estimation(leaf, data, check_support=check_support)
-        
+            maximum_likelihood_estimation(
+                leaf, data, check_support=check_support
+            )
+
         return leaf
 
-    def create_partitioned_mv_leaf(scope: Scope, data: np.ndarray, fit_params: bool=True):
+    def create_partitioned_mv_leaf(
+        scope: Scope, data: np.ndarray, fit_params: bool = True
+    ):
         # combine univariate leafs via product node
         leaves = []
 
@@ -186,7 +225,9 @@ def learn_spn(data: np.ndarray, scope: Optional[Scope]=None, min_features_slice:
 
             if fit_params:
                 # estimate leaf node parameters from data
-                maximum_likelihood_estimation(leaf, data[:, [rv]], check_support=check_support)
+                maximum_likelihood_estimation(
+                    leaf, data[:, [rv]], check_support=check_support
+                )
 
         return SPNProductNode(children=leaves)
 
@@ -207,21 +248,23 @@ def learn_spn(data: np.ndarray, scope: Optional[Scope]=None, min_features_slice:
         partitions = []
 
         for partition_id in np.sort(np.unique(partition_ids)):
-            partitions.append( np.where(partition_ids == partition_id)[0] )
+            partitions.append(np.where(partition_ids == partition_id)[0])
 
         # multiple partition (i.e., data can be partitioned)
         if len(partitions) > 1:
             return SPNProductNode(
                 children=[
                     # compute child trees recursively
-                    learn_spn(data[:, partition],
-                            scope=Scope([scope.query[rv] for rv in partition]),
-                            clustering_method=clustering_method,
-                            partitioning_method=partitioning_method,
-                            fit_params=fit_params,
-                            min_features_slice=min_features_slice,
-                            min_instances_slice=min_instances_slice
-                        ) for partition in partitions
+                    learn_spn(
+                        data[:, partition],
+                        scope=Scope([scope.query[rv] for rv in partition]),
+                        clustering_method=clustering_method,
+                        partitioning_method=partitioning_method,
+                        fit_params=fit_params,
+                        min_features_slice=min_features_slice,
+                        min_instances_slice=min_instances_slice,
+                    )
+                    for partition in partitions
                 ]
             )
         else:
@@ -235,27 +278,34 @@ def learn_spn(data: np.ndarray, scope: Optional[Scope]=None, min_features_slice:
                 if fit_params:
                     return SPNSumNode(
                         children=[
-                            learn_spn(data[labels == cluster_id, :],
-                                    scope=scope,
-                                    clustering_method=clustering_method,
-                                    partitioning_method=partitioning_method,
-                                    fit_params=fit_params,
-                                    min_features_slice=min_features_slice,
-                                    min_instances_slice=min_instances_slice
-                                ) for cluster_id in np.unique(labels)
+                            learn_spn(
+                                data[labels == cluster_id, :],
+                                scope=scope,
+                                clustering_method=clustering_method,
+                                partitioning_method=partitioning_method,
+                                fit_params=fit_params,
+                                min_features_slice=min_features_slice,
+                                min_instances_slice=min_instances_slice,
+                            )
+                            for cluster_id in np.unique(labels)
                         ],
-                        weights=[(labels == cluster_id).sum()/data.shape[0] for cluster_id in np.unique(labels)]
+                        weights=[
+                            (labels == cluster_id).sum() / data.shape[0]
+                            for cluster_id in np.unique(labels)
+                        ],
                     )
                 else:
                     return SPNSumNode(
                         children=[
-                            learn_spn(data[labels == cluster_id, :],
-                                    scope=scope,
-                                    clustering_method=clustering_method,
-                                    partitioning_method=partitioning_method,
-                                    fit_params=fit_params,
-                                    min_features_slice=min_features_slice,
-                                    min_instances_slice=min_instances_slice
-                                ) for cluster_id in np.unique(labels)
+                            learn_spn(
+                                data[labels == cluster_id, :],
+                                scope=scope,
+                                clustering_method=clustering_method,
+                                partitioning_method=partitioning_method,
+                                fit_params=fit_params,
+                                min_features_slice=min_features_slice,
+                                min_instances_slice=min_instances_slice,
+                            )
+                            for cluster_id in np.unique(labels)
                         ]
                     )

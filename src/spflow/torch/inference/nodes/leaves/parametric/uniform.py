@@ -4,12 +4,20 @@
 import torch
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.leaves.parametric.uniform import Uniform
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(leaf: Uniform, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    leaf: Uniform,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     r"""Computes log-likelihoods for ``Uniform`` node in the ``torch`` backend given input data.
 
     Log-likelihood for ``Uniform`` is given by the logarithm of its probability distribution function (PDF):
@@ -73,14 +81,18 @@ def log_likelihood(leaf: Uniform, data: torch.Tensor, check_support: bool=True, 
 
     if leaf.support_outside:
         torch_valid_ids = torch.zeros(len(marg_ids), dtype=torch.bool)
-        torch_valid_ids[~marg_ids] |= leaf.dist.support.check(scope_data[~marg_ids]).squeeze(1)
-        
+        torch_valid_ids[~marg_ids] |= leaf.dist.support.check(
+            scope_data[~marg_ids]
+        ).squeeze(1)
+
         # TODO: torch_valid_ids does not necessarily have the same dimension as marg_ids
         log_prob[~marg_ids & ~torch_valid_ids] = -float("inf")
 
         # compute probabilities for values inside distribution support
         log_prob[~marg_ids & torch_valid_ids] = leaf.dist.log_prob(
-            scope_data[~marg_ids & torch_valid_ids].type(torch.get_default_dtype())
+            scope_data[~marg_ids & torch_valid_ids].type(
+                torch.get_default_dtype()
+            )
         )
     else:
         # compute probabilities for values inside distribution support

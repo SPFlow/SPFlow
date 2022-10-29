@@ -15,7 +15,7 @@ def corrcoef(data: torch.Tensor) -> torch.Tensor:
     Returns the correlation coefficients computed from a specified data set according to:
 
     .. math::
-        
+
         \frac{\text{Cov}(x)_{ij}}{\sigma_i\sigma_j}
 
     Args:
@@ -29,16 +29,22 @@ def corrcoef(data: torch.Tensor) -> torch.Tensor:
         ValueError: invalid arguments.
     """
     if torch.is_complex(data):
-        raise ValueError("Computing correlation coefficients for complex data is not supported.")
+        raise ValueError(
+            "Computing correlation coefficients for complex data is not supported."
+        )
 
     # compute covariance matrix
     cov = torch.cov(data.T, correction=1)
 
     # if there are non-finite (i.e., Nan or Inf) or zero values
     if torch.any(~torch.isfinite(cov)):
-        raise ValueError("Encountered non-finite values in covariance matrix during computation of correlation coefficients.")
+        raise ValueError(
+            "Encountered non-finite values in covariance matrix during computation of correlation coefficients."
+        )
     if torch.any(cov == 0):
-        raise ValueError("Encountered zero values in covariance matrix during computation of correlation coefficients.")
+        raise ValueError(
+            "Encountered zero values in covariance matrix during computation of correlation coefficients."
+        )
 
     # extract standard deviations per feature
     # TODO: test if there are any underflows resulting in invalid entries

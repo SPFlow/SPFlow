@@ -9,9 +9,14 @@ from typing import Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.poisson import Poisson as BasePoisson
+from spflow.base.structure.nodes.leaves.parametric.poisson import (
+    Poisson as BasePoisson,
+)
 
 
 class Poisson(LeafNode):
@@ -35,7 +40,8 @@ class Poisson(LeafNode):
         l:
             Scalar PyTorch tensor representing the rate parameters (:math:`\lambda`) of the Poisson distribution (projected from ``l_aux``).
     """
-    def __init__(self, scope: Scope, l: Optional[float]=1.0) -> None:
+
+    def __init__(self, scope: Scope, l: Optional[float] = 1.0) -> None:
         r"""Initializes ``Poisson`` leaf node.
 
         Args:
@@ -46,9 +52,13 @@ class Poisson(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Poisson' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Poisson' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}."
+            )
 
         super(Poisson, self).__init__(scope=scope)
 
@@ -67,7 +77,7 @@ class Poisson(LeafNode):
     @property
     def dist(self) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
-        
+
         Returns:
             ``torch.distributions.Poisson`` instance.
         """
@@ -130,16 +140,25 @@ class Poisson(LeafNode):
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check if all values are valid integers
-        valid[~nan_mask & valid] &= torch.remainder(scope_data[~nan_mask & valid], torch.tensor(1)).squeeze(-1) == 0
+        valid[~nan_mask & valid] &= (
+            torch.remainder(
+                scope_data[~nan_mask & valid], torch.tensor(1)
+            ).squeeze(-1)
+            == 0
+        )
 
         # check for infinite values
-        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        valid[~nan_mask & valid] &= (
+            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        )
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BasePoisson, dispatch_ctx: Optional[DispatchContext]=None) -> Poisson:
+def toTorch(
+    node: BasePoisson, dispatch_ctx: Optional[DispatchContext] = None
+) -> Poisson:
     """Conversion for ``Poisson`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -153,7 +172,9 @@ def toTorch(node: BasePoisson, dispatch_ctx: Optional[DispatchContext]=None) -> 
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: Poisson, dispatch_ctx: Optional[DispatchContext]=None) -> BasePoisson:
+def toBase(
+    node: Poisson, dispatch_ctx: Optional[DispatchContext] = None
+) -> BasePoisson:
     """Conversion for ``Poisson`` from ``torch`` backend to ``base`` backend.
 
     Args:

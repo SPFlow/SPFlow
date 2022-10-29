@@ -9,9 +9,14 @@ from typing import Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.exponential import Exponential as BaseExponential
+from spflow.base.structure.nodes.leaves.parametric.exponential import (
+    Exponential as BaseExponential,
+)
 
 
 class Exponential(LeafNode):
@@ -36,7 +41,8 @@ class Exponential(LeafNode):
         l:
             Scalar PyTorch tensor representing the rate parameter (:math:`\lambda`) of the Exponential distribution (projected from ``l_aux``).
     """
-    def __init__(self, scope: Scope, l: float=1.0) -> None:
+
+    def __init__(self, scope: Scope, l: float = 1.0) -> None:
         r"""Initializes ``Exponential`` leaf node.
 
         Args:
@@ -47,9 +53,13 @@ class Exponential(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Exponential' should be 1, but was {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Exponential' should be 1, but was {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Exponential' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Exponential' should be empty, but was {scope.evidence}."
+            )
 
         super(Exponential, self).__init__(scope=scope)
 
@@ -68,7 +78,7 @@ class Exponential(LeafNode):
     @property
     def dist(self) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
-        
+
         Returns:
             ``torch.distributions.Exponential`` instance.
         """
@@ -128,13 +138,17 @@ class Exponential(LeafNode):
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        valid[~nan_mask & valid] &= (
+            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        )
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BaseExponential, dispatch_ctx: Optional[DispatchContext]=None) -> Exponential:
+def toTorch(
+    node: BaseExponential, dispatch_ctx: Optional[DispatchContext] = None
+) -> Exponential:
     """Conversion for ``Exponential`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -148,7 +162,9 @@ def toTorch(node: BaseExponential, dispatch_ctx: Optional[DispatchContext]=None)
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: Exponential, dispatch_ctx: Optional[DispatchContext]=None) -> BaseExponential:
+def toBase(
+    node: Exponential, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseExponential:
     """Conversion for ``Exponential`` from ``torch`` backend to ``base`` backend.
 
     Args:

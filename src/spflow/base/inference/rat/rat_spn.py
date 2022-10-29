@@ -4,12 +4,20 @@
 import numpy as np
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.base.structure.rat.rat_spn import RatSPN
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(rat_spn: RatSPN, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(
+    rat_spn: RatSPN,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> np.ndarray:
     """Computes log-likelihoods for RAT-SPNs nodes in the ``base`` backend given input data.
 
     Args:
@@ -29,4 +37,9 @@ def log_likelihood(rat_spn: RatSPN, data: np.ndarray, check_support: bool=True, 
         Each row corresponds to an input sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return log_likelihood(rat_spn.root_node, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
+    return log_likelihood(
+        rat_spn.root_node,
+        data,
+        check_support=check_support,
+        dispatch_ctx=dispatch_ctx,
+    )

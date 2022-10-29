@@ -6,7 +6,10 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
@@ -33,7 +36,16 @@ class UniformLayer(Module):
         support_outside:
             One-dimensional NumPy array containing booleans indicating whether or not values outside of the intervals are part of the support.
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], start: Union[int, float, List[float], np.ndarray], end: Union[int, float, List[float], np.ndarray], support_outside: Union[bool, List[bool], np.ndarray]=True, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        start: Union[int, float, List[float], np.ndarray],
+        end: Union[int, float, List[float], np.ndarray],
+        support_outside: Union[bool, List[bool], np.ndarray] = True,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``UniformLayer`` leaf node.
 
         Args:
@@ -52,7 +64,9 @@ class UniformLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'UniformLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'UniformLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
@@ -82,18 +96,23 @@ class UniformLayer(Module):
     def start(self) -> np.ndarray:
         """Returns the starts of the intervals of the represented distributions."""
         return np.array([node.start for node in self.nodes])
-    
+
     @property
     def end(self) -> np.ndarray:
         """Returns the ends of the intervals of the represented distributions."""
         return np.array([node.end for node in self.nodes])
-    
+
     @property
     def support_outside(self) -> np.ndarray:
         """Returns the booleans indicating whether or not values outside of the intervals are part of the supports of the represented distributions."""
         return np.array([node.support_outside for node in self.nodes])
 
-    def set_params(self, start: Union[int, float, List[float], np.ndarray], end: Union[int, float, List[float], np.ndarray], support_outside: Union[bool, List[bool], np.ndarray]=True) -> None:
+    def set_params(
+        self,
+        start: Union[int, float, List[float], np.ndarray],
+        end: Union[int, float, List[float], np.ndarray],
+        support_outside: Union[bool, List[bool], np.ndarray] = True,
+    ) -> None:
         """Sets the parameters for the represented distributions in the ``base`` backend.
 
         Args:
@@ -112,32 +131,48 @@ class UniformLayer(Module):
             start = np.array([float(start) for _ in range(self.n_out)])
         if isinstance(start, list):
             start = np.array(start)
-        if(start.ndim != 1):
-            raise ValueError(f"Numpy array of start values for 'UniformLayer' is expected to be one-dimensional, but is {start.ndim}-dimensional.")
-        if(start.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of start values for 'UniformLayer' must match number of output nodes {self.n_out}, but is {start.shape[0]}")
+        if start.ndim != 1:
+            raise ValueError(
+                f"Numpy array of start values for 'UniformLayer' is expected to be one-dimensional, but is {start.ndim}-dimensional."
+            )
+        if start.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of start values for 'UniformLayer' must match number of output nodes {self.n_out}, but is {start.shape[0]}"
+            )
 
         if isinstance(end, int) or isinstance(end, float):
             end = np.array([float(end) for _ in range(self.n_out)])
         if isinstance(end, list):
             end = np.array(end)
-        if(end.ndim != 1):
-            raise ValueError(f"Numpy array of end values for 'UniformLayer' is expected to be one-dimensional, but is {end.ndim}-dimensional.")
-        if(end.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of end values for 'UniformLayer' must match number of output nodes {self.n_out}, but is {end.shape[0]}")
+        if end.ndim != 1:
+            raise ValueError(
+                f"Numpy array of end values for 'UniformLayer' is expected to be one-dimensional, but is {end.ndim}-dimensional."
+            )
+        if end.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of end values for 'UniformLayer' must match number of output nodes {self.n_out}, but is {end.shape[0]}"
+            )
 
         if isinstance(support_outside, bool):
-            support_outside = np.array([support_outside for _ in range(self.n_out)])
+            support_outside = np.array(
+                [support_outside for _ in range(self.n_out)]
+            )
         if isinstance(support_outside, list):
             support_outside = np.array(support_outside)
-        if(support_outside.ndim != 1):
-            raise ValueError(f"Numpy array of 'support_outside' values for 'UniformLayer' is expected to be one-dimensional, but is {support_outside.ndim}-dimensional.")
-        if(support_outside.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'support_outside' values for 'UniformLayer' must match number of output nodes {self.n_out}, but is {support_outside.shape[0]}")
+        if support_outside.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'support_outside' values for 'UniformLayer' is expected to be one-dimensional, but is {support_outside.ndim}-dimensional."
+            )
+        if support_outside.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'support_outside' values for 'UniformLayer' must match number of output nodes {self.n_out}, but is {support_outside.shape[0]}"
+            )
 
-        for node_start, node_end, node_support_outside, node in zip(start, end, support_outside, self.nodes):
+        for node_start, node_end, node_support_outside, node in zip(
+            start, end, support_outside, self.nodes
+        ):
             node.set_params(node_start, node_end, node_support_outside)
-    
+
     def get_params(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Returns the parameters of the represented distribution.
 
@@ -146,9 +181,9 @@ class UniformLayer(Module):
         """
         return self.start, self.end, self.support_outside
 
-    def dist(self, node_ids: Optional[List[int]]=None) -> List[rv_frozen]:
+    def dist(self, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
-        
+
         Args:
             node_ids:
                 Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
@@ -162,7 +197,9 @@ class UniformLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]]=None) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, node_ids: Optional[List[int]] = None
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Uniform distributions, which are:
@@ -191,11 +228,18 @@ class UniformLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+        return np.concatenate(
+            [self.nodes[i].check_support(data) for i in node_ids], axis=1
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: UniformLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[UniformLayer, Uniform, None]:
+def marginalize(
+    layer: UniformLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[UniformLayer, Uniform, None]:
     """Structural marginalization for ``UniformLayer`` objects.
 
     Structurally marginalizes the specified layer module.
@@ -212,7 +256,7 @@ def marginalize(layer: UniformLayer, marg_rvs: Iterable[int], prune: bool=True, 
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -236,5 +280,7 @@ def marginalize(layer: UniformLayer, marg_rvs: Iterable[int], prune: bool=True, 
         new_node = Uniform(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = UniformLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
+        new_layer = UniformLayer(
+            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
+        )
         return new_layer

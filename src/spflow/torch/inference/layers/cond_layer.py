@@ -4,13 +4,21 @@
 import torch
 import numpy as np
 from typing import Optional
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.torch.structure.layers.cond_layer import SPNCondSumLayer
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(sum_layer: SPNCondSumLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    sum_layer: SPNCondSumLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     """Computes log-likelihoods for conditional SPN-like sum layers given input data in the ``torch`` backend.
 
     Log-likelihoods for sum nodes are the logarithm of the sum of weighted exponentials (LogSumExp) of its input likelihoods (weighted sum in linear space).
@@ -39,7 +47,18 @@ def log_likelihood(sum_layer: SPNCondSumLayer, data: torch.Tensor, check_support
     weights = sum_layer.retrieve_params(data, dispatch_ctx)
 
     # compute child log-likelihoods
-    child_lls = torch.concat([log_likelihood(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()], dim=1)
+    child_lls = torch.concat(
+        [
+            log_likelihood(
+                child,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for child in sum_layer.children()
+        ],
+        dim=1,
+    )
 
     weighted_lls = child_lls.unsqueeze(1) + weights.log()
 

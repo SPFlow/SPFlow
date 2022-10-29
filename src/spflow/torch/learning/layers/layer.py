@@ -6,12 +6,25 @@ Created on October 24, 2022
 from typing import Optional
 import torch
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.torch.structure.layers.layer import SPNSumLayer, SPNProductLayer, SPNPartitionLayer, SPNHadamardLayer
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.torch.structure.layers.layer import (
+    SPNSumLayer,
+    SPNProductLayer,
+    SPNPartitionLayer,
+    SPNHadamardLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(layer: SPNSumLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(
+    layer: SPNSumLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNSumLayer`` in the ``torch`` backend.
 
     Args:
@@ -31,14 +44,23 @@ def em(layer: SPNSumLayer, data: torch.Tensor, check_support: bool=True, dispatc
 
     with torch.no_grad():
         # ----- expectation step -----
-        child_lls = torch.hstack([dispatch_ctx.cache['log_likelihood'][child] for child in layer.children()])
+        child_lls = torch.hstack(
+            [
+                dispatch_ctx.cache["log_likelihood"][child]
+                for child in layer.children()
+            ]
+        )
 
         # TODO: output shape ?
         # get cached log-likelihood gradients w.r.t. module log-likelihoods
-        expectations = layer.weights.data * (dispatch_ctx.cache['log_likelihood'][layer].grad * torch.exp(child_lls) / torch.exp(dispatch_ctx.cache['log_likelihood'][layer])).sum(dim=0)
+        expectations = layer.weights.data * (
+            dispatch_ctx.cache["log_likelihood"][layer].grad
+            * torch.exp(child_lls)
+            / torch.exp(dispatch_ctx.cache["log_likelihood"][layer])
+        ).sum(dim=0)
 
         # ----- maximization step -----
-        layer.weights = expectations/expectations.sum(dim=0)
+        layer.weights = expectations / expectations.sum(dim=0)
 
         # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
 
@@ -48,7 +70,12 @@ def em(layer: SPNSumLayer, data: torch.Tensor, check_support: bool=True, dispatc
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(layer: SPNProductLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(
+    layer: SPNProductLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNProductLayer`` in the ``torch`` backend.
 
     Args:
@@ -72,7 +99,12 @@ def em(layer: SPNProductLayer, data: torch.Tensor, check_support: bool=True, dis
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(layer: SPNPartitionLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(
+    layer: SPNPartitionLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNPartitionLayer`` in the ``torch`` backend.
 
     Args:
@@ -96,7 +128,12 @@ def em(layer: SPNPartitionLayer, data: torch.Tensor, check_support: bool=True, d
 
 
 @dispatch(memoize=True)  # type: ignore
-def em(layer: SPNHadamardLayer, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> None:
+def em(
+    layer: SPNHadamardLayer,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> None:
     """Performs a single expectation maximizaton (EM) step for ``SPNHadamardLayer`` in the ``torch`` backend.
 
     Args:

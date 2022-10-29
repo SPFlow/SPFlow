@@ -18,7 +18,10 @@ class Region:
         partitions:
             List of ``Partition`` objects belonging to the region.
     """
-    def __init__(self, scope: Scope, partitions: List["Partition"]=None) -> None:
+
+    def __init__(
+        self, scope: Scope, partitions: List["Partition"] = None
+    ) -> None:
         r"""Initializes 'Region' object.
 
         Args:
@@ -33,7 +36,7 @@ class Region:
         """
         if len(scope.query) == 0:
             raise ValueError("Query scope for 'Region' is empty.")
-        
+
         if partitions is None:
             partitions = []
 
@@ -52,6 +55,7 @@ class Partition:
         regions:
             List of ``Region`` objects belonging to the partition.
     """
+
     def __init__(self, scope: Scope, regions: List["Region"]) -> None:
         r"""Initializes 'Partition' object.
 
@@ -74,7 +78,7 @@ class Partition:
         self.regions = regions
 
 
-class RegionGraph():
+class RegionGraph:
     r"""Abstract region graph consisting of abstract regions and partitions.
 
     For details see (Peharz et al., 2020): "Random Sum-Product Networks: A Simple and Effective Approach to Probabilistic Deep Learning".
@@ -85,7 +89,8 @@ class RegionGraph():
         root_region:
             ``Region`` object representing the root (i.e., top-most) region of the graph.
     """
-    def __init__(self, root_region: Optional[Region]=None) -> None:
+
+    def __init__(self, root_region: Optional[Region] = None) -> None:
         r"""Initializes 'RegionGraph' object.
 
         Args:
@@ -96,14 +101,16 @@ class RegionGraph():
             ValueError: Invalid arguments.
         """
         if not isinstance(root_region, Region) and root_region is not None:
-            raise ValueError(f"'RegionGraph' expects root region of type 'Region' or 'None', but got object of type {type(root_region)}.")
-        
+            raise ValueError(
+                f"'RegionGraph' expects root region of type 'Region' or 'None', but got object of type {type(root_region)}."
+            )
+
         self.root_region = root_region
         self.scope = root_region.scope if root_region is not None else Scope([])
 
 
 def random_region_graph(
-    scope: Scope, depth: int, replicas: int, n_splits: int=2
+    scope: Scope, depth: int, replicas: int, n_splits: int = 2
 ) -> RegionGraph:
     r"""Creates a random instance of a region graph.
 
@@ -129,14 +136,16 @@ def random_region_graph(
         ValueError: If any argument is invalid.
     """
     if len(scope.query) < n_splits:
-        raise ValueError("Need at least 'n_splits' query RVs to build region graph.")
+        raise ValueError(
+            "Need at least 'n_splits' query RVs to build region graph."
+        )
     if depth < 0:
         raise ValueError("Depth must not be negative.")
     if replicas < 1:
         raise ValueError("Number of replicas must be at least 1.")
     if n_splits < 2:
         raise ValueError("Number of splits must be at least 2.")
-    
+
     if depth >= 1:
         partitions = [split(scope, depth, n_splits) for r in range(replicas)]
     else:
@@ -147,11 +156,7 @@ def random_region_graph(
     return RegionGraph(root_region)
 
 
-def split(
-    scope: Scope,
-    depth: int,
-    n_splits: int=2
-) -> Partition:
+def split(scope: Scope, depth: int, n_splits: int = 2) -> Partition:
     r"""Creates a ``Partion`` instance for a specified scopes.
 
     Splits a specified scope into a given number of approximately equal sized parts (i.e., regions)
@@ -174,10 +179,14 @@ def split(
         ValueError: If any argument is invalid.
     """
     if n_splits < 2:
-        raise ValueError(f"Number of splits 'n_splits' must be at least 2, but is {n_splits}.")
-    
+        raise ValueError(
+            f"Number of splits 'n_splits' must be at least 2, but is {n_splits}."
+        )
+
     if depth < 1:
-        raise ValueError(f"Depth for splitting scope 'depth' is expected to be at least 1, but is {depth}.")
+        raise ValueError(
+            f"Depth for splitting scope 'depth' is expected to be at least 1, but is {depth}."
+        )
 
     shuffled_rvs = scope.query.copy()
     random.shuffle(shuffled_rvs)
@@ -199,7 +208,7 @@ def split(
 
         # create partition if region scope can be divided into 'n_splits' non-empty splits and depth limit not reached yet, otherwise this is a terminal leaf region
         if new_depth > 0 and len(region_rvs) >= n_splits:
-            partitions = [split(region_scope, new_depth, n_splits)]        
+            partitions = [split(region_scope, new_depth, n_splits)]
 
         regions.append(Region(region_scope, partitions=partitions))
 

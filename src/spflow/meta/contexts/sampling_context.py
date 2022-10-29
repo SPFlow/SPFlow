@@ -12,7 +12,7 @@ class SamplingContext:
     """Class for storing context information during sampling.
 
     Keeps track of instance indices to sample and which output indices of a module to sample from (relevant for modules with multiple outputs).
-    
+
     Attributes:
         instance_ids:
             List of integers representing the instances of a data set to sample.
@@ -21,7 +21,12 @@ class SamplingContext:
             List of lists of integers representing the output ids for the corresponding instances to sample from (relevant for multi-output module).
             As a shorthand convention, ``[]`` implies to sample from all outputs for a given instance.
     """
-    def __init__(self, instance_ids: List[int], output_ids: Optional[List[List[int]]]=None) -> None:
+
+    def __init__(
+        self,
+        instance_ids: List[int],
+        output_ids: Optional[List[List[int]]] = None,
+    ) -> None:
         """Initializes 'SamplingContext' object.
 
         Args:
@@ -40,13 +45,17 @@ class SamplingContext:
             # assume sampling over all outputs (i.e. [])
             output_ids = [[] for _ in instance_ids]
 
-        if (len(output_ids) != len(instance_ids)):
-            raise ValueError(f"Number of specified instance ids {len(instance_ids)} does not match specified number of output ids {len(output_ids)}.")
+        if len(output_ids) != len(instance_ids):
+            raise ValueError(
+                f"Number of specified instance ids {len(instance_ids)} does not match specified number of output ids {len(output_ids)}."
+            )
 
         self.instance_ids = instance_ids
         self.output_ids = output_ids
 
-    def group_output_ids(self, n_total: int) -> List[Tuple[Union[int, None],List[int]]]:
+    def group_output_ids(
+        self, n_total: int
+    ) -> List[Tuple[Union[int, None], List[int]]]:
         """Groups instances in the sampling context by their output indices.
 
         Args:
@@ -58,8 +67,10 @@ class SamplingContext:
             List of pairs (tuples) of an output index (or None) and a list of all instance indices that sample from the corresponding output index.
         """
         output_id_dict = {}
-        
-        for instance_id, instance_output_ids in zip(self.instance_ids, self.output_ids):
+
+        for instance_id, instance_output_ids in zip(
+            self.instance_ids, self.output_ids
+        ):
             if instance_output_ids == []:
                 instance_output_ids = list(range(n_total))
             for output_id in instance_output_ids:
@@ -73,7 +84,7 @@ class SamplingContext:
 
 def default_sampling_context(n: int) -> SamplingContext:
     """Returns an initialized ``SamplingContext`` object.
-    
+
     Args:
         n:
             Integer specifying the number of instance indices to intialize.
@@ -84,7 +95,9 @@ def default_sampling_context(n: int) -> SamplingContext:
     return SamplingContext(list(range(n)), [[] for _ in range(n)])
 
 
-def init_default_sampling_context(sampling_ctx: Union[SamplingContext, None], n: int) -> SamplingContext:
+def init_default_sampling_context(
+    sampling_ctx: Union[SamplingContext, None], n: int
+) -> SamplingContext:
     """Initializes sampling context, if it is not already initialized.
 
     Args
@@ -96,4 +109,8 @@ def init_default_sampling_context(sampling_ctx: Union[SamplingContext, None], n:
     Returns:
         Original sampling context if not None or a new initialized sampling context.
     """
-    return sampling_ctx if sampling_ctx is not None else default_sampling_context(n=n)
+    return (
+        sampling_ctx
+        if sampling_ctx is not None
+        else default_sampling_context(n=n)
+    )

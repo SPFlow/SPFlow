@@ -1,16 +1,26 @@
 # -*- coding: utf-8 -*-
 """Contains inference methods for ``MultivariateGaussian`` nodes for SPFlow in the ``base`` backend.
 """
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian
+from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussian,
+)
 
 from typing import Optional
 import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(node: MultivariateGaussian, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(
+    node: MultivariateGaussian,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> np.ndarray:
     r"""Computes log-likelihoods for ``MultivariateGaussian`` node in the ``base`` backend given input data.
 
     Log-likelihood for ``MultivariateGaussian`` is given by the logarithm of its probability distribution function (PDF):
@@ -64,7 +74,9 @@ def log_likelihood(node: MultivariateGaussian, data: np.ndarray, check_support: 
 
     # in case of partially marginalized instances
     if any((n_marg > 0) & (n_marg < len(node.scope.query))):
-        raise ValueError(f"Partial marginalization not yet supported for MultivariateGaussian.")
+        raise ValueError(
+            f"Partial marginalization not yet supported for MultivariateGaussian."
+        )
 
     if check_support:
         # create masked based on distribution's support
@@ -74,13 +86,19 @@ def log_likelihood(node: MultivariateGaussian, data: np.ndarray, check_support: 
             raise ValueError(
                 f"Encountered data instances that are not in the support of the MultivariateGaussian distribution."
             )
-    
-    if(node.mean is None):
-        raise ValueError("Encountered 'None' value for MultivariateGaussian mean vector during inference.")
-    if(node.cov is None):
-        raise ValueError("Encountered 'None' value for MultivariateGaussian covariance matrix during inference.")
+
+    if node.mean is None:
+        raise ValueError(
+            "Encountered 'None' value for MultivariateGaussian mean vector during inference."
+        )
+    if node.cov is None:
+        raise ValueError(
+            "Encountered 'None' value for MultivariateGaussian covariance matrix during inference."
+        )
 
     # compute probabilities for all non-marginalized instances
-    probs[~n_marg.astype(bool), 0] = node.dist.logpdf(x=data[~n_marg.astype(bool)])
+    probs[~n_marg.astype(bool), 0] = node.dist.logpdf(
+        x=data[~n_marg.astype(bool)]
+    )
 
     return probs

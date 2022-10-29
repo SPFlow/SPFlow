@@ -32,7 +32,13 @@ class Gamma(LeafNode):
         beta:
             Floating point value representing the rate parameter (:math:`\beta`), greater than 0.
     """
-    def __init__(self, scope: Scope, alpha: Optional[float]=1.0, beta: Optional[float]=1.0) -> None:
+
+    def __init__(
+        self,
+        scope: Scope,
+        alpha: Optional[float] = 1.0,
+        beta: Optional[float] = 1.0,
+    ) -> None:
         r"""Initializes ``Exponential`` leaf node.
 
         Args:
@@ -43,24 +49,28 @@ class Gamma(LeafNode):
                 Defaults to 1.0.
             beta:
                 Floating point value representing the rate parameter (:math:`\beta`), greater than 0.
-                Defaults to 1.0.    
+                Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Gamma' should be 1, but was {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Gamma' should be 1, but was {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Gamma' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Gamma' should be empty, but was {scope.evidence}."
+            )
 
         super(Gamma, self).__init__(scope=scope)
         self.set_params(alpha, beta)
-    
+
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """
-        return gamma(a=self.alpha, scale=1.0/self.beta)
+        return gamma(a=self.alpha, scale=1.0 / self.beta)
 
     def set_params(self, alpha: float, beta: float) -> None:
         r"""Sets the parameters for the represented distribution.
@@ -123,6 +133,6 @@ class Gamma(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if values are in valid range
-        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] > 0)
+        valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] > 0
 
         return valid

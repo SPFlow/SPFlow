@@ -31,7 +31,8 @@ class CondBernoulli(LeafNode):
             Its output should be a dictionary containing ``p`` as a key, and the value should be
             a floating point value representing the success probability in :math:`[0,1]`.
     """
-    def __init__(self, scope: Scope, cond_f: Optional[Callable]=None) -> None:
+
+    def __init__(self, scope: Scope, cond_f: Optional[Callable] = None) -> None:
         r"""Initializes ``ConditionalBernoulli`` leaf node.
 
         Args:
@@ -43,15 +44,19 @@ class CondBernoulli(LeafNode):
                 a floating point value representing the success probability in :math:`[0,1]`.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'CondBernoulli' should be 1, but was {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'CondBernoulli' should be 1, but was {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'CondBernoulli' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'CondBernoulli' should be empty, but was {scope.evidence}."
+            )
 
         super(CondBernoulli, self).__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 
-    def set_cond_f(self, cond_f: Optional[Callable]=None) -> None:
+    def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         r"""Sets the function to retrieve the node's conditonal parameter.
 
         Args:
@@ -62,9 +67,11 @@ class CondBernoulli(LeafNode):
         """
         self.cond_f = cond_f
 
-    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[Union[np.ndarray, float]]:
+    def retrieve_params(
+        self, data: np.ndarray, dispatch_ctx: DispatchContext
+    ) -> Tuple[Union[np.ndarray, float]]:
         r"""Retrieves the conditional parameter of the leaf node.
-    
+
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
         Secondly, checks if a function (``cond_f``) is passed as an additional argument in the dispatch context to retrieve the conditional parameter.
         Lastly, checks if a ``cond_f`` is set as an attributed to retrieve the conditional parameter.
@@ -100,18 +107,20 @@ class CondBernoulli(LeafNode):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError("'CondBernoulli' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
+            raise ValueError(
+                "'CondBernoulli' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
+            )
 
         # if 'p' was not already specified, retrieve it
         if p is None:
-            p = cond_f(data)['p']
+            p = cond_f(data)["p"]
 
         # check if value for 'p' is valid
         if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(
                 f"Value of 'p' for 'CondBernoulli' distribution must to be between 0.0 and 1.0, but was: {p}"
             )
-        
+
         return p
 
     def dist(self, p: float) -> rv_frozen:
@@ -134,9 +143,9 @@ class CondBernoulli(LeafNode):
         .. math::
 
             \text{supp}(\text{Bernoulli})=\{0,1\}
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
-    
+
         Args:
             scope_data:
                 Two-dimensional NumPy array containing sample instances.
@@ -159,9 +168,13 @@ class CondBernoulli(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        valid[valid & ~nan_mask] &= (
+            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        )
 
         # check if values are in valid range
-        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0) & (scope_data[valid & ~nan_mask] <= 1)
+        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0) & (
+            scope_data[valid & ~nan_mask] <= 1
+        )
 
         return valid

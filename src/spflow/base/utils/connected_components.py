@@ -22,16 +22,18 @@ def connected_components(adjacency_matrix: np.ndarray) -> List[Set[int]]:
 
     Returns:
         A list containing sets of integers representing the node ids of the connected components.
-    
+
     Raises:
         ValueError: Specified adjacency matrix is not symmetric.
     """
 
     if not np.all(adjacency_matrix == adjacency_matrix.T):
-        raise ValueError("Connected components expects input to be an undirected graph, but specified adjacency matrix was not symmetrical.")
+        raise ValueError(
+            "Connected components expects input to be an undirected graph, but specified adjacency matrix was not symmetrical."
+        )
 
     # convert adjacency matrix to boolean (any non-zero entries are treated as an edge)
-    adjacency_matrix = (adjacency_matrix != 0)
+    adjacency_matrix = adjacency_matrix != 0
 
     # set of all vertices
     vertices = set(range(adjacency_matrix.shape[0]))

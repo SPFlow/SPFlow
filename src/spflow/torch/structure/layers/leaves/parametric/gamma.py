@@ -7,14 +7,22 @@ import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from ....nodes.leaves.parametric.projections import proj_bounded_to_real, proj_real_to_bounded
+from ....nodes.leaves.parametric.projections import (
+    proj_bounded_to_real,
+    proj_real_to_bounded,
+)
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.scope.scope import Scope
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.gamma import Gamma
-from spflow.base.structure.layers.leaves.parametric.gamma import GammaLayer as BaseGammaLayer
+from spflow.base.structure.layers.leaves.parametric.gamma import (
+    GammaLayer as BaseGammaLayer,
+)
 
 
 class GammaLayer(Module):
@@ -45,7 +53,15 @@ class GammaLayer(Module):
         beta:
             One-dimensional PyTorch tensor representing the rate parameters (:math:`\beta`) of the Gamma distributions, greater than 0 (projected from ``beta_aux``).
     """
-    def __init__(self, scope: Union[Scope, List[Scope]], alpha: Union[int, float, List[float], np.ndarray, torch.Tensor]=1.0, beta: Union[int, float, List[float], np.ndarray, torch.Tensor]=1.0, n_nodes: int=1, **kwargs) -> None:
+
+    def __init__(
+        self,
+        scope: Union[Scope, List[Scope]],
+        alpha: Union[int, float, List[float], np.ndarray, torch.Tensor] = 1.0,
+        beta: Union[int, float, List[float], np.ndarray, torch.Tensor] = 1.0,
+        n_nodes: int = 1,
+        **kwargs,
+    ) -> None:
         r"""Initializes ``GammaLayer`` object.
 
         Args:
@@ -59,14 +75,16 @@ class GammaLayer(Module):
             beta:
                 Floating point, list of floats or one-dimensional NumPy array or PyTorch tensor representing the rate parameters (:math:`\beta`), greater than 0.
                 If a single value is given it is broadcast to all nodes.
-                Defaults to 1.0. 
+                Defaults to 1.0.
             n_nodes:
                 Integer specifying the number of nodes the layer should represent. Only relevant if a single scope is given.
                 Defaults to 1.
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(f"Number of nodes for 'GammaLayer' must be greater or equal to 1, but was {n_nodes}")
+                raise ValueError(
+                    f"Number of nodes for 'GammaLayer' must be greater or equal to 1, but was {n_nodes}"
+                )
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
@@ -88,16 +106,18 @@ class GammaLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(lambda s1, s2: s1.union(s2), self.scopes_out)
-    
+        self.combined_scope = reduce(
+            lambda s1, s2: s1.union(s2), self.scopes_out
+        )
+
         # parse weights
         self.set_params(alpha, beta)
-    
+
     @property
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
-    
+
     @property
     def alpha(self) -> torch.Tensor:
         """TODO"""
@@ -110,7 +130,7 @@ class GammaLayer(Module):
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.beta_aux, lb=0.0)  # type: ignore
 
-    def dist(self, node_ids: Optional[List[int]]=None) -> D.Distribution:
+    def dist(self, node_ids: Optional[List[int]] = None) -> D.Distribution:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -124,9 +144,15 @@ class GammaLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return D.Gamma(concentration=self.alpha[node_ids], rate=self.beta[node_ids])
+        return D.Gamma(
+            concentration=self.alpha[node_ids], rate=self.beta[node_ids]
+        )
 
-    def set_params(self, alpha: Union[int, float, List[float], np.ndarray, torch.Tensor], beta: Union[int, float, List[float], np.ndarray, torch.Tensor]) -> None:
+    def set_params(
+        self,
+        alpha: Union[int, float, List[float], np.ndarray, torch.Tensor],
+        beta: Union[int, float, List[float], np.ndarray, torch.Tensor],
+    ) -> None:
         r"""Sets the parameters for the represented distributions.
 
         TODO: projection function
@@ -141,11 +167,15 @@ class GammaLayer(Module):
             alpha = torch.tensor([alpha for _ in range(self.n_out)])
         elif isinstance(alpha, list) or isinstance(alpha, np.ndarray):
             alpha = torch.tensor(alpha)
-        if(alpha.ndim != 1):
-            raise ValueError(f"Numpy array of 'alpha' values for 'GammaLayer' is expected to be one-dimensional, but is {alpha.ndim}-dimensional.")
-        if(alpha.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'alpha' values for 'GammaLayer' must match number of output nodes {self.n_out}, but is {alpha.shape[0]}")
-        
+        if alpha.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'alpha' values for 'GammaLayer' is expected to be one-dimensional, but is {alpha.ndim}-dimensional."
+            )
+        if alpha.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'alpha' values for 'GammaLayer' must match number of output nodes {self.n_out}, but is {alpha.shape[0]}"
+            )
+
         if torch.any(alpha <= 0.0) or not torch.any(torch.isfinite(alpha)):
             raise ValueError(
                 f"Values of 'alpha' for 'GammaLayer' must be greater than 0, but was: {alpha}"
@@ -155,11 +185,15 @@ class GammaLayer(Module):
             beta = torch.tensor([beta for _ in range(self.n_out)])
         elif isinstance(beta, list) or isinstance(beta, np.ndarray):
             beta = torch.tensor(beta)
-        if(beta.ndim != 1):
-            raise ValueError(f"Numpy array of 'beta' values for 'GammaLayer' is expected to be one-dimensional, but is {beta.ndim}-dimensional.")
-        if(beta.shape[0] != self.n_out):
-            raise ValueError(f"Length of numpy array of 'beta' values for 'GammaLayer' must match number of output nodes {self.n_out}, but is {beta.shape[0]}")        
-        
+        if beta.ndim != 1:
+            raise ValueError(
+                f"Numpy array of 'beta' values for 'GammaLayer' is expected to be one-dimensional, but is {beta.ndim}-dimensional."
+            )
+        if beta.shape[0] != self.n_out:
+            raise ValueError(
+                f"Length of numpy array of 'beta' values for 'GammaLayer' must match number of output nodes {self.n_out}, but is {beta.shape[0]}"
+            )
+
         if torch.any(beta <= 0.0) or not torch.any(torch.isfinite(beta)):
             raise ValueError(
                 f"Value of 'beta' for 'GammaLayer' must be greater than 0, but was: {beta}"
@@ -175,8 +209,10 @@ class GammaLayer(Module):
             Tuple of two one-dimensional PyTorch tensors representing the shape and rate parameters, respectively.
         """
         return (self.alpha, self.beta)
-    
-    def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]]=None) -> torch.Tensor:
+
+    def check_support(
+        self, data: torch.Tensor, node_ids: Optional[List[int]] = None
+    ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Gamma distributions, which are:
@@ -199,9 +235,11 @@ class GammaLayer(Module):
         """
         if node_ids is None:
             node_ids = list(range(self.n_out))
-        
+
         # all query scopes are univariate
-        scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
+        scope_data = data[
+            :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
+        ]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(node_ids).support.check(scope_data)  # type: ignore
@@ -219,7 +257,12 @@ class GammaLayer(Module):
 
 
 @dispatch(memoize=True)  # type: ignore
-def marginalize(layer: GammaLayer, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[GammaLayer, Gamma, None]:
+def marginalize(
+    layer: GammaLayer,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[GammaLayer, Gamma, None]:
     """Structural marginalization for ``GammaLayer`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -236,7 +279,7 @@ def marginalize(layer: GammaLayer, marg_rvs: Iterable[int], prune: bool=True, di
             Has no effect here. Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
-    
+
     Returns:
         Unaltered leaf layer or None if it is completely marginalized.
     """
@@ -255,18 +298,28 @@ def marginalize(layer: GammaLayer, marg_rvs: Iterable[int], prune: bool=True, di
         if len(marg_scope) == 1:
             marginalized_node_ids.append(i)
             marginalized_scopes.append(scope)
-    
+
     if len(marginalized_node_ids) == 0:
         return None
     elif len(marginalized_node_ids) == 1 and prune:
         node_id = marginalized_node_ids.pop()
-        return Gamma(scope=marginalized_scopes[0], alpha=layer.alpha[node_id].item(), beta=layer.beta[node_id].item())
+        return Gamma(
+            scope=marginalized_scopes[0],
+            alpha=layer.alpha[node_id].item(),
+            beta=layer.beta[node_id].item(),
+        )
     else:
-        return GammaLayer(scope=marginalized_scopes, alpha=layer.alpha[marginalized_node_ids].detach(), beta=layer.beta[marginalized_node_ids].detach())
+        return GammaLayer(
+            scope=marginalized_scopes,
+            alpha=layer.alpha[marginalized_node_ids].detach(),
+            beta=layer.beta[marginalized_node_ids].detach(),
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(layer: BaseGammaLayer, dispatch_ctx: Optional[DispatchContext]=None) -> GammaLayer:
+def toTorch(
+    layer: BaseGammaLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> GammaLayer:
     """Conversion for ``GammaLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -276,11 +329,15 @@ def toTorch(layer: BaseGammaLayer, dispatch_ctx: Optional[DispatchContext]=None)
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GammaLayer(scope=layer.scopes_out, alpha=layer.alpha, beta=layer.beta)
+    return GammaLayer(
+        scope=layer.scopes_out, alpha=layer.alpha, beta=layer.beta
+    )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(layer: GammaLayer, dispatch_ctx: Optional[DispatchContext]=None) -> BaseGammaLayer:
+def toBase(
+    layer: GammaLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseGammaLayer:
     """Conversion for ``GammaLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -290,4 +347,8 @@ def toBase(layer: GammaLayer, dispatch_ctx: Optional[DispatchContext]=None) -> B
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseGammaLayer(scope=layer.scopes_out, alpha=layer.alpha.detach().numpy(), beta=layer.beta.detach().numpy())
+    return BaseGammaLayer(
+        scope=layer.scopes_out,
+        alpha=layer.alpha.detach().numpy(),
+        beta=layer.beta.detach().numpy(),
+    )

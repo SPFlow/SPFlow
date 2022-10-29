@@ -27,7 +27,8 @@ class Geometric(LeafNode):
         p:
             Floating points representing the probability of success in the range :math:`(0,1]`.
     """
-    def __init__(self, scope: Scope, p: Optional[float]=0.5) -> None:
+
+    def __init__(self, scope: Scope, p: Optional[float] = 0.5) -> None:
         r"""Initializes ``Geometric`` leaf node.
 
         Args:
@@ -38,17 +39,21 @@ class Geometric(LeafNode):
                 Defaults to 0.5.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Geometric' should be 1, but was {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Geometric' should be 1, but was {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Geometric' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Geometric' should be empty, but was {scope.evidence}."
+            )
 
         super(Geometric, self).__init__(scope=scope)
         self.set_params(p)
-    
+
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """
@@ -108,9 +113,11 @@ class Geometric(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= (np.remainder(scope_data[valid & ~nan_mask], 1) == 0)
+        valid[valid & ~nan_mask] &= (
+            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        )
 
         # check if values are in valid range
-        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 1)
+        valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] >= 1
 
         return valid

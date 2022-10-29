@@ -7,9 +7,14 @@ import torch.distributions as D
 from typing import Tuple, Optional
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform as BaseUniform
+from spflow.base.structure.nodes.leaves.parametric.uniform import (
+    Uniform as BaseUniform,
+)
 
 
 class Uniform(LeafNode):
@@ -38,8 +43,13 @@ class Uniform(LeafNode):
         support_outside:
             Scalar PyTorch tensor indicating whether or not values outside of the interval are part of the support.
     """
+
     def __init__(
-        self, scope: Scope, start: float, end: float, support_outside: bool = True
+        self,
+        scope: Scope,
+        start: float,
+        end: float,
+        support_outside: bool = True,
     ) -> None:
         r"""Initializes ``Uniform`` leaf node.
 
@@ -55,9 +65,13 @@ class Uniform(LeafNode):
                 Defaults to True.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Poisson' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Poisson' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}."
+            )
 
         super(Uniform, self).__init__(scope=scope)
 
@@ -69,7 +83,9 @@ class Uniform(LeafNode):
         # set parameters
         self.set_params(start, end, support_outside)
 
-    def set_params(self, start: float, end: float, support_outside: bool = True) -> None:
+    def set_params(
+        self, start: float, end: float, support_outside: bool = True
+    ) -> None:
         r"""Sets the parameters for the represented distribution.
 
         Args:
@@ -86,7 +102,9 @@ class Uniform(LeafNode):
                 f"Value of 'start' for 'Uniform' must be less than value of 'end', but were: {start}, {end}"
             )
         if not (np.isfinite(start) and np.isfinite(end)):
-            raise ValueError(f"Values of 'start' and 'end' for 'Uniform' must be finite, but were: {start}, {end}")
+            raise ValueError(
+                f"Values of 'start' and 'end' for 'Uniform' must be finite, but were: {start}, {end}"
+            )
 
         # since torch Uniform distribution excludes the upper bound, compute next largest number
         end_next = torch.nextafter(torch.tensor(end), torch.tensor(float("Inf")))  # type: ignore
@@ -134,7 +152,7 @@ class Uniform(LeafNode):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
-        
+
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
@@ -144,17 +162,24 @@ class Uniform(LeafNode):
         valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
 
         # check for infinite values
-        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        valid[~nan_mask & valid] &= (
+            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        )
 
         # check if values are within valid range
         if not self.support_outside:
-            valid[~nan_mask & valid] &= ((scope_data[~nan_mask & valid] >= self.start) & (scope_data[~nan_mask & valid] < self.end_next)).squeeze(-1)
+            valid[~nan_mask & valid] &= (
+                (scope_data[~nan_mask & valid] >= self.start)
+                & (scope_data[~nan_mask & valid] < self.end_next)
+            ).squeeze(-1)
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BaseUniform, dispatch_ctx: Optional[DispatchContext]=None) -> Uniform:
+def toTorch(
+    node: BaseUniform, dispatch_ctx: Optional[DispatchContext] = None
+) -> Uniform:
     """Conversion for ``Uniform`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -168,7 +193,9 @@ def toTorch(node: BaseUniform, dispatch_ctx: Optional[DispatchContext]=None) -> 
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: Uniform, dispatch_ctx: Optional[DispatchContext]=None) -> BaseUniform:
+def toBase(
+    node: Uniform, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseUniform:
     """Conversion for ``Uniform`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -178,4 +205,6 @@ def toBase(node: Uniform, dispatch_ctx: Optional[DispatchContext]=None) -> BaseU
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseUniform(node.scope, node.start.cpu().numpy(), node.end.cpu().numpy())
+    return BaseUniform(
+        node.scope, node.start.cpu().numpy(), node.end.cpu().numpy()
+    )

@@ -4,12 +4,20 @@
 import torch
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.rat.rat_spn import RatSPN
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(rat_spn: RatSPN, data: torch.Tensor, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> torch.Tensor:
+def log_likelihood(
+    rat_spn: RatSPN,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> torch.Tensor:
     """Computes log-likelihoods for RAT-SPNs nodes in the ``torch`` backend given input data.
 
     Args:
@@ -29,4 +37,9 @@ def log_likelihood(rat_spn: RatSPN, data: torch.Tensor, check_support: bool=True
         Each row corresponds to an input sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return log_likelihood(rat_spn.root_node, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
+    return log_likelihood(
+        rat_spn.root_node,
+        data,
+        check_support=check_support,
+        dispatch_ctx=dispatch_ctx,
+    )

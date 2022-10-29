@@ -9,9 +9,14 @@ from typing import List, Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli as BaseBernoulli
+from spflow.base.structure.nodes.leaves.parametric.bernoulli import (
+    Bernoulli as BaseBernoulli,
+)
 
 
 class Bernoulli(LeafNode):
@@ -36,7 +41,8 @@ class Bernoulli(LeafNode):
         p:
             Scalar PyTorch tensor representing the success probability of the Bernoulli distribution (projected from ``p_aux``).
     """
-    def __init__(self, scope: Scope, p: float=0.5) -> None:
+
+    def __init__(self, scope: Scope, p: float = 0.5) -> None:
         r"""Initializes ``Bernoulli`` leaf node.
 
         Args:
@@ -50,9 +56,13 @@ class Bernoulli(LeafNode):
             ValueError: Invalid arguments.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Bernoulli' should be 1, but was: {len(scope.query)}")
+            raise ValueError(
+                f"Query scope size for 'Bernoulli' should be 1, but was: {len(scope.query)}"
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Bernoulli' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Bernoulli' should be empty, but was {scope.evidence}."
+            )
 
         super(Bernoulli, self).__init__(scope=scope)
 
@@ -76,12 +86,14 @@ class Bernoulli(LeafNode):
                 f"Value of 'p' for 'Bernoulli' must to be between 0.0 and 1.0, but was: {p}"
             )
 
-        self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)
+        self.p_aux.data = proj_bounded_to_real(
+            torch.tensor(float(p)), lb=0.0, ub=1.0
+        )
 
     @property
     def dist(self) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
-        
+
         Returns:
             ``torch.distributions.Bernoulli`` instance.
         """
@@ -116,9 +128,9 @@ class Bernoulli(LeafNode):
         .. math::
 
             \text{supp}(\text{Bernoulli})=\{0,1\}
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
-    
+
         Args:
             scope_data:
                 Two-dimensional PyTorch tensor containing sample instances.
@@ -138,15 +150,19 @@ class Bernoulli(LeafNode):
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        valid[~nan_mask & valid] &= (
+            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        )
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BaseBernoulli, dispatch_ctx: Optional[DispatchContext]=None) -> Bernoulli:
+def toTorch(
+    node: BaseBernoulli, dispatch_ctx: Optional[DispatchContext] = None
+) -> Bernoulli:
     """Conversion for ``Bernoulli`` from ``base`` backend to ``torch`` backend.
-    
+
     Args:
         node:
             Leaf node to be converted.
@@ -158,9 +174,11 @@ def toTorch(node: BaseBernoulli, dispatch_ctx: Optional[DispatchContext]=None) -
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: Bernoulli, dispatch_ctx: Optional[DispatchContext]=None) -> BaseBernoulli:
+def toBase(
+    node: Bernoulli, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseBernoulli:
     """Conversion for ``Bernoulli`` from ``torch`` backend to ``base`` backend.
-    
+
     Args:
         node:
             Leaf node to be converted.

@@ -4,12 +4,22 @@
 import numpy as np
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
-from spflow.base.structure.layers.leaves.parametric.cond_bernoulli import CondBernoulliLayer
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.base.structure.layers.leaves.parametric.cond_bernoulli import (
+    CondBernoulliLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(layer: CondBernoulliLayer, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(
+    layer: CondBernoulliLayer,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> np.ndarray:
     r"""Computes log-likelihoods for ``CondBernoulliLayer`` leaves in the ``base`` backend given input data.
 
     Log-likelihood for ``CondBernoulliLayer`` is given by the logarithm of its individual probability mass functions (PMFs):
@@ -51,7 +61,18 @@ def log_likelihood(layer: CondBernoulliLayer, data: np.ndarray, check_support: b
     p_values = layer.retrieve_params(data, dispatch_ctx)
 
     for node, p in zip(layer.nodes, p_values):
-        dispatch_ctx.update_args(node, {'p': p})
+        dispatch_ctx.update_args(node, {"p": p})
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return np.concatenate([log_likelihood(node, data, check_support=check_support, dispatch_ctx=dispatch_ctx) for node in layer.nodes], axis=1)
+    return np.concatenate(
+        [
+            log_likelihood(
+                node,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for node in layer.nodes
+        ],
+        axis=1,
+    )

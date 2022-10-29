@@ -30,7 +30,8 @@ class NegativeBinomial(LeafNode):
         p:
             Floating point value representing the success probability of each trial in the range :math:`(0,1]`.
     """
-    def __init__(self, scope: Scope, n: int, p: float=0.5) -> None:
+
+    def __init__(self, scope: Scope, n: int, p: float = 0.5) -> None:
         r"""Initializes ``NegativeBinomial`` leaf node.
 
         Args:
@@ -43,9 +44,13 @@ class NegativeBinomial(LeafNode):
                 Defaults to 0.5.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'NegativeBinomial' should be 1, but was: {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'NegativeBinomial' should be 1, but was: {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'NegativeBinomial' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'NegativeBinomial' should be empty, but was {scope.evidence}."
+            )
 
         super(NegativeBinomial, self).__init__(scope=scope)
         self.set_params(n, p)
@@ -53,7 +58,7 @@ class NegativeBinomial(LeafNode):
     @property
     def dist(self) -> rv_frozen:
         r"""Returns the SciPy distribution represented by the leaf node.
-        
+
         Returns:
             ``scipy.stats.distributions.rv_frozen`` distribution.
         """
@@ -125,9 +130,11 @@ class NegativeBinomial(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= (np.remainder(scope_data[valid & ~nan_mask], 1) == 0)
+        valid[valid & ~nan_mask] &= (
+            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        )
 
         # check if values are in valid range
-        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0)
+        valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] >= 0
 
         return valid

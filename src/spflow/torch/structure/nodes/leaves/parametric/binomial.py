@@ -9,9 +9,14 @@ from typing import List, Tuple, Optional
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.torch.structure.nodes.node import LeafNode
-from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial as BaseBinomial
+from spflow.base.structure.nodes.leaves.parametric.binomial import (
+    Binomial as BaseBinomial,
+)
 
 
 class Binomial(LeafNode):
@@ -39,7 +44,8 @@ class Binomial(LeafNode):
         p:
             Scalar PyTorch tensor representing the success probability of the Bernoulli distribution (projected from ``p_aux``).
     """
-    def __init__(self, scope: Scope, n: int, p: float=0.5) -> None:
+
+    def __init__(self, scope: Scope, n: int, p: float = 0.5) -> None:
         r"""Initializes ``Binomial`` leaf node.
 
         Args:
@@ -52,9 +58,13 @@ class Binomial(LeafNode):
                 Defaults to 0.5.
         """
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Binomial' should be 1, but was {len(scope.query)}.")
+            raise ValueError(
+                f"Query scope size for 'Binomial' should be 1, but was {len(scope.query)}."
+            )
         if len(scope.evidence):
-            raise ValueError(f"Evidence scope for 'Binomial' should be empty, but was {scope.evidence}.")
+            raise ValueError(
+                f"Evidence scope for 'Binomial' should be empty, but was {scope.evidence}."
+            )
 
         super(Binomial, self).__init__(scope=scope)
 
@@ -86,7 +96,7 @@ class Binomial(LeafNode):
     @property
     def dist(self) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
-        
+
         Returns:
             ``torch.distributions.Binomial`` instance.
         """
@@ -137,7 +147,7 @@ class Binomial(LeafNode):
         .. math::
 
             \text{supp}(\text{Binomial})=\{0,\hdots,n\}
-        
+
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
@@ -151,7 +161,7 @@ class Binomial(LeafNode):
             raise ValueError(
                 f"Expected scope_data to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
             )
-        
+
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
@@ -159,15 +169,19 @@ class Binomial(LeafNode):
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        valid[~nan_mask & valid] &= (
+            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        )
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(node: BaseBinomial, dispatch_ctx: Optional[DispatchContext]=None) -> Binomial:
+def toTorch(
+    node: BaseBinomial, dispatch_ctx: Optional[DispatchContext] = None
+) -> Binomial:
     """Conversion for ``Binomial`` from ``base`` backend to ``torch`` backend.
-    
+
     Args:
         node:
             Leaf node to be converted.
@@ -179,7 +193,9 @@ def toTorch(node: BaseBinomial, dispatch_ctx: Optional[DispatchContext]=None) ->
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(node: Binomial, dispatch_ctx: Optional[DispatchContext]=None) -> BaseBinomial:
+def toBase(
+    node: Binomial, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseBinomial:
     """Conversion for ``Binomial`` from ``torch`` backend to ``base`` backend.
 
     Args:

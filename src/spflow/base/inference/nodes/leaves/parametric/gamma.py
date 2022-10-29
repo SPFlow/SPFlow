@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """Contains inference methods for ``Gamma`` nodes for SPFlow in the ``base`` backend.
 """
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
 
@@ -10,7 +13,12 @@ import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore
-def log_likelihood(node: Gamma, data: np.ndarray, check_support: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> np.ndarray:
+def log_likelihood(
+    node: Gamma,
+    data: np.ndarray,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> np.ndarray:
     r"""Computes log-likelihoods for ``Gamma`` node in the ``base`` backend given input data.
 
     Log-likelihood for ``Gamma`` is given by the logarithm of its probability distribution function (PDF):
