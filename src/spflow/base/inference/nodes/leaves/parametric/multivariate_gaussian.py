@@ -80,7 +80,7 @@ def log_likelihood(
 
     if check_support:
         # create masked based on distribution's support
-        valid_ids = node.check_support(data[~n_marg.astype(bool)])
+        valid_ids = node.check_support(data[~n_marg.astype(bool)], is_scope_data=True)
 
         if not valid_ids.all():
             raise ValueError(
