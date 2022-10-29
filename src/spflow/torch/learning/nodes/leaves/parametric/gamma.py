@@ -72,7 +72,7 @@ def maximum_likelihood_estimation(
     weights = weights.reshape(-1, 1)
 
     if check_support:
-        if torch.any(~leaf.check_support(scope_data)):
+        if torch.any(~leaf.check_support(scope_data, is_scope_data=True)):
             raise ValueError(
                 "Encountered values outside of the support for 'Gamma'."
             )

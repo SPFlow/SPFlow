@@ -212,26 +212,6 @@ class HypergeometricLayer(Module):
         """
         return self.N, self.M, self.n
 
-    def check_support(
-        self, scope_data: np.ndarray, node_ids: List[int]
-    ) -> np.ndarray:
-        "TODO"
-        valid = np.ones(scope_data.shape, dtype=bool)
-
-        # check for infinite values
-        valid &= ~np.isinf(scope_data)
-
-        # check if all values are valid integers
-        # TODO: runtime warning due to nan values
-        valid &= np.remainder(scope_data, 1) == 0
-
-        # check if values are in valid range
-        valid &= (scope_data >= max(0, self.n + self.M - self.N)) & (  # type: ignore
-            scope_data <= min(self.n, self.M)  # type: ignore
-        )
-
-        return valid
-
     def dist(self, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
 
@@ -267,10 +247,13 @@ class HypergeometricLayer(Module):
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
-            TODO
-            scope_data:
+            data:
                 Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
+                Assumes that relevant data is located in the columns corresponding to the scope indices.
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
 
         Returns:
             Two dimensional NumPy array indicating for each instance and node, whether they are part of the support (True) or not (False).

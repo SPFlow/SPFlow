@@ -103,7 +103,7 @@ def maximum_likelihood_estimation(
         weights = weights.repeat(layer.n_out, 1).T
 
     if check_support:
-        if torch.any(~layer.check_support(scope_data)):
+        if torch.any(~layer.check_support(scope_data, is_scope_data=True)):
             raise ValueError(
                 "Encountered values outside of the support for 'ExponentialLayer'."
             )

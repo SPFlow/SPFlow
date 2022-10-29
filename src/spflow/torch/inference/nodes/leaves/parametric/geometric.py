@@ -72,7 +72,7 @@ def log_likelihood(
 
     if check_support:
         # create masked based on distribution's support
-        valid_ids = leaf.check_support(scope_data[~marg_ids]).squeeze(1)
+        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
             raise ValueError(

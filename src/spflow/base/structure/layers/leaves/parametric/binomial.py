@@ -201,10 +201,13 @@ class BinomialLayer(Module):
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
-            TODO
-            scope_data:
-                Two-dimensional MumPy array containing sample instances.
+            data:
+                Two-dimensional NumPy array containing sample instances.
                 Each row is regarded as a sample.
+                Assumes that relevant data is located in the columns corresponding to the scope indices.
+            node_ids:
+                Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
+                Defaults to None, in which case all nodes distributions selected.
 
         Returns:
             Two dimensional NumPy array indicating for each instance and node, whether they are part of the support (True) or not (False).

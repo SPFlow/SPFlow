@@ -298,7 +298,7 @@ class CondBinomialLayer(Module):
         return (self.n,)
 
     def check_support(
-        self, data: torch.Tensor, node_ids: Optional[List[int]] = None
+        self, data: torch.Tensor, node_ids: Optional[List[int]] = None, is_scope_data: bool=False
     ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.
 
@@ -311,13 +311,17 @@ class CondBinomialLayer(Module):
         Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
 
         Args:
-            TODO
-            scope_data:
+            data:
                 Two-dimensional PyTorch tensor containing sample instances.
                 Each row is regarded as a sample.
+                Unless ``is_scope_data`` is set to True, it is assumed that the relevant data is located in the columns corresponding to the scope indices.
             node_ids:
                 Optional list of integers specifying the indices (and order) of the nodes' distribution to return.
                 Defaults to None, in which case all nodes distributions selected.
+            is_scope_data:
+                Boolean indicating if the given data already contains the relevant data for the leafs' scope in the correct order (True) or if it needs to be extracted from the full data set.
+                Note, that this should already only contain only the data according (and in order of) ``node_ids``.
+                Defaults to False.
 
         Returns:
             Two dimensional PyTorch tensor indicating for each instance and node, whether they are part of the support (True) or not (False).
@@ -326,10 +330,13 @@ class CondBinomialLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        # all query scopes are univariate
-        scope_data = data[
-            :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-        ]
+        if is_scope_data:
+            scope_data = data
+        else:
+            # all query scopes are univariate
+            scope_data = data[
+                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
+            ]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(torch.ones(self.n_out), node_ids).support.check(scope_data)  # type: ignore

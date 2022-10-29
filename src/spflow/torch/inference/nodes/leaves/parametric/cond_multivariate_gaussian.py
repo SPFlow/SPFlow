@@ -76,7 +76,7 @@ def log_likelihood(
 
     if check_support:
         # check support
-        valid_ids = leaf.check_support(_scope_data).squeeze(1)
+        valid_ids = leaf.check_support(_scope_data, is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
             raise ValueError(
