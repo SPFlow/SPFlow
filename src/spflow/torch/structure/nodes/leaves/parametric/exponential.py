@@ -108,7 +108,9 @@ class Exponential(LeafNode):
         """
         return (self.l.data.cpu().numpy(),)  # type: ignore
 
-    def check_support(self, data: torch.Tensor, is_scope_data: bool=False) -> torch.Tensor:
+    def check_support(
+        self, data: torch.Tensor, is_scope_data: bool = False
+    ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Exponential distribution, which is:
@@ -127,7 +129,7 @@ class Exponential(LeafNode):
             is_scope_data:
                 Boolean indicating if the given data already contains the relevant data for the leaf's scope in the correct order (True) or if it needs to be extracted from the full data set.
                 Defaults to False.
-            
+
         Returns:
             Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """

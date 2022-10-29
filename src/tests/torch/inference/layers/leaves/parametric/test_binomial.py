@@ -1,9 +1,15 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.leaves.parametric.binomial import BinomialLayer
-from spflow.torch.inference.layers.leaves.parametric.binomial import log_likelihood
+from spflow.torch.structure.layers.leaves.parametric.binomial import (
+    BinomialLayer,
+)
+from spflow.torch.inference.layers.leaves.parametric.binomial import (
+    log_likelihood,
+)
 from spflow.torch.structure.nodes.leaves.parametric.binomial import Binomial
-from spflow.torch.inference.nodes.leaves.parametric.binomial import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.binomial import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import log_likelihood
 import torch
 import numpy as np
@@ -23,7 +29,11 @@ class TestNode(unittest.TestCase):
 
     def test_layer_likelihood(self):
 
-        layer = BinomialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], n=[3, 2, 3], p=[0.2, 0.5, 0.9])
+        layer = BinomialLayer(
+            scope=[Scope([0]), Scope([1]), Scope([0])],
+            n=[3, 2, 3],
+            p=[0.2, 0.5, 0.9],
+        )
 
         nodes = [
             Binomial(Scope([0]), n=3, p=0.2),
@@ -34,7 +44,9 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[3, 1], [1, 2], [0, 0]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
+        nodes_ll = torch.concat(
+            [log_likelihood(node, dummy_data) for node in nodes], dim=1
+        )
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -68,23 +80,35 @@ class TestNode(unittest.TestCase):
         # make sure that parameters are correctly updated
         self.assertTrue(torch.allclose(n_orig, torch_binomial.n))
         self.assertTrue(
-            torch.allclose(p_aux_orig - torch_binomial.p_aux.grad, torch_binomial.p_aux)
+            torch.allclose(
+                p_aux_orig - torch_binomial.p_aux.grad, torch_binomial.p_aux
+            )
         )
 
         # verify that distribution parameters match parameters
-        self.assertTrue(torch.equal(torch_binomial.n, torch_binomial.dist().total_count.long()))
-        self.assertTrue(torch.allclose(torch_binomial.p, torch_binomial.dist().probs))
+        self.assertTrue(
+            torch.equal(
+                torch_binomial.n, torch_binomial.dist().total_count.long()
+            )
+        )
+        self.assertTrue(
+            torch.allclose(torch_binomial.p, torch_binomial.dist().probs)
+        )
 
     def test_gradient_optimization(self):
 
         torch.manual_seed(0)
 
         # initialize distribution
-        torch_binomial = BinomialLayer(scope=[Scope([0]), Scope([1])], n=[5, 3], p=0.3)
+        torch_binomial = BinomialLayer(
+            scope=[Scope([0]), Scope([1])], n=[5, 3], p=0.3
+        )
 
         # create dummy data
         p_target = torch.tensor([0.8, 0.5])
-        data = torch.distributions.Binomial(torch.tensor([5, 3]), p_target).sample((100000,))
+        data = torch.distributions.Binomial(
+            torch.tensor([5, 3]), p_target
+        ).sample((100000,))
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_binomial.parameters(), lr=0.5)
@@ -108,14 +132,16 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        binomial = BinomialLayer(scope=[Scope([0]), Scope([1])], n=5, p=random.random())
+        binomial = BinomialLayer(
+            scope=[Scope([0]), Scope([1])], n=5, p=random.random()
+        )
         data = torch.tensor([[float("nan"), float("nan")]])
 
         # should not raise and error and should return 1
         probs = log_likelihood(binomial, data).exp()
 
         self.assertTrue(torch.allclose(probs, torch.tensor([1.0, 1.0])))
-    
+
     def test_support(self):
         # TODO
         pass

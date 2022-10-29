@@ -1,9 +1,19 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.geometric import Geometric as BaseGeometric
-from spflow.base.inference.nodes.leaves.parametric.geometric import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.geometric import Geometric, toBase, toTorch
+from spflow.base.structure.nodes.leaves.parametric.geometric import (
+    Geometric as BaseGeometric,
+)
+from spflow.base.inference.nodes.leaves.parametric.geometric import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.geometric import (
+    Geometric,
+    toBase,
+    toTorch,
+)
 from spflow.torch.structure.nodes.node import marginalize
-from spflow.torch.inference.nodes.leaves.parametric.geometric import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.geometric import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -28,10 +38,10 @@ class TestGeometric(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, Geometric, Scope([]), 0.5)
         self.assertRaises(Exception, Geometric, Scope([0, 1]), 0.5)
-        self.assertRaises(Exception, Geometric, Scope([0],[1]), 0.5)
-    
+        self.assertRaises(Exception, Geometric, Scope([0], [1]), 0.5)
+
     def test_structural_marginalization(self):
-        
+
         geometric = Geometric(Scope([0]), 0.5)
 
         self.assertTrue(marginalize(geometric, [1]) is not None)

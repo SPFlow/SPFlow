@@ -1,9 +1,17 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.poisson import Poisson as BasePoisson
+from spflow.base.structure.nodes.leaves.parametric.poisson import (
+    Poisson as BasePoisson,
+)
 from spflow.base.inference.nodes.leaves.parametric.poisson import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.poisson import Poisson, toBase, toTorch
+from spflow.torch.structure.nodes.leaves.parametric.poisson import (
+    Poisson,
+    toBase,
+    toTorch,
+)
 from spflow.torch.structure.nodes.node import marginalize
-from spflow.torch.inference.nodes.leaves.parametric.poisson import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.poisson import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -21,7 +29,9 @@ class TestPoisson(unittest.TestCase):
         # l = 0
         Poisson(Scope([0]), 0.0)
         # l > 0
-        Poisson(Scope([0]), torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
+        Poisson(
+            Scope([0]), torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))
+        )
         # l = -inf and l = inf
         self.assertRaises(Exception, Poisson, Scope([0]), -np.inf)
         self.assertRaises(Exception, Poisson, Scope([0]), np.inf)
@@ -31,10 +41,10 @@ class TestPoisson(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, Poisson, Scope([]), 1)
         self.assertRaises(Exception, Poisson, Scope([0, 1]), 1)
-        self.assertRaises(Exception, Poisson, Scope([0],[1]), 1)
+        self.assertRaises(Exception, Poisson, Scope([0], [1]), 1)
 
     def test_structural_marginalization(self):
-        
+
         poisson = Poisson(Scope([0]), 1.0)
 
         self.assertTrue(marginalize(poisson, [1]) is not None)

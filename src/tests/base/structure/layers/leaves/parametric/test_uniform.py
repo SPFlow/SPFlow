@@ -1,4 +1,7 @@
-from spflow.base.structure.layers.leaves.parametric.uniform import UniformLayer, marginalize
+from spflow.base.structure.layers.leaves.parametric.uniform import (
+    UniformLayer,
+    marginalize,
+)
 from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
 from spflow.meta.scope.scope import Scope
 import numpy as np
@@ -14,7 +17,9 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
+        self.assertTrue(
+            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
+        )
         # make sure parameter properties works correctly
         start = l.start
         for node, node_start in zip(l.nodes, start):
@@ -42,28 +47,79 @@ class TestLayer(unittest.TestCase):
         for node, node_start, node_end in zip(l.nodes, start, end):
             self.assertTrue(np.all(node.start == node_start))
             self.assertTrue(np.all(node.end == node_end))
-        
+
         # wrong number of values
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), start, end[:-1], n_nodes=3)
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), start[:-1], end, n_nodes=3)
+        self.assertRaises(
+            ValueError, UniformLayer, Scope([0]), start, end[:-1], n_nodes=3
+        )
+        self.assertRaises(
+            ValueError, UniformLayer, Scope([0]), start[:-1], end, n_nodes=3
+        )
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), [start for _ in range(3)], end, n_nodes=3)
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), start, [end for _ in range(3)], n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            UniformLayer,
+            Scope([0]),
+            [start for _ in range(3)],
+            end,
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            UniformLayer,
+            Scope([0]),
+            start,
+            [end for _ in range(3)],
+            n_nodes=3,
+        )
 
         # ----- numpy parameter values -----
 
-        l = UniformLayer(scope=Scope([1]), n_nodes=3, start=np.array(start), end=np.array(end))
+        l = UniformLayer(
+            scope=Scope([1]),
+            n_nodes=3,
+            start=np.array(start),
+            end=np.array(end),
+        )
 
         for node, node_start, node_end in zip(l.nodes, start, end):
             self.assertTrue(np.all(node.start == node_start))
             self.assertTrue(np.all(node.end == node_end))
-        
+
         # wrong number of values
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array(start[:-1]), np.array(end), n_nodes=3)
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array(start), np.array(end[:-1]), n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            UniformLayer,
+            Scope([0]),
+            np.array(start[:-1]),
+            np.array(end),
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            UniformLayer,
+            Scope([0]),
+            np.array(start),
+            np.array(end[:-1]),
+            n_nodes=3,
+        )
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), np.array([start for _ in range(3)]), end, n_nodes=3)
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), start, np.array([end for _ in range(3)]), n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            UniformLayer,
+            Scope([0]),
+            np.array([start for _ in range(3)]),
+            end,
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            UniformLayer,
+            Scope([0]),
+            start,
+            np.array([end for _ in range(3)]),
+            n_nodes=3,
+        )
 
         # ---- different scopes -----
         l = UniformLayer(scope=Scope([1]), start=0.0, end=1.0, n_nodes=3)
@@ -71,15 +127,21 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, UniformLayer, Scope([0]), 0.0, 1.0, n_nodes=0)
+        self.assertRaises(
+            ValueError, UniformLayer, Scope([0]), 0.0, 1.0, n_nodes=0
+        )
 
         # ----- invalid scope -----
-        self.assertRaises(ValueError, UniformLayer, Scope([]), 0.0, 1.0, n_nodes=3)
+        self.assertRaises(
+            ValueError, UniformLayer, Scope([]), 0.0, 1.0, n_nodes=3
+        )
         self.assertRaises(ValueError, UniformLayer, [], 0.0, 1.0, n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
-        l = UniformLayer(scope=[Scope([1]), Scope([0])], start=0.0, end=1.0, n_nodes=3)
+        l = UniformLayer(
+            scope=[Scope([1]), Scope([0])], start=0.0, end=1.0, n_nodes=3
+        )
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
 
@@ -87,7 +149,9 @@ class TestLayer(unittest.TestCase):
 
         # ---------- same scopes -----------
 
-        l = UniformLayer(scope=Scope([1]), start=[-1.0, 2.0], end=[1.0, 2.5], n_nodes=2)
+        l = UniformLayer(
+            scope=Scope([1]), start=[-1.0, 2.0], end=[1.0, 2.5], n_nodes=2
+        )
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [1]) == None)
@@ -98,13 +162,15 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
         self.assertTrue(np.all(l.start == l_marg.start))
         self.assertTrue(np.all(l.end == l_marg.end))
-    
+
         # ---------- different scopes -----------
 
-        l = UniformLayer(scope=[Scope([1]), Scope([0])], start=[-1.0, 2.0], end=[1.0, 2.5])
+        l = UniformLayer(
+            scope=[Scope([1]), Scope([0])], start=[-1.0, 2.0], end=[1.0, 2.5]
+        )
 
         # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0,1]) == None)
+        self.assertTrue(marginalize(l, [0, 1]) == None)
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
@@ -128,7 +194,13 @@ class TestLayer(unittest.TestCase):
 
     def test_get_params(self):
 
-        layer = UniformLayer(scope=Scope([1]), start=[-0.73, 0.29], end=[0.5, 1.3], support_outside=[True, False], n_nodes=2)
+        layer = UniformLayer(
+            scope=Scope([1]),
+            start=[-0.73, 0.29],
+            end=[0.5, 1.3],
+            support_outside=[True, False],
+            n_nodes=2,
+        )
 
         start, end, support_outside, *others = layer.get_params()
 

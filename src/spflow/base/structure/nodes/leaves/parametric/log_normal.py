@@ -98,7 +98,9 @@ class LogNormal(LeafNode):
         """
         return self.mean, self.std
 
-    def check_support(self, data: np.ndarray, is_scope_data: bool=False) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, is_scope_data: bool = False
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Log-Normal distribution, which is:
@@ -117,7 +119,7 @@ class LogNormal(LeafNode):
             is_scope_data:
                 Boolean indicating if the given data already contains the relevant data for the leaf's scope in the correct order (True) or if it needs to be extracted from the full data set.
                 Defaults to False.
-                
+
         Returns:
             Two-dimensional NumPy array indicating for each instance, whether they are part of the support (True) or not (False).
         """

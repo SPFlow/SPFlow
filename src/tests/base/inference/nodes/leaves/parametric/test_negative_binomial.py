@@ -1,6 +1,10 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.negative_binomial import NegativeBinomial
-from spflow.base.inference.nodes.leaves.parametric.negative_binomial import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.negative_binomial import (
+    NegativeBinomial,
+)
+from spflow.base.inference.nodes.leaves.parametric.negative_binomial import (
+    log_likelihood,
+)
 from spflow.base.inference.module import likelihood
 
 import numpy as np
@@ -84,7 +88,7 @@ class TestNegativeBinomial(unittest.TestCase):
 
         # TODO: n float
         self.assertRaises(Exception, likelihood, negative_binomial, 0.5)
-    
+
     def test_likelihood_marginalization(self):
 
         negative_binomial = NegativeBinomial(Scope([0]), 20, 0.3)
@@ -119,7 +123,9 @@ class TestNegativeBinomial(unittest.TestCase):
         )
 
         # check valid integers, but outside of valid range
-        self.assertRaises(ValueError, log_likelihood, negative_binomial, np.array([[-1]]))
+        self.assertRaises(
+            ValueError, log_likelihood, negative_binomial, np.array([[-1]])
+        )
 
         # check valid integers within valid range
         log_likelihood(negative_binomial, np.array([[0]]))
@@ -138,7 +144,9 @@ class TestNegativeBinomial(unittest.TestCase):
             negative_binomial,
             np.array([[np.nextafter(0.0, 1.0)]]),
         )
-        self.assertRaises(ValueError, log_likelihood, negative_binomial, np.array([[10.1]]))
+        self.assertRaises(
+            ValueError, log_likelihood, negative_binomial, np.array([[10.1]])
+        )
 
 
 if __name__ == "__main__":

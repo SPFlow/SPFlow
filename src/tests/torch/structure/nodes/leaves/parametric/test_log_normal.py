@@ -1,9 +1,19 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.log_normal import LogNormal as BaseLogNormal
-from spflow.base.inference.nodes.leaves.parametric.log_normal import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.log_normal import LogNormal, toBase, toTorch
+from spflow.base.structure.nodes.leaves.parametric.log_normal import (
+    LogNormal as BaseLogNormal,
+)
+from spflow.base.inference.nodes.leaves.parametric.log_normal import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.log_normal import (
+    LogNormal,
+    toBase,
+    toTorch,
+)
 from spflow.torch.structure.nodes.node import marginalize
-from spflow.torch.inference.nodes.leaves.parametric.log_normal import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.log_normal import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -27,7 +37,9 @@ class TestLogNormal(unittest.TestCase):
 
         # std <= 0
         self.assertRaises(Exception, LogNormal, Scope([0]), mean, 0.0)
-        self.assertRaises(Exception, LogNormal, Scope([0]), mean, np.nextafter(0.0, -1.0))
+        self.assertRaises(
+            Exception, LogNormal, Scope([0]), mean, np.nextafter(0.0, -1.0)
+        )
         # std = +-inf and std = nan
         self.assertRaises(Exception, LogNormal, Scope([0]), mean, np.inf)
         self.assertRaises(Exception, LogNormal, Scope([0]), mean, -np.inf)
@@ -36,8 +48,8 @@ class TestLogNormal(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, LogNormal, Scope([]), 0.0, 1.0)
         self.assertRaises(Exception, LogNormal, Scope([0, 1]), 0.0, 1.0)
-        self.assertRaises(Exception, LogNormal, Scope([0],[1]), 0.0, 1.0)
-    
+        self.assertRaises(Exception, LogNormal, Scope([0], [1]), 0.0, 1.0)
+
     def test_structural_marginalization(self):
 
         log_normal = LogNormal(Scope([0]), 0.0, 1.0)

@@ -1,7 +1,13 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.base.structure.nodes.leaves.parametric.cond_poisson import CondPoisson as BaseCondPoisson
-from spflow.torch.structure.nodes.leaves.parametric.cond_poisson import CondPoisson, toBase, toTorch
+from spflow.base.structure.nodes.leaves.parametric.cond_poisson import (
+    CondPoisson as BaseCondPoisson,
+)
+from spflow.torch.structure.nodes.leaves.parametric.cond_poisson import (
+    CondPoisson,
+    toBase,
+    toTorch,
+)
 from spflow.torch.structure.nodes.node import marginalize
 from typing import Callable
 
@@ -17,13 +23,13 @@ class TestPoisson(unittest.TestCase):
 
         poisson = CondPoisson(Scope([0]))
         self.assertTrue(poisson.cond_f is None)
-        poisson = CondPoisson(Scope([0]), cond_f=lambda x: {'l': 1.0})
+        poisson = CondPoisson(Scope([0]), cond_f=lambda x: {"l": 1.0})
         self.assertTrue(isinstance(poisson.cond_f, Callable))
 
         # invalid scopes
         self.assertRaises(Exception, CondPoisson, Scope([]))
         self.assertRaises(Exception, CondPoisson, Scope([0, 1]))
-        self.assertRaises(Exception, CondPoisson, Scope([0],[1]))
+        self.assertRaises(Exception, CondPoisson, Scope([0], [1]))
 
     def test_retrieve_params(self):
 
@@ -32,23 +38,48 @@ class TestPoisson(unittest.TestCase):
         poisson = CondPoisson(Scope([0]))
 
         # l = 0
-        poisson.set_cond_f(lambda data: {'l': torch.tensor(0.0)})
-        self.assertTrue(poisson.retrieve_params(np.array([[1.0]]), DispatchContext()) == torch.tensor(0.0))
+        poisson.set_cond_f(lambda data: {"l": torch.tensor(0.0)})
+        self.assertTrue(
+            poisson.retrieve_params(np.array([[1.0]]), DispatchContext())
+            == torch.tensor(0.0)
+        )
         # l > 0
-        poisson.set_cond_f(lambda data: {'l': torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))})
-        self.assertTrue(poisson.retrieve_params(np.array([[1.0]]), DispatchContext()) == torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
+        poisson.set_cond_f(
+            lambda data: {
+                "l": torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))
+            }
+        )
+        self.assertTrue(
+            poisson.retrieve_params(np.array([[1.0]]), DispatchContext())
+            == torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))
+        )
         # l = -inf and l = inf
-        poisson.set_cond_f(lambda data: {'l': torch.tensor(float('inf'))})
-        self.assertRaises(Exception, poisson.retrieve_params, np.array([[1.0]]), DispatchContext())
-        poisson.set_cond_f(lambda data: {'l': -torch.tensor(float('inf'))})
-        self.assertRaises(Exception, poisson.retrieve_params, np.array([[1.0]]), DispatchContext())
+        poisson.set_cond_f(lambda data: {"l": torch.tensor(float("inf"))})
+        self.assertRaises(
+            Exception,
+            poisson.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
+        poisson.set_cond_f(lambda data: {"l": -torch.tensor(float("inf"))})
+        self.assertRaises(
+            Exception,
+            poisson.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
 
         # l = nan
-        poisson.set_cond_f(lambda data: {'l': torch.tensor(float('nan'))})
-        self.assertRaises(Exception, poisson.retrieve_params, np.array([[1.0]]), DispatchContext())
+        poisson.set_cond_f(lambda data: {"l": torch.tensor(float("nan"))})
+        self.assertRaises(
+            Exception,
+            poisson.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
 
     def test_structural_marginalization(self):
-        
+
         poisson = CondPoisson(Scope([0]))
 
         self.assertTrue(marginalize(poisson, [1]) is not None)

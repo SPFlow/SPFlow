@@ -125,7 +125,9 @@ class Uniform(LeafNode):
         """
         return self.start.cpu().numpy(), self.end.cpu().numpy(), self.support_outside  # type: ignore
 
-    def check_support(self, data: torch.Tensor, is_scope_data: bool=False) -> torch.Tensor:
+    def check_support(
+        self, data: torch.Tensor, is_scope_data: bool = False
+    ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Uniform distribution, which is:

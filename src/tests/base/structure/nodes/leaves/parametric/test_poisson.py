@@ -27,14 +27,15 @@ class TestPoisson(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, Poisson, Scope([]), 1)
         self.assertRaises(Exception, Poisson, Scope([0, 1]), 1)
-        self.assertRaises(Exception, Poisson, Scope([0],[1]), 1)
+        self.assertRaises(Exception, Poisson, Scope([0], [1]), 1)
 
     def test_structural_marginalization(self):
-        
+
         poisson = Poisson(Scope([0]), 1.0)
 
         self.assertTrue(marginalize(poisson, [1]) is not None)
         self.assertTrue(marginalize(poisson, [0]) is None)
+
 
 if __name__ == "__main__":
     unittest.main()

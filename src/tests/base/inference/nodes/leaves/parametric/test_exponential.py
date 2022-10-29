@@ -1,6 +1,10 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.exponential import Exponential
-from spflow.base.inference.nodes.leaves.parametric.exponential import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.exponential import (
+    Exponential,
+)
+from spflow.base.inference.nodes.leaves.parametric.exponential import (
+    log_likelihood,
+)
 from spflow.base.inference.module import likelihood
 
 import numpy as np
@@ -68,7 +72,7 @@ class TestExponential(unittest.TestCase):
         # set parameter to None manually
         exponential.l = None
         self.assertRaises(Exception, likelihood, exponential, data)
-    
+
     def test_likelihood_marginalization(self):
 
         exponential = Exponential(Scope([0]), 1.0)
@@ -93,8 +97,12 @@ class TestExponential(unittest.TestCase):
         exponential = Exponential(Scope([0]), l)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, exponential, np.array([[-np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, exponential, np.array([[np.inf]]))
+        self.assertRaises(
+            ValueError, log_likelihood, exponential, np.array([[-np.inf]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, exponential, np.array([[np.inf]])
+        )
 
         # check valid float values (within range)
         log_likelihood(exponential, np.array([[np.nextafter(0.0, 1.0)]]))
@@ -102,7 +110,10 @@ class TestExponential(unittest.TestCase):
 
         # check invalid float values (outside range)
         self.assertRaises(
-            ValueError, log_likelihood, exponential, np.array([[np.nextafter(0.0, -1.0)]])
+            ValueError,
+            log_likelihood,
+            exponential,
+            np.array([[np.nextafter(0.0, -1.0)]]),
         )
 
         # edge case 0

@@ -1,7 +1,9 @@
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.node import marginalize
 from spflow.base.structure.nodes.leaves.parametric.log_normal import LogNormal
-from spflow.base.inference.nodes.leaves.parametric.log_normal import log_likelihood
+from spflow.base.inference.nodes.leaves.parametric.log_normal import (
+    log_likelihood,
+)
 from spflow.base.inference.module import likelihood
 
 import numpy as np
@@ -23,7 +25,9 @@ class TestLogNormal(unittest.TestCase):
 
         # stdev <= 0
         self.assertRaises(Exception, LogNormal, Scope([0]), mean, 0.0)
-        self.assertRaises(Exception, LogNormal, Scope([0]), mean, np.nextafter(0.0, -1.0))
+        self.assertRaises(
+            Exception, LogNormal, Scope([0]), mean, np.nextafter(0.0, -1.0)
+        )
         # stdev = +-inf and stdev = nan
         self.assertRaises(Exception, LogNormal, Scope([0]), mean, np.inf)
         self.assertRaises(Exception, LogNormal, Scope([0]), mean, -np.inf)
@@ -32,7 +36,7 @@ class TestLogNormal(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, LogNormal, Scope([]), 0.0, 1.0)
         self.assertRaises(Exception, LogNormal, Scope([0, 1]), 0.0, 1.0)
-        self.assertRaises(Exception, LogNormal, Scope([0],[1]), 0.0, 1.0)
+        self.assertRaises(Exception, LogNormal, Scope([0], [1]), 0.0, 1.0)
 
     def test_structural_marginalization(self):
 
@@ -40,6 +44,7 @@ class TestLogNormal(unittest.TestCase):
 
         self.assertTrue(marginalize(log_normal, [1]) is not None)
         self.assertTrue(marginalize(log_normal, [0]) is None)
+
 
 if __name__ == "__main__":
     unittest.main()

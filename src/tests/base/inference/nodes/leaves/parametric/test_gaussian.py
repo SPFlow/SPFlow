@@ -1,6 +1,8 @@
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.base.inference.nodes.leaves.parametric.gaussian import log_likelihood
+from spflow.base.inference.nodes.leaves.parametric.gaussian import (
+    log_likelihood,
+)
 from spflow.base.inference.module import likelihood
 
 import numpy as np
@@ -19,7 +21,9 @@ class TestGaussian(unittest.TestCase):
         gaussian = Gaussian(Scope([0]), mean, math.sqrt(var))
 
         # create test inputs/outputs
-        data = np.array([[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]])
+        data = np.array(
+            [[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]]
+        )
         targets = np.array([[0.398942], [0.241971], [0.241971]])
 
         probs = likelihood(gaussian, data)
@@ -37,7 +41,9 @@ class TestGaussian(unittest.TestCase):
         gaussian = Gaussian(Scope([0]), mean, math.sqrt(var))
 
         # create test inputs/outputs
-        data = np.array([[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]])
+        data = np.array(
+            [[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]]
+        )
         targets = np.array([[0.178412], [0.108212], [0.108212]])
 
         probs = likelihood(gaussian, data)
@@ -45,7 +51,7 @@ class TestGaussian(unittest.TestCase):
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
-    
+
     def test_likelihood_3(self):
 
         # ----- smaller variance -----
@@ -55,7 +61,9 @@ class TestGaussian(unittest.TestCase):
         gaussian = Gaussian(Scope([0]), mean, math.sqrt(var))
 
         # create test inputs/outputs
-        data = np.array([[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]])
+        data = np.array(
+            [[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]]
+        )
         targets = np.array([[0.892062], [0.541062], [0.541062]])
 
         probs = likelihood(gaussian, data)
@@ -83,7 +91,7 @@ class TestGaussian(unittest.TestCase):
         # set parameter to None manually
         gaussian.std = None
         self.assertRaises(Exception, likelihood, gaussian, data)
-    
+
     def test_likelihood_marginalization(self):
 
         gaussian = Gaussian(Scope([0]), 0.0, 1.0)
@@ -107,8 +115,12 @@ class TestGaussian(unittest.TestCase):
         gaussian = Gaussian(Scope([0]), 0.0, 1.0)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, gaussian, np.array([[np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, gaussian, np.array([[-np.inf]]))    
+        self.assertRaises(
+            ValueError, log_likelihood, gaussian, np.array([[np.inf]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, gaussian, np.array([[-np.inf]])
+        )
 
 
 if __name__ == "__main__":

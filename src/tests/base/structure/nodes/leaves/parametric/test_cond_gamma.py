@@ -13,7 +13,9 @@ class TestGamma(unittest.TestCase):
 
         gamma = CondGamma(Scope([0]))
         self.assertTrue(gamma.cond_f is None)
-        gamma = CondGamma(Scope([0]), cond_f=lambda x: {'alpha': 1.0, 'beta': 1.0})
+        gamma = CondGamma(
+            Scope([0]), cond_f=lambda x: {"alpha": 1.0, "beta": 1.0}
+        )
         self.assertTrue(isinstance(gamma.cond_f, Callable))
 
         # invalid scopes
@@ -28,43 +30,95 @@ class TestGamma(unittest.TestCase):
         gamma = CondGamma(Scope([0]))
 
         # alpha > 0
-        gamma.set_cond_f(lambda data: {'alpha': np.nextafter(0.0, 1.0), 'beta': 1.0})
-        alpha, beta = gamma.retrieve_params(np.array([[1.0]]), DispatchContext())
+        gamma.set_cond_f(
+            lambda data: {"alpha": np.nextafter(0.0, 1.0), "beta": 1.0}
+        )
+        alpha, beta = gamma.retrieve_params(
+            np.array([[1.0]]), DispatchContext()
+        )
         self.assertTrue(alpha == np.nextafter(0.0, 1.0))
         self.assertTrue(beta == 1.0)
         # alpha = 0
-        gamma.set_cond_f(lambda data: {'alpha': 0.0, 'beta': 1.0})
-        self.assertRaises(ValueError, gamma.retrieve_params, np.array([[1.0]]), DispatchContext())
+        gamma.set_cond_f(lambda data: {"alpha": 0.0, "beta": 1.0})
+        self.assertRaises(
+            ValueError,
+            gamma.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
         # alpha < 0
-        gamma.set_cond_f(lambda data: {'alpha': np.nextafter(0.0, -1.0), 'beta': 1.0})
-        self.assertRaises(ValueError, gamma.retrieve_params, np.array([[1.0]]), DispatchContext())
+        gamma.set_cond_f(
+            lambda data: {"alpha": np.nextafter(0.0, -1.0), "beta": 1.0}
+        )
+        self.assertRaises(
+            ValueError,
+            gamma.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
         # alpha = inf and alpha = nan
-        gamma.set_cond_f(lambda data: {'alpha': np.inf, 'beta': 1.0})
-        self.assertRaises(ValueError, gamma.retrieve_params, np.array([[1.0]]), DispatchContext())
-        gamma.set_cond_f(lambda data: {'alpha': np.nan, 'beta': 1.0})
-        self.assertRaises(ValueError, gamma.retrieve_params, np.array([[1.0]]), DispatchContext())
-    
+        gamma.set_cond_f(lambda data: {"alpha": np.inf, "beta": 1.0})
+        self.assertRaises(
+            ValueError,
+            gamma.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
+        gamma.set_cond_f(lambda data: {"alpha": np.nan, "beta": 1.0})
+        self.assertRaises(
+            ValueError,
+            gamma.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
+
         # beta > 0
-        gamma.set_cond_f(lambda data: {'alpha': 1.0, 'beta': np.nextafter(0.0, 1.0)})
-        alpha, beta = gamma.retrieve_params(np.array([[1.0]]), DispatchContext())
+        gamma.set_cond_f(
+            lambda data: {"alpha": 1.0, "beta": np.nextafter(0.0, 1.0)}
+        )
+        alpha, beta = gamma.retrieve_params(
+            np.array([[1.0]]), DispatchContext()
+        )
         self.assertTrue(alpha == 1.0)
         self.assertTrue(beta == np.nextafter(0.0, 1.0))
         # beta = 0
-        gamma.set_cond_f(lambda data: {'alpha': 1.0, 'beta': 0.0})
-        self.assertRaises(ValueError, gamma.retrieve_params, np.array([[1.0]]), DispatchContext())
+        gamma.set_cond_f(lambda data: {"alpha": 1.0, "beta": 0.0})
+        self.assertRaises(
+            ValueError,
+            gamma.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
         # beta < 0
-        gamma.set_cond_f(lambda data: {'alpha': 1.0, 'beta': np.nextafter(0.0, -1.0)})
-        self.assertRaises(ValueError, gamma.retrieve_params, np.array([[1.0]]), DispatchContext())
+        gamma.set_cond_f(
+            lambda data: {"alpha": 1.0, "beta": np.nextafter(0.0, -1.0)}
+        )
+        self.assertRaises(
+            ValueError,
+            gamma.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
         # beta = inf and beta = nan
-        gamma.set_cond_f(lambda data: {'alpha': 1.0, 'beta': np.inf})
-        self.assertRaises(ValueError, gamma.retrieve_params, np.array([[1.0]]), DispatchContext())
-        gamma.set_cond_f(lambda data: {'alpha': 1.0, 'beta': np.nan})
-        self.assertRaises(ValueError, gamma.retrieve_params, np.array([[1.0]]), DispatchContext())
+        gamma.set_cond_f(lambda data: {"alpha": 1.0, "beta": np.inf})
+        self.assertRaises(
+            ValueError,
+            gamma.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
+        gamma.set_cond_f(lambda data: {"alpha": 1.0, "beta": np.nan})
+        self.assertRaises(
+            ValueError,
+            gamma.retrieve_params,
+            np.array([[1.0]]),
+            DispatchContext(),
+        )
 
         # invalid scopes
         self.assertRaises(Exception, CondGamma, Scope([]))
         self.assertRaises(Exception, CondGamma, Scope([0, 1]))
-        self.assertRaises(Exception, CondGamma, Scope([0],[1]))
+        self.assertRaises(Exception, CondGamma, Scope([0], [1]))
 
     def test_structural_marginalization(self):
 

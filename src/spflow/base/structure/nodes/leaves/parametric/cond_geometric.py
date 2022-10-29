@@ -134,7 +134,9 @@ class CondGeometric(LeafNode):
         """
         return geom(p=p)
 
-    def check_support(self, data: np.ndarray, is_scope_data: bool=False) -> np.ndarray:
+    def check_support(
+        self, data: np.ndarray, is_scope_data: bool = False
+    ) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Geometric distribution, which is:

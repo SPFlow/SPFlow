@@ -1,5 +1,10 @@
-from spflow.base.structure.layers.leaves.parametric.negative_binomial import NegativeBinomialLayer, marginalize
-from spflow.base.structure.nodes.leaves.parametric.negative_binomial import NegativeBinomial
+from spflow.base.structure.layers.leaves.parametric.negative_binomial import (
+    NegativeBinomialLayer,
+    marginalize,
+)
+from spflow.base.structure.nodes.leaves.parametric.negative_binomial import (
+    NegativeBinomial,
+)
 from spflow.meta.scope.scope import Scope
 import numpy as np
 import unittest
@@ -14,7 +19,9 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
+        self.assertTrue(
+            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
+        )
         # make sure parameter properties works correctly
         n_values = l.n
         p_values = l.p
@@ -22,10 +29,12 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.n == node_n))
             self.assertTrue(np.all(node.p == node_p))
 
-        # ----- float/int parameter values ----- 
+        # ----- float/int parameter values -----
         n_value = 2
         p_value = 0.5
-        l = NegativeBinomialLayer(scope=Scope([1]), n_nodes=3, n=n_value, p=p_value)
+        l = NegativeBinomialLayer(
+            scope=Scope([1]), n_nodes=3, n=n_value, p=p_value
+        )
 
         for node in l.nodes:
             self.assertTrue(np.all(node.n == n_value))
@@ -34,33 +43,95 @@ class TestLayer(unittest.TestCase):
         # ----- list parameter values -----
         n_values = [1, 5, 4]
         p_values = [0.25, 0.5, 0.3]
-        l = NegativeBinomialLayer(scope=[Scope([1]), Scope([0]), Scope([2])], n=n_values, p=p_values)
+        l = NegativeBinomialLayer(
+            scope=[Scope([1]), Scope([0]), Scope([2])], n=n_values, p=p_values
+        )
 
         for node, node_n, node_p in zip(l.nodes, n_values, p_values):
             self.assertTrue(np.all(node.n == node_n))
             self.assertTrue(np.all(node.p == node_p))
-        
+
         # wrong number of values
-        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([1]), Scope([0]), Scope([2])], n_values[:-1], p_values, n_nodes=3)
-        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([1]), Scope([0]), Scope([2])], n_values, p_values[:-1], n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer,
+            [Scope([1]), Scope([0]), Scope([2])],
+            n_values[:-1],
+            p_values,
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer,
+            [Scope([1]), Scope([0]), Scope([2])],
+            n_values,
+            p_values[:-1],
+            n_nodes=3,
+        )
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([1]), Scope([0]), Scope([2])], [n_values for _ in range(3)], p_values, n_nodes=3)
-        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([1]), Scope([0]), Scope([2])], n_values, [p_values for _ in range(3)], n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer,
+            [Scope([1]), Scope([0]), Scope([2])],
+            [n_values for _ in range(3)],
+            p_values,
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer,
+            [Scope([1]), Scope([0]), Scope([2])],
+            n_values,
+            [p_values for _ in range(3)],
+            n_nodes=3,
+        )
 
         # ----- numpy parameter values -----
 
-        l = NegativeBinomialLayer(scope=[Scope([1]), Scope([0]), Scope([2])], n=np.array(n_values), p=np.array(p_values))
+        l = NegativeBinomialLayer(
+            scope=[Scope([1]), Scope([0]), Scope([2])],
+            n=np.array(n_values),
+            p=np.array(p_values),
+        )
 
         for node, node_n, node_p in zip(l.nodes, n_values, p_values):
             self.assertTrue(np.all(node.n == node_n))
             self.assertTrue(np.all(node.p == node_p))
-        
+
         # wrong number of values
-        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([1]), Scope([0]), Scope([2])], np.array(n_values[:-1]), np.array(p_values), n_nodes=3)
-        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([1]), Scope([0]), Scope([2])], np.array(n_values), np.array(p_values[:-1]), n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer,
+            [Scope([1]), Scope([0]), Scope([2])],
+            np.array(n_values[:-1]),
+            np.array(p_values),
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer,
+            [Scope([1]), Scope([0]), Scope([2])],
+            np.array(n_values),
+            np.array(p_values[:-1]),
+            n_nodes=3,
+        )
         # wrong number of dimensions (nested list)
-        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([1]), Scope([0]), Scope([2])], n_values, np.array([p_values for _ in range(3)]), n_nodes=3)
-        self.assertRaises(ValueError, NegativeBinomialLayer, [Scope([1]), Scope([0]), Scope([2])], np.array([n_values for _ in range(3)]), p_values, n_nodes=3)
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer,
+            [Scope([1]), Scope([0]), Scope([2])],
+            n_values,
+            np.array([p_values for _ in range(3)]),
+            n_nodes=3,
+        )
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer,
+            [Scope([1]), Scope([0]), Scope([2])],
+            np.array([n_values for _ in range(3)]),
+            p_values,
+            n_nodes=3,
+        )
 
         # ---- different scopes -----
         l = NegativeBinomialLayer(scope=Scope([1]), n=5, n_nodes=3)
@@ -68,18 +139,26 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, NegativeBinomialLayer, Scope([0]), 2, n_nodes=0)
+        self.assertRaises(
+            ValueError, NegativeBinomialLayer, Scope([0]), 2, n_nodes=0
+        )
 
         # ----- invalid scope -----
-        self.assertRaises(ValueError, NegativeBinomialLayer, Scope([]), 2, n_nodes=3)
+        self.assertRaises(
+            ValueError, NegativeBinomialLayer, Scope([]), 2, n_nodes=3
+        )
         self.assertRaises(ValueError, NegativeBinomialLayer, [], 2, n_nodes=3)
-        
+
         # ----- invalid values for 'n' over same scope -----
-        self.assertRaises(ValueError, NegativeBinomialLayer, Scope([0]), n=[2, 5], n_nodes=2)
+        self.assertRaises(
+            ValueError, NegativeBinomialLayer, Scope([0]), n=[2, 5], n_nodes=2
+        )
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0])]
-        l = NegativeBinomialLayer(scope=[Scope([1]), Scope([0])], n=2, p=0.5, n_nodes=3)
+        l = NegativeBinomialLayer(
+            scope=[Scope([1]), Scope([0])], n=2, p=0.5, n_nodes=3
+        )
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
 
@@ -87,7 +166,9 @@ class TestLayer(unittest.TestCase):
 
         # ---------- same scopes -----------
 
-        l = NegativeBinomialLayer(scope=Scope([1]), n=2, p=[0.5, 0.3], n_nodes=2)
+        l = NegativeBinomialLayer(
+            scope=Scope([1]), n=2, p=[0.5, 0.3], n_nodes=2
+        )
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [1]) == None)
@@ -98,13 +179,15 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
         self.assertTrue(np.all(l.n == l_marg.n))
         self.assertTrue(np.all(l.p == l_marg.p))
-    
+
         # ---------- different scopes -----------
 
-        l = NegativeBinomialLayer(scope=[Scope([1]), Scope([0])], n=[2, 6], p=[0.5, 0.3])
+        l = NegativeBinomialLayer(
+            scope=[Scope([1]), Scope([0])], n=[2, 6], p=[0.5, 0.3]
+        )
 
         # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0,1]) == None)
+        self.assertTrue(marginalize(l, [0, 1]) == None)
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
@@ -128,7 +211,9 @@ class TestLayer(unittest.TestCase):
 
     def test_get_params(self):
 
-        l = NegativeBinomialLayer(scope=Scope([1]), n=[2, 2], p=[0.73, 0.29], n_nodes=2)
+        l = NegativeBinomialLayer(
+            scope=Scope([1]), n=[2, 2], p=[0.73, 0.29], n_nodes=2
+        )
 
         n, p, *others = l.get_params()
 

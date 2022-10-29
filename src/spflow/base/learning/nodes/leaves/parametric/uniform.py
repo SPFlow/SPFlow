@@ -58,7 +58,9 @@ def maximum_likelihood_estimation(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     if check_support:
-        if np.any(~leaf.check_support(data[:, leaf.scope.query], is_scope_data=True)):
+        if np.any(
+            ~leaf.check_support(data[:, leaf.scope.query], is_scope_data=True)
+        ):
             raise ValueError(
                 "Encountered values outside of the support for 'Uniform'."
             )

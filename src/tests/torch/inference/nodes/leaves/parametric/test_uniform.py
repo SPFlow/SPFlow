@@ -1,8 +1,16 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform as BaseUniform
+from spflow.base.structure.nodes.leaves.parametric.uniform import (
+    Uniform as BaseUniform,
+)
 from spflow.base.inference.nodes.leaves.parametric.uniform import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.uniform import Uniform, toBase, toTorch
-from spflow.torch.inference.nodes.leaves.parametric.uniform import log_likelihood
+from spflow.torch.structure.nodes.leaves.parametric.uniform import (
+    Uniform,
+    toBase,
+    toTorch,
+)
+from spflow.torch.inference.nodes.leaves.parametric.uniform import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -41,11 +49,19 @@ class TestUniform(unittest.TestCase):
         )
         data_torch = torch.tensor(
             [
-                [torch.nextafter(torch.tensor(start), -torch.tensor(float("Inf")))],
+                [
+                    torch.nextafter(
+                        torch.tensor(start), -torch.tensor(float("Inf"))
+                    )
+                ],
                 [start],
                 [(start + end) / 2.0],
                 [end],
-                [torch.nextafter(torch.tensor(end), torch.tensor(float("Inf")))],
+                [
+                    torch.nextafter(
+                        torch.tensor(end), torch.tensor(float("Inf"))
+                    )
+                ],
             ]
         )
 
@@ -53,7 +69,9 @@ class TestUniform(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_uniform, data_torch)
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+        self.assertTrue(
+            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
+        )
 
     def test_gradient_computation(self):
 
@@ -64,11 +82,19 @@ class TestUniform(unittest.TestCase):
 
         data_torch = torch.tensor(
             [
-                [torch.nextafter(torch.tensor(start), -torch.tensor(float("Inf")))],
+                [
+                    torch.nextafter(
+                        torch.tensor(start), -torch.tensor(float("Inf"))
+                    )
+                ],
                 [start],
                 [(start + end) / 2.0],
                 [end],
-                [torch.nextafter(torch.tensor(end), torch.tensor(float("Inf")))],
+                [
+                    torch.nextafter(
+                        torch.tensor(end), torch.tensor(float("Inf"))
+                    )
+                ],
             ]
         )
 
@@ -86,7 +112,7 @@ class TestUniform(unittest.TestCase):
 
         # make sure distribution has no (learnable) parameters
         self.assertFalse(list(torch_uniform.parameters()))
-    
+
     def test_likelihood_marginalization(self):
 
         uniform = Uniform(Scope([0]), 1.0, 2.0)
@@ -105,8 +131,12 @@ class TestUniform(unittest.TestCase):
         uniform = Uniform(Scope([0]), 1.0, 2.0, support_outside=True)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[-float("inf")]]))
-        self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[float("inf")]]))
+        self.assertRaises(
+            ValueError, log_likelihood, uniform, torch.tensor([[-float("inf")]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, uniform, torch.tensor([[float("inf")]])
+        )
 
         # check valid floats in [start, end]
         log_likelihood(uniform, torch.tensor([[1.0]]))
@@ -115,18 +145,28 @@ class TestUniform(unittest.TestCase):
 
         # check valid floats outside [start, end]
         log_likelihood(
-            uniform, torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(-1.0))]])
+            uniform,
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(1.0), torch.tensor(-1.0))]]
+            ),
         )
         log_likelihood(
-            uniform, torch.tensor([[torch.nextafter(torch.tensor(2.0), torch.tensor(3.0))]])
+            uniform,
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(2.0), torch.tensor(3.0))]]
+            ),
         )
 
         # ----- without support outside the interval -----
         uniform = Uniform(Scope([0]), 1.0, 2.0, support_outside=False)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[-float("inf")]]))
-        self.assertRaises(ValueError, log_likelihood, uniform, torch.tensor([[float("inf")]]))
+        self.assertRaises(
+            ValueError, log_likelihood, uniform, torch.tensor([[-float("inf")]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, uniform, torch.tensor([[float("inf")]])
+        )
 
         # check valid floats in [start, end]
         log_likelihood(uniform, torch.tensor([[1.0]]))
@@ -138,13 +178,17 @@ class TestUniform(unittest.TestCase):
             ValueError,
             log_likelihood,
             uniform,
-            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(-1.0))]]),
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(1.0), torch.tensor(-1.0))]]
+            ),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             uniform,
-            torch.tensor([[torch.nextafter(torch.tensor(2.0), torch.tensor(3.0))]]),
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(2.0), torch.tensor(3.0))]]
+            ),
         )
 
 

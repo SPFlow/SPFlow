@@ -5,7 +5,9 @@ from spflow.torch.structure.nodes.node import SPNProductNode
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.torch.inference.nodes.node import log_likelihood
 from spflow.torch.inference.nodes.cond_node import log_likelihood
-from spflow.torch.inference.nodes.leaves.parametric.gaussian import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood, log_likelihood
 import torch
 import unittest
@@ -13,43 +15,45 @@ import unittest
 
 def create_example_spn():
     spn = SPNCondSumNode(
-            children=[
-                SPNProductNode(
-                    children=[
-                        Gaussian(Scope([0])),
-                        SPNCondSumNode(
-                            children=[
-                                SPNProductNode(
-                                    children=[
-                                        Gaussian(Scope([1])),
-                                        Gaussian(Scope([2])),
-                                    ]
-                                ),
-                                SPNProductNode(
-                                    children=[
-                                        Gaussian(Scope([1])),
-                                        Gaussian(Scope([2])),
-                                    ]
-                                ),
-                            ],
-                            cond_f=lambda data: {'weights': torch.tensor([0.3, 0.7])},
-                        ),
-                    ],
-                ),
-                SPNProductNode(
-                    children=[
-                        SPNProductNode(
-                            children=[
-                                Gaussian(Scope([0])),
-                                Gaussian(Scope([1])),
-                            ]
-                        ),
-                        Gaussian(Scope([2])),
-                    ]
-                ),
-            ],
-            cond_f=lambda data: {'weights': torch.tensor([0.4, 0.6])},
-        )
+        children=[
+            SPNProductNode(
+                children=[
+                    Gaussian(Scope([0])),
+                    SPNCondSumNode(
+                        children=[
+                            SPNProductNode(
+                                children=[
+                                    Gaussian(Scope([1])),
+                                    Gaussian(Scope([2])),
+                                ]
+                            ),
+                            SPNProductNode(
+                                children=[
+                                    Gaussian(Scope([1])),
+                                    Gaussian(Scope([2])),
+                                ]
+                            ),
+                        ],
+                        cond_f=lambda data: {
+                            "weights": torch.tensor([0.3, 0.7])
+                        },
+                    ),
+                ],
+            ),
+            SPNProductNode(
+                children=[
+                    SPNProductNode(
+                        children=[
+                            Gaussian(Scope([0])),
+                            Gaussian(Scope([1])),
+                        ]
+                    ),
+                    Gaussian(Scope([2])),
+                ]
+            ),
+        ],
+        cond_f=lambda data: {"weights": torch.tensor([0.4, 0.6])},
+    )
     return spn
 
 
@@ -69,7 +73,9 @@ class TestNode(unittest.TestCase):
         l_result = likelihood(dummy_spn, dummy_data)
         ll_result = log_likelihood(dummy_spn, dummy_data)
         self.assertTrue(torch.isclose(l_result[0][0], torch.tensor(0.023358)))
-        self.assertTrue(torch.isclose(ll_result[0][0], torch.tensor(-3.7568156)))
+        self.assertTrue(
+            torch.isclose(ll_result[0][0], torch.tensor(-3.7568156))
+        )
 
     def test_likelihood_marginalization(self):
         spn = create_example_spn()
@@ -87,7 +93,9 @@ class TestNode(unittest.TestCase):
         l_result = likelihood(spn, dummy_data)
         ll_result = log_likelihood(spn, dummy_data)
         self.assertTrue(torch.isclose(l_result[0][0], torch.tensor(0.09653235)))
-        self.assertTrue(torch.isclose(ll_result[0][0], torch.tensor(-2.33787707)))
+        self.assertTrue(
+            torch.isclose(ll_result[0][0], torch.tensor(-2.33787707))
+        )
 
     def test_sum_node_gradient_computation(self):
 
@@ -110,7 +118,7 @@ class TestNode(unittest.TestCase):
         # sum node to be optimized
         sum_node = SPNCondSumNode(
             children=[gaussian_1, gaussian_2],
-            cond_f=lambda data: {'weights': weights},
+            cond_f=lambda data: {"weights": weights},
         )
 
         ll = log_likelihood(sum_node, data).mean()

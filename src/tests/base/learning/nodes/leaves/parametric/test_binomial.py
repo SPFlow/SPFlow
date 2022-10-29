@@ -1,6 +1,8 @@
 from spflow.meta.scope.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial
-from spflow.base.learning.nodes.leaves.parametric.binomial import maximum_likelihood_estimation
+from spflow.base.learning.nodes.leaves.parametric.binomial import (
+    maximum_likelihood_estimation,
+)
 
 import numpy as np
 import unittest
@@ -13,7 +15,7 @@ class TestNode(unittest.TestCase):
         # set seed
         np.random.seed(0)
         random.seed(0)
-        
+
         leaf = Binomial(Scope([0]), n=3)
 
         # simulate data
@@ -29,7 +31,7 @@ class TestNode(unittest.TestCase):
         # set seed
         np.random.seed(0)
         random.seed(0)
-        
+
         leaf = Binomial(Scope([0]), n=10)
 
         # simulate data
@@ -45,7 +47,7 @@ class TestNode(unittest.TestCase):
         # set seed
         np.random.seed(0)
         random.seed(0)
-        
+
         leaf = Binomial(Scope([0]), n=3)
 
         # simulate data
@@ -61,7 +63,7 @@ class TestNode(unittest.TestCase):
         # set seed
         np.random.seed(0)
         random.seed(0)
-        
+
         leaf = Binomial(Scope([0]), n=5)
 
         # simulate data
@@ -71,7 +73,7 @@ class TestNode(unittest.TestCase):
         maximum_likelihood_estimation(leaf, data)
 
         self.assertTrue(leaf.p < 1.0)
-    
+
     def test_mle_only_nans(self):
 
         leaf = Binomial(Scope([0]), n=3)
@@ -80,52 +82,97 @@ class TestNode(unittest.TestCase):
         data = np.array([[np.nan], [np.nan]])
 
         # check if exception is raised
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, data, nan_strategy='ignore')
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            data,
+            nan_strategy="ignore",
+        )
 
     def test_mle_invalid_support(self):
-        
+
         leaf = Binomial(Scope([0]), n=3)
 
         # perform MLE (should raise exceptions)
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.inf]]), bias_correction=True)
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[-0.1]]), bias_correction=True)
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[4]]), bias_correction=True)
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            np.array([[np.inf]]),
+            bias_correction=True,
+        )
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            np.array([[-0.1]]),
+            bias_correction=True,
+        )
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            np.array([[4]]),
+            bias_correction=True,
+        )
 
     def test_mle_nan_strategy_none(self):
 
         leaf = Binomial(Scope([0]), n=2)
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.nan], [1], [2], [1]]), nan_strategy=None)
-    
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            np.array([[np.nan], [1], [2], [1]]),
+            nan_strategy=None,
+        )
+
     def test_mle_nan_strategy_ignore(self):
 
         leaf = Binomial(Scope([0]), n=2)
-        maximum_likelihood_estimation(leaf, np.array([[np.nan], [1], [2], [1]]), nan_strategy='ignore')
-        self.assertTrue(np.isclose(leaf.p, 4.0/6.0))
+        maximum_likelihood_estimation(
+            leaf, np.array([[np.nan], [1], [2], [1]]), nan_strategy="ignore"
+        )
+        self.assertTrue(np.isclose(leaf.p, 4.0 / 6.0))
 
     def test_mle_nan_strategy_callable(self):
 
         leaf = Binomial(Scope([0]), n=2)
         # should not raise an issue
-        maximum_likelihood_estimation(leaf, np.array([[1], [0], [1]]), nan_strategy=lambda x: x)
+        maximum_likelihood_estimation(
+            leaf, np.array([[1], [0], [1]]), nan_strategy=lambda x: x
+        )
 
     def test_mle_nan_strategy_invalid(self):
 
         leaf = Binomial(Scope([0]), n=2)
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.nan], [1], [0], [1]]), nan_strategy='invalid_string')
-        self.assertRaises(ValueError, maximum_likelihood_estimation, leaf, np.array([[np.nan], [1], [0], [1]]), nan_strategy=1)
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            np.array([[np.nan], [1], [0], [1]]),
+            nan_strategy="invalid_string",
+        )
+        self.assertRaises(
+            ValueError,
+            maximum_likelihood_estimation,
+            leaf,
+            np.array([[np.nan], [1], [0], [1]]),
+            nan_strategy=1,
+        )
 
     def test_weighted_mle(self):
 
         leaf = Binomial(Scope([0]), n=3)
 
-        data = np.vstack([
-            np.random.binomial(n=3, p=0.8, size=(10000,1)),
-            np.random.binomial(n=3, p=0.2, size=(10000,1))
-        ])
-        weights = np.concatenate([
-            np.zeros(10000),
-            np.ones(10000)
-        ])
+        data = np.vstack(
+            [
+                np.random.binomial(n=3, p=0.8, size=(10000, 1)),
+                np.random.binomial(n=3, p=0.2, size=(10000, 1)),
+            ]
+        )
+        weights = np.concatenate([np.zeros(10000), np.ones(10000)])
 
         maximum_likelihood_estimation(leaf, data, weights)
 

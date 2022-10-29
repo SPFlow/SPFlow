@@ -2,14 +2,18 @@ from typing import Optional, Iterable, Union
 from spflow.base.structure.nodes.node import LeafNode
 from spflow.meta.scope.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import DispatchContext, init_default_dispatch_context
+from spflow.meta.contexts.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 
 from copy import deepcopy
 
 
 class DummyNode(LeafNode):
     """Dummy node class without children (to simulate leaf nodes)."""
-    def __init__(self, scope: Optional[Scope]=None):
+
+    def __init__(self, scope: Optional[Scope] = None):
 
         if scope is None:
             scope = Scope([0])
@@ -18,7 +22,12 @@ class DummyNode(LeafNode):
 
 
 @dispatch(memoize=True)
-def marginalize(node: DummyNode, marg_rvs: Iterable[int], prune: bool=True, dispatch_ctx: Optional[DispatchContext]=None) -> Union[None, DummyNode]:
+def marginalize(
+    node: DummyNode,
+    marg_rvs: Iterable[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[None, DummyNode]:
 
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -29,10 +38,15 @@ def marginalize(node: DummyNode, marg_rvs: Iterable[int], prune: bool=True, disp
     mutual_rvs = set(node_scope.query).intersection(set(marg_rvs))
 
     # node scope is being fully marginalized
-    if(len(mutual_rvs) == len(node_scope.query)):
+    if len(mutual_rvs) == len(node_scope.query):
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
-        return DummyNode(Scope([rv for rv in node.scope.query if rv not in marg_rvs], node.scope.evidence)) 
+        return DummyNode(
+            Scope(
+                [rv for rv in node.scope.query if rv not in marg_rvs],
+                node.scope.evidence,
+            )
+        )
     else:
         return deepcopy(node)

@@ -1,9 +1,13 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.layers.leaves.parametric.uniform import UniformLayer
-from spflow.torch.inference.layers.leaves.parametric.uniform import log_likelihood
+from spflow.torch.inference.layers.leaves.parametric.uniform import (
+    log_likelihood,
+)
 from spflow.torch.structure.nodes.leaves.parametric.uniform import Uniform
-from spflow.torch.inference.nodes.leaves.parametric.uniform import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.uniform import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import log_likelihood
 import torch
 import unittest
@@ -22,7 +26,11 @@ class TestNode(unittest.TestCase):
 
     def test_layer_likelihood(self):
 
-        layer = UniformLayer(scope=[Scope([0]), Scope([1]), Scope([0])], start=[0.2, -1.0, 0.3], end=[1.0, 0.3, 0.97])
+        layer = UniformLayer(
+            scope=[Scope([0]), Scope([1]), Scope([0])],
+            start=[0.2, -1.0, 0.3],
+            end=[1.0, 0.3, 0.97],
+        )
 
         nodes = [
             Uniform(Scope([0]), start=0.2, end=1.0, support_outside=True),
@@ -33,7 +41,9 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[0.5, -0.3], [0.9, 0.21], [0.5, 0.0]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
+        nodes_ll = torch.concat(
+            [log_likelihood(node, dummy_data) for node in nodes], dim=1
+        )
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -42,7 +52,9 @@ class TestNode(unittest.TestCase):
         start = torch.tensor([random.random(), random.random()])
         end = start + 1e-7 + torch.tensor([random.random(), random.random()])
 
-        torch_uniform = UniformLayer(scope=[Scope([0]), Scope([1])], start=start, end=end)
+        torch_uniform = UniformLayer(
+            scope=[Scope([0]), Scope([1])], start=start, end=end
+        )
 
         data_torch = torch.stack(
             [
@@ -70,8 +82,12 @@ class TestNode(unittest.TestCase):
         self.assertFalse(list(torch_uniform.parameters()))
 
     def test_likelihood_marginalization(self):
-        
-        uniform = UniformLayer(scope=[Scope([0]), Scope([1])], start=0.0, end=random.random()+1e-7)
+
+        uniform = UniformLayer(
+            scope=[Scope([0]), Scope([1])],
+            start=0.0,
+            end=random.random() + 1e-7,
+        )
         data = torch.tensor([[float("nan"), float("nan")]])
 
         # should not raise and error and should return 1

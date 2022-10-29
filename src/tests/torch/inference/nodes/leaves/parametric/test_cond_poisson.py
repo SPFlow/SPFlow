@@ -1,9 +1,19 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.base.structure.nodes.leaves.parametric.cond_poisson import CondPoisson as BaseCondPoisson
-from spflow.base.inference.nodes.leaves.parametric.cond_poisson import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.cond_poisson import CondPoisson, toBase, toTorch
-from spflow.torch.inference.nodes.leaves.parametric.cond_poisson import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.cond_poisson import (
+    CondPoisson as BaseCondPoisson,
+)
+from spflow.base.inference.nodes.leaves.parametric.cond_poisson import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.cond_poisson import (
+    CondPoisson,
+    toBase,
+    toTorch,
+)
+from spflow.torch.inference.nodes.leaves.parametric.cond_poisson import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -24,7 +34,7 @@ class TestPoisson(unittest.TestCase):
 
     def test_likelihood_module_cond_f(self):
 
-        cond_f = lambda data: {'l': 1.0}
+        cond_f = lambda data: {"l": 1.0}
 
         poisson = CondPoisson(Scope([0]), cond_f=cond_f)
 
@@ -37,13 +47,13 @@ class TestPoisson(unittest.TestCase):
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
-    
+
     def test_likelihood_args_p(self):
 
         poisson = CondPoisson(Scope([0]))
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[poisson] = {'l': 1.0}
+        dispatch_ctx.args[poisson] = {"l": 1.0}
 
         # create test inputs/outputs
         data = torch.tensor([[0], [2], [5]])
@@ -59,10 +69,10 @@ class TestPoisson(unittest.TestCase):
 
         poisson = CondPoisson(Scope([0]))
 
-        cond_f = lambda data: {'l': 1.0}
+        cond_f = lambda data: {"l": 1.0}
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[poisson] = {'cond_f': cond_f}
+        dispatch_ctx.args[poisson] = {"cond_f": cond_f}
 
         # create test inputs/outputs
         data = torch.tensor([[0], [2], [5]])
@@ -78,8 +88,8 @@ class TestPoisson(unittest.TestCase):
 
         l = random.randint(1, 10)
 
-        torch_poisson = CondPoisson(Scope([0]), cond_f=lambda data: {'l': l})
-        node_poisson = BaseCondPoisson(Scope([0]), cond_f=lambda data: {'l': l})
+        torch_poisson = CondPoisson(Scope([0]), cond_f=lambda data: {"l": l})
+        node_poisson = BaseCondPoisson(Scope([0]), cond_f=lambda data: {"l": l})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 10, (3, 1))
@@ -88,13 +98,19 @@ class TestPoisson(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_poisson, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+        self.assertTrue(
+            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
+        )
 
     def test_gradient_computation(self):
 
-        l = torch.tensor(random.randint(1, 10), dtype=torch.get_default_dtype(), requires_grad=True)
+        l = torch.tensor(
+            random.randint(1, 10),
+            dtype=torch.get_default_dtype(),
+            requires_grad=True,
+        )
 
-        torch_poisson = CondPoisson(Scope([0]), cond_f=lambda data: {'l': l})
+        torch_poisson = CondPoisson(Scope([0]), cond_f=lambda data: {"l": l})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 10, (3, 1))
@@ -111,7 +127,7 @@ class TestPoisson(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        poisson = CondPoisson(Scope([0]), cond_f=lambda data: {'l': 1.0})
+        poisson = CondPoisson(Scope([0]), cond_f=lambda data: {"l": 1.0})
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1
@@ -125,14 +141,20 @@ class TestPoisson(unittest.TestCase):
 
         l = random.random()
 
-        poisson = CondPoisson(Scope([0]), cond_f=lambda data: {'l': l})
+        poisson = CondPoisson(Scope([0]), cond_f=lambda data: {"l": l})
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[-float("inf")]]))
-        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[float("inf")]]))
+        self.assertRaises(
+            ValueError, log_likelihood, poisson, torch.tensor([[-float("inf")]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, poisson, torch.tensor([[float("inf")]])
+        )
 
         # check valid integers, but outside of valid range
-        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[-1]]))
+        self.assertRaises(
+            ValueError, log_likelihood, poisson, torch.tensor([[-1]])
+        )
 
         # check valid integers within valid range
         log_likelihood(poisson, torch.tensor([[0]]))
@@ -143,15 +165,21 @@ class TestPoisson(unittest.TestCase):
             ValueError,
             log_likelihood,
             poisson,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]
+            ),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             poisson,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
+            ),
         )
-        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[10.1]]))
+        self.assertRaises(
+            ValueError, log_likelihood, poisson, torch.tensor([[10.1]])
+        )
 
 
 if __name__ == "__main__":

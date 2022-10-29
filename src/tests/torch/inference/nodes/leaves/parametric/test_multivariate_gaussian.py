@@ -1,12 +1,25 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as BaseMultivariateGaussian
-from spflow.base.inference.nodes.leaves.parametric.multivariate_gaussian import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussian as BaseMultivariateGaussian,
+)
+from spflow.base.inference.nodes.leaves.parametric.multivariate_gaussian import (
+    log_likelihood,
+)
 from spflow.torch.structure.nodes.node import SPNProductNode
 from spflow.torch.inference.nodes.node import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian, toBase, toTorch, marginalize
-from spflow.torch.inference.nodes.leaves.parametric.multivariate_gaussian import log_likelihood
+from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussian,
+    toBase,
+    toTorch,
+    marginalize,
+)
+from spflow.torch.inference.nodes.leaves.parametric.multivariate_gaussian import (
+    log_likelihood,
+)
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.torch.inference.nodes.leaves.parametric.gaussian import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -42,10 +55,14 @@ class TestMultivariateGaussian(unittest.TestCase):
         data = np.random.rand(3, 3)
 
         log_probs = log_likelihood(node_multivariate_gaussian, data)
-        log_probs_torch = log_likelihood(torch_multivariate_gaussian, torch.tensor(data))
+        log_probs_torch = log_likelihood(
+            torch_multivariate_gaussian, torch.tensor(data)
+        )
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+        self.assertTrue(
+            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
+        )
 
     def test_gradient_computation(self):
 
@@ -59,7 +76,9 @@ class TestMultivariateGaussian(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 3)
 
-        log_probs_torch = log_likelihood(torch_multivariate_gaussian, torch.tensor(data))
+        log_probs_torch = log_likelihood(
+            torch_multivariate_gaussian, torch.tensor(data)
+        )
 
         # create dummy targets
         targets_torch = torch.ones(3, 1)
@@ -68,14 +87,24 @@ class TestMultivariateGaussian(unittest.TestCase):
         loss.backward()
 
         self.assertTrue(torch_multivariate_gaussian.mean.grad is not None)
-        self.assertTrue(torch_multivariate_gaussian.tril_diag_aux.grad is not None)
-        self.assertTrue(torch_multivariate_gaussian.tril_nondiag.grad is not None)
+        self.assertTrue(
+            torch_multivariate_gaussian.tril_diag_aux.grad is not None
+        )
+        self.assertTrue(
+            torch_multivariate_gaussian.tril_nondiag.grad is not None
+        )
 
         mean_orig = torch_multivariate_gaussian.mean.detach().clone()
-        tril_diag_aux_orig = torch_multivariate_gaussian.tril_diag_aux.detach().clone()
-        tril_nondiag_orig = torch_multivariate_gaussian.tril_nondiag.detach().clone()
+        tril_diag_aux_orig = (
+            torch_multivariate_gaussian.tril_diag_aux.detach().clone()
+        )
+        tril_nondiag_orig = (
+            torch_multivariate_gaussian.tril_nondiag.detach().clone()
+        )
 
-        optimizer = torch.optim.SGD(torch_multivariate_gaussian.parameters(), lr=1)
+        optimizer = torch.optim.SGD(
+            torch_multivariate_gaussian.parameters(), lr=1
+        )
         optimizer.step()
 
         # make sure that parameters are correctly updated
@@ -87,13 +116,15 @@ class TestMultivariateGaussian(unittest.TestCase):
         )
         self.assertTrue(
             torch.allclose(
-                tril_diag_aux_orig - torch_multivariate_gaussian.tril_diag_aux.grad,
+                tril_diag_aux_orig
+                - torch_multivariate_gaussian.tril_diag_aux.grad,
                 torch_multivariate_gaussian.tril_diag_aux,
             )
         )
         self.assertTrue(
             torch.allclose(
-                tril_nondiag_orig - torch_multivariate_gaussian.tril_nondiag.grad,
+                tril_nondiag_orig
+                - torch_multivariate_gaussian.tril_nondiag.grad,
                 torch_multivariate_gaussian.tril_nondiag,
             )
         )
@@ -101,7 +132,8 @@ class TestMultivariateGaussian(unittest.TestCase):
         # verify that distribution parameters match parameters
         self.assertTrue(
             torch.allclose(
-                torch_multivariate_gaussian.mean, torch_multivariate_gaussian.dist.loc
+                torch_multivariate_gaussian.mean,
+                torch_multivariate_gaussian.dist.loc,
             )
         )
         self.assertTrue(
@@ -133,7 +165,9 @@ class TestMultivariateGaussian(unittest.TestCase):
         ).sample((100000,))
 
         # initialize gradient optimizer
-        optimizer = torch.optim.SGD(torch_multivariate_gaussian.parameters(), lr=0.5)
+        optimizer = torch.optim.SGD(
+            torch_multivariate_gaussian.parameters(), lr=0.5
+        )
 
         # perform optimization (possibly overfitting)
         for i in range(20):
@@ -150,12 +184,18 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         self.assertTrue(
             torch.allclose(
-                torch_multivariate_gaussian.mean, torch.zeros(2), atol=1e-2, rtol=0.3
+                torch_multivariate_gaussian.mean,
+                torch.zeros(2),
+                atol=1e-2,
+                rtol=0.3,
             )
         )
         self.assertTrue(
             torch.allclose(
-                torch_multivariate_gaussian.cov, torch.eye(2), atol=1e-2, rtol=0.3
+                torch_multivariate_gaussian.cov,
+                torch.eye(2),
+                atol=1e-2,
+                rtol=0.3,
             )
         )
 
@@ -164,7 +204,9 @@ class TestMultivariateGaussian(unittest.TestCase):
         # ----- full marginalization -----
 
         multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1]), torch.zeros(2), torch.tensor([[2.0, 0.0], [0.0, 1.0]])
+            Scope([0, 1]),
+            torch.zeros(2),
+            torch.tensor([[2.0, 0.0], [0.0, 1.0]]),
         )
         data = torch.tensor([[float("nan"), float("nan")]])
 
@@ -233,26 +275,35 @@ class TestMultivariateGaussian(unittest.TestCase):
                 [float("nan")] * 4,
             ]
         )
-        targets = torch.tensor([[0.02004004], [0.10194075], [0.06612934], [1.0]])
+        targets = torch.tensor(
+            [[0.02004004], [0.10194075], [0.06612934], [1.0]]
+        )
 
         # inference using multivariate gaussian and partial marginalization
         mv_probs = likelihood(multivariate_gaussian, data)
 
         self.assertTrue(torch.allclose(mv_probs, targets, atol=1e-6))
 
-
     def test_support(self):
 
         # Support for Multivariate Gaussian distribution: floats (inf,+inf)^k
 
-        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), np.zeros(2), np.eye(2))
+        multivariate_gaussian = MultivariateGaussian(
+            Scope([0, 1]), np.zeros(2), np.eye(2)
+        )
 
         # check infinite values
         self.assertRaises(
-            ValueError, log_likelihood, multivariate_gaussian, torch.tensor([[-float("inf"), 0.0]])
+            ValueError,
+            log_likelihood,
+            multivariate_gaussian,
+            torch.tensor([[-float("inf"), 0.0]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, multivariate_gaussian, torch.tensor([[0.0, float("inf")]])
+            ValueError,
+            log_likelihood,
+            multivariate_gaussian,
+            torch.tensor([[0.0, float("inf")]]),
         )
 
 

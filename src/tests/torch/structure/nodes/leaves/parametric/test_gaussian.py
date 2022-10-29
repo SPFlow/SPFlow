@@ -1,9 +1,19 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian as BaseGaussian
-from spflow.base.inference.nodes.leaves.parametric.gaussian import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian, toBase, toTorch
+from spflow.base.structure.nodes.leaves.parametric.gaussian import (
+    Gaussian as BaseGaussian,
+)
+from spflow.base.inference.nodes.leaves.parametric.gaussian import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.gaussian import (
+    Gaussian,
+    toBase,
+    toTorch,
+)
 from spflow.torch.structure.nodes.node import marginalize
-from spflow.torch.inference.nodes.leaves.parametric.gaussian import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -27,7 +37,9 @@ class TestGaussian(unittest.TestCase):
 
         # std = 0 and std < 0
         self.assertRaises(Exception, Gaussian, Scope([0]), mean, 0.0)
-        self.assertRaises(Exception, Gaussian, Scope([0]), mean, np.nextafter(0.0, -1.0))
+        self.assertRaises(
+            Exception, Gaussian, Scope([0]), mean, np.nextafter(0.0, -1.0)
+        )
         # std = inf and std = nan
         self.assertRaises(Exception, Gaussian, Scope([0]), mean, np.inf)
         self.assertRaises(Exception, Gaussian, Scope([0]), mean, np.nan)
@@ -35,15 +47,15 @@ class TestGaussian(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, Gaussian, Scope([]), 0.0, 1.0)
         self.assertRaises(Exception, Gaussian, Scope([0, 1]), 0.0, 1.0)
-        self.assertRaises(Exception, Gaussian, Scope([0],[1]), 0.0, 1.0)
+        self.assertRaises(Exception, Gaussian, Scope([0], [1]), 0.0, 1.0)
 
     def test_structural_marginalization(self):
-        
+
         gaussian = Gaussian(Scope([0]), 0.0, 1.0)
 
         self.assertTrue(marginalize(gaussian, [1]) is not None)
         self.assertTrue(marginalize(gaussian, [0]) is None)
-    
+
     def test_base_backend_conversion(self):
 
         mean = random.random()

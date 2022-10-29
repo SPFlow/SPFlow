@@ -1,9 +1,19 @@
 from spflow.meta.scope.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli as BaseBernoulli
-from spflow.base.inference.nodes.leaves.parametric.bernoulli import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.bernoulli import Bernoulli, toBase, toTorch
+from spflow.base.structure.nodes.leaves.parametric.bernoulli import (
+    Bernoulli as BaseBernoulli,
+)
+from spflow.base.inference.nodes.leaves.parametric.bernoulli import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.bernoulli import (
+    Bernoulli,
+    toBase,
+    toTorch,
+)
 from spflow.torch.structure.nodes.node import marginalize
-from spflow.torch.inference.nodes.leaves.parametric.bernoulli import log_likelihood
+from spflow.torch.inference.nodes.leaves.parametric.bernoulli import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -24,10 +34,16 @@ class TestBernoulli(unittest.TestCase):
         bernoulli = Bernoulli(Scope([0]), 1.0)
         # p < 0 and p > 1
         self.assertRaises(
-            Exception, Bernoulli, Scope([0]), torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))
+            Exception,
+            Bernoulli,
+            Scope([0]),
+            torch.nextafter(torch.tensor(1.0), torch.tensor(2.0)),
         )
         self.assertRaises(
-            Exception, Bernoulli, Scope([0]), torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))
+            Exception,
+            Bernoulli,
+            Scope([0]),
+            torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)),
         )
         # p = inf and p = nan
         self.assertRaises(Exception, Bernoulli, Scope([0]), np.inf)
@@ -36,7 +52,7 @@ class TestBernoulli(unittest.TestCase):
         # invalid scopes
         self.assertRaises(Exception, Bernoulli, Scope([]), 0.5)
         self.assertRaises(Exception, Bernoulli, Scope([0, 1]), 0.5)
-        self.assertRaises(Exception, Bernoulli, Scope([0],[1]), 0.5)
+        self.assertRaises(Exception, Bernoulli, Scope([0], [1]), 0.5)
 
     def test_structural_marginalization(self):
 
@@ -44,7 +60,7 @@ class TestBernoulli(unittest.TestCase):
 
         self.assertTrue(marginalize(bernoulli, [1]) is not None)
         self.assertTrue(marginalize(bernoulli, [0]) is None)
-    
+
     def test_base_backend_conversion(self):
 
         p = random.random()

@@ -5,7 +5,7 @@ from typing import List
 
 
 class DummyModule(Module):
-    def __init__(self, n: int, scope: Optional[Scope]=None):
+    def __init__(self, n: int, scope: Optional[Scope] = None):
 
         if scope is None:
             scope = Scope([0])
@@ -14,7 +14,7 @@ class DummyModule(Module):
         self.n = n
 
         super(DummyModule, self).__init__(children=[])
-    
+
     @property
     def n_out(self) -> int:
         return self.n

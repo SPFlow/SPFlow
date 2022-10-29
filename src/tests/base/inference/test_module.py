@@ -16,8 +16,15 @@ class TestModule(unittest.TestCase):
 
         dummy_data = np.array([[np.nan, 0.0, 1.0]])
 
-        self.assertRaises(LookupError, log_likelihood, dummy_module.placeholders[0], dummy_data)
-        self.assertRaises(LookupError, likelihood, dummy_module.placeholders[0], dummy_data)
+        self.assertRaises(
+            LookupError,
+            log_likelihood,
+            dummy_module.placeholders[0],
+            dummy_data,
+        )
+        self.assertRaises(
+            LookupError, likelihood, dummy_module.placeholders[0], dummy_data
+        )
 
 
 if __name__ == "__main__":

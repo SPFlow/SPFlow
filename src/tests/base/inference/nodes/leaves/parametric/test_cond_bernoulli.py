@@ -1,7 +1,11 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.base.structure.nodes.leaves.parametric.cond_bernoulli import CondBernoulli
-from spflow.base.inference.nodes.leaves.parametric.cond_bernoulli import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.cond_bernoulli import (
+    CondBernoulli,
+)
+from spflow.base.inference.nodes.leaves.parametric.cond_bernoulli import (
+    log_likelihood,
+)
 from spflow.base.inference.module import likelihood
 import numpy as np
 
@@ -14,12 +18,14 @@ class TestCondBernoulli(unittest.TestCase):
     def test_likelihood_no_p(self):
 
         bernoulli = CondBernoulli(Scope([0]))
-        self.assertRaises(ValueError, log_likelihood, bernoulli, np.array([[0], [1]]))
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, np.array([[0], [1]])
+        )
 
     def test_likelihood_module_cond_f(self):
 
         p = random.random()
-        cond_f = lambda data: {'p': p}
+        cond_f = lambda data: {"p": p}
 
         bernoulli = CondBernoulli(Scope([0]), cond_f=cond_f)
 
@@ -39,7 +45,7 @@ class TestCondBernoulli(unittest.TestCase):
 
         p = random.random()
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[bernoulli] = {'p': p}
+        dispatch_ctx.args[bernoulli] = {"p": p}
 
         # create test inputs/outputs
         data = np.array([[0], [1]])
@@ -56,10 +62,10 @@ class TestCondBernoulli(unittest.TestCase):
         bernoulli = CondBernoulli(Scope([0]))
 
         p = random.random()
-        cond_f = lambda data: {'p': p}
+        cond_f = lambda data: {"p": p}
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[bernoulli] = {'cond_f': cond_f}
+        dispatch_ctx.args[bernoulli] = {"cond_f": cond_f}
 
         # create test inputs/outputs
         data = np.array([[0], [1]])
@@ -76,7 +82,7 @@ class TestCondBernoulli(unittest.TestCase):
         # Valid parameters for Bernoulli distribution: p in [0,1]
 
         # p = 0
-        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {'p': 0.0})
+        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.0})
 
         data = np.array([[0.0], [1.0]])
         targets = np.array([[1.0], [0.0]])
@@ -90,7 +96,7 @@ class TestCondBernoulli(unittest.TestCase):
     def test_likelihood_p_1(self):
 
         # p = 1
-        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {'p': 1.0})
+        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 1.0})
 
         data = np.array([[0.0], [1.0]])
         targets = np.array([[0.0], [1.0]])
@@ -103,7 +109,7 @@ class TestCondBernoulli(unittest.TestCase):
 
     def test_likelihood_p_none(self):
 
-        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {'p': None})
+        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {"p": None})
 
         data = np.array([[0.0], [1.0]])
 
@@ -112,7 +118,7 @@ class TestCondBernoulli(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {'p': 0.5})
+        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.5})
         data = np.array([[np.nan]])
 
         # should not raise and error and should return 1 (0 in log-space)
@@ -130,33 +136,55 @@ class TestCondBernoulli(unittest.TestCase):
         #   likelihood:         0->0.000000001, 1.0->0.999999999
         #   log-likelihood: -inf->fmin
 
-        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {'p': 0.5})
+        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.5})
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, bernoulli, np.array([[-np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, bernoulli, np.array([[np.inf]]))
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, np.array([[-np.inf]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, np.array([[np.inf]])
+        )
 
         # check valid integers inside valid range
         log_likelihood(bernoulli, np.array([[0.0], [1.0]]))
 
         # check valid integers, but outside of valid range
-        self.assertRaises(ValueError, log_likelihood, bernoulli, np.array([[-1]]))
-        self.assertRaises(ValueError, log_likelihood, bernoulli, np.array([[2]]))
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, np.array([[-1]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, np.array([[2]])
+        )
 
         # check invalid float values
         self.assertRaises(
-            ValueError, log_likelihood, bernoulli, np.array([[np.nextafter(0.0, -1.0)]])
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            np.array([[np.nextafter(0.0, -1.0)]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, bernoulli, np.array([[np.nextafter(0.0, 1.0)]])
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            np.array([[np.nextafter(0.0, 1.0)]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, bernoulli, np.array([[np.nextafter(1.0, 2.0)]])
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            np.array([[np.nextafter(1.0, 2.0)]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, bernoulli, np.array([[np.nextafter(1.0, 0.0)]])
+            ValueError,
+            log_likelihood,
+            bernoulli,
+            np.array([[np.nextafter(1.0, 0.0)]]),
         )
-        self.assertRaises(ValueError, log_likelihood, bernoulli, np.array([[0.5]]))
+        self.assertRaises(
+            ValueError, log_likelihood, bernoulli, np.array([[0.5]])
+        )
 
 
 if __name__ == "__main__":

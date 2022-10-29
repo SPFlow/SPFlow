@@ -4,7 +4,7 @@ from spflow.meta.contexts.dispatch_context import DispatchContext
 from spflow.torch.structure.nodes.node import SPNSumNode
 from spflow.torch.learning.nodes.node import em
 from spflow.torch.inference.nodes.node import log_likelihood
-from ... structure.nodes.dummy_node import DummyLeaf, log_likelihood, em
+from ...structure.nodes.dummy_node import DummyLeaf, log_likelihood, em
 from typing import Optional
 import torch
 import numpy as np
@@ -32,16 +32,20 @@ class TestNode(unittest.TestCase):
         l2 = DummyLeaf(Scope([0]), loc=-2.0)
         sum_node = SPNSumNode([l1, l2], weights=[0.5, 0.5])
 
-        data = torch.tensor(np.vstack([
-            np.random.normal(2.0, 0.2, size=(10000, 1)),
-            np.random.normal(-2.0, 0.2, size=(20000, 1))
-        ]))
+        data = torch.tensor(
+            np.vstack(
+                [
+                    np.random.normal(2.0, 0.2, size=(10000, 1)),
+                    np.random.normal(-2.0, 0.2, size=(20000, 1)),
+                ]
+            )
+        )
 
         dispatch_ctx = DispatchContext()
 
         # compute gradients of log-likelihoods w.r.t. module log-likelihoods
         ll = log_likelihood(sum_node, data, dispatch_ctx=dispatch_ctx)
-        for module_ll in dispatch_ctx.cache['log_likelihood'].values():
+        for module_ll in dispatch_ctx.cache["log_likelihood"].values():
             if module_ll.requires_grad:
                 module_ll.retain_grad()
         ll.sum().backward()
@@ -49,7 +53,14 @@ class TestNode(unittest.TestCase):
         # perform an em step
         em(sum_node, data, dispatch_ctx=dispatch_ctx)
 
-        self.assertTrue(torch.allclose(sum_node.weights, torch.tensor([1.0/3.0, 2.0/3.0]), atol=1e-2, rtol=1e-2))
+        self.assertTrue(
+            torch.allclose(
+                sum_node.weights,
+                torch.tensor([1.0 / 3.0, 2.0 / 3.0]),
+                atol=1e-2,
+                rtol=1e-2,
+            )
+        )
 
     def test_em_mixture_of_hypergeometrics(self):
         pass

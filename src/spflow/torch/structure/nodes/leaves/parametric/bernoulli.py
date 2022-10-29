@@ -120,7 +120,9 @@ class Bernoulli(LeafNode):
         """
         return (self.p.data.cpu().numpy(),)  # type: ignore
 
-    def check_support(self, data: torch.Tensor, is_scope_data: bool=False) -> torch.Tensor:
+    def check_support(
+        self, data: torch.Tensor, is_scope_data: bool = False
+    ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or not instances are part of the support of the Bernoulli distribution, which is:

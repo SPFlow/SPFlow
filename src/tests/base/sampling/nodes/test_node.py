@@ -3,7 +3,9 @@ from spflow.base.structure.nodes.node import SPNSumNode, SPNProductNode
 from spflow.base.sampling.nodes.node import sample
 from spflow.base.inference.nodes.node import log_likelihood
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.base.inference.nodes.leaves.parametric.gaussian import log_likelihood
+from spflow.base.inference.nodes.leaves.parametric.gaussian import (
+    log_likelihood,
+)
 from spflow.base.sampling.nodes.leaves.parametric.gaussian import sample
 from spflow.base.sampling.module import sample
 
@@ -24,10 +26,16 @@ class TestNode(unittest.TestCase):
                 SPNSumNode(
                     children=[
                         SPNProductNode(
-                            children=[Gaussian(Scope([0]), -7.0, 1.0), Gaussian(Scope([1]), 7.0, 1.0)],
+                            children=[
+                                Gaussian(Scope([0]), -7.0, 1.0),
+                                Gaussian(Scope([1]), 7.0, 1.0),
+                            ],
                         ),
                         SPNProductNode(
-                            children=[Gaussian(Scope([0]), -5.0, 1.0), Gaussian(Scope([1]), 5.0, 1.0)],
+                            children=[
+                                Gaussian(Scope([0]), -5.0, 1.0),
+                                Gaussian(Scope([1]), 5.0, 1.0),
+                            ],
                         ),
                     ],
                     weights=[0.2, 0.8],
@@ -35,10 +43,16 @@ class TestNode(unittest.TestCase):
                 SPNSumNode(
                     children=[
                         SPNProductNode(
-                            children=[Gaussian(Scope([0]), -3.0, 1.0), Gaussian(Scope([1]), 3.0, 1.0)],
+                            children=[
+                                Gaussian(Scope([0]), -3.0, 1.0),
+                                Gaussian(Scope([1]), 3.0, 1.0),
+                            ],
                         ),
                         SPNProductNode(
-                            children=[Gaussian(Scope([0]), -1.0, 1.0), Gaussian(Scope([1]), 1.0, 1.0)],
+                            children=[
+                                Gaussian(Scope([0]), -1.0, 1.0),
+                                Gaussian(Scope([1]), 1.0, 1.0),
+                            ],
                         ),
                     ],
                     weights=[0.6, 0.4],
@@ -48,11 +62,13 @@ class TestNode(unittest.TestCase):
         )
 
         samples = sample(s, 1000)
-        expected_mean = 0.7 * (0.2 * np.array([-7, 7]) + 0.8 * np.array([-5, 5])) + 0.3 * (
-            0.6 * np.array([-3, 3]) + 0.4 * np.array([-1, 1])
-        )
+        expected_mean = 0.7 * (
+            0.2 * np.array([-7, 7]) + 0.8 * np.array([-5, 5])
+        ) + 0.3 * (0.6 * np.array([-3, 3]) + 0.4 * np.array([-1, 1]))
 
-        self.assertTrue(np.allclose(samples.mean(axis=0), expected_mean, rtol=0.1))
+        self.assertTrue(
+            np.allclose(samples.mean(axis=0), expected_mean, rtol=0.1)
+        )
 
     def test_sum_node_sampling(self):
 

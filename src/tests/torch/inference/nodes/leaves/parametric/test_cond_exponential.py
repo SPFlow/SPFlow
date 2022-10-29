@@ -1,9 +1,19 @@
 from spflow.meta.scope.scope import Scope
 from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.base.structure.nodes.leaves.parametric.cond_exponential import CondExponential as BaseCondExponential
-from spflow.base.inference.nodes.leaves.parametric.cond_exponential import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.cond_exponential import CondExponential, toBase, toTorch
-from spflow.torch.inference.nodes.leaves.parametric.cond_exponential import log_likelihood
+from spflow.base.structure.nodes.leaves.parametric.cond_exponential import (
+    CondExponential as BaseCondExponential,
+)
+from spflow.base.inference.nodes.leaves.parametric.cond_exponential import (
+    log_likelihood,
+)
+from spflow.torch.structure.nodes.leaves.parametric.cond_exponential import (
+    CondExponential,
+    toBase,
+    toTorch,
+)
+from spflow.torch.inference.nodes.leaves.parametric.cond_exponential import (
+    log_likelihood,
+)
 from spflow.torch.inference.module import likelihood
 
 import torch
@@ -26,7 +36,7 @@ class TestExponential(unittest.TestCase):
 
     def test_likelihood_module_cond_f(self):
 
-        cond_f = lambda data: {'l': 0.5}
+        cond_f = lambda data: {"l": 0.5}
 
         exponential = CondExponential(Scope([0]), cond_f=cond_f)
 
@@ -39,13 +49,13 @@ class TestExponential(unittest.TestCase):
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
-    
+
     def test_likelihood_args_p(self):
 
         exponential = CondExponential(Scope([0]))
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[exponential] = {'l': 0.5}
+        dispatch_ctx.args[exponential] = {"l": 0.5}
 
         # create test inputs/outputs
         data = torch.tensor([[2], [5]])
@@ -61,10 +71,10 @@ class TestExponential(unittest.TestCase):
 
         exponential = CondExponential(Scope([0]))
 
-        cond_f = lambda data: {'l': 0.5}
+        cond_f = lambda data: {"l": 0.5}
 
         dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[exponential] = {'cond_f': cond_f}
+        dispatch_ctx.args[exponential] = {"cond_f": cond_f}
 
         # create test inputs/outputs
         data = torch.tensor([[2], [5]])
@@ -75,13 +85,17 @@ class TestExponential(unittest.TestCase):
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
-    
+
     def test_inference(self):
 
         l = random.random() + 1e-7  # small offset to avoid zero
 
-        torch_exponential = CondExponential(Scope([0]), cond_f=lambda data: {'l': l})
-        node_exponential = BaseCondExponential(Scope([0]), cond_f=lambda data: {'l': l})
+        torch_exponential = CondExponential(
+            Scope([0]), cond_f=lambda data: {"l": l}
+        )
+        node_exponential = BaseCondExponential(
+            Scope([0]), cond_f=lambda data: {"l": l}
+        )
 
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)
@@ -90,13 +104,17 @@ class TestExponential(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_exponential, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+        self.assertTrue(
+            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
+        )
 
     def test_gradient_computation(self):
 
         l = torch.tensor(random.random(), requires_grad=True)
 
-        torch_exponential = CondExponential(Scope([0]), cond_f=lambda data: {'l': l})
+        torch_exponential = CondExponential(
+            Scope([0]), cond_f=lambda data: {"l": l}
+        )
 
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)
@@ -112,8 +130,10 @@ class TestExponential(unittest.TestCase):
         self.assertTrue(l.grad is not None)
 
     def test_likelihood_marginalization(self):
-        
-        exponential = CondExponential(Scope([0]), cond_f=lambda data: {'l': 1.0})
+
+        exponential = CondExponential(
+            Scope([0]), cond_f=lambda data: {"l": 1.0}
+        )
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1
@@ -125,15 +145,30 @@ class TestExponential(unittest.TestCase):
 
         # Support for Exponential distribution: floats [0,inf) (note: 0 excluded in pytorch support)
 
-        exponential = CondExponential(Scope([0]), cond_f=lambda data: {'l': 1.5})
+        exponential = CondExponential(
+            Scope([0]), cond_f=lambda data: {"l": 1.5}
+        )
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[-float("inf")]]))
-        self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[float("inf")]]))
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            exponential,
+            torch.tensor([[-float("inf")]]),
+        )
+        self.assertRaises(
+            ValueError,
+            log_likelihood,
+            exponential,
+            torch.tensor([[float("inf")]]),
+        )
 
         # check valid float values (within range)
         log_likelihood(
-            exponential, torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]])
+            exponential,
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
+            ),
         )
         log_likelihood(exponential, torch.tensor([[10.5]]))
 
@@ -142,12 +177,16 @@ class TestExponential(unittest.TestCase):
             ValueError,
             log_likelihood,
             exponential,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
+            torch.tensor(
+                [[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]
+            ),
         )
 
         if version.parse(torch.__version__) < version.parse("1.11.0"):
             # edge case 0 (part of the support in scipy, but NOT pytorch)
-            self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[0.0]]))
+            self.assertRaises(
+                ValueError, log_likelihood, exponential, torch.tensor([[0.0]])
+            )
         else:
             # edge case 0
             log_likelihood(exponential, torch.tensor([[0.0]]))

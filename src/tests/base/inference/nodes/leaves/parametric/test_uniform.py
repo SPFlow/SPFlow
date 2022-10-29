@@ -27,7 +27,13 @@ class TestUniform(unittest.TestCase):
             ]
         )
         targets = np.array(
-            [[0.0], [1.0 / (end - start)], [1.0 / (end - start)], [1.0 / (end - start)], [0.0]]
+            [
+                [0.0],
+                [1.0 / (end - start)],
+                [1.0 / (end - start)],
+                [1.0 / (end - start)],
+                [0.0],
+            ]
         )
 
         probs = likelihood(uniform, data)
@@ -80,8 +86,12 @@ class TestUniform(unittest.TestCase):
         uniform = Uniform(Scope([0]), 1.0, 2.0, support_outside=True)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, uniform, np.array([[-np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, uniform, np.array([[np.inf]]))
+        self.assertRaises(
+            ValueError, log_likelihood, uniform, np.array([[-np.inf]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, uniform, np.array([[np.inf]])
+        )
 
         # check valid floats in [start, end]
         log_likelihood(uniform, np.array([[1.0]]))
@@ -96,8 +106,12 @@ class TestUniform(unittest.TestCase):
         uniform = Uniform(Scope([0]), 1.0, 2.0, support_outside=False)
 
         # check infinite values
-        self.assertRaises(ValueError, log_likelihood, uniform, np.array([[-np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, uniform, np.array([[np.inf]]))
+        self.assertRaises(
+            ValueError, log_likelihood, uniform, np.array([[-np.inf]])
+        )
+        self.assertRaises(
+            ValueError, log_likelihood, uniform, np.array([[np.inf]])
+        )
 
         # check valid floats in [start, end]
         log_likelihood(uniform, np.array([[1.0]]))
@@ -106,10 +120,16 @@ class TestUniform(unittest.TestCase):
 
         # check invalid float values
         self.assertRaises(
-            ValueError, log_likelihood, uniform, np.array([[np.nextafter(1.0, -1.0)]])
+            ValueError,
+            log_likelihood,
+            uniform,
+            np.array([[np.nextafter(1.0, -1.0)]]),
         )
         self.assertRaises(
-            ValueError, log_likelihood, uniform, np.array([[np.nextafter(2.0, 3.0)]])
+            ValueError,
+            log_likelihood,
+            uniform,
+            np.array([[np.nextafter(2.0, 3.0)]]),
         )
 
 

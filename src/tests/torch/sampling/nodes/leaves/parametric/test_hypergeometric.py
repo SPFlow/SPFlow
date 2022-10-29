@@ -1,5 +1,7 @@
 from spflow.meta.scope.scope import Scope
-from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import Hypergeometric
+from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric,
+)
 from spflow.torch.sampling.nodes.leaves.parametric.hypergeometric import sample
 from spflow.torch.sampling.module import sample
 
@@ -34,7 +36,14 @@ class TestHypergeometric(unittest.TestCase):
 
         samples = sample(hypergeometric, 100000)
 
-        self.assertTrue(torch.isclose(samples.mean(dim=0), torch.tensor(n*M)/N, atol=0.01, rtol=0.1))
+        self.assertTrue(
+            torch.isclose(
+                samples.mean(dim=0),
+                torch.tensor(n * M) / N,
+                atol=0.01,
+                rtol=0.1,
+            )
+        )
 
     def test_sampling_2(self):
 
@@ -52,7 +61,14 @@ class TestHypergeometric(unittest.TestCase):
 
         samples = sample(hypergeometric, 100000)
 
-        self.assertTrue(torch.isclose(samples.mean(dim=0), torch.tensor(n*M)/N, atol=0.01, rtol=0.1))
+        self.assertTrue(
+            torch.isclose(
+                samples.mean(dim=0),
+                torch.tensor(n * M) / N,
+                atol=0.01,
+                rtol=0.1,
+            )
+        )
 
 
 if __name__ == "__main__":
