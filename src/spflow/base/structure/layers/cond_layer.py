@@ -222,8 +222,6 @@ class SPNCondSumLayer(NestedModule):
                     f"Incorrect number of weights for 'SPNCondSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {weights.shape[0]}."
                 )
 
-        # TODO: check correct length of weights
-
         return weights
 
 
