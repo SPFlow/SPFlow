@@ -10,7 +10,7 @@ from spflow.torch.structure.nodes.leaves.parametric.exponential import (
 from spflow.base.structure.layers.leaves.parametric.exponential import (
     ExponentialLayer as BaseExponentialLayer,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 import torch
 import numpy as np
 import unittest

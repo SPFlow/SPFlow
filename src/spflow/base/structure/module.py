@@ -6,7 +6,7 @@ All valid SPFlow modules in the ``base`` backend should inherit from this class 
 from abc import ABC
 from typing import List, Tuple, Optional, Union
 import numpy as np
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.meta.structure.module import MetaModule
 
 

@@ -1,6 +1,6 @@
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.structure.module import MetaModule
-from spflow.meta.contexts.dispatch_context import (
+from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
     default_dispatch_context,

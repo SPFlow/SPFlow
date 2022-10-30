@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.layers.leaves.parametric.poisson import PoissonLayer
 from spflow.base.learning.layers.leaves.parametric.poisson import (
     maximum_likelihood_estimation,

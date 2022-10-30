@@ -1,7 +1,7 @@
 from ..structure.dummy_module import DummyNestedModule
 from ..structure.nodes.dummy_node import DummyNode
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.module import Module
 from spflow.base.inference.module import likelihood, log_likelihood
 import numpy as np

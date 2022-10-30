@@ -5,7 +5,7 @@ from spflow.base.structure.layers.leaves.parametric.hypergeometric import (
 from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
     Hypergeometric,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 import numpy as np
 import unittest
 

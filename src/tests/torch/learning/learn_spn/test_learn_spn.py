@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.torch.learning.learn_spn.learn_spn import (
     cluster_by_kmeans,
     partition_by_rdc,

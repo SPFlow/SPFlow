@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.nodes.cond_node import SPNCondSumNode
 from spflow.base.structure.nodes.node import SPNProductNode
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian

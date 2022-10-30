@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.inference.nodes.leaves.parametric.gaussian import (
     log_likelihood,

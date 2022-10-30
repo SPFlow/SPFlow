@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Contains the SPFlow architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the ``torch`` backend.
 """
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import (
+from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
@@ -13,11 +13,12 @@ from spflow.base.structure.rat.region_graph import (
     Region,
 )
 from spflow.base.structure.rat.rat_spn import RatSPN as BaseRatSPN
-from spflow.torch.structure.nodes.node import SPNSumNode
+from spflow.torch.structure.nodes.node import SPNSumNode, marginalize
 from spflow.torch.structure.layers.layer import (
     SPNSumLayer,
     SPNPartitionLayer,
     SPNHadamardLayer,
+    marginalize,
 )
 from spflow.torch.structure.layers.leaves.parametric.gaussian import (
     GaussianLayer,
@@ -174,12 +175,8 @@ def marginalize(
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[RatSPN, Module, None]:
+) -> Union[RatSPN, None]:
     r"""Structural marginalization for ``RatSPN`` objects in the ``torch`` backend.
-
-    Raises a ``NoteImplementedError`` since structural marginalization is not yet supported for RAT-SPNs.
-
-    TODO
 
     Args:
         rat_spn:
@@ -193,10 +190,29 @@ def marginalize(
             Optional dispatch context.
 
     Raises:
-        NotImplementedError: Structural marginalization is not yet supported for RAT-SPNs.
+        (Marginalized) RAT-SPN or None (if completely maginalized over).
     """
+    # since root node and root region all have the same scope, both are them are either fully marginalized or neither
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    raise NotImplementedError()
+
+    marg_root_node = marginalize(
+        rat_spn.root_node, marg_rvs, prune=False, dispatch_ctx=dispatch_ctx
+    )
+
+    if marg_root_node is None:
+        return None
+    else:
+        # initialize new empty RAT-SPN
+        marg_rat = RatSPN(
+            RegionGraph(),
+            n_root_nodes=rat_spn.n_root_nodes,
+            n_region_nodes=rat_spn.n_region_nodes,
+            n_leaf_nodes=rat_spn.n_leaf_nodes,
+        )
+        marg_rat.root_node = marg_root_node
+        marg_rat.root_region = marg_root_node.children[0]
+
+        return marg_rat
 
 
 @dispatch(memoize=True)  # type: ignore

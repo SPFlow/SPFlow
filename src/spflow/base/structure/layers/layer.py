@@ -10,11 +10,11 @@ import numpy as np
 import itertools
 
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import (
+from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.module import Module, NestedModule
 from spflow.base.structure.nodes.node import SPNProductNode, SPNSumNode
 

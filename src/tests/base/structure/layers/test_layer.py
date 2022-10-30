@@ -5,7 +5,7 @@ from spflow.base.structure.layers.layer import (
     SPNHadamardLayer,
     marginalize,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from ..nodes.dummy_node import DummyNode
 import numpy as np
 import unittest

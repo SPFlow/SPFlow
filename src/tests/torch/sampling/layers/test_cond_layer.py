@@ -1,5 +1,5 @@
-from spflow.meta.scope.scope import Scope
-from spflow.meta.contexts.sampling_context import SamplingContext
+from spflow.meta.data.scope import Scope
+from spflow.meta.dispatch.sampling_context import SamplingContext
 from spflow.torch.structure.nodes.node import SPNSumNode
 from spflow.torch.inference.nodes.node import log_likelihood
 from spflow.torch.sampling.nodes.node import sample

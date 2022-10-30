@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.torch.structure.nodes.cond_node import SPNCondSumNode
 from spflow.torch.structure.nodes.node import SPNProductNode
 from spflow.torch.sampling.nodes.cond_node import sample

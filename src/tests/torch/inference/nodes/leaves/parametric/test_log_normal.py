@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.log_normal import (
     LogNormal as BaseLogNormal,
 )

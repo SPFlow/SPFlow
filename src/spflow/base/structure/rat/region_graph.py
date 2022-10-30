@@ -4,7 +4,7 @@
 import random
 import numpy as np
 from typing import Optional, Set, List
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 
 
 class Region:

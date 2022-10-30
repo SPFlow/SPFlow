@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.geometric import Geometric
 from spflow.base.learning.nodes.leaves.parametric.geometric import (
     maximum_likelihood_estimation,

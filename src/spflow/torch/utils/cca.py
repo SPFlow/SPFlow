@@ -133,15 +133,15 @@ def cca(
         x_w *= sign
         y_w *= sign
 
-        # TODO
+        # compute weights
         x_weights[:, k] = x_w
         y_weights[:, k] = y_w
 
-        # TODO
+        # compute scores
         x_scores[:, k] = x_s = torch.matmul(x, x_w)
         y_scores[:, k] = y_s = torch.matmul(y, y_w)
 
-        # TODO
+        # compute loadings
         x_loadings[:, k] = x_l = torch.matmul(x_s, x) / torch.dot(x_s, x_s)
         y_loadings[:, k] = y_l = torch.matmul(y_s, y) / torch.dot(y_s, y_s)
 

@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.torch.structure.nodes.node import SPNSumNode
 from .nodes.dummy_node import DummyNode
 from .dummy_module import DummyModule, DummyNestedModule

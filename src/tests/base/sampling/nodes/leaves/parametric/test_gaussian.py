@@ -1,5 +1,5 @@
-from spflow.meta.scope.scope import Scope
-from spflow.meta.contexts.sampling_context import SamplingContext
+from spflow.meta.data.scope import Scope
+from spflow.meta.dispatch.sampling_context import SamplingContext
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.sampling.nodes.leaves.parametric.gaussian import sample
 from spflow.base.sampling.module import sample

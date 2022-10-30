@@ -1,5 +1,5 @@
-from spflow.meta.scope.scope import Scope
-from spflow.meta.contexts.sampling_context import SamplingContext
+from spflow.meta.data.scope import Scope
+from spflow.meta.dispatch.sampling_context import SamplingContext
 from spflow.base.structure.nodes.leaves.parametric.geometric import Geometric
 from spflow.base.sampling.nodes.leaves.parametric.geometric import sample
 from spflow.base.sampling.module import sample

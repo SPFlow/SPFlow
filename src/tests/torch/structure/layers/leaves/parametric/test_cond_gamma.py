@@ -8,8 +8,8 @@ from spflow.torch.structure.nodes.leaves.parametric.cond_gamma import CondGamma
 from spflow.base.structure.layers.leaves.parametric.cond_gamma import (
     CondGammaLayer as BaseCondGammaLayer,
 )
-from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.meta.data.scope import Scope
 import torch
 import numpy as np
 import unittest

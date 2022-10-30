@@ -1,5 +1,5 @@
 from typing import Tuple
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.rat.region_graph import (
     Region,
     Partition,

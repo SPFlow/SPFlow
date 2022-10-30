@@ -4,7 +4,7 @@
 import torch
 from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import (
+from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
@@ -64,7 +64,7 @@ def log_likelihood(
     scope_data = data[:, leaf.scope.query]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, 1)  # TODO: device
+    log_prob: torch.Tensor = torch.empty(batch_size, 1, device=data.device)
 
     # ----- marginalization -----
 

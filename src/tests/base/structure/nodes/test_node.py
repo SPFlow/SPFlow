@@ -4,7 +4,7 @@ from spflow.base.structure.nodes.node import (
     Node,
     marginalize,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from .dummy_node import DummyNode
 import numpy as np
 import unittest

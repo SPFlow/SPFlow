@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
 from spflow.torch.sampling.nodes.node import sample
 from spflow.torch.inference.nodes.node import log_likelihood

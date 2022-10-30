@@ -11,7 +11,7 @@ from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.structure.layers.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussianLayer as BaseMultivariateGaussianLayer,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 import torch
 import numpy as np
 import unittest

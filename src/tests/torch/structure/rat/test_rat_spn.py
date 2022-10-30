@@ -1,7 +1,7 @@
 import unittest
 import torch
 import numpy as np
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.torch.structure.layers.layer import (
     SPNSumLayer,
     SPNPartitionLayer,

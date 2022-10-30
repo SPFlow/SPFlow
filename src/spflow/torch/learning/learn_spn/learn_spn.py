@@ -4,7 +4,7 @@
 import torch
 from functools import partial
 from typing import Callable, Union, Optional, Dict, Any
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.torch.learning.nodes.leaves.parametric.gaussian import (
     maximum_likelihood_estimation,
 )

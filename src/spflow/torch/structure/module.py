@@ -7,7 +7,7 @@ from abc import ABC
 from typing import List, Tuple, Optional, Union
 import torch
 import torch.nn as nn
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.meta.structure.module import MetaModule
 
 

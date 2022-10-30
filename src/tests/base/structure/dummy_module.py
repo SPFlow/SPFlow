@@ -1,6 +1,6 @@
 from typing import Optional
 from spflow.base.structure.module import Module, NestedModule
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from typing import List
 
 
