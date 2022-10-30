@@ -25,7 +25,7 @@ from spflow.base.structure.layers.layer import (
 from spflow.base.structure.nodes.leaves.parametric.gaussian import (
     Gaussian as BaseGaussian,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from ..nodes.dummy_node import DummyNode
 import torch
 import numpy as np

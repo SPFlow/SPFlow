@@ -8,8 +8,8 @@ from spflow.base.structure.nodes.leaves.parametric.cond_multivariate_gaussian im
 from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )
-from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.meta.data.scope import Scope
 import numpy as np
 import unittest
 

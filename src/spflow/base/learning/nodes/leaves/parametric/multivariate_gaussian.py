@@ -5,7 +5,7 @@ from typing import Optional, Union, Callable
 import numpy as np
 import numpy.ma as ma
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import (
+from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )

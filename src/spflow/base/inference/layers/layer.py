@@ -3,7 +3,7 @@
 """
 import numpy as np
 from typing import Optional
-from spflow.meta.contexts.dispatch_context import (
+from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )

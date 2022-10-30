@@ -1,5 +1,5 @@
-from spflow.meta.scope.scope import Scope
-from spflow.meta.contexts.sampling_context import SamplingContext
+from spflow.meta.data.scope import Scope
+from spflow.meta.dispatch.sampling_context import SamplingContext
 from spflow.torch.structure.nodes.leaves.parametric.bernoulli import Bernoulli
 from spflow.torch.sampling.nodes.leaves.parametric.bernoulli import sample
 

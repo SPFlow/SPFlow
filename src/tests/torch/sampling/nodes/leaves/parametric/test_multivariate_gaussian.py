@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
 )

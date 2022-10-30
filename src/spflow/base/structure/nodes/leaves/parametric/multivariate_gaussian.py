@@ -4,11 +4,11 @@
 from typing import Tuple, List, Union, Optional, Iterable
 import numpy as np
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.contexts.dispatch_context import (
+from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 

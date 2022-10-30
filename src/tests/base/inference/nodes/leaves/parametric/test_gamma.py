@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
 from spflow.base.inference.nodes.leaves.parametric.gamma import log_likelihood
 from spflow.base.inference.module import likelihood

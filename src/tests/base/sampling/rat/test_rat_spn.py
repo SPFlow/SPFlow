@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.rat.region_graph import random_region_graph
 from spflow.base.structure.rat.rat_spn import RatSPN
 from spflow.base.inference.rat.rat_spn import log_likelihood

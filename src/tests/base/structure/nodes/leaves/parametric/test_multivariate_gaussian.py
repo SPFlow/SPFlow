@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.nodes.node import marginalize
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import (

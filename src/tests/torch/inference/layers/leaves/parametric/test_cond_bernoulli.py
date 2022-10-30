@@ -1,5 +1,5 @@
-from spflow.meta.scope.scope import Scope
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.data.scope import Scope
+from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.torch.structure.layers.leaves.parametric.cond_bernoulli import (
     CondBernoulliLayer,
 )

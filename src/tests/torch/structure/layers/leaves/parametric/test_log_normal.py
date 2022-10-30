@@ -8,7 +8,7 @@ from spflow.torch.structure.nodes.leaves.parametric.log_normal import LogNormal
 from spflow.base.structure.layers.leaves.parametric.log_normal import (
     LogNormalLayer as BaseLogNormalLayer,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 import torch
 import numpy as np
 import unittest

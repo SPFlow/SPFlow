@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.layers.leaves.parametric.uniform import UniformLayer
 from spflow.base.inference.layers.leaves.parametric.uniform import (
     log_likelihood,

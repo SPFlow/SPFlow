@@ -3,7 +3,7 @@
 """
 from typing import Tuple
 import numpy as np
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.nodes.node import LeafNode
 
 from scipy.stats import expon  # type: ignore

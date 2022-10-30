@@ -8,7 +8,7 @@ from spflow.torch.structure.nodes.leaves.parametric.binomial import Binomial
 from spflow.base.structure.layers.leaves.parametric.binomial import (
     BinomialLayer as BaseBinomialLayer,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 import torch
 import numpy as np
 import unittest

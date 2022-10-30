@@ -10,8 +10,8 @@ from spflow.torch.structure.nodes.leaves.parametric.cond_geometric import (
 from spflow.base.structure.layers.leaves.parametric.cond_geometric import (
     CondGeometricLayer as BaseCondGeometricLayer,
 )
-from spflow.meta.contexts.dispatch_context import DispatchContext
-from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.meta.data.scope import Scope
 import torch
 import numpy as np
 import unittest

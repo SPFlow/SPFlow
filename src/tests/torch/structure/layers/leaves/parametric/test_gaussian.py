@@ -8,7 +8,7 @@ from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.structure.layers.leaves.parametric.gaussian import (
     GaussianLayer as BaseGaussianLayer,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 import torch
 import numpy as np
 import unittest

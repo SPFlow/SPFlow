@@ -6,7 +6,7 @@ from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import 
     MultivariateGaussian,
 )
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 import numpy as np
 import unittest
 

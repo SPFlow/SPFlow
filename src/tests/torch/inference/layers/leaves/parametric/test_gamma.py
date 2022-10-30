@@ -1,5 +1,5 @@
-from spflow.meta.scope.scope import Scope
-from spflow.meta.contexts.dispatch_context import DispatchContext
+from spflow.meta.data.scope import Scope
+from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.torch.structure.layers.leaves.parametric.gamma import GammaLayer
 from spflow.torch.inference.layers.leaves.parametric.gamma import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric.gamma import Gamma

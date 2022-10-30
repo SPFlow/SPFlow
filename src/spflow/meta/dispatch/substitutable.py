@@ -10,7 +10,7 @@ Typical usage example:
 from typing import Callable, Any
 from functools import wraps
 from spflow.meta.structure.module import MetaModule
-from spflow.meta.contexts.dispatch_context import (
+from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     default_dispatch_context,
 )

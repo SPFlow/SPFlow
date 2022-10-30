@@ -8,7 +8,7 @@ from spflow.torch.structure.nodes.leaves.parametric.bernoulli import Bernoulli
 from spflow.base.structure.layers.leaves.parametric.bernoulli import (
     BernoulliLayer as BaseBernoulliLayer,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 import torch
 import numpy as np
 import unittest

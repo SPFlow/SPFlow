@@ -1,5 +1,5 @@
-from spflow.meta.contexts.sampling_context import SamplingContext
-from spflow.meta.scope.scope import Scope
+from spflow.meta.dispatch.sampling_context import SamplingContext
+from spflow.meta.data.scope import Scope
 from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
 )

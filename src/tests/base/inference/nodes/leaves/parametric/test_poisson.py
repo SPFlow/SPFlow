@@ -1,4 +1,4 @@
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.structure.nodes.leaves.parametric.poisson import Poisson
 from spflow.base.inference.nodes.leaves.parametric.poisson import log_likelihood
 from spflow.base.inference.module import likelihood

@@ -8,7 +8,7 @@ from spflow.torch.structure.nodes.leaves.parametric.poisson import Poisson
 from spflow.base.structure.layers.leaves.parametric.poisson import (
     PoissonLayer as BasePoissonLayer,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 import torch
 import numpy as np
 import unittest

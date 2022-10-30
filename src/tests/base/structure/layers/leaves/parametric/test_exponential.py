@@ -5,7 +5,7 @@ from spflow.base.structure.layers.leaves.parametric.exponential import (
 from spflow.base.structure.nodes.leaves.parametric.exponential import (
     Exponential,
 )
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 import numpy as np
 import unittest
 

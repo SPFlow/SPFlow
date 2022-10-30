@@ -3,7 +3,7 @@ from spflow.base.structure.layers.leaves.parametric.uniform import (
     marginalize,
 )
 from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 import numpy as np
 import unittest
 

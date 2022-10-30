@@ -4,7 +4,7 @@
 import numpy as np
 from functools import partial
 from typing import Callable, Union, Optional, Dict, Any
-from spflow.meta.scope.scope import Scope
+from spflow.meta.data.scope import Scope
 from spflow.base.utils.randomized_dependency_coefficients import (
     randomized_dependency_coefficients,
 )
