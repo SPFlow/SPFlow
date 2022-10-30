@@ -222,25 +222,6 @@ class TestRatSpn(unittest.TestCase):
         self.assertEqual(n_product_nodes, 267)
         self.assertEqual(n_leaf_nodes, 120)
 
-    def test_rat_marginalization(self):
-
-        random_variables = list(range(7))
-        region_graph = random_region_graph(
-            Scope(random_variables), depth=2, replicas=2
-        )
-
-        rat_spn = RatSPN(
-            region_graph, n_root_nodes=2, n_region_nodes=3, n_leaf_nodes=2
-        )
-
-        marg_rat_spn = marginalize(rat_spn, [2,4,6])
-
-        self.assertTrue(marg_rat_spn.scopes_out[0].query == [0,1,3,5])
-        self.assertTrue(marg_rat_spn.root_region is marg_rat_spn.root_node.children[0])
-
-        marg_rat_spn = marginalize(rat_spn, [0,1,2,3,4,5,6])
-        self.assertTrue(marg_rat_spn is None)
-
 
 if __name__ == "__main__":
     unittest.main()
