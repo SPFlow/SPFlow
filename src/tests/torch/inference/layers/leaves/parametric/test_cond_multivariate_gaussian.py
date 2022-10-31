@@ -14,9 +14,7 @@ from spflow.torch.inference.nodes.leaves.parametric.cond_multivariate_gaussian i
 )
 from spflow.torch.inference.module import log_likelihood, likelihood
 import torch
-import numpy as np
 import unittest
-import random
 
 
 class TestNode(unittest.TestCase):
@@ -31,7 +29,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_mean(self):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1]),
+            Scope([0, 1], [2]),
             cond_f=lambda data: {
                 "cov": [[[1.0, 0.0], [0.0, 1.0]], [[1.0, 0.0], [0.0, 1.0]]]
             },
@@ -47,7 +45,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_cov(self):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1]),
+            Scope([0, 1], [2]),
             cond_f=lambda data: {"mean": [[0.0, 0.0], [0.0, 0.0]]},
             n_nodes=2,
         )
@@ -61,7 +59,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_mean_cov(self):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0]), n_nodes=2
+            Scope([0], [1]), n_nodes=2
         )
         self.assertRaises(
             ValueError,
@@ -78,7 +76,7 @@ class TestNode(unittest.TestCase):
         }
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1]), n_nodes=2, cond_f=cond_f
+            Scope([0, 1], [2]), n_nodes=2, cond_f=cond_f
         )
 
         # create test inputs/outputs
@@ -94,7 +92,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_args(self):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1]), n_nodes=2
+            Scope([0, 1], [2]), n_nodes=2
         )
 
         dispatch_ctx = DispatchContext()
@@ -120,7 +118,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_args_cond_f(self):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1]), n_nodes=2
+            Scope([0, 1], [2]), n_nodes=2
         )
 
         cond_f = lambda data: {
@@ -164,20 +162,20 @@ class TestNode(unittest.TestCase):
         ]
 
         layer = CondMultivariateGaussianLayer(
-            scope=[Scope([0, 1]), Scope([2, 3, 4])],
+            scope=[Scope([0, 1], [5]), Scope([2, 3, 4], [5])],
             cond_f=lambda data: {"mean": mean_values, "cov": cov_values},
         )
 
         nodes = [
             CondMultivariateGaussian(
-                Scope([0, 1]),
+                Scope([0, 1], [5]),
                 cond_f=lambda data: {
                     "mean": mean_values[0],
                     "cov": cov_values[0],
                 },
             ),
             CondMultivariateGaussian(
-                Scope([2, 3, 4]),
+                Scope([2, 3, 4], [5]),
                 cond_f=lambda data: {
                     "mean": mean_values[1],
                     "cov": cov_values[1],
@@ -212,7 +210,7 @@ class TestNode(unittest.TestCase):
         ]
 
         torch_multivariate_gaussian = CondMultivariateGaussianLayer(
-            scope=[Scope([0, 1]), Scope([2, 3, 4])],
+            scope=[Scope([0, 1], [5]), Scope([2, 3, 4], [5])],
             cond_f=lambda data: {"mean": mean, "cov": cov},
         )
 
@@ -233,7 +231,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         gaussian = CondMultivariateGaussianLayer(
-            scope=[Scope([0, 1]), Scope([1, 2])],
+            scope=[Scope([0, 1], [3]), Scope([1, 2], [3])],
             cond_f=lambda data: {
                 "mean": torch.zeros(2, 2),
                 "cov": torch.stack([torch.eye(2), torch.eye(2)]),

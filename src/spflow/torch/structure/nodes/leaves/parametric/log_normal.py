@@ -5,9 +5,10 @@ import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union, Type
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -66,7 +67,7 @@ class LogNormal(LeafNode):
             raise ValueError(
                 f"Query scope size for 'LogNormal' should be 1, but was: {len(scope.query)}."
             )
-        if len(scope.evidence):
+        if len(scope.evidence) != 0:
             raise ValueError(
                 f"Evidence scope for 'LogNormal' should be empty, but was {scope.evidence}."
             )
@@ -86,6 +87,50 @@ class LogNormal(LeafNode):
         """TODO"""
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.std_aux, lb=0.0)  # type: ignore
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf only has one output
+        if len(signatures) != 1:
+            return False
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        # leaf is a single non-conditional univariate node
+        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+            return False
+        
+        # leaf is a continuous Log-Normal distribution
+        if not (types[0] == FeatureTypes.Continuous or types[0] == FeatureTypes.LogNormal or isinstance(types[0], FeatureTypes.LogNormal)):
+            return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "LogNormal":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'LogNormal' cannot be instantiated from the following signatures: {signatures}.")
+
+        # get single output signature
+        types, scope = signatures[0]
+        type = types[0]
+
+        # read or initialize parameters
+        if type == MetaType.Continuous:
+            mean, std = 0.0, 1.0
+        elif type == FeatureTypes.LogNormal:
+            # instantiate object
+            type = type()
+            mean, std = type.mean, type.std
+        elif isinstance(type, FeatureTypes.LogNormal):
+            mean, std = type.mean, type.std
+        else:
+            raise ValueError(f"Unknown signature type {type} for 'LogNormal' that was not caught during acception checking.")
+
+        return LogNormal(scope, mean=mean, std=std)
 
     @property
     def dist(self) -> D.Distribution:

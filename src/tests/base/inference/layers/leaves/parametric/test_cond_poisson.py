@@ -22,7 +22,7 @@ import unittest
 class TestNode(unittest.TestCase):
     def test_likelihood_no_l(self):
 
-        poisson = CondPoissonLayer(Scope([0]), n_nodes=2)
+        poisson = CondPoissonLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError, log_likelihood, poisson, np.array([[0], [1]])
         )
@@ -31,7 +31,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"l": [1, 1]}
 
-        poisson = CondPoissonLayer(Scope([0]), n_nodes=2, cond_f=cond_f)
+        poisson = CondPoissonLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
@@ -47,7 +47,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_l(self):
 
-        poisson = CondPoissonLayer(Scope([0]), n_nodes=2)
+        poisson = CondPoissonLayer(Scope([0], [1]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[poisson] = {"l": [1, 1]}
@@ -66,7 +66,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        poisson = CondPoissonLayer(Scope([0]), n_nodes=2)
+        poisson = CondPoissonLayer(Scope([0], [1]), n_nodes=2)
 
         cond_f = lambda data: {"l": np.array([1, 1])}
 
@@ -88,13 +88,13 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_1(self):
 
         poisson_layer = CondPoissonLayer(
-            scope=Scope([0]), cond_f=lambda data: {"l": [0.8, 0.3]}, n_nodes=2
+            scope=Scope([0], [1]), cond_f=lambda data: {"l": [0.8, 0.3]}, n_nodes=2
         )
         s1 = SPNSumNode(children=[poisson_layer], weights=[0.3, 0.7])
 
         poisson_nodes = [
-            CondPoisson(Scope([0]), cond_f=lambda data: {"l": 0.8}),
-            CondPoisson(Scope([0]), cond_f=lambda data: {"l": 0.3}),
+            CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": 0.8}),
+            CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": 0.3}),
         ]
         s2 = SPNSumNode(children=poisson_nodes, weights=[0.3, 0.7])
 
@@ -107,14 +107,14 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_2(self):
 
         poisson_layer = CondPoissonLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"l": [0.8, 0.3]},
         )
         p1 = SPNProductNode(children=[poisson_layer])
 
         poisson_nodes = [
-            CondPoisson(Scope([0]), cond_f=lambda data: {"l": 0.8}),
-            CondPoisson(Scope([1]), cond_f=lambda data: {"l": 0.3}),
+            CondPoisson(Scope([0], [2]), cond_f=lambda data: {"l": 0.8}),
+            CondPoisson(Scope([1], [2]), cond_f=lambda data: {"l": 0.3}),
         ]
         p2 = SPNProductNode(children=poisson_nodes)
 

@@ -32,13 +32,13 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         bernoulli_layer = CondBernoulliLayer(
-            scope=Scope([0]), cond_f=lambda data: {"p": [0.8, 0.3]}, n_nodes=2
+            scope=Scope([0], [1]), cond_f=lambda data: {"p": [0.8, 0.3]}, n_nodes=2
         )
         s1 = SPNSumNode(children=[bernoulli_layer], weights=[0.3, 0.7])
 
         bernoulli_nodes = [
-            CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.8}),
-            CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.3}),
+            CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.8}),
+            CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.3}),
         ]
         s2 = SPNSumNode(children=bernoulli_nodes, weights=[0.3, 0.7])
 
@@ -60,14 +60,14 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         bernoulli_layer = CondBernoulliLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"p": [0.8, 0.3]},
         )
         p1 = SPNProductNode(children=[bernoulli_layer])
 
         bernoulli_nodes = [
-            CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.8}),
-            CondBernoulli(Scope([1]), cond_f=lambda data: {"p": 0.3}),
+            CondBernoulli(Scope([0], [2]), cond_f=lambda data: {"p": 0.8}),
+            CondBernoulli(Scope([1], [2]), cond_f=lambda data: {"p": 0.3}),
         ]
         p2 = SPNProductNode(children=bernoulli_nodes)
 
@@ -85,7 +85,7 @@ class TestNode(unittest.TestCase):
     def test_sampling_3(self):
 
         bernoulli_layer = CondBernoulliLayer(
-            scope=[Scope([0]), Scope([0])],
+            scope=[Scope([0], [1]), Scope([0], [1])],
             cond_f=lambda data: {"p": [0.8, 0.3]},
         )
 

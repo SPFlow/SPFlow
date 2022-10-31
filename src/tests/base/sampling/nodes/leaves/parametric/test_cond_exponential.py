@@ -22,7 +22,7 @@ class TestCondExponential(unittest.TestCase):
         # ----- l = 0 -----
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"l": 1.0}
         )
 
         data = np.array([[np.nan], [np.nan], [np.nan]])
@@ -47,7 +47,7 @@ class TestCondExponential(unittest.TestCase):
         # ----- l = 0.5 -----
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 0.5}
+            Scope([0], [1]), cond_f=lambda data: {"l": 0.5}
         )
         samples = sample(exponential, 1000)
         self.assertTrue(
@@ -63,7 +63,7 @@ class TestCondExponential(unittest.TestCase):
         # ----- l = 2.5 -----
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 2.5}
+            Scope([0], [1]), cond_f=lambda data: {"l": 2.5}
         )
         samples = sample(exponential, 1000)
         self.assertTrue(
@@ -73,7 +73,7 @@ class TestCondExponential(unittest.TestCase):
     def test_sampling_4(self):
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 2.5}
+            Scope([0], [1]), cond_f=lambda data: {"l": 2.5}
         )
 
         # make sure that instance ids out of bounds raise errors

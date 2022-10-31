@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains Gamma leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple
+from typing import List, Union, Optional, Iterable, Tuple, Type
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
@@ -11,6 +11,8 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
 
@@ -107,6 +109,51 @@ class GammaLayer(Module):
     def beta(self) -> np.ndarray:
         """Returns the rate parameters of the represented distributions."""
         return np.array([node.beta for node in self.nodes])
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf has at least one output
+        if len(signatures) < 1:
+            return False
+
+        for signature in signatures:
+            if not Gamma.accepts([signature]):
+                return False
+    
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "GammaLayer":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'GammaLayer' cannot be instantiated from the following signatures: {signatures}.")
+
+        alpha = []
+        beta = []
+        scopes = []
+
+        for types, scope in signatures:
+        
+            type = types[0]
+
+            # read or initialize parameters
+            if type == MetaType.Continuous:
+                alpha.append(1.0)
+                beta.append(1.0)
+            elif type == FeatureTypes.Gamma:
+                # instantiate object
+                alpha.append(type().alpha)
+                beta.append(type().beta)
+            elif isinstance(type, FeatureTypes.Gamma):
+                alpha.append(type.alpha)
+                beta.append(type.beta)
+            else:
+                raise ValueError(f"Unknown signature type {type} for 'GammaLayer' that was not caught during acception checking.")
+
+            scopes.append(scope)
+
+        return GammaLayer(scopes, alpha=alpha, beta=beta)
 
     def set_params(
         self,

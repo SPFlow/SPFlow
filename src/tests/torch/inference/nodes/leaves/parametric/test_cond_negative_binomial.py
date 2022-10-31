@@ -36,7 +36,7 @@ class TestNegativeBinomial(unittest.TestCase):
 
         cond_f = lambda data: {"p": 1.0}
 
-        negative_binomial = CondNegativeBinomial(Scope([0]), n=1, cond_f=cond_f)
+        negative_binomial = CondNegativeBinomial(Scope([0], [1]), n=1, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0.0], [1.0]])
@@ -50,7 +50,7 @@ class TestNegativeBinomial(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        negative_binomial = CondNegativeBinomial(Scope([0]), n=1)
+        negative_binomial = CondNegativeBinomial(Scope([0], [1]), n=1)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[negative_binomial] = {"p": 1.0}
@@ -69,7 +69,7 @@ class TestNegativeBinomial(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        negative_binomial = CondNegativeBinomial(Scope([0]), n=1)
+        negative_binomial = CondNegativeBinomial(Scope([0], [1]), n=1)
 
         cond_f = lambda data: {"p": 1.0}
 
@@ -94,10 +94,10 @@ class TestNegativeBinomial(unittest.TestCase):
         p = random.random()
 
         torch_negative_binomial = CondNegativeBinomial(
-            Scope([0]), n, cond_f=lambda data: {"p": p}
+            Scope([0], [1]), n, cond_f=lambda data: {"p": p}
         )
         node_negative_binomial = BaseCondNegativeBinomial(
-            Scope([0]), n, cond_f=lambda data: {"p": p}
+            Scope([0], [1]), n, cond_f=lambda data: {"p": p}
         )
 
         # create dummy input data (batch size x random variables)
@@ -119,7 +119,7 @@ class TestNegativeBinomial(unittest.TestCase):
         p = torch.tensor(random.random(), requires_grad=True)
 
         torch_negative_binomial = CondNegativeBinomial(
-            Scope([0]), n, cond_f=lambda data: {"p": p}
+            Scope([0], [1]), n, cond_f=lambda data: {"p": p}
         )
 
         # create dummy input data (batch size x random variables)
@@ -142,7 +142,7 @@ class TestNegativeBinomial(unittest.TestCase):
 
         # p = 1
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), 1, cond_f=lambda data: {"p": 1.0}
+            Scope([0], [1]), 1, cond_f=lambda data: {"p": 1.0}
         )
 
         data = torch.tensor([[0.0], [1.0]])
@@ -157,14 +157,14 @@ class TestNegativeBinomial(unittest.TestCase):
     def test_likelihood_n_float(self):
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), 1, cond_f=lambda data: {"p": 0.5}
+            Scope([0], [1]), 1, cond_f=lambda data: {"p": 0.5}
         )
         self.assertRaises(Exception, likelihood, negative_binomial, 0.5)
 
     def test_likelihood_marginalization(self):
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), 20, cond_f=lambda data: {"p": 0.3}
+            Scope([0], [1]), 20, cond_f=lambda data: {"p": 0.3}
         )
         data = torch.tensor([[float("nan")]])
 
@@ -181,7 +181,7 @@ class TestNegativeBinomial(unittest.TestCase):
         p = 0.3
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n, cond_f=lambda data: {"p": p}
+            Scope([0], [1]), n, cond_f=lambda data: {"p": p}
         )
 
         # check infinite values

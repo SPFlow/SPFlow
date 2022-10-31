@@ -31,7 +31,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_mean(self):
 
         log_normal = CondLogNormalLayer(
-            Scope([0]), cond_f=lambda data: {"std": [0.25, 0.25]}, n_nodes=2
+            Scope([0], [1]), cond_f=lambda data: {"std": [0.25, 0.25]}, n_nodes=2
         )
         self.assertRaises(
             KeyError, log_likelihood, log_normal, torch.tensor([[0], [1]])
@@ -40,7 +40,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_std(self):
 
         log_normal = CondLogNormalLayer(
-            Scope([0]), cond_f=lambda data: {"mean": [0.0, 0.0]}, n_nodes=2
+            Scope([0], [1]), cond_f=lambda data: {"mean": [0.0, 0.0]}, n_nodes=2
         )
         self.assertRaises(
             KeyError, log_likelihood, log_normal, torch.tensor([[0], [1]])
@@ -48,7 +48,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_mean_std(self):
 
-        log_normal = CondLogNormalLayer(Scope([0]), n_nodes=2)
+        log_normal = CondLogNormalLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError, log_likelihood, log_normal, torch.tensor([[0], [1]])
         )
@@ -57,7 +57,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"mean": [0.0, 0.0], "std": [0.25, 0.25]}
 
-        log_normal = CondLogNormalLayer(Scope([0]), n_nodes=2, cond_f=cond_f)
+        log_normal = CondLogNormalLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0.5], [1.0], [1.5]])
@@ -71,7 +71,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args(self):
 
-        log_normal = CondLogNormalLayer(Scope([0]), n_nodes=2)
+        log_normal = CondLogNormalLayer(Scope([0], [1]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[log_normal] = {
@@ -91,7 +91,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        log_normal = CondLogNormalLayer(Scope([0]), n_nodes=2)
+        log_normal = CondLogNormalLayer(Scope([0], [1]), n_nodes=2)
 
         cond_f = lambda data: {"mean": [0.0, 0.0], "std": [0.25, 0.25]}
 
@@ -111,7 +111,7 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood(self):
 
         layer = CondLogNormalLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             cond_f=lambda data: {
                 "mean": [0.2, 1.0, 2.3],
                 "std": [1.0, 0.3, 0.97],
@@ -120,13 +120,13 @@ class TestNode(unittest.TestCase):
 
         nodes = [
             CondLogNormal(
-                Scope([0]), cond_f=lambda data: {"mean": 0.2, "std": 1.0}
+                Scope([0], [2]), cond_f=lambda data: {"mean": 0.2, "std": 1.0}
             ),
             CondLogNormal(
-                Scope([1]), cond_f=lambda data: {"mean": 1.0, "std": 0.3}
+                Scope([1], [2]), cond_f=lambda data: {"mean": 1.0, "std": 0.3}
             ),
             CondLogNormal(
-                Scope([0]), cond_f=lambda data: {"mean": 2.3, "std": 0.97}
+                Scope([0], [2]), cond_f=lambda data: {"mean": 2.3, "std": 0.97}
             ),
         ]
 
@@ -149,7 +149,7 @@ class TestNode(unittest.TestCase):
         )  # offset by small number to avoid zero
 
         torch_log_normal = CondLogNormalLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"mean": mean, "std": std},
         )
 
@@ -170,7 +170,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         log_normal = CondLogNormalLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {
                 "mean": random.random(),
                 "std": random.random() + 1e-7,

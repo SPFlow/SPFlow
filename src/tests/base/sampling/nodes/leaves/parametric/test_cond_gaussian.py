@@ -20,7 +20,7 @@ class TestCondGaussian(unittest.TestCase):
         random.seed(0)
 
         gaussian = CondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 0.0005}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 0.0005}
         )
 
         data = np.array([[np.nan], [np.nan], [np.nan]])
@@ -38,7 +38,7 @@ class TestCondGaussian(unittest.TestCase):
     def test_sampling_2(self):
 
         gaussian = CondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
         )
 
         # make sure that instance ids out of bounds raise errors

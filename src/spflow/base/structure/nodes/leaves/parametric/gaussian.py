@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """Contains Gaussian leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple
+from typing import Tuple, List, Union, Type
 import numpy as np
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.base.structure.nodes.node import LeafNode
 
 from scipy.stats import norm  # type: ignore
@@ -53,13 +54,57 @@ class Gaussian(LeafNode):
             raise ValueError(
                 f"Query scope size for 'Gaussian' should be 1, but was: {len(scope.query)}."
             )
-        if len(scope.evidence):
+        if len(scope.evidence) != 0:
             raise ValueError(
                 f"Evidence scope for 'Gaussian' should be empty, but was {scope.evidence}."
             )
 
         super(Gaussian, self).__init__(scope=scope)
         self.set_params(mean, std)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf only has one output
+        if len(signatures) != 1:
+            return False
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        # leaf is a single non-conditional univariate node
+        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+            return False
+        
+        # leaf is a continuous Gaussian distribution
+        if not (types[0] == FeatureTypes.Continuous or types[0] == FeatureTypes.Gaussian or isinstance(types[0], FeatureTypes.Gaussian)):
+            return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "Gaussian":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'Gaussian' cannot be instantiated from the following signatures: {signatures}.")
+
+        # get single output signature
+        types, scope = signatures[0]
+        type = types[0]
+
+        # read or initialize parameters
+        if type == MetaType.Continuous:
+            mean, std = 0.0, 1.0
+        elif type == FeatureTypes.Gaussian:
+            # instantiate object
+            type = type()
+            mean, std = type.mean, type.std
+        elif isinstance(type, FeatureTypes.Gaussian):
+            mean, std = type.mean, type.std
+        else:
+            raise ValueError(f"Unknown signature type {type} for 'Gaussian' that was not caught during acception checking.")
+
+        return Gaussian(scope, mean=mean, std=std)
 
     @property
     def dist(self) -> rv_frozen:

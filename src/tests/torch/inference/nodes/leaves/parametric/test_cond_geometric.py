@@ -37,7 +37,7 @@ class TestGeometric(unittest.TestCase):
         p = random.random()
         cond_f = lambda data: {"p": 0.5}
 
-        geometric = CondGeometric(Scope([0]), cond_f=cond_f)
+        geometric = CondGeometric(Scope([0], [1]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[1], [5], [10]])
@@ -51,7 +51,7 @@ class TestGeometric(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        geometric = CondGeometric(Scope([0]))
+        geometric = CondGeometric(Scope([0], [1]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[geometric] = {"p": 0.5}
@@ -68,7 +68,7 @@ class TestGeometric(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        geometric = CondGeometric(Scope([0]))
+        geometric = CondGeometric(Scope([0], [1]))
 
         cond_f = lambda data: {"p": 0.5}
 
@@ -90,10 +90,10 @@ class TestGeometric(unittest.TestCase):
         p = random.random()
 
         torch_geometric = CondGeometric(
-            Scope([0]), cond_f=lambda data: {"p": p}
+            Scope([0], [1]), cond_f=lambda data: {"p": p}
         )
         node_geometric = BaseCondGeometric(
-            Scope([0]), cond_f=lambda data: {"p": p}
+            Scope([0], [1]), cond_f=lambda data: {"p": p}
         )
 
         # create dummy input data (batch size x random variables)
@@ -112,7 +112,7 @@ class TestGeometric(unittest.TestCase):
         p = torch.tensor(random.random(), requires_grad=True)
 
         torch_geometric = CondGeometric(
-            Scope([0]), cond_f=lambda data: {"p": p}
+            Scope([0], [1]), cond_f=lambda data: {"p": p}
         )
 
         # create dummy input data (batch size x random variables)
@@ -130,7 +130,7 @@ class TestGeometric(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        geometric = CondGeometric(Scope([0]), cond_f=lambda data: {"p": 0.5})
+        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1
@@ -142,7 +142,7 @@ class TestGeometric(unittest.TestCase):
 
         # Support for Geometric distribution: integers N\{0}
 
-        geometric = CondGeometric(Scope([0]), cond_f=lambda data: {"p": 0.5})
+        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
 
         # check infinite values
         self.assertRaises(

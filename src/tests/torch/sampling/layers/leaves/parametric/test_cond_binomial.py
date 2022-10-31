@@ -43,15 +43,15 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         layer = CondBinomialLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             n=[3, 2, 3],
             cond_f=lambda data: {"p": [0.2, 0.8, 0.2]},
         )
 
         nodes = [
-            CondBinomial(Scope([0]), n=3, cond_f=lambda data: {"p": 0.2}),
-            CondBinomial(Scope([1]), n=2, cond_f=lambda data: {"p": 0.8}),
-            CondBinomial(Scope([0]), n=3, cond_f=lambda data: {"p": 0.2}),
+            CondBinomial(Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}),
+            CondBinomial(Scope([1], [2]), n=2, cond_f=lambda data: {"p": 0.8}),
+            CondBinomial(Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}),
         ]
 
         # make sure sampling fron non-overlapping scopes works

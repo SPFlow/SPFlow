@@ -37,7 +37,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         # create distribution
         mv = CondMultivariateGaussian(
-            Scope([0, 1, 2, 3, 4]),
+            Scope([0, 1, 2, 3, 4], [5]),
             cond_f=lambda data: {"mean": mean, "cov": cov},
         )
 
@@ -84,7 +84,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         # create distribution
         mv = CondMultivariateGaussian(
-            Scope([0, 1, 2, 3, 4]),
+            Scope([0, 1, 2, 3, 4], [5]),
             cond_f=lambda data: {"mean": mean, "cov": cov},
         )
 

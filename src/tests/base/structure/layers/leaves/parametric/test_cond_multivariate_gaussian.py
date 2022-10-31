@@ -2,6 +2,7 @@ from spflow.base.structure.layers.leaves.parametric.cond_multivariate_gaussian i
     CondMultivariateGaussianLayer,
     marginalize,
 )
+from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
 )
@@ -10,6 +11,7 @@ from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import (
 )
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
 import numpy as np
 import unittest
 
@@ -19,18 +21,18 @@ class TestLayer(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = CondMultivariateGaussianLayer(scope=Scope([1, 0]), n_nodes=3)
+        l = CondMultivariateGaussianLayer(scope=Scope([1, 0], [2]), n_nodes=3)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
         self.assertTrue(
             np.all(
-                l.scopes_out == [Scope([1, 0]), Scope([1, 0]), Scope([1, 0])]
+                l.scopes_out == [Scope([1, 0], [2]), Scope([1, 0], [2]), Scope([1, 0], [2])]
             )
         )
 
         # ---- different scopes -----
-        l = CondMultivariateGaussianLayer(scope=Scope([0, 1, 2]), n_nodes=3)
+        l = CondMultivariateGaussianLayer(scope=Scope([0, 1, 2], [3]), n_nodes=3)
         for node, node_scope in zip(l.nodes, l.scopes_out):
             self.assertEqual(node.scope, node_scope)
 
@@ -38,7 +40,7 @@ class TestLayer(unittest.TestCase):
         self.assertRaises(
             ValueError,
             CondMultivariateGaussianLayer,
-            Scope([0, 1, 2]),
+            Scope([0, 1, 2], [3]),
             n_nodes=0,
         )
 
@@ -51,14 +53,14 @@ class TestLayer(unittest.TestCase):
         )
 
         # ----- individual scopes and parameters -----
-        scopes = [Scope([1, 2, 3]), Scope([0, 1, 4]), Scope([0, 2, 3])]
+        scopes = [Scope([1, 2, 3], [5]), Scope([0, 1, 4], [5]), Scope([0, 2, 3], [5])]
         l = CondMultivariateGaussianLayer(scope=scopes, n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
 
         # -----number of cond_f functions -----
         CondMultivariateGaussianLayer(
-            Scope([0]),
+            Scope([0], [1]),
             n_nodes=2,
             cond_f=[
                 lambda data: {"mean": [0.0], "cov": [[1.0]]},
@@ -68,7 +70,7 @@ class TestLayer(unittest.TestCase):
         self.assertRaises(
             ValueError,
             CondMultivariateGaussianLayer,
-            Scope([0]),
+            Scope([0], [1]),
             n_nodes=2,
             cond_f=[lambda data: {"mean": [0.0], "cov": [[1.0]]}],
         )
@@ -79,7 +81,7 @@ class TestLayer(unittest.TestCase):
         mean_value = [0.0, -1.0, 2.3]
         cov_value = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
         l = CondMultivariateGaussianLayer(
-            scope=Scope([1, 0, 2]),
+            scope=Scope([1, 0, 2], [3]),
             n_nodes=3,
             cond_f=lambda data: {"mean": mean_value, "cov": cov_value},
         )
@@ -196,11 +198,68 @@ class TestLayer(unittest.TestCase):
             ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
         )
 
+    def test_accept(self):
+
+        # continuous meta types
+        self.assertTrue(CondMultivariateGaussianLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [3])), ([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([1, 2], [3]))]))
+
+        # Gaussian feature type class
+        self.assertTrue(CondMultivariateGaussianLayer.accepts([([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([0, 1], [3])), ([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([1, 2], [3]))]))
+
+        # Gaussian feature type instance
+        self.assertTrue(CondMultivariateGaussianLayer.accepts([([FeatureTypes.Gaussian(0.0, 1.0), FeatureTypes.Gaussian(0.0, 1.0)], Scope([0, 1], [3])), ([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([1, 2], [3]))]))
+
+        # continuous meta and Gaussian feature types
+        self.assertTrue(CondMultivariateGaussianLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Gaussian], Scope([0, 1], [2]))]))
+
+        # invalid feature type
+        self.assertFalse(CondMultivariateGaussianLayer.accepts([([FeatureTypes.Discrete, FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+
+        # non-conditional scope
+        self.assertFalse(CondMultivariateGaussianLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(CondMultivariateGaussianLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1, 2], [3]))]))
+
+    def test_initialization_from_signatures(self):
+
+        multivariate_gaussian = CondMultivariateGaussianLayer.from_signatures([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [3])), ([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([1, 2], [3]))])
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
+
+        multivariate_gaussian = CondMultivariateGaussianLayer.from_signatures([([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([0, 1], [3])), ([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([1, 2], [3]))])
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
+
+        multivariate_gaussian = CondMultivariateGaussianLayer.from_signatures([([FeatureTypes.Gaussian(-1.0, 1.5), FeatureTypes.Gaussian(1.0, 0.5)], Scope([0, 1], [3])), ([FeatureTypes.Gaussian(1.0, 0.5), FeatureTypes.Gaussian(-1.0, 1.5)], Scope([1, 2], [3]))])
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
+
+        # ----- invalid arguments -----
+
+        # invalid feature type
+        self.assertRaises(ValueError, CondMultivariateGaussianLayer.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Continuous], Scope([0, 1], [2]))])
+
+        # non-conditional scope
+        self.assertRaises(ValueError, CondMultivariateGaussianLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, CondMultivariateGaussianLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(CondMultivariateGaussianLayer))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(CondMultivariateGaussianLayer, AutoLeaf.infer([([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([0, 1], [3])), ([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([1, 2], [3]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        multivariate_gaussian = AutoLeaf([([FeatureTypes.Gaussian(mean=-1.0, std=1.5), FeatureTypes.Gaussian(mean=1.0, std=0.5)], Scope([0, 1], [3])), ([FeatureTypes.Gaussian(1.0, 0.5), FeatureTypes.Gaussian(-1.0, 1.5)], Scope([1, 2], [3]))])
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
+
     def test_layer_structural_marginalization(self):
 
         # ---------- same scopes -----------
 
-        l = CondMultivariateGaussianLayer(scope=[Scope([0, 1]), Scope([0, 1])])
+        l = CondMultivariateGaussianLayer(scope=[Scope([0, 1], [2]), Scope([0, 1], [2])])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
@@ -208,11 +267,11 @@ class TestLayer(unittest.TestCase):
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
 
-        self.assertTrue(l_marg.scopes_out == [Scope([0, 1]), Scope([0, 1])])
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 1], [2]), Scope([0, 1], [2])])
 
         # ---------- different scopes -----------
 
-        l = CondMultivariateGaussianLayer(scope=[Scope([0, 2]), Scope([1, 3])])
+        l = CondMultivariateGaussianLayer(scope=[Scope([0, 2], [4]), Scope([1, 3], [4])])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1, 2, 3]) == None)
@@ -220,21 +279,21 @@ class TestLayer(unittest.TestCase):
         # ----- partially marginalize -----
         l_marg = marginalize(l, [0, 2], prune=True)
         self.assertTrue(isinstance(l_marg, CondMultivariateGaussian))
-        self.assertEqual(l_marg.scope, Scope([1, 3]))
+        self.assertEqual(l_marg.scope, Scope([1, 3], [4]))
 
         l_marg = marginalize(l, [0, 1, 2], prune=True)
         self.assertTrue(isinstance(l_marg, CondGaussian))
-        self.assertEqual(l_marg.scope, Scope([3]))
+        self.assertEqual(l_marg.scope, Scope([3], [4]))
 
         l_marg = marginalize(l, [0, 2], prune=False)
         self.assertTrue(isinstance(l_marg, CondMultivariateGaussianLayer))
-        self.assertEqual(l_marg.scopes_out, [Scope([1, 3])])
+        self.assertEqual(l_marg.scopes_out, [Scope([1, 3], [4])])
         self.assertEqual(len(l_marg.nodes), 1)
 
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [4])
 
-        self.assertTrue(l_marg.scopes_out == [Scope([0, 2]), Scope([1, 3])])
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 2], [4]), Scope([1, 3], [4])])
 
 
 if __name__ == "__main__":

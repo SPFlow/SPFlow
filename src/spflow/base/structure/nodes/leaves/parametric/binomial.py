@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """Contains Binomial leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple, Optional
+from typing import Tuple, List, Union, Type
 import numpy as np
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.base.structure.nodes.node import LeafNode
 
 from scipy.stats import binom  # type: ignore
@@ -48,7 +49,7 @@ class Binomial(LeafNode):
             raise ValueError(
                 f"Query scope size for 'Binomial' should be 1, but was {len(scope.query)}."
             )
-        if len(scope.evidence):
+        if len(scope.evidence) != 0:
             raise ValueError(
                 f"Evidence scope for 'Binomial' should be empty, but was {scope.evidence}."
             )
@@ -57,6 +58,46 @@ class Binomial(LeafNode):
 
         # set parameters
         self.set_params(n, p)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf only has one output
+        if len(signatures) != 1:
+            return False
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        # leaf is a single non-conditional univariate node
+        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+            return False
+
+        # leaf is a discrete Binomial distribution
+        # NOTE: only accept instances of 'FeatureTypes.Binomial', otherwise required parameter 'n' is not specified. Reject 'FeatureTypes.Discrete' for the same reason.
+        if not isinstance(types[0], FeatureTypes.Binomial):
+            return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "Binomial":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'Binomial' cannot be instantiated from the following signatures: {signatures}.")
+
+        # get single output signature
+        types, scope = signatures[0]
+        type = types[0]
+
+        # read or initialize parameters
+        if isinstance(type, FeatureTypes.Binomial):
+            n = type.n
+            p = type.p
+        else:
+            raise ValueError(f"Unknown signature type {type} for 'Binomial' that was not caught during acception checking.")
+
+        return Binomial(scope, n=n, p=p)
 
     @property
     def dist(self) -> rv_frozen:

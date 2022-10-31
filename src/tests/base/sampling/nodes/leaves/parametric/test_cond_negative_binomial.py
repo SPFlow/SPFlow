@@ -24,7 +24,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
         # ----- n = 1, p = 1.0 -----
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=1, cond_f=lambda data: {"p": 1.0}
+            Scope([0], [1]), n=1, cond_f=lambda data: {"p": 1.0}
         )
         data = np.array([[np.nan], [np.nan], [np.nan]])
 
@@ -46,7 +46,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
         # ----- n = 10, p = 0.3 -----
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=10, cond_f=lambda data: {"p": 0.3}
+            Scope([0], [1]), n=10, cond_f=lambda data: {"p": 0.3}
         )
 
         samples = sample(negative_binomial, 1000)
@@ -63,7 +63,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
         # ----- n = 5, p = 0.8 -----
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=5, cond_f=lambda data: {"p": 0.8}
+            Scope([0], [1]), n=5, cond_f=lambda data: {"p": 0.8}
         )
 
         samples = sample(negative_binomial, 1000)
@@ -74,7 +74,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
     def test_sampling_4(self):
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=5, cond_f=lambda data: {"p": 0.8}
+            Scope([0], [1]), n=5, cond_f=lambda data: {"p": 0.8}
         )
 
         # make sure that instance ids out of bounds raise errors

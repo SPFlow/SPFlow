@@ -23,7 +23,6 @@ import torch
 import numpy as np
 import random
 import unittest
-import itertools
 
 
 class TestNode(unittest.TestCase):
@@ -43,7 +42,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         layer = CondGaussianLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             cond_f=lambda data: {
                 "mean": [0.2, 1.8, 0.2],
                 "std": [0.01, 0.05, 0.01],
@@ -52,13 +51,13 @@ class TestNode(unittest.TestCase):
 
         nodes = [
             CondGaussian(
-                Scope([0]), cond_f=lambda data: {"mean": 0.2, "std": 0.01}
+                Scope([0], [2]), cond_f=lambda data: {"mean": 0.2, "std": 0.01}
             ),
             CondGaussian(
-                Scope([1]), cond_f=lambda data: {"mean": 1.8, "std": 0.05}
+                Scope([1], [2]), cond_f=lambda data: {"mean": 1.8, "std": 0.05}
             ),
             CondGaussian(
-                Scope([0]), cond_f=lambda data: {"mean": 0.2, "std": 0.01}
+                Scope([0], [2]), cond_f=lambda data: {"mean": 0.2, "std": 0.01}
             ),
         ]
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains conditional Poisson leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Callable
+from typing import List, Union, Optional, Iterable, Tuple, Callable, Type
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
@@ -11,6 +11,8 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.cond_poisson import (
     CondPoisson,
@@ -98,6 +100,42 @@ class CondPoissonLayer(Module):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf has at least one output
+        if len(signatures) < 1:
+            return False
+
+        for signature in signatures:
+            if not CondPoisson.accepts([signature]):
+                return False
+    
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "CondPoissonLayer":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'PoissonLayer' cannot be instantiated from the following signatures: {signatures}.")
+
+        l = []
+        scopes = []
+
+        for types, scope in signatures:
+        
+            type = types[0]
+
+            # read or initialize parameters
+            if type == MetaType.Discrete or type == FeatureTypes.Poisson or isinstance(type, FeatureTypes.Poisson):
+                pass 
+            else:
+                raise ValueError(f"Unknown signature type {type} for 'CondPoissonLayer' that was not caught during acception checking.")
+
+            scopes.append(scope)
+
+        return CondPoissonLayer(scopes)
 
     def set_cond_f(
         self, cond_f: Optional[Union[List[Callable], Callable]] = None

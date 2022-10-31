@@ -30,7 +30,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_p(self):
 
-        geometric = CondGeometricLayer(Scope([0]), n_nodes=2)
+        geometric = CondGeometricLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError, log_likelihood, geometric, torch.tensor([[0], [1]])
         )
@@ -39,7 +39,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"p": [0.2, 0.5]}
 
-        geometric = CondGeometricLayer(Scope([0]), n_nodes=2, cond_f=cond_f)
+        geometric = CondGeometricLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[1], [5], [10]])
@@ -55,7 +55,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        geometric = CondGeometricLayer(Scope([0]), n_nodes=2)
+        geometric = CondGeometricLayer(Scope([0], [1]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[geometric] = {"p": [0.2, 0.5]}
@@ -74,7 +74,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        geometric = CondGeometricLayer(Scope([0]), n_nodes=2)
+        geometric = CondGeometricLayer(Scope([0], [1]), n_nodes=2)
 
         cond_f = lambda data: {"p": torch.tensor([0.2, 0.5])}
 
@@ -96,14 +96,14 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood(self):
 
         layer = CondGeometricLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             cond_f=lambda data: {"p": [0.2, 1.0, 0.3]},
         )
 
         nodes = [
-            CondGeometric(Scope([0]), cond_f=lambda data: {"p": 0.2}),
-            CondGeometric(Scope([1]), cond_f=lambda data: {"p": 1.0}),
-            CondGeometric(Scope([0]), cond_f=lambda data: {"p": 0.3}),
+            CondGeometric(Scope([0], [2]), cond_f=lambda data: {"p": 0.2}),
+            CondGeometric(Scope([1], [2]), cond_f=lambda data: {"p": 1.0}),
+            CondGeometric(Scope([0], [2]), cond_f=lambda data: {"p": 0.3}),
         ]
 
         dummy_data = torch.tensor([[4, 1], [3, 7], [1, 1]])
@@ -120,7 +120,7 @@ class TestNode(unittest.TestCase):
         p = torch.tensor([random.random(), random.random()], requires_grad=True)
 
         torch_geometric = CondGeometricLayer(
-            scope=[Scope([0]), Scope([1])], cond_f=lambda data: {"p": p}
+            scope=[Scope([0], [2]), Scope([1], [2])], cond_f=lambda data: {"p": p}
         )
 
         # create dummy input data (batch size x random variables)
@@ -139,7 +139,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         geometric = CondGeometricLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"p": random.random() + 1e-7},
         )
         data = torch.tensor([[float("nan"), float("nan")]])

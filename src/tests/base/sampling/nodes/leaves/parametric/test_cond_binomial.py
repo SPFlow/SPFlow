@@ -18,7 +18,7 @@ class TestCondBinomial(unittest.TestCase):
         # ----- p = 0 -----
 
         binomial = CondBinomial(
-            Scope([0]), n=10, cond_f=lambda data: {"p": 0.0}
+            Scope([0], [1]), n=10, cond_f=lambda data: {"p": 0.0}
         )
 
         data = np.array([[np.nan], [np.nan], [np.nan]])
@@ -35,7 +35,7 @@ class TestCondBinomial(unittest.TestCase):
         # ----- p = 1 -----
 
         binomial = CondBinomial(
-            Scope([0]), n=10, cond_f=lambda data: {"p": 1.0}
+            Scope([0], [1]), n=10, cond_f=lambda data: {"p": 1.0}
         )
 
         data = np.array([[np.nan], [np.nan], [np.nan]])
@@ -56,7 +56,7 @@ class TestCondBinomial(unittest.TestCase):
         # ----- p = 0.5 -----
 
         binomial = CondBinomial(
-            Scope([0]), n=10, cond_f=lambda data: {"p": 0.5}
+            Scope([0], [1]), n=10, cond_f=lambda data: {"p": 0.5}
         )
 
         samples = sample(binomial, 1000)
@@ -68,7 +68,7 @@ class TestCondBinomial(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        binomial = CondBinomial(Scope([0]), n=5, cond_f=lambda data: {"p": 0.5})
+        binomial = CondBinomial(Scope([0], [1]), n=5, cond_f=lambda data: {"p": 0.5})
 
         # make sure that instance ids out of bounds raise errors
         self.assertRaises(

@@ -29,7 +29,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_l(self):
 
-        exponential = CondExponentialLayer(Scope([0]), n_nodes=2)
+        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError, log_likelihood, exponential, torch.tensor([[0], [1]])
         )
@@ -38,7 +38,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"l": [0.5, 1.0]}
 
-        exponential = CondExponentialLayer(Scope([0]), n_nodes=2, cond_f=cond_f)
+        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[2], [5]])
@@ -52,7 +52,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_l(self):
 
-        exponential = CondExponentialLayer(Scope([0]), n_nodes=2)
+        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[exponential] = {"l": [0.5, 1.0]}
@@ -69,7 +69,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        exponential = CondExponentialLayer(Scope([0]), n_nodes=2)
+        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2)
 
         cond_f = lambda data: {"l": torch.tensor([0.5, 1.0])}
 
@@ -89,14 +89,14 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood(self):
 
         layer = CondExponentialLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             cond_f=lambda data: {"l": [0.2, 1.0, 2.3]},
         )
 
         nodes = [
-            CondExponential(Scope([0]), cond_f=lambda data: {"l": 0.2}),
-            CondExponential(Scope([1]), cond_f=lambda data: {"l": 1.0}),
-            CondExponential(Scope([0]), cond_f=lambda data: {"l": 2.3}),
+            CondExponential(Scope([0], [2]), cond_f=lambda data: {"l": 0.2}),
+            CondExponential(Scope([1], [2]), cond_f=lambda data: {"l": 1.0}),
+            CondExponential(Scope([0], [2]), cond_f=lambda data: {"l": 2.3}),
         ]
 
         dummy_data = torch.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
@@ -113,7 +113,7 @@ class TestNode(unittest.TestCase):
         l = torch.tensor([random.random(), random.random()], requires_grad=True)
 
         torch_exponential = CondExponentialLayer(
-            scope=[Scope([0]), Scope([1])], cond_f=lambda data: {"l": l}
+            scope=[Scope([0], [2]), Scope([1], [2])], cond_f=lambda data: {"l": l}
         )
 
         # create dummy input data (batch size x random variables)
@@ -132,7 +132,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         exponential = CondExponentialLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"l": random.random() + 1e-7},
         )
         data = torch.tensor([[float("nan"), float("nan")]])

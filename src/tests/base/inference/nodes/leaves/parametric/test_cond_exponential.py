@@ -15,7 +15,7 @@ import unittest
 class TestCondExponential(unittest.TestCase):
     def test_likelihood_no_l(self):
 
-        exponential = CondExponential(Scope([0]))
+        exponential = CondExponential(Scope([0], [1]))
         self.assertRaises(
             ValueError, log_likelihood, exponential, np.array([[0], [1]])
         )
@@ -24,7 +24,7 @@ class TestCondExponential(unittest.TestCase):
 
         cond_f = lambda data: {"l": 0.5}
 
-        exponential = CondExponential(Scope([0]), cond_f=cond_f)
+        exponential = CondExponential(Scope([0], [1]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
@@ -38,7 +38,7 @@ class TestCondExponential(unittest.TestCase):
 
     def test_likelihood_args_l(self):
 
-        exponential = CondExponential(Scope([0]))
+        exponential = CondExponential(Scope([0], [1]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[exponential] = {"l": 0.5}
@@ -55,7 +55,7 @@ class TestCondExponential(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        exponential = CondExponential(Scope([0]))
+        exponential = CondExponential(Scope([0], [1]))
 
         cond_f = lambda data: {"l": 0.5}
 
@@ -76,7 +76,7 @@ class TestCondExponential(unittest.TestCase):
 
         # ----- configuration 1 -----
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 0.5}
+            Scope([0], [1]), cond_f=lambda data: {"l": 0.5}
         )
 
         # create test inputs/outputs
@@ -93,7 +93,7 @@ class TestCondExponential(unittest.TestCase):
 
         # ----- configuration 2 -----
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"l": 1.0}
         )
 
         # create test inputs/outputs
@@ -110,7 +110,7 @@ class TestCondExponential(unittest.TestCase):
 
         # ----- configuration 3 -----
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 1.5}
+            Scope([0], [1]), cond_f=lambda data: {"l": 1.5}
         )
 
         # create test inputs/outputs
@@ -126,7 +126,7 @@ class TestCondExponential(unittest.TestCase):
     def test_likelihood_l_none(self):
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": None}
+            Scope([0], [1]), cond_f=lambda data: {"l": None}
         )
 
         data = np.array([[0], [2], [5]])
@@ -138,7 +138,7 @@ class TestCondExponential(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"l": 1.0}
         )
         data = np.array([[np.nan]])
 
@@ -158,7 +158,7 @@ class TestCondExponential(unittest.TestCase):
         #   log-likelihood: None
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 1.5}
+            Scope([0], [1]), cond_f=lambda data: {"l": 1.5}
         )
 
         # check infinite values

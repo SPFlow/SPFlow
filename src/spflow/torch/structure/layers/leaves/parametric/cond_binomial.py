@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains Binomial leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Callable
+from typing import List, Union, Optional, Iterable, Tuple, Callable, Type
 from functools import reduce
 import numpy as np
 import torch
@@ -13,6 +13,8 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.cond_binomial import (
     CondBinomial,
@@ -101,6 +103,10 @@ class CondBinomialLayer(Module):
         for s in scope:
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
+            if len(s.evidence) == 0:
+                raise ValueError(
+                    f"Evidence scope for 'CondBinomialLayer' should not be empty."
+                )
 
         super(CondBinomialLayer, self).__init__(children=[], **kwargs)
 
@@ -110,13 +116,49 @@ class CondBinomialLayer(Module):
         # compute scope
         self.scopes_out = scope
         self.combined_scope = reduce(
-            lambda s1, s2: s1.union(s2), self.scopes_out
+            lambda s1, s2: s1.join(s2), self.scopes_out
         )
 
         # parse weights
         self.set_params(n)
 
         self.set_cond_f(cond_f)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf has at least one output
+        if len(signatures) < 1:
+            return False
+
+        for signature in signatures:
+            if not CondBinomial.accepts([signature]):
+                return False
+    
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "CondBinomialLayer":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'CondBinomialLayer' cannot be instantiated from the following signatures: {signatures}.")
+
+        n = []
+        scopes = []
+
+        for types, scope in signatures:
+        
+            type = types[0]
+
+            # read or initialize parameters
+            if isinstance(type, FeatureTypes.Binomial):
+                n.append(type.n)
+            else:
+                raise ValueError(f"Unknown signature type {type} for 'CondBinomialLayer' that was not caught during acception checking.")
+
+            scopes.append(scope)
+
+        return CondBinomialLayer(scopes, n=n)
 
     @property
     def n_out(self) -> int:

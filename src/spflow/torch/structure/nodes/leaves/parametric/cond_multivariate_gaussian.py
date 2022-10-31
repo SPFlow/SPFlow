@@ -4,8 +4,9 @@
 import numpy as np
 import torch
 import torch.distributions as D
-from typing import Tuple, Union, Optional, Iterable, Callable
+from typing import Tuple, Union, Optional, Iterable, Callable, List, Type
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -68,9 +69,9 @@ class CondMultivariateGaussian(LeafNode):
             raise ValueError(
                 "Query scope for 'CondMultivariateGaussian' contains duplicate variables."
             )
-        if len(scope.evidence):
+        if len(scope.evidence) == 0:
             raise ValueError(
-                f"Evidence scope for 'CondMultivariateGaussian' should be empty, but was {scope.evidence}."
+                f"Evidence scope for 'CondMultivariateGaussian' should not be empty."
             )
         if len(scope.query) < 1:
             raise ValueError(
@@ -83,6 +84,46 @@ class CondMultivariateGaussian(LeafNode):
         self.d = len(scope)
 
         self.set_cond_f(cond_f)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf only has one output
+        if len(signatures) != 1:
+            return False
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        # leaf is a single non-conditional (possibly multivariate) node
+        if len(types) < 1 or len(scope.query) != len(types) or len(scope.evidence) == 0:
+            return False
+
+        # leaf is a continuous (multivariate) Gaussian distribution
+        if not all([type == FeatureTypes.Continuous or type == FeatureTypes.Gaussian or isinstance(type, FeatureTypes.Gaussian) for type in types]):
+            return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "CondMultivariateGaussian":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'CondMultivariateGaussian' cannot be instantiated from the following signatures: {signatures}.")
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        mean, cov = np.zeros(len(scope.query)), np.eye(len(scope.query))
+
+        for i, type in enumerate(types):
+            # read or initialize parameters
+            if type == MetaType.Continuous or type == FeatureTypes.Gaussian or isinstance(type, FeatureTypes.Gaussian):
+                pass
+            else:
+                raise ValueError(f"Unknown signature type {type} for 'CondMultivariateGaussian' that was not caught during acception checking.")
+
+        return CondMultivariateGaussian(scope)
 
     def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         r"""Sets the function to retrieve the node's conditonal parameter.
@@ -376,13 +417,13 @@ def marginalize(
 
     # return univariate Gaussian if one-dimensional
     if len(marg_scope) == 1:
-        return CondGaussian(Scope(marg_scope))
+        return CondGaussian(Scope(marg_scope, scope.evidence))
     # entire node is marginalized over
     elif len(marg_scope) == 0:
         return None
     # node is partially marginalized over
     else:
-        return CondMultivariateGaussian(Scope(marg_scope))
+        return CondMultivariateGaussian(Scope(marg_scope, scope.evidence))
 
 
 @dispatch(memoize=True)  # type: ignore

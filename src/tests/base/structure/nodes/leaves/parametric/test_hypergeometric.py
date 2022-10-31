@@ -1,12 +1,10 @@
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.node import marginalize
 from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
     Hypergeometric,
 )
-from spflow.base.inference.nodes.leaves.parametric.hypergeometric import (
-    log_likelihood,
-)
-from spflow.base.inference.module import likelihood
 
 import numpy as np
 import unittest
@@ -55,6 +53,71 @@ class TestHypergeometric(unittest.TestCase):
         self.assertRaises(Exception, Hypergeometric, Scope([]), 1, 1, 1)
         self.assertRaises(Exception, Hypergeometric, Scope([0, 1]), 1, 1, 1)
         self.assertRaises(Exception, Hypergeometric, Scope([0], [1]), 1, 1, 1)
+
+    def test_accept(self):
+
+        # discrete meta type (should reject)
+        self.assertFalse(Hypergeometric.accepts([([FeatureTypes.Discrete], Scope([0]))]))
+
+        # Bernoulli feature type class (should reject)
+        self.assertFalse(Hypergeometric.accepts([([FeatureTypes.Hypergeometric], Scope([0]))]))
+
+        # Bernoulli feature type instance
+        self.assertTrue(Hypergeometric.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0]))]))
+
+        # invalid feature type
+        self.assertFalse(Hypergeometric.accepts([([FeatureTypes.Continuous], Scope([0]))]))
+
+        # conditional scope
+        self.assertFalse(Hypergeometric.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0], [1]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(Hypergeometric.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0, 1]))]))
+
+        # multivariate signature
+        self.assertFalse(Hypergeometric.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3), FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0, 1]))]))
+
+    def test_initialization_from_signatures(self):
+
+        hypergeometric = Hypergeometric.from_signatures([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0]))])
+        self.assertEqual(hypergeometric.N, 4)
+        self.assertEqual(hypergeometric.M, 2)
+        self.assertEqual(hypergeometric.n, 3)
+
+        # ----- invalid arguments -----
+
+        # discrete meta type
+        self.assertRaises(ValueError, Hypergeometric.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+
+        # Bernoulli feature type class
+        self.assertRaises(ValueError, Hypergeometric.from_signatures, [([FeatureTypes.Hypergeometric], Scope([0]))])
+
+        # invalid feature type
+        self.assertRaises(ValueError, Hypergeometric.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+
+        # conditional scope
+        self.assertRaises(ValueError, Hypergeometric.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, Hypergeometric.from_signatures, [([FeatureTypes.Discrete], Scope([0, 1]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, Hypergeometric.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(Hypergeometric))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(Hypergeometric, AutoLeaf.infer([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        hypergeometric = AutoLeaf([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0]))])
+        self.assertTrue(isinstance(hypergeometric, Hypergeometric))
+        self.assertEqual(hypergeometric.N, 4)
+        self.assertEqual(hypergeometric.M, 2)
+        self.assertEqual(hypergeometric.n, 3)
 
     def test_structural_marginalization(self):
 

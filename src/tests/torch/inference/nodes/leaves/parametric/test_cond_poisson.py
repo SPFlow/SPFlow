@@ -36,7 +36,7 @@ class TestPoisson(unittest.TestCase):
 
         cond_f = lambda data: {"l": 1.0}
 
-        poisson = CondPoisson(Scope([0]), cond_f=cond_f)
+        poisson = CondPoisson(Scope([0], [1]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0], [2], [5]])
@@ -50,7 +50,7 @@ class TestPoisson(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        poisson = CondPoisson(Scope([0]))
+        poisson = CondPoisson(Scope([0], [1]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[poisson] = {"l": 1.0}
@@ -67,7 +67,7 @@ class TestPoisson(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        poisson = CondPoisson(Scope([0]))
+        poisson = CondPoisson(Scope([0], [1]))
 
         cond_f = lambda data: {"l": 1.0}
 
@@ -88,8 +88,8 @@ class TestPoisson(unittest.TestCase):
 
         l = random.randint(1, 10)
 
-        torch_poisson = CondPoisson(Scope([0]), cond_f=lambda data: {"l": l})
-        node_poisson = BaseCondPoisson(Scope([0]), cond_f=lambda data: {"l": l})
+        torch_poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": l})
+        node_poisson = BaseCondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": l})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 10, (3, 1))
@@ -110,7 +110,7 @@ class TestPoisson(unittest.TestCase):
             requires_grad=True,
         )
 
-        torch_poisson = CondPoisson(Scope([0]), cond_f=lambda data: {"l": l})
+        torch_poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": l})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 10, (3, 1))
@@ -127,7 +127,7 @@ class TestPoisson(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        poisson = CondPoisson(Scope([0]), cond_f=lambda data: {"l": 1.0})
+        poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": 1.0})
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1
@@ -141,7 +141,7 @@ class TestPoisson(unittest.TestCase):
 
         l = random.random()
 
-        poisson = CondPoisson(Scope([0]), cond_f=lambda data: {"l": l})
+        poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": l})
 
         # check infinite values
         self.assertRaises(

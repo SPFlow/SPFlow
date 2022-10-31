@@ -2,11 +2,13 @@ from spflow.base.structure.layers.leaves.parametric.cond_poisson import (
     CondPoissonLayer,
     marginalize,
 )
+from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.cond_poisson import (
     CondPoisson,
 )
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
 import numpy as np
 import unittest
 
@@ -16,42 +18,42 @@ class TestLayer(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = CondPoissonLayer(scope=Scope([1]), n_nodes=3)
+        l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
         self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
+            np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])])
         )
 
         # ---- different scopes -----
-        l = CondPoissonLayer(scope=Scope([1]), n_nodes=3)
+        l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3)
         for node, node_scope in zip(l.nodes, l.scopes_out):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, CondPoissonLayer, Scope([0]), n_nodes=0)
+        self.assertRaises(ValueError, CondPoissonLayer, Scope([0], [1]), n_nodes=0)
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondPoissonLayer, Scope([]), n_nodes=3)
         self.assertRaises(ValueError, CondPoissonLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
-        scopes = [Scope([1]), Scope([0]), Scope([0])]
-        l = CondPoissonLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
+        scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
+        l = CondPoissonLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
 
         # -----number of cond_f functions -----
         CondPoissonLayer(
-            Scope([0]),
+            Scope([0], [1]),
             n_nodes=2,
             cond_f=[lambda data: {"l": 1}, lambda data: {"l": 1}],
         )
         self.assertRaises(
             ValueError,
             CondPoissonLayer,
-            Scope([0]),
+            Scope([0], [1]),
             n_nodes=2,
             cond_f=[lambda data: {"l": 1}],
         )
@@ -61,7 +63,7 @@ class TestLayer(unittest.TestCase):
         # ----- float/int parameter values -----
         l_value = 2
         l = CondPoissonLayer(
-            scope=Scope([1]), n_nodes=3, cond_f=lambda data: {"l": l_value}
+            scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"l": l_value}
         )
 
         for l_node in l.retrieve_params(np.array([[1.0]]), DispatchContext()):
@@ -107,11 +109,72 @@ class TestLayer(unittest.TestCase):
             ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
         )
 
+    def test_accept(self):
+
+        # continuous meta type
+        self.assertTrue(CondPoissonLayer.accepts([([FeatureTypes.Discrete], Scope([0], [2])), ([FeatureTypes.Discrete], Scope([1], [2]))]))
+
+        # Poisson feature type class
+        self.assertTrue(CondPoissonLayer.accepts([([FeatureTypes.Poisson], Scope([0], [2])), ([FeatureTypes.Discrete], Scope([1], [2]))]))
+
+        # Poisson feature type instance
+        self.assertTrue(CondPoissonLayer.accepts([([FeatureTypes.Poisson(1.0)], Scope([0], [2])), ([FeatureTypes.Poisson(1.0)], Scope([1], [2]))]))
+
+        # invalid feature type
+        self.assertFalse(CondPoissonLayer.accepts([([FeatureTypes.Continuous], Scope([0], [2])), ([FeatureTypes.Poisson(1.0)], Scope([1], [2]))]))
+
+        # non-conditional scope
+        self.assertFalse(CondPoissonLayer.accepts([([FeatureTypes.Discrete], Scope([0]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(CondPoissonLayer.accepts([([FeatureTypes.Discrete], Scope([0, 1], [2]))]))
+
+        # multivariate signature
+        self.assertFalse(CondPoissonLayer.accepts([([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1], [2]))]))
+
+    def test_initialization_from_signatures(self):
+
+        poisson = CondPoissonLayer.from_signatures([([FeatureTypes.Discrete], Scope([0], [2])), ([FeatureTypes.Discrete], Scope([1], [2]))])
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+
+        poisson = CondPoissonLayer.from_signatures([([FeatureTypes.Poisson], Scope([0], [2])), ([FeatureTypes.Poisson], Scope([1], [2]))])
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+    
+        poisson = CondPoissonLayer.from_signatures([([FeatureTypes.Poisson(l=1.5)], Scope([0], [2])), ([FeatureTypes.Poisson(l=2.0)], Scope([1], [2]))])
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+
+        # ----- invalid arguments -----
+
+        # invalid feature type
+        self.assertRaises(ValueError, CondPoissonLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
+
+        # non-conditional scope
+        self.assertRaises(ValueError, CondPoissonLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, CondPoissonLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1], [2]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, CondPoissonLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(CondPoissonLayer))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(CondPoissonLayer, AutoLeaf.infer([([FeatureTypes.Poisson], Scope([0], [2])), ([FeatureTypes.Poisson], Scope([1], [2]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        poisson = AutoLeaf([([FeatureTypes.Poisson(l=1.5)], Scope([0], [2])), ([FeatureTypes.Poisson(l=2.0)], Scope([1], [2]))])
+        self.assertTrue(isinstance(poisson, CondPoissonLayer))
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+
     def test_layer_structural_marginalization(self):
 
         # ---------- same scopes -----------
 
-        l = CondPoissonLayer(scope=Scope([1]), n_nodes=2)
+        l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=2)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [1]) == None)
@@ -119,11 +182,11 @@ class TestLayer(unittest.TestCase):
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
+        self.assertTrue(l_marg.scopes_out == [Scope([1], [0]), Scope([1], [0])])
 
         # ---------- different scopes -----------
 
-        l = CondPoissonLayer(scope=[Scope([1]), Scope([0])])
+        l = CondPoissonLayer(scope=[Scope([1], [2]), Scope([0], [2])])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
@@ -131,7 +194,7 @@ class TestLayer(unittest.TestCase):
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
         self.assertTrue(isinstance(l_marg, CondPoisson))
-        self.assertEqual(l_marg.scope, Scope([0]))
+        self.assertEqual(l_marg.scope, Scope([0], [2]))
 
         l_marg = marginalize(l, [1], prune=False)
         self.assertTrue(isinstance(l_marg, CondPoissonLayer))
@@ -140,7 +203,7 @@ class TestLayer(unittest.TestCase):
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
+        self.assertTrue(l_marg.scopes_out == [Scope([1], [2]), Scope([0], [2])])
 
 
 if __name__ == "__main__":

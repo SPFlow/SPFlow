@@ -15,7 +15,7 @@ import unittest
 class TestCondLogNormal(unittest.TestCase):
     def test_likelihood_no_mean(self):
 
-        log_normal = CondLogNormal(Scope([0]), cond_f=lambda data: {"std": 1.0})
+        log_normal = CondLogNormal(Scope([0], [1]), cond_f=lambda data: {"std": 1.0})
         self.assertRaises(
             KeyError, log_likelihood, log_normal, np.array([[0], [1]])
         )
@@ -23,7 +23,7 @@ class TestCondLogNormal(unittest.TestCase):
     def test_likelihood_no_std(self):
 
         log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0}
         )
         self.assertRaises(
             KeyError, log_likelihood, log_normal, np.array([[0], [1]])
@@ -31,7 +31,7 @@ class TestCondLogNormal(unittest.TestCase):
 
     def test_likelihood_no_mean_std(self):
 
-        log_normal = CondLogNormal(Scope([0]))
+        log_normal = CondLogNormal(Scope([0], [1]))
         self.assertRaises(
             ValueError, log_likelihood, log_normal, np.array([[0], [1]])
         )
@@ -40,7 +40,7 @@ class TestCondLogNormal(unittest.TestCase):
 
         cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
-        log_normal = CondLogNormal(Scope([0]), cond_f=cond_f)
+        log_normal = CondLogNormal(Scope([0], [1]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.array([[0.5], [1.0], [1.5]])
@@ -54,7 +54,7 @@ class TestCondLogNormal(unittest.TestCase):
 
     def test_likelihood_args(self):
 
-        log_normal = CondLogNormal(Scope([0]))
+        log_normal = CondLogNormal(Scope([0], [1]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[log_normal] = {"mean": 0.0, "std": 1.0}
@@ -71,7 +71,7 @@ class TestCondLogNormal(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        log_normal = CondLogNormal(Scope([0]))
+        log_normal = CondLogNormal(Scope([0], [1]))
 
         cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
@@ -92,7 +92,7 @@ class TestCondLogNormal(unittest.TestCase):
 
         # ----- configuration 1 -----
         log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 0.25}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 0.25}
         )
 
         # create test inputs/outputs
@@ -109,7 +109,7 @@ class TestCondLogNormal(unittest.TestCase):
 
         # ----- configuration 2 -----
         log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 0.5}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 0.5}
         )
 
         # create test inputs/outputs
@@ -126,7 +126,7 @@ class TestCondLogNormal(unittest.TestCase):
 
         # ----- configuration 3 -----
         log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
         )
 
         # create test inputs/outputs
@@ -143,7 +143,7 @@ class TestCondLogNormal(unittest.TestCase):
 
         # dummy distribution and data
         log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": None, "std": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": None, "std": 1.0}
         )
         data = np.array([[0.5], [1.0], [1.5]])
 
@@ -153,7 +153,7 @@ class TestCondLogNormal(unittest.TestCase):
 
         # dummy distribution and data
         log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": None}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": None}
         )
         data = np.array([[0.5], [1.0], [1.5]])
 
@@ -162,7 +162,7 @@ class TestCondLogNormal(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
         )
         data = np.array([[np.nan]])
 
@@ -182,7 +182,7 @@ class TestCondLogNormal(unittest.TestCase):
         #   log-likelihood: None
 
         log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
         )
 
         # check infinite values

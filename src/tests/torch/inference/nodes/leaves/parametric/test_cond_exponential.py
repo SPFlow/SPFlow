@@ -38,7 +38,7 @@ class TestExponential(unittest.TestCase):
 
         cond_f = lambda data: {"l": 0.5}
 
-        exponential = CondExponential(Scope([0]), cond_f=cond_f)
+        exponential = CondExponential(Scope([0], [1]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[2], [5]])
@@ -52,7 +52,7 @@ class TestExponential(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        exponential = CondExponential(Scope([0]))
+        exponential = CondExponential(Scope([0], [1]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[exponential] = {"l": 0.5}
@@ -69,7 +69,7 @@ class TestExponential(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        exponential = CondExponential(Scope([0]))
+        exponential = CondExponential(Scope([0], [1]))
 
         cond_f = lambda data: {"l": 0.5}
 
@@ -91,10 +91,10 @@ class TestExponential(unittest.TestCase):
         l = random.random() + 1e-7  # small offset to avoid zero
 
         torch_exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": l}
+            Scope([0], [1]), cond_f=lambda data: {"l": l}
         )
         node_exponential = BaseCondExponential(
-            Scope([0]), cond_f=lambda data: {"l": l}
+            Scope([0], [1]), cond_f=lambda data: {"l": l}
         )
 
         # create dummy input data (batch size x random variables)
@@ -113,7 +113,7 @@ class TestExponential(unittest.TestCase):
         l = torch.tensor(random.random(), requires_grad=True)
 
         torch_exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": l}
+            Scope([0], [1]), cond_f=lambda data: {"l": l}
         )
 
         # create dummy input data (batch size x random variables)
@@ -132,7 +132,7 @@ class TestExponential(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"l": 1.0}
         )
         data = torch.tensor([[float("nan")]])
 
@@ -146,7 +146,7 @@ class TestExponential(unittest.TestCase):
         # Support for Exponential distribution: floats [0,inf) (note: 0 excluded in pytorch support)
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 1.5}
+            Scope([0], [1]), cond_f=lambda data: {"l": 1.5}
         )
 
         # check infinite values

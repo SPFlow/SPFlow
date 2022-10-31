@@ -50,11 +50,11 @@ class TestScope(unittest.TestCase):
         self.assertTrue(Scope([0, 1], [2, 3]).isdisjoint(Scope([2, 3], [0, 1])))
         self.assertFalse(Scope([0, 1], [2]).isdisjoint(Scope([1, 2], [0])))
 
-        # union
+        # join
         s = Scope([0, 1], [2, 3])
-        self.assertRaises(ValueError, s.union, Scope([1, 2], [0, 3]))
+        self.assertRaises(ValueError, s.join, Scope([1, 2], [0, 3]))
         self.assertEqual(
-            Scope([0, 1], [3]).union(Scope([1, 2], [4])),
+            Scope([0, 1], [3]).join(Scope([1, 2], [4])),
             Scope([0, 1, 2], [3, 4]),
         )
 

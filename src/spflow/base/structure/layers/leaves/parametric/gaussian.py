@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains Gaussian leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple
+from typing import List, Union, Optional, Iterable, Tuple, Type
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
@@ -11,6 +11,8 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 
@@ -107,6 +109,52 @@ class GaussianLayer(Module):
     def std(self) -> np.ndarray:
         """Returns the standard deviations of the represented distributions."""
         return np.array([node.std for node in self.nodes])
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf has at least one output
+        if len(signatures) < 1:
+            return False
+
+        for signature in signatures:
+            if not Gaussian.accepts([signature]):
+                return False
+    
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "GaussianLayer":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'GaussianLayer' cannot be instantiated from the following signatures: {signatures}.")
+
+        mean = []
+        std = []
+        scopes = []
+
+        for types, scope in signatures:
+        
+            type = types[0]
+
+            # read or initialize parameters
+            if type == MetaType.Continuous:
+                mean.append(0.0)
+                std.append(1.0)
+            elif type == FeatureTypes.Gaussian:
+                # instantiate object
+                type = type()
+                mean.append(type.mean)
+                std.append(type.std)
+            elif isinstance(type, FeatureTypes.Gaussian):
+                mean.append(type.mean)
+                std.append(type.std)
+            else:
+                raise ValueError(f"Unknown signature type {type} for 'GaussianLayer' that was not caught during acception checking.")
+
+            scopes.append(scope)
+
+        return GaussianLayer(scopes, mean=mean, std=std)
 
     def set_params(
         self,

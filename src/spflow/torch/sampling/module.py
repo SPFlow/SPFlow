@@ -88,7 +88,7 @@ def sample(
         Each row corresponds to a sample.
     """
     combined_module_scope = reduce(
-        lambda s1, s2: s1.union(s2), module.scopes_out
+        lambda s1, s2: s1.join(s2), module.scopes_out
     )
 
     data = torch.full((n, max(combined_module_scope.query) + 1), float("nan"))

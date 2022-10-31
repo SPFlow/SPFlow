@@ -38,7 +38,7 @@ class TestGamma(unittest.TestCase):
 
         cond_f = lambda data: {"alpha": 1.0, "beta": 1.0}
 
-        gamma = CondGamma(Scope([0]), cond_f=cond_f)
+        gamma = CondGamma(Scope([0], [1]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0.1], [1.0], [3.0]])
@@ -52,7 +52,7 @@ class TestGamma(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        gamma = CondGamma(Scope([0]))
+        gamma = CondGamma(Scope([0], [1]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[gamma] = {"alpha": 1.0, "beta": 1.0}
@@ -69,7 +69,7 @@ class TestGamma(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        gamma = CondGamma(Scope([0]))
+        gamma = CondGamma(Scope([0], [1]))
 
         cond_f = lambda data: {"alpha": 1.0, "beta": 1.0}
 
@@ -96,10 +96,10 @@ class TestGamma(unittest.TestCase):
         )
 
         torch_gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": alpha, "beta": beta}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta}
         )
         node_gamma = BaseCondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": alpha, "beta": beta}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta}
         )
 
         # create dummy input data (batch size x random variables)
@@ -127,7 +127,7 @@ class TestGamma(unittest.TestCase):
         )
 
         torch_gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": alpha, "beta": beta}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta}
         )
 
         # create dummy input data (batch size x random variables)
@@ -147,7 +147,7 @@ class TestGamma(unittest.TestCase):
     def test_marginalization(self):
 
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
         )
         data = torch.tensor([[float("nan")]])
 
@@ -165,7 +165,7 @@ class TestGamma(unittest.TestCase):
         #   log-likelihood: x=0 -> POS_EPS (?)
 
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
         )
 
         # TODO: 0

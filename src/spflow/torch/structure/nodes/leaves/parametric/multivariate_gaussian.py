@@ -5,9 +5,10 @@ import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from typing import List, Tuple, Union, Optional, Iterable
+from typing import List, Tuple, Union, Optional, Iterable, Type
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -79,7 +80,7 @@ class MultivariateGaussian(LeafNode):
             raise ValueError(
                 "Query scope for 'MultivariateGaussian' contains duplicate variables."
             )
-        if len(scope.evidence):
+        if len(scope.evidence) != 0:
             raise ValueError(
                 f"Evidence scope for 'MultivariateGaussian' should be empty, but was {scope.evidence}."
             )
@@ -133,6 +134,52 @@ class MultivariateGaussian(LeafNode):
         L = self.covariance_tril
         # return covariance matrix
         return torch.matmul(L, L.T)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf only has one output
+        if len(signatures) != 1:
+            return False
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        # leaf is a single non-conditional (possibly multivariate) node
+        if len(types) < 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+            return False
+
+        # leaf is a continuous (multivariate) Gaussian distribution
+        if not all([type == FeatureTypes.Continuous or type == FeatureTypes.Gaussian or isinstance(type, FeatureTypes.Gaussian) for type in types]):
+            return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "MultivariateGaussian":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'MultivariateGaussian' cannot be instantiated from the following signatures: {signatures}.")
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        mean, cov = np.zeros(len(scope.query)), np.eye(len(scope.query))
+
+        for i, type in enumerate(types):
+            # read or initialize parameters
+            if type == MetaType.Continuous:
+                pass
+            elif type == FeatureTypes.Gaussian:
+                # instantiate object
+                type = type()
+                mean[i], cov[i][i] = type.mean, type.std
+            elif isinstance(type, FeatureTypes.Gaussian):
+                mean[i], cov[i][i] = type.mean, type.std
+            else:
+                raise ValueError(f"Unknown signature type {type} for 'MultivariateGaussian' that was not caught during acception checking.")
+
+        return MultivariateGaussian(scope, mean=mean, cov=cov)
 
     @property
     def dist(self) -> D.Distribution:

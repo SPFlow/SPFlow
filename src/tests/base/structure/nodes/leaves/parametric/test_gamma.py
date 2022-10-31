@@ -1,8 +1,8 @@
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.node import marginalize
 from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
-from spflow.base.inference.nodes.leaves.parametric.gamma import log_likelihood
-from spflow.base.inference.module import likelihood
 
 import numpy as np
 import unittest
@@ -41,6 +41,71 @@ class TestGamma(unittest.TestCase):
         self.assertRaises(Exception, Gamma, Scope([]), 1.0, 1.0)
         self.assertRaises(Exception, Gamma, Scope([0, 1]), 1.0, 1.0)
         self.assertRaises(Exception, Gamma, Scope([0], [1]), 1.0, 1.0)
+
+    def test_accept(self):
+
+        # continuous meta type
+        self.assertTrue(Gamma.accepts([([FeatureTypes.Continuous], Scope([0]))]))
+
+        # Gamma feature type class
+        self.assertTrue(Gamma.accepts([([FeatureTypes.Gamma], Scope([0]))]))
+
+        # Gamma feature type instance
+        self.assertTrue(Gamma.accepts([([FeatureTypes.Gamma(1.0, 1.0)], Scope([0]))]))
+
+        # invalid feature type
+        self.assertFalse(Gamma.accepts([([FeatureTypes.Discrete], Scope([0]))]))
+
+        # conditional scope
+        self.assertFalse(Gamma.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(Gamma.accepts([([FeatureTypes.Continuous], Scope([0, 1]))]))
+
+        # multivariate signature
+        self.assertFalse(Gamma.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))]))
+
+    def test_initialization_from_signatures(self):
+
+        gamma = Gamma.from_signatures([([FeatureTypes.Continuous], Scope([0]))])
+        self.assertEqual(gamma.alpha, 1.0)
+        self.assertEqual(gamma.beta, 1.0)
+
+        gamma = Gamma.from_signatures([([FeatureTypes.Gamma], Scope([0]))])
+        self.assertEqual(gamma.alpha, 1.0)
+        self.assertEqual(gamma.beta, 1.0)
+    
+        gamma = Gamma.from_signatures([([FeatureTypes.Gamma(1.5, 0.5)], Scope([0]))])
+        self.assertEqual(gamma.alpha, 1.5)
+        self.assertEqual(gamma.beta, 0.5)
+
+        # ----- invalid arguments -----
+
+        # invalid feature type
+        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+
+        # conditional scope
+        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(Gamma))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(Gamma, AutoLeaf.infer([([FeatureTypes.Gamma], Scope([0]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        gamma = AutoLeaf([([FeatureTypes.Gamma(alpha=1.5, beta=0.5)], Scope([0]))])
+        self.assertTrue(isinstance(gamma, Gamma))
+        self.assertEqual(gamma.alpha, 1.5)
+        self.assertEqual(gamma.beta, 0.5)
 
     def test_structural_marginalization(self):
 

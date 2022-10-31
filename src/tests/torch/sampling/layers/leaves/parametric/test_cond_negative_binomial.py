@@ -27,7 +27,6 @@ import torch
 import numpy as np
 import random
 import unittest
-import itertools
 
 
 class TestNode(unittest.TestCase):
@@ -47,20 +46,20 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         layer = CondNegativeBinomialLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             n=[3, 2, 3],
             cond_f=lambda data: {"p": [0.2, 0.8, 0.2]},
         )
 
         nodes = [
             CondNegativeBinomial(
-                Scope([0]), n=3, cond_f=lambda data: {"p": 0.2}
+                Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}
             ),
             CondNegativeBinomial(
-                Scope([1]), n=2, cond_f=lambda data: {"p": 0.8}
+                Scope([1], [2]), n=2, cond_f=lambda data: {"p": 0.8}
             ),
             CondNegativeBinomial(
-                Scope([0]), n=3, cond_f=lambda data: {"p": 0.2}
+                Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}
             ),
         ]
 

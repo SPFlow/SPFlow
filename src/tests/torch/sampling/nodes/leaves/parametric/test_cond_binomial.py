@@ -30,7 +30,7 @@ class TestBinomial(unittest.TestCase):
 
         # ----- p = 0 -----
 
-        binomial = CondBinomial(Scope([0]), 10, cond_f=lambda data: {"p": 0.0})
+        binomial = CondBinomial(Scope([0], [1]), 10, cond_f=lambda data: {"p": 0.0})
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
@@ -50,7 +50,7 @@ class TestBinomial(unittest.TestCase):
 
         # ----- p = 1 -----
 
-        binomial = CondBinomial(Scope([0]), 10, cond_f=lambda data: {"p": 1.0})
+        binomial = CondBinomial(Scope([0], [1]), 10, cond_f=lambda data: {"p": 1.0})
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
@@ -70,7 +70,7 @@ class TestBinomial(unittest.TestCase):
 
         # ----- p = 0.5 -----
 
-        binomial = CondBinomial(Scope([0]), 10, cond_f=lambda data: {"p": 0.5})
+        binomial = CondBinomial(Scope([0], [1]), 10, cond_f=lambda data: {"p": 0.5})
 
         samples = sample(binomial, 1000)
         self.assertTrue(

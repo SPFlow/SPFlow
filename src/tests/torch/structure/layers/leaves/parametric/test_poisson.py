@@ -4,11 +4,13 @@ from spflow.torch.structure.layers.leaves.parametric.poisson import (
     toTorch,
     toBase,
 )
+from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.torch.structure.nodes.leaves.parametric.poisson import Poisson
 from spflow.base.structure.layers.leaves.parametric.poisson import (
     PoissonLayer as BasePoissonLayer,
 )
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
 import torch
 import numpy as np
 import unittest
@@ -107,6 +109,71 @@ class TestNode(unittest.TestCase):
 
         for layer_scope, node_scope in zip(l.scopes_out, scopes):
             self.assertEqual(layer_scope, node_scope)
+
+    def test_accept(self):
+
+        # continuous meta type
+        self.assertTrue(PoissonLayer.accepts([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Discrete], Scope([1]))]))
+
+        # Poisson feature type class
+        self.assertTrue(PoissonLayer.accepts([([FeatureTypes.Poisson], Scope([0])), ([FeatureTypes.Discrete], Scope([1]))]))
+
+        # Poisson feature type instance
+        self.assertTrue(PoissonLayer.accepts([([FeatureTypes.Poisson(1.0)], Scope([0])), ([FeatureTypes.Poisson(1.0)], Scope([1]))]))
+
+        # invalid feature type
+        self.assertFalse(PoissonLayer.accepts([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Poisson(1.0)], Scope([1]))]))
+
+        # conditional scope
+        self.assertFalse(PoissonLayer.accepts([([FeatureTypes.Discrete], Scope([0], [1]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(PoissonLayer.accepts([([FeatureTypes.Discrete], Scope([0, 1]))]))
+
+        # multivariate signature
+        self.assertFalse(PoissonLayer.accepts([([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1]))]))
+
+    def test_initialization_from_signatures(self):
+
+        poisson = PoissonLayer.from_signatures([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Discrete], Scope([1]))])
+        self.assertTrue(torch.all(poisson.l == torch.tensor([1.0, 1.0])))
+        self.assertTrue(poisson.scopes_out == [Scope([0]), Scope([1])])
+
+        poisson = PoissonLayer.from_signatures([([FeatureTypes.Poisson], Scope([0])), ([FeatureTypes.Poisson], Scope([1]))])
+        self.assertTrue(torch.all(poisson.l == torch.tensor([1.0, 1.0])))
+        self.assertTrue(poisson.scopes_out == [Scope([0]), Scope([1])])
+    
+        poisson = PoissonLayer.from_signatures([([FeatureTypes.Poisson(l=1.5)], Scope([0])), ([FeatureTypes.Poisson(l=2.0)], Scope([1]))])
+        self.assertTrue(torch.all(poisson.l == torch.tensor([1.5, 2.0])))
+        self.assertTrue(poisson.scopes_out == [Scope([0]), Scope([1])])
+
+        # ----- invalid arguments -----
+
+        # invalid feature type
+        self.assertRaises(ValueError, PoissonLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+
+        # conditional scope
+        self.assertRaises(ValueError, PoissonLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, PoissonLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, PoissonLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(PoissonLayer))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(PoissonLayer, AutoLeaf.infer([([FeatureTypes.Poisson], Scope([0])), ([FeatureTypes.Poisson], Scope([1]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        poisson = AutoLeaf([([FeatureTypes.Poisson(l=1.5)], Scope([0])), ([FeatureTypes.Poisson(l=2.0)], Scope([1]))])
+        self.assertTrue(isinstance(poisson, PoissonLayer))
+        self.assertTrue(torch.all(poisson.l == torch.tensor([1.5, 2.0])))
+        self.assertTrue(poisson.scopes_out == [Scope([0]), Scope([1])])
 
     def test_layer_structural_marginalization(self):
 

@@ -29,7 +29,7 @@ class TestGamma(unittest.TestCase):
         # ----- alpha = 1, beta = 1 -----
 
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
         )
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
@@ -55,7 +55,7 @@ class TestGamma(unittest.TestCase):
         # ----- alpha = 0.5, beta = 1.5 -----
 
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 0.5, "beta": 1.5}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 0.5, "beta": 1.5}
         )
 
         samples = sample(gamma, 1000)
@@ -73,7 +73,7 @@ class TestGamma(unittest.TestCase):
         # ----- alpha = 1.5, beta = 0.5 -----
 
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 1.5, "beta": 0.5}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.5, "beta": 0.5}
         )
 
         samples = sample(gamma, 1000)

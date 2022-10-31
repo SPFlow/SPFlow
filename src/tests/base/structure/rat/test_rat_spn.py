@@ -204,6 +204,7 @@ class TestRatSpn(unittest.TestCase):
         self.assertEqual(n_product_nodes, 40)
         self.assertEqual(n_leaf_nodes, 28)
 
+    """
     def test_rat_spn_8(self):
 
         random_variables = list(range(20))
@@ -221,7 +222,7 @@ class TestRatSpn(unittest.TestCase):
         self.assertEqual(n_sum_nodes, 49)
         self.assertEqual(n_product_nodes, 267)
         self.assertEqual(n_leaf_nodes, 120)
-
+    """
 
 if __name__ == "__main__":
     unittest.main()

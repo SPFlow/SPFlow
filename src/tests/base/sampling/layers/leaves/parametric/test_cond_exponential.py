@@ -34,13 +34,13 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         exponential_layer = CondExponentialLayer(
-            scope=Scope([0]), cond_f=lambda data: {"l": [0.8, 0.3]}, n_nodes=2
+            scope=Scope([0], [1]), cond_f=lambda data: {"l": [0.8, 0.3]}, n_nodes=2
         )
         s1 = SPNSumNode(children=[exponential_layer], weights=[0.3, 0.7])
 
         exponential_nodes = [
-            CondExponential(Scope([0]), cond_f=lambda data: {"l": 0.8}),
-            CondExponential(Scope([0]), cond_f=lambda data: {"l": 0.3}),
+            CondExponential(Scope([0], [1]), cond_f=lambda data: {"l": 0.8}),
+            CondExponential(Scope([0], [1]), cond_f=lambda data: {"l": 0.3}),
         ]
         s2 = SPNSumNode(children=exponential_nodes, weights=[0.3, 0.7])
 
@@ -62,14 +62,14 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         exponential_layer = CondExponentialLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"l": [0.8, 0.3]},
         )
         p1 = SPNProductNode(children=[exponential_layer])
 
         exponential_nodes = [
-            CondExponential(Scope([0]), cond_f=lambda data: {"l": 0.8}),
-            CondExponential(Scope([1]), cond_f=lambda data: {"l": 0.3}),
+            CondExponential(Scope([0], [2]), cond_f=lambda data: {"l": 0.8}),
+            CondExponential(Scope([1], [2]), cond_f=lambda data: {"l": 0.3}),
         ]
         p2 = SPNProductNode(children=exponential_nodes)
 
@@ -87,7 +87,7 @@ class TestNode(unittest.TestCase):
     def test_sampling_3(self):
 
         exponential_layer = CondExponentialLayer(
-            scope=Scope([0]), cond_f=lambda data: {"l": [0.8, 0.3]}, n_nodes=2
+            scope=Scope([0], [1]), cond_f=lambda data: {"l": [0.8, 0.3]}, n_nodes=2
         )
 
         # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails

@@ -22,7 +22,7 @@ import unittest
 class TestNode(unittest.TestCase):
     def test_likelihood_no_p(self):
 
-        bernoulli = CondBernoulliLayer(Scope([0]), n_nodes=2)
+        bernoulli = CondBernoulliLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError, log_likelihood, bernoulli, np.array([[0], [1]])
         )
@@ -31,7 +31,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"p": [0.8, 0.5]}
 
-        bernoulli = CondBernoulliLayer(Scope([0]), n_nodes=2, cond_f=cond_f)
+        bernoulli = CondBernoulliLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.array([[0], [1]])
@@ -45,7 +45,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        bernoulli = CondBernoulliLayer(Scope([0]), n_nodes=2)
+        bernoulli = CondBernoulliLayer(Scope([0], [1]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[bernoulli] = {"p": [0.8, 0.5]}
@@ -62,7 +62,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        bernoulli = CondBernoulliLayer(Scope([0]), n_nodes=2)
+        bernoulli = CondBernoulliLayer(Scope([0], [1]), n_nodes=2)
 
         cond_f = lambda data: {"p": np.array([0.8, 0.5])}
 
@@ -82,13 +82,13 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_1(self):
 
         bernoulli_layer = CondBernoulliLayer(
-            scope=Scope([0]), cond_f=lambda data: {"p": [0.8, 0.3]}, n_nodes=2
+            scope=Scope([0], [1]), cond_f=lambda data: {"p": [0.8, 0.3]}, n_nodes=2
         )
         s1 = SPNSumNode(children=[bernoulli_layer], weights=[0.3, 0.7])
 
         bernoulli_nodes = [
-            CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.8}),
-            CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.3}),
+            CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.8}),
+            CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.3}),
         ]
         s2 = SPNSumNode(children=bernoulli_nodes, weights=[0.3, 0.7])
 
@@ -101,14 +101,14 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_2(self):
 
         bernoulli_layer = CondBernoulliLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"p": [0.8, 0.3]},
         )
         p1 = SPNProductNode(children=[bernoulli_layer])
 
         bernoulli_nodes = [
-            CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.8}),
-            CondBernoulli(Scope([1]), cond_f=lambda data: {"p": 0.3}),
+            CondBernoulli(Scope([0], [2]), cond_f=lambda data: {"p": 0.8}),
+            CondBernoulli(Scope([1], [2]), cond_f=lambda data: {"p": 0.3}),
         ]
         p2 = SPNProductNode(children=bernoulli_nodes)
 

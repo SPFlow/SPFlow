@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains conditional Negative Binomial leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Callable
+from typing import List, Union, Optional, Iterable, Tuple, Callable, Type
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
@@ -11,6 +11,8 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.cond_negative_binomial import (
     CondNegativeBinomial,
@@ -113,6 +115,42 @@ class CondNegativeBinomialLayer(Module):
     def n(self) -> np.ndarray:
         """Returns the numbers of successes of the represented distributions."""
         return np.array([node.n for node in self.nodes])
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf has at least one output
+        if len(signatures) < 1:
+            return False
+
+        for signature in signatures:
+            if not CondNegativeBinomial.accepts([signature]):
+                return False
+    
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "CondNegativeBinomialLayer":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'CondNegativeBinomialLayer' cannot be instantiated from the following signatures: {signatures}.")
+
+        n = []
+        scopes = []
+
+        for types, scope in signatures:
+        
+            type = types[0]
+
+            # read or initialize parameters
+            if isinstance(type, FeatureTypes.NegativeBinomial):
+                n.append(type.n)
+            else:
+                raise ValueError(f"Unknown signature type {type} for 'CondNegativeBinomialLayer' that was not caught during acception checking.")
+
+            scopes.append(scope)
+
+        return CondNegativeBinomialLayer(scopes, n=n)
 
     def set_cond_f(
         self, cond_f: Optional[Union[List[Callable], Callable]] = None

@@ -30,7 +30,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_p(self):
 
         negative_binomial = CondNegativeBinomialLayer(
-            Scope([0]), n=2, n_nodes=2
+            Scope([0], [1]), n=2, n_nodes=2
         )
         self.assertRaises(
             ValueError,
@@ -44,7 +44,7 @@ class TestNode(unittest.TestCase):
         cond_f = lambda data: {"p": [1.0, 1.0]}
 
         negative_binomial = CondNegativeBinomialLayer(
-            Scope([0]), n=2, n_nodes=2, cond_f=cond_f
+            Scope([0], [1]), n=2, n_nodes=2, cond_f=cond_f
         )
 
         # create test inputs/outputs
@@ -60,7 +60,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_args_p(self):
 
         negative_binomial = CondNegativeBinomialLayer(
-            Scope([0]), n=2, n_nodes=2
+            Scope([0], [1]), n=2, n_nodes=2
         )
 
         dispatch_ctx = DispatchContext()
@@ -80,7 +80,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        bernoulli = CondNegativeBinomialLayer(Scope([0]), n=2, n_nodes=2)
+        bernoulli = CondNegativeBinomialLayer(Scope([0], [1]), n=2, n_nodes=2)
 
         cond_f = lambda data: {"p": torch.tensor([1.0, 1.0])}
 
@@ -100,20 +100,20 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood(self):
 
         layer = CondNegativeBinomialLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             n=[3, 2, 3],
             cond_f=lambda data: {"p": [0.2, 0.5, 0.9]},
         )
 
         nodes = [
             CondNegativeBinomial(
-                Scope([0]), n=3, cond_f=lambda data: {"p": 0.2}
+                Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}
             ),
             CondNegativeBinomial(
-                Scope([1]), n=2, cond_f=lambda data: {"p": 0.5}
+                Scope([1], [2]), n=2, cond_f=lambda data: {"p": 0.5}
             ),
             CondNegativeBinomial(
-                Scope([0]), n=3, cond_f=lambda data: {"p": 0.9}
+                Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.9}
             ),
         ]
 
@@ -132,7 +132,7 @@ class TestNode(unittest.TestCase):
         p = torch.tensor([random.random(), random.random()], requires_grad=True)
 
         torch_negative_binomial = CondNegativeBinomialLayer(
-            scope=[Scope([0]), Scope([1])], n=n, cond_f=lambda data: {"p": p}
+            scope=[Scope([0], [2]), Scope([1], [2])], n=n, cond_f=lambda data: {"p": p}
         )
 
         # create dummy input data (batch size x random variables)
@@ -155,7 +155,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         negative_binomial = CondNegativeBinomialLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             n=5,
             cond_f=lambda data: {"p": random.random()},
         )

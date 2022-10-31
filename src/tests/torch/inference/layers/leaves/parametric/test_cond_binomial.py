@@ -31,7 +31,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_p(self):
 
-        binomial = CondBinomialLayer(Scope([0]), n=2, n_nodes=2)
+        binomial = CondBinomialLayer(Scope([0], [1]), n=2, n_nodes=2)
         self.assertRaises(
             ValueError, log_likelihood, binomial, torch.tensor([[0], [1]])
         )
@@ -40,7 +40,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"p": [0.8, 0.5]}
 
-        binomial = CondBinomialLayer(Scope([0]), n=1, n_nodes=2, cond_f=cond_f)
+        binomial = CondBinomialLayer(Scope([0], [1]), n=1, n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0], [1]])
@@ -54,7 +54,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        binomial = CondBinomialLayer(Scope([0]), n=1, n_nodes=2)
+        binomial = CondBinomialLayer(Scope([0], [1]), n=1, n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[binomial] = {"p": [0.8, 0.5]}
@@ -71,7 +71,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        bernoulli = CondBinomialLayer(Scope([0]), n=1, n_nodes=2)
+        bernoulli = CondBinomialLayer(Scope([0], [1]), n=1, n_nodes=2)
 
         cond_f = lambda data: {"p": torch.tensor([0.8, 0.5])}
 
@@ -91,15 +91,15 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood(self):
 
         layer = CondBinomialLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             n=[3, 2, 3],
             cond_f=lambda data: {"p": [0.2, 0.5, 0.9]},
         )
 
         nodes = [
-            CondBinomial(Scope([0]), n=3, cond_f=lambda data: {"p": 0.2}),
-            CondBinomial(Scope([1]), n=2, cond_f=lambda data: {"p": 0.5}),
-            CondBinomial(Scope([0]), n=3, cond_f=lambda data: {"p": 0.9}),
+            CondBinomial(Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}),
+            CondBinomial(Scope([1], [2]), n=2, cond_f=lambda data: {"p": 0.5}),
+            CondBinomial(Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.9}),
         ]
 
         dummy_data = torch.tensor([[3, 1], [1, 2], [0, 0]])
@@ -117,7 +117,7 @@ class TestNode(unittest.TestCase):
         p = torch.tensor([random.random(), random.random()], requires_grad=True)
 
         torch_binomial = CondBinomialLayer(
-            scope=[Scope([0]), Scope([1])], n=n, cond_f=lambda data: {"p": p}
+            scope=[Scope([0], [2]), Scope([1], [2])], n=n, cond_f=lambda data: {"p": p}
         )
 
         # create dummy input data (batch size x random variables)
@@ -137,7 +137,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         binomial = CondBinomialLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             n=5,
             cond_f=lambda data: {"p": random.random()},
         )

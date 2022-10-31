@@ -5,7 +5,9 @@ Typical usage example:
 
     scope = Scope(query_rvs, evidence_rvs)
 """
-from typing import List, Optional, Iterable
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureType
+from typing import List, Optional, Iterable, Union, Type
 
 
 class Scope:
@@ -20,19 +22,20 @@ class Scope:
         evidence:
             List of non-negative integers representing evidence variables.
     """
-
     def __init__(
         self,
         query: Optional[List[int]] = None,
         evidence: Optional[List[int]] = None,
     ) -> None:
-        """Initializes 'Scope' object.
+        """Initializes ``Scope`` object.
 
         Args:
             query:
                 List of non-negative integers representing query RVs (may not contain duplicates).
+                Defaults to None, in which case it is initialized to an empty list.
             evidence:
                 Optional list of non-negative integers representing evidence variables (may not contain duplicates or RVs that are in the query).
+                Defaults to None, in which case it is initialized to an empty list.
 
         Raises:
             ValueError: Invalid arguments.
@@ -83,7 +86,7 @@ class Scope:
             self.evidence if self.evidence else "{}",
         )  # pragma: no cover
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: "Scope") -> bool:
         """Equality comparison between two ``Scope`` objects.
 
         Two scopes are considered equal if they represent the same query and evidence RVs.
@@ -105,8 +108,10 @@ class Scope:
         """
         return len(self.query)
 
-    def equal_query(self, other) -> bool:
+    def equal_query(self, other: "Scope") -> bool:
         """Checks if the query of the scope is identical to that of another.
+
+        The order of the query RVs is not important.
 
         Args:
             other:
@@ -117,8 +122,10 @@ class Scope:
         """
         return set(self.query) == set(other.query)
 
-    def equal_evidence(self, other) -> bool:
+    def equal_evidence(self, other: "Scope") -> bool:
         """Checks if the evidence of the scope is identical to that of another.
+
+        The order of the evidence RVs is not important.
 
         Args:
             other:
@@ -139,7 +146,7 @@ class Scope:
         """
         return not bool(self.query)
 
-    def isdisjoint(self, other) -> bool:
+    def isdisjoint(self, other: "Scope") -> bool:
         """Checks if the scope is disjoint to another scope.
 
         Two scopes are considered disjoint if their queries are disjoint, i.e., they do not represent any common RVs.
@@ -149,8 +156,8 @@ class Scope:
         """
         return set(self.query).isdisjoint(other.query)
 
-    def union(self, other) -> "Scope":
-        """Computes the union of the scope and another scope.
+    def join(self, other: "Scope") -> "Scope":
+        """Computes the joint scope of the scope and another scope.
 
         The union of two scopes results in the union of the queries and evidences, respectively.
 
@@ -159,12 +166,14 @@ class Scope:
                 ``Scope`` object to compute the union with.
 
         Returns:
-            ``Scope`` object representing the union of both scopes.
+            ``Scope`` object representing the union of both scopes.        
         """
-        return Scope(
-            set(self.query).union(other.query),
-            set(self.evidence).union(other.evidence),
-        )
+        # compute union of query RVs
+        joint_query = list(set(self.query).union(other.query))
+        # compute union of evidence RVs
+        joint_evidence = list(set(self.evidence).union(other.evidence))
+
+        return Scope(joint_query, joint_evidence)
 
     @staticmethod
     def all_pairwise_disjoint(scopes: Iterable["Scope"]) -> bool:
@@ -181,7 +190,7 @@ class Scope:
 
         for scope in scopes:
             if overall_scope.isdisjoint(scope):
-                overall_scope = overall_scope.union(scope)
+                overall_scope = overall_scope.join(scope)
             else:
                 return False
 

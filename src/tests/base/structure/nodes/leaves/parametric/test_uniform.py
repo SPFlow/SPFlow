@@ -1,8 +1,8 @@
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.node import marginalize
 from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
-from spflow.base.inference.nodes.leaves.parametric.uniform import log_likelihood
-from spflow.base.inference.module import likelihood
 
 import numpy as np
 import unittest
@@ -39,6 +39,69 @@ class TestUniform(unittest.TestCase):
         self.assertRaises(Exception, Uniform, Scope([]), 0.0, 1.0)
         self.assertRaises(Exception, Uniform, Scope([0, 1]), 0.0, 1.0)
         self.assertRaises(Exception, Uniform, Scope([0], [1]))
+
+    def test_accept(self):
+
+        # discrete meta type (should reject)
+        self.assertFalse(Uniform.accepts([([FeatureTypes.Continuous], Scope([0]))]))
+
+        # Bernoulli feature type class (should reject)
+        self.assertFalse(Uniform.accepts([([FeatureTypes.Uniform], Scope([0]))]))
+
+        # Bernoulli feature type instance
+        self.assertTrue(Uniform.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0]))]))
+
+        # invalid feature type
+        self.assertFalse(Uniform.accepts([([FeatureTypes.Discrete], Scope([0]))]))
+
+        # conditional scope
+        self.assertFalse(Uniform.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0], [1]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(Uniform.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0, 1]))]))
+
+        # multivariate signature
+        self.assertFalse(Uniform.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0), FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0, 1]))]))
+
+    def test_initialization_from_signatures(self):
+
+        uniform = Uniform.from_signatures([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0]))])
+        self.assertEqual(uniform.start, -1.0)
+        self.assertEqual(uniform.end, 2.0)
+
+        # ----- invalid arguments -----
+
+        # discrete meta type
+        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+
+        # Bernoulli feature type class
+        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Uniform], Scope([0]))])
+
+        # invalid feature type
+        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+
+        # conditional scope
+        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(Uniform))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(Uniform, AutoLeaf.infer([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        uniform = AutoLeaf([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0]))])
+        self.assertTrue(isinstance(uniform, Uniform))
+        self.assertEqual(uniform.start, -1.0)
+        self.assertEqual(uniform.end, 2.0)
 
     def test_structural_marginalization(self):
 

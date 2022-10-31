@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains Log-Normal leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple
+from typing import List, Union, Optional, Iterable, Tuple, Type
 from functools import reduce
 import numpy as np
 import torch
@@ -18,6 +18,8 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.log_normal import LogNormal
 from spflow.base.structure.layers.leaves.parametric.log_normal import (
@@ -95,6 +97,10 @@ class LogNormalLayer(Module):
         for s in scope:
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
+            if len(s.evidence) != 0:
+                raise ValueError(
+                    f"Evidence scope for 'LogNormalLayer' should be empty, but was {s.evidence}."
+                )
 
         super(LogNormalLayer, self).__init__(children=[], **kwargs)
 
@@ -105,11 +111,57 @@ class LogNormalLayer(Module):
         # compute scope
         self.scopes_out = scope
         self.combined_scope = reduce(
-            lambda s1, s2: s1.union(s2), self.scopes_out
+            lambda s1, s2: s1.join(s2), self.scopes_out
         )
 
         # parse weights
         self.set_params(mean, std)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf has at least one output
+        if len(signatures) < 1:
+            return False
+
+        for signature in signatures:
+            if not LogNormal.accepts([signature]):
+                return False
+    
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "LogNormalLayer":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'LogNormalLayer' cannot be instantiated from the following signatures: {signatures}.")
+
+        mean = []
+        std = []
+        scopes = []
+
+        for types, scope in signatures:
+        
+            type = types[0]
+
+            # read or initialize parameters
+            if type == MetaType.Continuous:
+                mean.append(0.0)
+                std.append(1.0)
+            elif type == FeatureTypes.LogNormal:
+                # instantiate object
+                type = type()
+                mean.append(type.mean)
+                std.append(type.std)
+            elif isinstance(type, FeatureTypes.LogNormal):
+                mean.append(type.mean)
+                std.append(type.std)
+            else:
+                raise ValueError(f"Unknown signature type {type} for 'LogNormalLayer' that was not caught during acception checking.")
+
+            scopes.append(scope)
+
+        return LogNormalLayer(scopes, mean=mean, std=std)
 
     @property
     def n_out(self) -> int:
