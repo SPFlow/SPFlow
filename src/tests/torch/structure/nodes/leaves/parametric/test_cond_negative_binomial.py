@@ -1,4 +1,6 @@
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.leaves.parametric.cond_negative_binomial import (
     CondNegativeBinomial as BaseCondNegativeBinomial,
@@ -21,15 +23,15 @@ import unittest
 class TestNegativeBinomial(unittest.TestCase):
     def test_initialization(self):
 
-        binomial = CondNegativeBinomial(Scope([0]), n=1)
+        binomial = CondNegativeBinomial(Scope([0], [1]), n=1)
         self.assertTrue(binomial.cond_f is None)
         binomial = CondNegativeBinomial(
-            Scope([0]), n=1, cond_f=lambda x: {"p": 0.5}
+            Scope([0], [1]), n=1, cond_f=lambda x: {"p": 0.5}
         )
         self.assertTrue(isinstance(binomial.cond_f, Callable))
 
         # n = 0
-        CondNegativeBinomial(Scope([0]), 0.0)
+        CondNegativeBinomial(Scope([0], [1]), 0.0)
         # n < 0
         self.assertRaises(
             Exception,
@@ -43,13 +45,13 @@ class TestNegativeBinomial(unittest.TestCase):
 
         # invalid scopes
         self.assertRaises(Exception, CondNegativeBinomial, Scope([]), 1)
-        self.assertRaises(Exception, CondNegativeBinomial, Scope([0, 1]), 1)
-        self.assertRaises(Exception, CondNegativeBinomial, Scope([0], [1]), 1)
+        self.assertRaises(Exception, CondNegativeBinomial, Scope([0, 1], [2]), 1)
+        self.assertRaises(Exception, CondNegativeBinomial, Scope([0]), 1)
 
     def test_retrieve_params(self):
 
         # Valid parameters for Negative Binomial distribution: p in (0,1], n > 0
-        negative_binomial = CondNegativeBinomial(Scope([0]), 1)
+        negative_binomial = CondNegativeBinomial(Scope([0], [1]), 1)
 
         # p = 1
         negative_binomial.set_cond_f(lambda data: {"p": 1.0})
@@ -120,9 +122,70 @@ class TestNegativeBinomial(unittest.TestCase):
             DispatchContext(),
         )
 
+    def test_accept(self):
+
+        # discrete meta type (should reject)
+        self.assertFalse(CondNegativeBinomial.accepts([([FeatureTypes.Discrete], Scope([0], [1]))]))
+
+        # Bernoulli feature type class (should reject)
+        self.assertFalse(CondNegativeBinomial.accepts([([FeatureTypes.NegativeBinomial], Scope([0], [1]))]))
+
+        # Bernoulli feature type instance
+        self.assertTrue(CondNegativeBinomial.accepts([([FeatureTypes.NegativeBinomial(n=3)], Scope([0], [1]))]))
+
+        # invalid feature type
+        self.assertFalse(CondNegativeBinomial.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
+
+        # non-conditional scope
+        self.assertFalse(CondNegativeBinomial.accepts([([FeatureTypes.NegativeBinomial(n=3)], Scope([0]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(CondNegativeBinomial.accepts([([FeatureTypes.NegativeBinomial(n=3)], Scope([0, 1], [2]))]))
+
+        # multivariate signature
+        self.assertFalse(CondNegativeBinomial.accepts([([FeatureTypes.NegativeBinomial(n=3), FeatureTypes.Binomial(n=3)], Scope([0, 1], [2]))]))
+
+    def test_initialization_from_signatures(self):
+
+        CondNegativeBinomial.from_signatures([([FeatureTypes.NegativeBinomial(n=3)], Scope([0], [1]))])
+        CondNegativeBinomial.from_signatures([([FeatureTypes.NegativeBinomial(n=3, p=0.75)], Scope([0], [1]))])
+
+        # ----- invalid arguments -----
+
+        # discrete meta type
+        self.assertRaises(ValueError, CondNegativeBinomial.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
+
+        # Bernoulli feature type class
+        self.assertRaises(ValueError, CondNegativeBinomial.from_signatures, [([FeatureTypes.Binomial], Scope([0], [1]))])
+
+        # invalid feature type
+        self.assertRaises(ValueError, CondNegativeBinomial.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
+
+        # non-conditional scope
+        self.assertRaises(ValueError, CondNegativeBinomial.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, CondNegativeBinomial.from_signatures, [([FeatureTypes.Discrete], Scope([0, 1], [2]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, CondNegativeBinomial.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1], [2]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(CondNegativeBinomial))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(CondNegativeBinomial, AutoLeaf.infer([([FeatureTypes.NegativeBinomial(n=3)], Scope([0], [1]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        negative_binomial = AutoLeaf([([FeatureTypes.NegativeBinomial(n=3, p=0.75)], Scope([0], [1]))])
+        self.assertTrue(isinstance(negative_binomial, CondNegativeBinomial))
+        self.assertEqual(negative_binomial.n, 3)
+
     def test_structural_marginalization(self):
 
-        negative_binomial = CondNegativeBinomial(Scope([0]), 1)
+        negative_binomial = CondNegativeBinomial(Scope([0], [1]), 1)
 
         self.assertTrue(marginalize(negative_binomial, [1]) is not None)
         self.assertTrue(marginalize(negative_binomial, [0]) is None)
@@ -131,8 +194,8 @@ class TestNegativeBinomial(unittest.TestCase):
 
         n = random.randint(2, 10)
 
-        torch_negative_binomial = CondNegativeBinomial(Scope([0]), n)
-        node_negative_binomial = BaseCondNegativeBinomial(Scope([0]), n)
+        torch_negative_binomial = CondNegativeBinomial(Scope([0], [1]), n)
+        node_negative_binomial = BaseCondNegativeBinomial(Scope([0], [1]), n)
 
         # check conversion from torch to python
         self.assertTrue(

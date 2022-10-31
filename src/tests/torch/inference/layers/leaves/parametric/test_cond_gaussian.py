@@ -31,7 +31,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_mean(self):
 
         gaussian = CondGaussianLayer(
-            Scope([0]), cond_f=lambda data: {"std": [1.0, 1.0]}, n_nodes=2
+            Scope([0], [1]), cond_f=lambda data: {"std": [1.0, 1.0]}, n_nodes=2
         )
         self.assertRaises(
             KeyError, log_likelihood, gaussian, torch.tensor([[0], [1]])
@@ -40,7 +40,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_std(self):
 
         gaussian = CondGaussianLayer(
-            Scope([0]), cond_f=lambda data: {"mean": [0.0, 0.0]}, n_nodes=2
+            Scope([0], [1]), cond_f=lambda data: {"mean": [0.0, 0.0]}, n_nodes=2
         )
         self.assertRaises(
             KeyError, log_likelihood, gaussian, torch.tensor([[0], [1]])
@@ -48,7 +48,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_mean_std(self):
 
-        gaussian = CondGaussianLayer(Scope([0]), n_nodes=2)
+        gaussian = CondGaussianLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError, log_likelihood, gaussian, torch.tensor([[0], [1]])
         )
@@ -57,7 +57,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"mean": [0.0, 0.0], "std": [1.0, 1.0]}
 
-        gaussian = CondGaussianLayer(Scope([0]), n_nodes=2, cond_f=cond_f)
+        gaussian = CondGaussianLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0.0], [1.0], [-1.0]])
@@ -71,7 +71,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args(self):
 
-        gaussian = CondGaussianLayer(Scope([0]), n_nodes=2)
+        gaussian = CondGaussianLayer(Scope([0], [1]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[gaussian] = {"mean": [0.0, 0.0], "std": [1.0, 1.0]}
@@ -88,7 +88,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        gaussian = CondGaussianLayer(Scope([0]), n_nodes=2)
+        gaussian = CondGaussianLayer(Scope([0], [1]), n_nodes=2)
 
         cond_f = lambda data: {"mean": [0.0, 0.0], "std": [1.0, 1.0]}
 
@@ -108,7 +108,7 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood(self):
 
         layer = CondGaussianLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             cond_f=lambda data: {
                 "mean": [0.2, 1.0, 2.3],
                 "std": [1.0, 0.3, 0.97],
@@ -117,13 +117,13 @@ class TestNode(unittest.TestCase):
 
         nodes = [
             CondGaussian(
-                Scope([0]), cond_f=lambda data: {"mean": 0.2, "std": 1.0}
+                Scope([0], [2]), cond_f=lambda data: {"mean": 0.2, "std": 1.0}
             ),
             CondGaussian(
-                Scope([1]), cond_f=lambda data: {"mean": 1.0, "std": 0.3}
+                Scope([1], [2]), cond_f=lambda data: {"mean": 1.0, "std": 0.3}
             ),
             CondGaussian(
-                Scope([0]), cond_f=lambda data: {"mean": 2.3, "std": 0.97}
+                Scope([0], [2]), cond_f=lambda data: {"mean": 2.3, "std": 0.97}
             ),
         ]
 
@@ -146,7 +146,7 @@ class TestNode(unittest.TestCase):
         )  # offset by small number to avoid zero
 
         torch_gaussian = CondGaussianLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"mean": mean, "std": std},
         )
 
@@ -167,7 +167,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         gaussian = CondGaussianLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {
                 "mean": random.random(),
                 "std": random.random() + 1e-7,

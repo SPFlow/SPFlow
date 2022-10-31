@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """Contains Exponential leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple
+from typing import Tuple, List, Union, Type
 import numpy as np
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.base.structure.nodes.node import LeafNode
 
 from scipy.stats import expon  # type: ignore
@@ -43,13 +44,56 @@ class Exponential(LeafNode):
             raise ValueError(
                 f"Query scope size for 'Exponential' should be 1, but was {len(scope.query)}."
             )
-        if len(scope.evidence):
+        if len(scope.evidence) != 0:
             raise ValueError(
                 f"Evidence scope for 'Exponential' should be empty, but was {scope.evidence}."
             )
 
         super(Exponential, self).__init__(scope=scope)
         self.set_params(l)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf only has one output
+        if len(signatures) != 1:
+            return False
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        # leaf is a single non-conditional univariate node
+        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+            return False
+
+        # leaf is a discrete Exponential distribution
+        if not (types[0] == FeatureTypes.Continuous or types[0] == FeatureTypes.Exponential or isinstance(types[0], FeatureTypes.Exponential)):
+            return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "Exponential":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'Exponential' cannot be instantiated from the following signatures: {signatures}.")
+
+        # get single output signature
+        types, scope = signatures[0]
+        type = types[0]
+
+        # read or initialize parameters
+        if type == MetaType.Continuous:
+            l = 1.0
+        elif type == FeatureTypes.Exponential:
+            # instantiate object
+            l = type().l
+        elif isinstance(type, FeatureTypes.Exponential):
+            l = type.l
+        else:
+            raise ValueError(f"Unknown signature type {type} for 'Exponential' that was not caught during acception checking.")
+
+        return Exponential(scope, l=l)
 
     @property
     def dist(self) -> rv_frozen:

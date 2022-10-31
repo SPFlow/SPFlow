@@ -17,21 +17,21 @@ import math
 class TestCondGaussian(unittest.TestCase):
     def test_likelihood_no_mean(self):
 
-        gaussian = CondGaussian(Scope([0]), cond_f=lambda data: {"std": 1.0})
+        gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"std": 1.0})
         self.assertRaises(
             KeyError, log_likelihood, gaussian, np.array([[0], [1]])
         )
 
     def test_likelihood_no_std(self):
 
-        gaussian = CondGaussian(Scope([0]), cond_f=lambda data: {"mean": 0.0})
+        gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.0})
         self.assertRaises(
             KeyError, log_likelihood, gaussian, np.array([[0], [1]])
         )
 
     def test_likelihood_no_mean_std(self):
 
-        gaussian = CondGaussian(Scope([0]))
+        gaussian = CondGaussian(Scope([0], [1]))
         self.assertRaises(
             ValueError, log_likelihood, gaussian, np.array([[0], [1]])
         )
@@ -40,7 +40,7 @@ class TestCondGaussian(unittest.TestCase):
 
         cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
-        gaussian = CondGaussian(Scope([0]), cond_f=cond_f)
+        gaussian = CondGaussian(Scope([0], [1]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.array([[0.0], [1.0], [1.0]])
@@ -54,7 +54,7 @@ class TestCondGaussian(unittest.TestCase):
 
     def test_likelihood_args(self):
 
-        gaussian = CondGaussian(Scope([0]))
+        gaussian = CondGaussian(Scope([0], [1]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[gaussian] = {"mean": 0.0, "std": 1.0}
@@ -71,7 +71,7 @@ class TestCondGaussian(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        gaussian = CondGaussian(Scope([0]))
+        gaussian = CondGaussian(Scope([0], [1]))
 
         cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
@@ -95,7 +95,7 @@ class TestCondGaussian(unittest.TestCase):
         var = 1.0
 
         gaussian = CondGaussian(
-            Scope([0]),
+            Scope([0], [1]),
             cond_f=lambda data: {"mean": mean, "std": math.sqrt(var)},
         )
 
@@ -118,7 +118,7 @@ class TestCondGaussian(unittest.TestCase):
         var = 5.0
 
         gaussian = CondGaussian(
-            Scope([0]),
+            Scope([0], [1]),
             cond_f=lambda data: {"mean": mean, "std": math.sqrt(var)},
         )
 
@@ -141,7 +141,7 @@ class TestCondGaussian(unittest.TestCase):
         var = 0.2
 
         gaussian = CondGaussian(
-            Scope([0]),
+            Scope([0], [1]),
             cond_f=lambda data: {"mean": mean, "std": math.sqrt(var)},
         )
 
@@ -161,7 +161,7 @@ class TestCondGaussian(unittest.TestCase):
 
         # dummy distribution and data
         gaussian = CondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": None, "std": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": None, "std": 1.0}
         )
         data = np.random.randn(1, 3)
 
@@ -171,7 +171,7 @@ class TestCondGaussian(unittest.TestCase):
 
         # dummy distribution and data
         gaussian = CondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": None}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": None}
         )
         data = np.random.randn(1, 3)
 
@@ -180,7 +180,7 @@ class TestCondGaussian(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         gaussian = CondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
         )
         data = np.array([[np.nan]])
 
@@ -200,7 +200,7 @@ class TestCondGaussian(unittest.TestCase):
         #   log-likelihood: None
 
         gaussian = CondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
         )
 
         # check infinite values

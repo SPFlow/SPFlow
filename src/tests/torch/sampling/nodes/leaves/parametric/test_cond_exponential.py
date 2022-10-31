@@ -33,7 +33,7 @@ class TestExponential(unittest.TestCase):
         # ----- l = 0 -----
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"l": 1.0}
         )
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
@@ -61,7 +61,7 @@ class TestExponential(unittest.TestCase):
         # ----- l = 0.5 -----
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 0.5}
+            Scope([0], [1]), cond_f=lambda data: {"l": 0.5}
         )
         samples = sample(exponential, 1000)
         self.assertTrue(
@@ -78,7 +78,7 @@ class TestExponential(unittest.TestCase):
         # ----- l = 2.5 -----
 
         exponential = CondExponential(
-            Scope([0]), cond_f=lambda data: {"l": 2.5}
+            Scope([0], [1]), cond_f=lambda data: {"l": 2.5}
         )
         samples = sample(exponential, 1000)
         self.assertTrue(

@@ -188,7 +188,7 @@ class SPNSumNode(Node):
                             f"'SPNSumNode' requires child scopes to have the same query variables."
                         )
 
-                scope = scope.union(s)
+                scope = scope.join(s)
 
         self.scope = scope
         self.n_in = sum(child.n_out for child in children)
@@ -386,7 +386,7 @@ class SPNProductNode(Node):
                         f"'SPNProductNode' requires child scopes to be pair-wise disjoint."
                     )
 
-                scope = scope.union(s)
+                scope = scope.join(s)
 
         self.scope = scope
 

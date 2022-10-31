@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """Contains Gamma leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple, Optional
+from typing import Tuple, List, Union, Type
 import numpy as np
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.base.structure.nodes.node import LeafNode
 
 from scipy.stats import gamma  # type: ignore
@@ -36,8 +37,8 @@ class Gamma(LeafNode):
     def __init__(
         self,
         scope: Scope,
-        alpha: Optional[float] = 1.0,
-        beta: Optional[float] = 1.0,
+        alpha: float = 1.0,
+        beta: float = 1.0,
     ) -> None:
         r"""Initializes ``Exponential`` leaf node.
 
@@ -55,13 +56,57 @@ class Gamma(LeafNode):
             raise ValueError(
                 f"Query scope size for 'Gamma' should be 1, but was {len(scope.query)}."
             )
-        if len(scope.evidence):
+        if len(scope.evidence) != 0:
             raise ValueError(
                 f"Evidence scope for 'Gamma' should be empty, but was {scope.evidence}."
             )
 
         super(Gamma, self).__init__(scope=scope)
         self.set_params(alpha, beta)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf only has one output
+        if len(signatures) != 1:
+            return False
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        # leaf is a single non-conditional univariate node
+        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+            return False
+        
+        # leaf is a continuous Gamma distribution
+        if not (types[0] == FeatureTypes.Continuous or types[0] == FeatureTypes.Gamma or isinstance(types[0], FeatureTypes.Gamma)):
+            return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "Gamma":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'Gamma' cannot be instantiated from the following signatures: {signatures}.")
+
+        # get single output signature
+        types, scope = signatures[0]
+        type = types[0]
+
+        # read or initialize parameters
+        if type == MetaType.Continuous:
+            alpha, beta = 1.0, 1.0
+        elif type == FeatureTypes.Gamma:
+            # instantiate object
+            type = type()
+            alpha, beta = type.alpha, type.beta
+        elif isinstance(type, FeatureTypes.Gamma):
+            alpha, beta = type.alpha, type.beta
+        else:
+            raise ValueError(f"Unknown signature type {type} for 'Gamma' that was not caught during acception checking.")
+
+        return Gamma(scope, alpha=alpha, beta=beta)
 
     @property
     def dist(self) -> rv_frozen:

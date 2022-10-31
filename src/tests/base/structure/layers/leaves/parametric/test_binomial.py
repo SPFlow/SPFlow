@@ -2,8 +2,10 @@ from spflow.base.structure.layers.leaves.parametric.binomial import (
     BinomialLayer,
     marginalize,
 )
+from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
 import numpy as np
 import unittest
 
@@ -176,6 +178,76 @@ class TestLayer(unittest.TestCase):
         l = BinomialLayer(scope=[Scope([1]), Scope([0])], n=2, p=0.5, n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
+
+    def test_accept(self):
+
+        # discrete meta type (should reject)
+        self.assertFalse(BinomialLayer.accepts([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Discrete], Scope([1]))]))
+
+        # Bernoulli feature type class (should reject)
+        self.assertFalse(BinomialLayer.accepts([([FeatureTypes.Binomial], Scope([0])), ([FeatureTypes.Binomial(n=3)], Scope([1]))]))
+
+        # Bernoulli feature type instance
+        self.assertTrue(BinomialLayer.accepts([([FeatureTypes.Binomial(n=3)], Scope([0])), ([FeatureTypes.Binomial(n=3)], Scope([1]))]))
+
+        # invalid feature type
+        self.assertFalse(BinomialLayer.accepts([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Binomial(n=3)], Scope([1]))]))
+
+        # conditional scope
+        self.assertFalse(BinomialLayer.accepts([([FeatureTypes.Binomial(n=3)], Scope([0], [1]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(BinomialLayer.accepts([([FeatureTypes.Binomial(n=3)], Scope([0, 1]))]))
+
+        # multivariate signature
+        self.assertFalse(BinomialLayer.accepts([([FeatureTypes.Binomial(n=3), FeatureTypes.Binomial(n=3)], Scope([0, 1]))]))
+
+    def test_initialization_from_signatures(self):
+
+        binomial = BinomialLayer.from_signatures([([FeatureTypes.Binomial(n=3)], Scope([0])), ([FeatureTypes.Binomial(n=5)], Scope([1]))])
+        self.assertTrue(np.all(binomial.n == np.array([3, 5])))
+        self.assertTrue(np.all(binomial.p == np.array([0.5, 0.5])))
+        self.assertTrue(binomial.scopes_out == [Scope([0]), Scope([1])])
+
+        binomial = BinomialLayer.from_signatures([([FeatureTypes.Binomial(n=3, p=0.75)], Scope([0])), ([FeatureTypes.Binomial(n=5, p=0.25)], Scope([1]))])
+        self.assertTrue(np.all(binomial.n == np.array([3, 5])))
+        self.assertTrue(np.all(binomial.p == np.array([0.75, 0.25])))
+        self.assertTrue(binomial.scopes_out == [Scope([0]), Scope([1])])
+
+        # ----- invalid arguments -----
+
+        # discrete meta type
+        self.assertRaises(ValueError, BinomialLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+
+        # Bernoulli feature type class
+        self.assertRaises(ValueError, BinomialLayer.from_signatures, [([FeatureTypes.Binomial], Scope([0]))])
+
+        # invalid feature type
+        self.assertRaises(ValueError, BinomialLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+
+        # conditional scope
+        self.assertRaises(ValueError, BinomialLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, BinomialLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0, 1]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, BinomialLayer.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(BinomialLayer))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(BinomialLayer, AutoLeaf.infer([([FeatureTypes.Binomial(n=3)], Scope([0])), ([FeatureTypes.Binomial(n=5)], Scope([1]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        binomial = AutoLeaf([([FeatureTypes.Binomial(n=3, p=0.75)], Scope([0])), ([FeatureTypes.Binomial(n=5, p=0.25)], Scope([1]))])
+        self.assertTrue(isinstance(binomial, BinomialLayer))
+        self.assertTrue(np.all(binomial.n == np.array([3, 5])))
+        self.assertTrue(np.all(binomial.p == np.array([0.75, 0.25])))
+        self.assertTrue(binomial.scopes_out == [Scope([0]), Scope([1])])
 
     def test_layer_structural_marginalization(self):
 

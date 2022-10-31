@@ -2,8 +2,10 @@ from spflow.base.structure.layers.leaves.parametric.uniform import (
     UniformLayer,
     marginalize,
 )
+from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
 import numpy as np
 import unittest
 
@@ -144,6 +146,70 @@ class TestLayer(unittest.TestCase):
         )
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
+    
+    def test_accept(self):
+
+        # discrete meta type (should reject)
+        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
+
+        # Uniform feature type class (should reject)
+        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Uniform], Scope([0])), ([FeatureTypes.Uniform(0.0, 1.0)], Scope([1]))]))
+
+        # Uniform feature type instance
+        self.assertTrue(UniformLayer.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0])), ([FeatureTypes.Uniform(start=1.0, end=3.0)], Scope([1]))]))
+
+        # invalid feature type
+        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Uniform(-1.0, 2.0)], Scope([1]))]))
+
+        # conditional scope
+        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0], [1]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0, 1]))]))
+
+        # multivariate signature
+        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0), FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0, 1]))]))
+
+    def test_initialization_from_signatures(self):
+
+        uniform = UniformLayer.from_signatures([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0])), ([FeatureTypes.Uniform(start=1.0, end=3.0)], Scope([1]))])
+        self.assertTrue(np.all(uniform.start == np.array([-1.0, 1.0])))
+        self.assertTrue(np.all(uniform.end == np.array([2.0, 3.0])))
+        self.assertTrue(uniform.scopes_out == [Scope([0]), Scope([1])])
+
+        # ----- invalid arguments -----
+
+        # discrete meta type
+        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+
+        # Bernoulli feature type class
+        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Uniform], Scope([0]))])
+
+        # invalid feature type
+        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+
+        # conditional scope
+        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(UniformLayer))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(UniformLayer, AutoLeaf.infer([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0])), ([FeatureTypes.Uniform(start=1.0, end=3.0)], Scope([1]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        uniform = AutoLeaf([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0])), ([FeatureTypes.Uniform(start=1.0, end=3.0)], Scope([1]))])
+        self.assertTrue(np.all(uniform.start == np.array([-1.0, 1.0])))
+        self.assertTrue(np.all(uniform.end == np.array([2.0, 3.0])))
+        self.assertTrue(uniform.scopes_out == [Scope([0]), Scope([1])])
 
     def test_layer_structural_marginalization(self):
 

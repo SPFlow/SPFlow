@@ -21,7 +21,6 @@ import torch
 import numpy as np
 import random
 import unittest
-import itertools
 
 
 class TestNode(unittest.TestCase):
@@ -41,7 +40,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         layer = CondGammaLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             cond_f=lambda data: {
                 "alpha": [0.2, 1.8, 0.2],
                 "beta": [1.9, 0.4, 1.9],
@@ -50,13 +49,13 @@ class TestNode(unittest.TestCase):
 
         nodes = [
             CondGamma(
-                Scope([0]), cond_f=lambda data: {"alpha": 0.2, "beta": 1.9}
+                Scope([0], [2]), cond_f=lambda data: {"alpha": 0.2, "beta": 1.9}
             ),
             CondGamma(
-                Scope([1]), cond_f=lambda data: {"alpha": 1.8, "beta": 0.4}
+                Scope([1], [2]), cond_f=lambda data: {"alpha": 1.8, "beta": 0.4}
             ),
             CondGamma(
-                Scope([0]), cond_f=lambda data: {"alpha": 0.2, "beta": 1.9}
+                Scope([0], [2]), cond_f=lambda data: {"alpha": 0.2, "beta": 1.9}
             ),
         ]
 

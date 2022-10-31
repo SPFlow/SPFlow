@@ -13,17 +13,17 @@ import unittest
 class TestCondGamma(unittest.TestCase):
     def test_likelihood_no_alpha(self):
 
-        gamma = CondGamma(Scope([0]), cond_f=lambda data: {"beta": 1.0})
+        gamma = CondGamma(Scope([0], [1]), cond_f=lambda data: {"beta": 1.0})
         self.assertRaises(KeyError, log_likelihood, gamma, np.array([[0], [1]]))
 
     def test_likelihood_no_beta(self):
 
-        gamma = CondGamma(Scope([0]), cond_f=lambda data: {"alpha": 1.0})
+        gamma = CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0})
         self.assertRaises(KeyError, log_likelihood, gamma, np.array([[0], [1]]))
 
     def test_likelihood_no_alpha_beta(self):
 
-        gamma = CondGamma(Scope([0]))
+        gamma = CondGamma(Scope([0], [1]))
         self.assertRaises(
             ValueError, log_likelihood, gamma, np.array([[0], [1]])
         )
@@ -32,7 +32,7 @@ class TestCondGamma(unittest.TestCase):
 
         cond_f = lambda data: {"alpha": 1.0, "beta": 1.0}
 
-        gamma = CondGamma(Scope([0]), cond_f=cond_f)
+        gamma = CondGamma(Scope([0], [1]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.array([[0.1], [1.0], [3.0]])
@@ -46,7 +46,7 @@ class TestCondGamma(unittest.TestCase):
 
     def test_likelihood_args(self):
 
-        gamma = CondGamma(Scope([0]))
+        gamma = CondGamma(Scope([0], [1]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[gamma] = {"alpha": 1.0, "beta": 1.0}
@@ -63,7 +63,7 @@ class TestCondGamma(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        gamma = CondGamma(Scope([0]))
+        gamma = CondGamma(Scope([0], [1]))
 
         cond_f = lambda data: {"alpha": 1.0, "beta": 1.0}
 
@@ -84,7 +84,7 @@ class TestCondGamma(unittest.TestCase):
 
         # ----- configuration 1 -----
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
         )
 
         # create test inputs/outputs
@@ -101,7 +101,7 @@ class TestCondGamma(unittest.TestCase):
 
         # ----- configuration 2 -----
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 2.0, "beta": 2.0}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 2.0, "beta": 2.0}
         )
 
         # create test inputs/outputs
@@ -118,7 +118,7 @@ class TestCondGamma(unittest.TestCase):
 
         # ----- configuration 3 -----
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 2.0, "beta": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 2.0, "beta": 1.0}
         )
 
         # create test inputs/outputs
@@ -135,7 +135,7 @@ class TestCondGamma(unittest.TestCase):
 
         # dummy distribution and data
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": None, "beta": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": None, "beta": 1.0}
         )
         data = np.array([[0.1], [1.0], [3.0]])
 
@@ -145,7 +145,7 @@ class TestCondGamma(unittest.TestCase):
 
         # dummy distribution and data
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 1.0, "beta": None}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0, "beta": None}
         )
         data = np.array([[0.1], [1.0], [3.0]])
 
@@ -154,7 +154,7 @@ class TestCondGamma(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
         )
         data = np.array([[np.nan]])
 
@@ -174,7 +174,7 @@ class TestCondGamma(unittest.TestCase):
         #   log-likelihood: x=0 -> POS_EPS (?)
 
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 2.0, "beta": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 2.0, "beta": 1.0}
         )
 
         # check infinite values

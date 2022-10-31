@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains Geometric leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple
+from typing import List, Union, Optional, Iterable, Tuple, Type
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
@@ -11,6 +11,8 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.geometric import Geometric
 
@@ -94,6 +96,47 @@ class GeometricLayer(Module):
     def p(self) -> np.ndarray:
         """Returns the success probabilities of the represented distributions."""
         return np.array([node.p for node in self.nodes])
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf has at least one output
+        if len(signatures) < 1:
+            return False
+
+        for signature in signatures:
+            if not Geometric.accepts([signature]):
+                return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "GeometricLayer":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'GeometricLayer' cannot be instantiated from the following signatures: {signatures}.")
+
+        p = []
+        scopes = []
+
+        for types, scope in signatures:
+
+            type = types[0]
+
+            # read or initialize parameters
+            if type == MetaType.Discrete:
+                p.append(0.5)
+            elif type == FeatureTypes.Geometric:
+                # instantiate object
+                p.append(type().p)
+            elif isinstance(type, FeatureTypes.Geometric):
+                p.append(type.p)
+            else:
+                raise ValueError(f"Unknown signature type {type} for 'GeometricLayer' that was not caught during acception checking.")
+
+            scopes.append(scope)
+
+        return GeometricLayer(scopes, p=p)
 
     def set_params(
         self, p: Union[int, float, List[float], np.ndarray] = 0.5

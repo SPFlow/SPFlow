@@ -5,9 +5,10 @@ import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List, Union, Type
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -55,7 +56,7 @@ class Geometric(LeafNode):
             raise ValueError(
                 f"Query scope size for 'Geometric' should be 1, but was {len(scope.query)}."
             )
-        if len(scope.evidence):
+        if len(scope.evidence) != 0:
             raise ValueError(
                 f"Evidence scope for 'Geometric' should be empty, but was {scope.evidence}."
             )
@@ -73,6 +74,49 @@ class Geometric(LeafNode):
         """TODO"""
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)  # type: ignore
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf only has one output
+        if len(signatures) != 1:
+            return False
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        # leaf is a single non-conditional univariate node
+        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+            return False
+        
+         # leaf is a discrete Geometric distribution
+        if not (types[0] == FeatureTypes.Discrete or types[0] == FeatureTypes.Geometric or isinstance(types[0], FeatureTypes.Geometric)):
+            return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "Geometric":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'Geometric' cannot be instantiated from the following signatures: {signatures}.")
+
+        # get single output signature
+        types, scope = signatures[0]
+        type = types[0]
+
+        # read or initialize parameters
+        if type == MetaType.Discrete:
+            p = 0.5
+        elif type == FeatureTypes.Geometric:
+            # instantiate object
+            p = type().p
+        elif isinstance(type, FeatureTypes.Geometric):
+            p = type.p
+        else:
+            raise ValueError(f"Unknown signature type {type} for 'Geometric' that was not caught during acception checking.")
+
+        return Geometric(scope, p=p)
 
     @property
     def dist(self) -> D.Distribution:

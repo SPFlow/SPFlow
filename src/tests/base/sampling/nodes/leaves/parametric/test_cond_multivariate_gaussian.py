@@ -30,7 +30,7 @@ class TestCondMultivariateGaussian(unittest.TestCase):
 
         # create distribution
         mv = CondMultivariateGaussian(
-            Scope([0, 1, 2, 3, 4]),
+            Scope([0, 1, 2, 3, 4], [5]),
             cond_f=lambda data: {"mean": mean, "cov": cov},
         )
 
@@ -75,7 +75,7 @@ class TestCondMultivariateGaussian(unittest.TestCase):
 
         # create distribution
         mv = CondMultivariateGaussian(
-            Scope([0, 1, 2, 3, 4]),
+            Scope([0, 1, 2, 3, 4], [5]),
             cond_f=lambda data: {"mean": mean, "cov": cov},
         )
 
@@ -113,7 +113,7 @@ class TestCondMultivariateGaussian(unittest.TestCase):
     def test_sampling(self):
 
         mv = CondMultivariateGaussian(
-            Scope([0, 1]),
+            Scope([0, 1], [2]),
             cond_f=lambda data: {"mean": np.zeros(2), "cov": np.eye(2)},
         )
 
@@ -133,7 +133,7 @@ class TestCondMultivariateGaussian(unittest.TestCase):
         random.seed(0)
 
         mv = CondMultivariateGaussian(
-            Scope([0, 1]),
+            Scope([0, 1], [2]),
             cond_f=lambda data: {"mean": np.zeros(2), "cov": np.eye(2)},
         )
         data = np.array([[0.0, 0.0]])

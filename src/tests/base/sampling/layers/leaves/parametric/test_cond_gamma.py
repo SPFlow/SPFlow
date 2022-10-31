@@ -30,7 +30,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         gamma_layer = CondGammaLayer(
-            scope=Scope([0]),
+            scope=Scope([0], [1]),
             cond_f=lambda data: {"alpha": [0.8, 0.3], "beta": [1.3, 0.4]},
             n_nodes=2,
         )
@@ -38,10 +38,10 @@ class TestNode(unittest.TestCase):
 
         gamma_nodes = [
             CondGamma(
-                Scope([0]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
+                Scope([0], [1]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
             ),
             CondGamma(
-                Scope([0]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
+                Scope([0], [1]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
             ),
         ]
         s2 = SPNSumNode(children=gamma_nodes, weights=[0.3, 0.7])
@@ -64,17 +64,17 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         gamma_layer = CondGammaLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"alpha": [0.8, 0.3], "beta": [1.3, 0.4]},
         )
         p1 = SPNProductNode(children=[gamma_layer])
 
         gamma_nodes = [
             CondGamma(
-                Scope([0]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
+                Scope([0], [2]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
             ),
             CondGamma(
-                Scope([1]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
+                Scope([1], [2]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
             ),
         ]
         p2 = SPNProductNode(children=gamma_nodes)
@@ -93,7 +93,7 @@ class TestNode(unittest.TestCase):
     def test_sampling_3(self):
 
         gamma_layer = CondGammaLayer(
-            scope=Scope([0]),
+            scope=Scope([0], [1]),
             cond_f=lambda data: {"alpha": [0.8, 0.3], "beta": [1.3, 0.4]},
             n_nodes=2,
         )

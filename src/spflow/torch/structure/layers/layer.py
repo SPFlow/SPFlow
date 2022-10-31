@@ -120,7 +120,7 @@ class SPNSumLayer(Module):
                             f"'SPNSumLayer' requires child scopes to have the same query variables."
                         )
 
-                scope = scope.union(s)
+                scope = scope.join(s)
 
         self.scope = scope
 
@@ -355,7 +355,7 @@ class SPNProductLayer(Module):
                         f"'SPNProductNode' requires child scopes to be pair-wise disjoint."
                     )
 
-                scope = scope.union(s)
+                scope = scope.join(s)
 
         self.scope = scope
 
@@ -559,7 +559,7 @@ class SPNPartitionLayer(Module):
                         partition_scope.equal_query(s)
                         or partition_scope.isempty()
                     ):
-                        partition_scope = partition_scope.union(s)
+                        partition_scope = partition_scope.join(s)
                     else:
                         raise ValueError(
                             "Scopes of modules inside a partition must have same query scope."
@@ -571,7 +571,7 @@ class SPNPartitionLayer(Module):
 
             # check if partition is pairwise disjoint to the overall scope so far (makes sure all partitions have pair-wise disjoint scopes)
             if partition_scope.isdisjoint(scope):
-                scope = scope.union(partition_scope)
+                scope = scope.join(partition_scope)
             else:
                 raise ValueError(
                     "Scopes of partitions must be pair-wise disjoint."
@@ -818,7 +818,7 @@ class SPNHadamardLayer(Module):
                         partition_scope.equal_query(s)
                         or partition_scope.isempty()
                     ):
-                        partition_scope = partition_scope.union(s)
+                        partition_scope = partition_scope.join(s)
                     else:
                         raise ValueError(
                             "Scopes of modules inside a partition must have same query scope."
@@ -838,7 +838,7 @@ class SPNHadamardLayer(Module):
 
             # check if partition is pairwise disjoint to the overall scope so far (makes sure all partitions have pair-wise disjoint scopes)
             if partition_scope.isdisjoint(scope):
-                scope = scope.union(partition_scope)
+                scope = scope.join(partition_scope)
             else:
                 raise ValueError(
                     "Scopes of partitions must be pair-wise disjoint."

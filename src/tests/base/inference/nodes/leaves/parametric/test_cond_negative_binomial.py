@@ -15,7 +15,7 @@ import unittest
 class TestCondNegativeBinomial(unittest.TestCase):
     def test_likelihood_no_p(self):
 
-        negative_binomial = CondNegativeBinomial(Scope([0]), n=1)
+        negative_binomial = CondNegativeBinomial(Scope([0], [1]), n=1)
         self.assertRaises(
             ValueError, log_likelihood, negative_binomial, np.array([[0], [1]])
         )
@@ -24,7 +24,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
 
         cond_f = lambda data: {"p": 1.0}
 
-        negative_binomial = CondNegativeBinomial(Scope([0]), n=1, cond_f=cond_f)
+        negative_binomial = CondNegativeBinomial(Scope([0], [1]), n=1, cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.array([[0.0], [1.0]])
@@ -38,7 +38,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        negative_binomial = CondNegativeBinomial(Scope([0]), n=1)
+        negative_binomial = CondNegativeBinomial(Scope([0], [1]), n=1)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[negative_binomial] = {"p": 1.0}
@@ -57,7 +57,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        negative_binomial = CondNegativeBinomial(Scope([0]), n=1)
+        negative_binomial = CondNegativeBinomial(Scope([0], [1]), n=1)
 
         cond_f = lambda data: {"p": 1.0}
 
@@ -80,7 +80,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
 
         # ----- configuration 1 -----
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=10, cond_f=lambda data: {"p": 0.4}
+            Scope([0], [1]), n=10, cond_f=lambda data: {"p": 0.4}
         )
 
         # create test inputs/outputs
@@ -97,7 +97,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
 
         # ----- configuration 2 -----
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=20, cond_f=lambda data: {"p": 0.3}
+            Scope([0], [1]), n=20, cond_f=lambda data: {"p": 0.3}
         )
 
         # create test inputs/outputs
@@ -114,7 +114,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
 
         # p = 1
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=1, cond_f=lambda data: {"p": 1.0}
+            Scope([0], [1]), n=1, cond_f=lambda data: {"p": 1.0}
         )
 
         data = np.array([[0.0], [1.0]])
@@ -129,7 +129,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
     def test_likelihood_p_none(self):
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=1, cond_f=lambda data: {"p": None}
+            Scope([0], [1]), n=1, cond_f=lambda data: {"p": None}
         )
 
         data = np.array([[0.0], [1.0]])
@@ -139,7 +139,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
     def test_likelihood_n_none(self):
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=1, cond_f=lambda data: {"p": 0.5}
+            Scope([0], [1]), n=1, cond_f=lambda data: {"p": 0.5}
         )
 
         data = np.array([[0.0], [1.0]])
@@ -151,7 +151,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
     def test_likelihood_float(self):
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=1, cond_f=lambda data: {"p": 0.5}
+            Scope([0], [1]), n=1, cond_f=lambda data: {"p": 0.5}
         )
 
         # TODO: n float
@@ -160,7 +160,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=20, cond_f=lambda data: {"p": 0.3}
+            Scope([0], [1]), n=20, cond_f=lambda data: {"p": 0.3}
         )
         data = np.array([[np.nan, np.nan]])
 
@@ -180,7 +180,7 @@ class TestCondNegativeBinomial(unittest.TestCase):
         #   log-likelihood: -inf->fmin
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), n=20, cond_f=lambda data: {"p": 0.3}
+            Scope([0], [1]), n=20, cond_f=lambda data: {"p": 0.3}
         )
 
         # check infinite values

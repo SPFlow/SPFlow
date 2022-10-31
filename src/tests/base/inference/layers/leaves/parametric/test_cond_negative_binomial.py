@@ -23,7 +23,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_p(self):
 
         negative_binomial = CondNegativeBinomialLayer(
-            Scope([0]), n=2, n_nodes=2
+            Scope([0], [1]), n=2, n_nodes=2
         )
         self.assertRaises(
             ValueError, log_likelihood, negative_binomial, np.array([[0], [1]])
@@ -34,7 +34,7 @@ class TestNode(unittest.TestCase):
         cond_f = lambda data: {"p": [1.0, 1.0]}
 
         negative_binomial = CondNegativeBinomialLayer(
-            Scope([0]), n=2, n_nodes=2, cond_f=cond_f
+            Scope([0], [1]), n=2, n_nodes=2, cond_f=cond_f
         )
 
         # create test inputs/outputs
@@ -50,7 +50,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_args_p(self):
 
         negative_binomial = CondNegativeBinomialLayer(
-            Scope([0]), n=2, n_nodes=2
+            Scope([0], [1]), n=2, n_nodes=2
         )
 
         dispatch_ctx = DispatchContext()
@@ -70,7 +70,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        bernoulli = CondNegativeBinomialLayer(Scope([0]), n=2, n_nodes=2)
+        bernoulli = CondNegativeBinomialLayer(Scope([0], [1]), n=2, n_nodes=2)
 
         cond_f = lambda data: {"p": np.array([1.0, 1.0])}
 
@@ -90,7 +90,7 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_1(self):
 
         negative_binomial_layer = CondNegativeBinomialLayer(
-            scope=Scope([0]),
+            scope=Scope([0], [1]),
             n=3,
             cond_f=lambda data: {"p": [0.8, 0.3]},
             n_nodes=2,
@@ -99,10 +99,10 @@ class TestNode(unittest.TestCase):
 
         negative_binomial_nodes = [
             CondNegativeBinomial(
-                Scope([0]), n=3, cond_f=lambda data: {"p": 0.8}
+                Scope([0], [1]), n=3, cond_f=lambda data: {"p": 0.8}
             ),
             CondNegativeBinomial(
-                Scope([0]), n=3, cond_f=lambda data: {"p": 0.3}
+                Scope([0], [1]), n=3, cond_f=lambda data: {"p": 0.3}
             ),
         ]
         s2 = SPNSumNode(children=negative_binomial_nodes, weights=[0.3, 0.7])
@@ -116,7 +116,7 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_2(self):
 
         negative_binomial_layer = CondNegativeBinomialLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             n=[3, 5],
             cond_f=lambda data: {"p": [0.8, 0.3]},
         )
@@ -124,10 +124,10 @@ class TestNode(unittest.TestCase):
 
         negative_binomial_nodes = [
             CondNegativeBinomial(
-                Scope([0]), n=3, cond_f=lambda data: {"p": 0.8}
+                Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.8}
             ),
             CondNegativeBinomial(
-                Scope([1]), n=5, cond_f=lambda data: {"p": 0.3}
+                Scope([1], [2]), n=5, cond_f=lambda data: {"p": 0.3}
             ),
         ]
         p2 = SPNProductNode(children=negative_binomial_nodes)

@@ -46,7 +46,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         cond_f = lambda data: {"mean": torch.zeros(2), "cov": torch.eye(2)}
 
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1]), cond_f=cond_f
+            Scope([0, 1], [2]), cond_f=cond_f
         )
 
         # create test inputs/outputs
@@ -61,7 +61,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1]))
+        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1], [2]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[multivariate_gaussian] = {
@@ -85,7 +85,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1]))
+        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1], [2]))
 
         cond_f = lambda data: {"mean": torch.zeros(2), "cov": torch.eye(2)}
 
@@ -112,10 +112,10 @@ class TestMultivariateGaussian(unittest.TestCase):
         cov = np.array([[2, 2, 1], [2, 3, 2], [1, 2, 3]])
 
         torch_multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1, 2]), cond_f=lambda data: {"mean": mean, "cov": cov}
+            Scope([0, 1, 2], [3]), cond_f=lambda data: {"mean": mean, "cov": cov}
         )
         node_multivariate_gaussian = BaseCondMultivariateGaussian(
-            Scope([0, 1, 2]), cond_f=lambda data: {"mean": mean, "cov": cov}
+            Scope([0, 1, 2], [3]), cond_f=lambda data: {"mean": mean, "cov": cov}
         )
 
         # create dummy input data (batch size x random variables)
@@ -142,7 +142,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         )
 
         torch_multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1, 2]), cond_f=lambda data: {"mean": mean, "cov": cov}
+            Scope([0, 1, 2], [3]), cond_f=lambda data: {"mean": mean, "cov": cov}
         )
 
         # create dummy input data (batch size x random variables)
@@ -166,7 +166,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         # ----- full marginalization -----
 
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1]),
+            Scope([0, 1], [2]),
             cond_f=lambda data: {
                 "mean": torch.zeros(2),
                 "cov": torch.tensor([[2.0, 0.0], [0.0, 1.0]]),
@@ -193,11 +193,11 @@ class TestMultivariateGaussian(unittest.TestCase):
         univariate_gaussians = SPNProductNode(
             children=[
                 CondGaussian(
-                    Scope([0]),
+                    Scope([0], [2]),
                     cond_f=lambda data: {"mean": 0.0, "std": math.sqrt(2.0)},
                 ),  # requires standard deviation instead of variance
                 CondGaussian(
-                    Scope([1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
+                    Scope([1], [2]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
                 ),
             ],
         )
@@ -209,7 +209,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         # higher-dimensional example
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1, 2, 3]),
+            Scope([0, 1, 2, 3], [4]),
             cond_f=lambda data: {
                 "mean": torch.zeros(4),
                 "cov": torch.tensor(
@@ -245,7 +245,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         # Support for Multivariate Gaussian distribution: floats (inf,+inf)^k
 
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1]),
+            Scope([0, 1], [2]),
             cond_f=lambda data: {"mean": np.zeros(2), "cov": np.eye(2)},
         )
 

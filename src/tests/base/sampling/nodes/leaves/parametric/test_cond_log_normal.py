@@ -22,7 +22,7 @@ class TestCondLogNormal(unittest.TestCase):
         # ----- mean = 0.0, std = 1.0 -----
 
         log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
         )
 
         data = np.array([[np.nan], [np.nan], [np.nan]])
@@ -47,7 +47,7 @@ class TestCondLogNormal(unittest.TestCase):
         # ----- mean = 1.0, std = 0.5 -----
 
         log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": 1.0, "std": 0.5}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 1.0, "std": 0.5}
         )
 
         samples = sample(log_normal, 1000)
@@ -58,7 +58,7 @@ class TestCondLogNormal(unittest.TestCase):
     def test_sampling_5(self):
 
         log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": 1.0, "std": 0.5}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 1.0, "std": 0.5}
         )
 
         # make sure that instance ids out of bounds raise errors

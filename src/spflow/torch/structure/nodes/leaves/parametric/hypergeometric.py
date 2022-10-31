@@ -3,8 +3,9 @@
 """
 import numpy as np
 import torch
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union, Type
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -58,7 +59,7 @@ class Hypergeometric(LeafNode):
             raise ValueError(
                 f"Query scope size for 'Hypergeometric' should be 1, but was: {len(scope.query)}."
             )
-        if len(scope.evidence):
+        if len(scope.evidence) != 0:
             raise ValueError(
                 f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}."
             )
@@ -72,6 +73,45 @@ class Hypergeometric(LeafNode):
 
         # set parameters
         self.set_params(N, M, n)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf only has one output
+        if len(signatures) != 1:
+            return False
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        # leaf is a single non-conditional univariate node
+        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+            return False
+        
+        # leaf is a discrete Hypergeometric distribution
+        # NOTE: only accept instances of 'FeatureTypes.Hypergeometric', otherwise required parameters 'N','M','n' are not specified. Reject 'FeatureTypes.Discrete' for the same reason.
+        if not isinstance(types[0], FeatureTypes.Hypergeometric):
+            return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "Hypergeometric":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'Hypergeometric' cannot be instantiated from the following signatures: {signatures}.")
+
+        # get single output signature
+        types, scope = signatures[0]
+        type = types[0]
+
+        # read or initialize parameters
+        if isinstance(type, FeatureTypes.Hypergeometric):
+            N, M, n = type.N, type.M, type.n
+        else:
+            raise ValueError(f"Unknown signature type {type} for 'Hypergeometric' that was not caught during acception checking.")
+
+        return Hypergeometric(scope, N=N, M=M, n=n)
 
     def log_prob(self, k: torch.Tensor) -> torch.Tensor:
         """Computes the log-likelihood for specified input data.

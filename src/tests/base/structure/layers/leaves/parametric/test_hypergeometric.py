@@ -2,10 +2,12 @@ from spflow.base.structure.layers.leaves.parametric.hypergeometric import (
     HypergeometricLayer,
     marginalize,
 )
+from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
     Hypergeometric,
 )
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
 import numpy as np
 import unittest
 
@@ -226,6 +228,73 @@ class TestLayer(unittest.TestCase):
         )
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
+
+    def test_accept(self):
+
+        # discrete meta type (should reject)
+        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Discrete], Scope([1]))]))
+
+        # Bernoulli feature type class (should reject)
+        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Hypergeometric], Scope([0])), ([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([1]))]))
+
+        # Bernoulli feature type instance
+        self.assertTrue(HypergeometricLayer.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0])), ([FeatureTypes.Hypergeometric(N=6, M=5, n=4)], Scope([1]))]))
+
+        # invalid feature type
+        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Hypergeometric(N=6, M=5, n=4)], Scope([1]))]))
+
+        # conditional scope
+        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0], [1]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0, 1]))]))
+
+        # multivariate signature
+        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3), FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0, 1]))]))
+
+    def test_initialization_from_signatures(self):
+
+        hypergeometric = HypergeometricLayer.from_signatures([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0])), ([FeatureTypes.Hypergeometric(N=6, M=5, n=4)], Scope([1]))])
+        self.assertTrue(np.all(hypergeometric.N == np.array([4, 6])))
+        self.assertTrue(np.all(hypergeometric.M == np.array([2, 5])))
+        self.assertTrue(np.all(hypergeometric.n == np.array([3, 4])))
+        self.assertTrue(hypergeometric.scopes_out == [Scope([0]), Scope([1])])
+
+        # ----- invalid arguments -----
+
+        # discrete meta type
+        self.assertRaises(ValueError, HypergeometricLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+
+        # Bernoulli feature type class
+        self.assertRaises(ValueError, HypergeometricLayer.from_signatures, [([FeatureTypes.Hypergeometric], Scope([0]))])
+
+        # invalid feature type
+        self.assertRaises(ValueError, HypergeometricLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+
+        # conditional scope
+        self.assertRaises(ValueError, HypergeometricLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, HypergeometricLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0, 1]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, Hypergeometric.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(HypergeometricLayer))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(HypergeometricLayer, AutoLeaf.infer([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0])), ([FeatureTypes.Hypergeometric(N=6, M=5, n=4)], Scope([1]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        hypergeometric = AutoLeaf([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0])), ([FeatureTypes.Hypergeometric(N=6, M=5, n=4)], Scope([1]))])
+        self.assertTrue(isinstance(hypergeometric, HypergeometricLayer))
+        self.assertTrue(np.all(hypergeometric.N == np.array([4, 6])))
+        self.assertTrue(np.all(hypergeometric.M == np.array([2, 5])))
+        self.assertTrue(np.all(hypergeometric.n == np.array([3, 4])))
+        self.assertTrue(hypergeometric.scopes_out == [Scope([0]), Scope([1])])
 
     def test_layer_structural_marginalization(self):
 

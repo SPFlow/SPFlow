@@ -23,7 +23,6 @@ import torch
 import numpy as np
 import random
 import unittest
-import itertools
 
 
 class TestNode(unittest.TestCase):
@@ -43,14 +42,14 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         layer = CondPoissonLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             cond_f=lambda data: {"l": [0.2, 1.8, 0.2]},
         )
 
         nodes = [
-            CondPoisson(Scope([0]), cond_f=lambda data: {"l": 0.2}),
-            CondPoisson(Scope([1]), cond_f=lambda data: {"l": 1.8}),
-            CondPoisson(Scope([0]), cond_f=lambda data: {"l": 0.2}),
+            CondPoisson(Scope([0], [2]), cond_f=lambda data: {"l": 0.2}),
+            CondPoisson(Scope([1], [2]), cond_f=lambda data: {"l": 1.8}),
+            CondPoisson(Scope([0], [2]), cond_f=lambda data: {"l": 0.2}),
         ]
 
         # make sure sampling fron non-overlapping scopes works

@@ -21,20 +21,20 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_alpha(self):
 
         gamma = CondGammaLayer(
-            Scope([0]), cond_f=lambda data: {"beta": [1.0, 1.0]}, n_nodes=2
+            Scope([0], [1]), cond_f=lambda data: {"beta": [1.0, 1.0]}, n_nodes=2
         )
         self.assertRaises(KeyError, log_likelihood, gamma, np.array([[0], [1]]))
 
     def test_likelihood_no_beta(self):
 
         gamma = CondGammaLayer(
-            Scope([0]), cond_f=lambda data: {"alpha": [1.0, 1.0]}, n_nodes=2
+            Scope([0], [1]), cond_f=lambda data: {"alpha": [1.0, 1.0]}, n_nodes=2
         )
         self.assertRaises(KeyError, log_likelihood, gamma, np.array([[0], [1]]))
 
     def test_likelihood_no_alpha_beta(self):
 
-        gamma = CondGammaLayer(Scope([0]), n_nodes=2)
+        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError, log_likelihood, gamma, np.array([[0], [1]])
         )
@@ -43,7 +43,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
 
-        gamma = CondGammaLayer(Scope([0]), n_nodes=2, cond_f=cond_f)
+        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.array([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
@@ -59,7 +59,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args(self):
 
-        gamma = CondGammaLayer(Scope([0]), n_nodes=2)
+        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[gamma] = {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
@@ -78,7 +78,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        gamma = CondGammaLayer(Scope([0]), n_nodes=2)
+        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
 
         cond_f = lambda data: {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
 
@@ -100,7 +100,7 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_1(self):
 
         gamma_layer = CondGammaLayer(
-            scope=Scope([0]),
+            scope=Scope([0], [1]),
             cond_f=lambda data: {"alpha": [0.8, 0.3], "beta": [1.3, 0.4]},
             n_nodes=2,
         )
@@ -108,10 +108,10 @@ class TestNode(unittest.TestCase):
 
         gamma_nodes = [
             CondGamma(
-                Scope([0]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
+                Scope([0], [1]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
             ),
             CondGamma(
-                Scope([0]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
+                Scope([0], [1]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
             ),
         ]
         s2 = SPNSumNode(children=gamma_nodes, weights=[0.3, 0.7])
@@ -125,17 +125,17 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_2(self):
 
         gamma_layer = CondGammaLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"alpha": [0.8, 0.3], "beta": [1.3, 0.4]},
         )
         p1 = SPNProductNode(children=[gamma_layer])
 
         gamma_nodes = [
             CondGamma(
-                Scope([0]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
+                Scope([0], [2]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
             ),
             CondGamma(
-                Scope([1]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
+                Scope([1], [2]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
             ),
         ]
         p2 = SPNProductNode(children=gamma_nodes)

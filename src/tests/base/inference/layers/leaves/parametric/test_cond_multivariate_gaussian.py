@@ -23,7 +23,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_mean(self):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1]),
+            Scope([0, 1], [2]),
             cond_f=lambda data: {
                 "cov": [[[1.0, 0.0], [0.0, 1.0]], [[1.0, 0.0], [0.0, 1.0]]]
             },
@@ -39,7 +39,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_cov(self):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1]),
+            Scope([0, 1], [2]),
             cond_f=lambda data: {"mean": [[0.0, 0.0], [0.0, 0.0]]},
             n_nodes=2,
         )
@@ -53,7 +53,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_mean_cov(self):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0]), n_nodes=2
+            Scope([0], [1]), n_nodes=2
         )
         self.assertRaises(
             ValueError,
@@ -70,7 +70,7 @@ class TestNode(unittest.TestCase):
         }
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1]), n_nodes=2, cond_f=cond_f
+            Scope([0, 1], [2]), n_nodes=2, cond_f=cond_f
         )
 
         # create test inputs/outputs
@@ -86,7 +86,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_args(self):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1]), n_nodes=2
+            Scope([0, 1], [2]), n_nodes=2
         )
 
         dispatch_ctx = DispatchContext()
@@ -112,7 +112,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_args_cond_f(self):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1]), n_nodes=2
+            Scope([0, 1], [2]), n_nodes=2
         )
 
         cond_f = lambda data: {
@@ -140,7 +140,7 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_1(self):
 
         multivariate_gaussian_layer = CondMultivariateGaussianLayer(
-            scope=Scope([0, 1]),
+            scope=Scope([0, 1], [2]),
             cond_f=lambda data: {
                 "mean": [[0.8, 0.3], [0.2, -0.1]],
                 "cov": [[[1.3, 0.4], [0.4, 0.5]], [[0.5, 0.1], [0.1, 1.4]]],
@@ -153,14 +153,14 @@ class TestNode(unittest.TestCase):
 
         multivariate_gaussian_nodes = [
             CondMultivariateGaussian(
-                Scope([0, 1]),
+                Scope([0, 1], [2]),
                 cond_f=lambda data: {
                     "mean": [0.8, 0.3],
                     "cov": [[1.3, 0.4], [0.4, 0.5]],
                 },
             ),
             CondMultivariateGaussian(
-                Scope([0, 1]),
+                Scope([0, 1], [2]),
                 cond_f=lambda data: {
                     "mean": [0.2, -0.1],
                     "cov": [[0.5, 0.1], [0.1, 1.4]],
@@ -180,7 +180,7 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_2(self):
 
         multivariate_gaussian_layer = CondMultivariateGaussianLayer(
-            scope=[Scope([0, 1]), Scope([2, 3])],
+            scope=[Scope([0, 1], [4]), Scope([2, 3], [4])],
             cond_f=lambda data: {
                 "mean": [[0.8, 0.3], [0.2, -0.1]],
                 "cov": [[[1.3, 0.4], [0.4, 0.5]], [[0.5, 0.1], [0.1, 1.4]]],
@@ -190,14 +190,14 @@ class TestNode(unittest.TestCase):
 
         multivariate_gaussian_nodes = [
             CondMultivariateGaussian(
-                Scope([0, 1]),
+                Scope([0, 1], [4]),
                 cond_f=lambda data: {
                     "mean": [0.8, 0.3],
                     "cov": [[1.3, 0.4], [0.4, 0.5]],
                 },
             ),
             CondMultivariateGaussian(
-                Scope([2, 3]),
+                Scope([2, 3], [4]),
                 cond_f=lambda data: {
                     "mean": [0.2, -0.1],
                     "cov": [[0.5, 0.1], [0.1, 1.4]],

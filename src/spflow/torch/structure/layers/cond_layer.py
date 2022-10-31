@@ -101,7 +101,7 @@ class SPNCondSumLayer(Module):
                             f"'SPNCondSumLayer' requires child scopes to have the same query variables."
                         )
 
-                scope = scope.union(s)
+                scope = scope.join(s)
 
         self.scope = scope
 

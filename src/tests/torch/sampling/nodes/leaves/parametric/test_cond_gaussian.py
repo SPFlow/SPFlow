@@ -29,7 +29,7 @@ class TestGaussian(unittest.TestCase):
         random.seed(0)
 
         gaussian = CondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 0.0005}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 0.0005}
         )
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])

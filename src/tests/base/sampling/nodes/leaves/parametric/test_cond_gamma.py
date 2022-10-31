@@ -20,7 +20,7 @@ class TestCondGamma(unittest.TestCase):
         # ----- alpha = 1, beta = 1 -----
 
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
         )
 
         data = np.array([[np.nan], [np.nan], [np.nan]])
@@ -45,7 +45,7 @@ class TestCondGamma(unittest.TestCase):
         # ----- alpha = 0.5, beta = 1.5 -----
 
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 0.5, "beta": 1.5}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 0.5, "beta": 1.5}
         )
 
         samples = sample(gamma, 1000)
@@ -62,7 +62,7 @@ class TestCondGamma(unittest.TestCase):
         # ----- alpha = 1.5, beta = 0.5 -----
 
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 1.5, "beta": 0.5}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.5, "beta": 0.5}
         )
 
         samples = sample(gamma, 1000)
@@ -73,7 +73,7 @@ class TestCondGamma(unittest.TestCase):
     def test_sampling_4(self):
 
         gamma = CondGamma(
-            Scope([0]), cond_f=lambda data: {"alpha": 1.5, "beta": 0.5}
+            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.5, "beta": 0.5}
         )
 
         # make sure that instance ids out of bounds raise errors

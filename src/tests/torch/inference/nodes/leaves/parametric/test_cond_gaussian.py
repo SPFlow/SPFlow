@@ -36,7 +36,7 @@ class TestGaussian(unittest.TestCase):
 
         cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
-        gaussian = CondGaussian(Scope([0]), cond_f=cond_f)
+        gaussian = CondGaussian(Scope([0], [1]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0.0], [1.0], [1.0]])
@@ -50,7 +50,7 @@ class TestGaussian(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        gaussian = CondGaussian(Scope([0]))
+        gaussian = CondGaussian(Scope([0], [1]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[gaussian] = {"mean": 0.0, "std": 1.0}
@@ -67,7 +67,7 @@ class TestGaussian(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        gaussian = CondGaussian(Scope([0]))
+        gaussian = CondGaussian(Scope([0], [1]))
 
         cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
@@ -90,10 +90,10 @@ class TestGaussian(unittest.TestCase):
         std = random.random() + 1e-7  # offset by small number to avoid zero
 
         torch_gaussian = CondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": mean, "std": std}
+            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
         )
         node_gaussian = BaseCondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": mean, "std": std}
+            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
         )
 
         # create dummy input data (batch size x random variables)
@@ -115,7 +115,7 @@ class TestGaussian(unittest.TestCase):
         )  # offset by small number to avoid zero
 
         torch_gaussian = CondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": mean, "std": std}
+            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
         )
 
         # create dummy input data (batch size x random variables)
@@ -135,7 +135,7 @@ class TestGaussian(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         gaussian = CondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
         )
         data = torch.tensor([[float("nan")]])
 
@@ -149,7 +149,7 @@ class TestGaussian(unittest.TestCase):
         # Support for Gaussian distribution: floats (-inf, inf)
 
         gaussian = CondGaussian(
-            Scope([0]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
         )
 
         # check infinite values

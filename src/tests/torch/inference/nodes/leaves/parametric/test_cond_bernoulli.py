@@ -37,7 +37,7 @@ class TestBernoulli(unittest.TestCase):
         p = random.random()
         cond_f = lambda data: {"p": p}
 
-        bernoulli = CondBernoulli(Scope([0]), cond_f=cond_f)
+        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0], [1]])
@@ -51,7 +51,7 @@ class TestBernoulli(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        bernoulli = CondBernoulli(Scope([0]))
+        bernoulli = CondBernoulli(Scope([0], [1]))
 
         p = random.random()
         dispatch_ctx = DispatchContext()
@@ -69,7 +69,7 @@ class TestBernoulli(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        bernoulli = CondBernoulli(Scope([0]))
+        bernoulli = CondBernoulli(Scope([0], [1]))
 
         p = random.random()
         cond_f = lambda data: {"p": p}
@@ -92,10 +92,10 @@ class TestBernoulli(unittest.TestCase):
         p = np.array(0.5)
 
         torch_bernoulli = CondBernoulli(
-            Scope([0]), cond_f=lambda data: {"p": torch.tensor(p)}
+            Scope([0], [1]), cond_f=lambda data: {"p": torch.tensor(p)}
         )
         node_bernoulli = BaseCondBernoulli(
-            Scope([0]), cond_f=lambda data: {"p": p}
+            Scope([0], [1]), cond_f=lambda data: {"p": p}
         )
 
         # create dummy input data (batch size x random variables)
@@ -114,7 +114,7 @@ class TestBernoulli(unittest.TestCase):
         p = torch.tensor(0.5, requires_grad=True)
 
         torch_bernoulli = CondBernoulli(
-            Scope([0]), cond_f=lambda data: {"p": p}
+            Scope([0], [1]), cond_f=lambda data: {"p": p}
         )
 
         # create dummy input data (batch size x random variables)
@@ -133,7 +133,7 @@ class TestBernoulli(unittest.TestCase):
     def test_likelihood_p_0(self):
 
         # p = 0
-        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.0})
+        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.0})
 
         data = torch.tensor([[0.0], [1.0]])
         targets = torch.tensor([[1.0], [0.0]])
@@ -147,7 +147,7 @@ class TestBernoulli(unittest.TestCase):
     def test_likelihood_p_1(self):
 
         # p = 1
-        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 1.0})
+        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 1.0})
 
         data = torch.tensor([[0.0], [1.0]])
         targets = torch.tensor([[0.0], [1.0]])
@@ -161,7 +161,7 @@ class TestBernoulli(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         bernoulli = CondBernoulli(
-            Scope([0]), cond_f=lambda data: {"p": random.random()}
+            Scope([0], [1]), cond_f=lambda data: {"p": random.random()}
         )
         data = torch.tensor([[float("nan")]])
 
@@ -175,7 +175,7 @@ class TestBernoulli(unittest.TestCase):
         # Support for Bernoulli distribution: integers {0,1}
 
         p = random.random()
-        bernoulli = CondBernoulli(Scope([0]), cond_f=lambda data: {"p": p})
+        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": p})
 
         # check infinite values
         self.assertRaises(

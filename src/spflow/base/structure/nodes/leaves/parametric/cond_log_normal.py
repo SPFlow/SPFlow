@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """Contains conditional Log-Normal leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Optional, Tuple, Callable, Union
+from typing import Optional, Tuple, Callable, Union, List, Type
 import numpy as np
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.node import LeafNode
 
@@ -47,14 +48,53 @@ class CondLogNormal(LeafNode):
             raise ValueError(
                 f"Query scope size for LogNormal should be 1, but was: {len(scope.query)}."
             )
-        if len(scope.evidence):
+        if len(scope.evidence) == 0:
             raise ValueError(
-                f"Evidence scope for LogNormal should be empty, but was {scope.evidence}."
+                f"Evidence scope for LogNormal should not be empty."
             )
 
         super(CondLogNormal, self).__init__(scope=scope)
 
+        # set optional conditional function
         self.set_cond_f(cond_f)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf only has one output
+        if len(signatures) != 1:
+            return False
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        # leaf is a single non-conditional univariate node
+        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) == 0:
+            return False
+        
+        # leaf is a continuous Log-Normal distribution
+        if not (types[0] == FeatureTypes.Continuous or types[0] == FeatureTypes.LogNormal or isinstance(types[0], FeatureTypes.LogNormal)):
+            return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "CondLogNormal":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'CondLogNormal' cannot be instantiated from the following signatures: {signatures}.")
+
+        # get single output signature
+        types, scope = signatures[0]
+        type = types[0]
+
+        # read or initialize parameters
+        if type == MetaType.Continuous or  type == FeatureTypes.LogNormal or isinstance(type, FeatureTypes.LogNormal):
+            pass
+        else:
+            raise ValueError(f"Unknown signature type {type} for 'CondLogNormal' that was not caught during acception checking.")
+
+        return CondLogNormal(scope)
 
     def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         r"""Sets the function to retrieve the node's conditonal parameter.

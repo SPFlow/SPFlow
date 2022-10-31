@@ -32,7 +32,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         binomial_layer = CondBinomialLayer(
-            scope=Scope([0]),
+            scope=Scope([0], [1]),
             n=3,
             cond_f=lambda data: {"p": [0.8, 0.3]},
             n_nodes=2,
@@ -40,8 +40,8 @@ class TestNode(unittest.TestCase):
         s1 = SPNSumNode(children=[binomial_layer], weights=[0.3, 0.7])
 
         binomial_nodes = [
-            CondBinomial(Scope([0]), n=3, cond_f=lambda data: {"p": 0.8}),
-            CondBinomial(Scope([0]), n=3, cond_f=lambda data: {"p": 0.3}),
+            CondBinomial(Scope([0], [1]), n=3, cond_f=lambda data: {"p": 0.8}),
+            CondBinomial(Scope([0], [1]), n=3, cond_f=lambda data: {"p": 0.3}),
         ]
         s2 = SPNSumNode(children=binomial_nodes, weights=[0.3, 0.7])
 
@@ -63,15 +63,15 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         binomial_layer = CondBinomialLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             n=[3, 5],
             cond_f=lambda data: {"p": [0.8, 0.3]},
         )
         p1 = SPNProductNode(children=[binomial_layer])
 
         binomial_nodes = [
-            CondBinomial(Scope([0]), n=3, cond_f=lambda data: {"p": 0.8}),
-            CondBinomial(Scope([1]), n=5, cond_f=lambda data: {"p": 0.3}),
+            CondBinomial(Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.8}),
+            CondBinomial(Scope([1], [2]), n=5, cond_f=lambda data: {"p": 0.3}),
         ]
         p2 = SPNProductNode(children=binomial_nodes)
 
@@ -89,7 +89,7 @@ class TestNode(unittest.TestCase):
     def test_sampling_3(self):
 
         binomial_layer = CondBinomialLayer(
-            scope=Scope([0]),
+            scope=Scope([0], [1]),
             n=3,
             cond_f=lambda data: {"p": [0.8, 0.3]},
             n_nodes=2,

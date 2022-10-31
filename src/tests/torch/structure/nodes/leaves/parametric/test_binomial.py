@@ -1,4 +1,6 @@
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.binomial import (
     Binomial as BaseBinomial,
 )
@@ -65,6 +67,73 @@ class TestBinomial(unittest.TestCase):
         self.assertRaises(Exception, Binomial, Scope([]), 1, 0.5)
         self.assertRaises(Exception, Binomial, Scope([0, 1]), 1, 0.5)
         self.assertRaises(Exception, Binomial, Scope([0], [1]), 1, 0.5)
+
+    def test_accept(self):
+
+        # discrete meta type (should reject)
+        self.assertFalse(Binomial.accepts([([FeatureTypes.Discrete], Scope([0]))]))
+
+        # Bernoulli feature type class (should reject)
+        self.assertFalse(Binomial.accepts([([FeatureTypes.Binomial], Scope([0]))]))
+
+        # Bernoulli feature type instance
+        self.assertTrue(Binomial.accepts([([FeatureTypes.Binomial(n=3)], Scope([0]))]))
+
+        # invalid feature type
+        self.assertFalse(Binomial.accepts([([FeatureTypes.Continuous], Scope([0]))]))
+
+        # conditional scope
+        self.assertFalse(Binomial.accepts([([FeatureTypes.Binomial(n=3)], Scope([0], [1]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(Binomial.accepts([([FeatureTypes.Binomial(n=3)], Scope([0, 1]))]))
+
+        # multivariate signature
+        self.assertFalse(Binomial.accepts([([FeatureTypes.Binomial(n=3), FeatureTypes.Binomial(n=3)], Scope([0, 1]))]))
+
+    def test_initialization_from_signatures(self):
+
+        binomial = Binomial.from_signatures([([FeatureTypes.Binomial(n=3)], Scope([0]))])
+        self.assertTrue(torch.isclose(binomial.n, torch.tensor(3)))
+        self.assertTrue(torch.isclose(binomial.p, torch.tensor(0.5)))
+
+        binomial = Binomial.from_signatures([([FeatureTypes.Binomial(n=3, p=0.75)], Scope([0]))])
+        self.assertTrue(torch.isclose(binomial.n, torch.tensor(3)))
+        self.assertTrue(torch.isclose(binomial.p, torch.tensor(0.75)))
+
+        # ----- invalid arguments -----
+
+        # discrete meta type
+        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+
+        # Bernoulli feature type class
+        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Binomial], Scope([0]))])
+
+        # invalid feature type
+        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+
+        # conditional scope
+        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Discrete], Scope([0, 1]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(Binomial))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(Binomial, AutoLeaf.infer([([FeatureTypes.Binomial(n=3)], Scope([0]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        binomial = AutoLeaf([([FeatureTypes.Binomial(n=3, p=0.75)], Scope([0]))])
+        self.assertTrue(isinstance(binomial, Binomial))
+        self.assertTrue(torch.isclose(binomial.n, torch.tensor(3)))
+        self.assertTrue(torch.isclose(binomial.p, torch.tensor(0.75)))
 
     def test_structural_marginalization(self):
 

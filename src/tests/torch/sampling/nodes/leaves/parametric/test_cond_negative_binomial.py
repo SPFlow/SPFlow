@@ -33,7 +33,7 @@ class TestNegativeBinomial(unittest.TestCase):
         # ----- n = 1, p = 1.0 -----
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), 1, cond_f=lambda data: {"p": 1.0}
+            Scope([0], [1]), 1, cond_f=lambda data: {"p": 1.0}
         )
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
@@ -56,7 +56,7 @@ class TestNegativeBinomial(unittest.TestCase):
         # ----- n = 10, p = 0.3 -----
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), 10, cond_f=lambda data: {"p": 0.3}
+            Scope([0], [1]), 10, cond_f=lambda data: {"p": 0.3}
         )
 
         samples = sample(negative_binomial, 1000)
@@ -76,7 +76,7 @@ class TestNegativeBinomial(unittest.TestCase):
         # ----- n = 5, p = 0.8 -----
 
         negative_binomial = CondNegativeBinomial(
-            Scope([0]), 5, cond_f=lambda data: {"p": 0.8}
+            Scope([0], [1]), 5, cond_f=lambda data: {"p": 0.8}
         )
 
         samples = sample(negative_binomial, 1000)

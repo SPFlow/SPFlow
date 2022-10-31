@@ -42,14 +42,14 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         layer = CondGeometricLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             cond_f=lambda data: {"p": [0.2, 0.8, 0.2]},
         )
 
         nodes = [
-            CondGeometric(Scope([0]), cond_f=lambda data: {"p": 0.2}),
-            CondGeometric(Scope([1]), cond_f=lambda data: {"p": 0.8}),
-            CondGeometric(Scope([0]), cond_f=lambda data: {"p": 0.2}),
+            CondGeometric(Scope([0], [2]), cond_f=lambda data: {"p": 0.2}),
+            CondGeometric(Scope([1], [2]), cond_f=lambda data: {"p": 0.8}),
+            CondGeometric(Scope([0], [2]), cond_f=lambda data: {"p": 0.2}),
         ]
 
         # make sure sampling fron non-overlapping scopes works

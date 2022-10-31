@@ -36,7 +36,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         multivariate_gaussian_layer = CondMultivariateGaussianLayer(
-            scope=Scope([0, 1]),
+            scope=Scope([0, 1], [2]),
             cond_f=lambda data: {
                 "mean": [[0.8, 0.3], [0.2, -0.1]],
                 "cov": [
@@ -52,14 +52,14 @@ class TestNode(unittest.TestCase):
 
         multivariate_gaussian_nodes = [
             CondMultivariateGaussian(
-                Scope([0, 1]),
+                Scope([0, 1], [2]),
                 cond_f=lambda data: {
                     "mean": [0.8, 0.3],
                     "cov": [[0.13, 0.08], [0.08, 0.05]],
                 },
             ),
             CondMultivariateGaussian(
-                Scope([0, 1]),
+                Scope([0, 1], [2]),
                 cond_f=lambda data: {
                     "mean": [0.2, -0.1],
                     "cov": [[0.17, 0.054], [0.054, 0.0296]],
@@ -88,7 +88,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         multivariate_gaussian_layer = CondMultivariateGaussianLayer(
-            scope=[Scope([0, 1]), Scope([2, 3])],
+            scope=[Scope([0, 1], [4]), Scope([2, 3], [4])],
             cond_f=lambda data: {
                 "mean": [[0.8, 0.3], [0.2, -0.1]],
                 "cov": [
@@ -101,14 +101,14 @@ class TestNode(unittest.TestCase):
 
         multivariate_gaussian_nodes = [
             CondMultivariateGaussian(
-                Scope([0, 1]),
+                Scope([0, 1], [4]),
                 cond_f=lambda data: {
                     "mean": [0.8, 0.3],
                     "cov": [[0.13, 0.08], [0.08, 0.05]],
                 },
             ),
             CondMultivariateGaussian(
-                Scope([2, 3]),
+                Scope([2, 3], [4]),
                 cond_f=lambda data: {
                     "mean": [0.2, -0.1],
                     "cov": [[0.17, 0.054], [0.054, 0.0296]],
@@ -131,7 +131,7 @@ class TestNode(unittest.TestCase):
     def test_sampling_3(self):
 
         multivariate_gaussian_layer = CondMultivariateGaussianLayer(
-            scope=Scope([0, 1]),
+            scope=Scope([0, 1], [2]),
             cond_f=lambda data: {
                 "mean": [[0.8, 0.3], [0.2, -0.1]],
                 "cov": [

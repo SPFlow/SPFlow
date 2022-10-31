@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains Multivariate Gaussian leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple
+from typing import List, Union, Optional, Iterable, Tuple, Type
 from functools import reduce
 import numpy as np
 import torch
@@ -13,6 +13,8 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
@@ -119,11 +121,57 @@ class MultivariateGaussianLayer(Module):
         # compute scope
         self.scopes_out = scope
         self.combined_scope = reduce(
-            lambda s1, s2: s1.union(s2), self.scopes_out
+            lambda s1, s2: s1.join(s2), self.scopes_out
         )
 
         # parse weights
         self.set_params(mean, cov)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf has at least one output
+        if len(signatures) < 1:
+            return False
+
+        for signature in signatures:
+            if not MultivariateGaussian.accepts([signature]):
+                return False
+    
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "MultivariateGaussianLayer":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'MultivariateGaussianLayer' cannot be instantiated from the following signatures: {signatures}.")
+
+        mean_list = []
+        cov_list = []
+        scopes = []
+
+        for types, scope in signatures:
+        
+            mean, cov = np.zeros(len(scope.query)), np.eye(len(scope.query))
+
+            for i, type in enumerate(types):
+                # read or initialize parameters
+                if type == MetaType.Continuous:
+                    pass
+                elif type == FeatureTypes.Gaussian:
+                    # instantiate object
+                    type = type()
+                    mean[i], cov[i][i] = type.mean, type.std
+                elif isinstance(type, FeatureTypes.Gaussian):
+                    mean[i], cov[i][i] = type.mean, type.std
+                else:
+                    raise ValueError(f"Unknown signature type {type} for 'MultivariateGaussianLayer' that was not caught during acception checking.")
+
+            mean_list.append(mean)
+            cov_list.append(cov)
+            scopes.append(scope)
+
+        return MultivariateGaussianLayer(scopes, mean=mean_list, cov=cov_list)
 
     @property
     def n_out(self) -> int:

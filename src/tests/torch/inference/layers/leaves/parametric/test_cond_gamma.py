@@ -28,7 +28,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_alpha(self):
 
         gamma = CondGammaLayer(
-            Scope([0]), cond_f=lambda data: {"beta": [1.0, 1.0]}, n_nodes=2
+            Scope([0], [1]), cond_f=lambda data: {"beta": [1.0, 1.0]}, n_nodes=2
         )
         self.assertRaises(
             KeyError, log_likelihood, gamma, torch.tensor([[0], [1]])
@@ -37,7 +37,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_beta(self):
 
         gamma = CondGammaLayer(
-            Scope([0]), cond_f=lambda data: {"alpha": [1.0, 1.0]}, n_nodes=2
+            Scope([0], [1]), cond_f=lambda data: {"alpha": [1.0, 1.0]}, n_nodes=2
         )
         self.assertRaises(
             KeyError, log_likelihood, gamma, torch.tensor([[0], [1]])
@@ -45,7 +45,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_alpha_beta(self):
 
-        gamma = CondGammaLayer(Scope([0]), n_nodes=2)
+        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError, log_likelihood, gamma, torch.tensor([[0], [1]])
         )
@@ -54,7 +54,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
 
-        gamma = CondGammaLayer(Scope([0]), n_nodes=2, cond_f=cond_f)
+        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
@@ -70,7 +70,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args(self):
 
-        gamma = CondGammaLayer(Scope([0]), n_nodes=2)
+        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[gamma] = {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
@@ -89,7 +89,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        gamma = CondGammaLayer(Scope([0]), n_nodes=2)
+        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
 
         cond_f = lambda data: {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
 
@@ -111,7 +111,7 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood(self):
 
         layer = CondGammaLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             cond_f=lambda data: {
                 "alpha": [0.2, 1.0, 2.3],
                 "beta": [1.0, 0.3, 0.97],
@@ -120,13 +120,13 @@ class TestNode(unittest.TestCase):
 
         nodes = [
             CondGamma(
-                Scope([0]), cond_f=lambda data: {"alpha": 0.2, "beta": 1.0}
+                Scope([0], [2]), cond_f=lambda data: {"alpha": 0.2, "beta": 1.0}
             ),
             CondGamma(
-                Scope([1]), cond_f=lambda data: {"alpha": 1.0, "beta": 0.3}
+                Scope([1], [2]), cond_f=lambda data: {"alpha": 1.0, "beta": 0.3}
             ),
             CondGamma(
-                Scope([0]), cond_f=lambda data: {"alpha": 2.3, "beta": 0.97}
+                Scope([0], [2]), cond_f=lambda data: {"alpha": 2.3, "beta": 0.97}
             ),
         ]
 
@@ -153,7 +153,7 @@ class TestNode(unittest.TestCase):
         )
 
         torch_gamma = CondGammaLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"alpha": alpha, "beta": beta},
         )
 
@@ -174,7 +174,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         gamma = CondGammaLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {
                 "alpha": random.random() + 1e-7,
                 "beta": random.random() + 1e-7,

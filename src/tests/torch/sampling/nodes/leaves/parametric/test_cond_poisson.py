@@ -30,7 +30,7 @@ class TestPoisson(unittest.TestCase):
 
         # ----- l = 1.0 -----
 
-        poisson = CondPoisson(Scope([0]), cond_f=lambda data: {"l": 1.0})
+        poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": 1.0})
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
         samples = sample(poisson, data, sampling_ctx=SamplingContext([0, 2]))
@@ -53,7 +53,7 @@ class TestPoisson(unittest.TestCase):
 
         # ----- l = 0.5 -----
 
-        poisson = CondPoisson(Scope([0]), cond_f=lambda data: {"l": 0.5})
+        poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": 0.5})
 
         samples = sample(poisson, 1000)
         self.assertTrue(
@@ -69,7 +69,7 @@ class TestPoisson(unittest.TestCase):
 
         # ----- l = 2.5 -----
 
-        poisson = CondPoisson(Scope([0]), cond_f=lambda data: {"l": 2.5})
+        poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": 2.5})
 
         samples = sample(poisson, 1000)
         self.assertTrue(

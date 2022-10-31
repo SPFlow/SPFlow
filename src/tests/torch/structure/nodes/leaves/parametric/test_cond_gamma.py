@@ -1,4 +1,6 @@
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.leaves.parametric.cond_gamma import (
     CondGamma as BaseCondGamma,
@@ -21,21 +23,21 @@ import unittest
 class TestGamma(unittest.TestCase):
     def test_initialization(self):
 
-        gamma = CondGamma(Scope([0]))
+        gamma = CondGamma(Scope([0], [1]))
         self.assertTrue(gamma.cond_f is None)
-        gamma = CondGamma(Scope([0]), lambda x: {"alpha": 1.0, "beta": 1.0})
+        gamma = CondGamma(Scope([0], [1]), lambda x: {"alpha": 1.0, "beta": 1.0})
         self.assertTrue(isinstance(gamma.cond_f, Callable))
 
         # invalid scopes
         self.assertRaises(Exception, CondGamma, Scope([]))
-        self.assertRaises(Exception, CondGamma, Scope([0, 1]))
-        self.assertRaises(Exception, CondGamma, Scope([0], [1]))
+        self.assertRaises(Exception, CondGamma, Scope([0, 1], [2]))
+        self.assertRaises(Exception, CondGamma, Scope([0]))
 
     def test_retrieve_params(self):
 
         # Valid parameters for Gamma distribution: alpha>0, beta>0
 
-        gamma = CondGamma(Scope([0]))
+        gamma = CondGamma(Scope([0], [1]))
 
         # alpha > 0
         gamma.set_cond_f(
@@ -157,17 +159,72 @@ class TestGamma(unittest.TestCase):
             DispatchContext(),
         )
 
+    def test_accept(self):
+
+        # continuous meta type
+        self.assertTrue(CondGamma.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
+
+        # Gamma feature type class
+        self.assertTrue(CondGamma.accepts([([FeatureTypes.Gamma], Scope([0], [1]))]))
+
+        # Gamma feature type instance
+        self.assertTrue(CondGamma.accepts([([FeatureTypes.Gamma(1.0, 1.0)], Scope([0], [1]))]))
+
+        # invalid feature type
+        self.assertFalse(CondGamma.accepts([([FeatureTypes.Discrete], Scope([0], [1]))]))
+
+        # non-conditional scope
+        self.assertFalse(CondGamma.accepts([([FeatureTypes.Continuous], Scope([0]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(CondGamma.accepts([([FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+
+        # multivariate signature
+        self.assertFalse(CondGamma.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+
+    def test_initialization_from_signatures(self):
+
+        CondGamma.from_signatures([([FeatureTypes.Continuous], Scope([0], [1]))])
+        CondGamma.from_signatures([([FeatureTypes.Gamma], Scope([0], [1]))])
+        CondGamma.from_signatures([([FeatureTypes.Gamma(1.5, 0.5)], Scope([0], [1]))])
+
+        # ----- invalid arguments -----
+
+        # invalid feature type
+        self.assertRaises(ValueError, CondGamma.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
+
+        # non-conditional scope
+        self.assertRaises(ValueError, CondGamma.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, CondGamma.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1], [2]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, CondGamma.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(CondGamma))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(CondGamma, AutoLeaf.infer([([FeatureTypes.Gamma], Scope([0], [1]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        gamma = AutoLeaf([([FeatureTypes.Gamma], Scope([0], [1]))])
+        self.assertTrue(isinstance(gamma, CondGamma))
+
     def test_structural_marginalization(self):
 
-        gamma = CondGamma(Scope([0]))
+        gamma = CondGamma(Scope([0], [1]))
 
         self.assertTrue(marginalize(gamma, [1]) is not None)
         self.assertTrue(marginalize(gamma, [0]) is None)
 
     def test_base_backend_conversion(self):
 
-        torch_gamma = CondGamma(Scope([0]))
-        node_gamma = BaseCondGamma(Scope([0]))
+        torch_gamma = CondGamma(Scope([0], [1]))
+        node_gamma = BaseCondGamma(Scope([0], [1]))
 
         # check conversion from torch to python
         self.assertTrue(

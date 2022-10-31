@@ -32,7 +32,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         gaussian_layer = CondGaussianLayer(
-            scope=Scope([0]),
+            scope=Scope([0], [1]),
             cond_f=lambda data: {"mean": [0.8, 0.3], "std": [1.3, 0.4]},
             n_nodes=2,
         )
@@ -40,10 +40,10 @@ class TestNode(unittest.TestCase):
 
         gaussian_nodes = [
             CondGaussian(
-                Scope([0]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}
+                Scope([0], [1]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}
             ),
             CondGaussian(
-                Scope([0]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
+                Scope([0], [1]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
             ),
         ]
         s2 = SPNSumNode(children=gaussian_nodes, weights=[0.3, 0.7])
@@ -66,17 +66,17 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         gaussian_layer = CondGaussianLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"mean": [0.8, 0.3], "std": [1.3, 0.4]},
         )
         p1 = SPNProductNode(children=[gaussian_layer])
 
         gaussian_nodes = [
             CondGaussian(
-                Scope([0]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}
+                Scope([0], [2]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}
             ),
             CondGaussian(
-                Scope([1]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
+                Scope([1], [2]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
             ),
         ]
         p2 = SPNProductNode(children=gaussian_nodes)
@@ -95,7 +95,7 @@ class TestNode(unittest.TestCase):
     def test_sampling_3(self):
 
         gaussian_layer = CondGaussianLayer(
-            scope=Scope([0]),
+            scope=Scope([0], [1]),
             cond_f=lambda data: {"mean": [0.8, 0.3], "std": [1.3, 0.4]},
             n_nodes=2,
         )

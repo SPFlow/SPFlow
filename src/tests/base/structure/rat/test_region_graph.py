@@ -38,7 +38,7 @@ def get_region_graph_properties(
                     # make sure child regions of partition have pair-wise dijoint scopes
                     correct_scopes &= split_scope.isdisjoint(r.scope)
                     # update joint scope
-                    split_scope = split_scope.union(r.scope)
+                    split_scope = split_scope.join(r.scope)
 
                 # make sure joint scope matches partition scope
                 correct_scopes &= split_scope == partition.scope

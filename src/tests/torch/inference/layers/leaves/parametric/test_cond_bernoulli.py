@@ -30,7 +30,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_p(self):
 
-        bernoulli = CondBernoulliLayer(Scope([0]), n_nodes=2)
+        bernoulli = CondBernoulliLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError, log_likelihood, bernoulli, torch.tensor([[0], [1]])
         )
@@ -39,7 +39,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"p": [0.8, 0.5]}
 
-        bernoulli = CondBernoulliLayer(Scope([0]), n_nodes=2, cond_f=cond_f)
+        bernoulli = CondBernoulliLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0], [1]])
@@ -53,7 +53,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        bernoulli = CondBernoulliLayer(Scope([0]), n_nodes=2)
+        bernoulli = CondBernoulliLayer(Scope([0], [1]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[bernoulli] = {"p": [0.8, 0.5]}
@@ -70,7 +70,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        bernoulli = CondBernoulliLayer(Scope([0]), n_nodes=2)
+        bernoulli = CondBernoulliLayer(Scope([0], [1]), n_nodes=2)
 
         cond_f = lambda data: {"p": torch.tensor([0.8, 0.5])}
 
@@ -90,14 +90,14 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood(self):
 
         layer = CondBernoulliLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             cond_f=lambda data: {"p": [0.2, 0.5, 0.9]},
         )
 
         nodes = [
-            CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.2}),
-            CondBernoulli(Scope([1]), cond_f=lambda data: {"p": 0.5}),
-            CondBernoulli(Scope([0]), cond_f=lambda data: {"p": 0.9}),
+            CondBernoulli(Scope([0], [2]), cond_f=lambda data: {"p": 0.2}),
+            CondBernoulli(Scope([1], [2]), cond_f=lambda data: {"p": 0.5}),
+            CondBernoulli(Scope([0], [2]), cond_f=lambda data: {"p": 0.9}),
         ]
 
         dummy_data = torch.tensor([[1, 0], [0, 0], [1, 1]])
@@ -114,7 +114,7 @@ class TestNode(unittest.TestCase):
         p = torch.tensor([random.random(), random.random()], requires_grad=True)
 
         torch_bernoulli = CondBernoulliLayer(
-            scope=[Scope([0]), Scope([1])], cond_f=lambda data: {"p": p}
+            scope=[Scope([0], [2]), Scope([1], [2])], cond_f=lambda data: {"p": p}
         )
 
         # create dummy input data (batch size x random variables)
@@ -133,7 +133,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         bernoulli = CondBernoulliLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"p": random.random()},
         )
         data = torch.tensor([[float("nan"), float("nan")]])

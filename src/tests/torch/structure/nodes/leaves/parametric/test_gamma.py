@@ -1,4 +1,6 @@
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.gamma import (
     Gamma as BaseGamma,
 )
@@ -67,6 +69,71 @@ class TestGamma(unittest.TestCase):
 
         self.assertTrue(marginalize(gamma, [1]) is not None)
         self.assertTrue(marginalize(gamma, [0]) is None)
+
+    def test_accept(self):
+
+        # continuous meta type
+        self.assertTrue(Gamma.accepts([([FeatureTypes.Continuous], Scope([0]))]))
+
+        # Gamma feature type class
+        self.assertTrue(Gamma.accepts([([FeatureTypes.Gamma], Scope([0]))]))
+
+        # Gamma feature type instance
+        self.assertTrue(Gamma.accepts([([FeatureTypes.Gamma(1.0, 1.0)], Scope([0]))]))
+
+        # invalid feature type
+        self.assertFalse(Gamma.accepts([([FeatureTypes.Discrete], Scope([0]))]))
+
+        # conditional scope
+        self.assertFalse(Gamma.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(Gamma.accepts([([FeatureTypes.Continuous], Scope([0, 1]))]))
+
+        # multivariate signature
+        self.assertFalse(Gamma.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))]))
+
+    def test_initialization_from_signatures(self):
+
+        gamma = Gamma.from_signatures([([FeatureTypes.Continuous], Scope([0]))])
+        self.assertTrue(torch.isclose(gamma.alpha, torch.tensor(1.0)))
+        self.assertTrue(torch.isclose(gamma.beta, torch.tensor(1.0)))
+
+        gamma = Gamma.from_signatures([([FeatureTypes.Gamma], Scope([0]))])
+        self.assertTrue(torch.isclose(gamma.alpha, torch.tensor(1.0)))
+        self.assertTrue(torch.isclose(gamma.beta, torch.tensor(1.0)))
+    
+        gamma = Gamma.from_signatures([([FeatureTypes.Gamma(1.5, 0.5)], Scope([0]))])
+        self.assertTrue(torch.isclose(gamma.alpha, torch.tensor(1.5)))
+        self.assertTrue(torch.isclose(gamma.beta, torch.tensor(0.5)))
+
+        # ----- invalid arguments -----
+
+        # invalid feature type
+        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+
+        # conditional scope
+        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(Gamma))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(Gamma, AutoLeaf.infer([([FeatureTypes.Gamma], Scope([0]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        gamma = AutoLeaf([([FeatureTypes.Gamma(alpha=1.5, beta=0.5)], Scope([0]))])
+        self.assertTrue(isinstance(gamma, Gamma))
+        self.assertTrue(torch.isclose(gamma.alpha, torch.tensor(1.5)))
+        self.assertTrue(torch.isclose(gamma.beta, torch.tensor(0.5)))
 
     def test_base_backend_conversion(self):
 

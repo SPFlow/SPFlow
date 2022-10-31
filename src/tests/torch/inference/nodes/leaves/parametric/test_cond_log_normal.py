@@ -36,7 +36,7 @@ class TestLogNormal(unittest.TestCase):
 
         cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
-        log_normal = CondLogNormal(Scope([0]), cond_f=cond_f)
+        log_normal = CondLogNormal(Scope([0], [1]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0.5], [1.0], [1.5]])
@@ -50,7 +50,7 @@ class TestLogNormal(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        log_normal = CondLogNormal(Scope([0]))
+        log_normal = CondLogNormal(Scope([0], [1]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[log_normal] = {"mean": 0.0, "std": 1.0}
@@ -67,7 +67,7 @@ class TestLogNormal(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        log_normal = CondLogNormal(Scope([0]))
+        log_normal = CondLogNormal(Scope([0], [1]))
 
         cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
@@ -90,10 +90,10 @@ class TestLogNormal(unittest.TestCase):
         std = random.random() + 1e-7  # offset by small number to avoid zero
 
         torch_log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": mean, "std": std}
+            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
         )
         node_log_normal = BaseCondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": mean, "std": std}
+            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
         )
 
         # create dummy input data (batch size x random variables)
@@ -115,7 +115,7 @@ class TestLogNormal(unittest.TestCase):
         )  # offset by small number to avoid zero
 
         torch_log_normal = CondLogNormal(
-            Scope([0]), cond_f=lambda data: {"mean": mean, "std": std}
+            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
         )
 
         # create dummy input data (batch size x random variables)
@@ -136,7 +136,7 @@ class TestLogNormal(unittest.TestCase):
 """
     def test_likelihood_marginalization(self):
 
-        log_normal = LogNormal(Scope([0]), 0.0, 1.0)
+        log_normal = LogNormal(Scope([0], [1]), 0.0, 1.0)
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1
@@ -148,7 +148,7 @@ class TestLogNormal(unittest.TestCase):
 
         # Support for Log-Normal distribution: floats (0,inf)
 
-        log_normal = LogNormal(Scope([0]), 0.0, 1.0)
+        log_normal = LogNormal(Scope([0], [1]), 0.0, 1.0)
 
         # check infinite values
         self.assertRaises(ValueError, log_likelihood, log_normal, torch.tensor([[float("inf")]]))

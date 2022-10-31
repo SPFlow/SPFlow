@@ -29,7 +29,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_l(self):
 
-        poisson = CondPoissonLayer(Scope([0]), n_nodes=2)
+        poisson = CondPoissonLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError, log_likelihood, poisson, torch.tensor([[0], [1]])
         )
@@ -38,7 +38,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"l": [1, 1]}
 
-        poisson = CondPoissonLayer(Scope([0]), n_nodes=2, cond_f=cond_f)
+        poisson = CondPoissonLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0], [2], [5]])
@@ -54,7 +54,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_l(self):
 
-        poisson = CondPoissonLayer(Scope([0]), n_nodes=2)
+        poisson = CondPoissonLayer(Scope([0], [1]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[poisson] = {"l": [1, 1]}
@@ -73,7 +73,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        poisson = CondPoissonLayer(Scope([0]), n_nodes=2)
+        poisson = CondPoissonLayer(Scope([0], [1]), n_nodes=2)
 
         cond_f = lambda data: {"l": torch.tensor([1, 1])}
 
@@ -95,14 +95,14 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood(self):
 
         layer = CondPoissonLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
             cond_f=lambda data: {"l": [0.2, 1.0, 2.3]},
         )
 
         nodes = [
-            CondPoisson(Scope([0]), cond_f=lambda data: {"l": 0.2}),
-            CondPoisson(Scope([1]), cond_f=lambda data: {"l": 1.0}),
-            CondPoisson(Scope([0]), cond_f=lambda data: {"l": 2.3}),
+            CondPoisson(Scope([0], [2]), cond_f=lambda data: {"l": 0.2}),
+            CondPoisson(Scope([1], [2]), cond_f=lambda data: {"l": 1.0}),
+            CondPoisson(Scope([0], [2]), cond_f=lambda data: {"l": 2.3}),
         ]
 
         dummy_data = torch.tensor([[1, 3], [3, 7], [2, 1]])
@@ -123,7 +123,7 @@ class TestNode(unittest.TestCase):
         )
 
         torch_poisson = CondPoissonLayer(
-            scope=[Scope([0]), Scope([1])], cond_f=lambda data: {"l": l}
+            scope=[Scope([0], [2]), Scope([1], [2])], cond_f=lambda data: {"l": l}
         )
 
         # create dummy input data (batch size x random variables)
@@ -144,7 +144,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         poisson = CondPoissonLayer(
-            scope=[Scope([0]), Scope([1])],
+            scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"l": random.random() + 1e-7},
         )
         data = torch.tensor([[float("nan"), float("nan")]])

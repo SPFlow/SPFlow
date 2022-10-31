@@ -27,7 +27,6 @@ import torch
 import numpy as np
 import random
 import unittest
-import itertools
 
 
 class TestNode(unittest.TestCase):
@@ -47,7 +46,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         layer = CondMultivariateGaussianLayer(
-            scope=[Scope([0, 1]), Scope([2, 3]), Scope([0, 1])],
+            scope=[Scope([0, 1], [4]), Scope([2, 3], [4]), Scope([0, 1], [4])],
             cond_f=lambda data: {
                 "mean": [[0.8, 0.3], [0.2, -0.1], [0.8, 0.3]],
                 "cov": [
@@ -60,21 +59,21 @@ class TestNode(unittest.TestCase):
 
         nodes = [
             CondMultivariateGaussian(
-                Scope([0, 1]),
+                Scope([0, 1], [4]),
                 cond_f=lambda data: {
                     "mean": [0.8, 0.3],
                     "cov": [[0.13, 0.08], [0.08, 0.05]],
                 },
             ),
             CondMultivariateGaussian(
-                Scope([2, 3]),
+                Scope([2, 3], [4]),
                 cond_f=lambda data: {
                     "mean": [0.2, -0.1],
                     "cov": [[0.17, 0.054], [0.054, 0.0296]],
                 },
             ),
             CondMultivariateGaussian(
-                Scope([0, 1]),
+                Scope([0, 1], [4]),
                 cond_f=lambda data: {
                     "mean": [0.8, 0.3],
                     "cov": [[0.13, 0.08], [0.08, 0.05]],

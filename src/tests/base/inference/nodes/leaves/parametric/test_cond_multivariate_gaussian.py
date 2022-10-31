@@ -16,7 +16,7 @@ class TestMultivariateGaussian(unittest.TestCase):
     def test_likelihood_no_mean(self):
 
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1]), cond_f=lambda data: {"cov": np.eye(2)}
+            Scope([0, 1], [2]), cond_f=lambda data: {"cov": np.eye(2)}
         )
         self.assertRaises(
             KeyError,
@@ -28,7 +28,7 @@ class TestMultivariateGaussian(unittest.TestCase):
     def test_likelihood_no_cov(self):
 
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1]), cond_f=lambda data: {"mean": np.zeros(2)}
+            Scope([0, 1], [2]), cond_f=lambda data: {"mean": np.zeros(2)}
         )
         self.assertRaises(
             KeyError,
@@ -39,7 +39,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
     def test_likelihood_no_mean_std(self):
 
-        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1]))
+        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1], [2]))
         self.assertRaises(
             ValueError,
             log_likelihood,
@@ -52,7 +52,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         cond_f = lambda data: {"mean": np.zeros(2), "cov": np.eye(2)}
 
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1]), cond_f=cond_f
+            Scope([0, 1], [2]), cond_f=cond_f
         )
 
         # create test inputs/outputs
@@ -67,7 +67,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
     def test_likelihood_args(self):
 
-        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1]))
+        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1], [2]))
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[multivariate_gaussian] = {
@@ -91,7 +91,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
     def test_likelihood_args_cond_f(self):
 
-        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1]))
+        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1], [2]))
 
         cond_f = lambda data: {"mean": np.zeros(2), "cov": np.eye(2)}
 
@@ -119,7 +119,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         cov = np.eye(2)
 
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1]), cond_f=lambda data: {"mean": mean, "cov": cov}
+            Scope([0, 1], [2]), cond_f=lambda data: {"mean": mean, "cov": cov}
         )
 
         # create test inputs/outputs
@@ -145,7 +145,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         )
 
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1, 2]), cond_f=lambda data: {"mean": mean, "cov": cov}
+            Scope([0, 1, 2], [3]), cond_f=lambda data: {"mean": mean, "cov": cov}
         )
 
         # create test inputs/outputs
@@ -170,7 +170,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         # dummy distribution and data
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1]), cond_f=lambda data: {"mean": None, "cov": np.eye(2)}
+            Scope([0, 1], [2]), cond_f=lambda data: {"mean": None, "cov": np.eye(2)}
         )
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
 
@@ -180,7 +180,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         # dummy distribution and data
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1]),
+            Scope([0, 1], [2]),
             cond_f=lambda data: {"mean": np.zeros(2), "cov": None},
         )
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
@@ -192,7 +192,7 @@ class TestMultivariateGaussian(unittest.TestCase):
     def test_likelihood_marginalization(self):
 
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1]),
+            Scope([0, 1], [2]),
             cond_f=lambda data: {"mean": np.zeros(2), "cov": np.eye(2)},
         )
         data = np.array([[np.nan, np.nan]])
@@ -216,7 +216,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         # Support for Multivariate Gaussian distribution: floats (inf,+inf)^k
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1]),
+            Scope([0, 1], [2]),
             cond_f=lambda data: {"mean": np.zeros(2), "cov": np.eye(2)},
         )
 

@@ -3,8 +3,9 @@
 """
 import torch
 import torch.distributions as D
-from typing import Tuple, Optional, Callable
+from typing import Tuple, Optional, Callable, List, Union, Type
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -54,14 +55,52 @@ class CondGamma(LeafNode):
             raise ValueError(
                 f"Query scope size for CondGamma should be 1, but was {len(scope.query)}."
             )
-        if len(scope.evidence):
+        if len(scope.evidence) == 0:
             raise ValueError(
-                f"Evidence scope for CondGamma should be empty, but was {scope.evidence}."
+                f"Evidence scope for CondGamma should not be empty."
             )
 
         super(CondGamma, self).__init__(scope=scope)
 
         self.set_cond_f(cond_f)
+
+    @classmethod
+    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
+        """TODO"""
+        # leaf only has one output
+        if len(signatures) != 1:
+            return False
+
+        # get single output signature
+        types, scope = signatures[0]
+
+        # leaf is a single non-conditional univariate node
+        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) == 0:
+            return False
+        
+        # leaf is a continuous Gamma distribution
+        if not (types[0] == FeatureTypes.Continuous or types[0] == FeatureTypes.Gamma or isinstance(types[0], FeatureTypes.Gamma)):
+            return False
+
+        return True
+
+    @classmethod
+    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "CondGamma":
+        """TODO"""
+        if not self.accepts(signatures):
+            raise ValueError(f"'CondGamma' cannot be instantiated from the following signatures: {signatures}.")
+
+        # get single output signature
+        types, scope = signatures[0]
+        type = types[0]
+
+        # read or initialize parameters
+        if type == MetaType.Continuous or type == FeatureTypes.Gamma or isinstance(type, FeatureTypes.Gamma):
+            pass
+        else:
+            raise ValueError(f"Unknown signature type {type} for 'CondGamma' that was not caught during acception checking.")
+
+        return CondGamma(scope)
 
     def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         r"""Sets the function to retrieve the node's conditonal parameter.

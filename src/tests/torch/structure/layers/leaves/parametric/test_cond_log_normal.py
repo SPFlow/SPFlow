@@ -4,6 +4,7 @@ from spflow.torch.structure.layers.leaves.parametric.cond_log_normal import (
     toTorch,
     toBase,
 )
+from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.torch.structure.nodes.leaves.parametric.cond_log_normal import (
     CondLogNormal,
 )
@@ -12,6 +13,7 @@ from spflow.base.structure.layers.leaves.parametric.cond_log_normal import (
 )
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
 import torch
 import numpy as np
 import unittest
@@ -29,36 +31,36 @@ class TestNode(unittest.TestCase):
     def test_layer_initialization(self):
 
         # ----- check attributes after correct initialization -----
-        l = CondLogNormalLayer(scope=Scope([1]), n_nodes=3)
+        l = CondLogNormalLayer(scope=Scope([1], [0]), n_nodes=3)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
         self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
+            np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])])
         )
 
         # ---- different scopes -----
-        l = CondLogNormalLayer(scope=Scope([1]), n_nodes=3)
+        l = CondLogNormalLayer(scope=Scope([1], [0]), n_nodes=3)
         for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
             self.assertEqual(layer_scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, CondLogNormalLayer, Scope([0]), n_nodes=0)
+        self.assertRaises(ValueError, CondLogNormalLayer, Scope([0], [1]), n_nodes=0)
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondLogNormalLayer, Scope([]), n_nodes=3)
         self.assertRaises(ValueError, CondLogNormalLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
-        scopes = [Scope([1]), Scope([0]), Scope([0])]
-        l = CondLogNormalLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
+        scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
+        l = CondLogNormalLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3)
 
         for layer_scope, node_scope in zip(l.scopes_out, scopes):
             self.assertEqual(layer_scope, node_scope)
 
         # -----number of cond_f functions -----
         CondLogNormalLayer(
-            Scope([0]),
+            Scope([0], [1]),
             n_nodes=2,
             cond_f=[
                 lambda data: {"mean": 0.0, "std": 1.0},
@@ -68,7 +70,7 @@ class TestNode(unittest.TestCase):
         self.assertRaises(
             ValueError,
             CondLogNormalLayer,
-            Scope([0]),
+            Scope([0], [1]),
             n_nodes=2,
             cond_f=[lambda data: {"mean": 0.0, "std": 1.0}],
         )
@@ -79,7 +81,7 @@ class TestNode(unittest.TestCase):
         mean_value = 0.73
         std_value = 1.9
         l = CondLogNormalLayer(
-            scope=Scope([1]),
+            scope=Scope([1], [0]),
             n_nodes=3,
             cond_f=lambda data: {"mean": mean_value, "std": std_value},
         )
@@ -98,7 +100,7 @@ class TestNode(unittest.TestCase):
         mean_values = [0.17, -0.8, 0.53]
         std_values = [0.9, 1.34, 0.98]
         l = CondLogNormalLayer(
-            scope=Scope([1]),
+            scope=Scope([1], [0]),
             n_nodes=3,
             cond_f=lambda data: {"mean": mean_values, "std": std_values},
         )
@@ -223,12 +225,72 @@ class TestNode(unittest.TestCase):
             torch.tensor([[1]]),
             DispatchContext(),
         )
+    
+    def test_accept(self):
+
+        # continuous meta type
+        self.assertTrue(CondLogNormalLayer.accepts([([FeatureTypes.Continuous], Scope([0], [2])), ([FeatureTypes.Continuous], Scope([1], [2]))]))
+
+        # LogNormal feature type class
+        self.assertTrue(CondLogNormalLayer.accepts([([FeatureTypes.LogNormal], Scope([0], [2])), ([FeatureTypes.Continuous], Scope([1], [2]))]))
+
+        # LogNormal feature type instance
+        self.assertTrue(CondLogNormalLayer.accepts([([FeatureTypes.LogNormal(0.0, 1.0)], Scope([0], [2])), ([FeatureTypes.Continuous], Scope([1], [2]))]))
+
+        # invalid feature type
+        self.assertFalse(CondLogNormalLayer.accepts([([FeatureTypes.Discrete], Scope([0], [2])), ([FeatureTypes.Continuous], Scope([1], [2]))]))
+
+        # non-conditional scope
+        self.assertFalse(CondLogNormalLayer.accepts([([FeatureTypes.Continuous], Scope([0]))]))
+
+        # scope length does not match number of types
+        self.assertFalse(CondLogNormalLayer.accepts([([FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+
+        # multivariate signature
+        self.assertFalse(CondLogNormalLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+
+    def test_initialization_from_signatures(self):
+
+        log_normal = CondLogNormalLayer.from_signatures([([FeatureTypes.Continuous], Scope([0], [2])), ([FeatureTypes.Continuous], Scope([1], [2]))])
+        self.assertTrue(log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+
+        log_normal = CondLogNormalLayer.from_signatures([([FeatureTypes.LogNormal], Scope([0], [2])), ([FeatureTypes.LogNormal], Scope([1], [2]))])
+        self.assertTrue(log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+
+        log_normal = CondLogNormalLayer.from_signatures([([FeatureTypes.LogNormal(-1.0, 1.5)], Scope([0], [2])), ([FeatureTypes.LogNormal(1.0, 0.5)], Scope([1], [2]))])
+        self.assertTrue(log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+
+        # ----- invalid arguments -----
+
+        # invalid feature type
+        self.assertRaises(ValueError, CondLogNormalLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0], [2]))])
+
+        # non-conditional scope
+        self.assertRaises(ValueError, CondLogNormalLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+
+        # scope length does not match number of types
+        self.assertRaises(ValueError, CondLogNormalLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1], [2]))])
+
+        # multivariate signature
+        self.assertRaises(ValueError, CondLogNormalLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))])
+
+    def test_autoleaf(self):
+
+        # make sure leaf is registered
+        self.assertTrue(AutoLeaf.is_registered(CondLogNormalLayer))
+
+        # make sure leaf is correctly inferred
+        self.assertEqual(CondLogNormalLayer, AutoLeaf.infer([([FeatureTypes.LogNormal], Scope([0], [2])), ([FeatureTypes.LogNormal], Scope([1], [2]))]))
+
+        # make sure AutoLeaf can return correctly instantiated object
+        log_normal = AutoLeaf([([FeatureTypes.LogNormal(mean=-1.0, std=1.5)], Scope([0], [2])), ([FeatureTypes.LogNormal(mean=1.0, std=0.5)], Scope([1], [2]))])
+        self.assertTrue(log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
     def test_layer_structural_marginalization(self):
 
         # ---------- same scopes -----------
 
-        l = CondLogNormalLayer(scope=Scope([1]), n_nodes=2)
+        l = CondLogNormalLayer(scope=Scope([1], [0]), n_nodes=2)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [1]) == None)
@@ -236,11 +298,11 @@ class TestNode(unittest.TestCase):
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
+        self.assertTrue(l_marg.scopes_out == [Scope([1], [0]), Scope([1], [0])])
 
         # ---------- different scopes -----------
 
-        l = CondLogNormalLayer(scope=[Scope([1]), Scope([0])])
+        l = CondLogNormalLayer(scope=[Scope([1], [2]), Scope([0], [2])])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
@@ -248,7 +310,7 @@ class TestNode(unittest.TestCase):
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
         self.assertTrue(isinstance(l_marg, CondLogNormal))
-        self.assertEqual(l_marg.scope, Scope([0]))
+        self.assertEqual(l_marg.scope, Scope([0], [2]))
 
         l_marg = marginalize(l, [1], prune=False)
         self.assertTrue(isinstance(l_marg, CondLogNormalLayer))
@@ -257,13 +319,13 @@ class TestNode(unittest.TestCase):
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
+        self.assertTrue(l_marg.scopes_out == [Scope([1], [2]), Scope([0], [2])])
 
     def test_layer_dist(self):
 
         mean_values = torch.tensor([0.73, -0.29, 0.5])
         std_values = torch.tensor([0.9, 1.34, 0.98])
-        l = CondLogNormalLayer(scope=Scope([1]), n_nodes=3)
+        l = CondLogNormalLayer(scope=Scope([1], [0]), n_nodes=3)
 
         # ----- full dist -----
         dist = l.dist(mean_values, std_values)
@@ -297,7 +359,7 @@ class TestNode(unittest.TestCase):
     def test_layer_backend_conversion_1(self):
 
         torch_layer = CondLogNormalLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])]
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])]
         )
         base_layer = toBase(torch_layer)
 
@@ -307,7 +369,7 @@ class TestNode(unittest.TestCase):
     def test_layer_backend_conversion_2(self):
 
         base_layer = BaseCondLogNormalLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])]
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])]
         )
         torch_layer = toTorch(base_layer)
 
