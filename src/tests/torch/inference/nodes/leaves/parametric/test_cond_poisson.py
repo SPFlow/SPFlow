@@ -88,8 +88,12 @@ class TestPoisson(unittest.TestCase):
 
         l = random.randint(1, 10)
 
-        torch_poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": l})
-        node_poisson = BaseCondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": l})
+        torch_poisson = CondPoisson(
+            Scope([0], [1]), cond_f=lambda data: {"l": l}
+        )
+        node_poisson = BaseCondPoisson(
+            Scope([0], [1]), cond_f=lambda data: {"l": l}
+        )
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 10, (3, 1))
@@ -110,7 +114,9 @@ class TestPoisson(unittest.TestCase):
             requires_grad=True,
         )
 
-        torch_poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": l})
+        torch_poisson = CondPoisson(
+            Scope([0], [1]), cond_f=lambda data: {"l": l}
+        )
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 10, (3, 1))

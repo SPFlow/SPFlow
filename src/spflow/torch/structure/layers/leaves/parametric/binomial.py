@@ -20,6 +20,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.binomial import Binomial
 from spflow.base.structure.layers.leaves.parametric.binomial import (
@@ -120,8 +121,14 @@ class BinomialLayer(Module):
         self.set_params(n, p)
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``BinomialLayer`` can represent one or more univariate nodes with ``BinomialType`` domains.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf has at least one output
         if len(signatures) < 1:
             return False
@@ -129,31 +136,44 @@ class BinomialLayer(Module):
         for signature in signatures:
             if not Binomial.accepts([signature]):
                 return False
-    
+
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "BinomialLayer":
-        """TODO"""
+    def from_signatures(
+        self, signatures: List[FeatureContext]
+    ) -> "BinomialLayer":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``BinomialLayer`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'BinomialLayer' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'BinomialLayer' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         n = []
         p = []
         scopes = []
 
-        for types, scope in signatures:
-        
-            type = types[0]
+        for feature_ctx in signatures:
+
+            domain = feature_ctx.get_domains()[0]
 
             # read or initialize parameters
-            if isinstance(type, FeatureTypes.Binomial):
-                n.append(type.n)
-                p.append(type.p)
+            if isinstance(domain, FeatureTypes.Binomial):
+                n.append(domain.n)
+                p.append(domain.p)
             else:
-                raise ValueError(f"Unknown signature type {type} for 'BinomialLayer' that was not caught during acception checking.")
+                raise ValueError(
+                    f"Unknown signature type {domain} for 'BinomialLayer' that was not caught during acception checking."
+                )
 
-            scopes.append(scope)
+            scopes.append(feature_ctx.scope)
 
         return BinomialLayer(scopes, n=n, p=p)
 
@@ -164,7 +184,7 @@ class BinomialLayer(Module):
 
     @property
     def p(self) -> torch.Tensor:
-        """TODO"""
+        """Returns the success probabilities."""
         # project auxiliary parameter onto actual parameter range
         return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)  # type: ignore
 
@@ -172,7 +192,16 @@ class BinomialLayer(Module):
     def p(
         self, p: Union[int, float, List[float], np.ndarray, torch.Tensor]
     ) -> None:
-        """TODO"""
+        r"""Sets the success probability.
+
+        Args:
+            p:
+                Floating point, list of floats, one-dimensional NumPy array or PyTorch tensor representing the success probabilities of the Bernoulli distributions between zero and one.
+                If a single value is given it is broadcast to all nodes.
+
+        Raises:
+            ValueError: Invalid arguments.
+        """
         if isinstance(p, float) or isinstance(p, int):
             p = torch.tensor([p for _ in range(self.n_out)])
         elif isinstance(p, list) or isinstance(p, np.ndarray):

@@ -17,7 +17,9 @@ class TestCondGeometric(unittest.TestCase):
 
         # ----- p = 1.0 -----
 
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 1.0})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 1.0}
+        )
 
         data = np.array([[np.nan], [np.nan], [np.nan]])
 
@@ -36,7 +38,9 @@ class TestCondGeometric(unittest.TestCase):
 
         # ----- p = 0.5 -----
 
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.5}
+        )
 
         samples = sample(geometric, 1000)
 
@@ -52,7 +56,9 @@ class TestCondGeometric(unittest.TestCase):
 
         # ----- p = 0.8 -----
 
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.8})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.8}
+        )
 
         samples = sample(geometric, 1000)
 
@@ -62,7 +68,9 @@ class TestCondGeometric(unittest.TestCase):
 
     def test_sampling_4(self):
 
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.8})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.8}
+        )
 
         # make sure that instance ids out of bounds raise errors
         self.assertRaises(

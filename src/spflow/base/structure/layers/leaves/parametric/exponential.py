@@ -13,6 +13,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.exponential import (
     Exponential,
@@ -99,10 +100,16 @@ class ExponentialLayer(Module):
     def l(self) -> np.ndarray:
         """Returns the rate parameters of the represented distributions."""
         return np.array([node.l for node in self.nodes])
-    
+
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``ExponentialLayer`` can represent one or more univariate nodes with ``MetaType.Continuous`` or ``ExponentialType`` domains.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf has at least one output
         if len(signatures) < 1:
             return False
@@ -110,34 +117,47 @@ class ExponentialLayer(Module):
         for signature in signatures:
             if not Exponential.accepts([signature]):
                 return False
-    
+
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "ExponentialLayer":
-        """TODO"""
+    def from_signatures(
+        self, signatures: List[FeatureContext]
+    ) -> "ExponentialLayer":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``ExponentialLayer`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'ExponentialLayer' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'ExponentialLayer' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         l = []
         scopes = []
 
-        for types, scope in signatures:
-        
-            type = types[0]
+        for feature_ctx in signatures:
+
+            domain = feature_ctx.get_domains()[0]
 
             # read or initialize parameters
-            if type == MetaType.Continuous:
+            if domain == MetaType.Continuous:
                 l.append(1.0)
-            elif type == FeatureTypes.Exponential:
+            elif domain == FeatureTypes.Exponential:
                 # instantiate object
-                l.append(type().l)
-            elif isinstance(type, FeatureTypes.Exponential):
-                l.append(type.l)
+                l.append(domain().l)
+            elif isinstance(domain, FeatureTypes.Exponential):
+                l.append(domain.l)
             else:
-                raise ValueError(f"Unknown signature type {type} for 'ExponentialLayer' that was not caught during acception checking.")
+                raise ValueError(
+                    f"Unknown signature type {domain} for 'ExponentialLayer' that was not caught during acception checking."
+                )
 
-            scopes.append(scope)
+            scopes.append(feature_ctx.scope)
 
         return ExponentialLayer(scopes, l=l)
 

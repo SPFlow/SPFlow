@@ -1,5 +1,6 @@
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.node import marginalize
 from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
@@ -45,53 +46,95 @@ class TestGamma(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(Gamma.accepts([([FeatureTypes.Continuous], Scope([0]))]))
+        self.assertTrue(
+            Gamma.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # Gamma feature type class
-        self.assertTrue(Gamma.accepts([([FeatureTypes.Gamma], Scope([0]))]))
+        self.assertTrue(
+            Gamma.accepts([FeatureContext(Scope([0]), [FeatureTypes.Gamma])])
+        )
 
         # Gamma feature type instance
-        self.assertTrue(Gamma.accepts([([FeatureTypes.Gamma(1.0, 1.0)], Scope([0]))]))
+        self.assertTrue(
+            Gamma.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Gamma(1.0, 1.0)])]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(Gamma.accepts([([FeatureTypes.Discrete], Scope([0]))]))
+        self.assertFalse(
+            Gamma.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])])
+        )
 
         # conditional scope
-        self.assertFalse(Gamma.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(Gamma.accepts([([FeatureTypes.Continuous], Scope([0, 1]))]))
+        self.assertFalse(
+            Gamma.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(Gamma.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))]))
+        self.assertFalse(
+            Gamma.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        gamma = Gamma.from_signatures([([FeatureTypes.Continuous], Scope([0]))])
+        gamma = Gamma.from_signatures(
+            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
+        )
         self.assertEqual(gamma.alpha, 1.0)
         self.assertEqual(gamma.beta, 1.0)
 
-        gamma = Gamma.from_signatures([([FeatureTypes.Gamma], Scope([0]))])
+        gamma = Gamma.from_signatures(
+            [FeatureContext(Scope([0]), [FeatureTypes.Gamma])]
+        )
         self.assertEqual(gamma.alpha, 1.0)
         self.assertEqual(gamma.beta, 1.0)
-    
-        gamma = Gamma.from_signatures([([FeatureTypes.Gamma(1.5, 0.5)], Scope([0]))])
+
+        gamma = Gamma.from_signatures(
+            [FeatureContext(Scope([0]), [FeatureTypes.Gamma(1.5, 0.5)])]
+        )
         self.assertEqual(gamma.alpha, 1.5)
         self.assertEqual(gamma.beta, 0.5)
 
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            Gamma.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            Gamma.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, Gamma.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            Gamma.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -99,10 +142,19 @@ class TestGamma(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(Gamma))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(Gamma, AutoLeaf.infer([([FeatureTypes.Gamma], Scope([0]))]))
+        self.assertEqual(
+            Gamma,
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Gamma])]),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        gamma = AutoLeaf([([FeatureTypes.Gamma(alpha=1.5, beta=0.5)], Scope([0]))])
+        gamma = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)]
+                )
+            ]
+        )
         self.assertTrue(isinstance(gamma, Gamma))
         self.assertEqual(gamma.alpha, 1.5)
         self.assertEqual(gamma.beta, 0.5)

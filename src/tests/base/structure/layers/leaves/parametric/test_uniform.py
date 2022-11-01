@@ -6,6 +6,8 @@ from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_context import FeatureContext
 import numpy as np
 import unittest
 
@@ -146,33 +148,84 @@ class TestLayer(unittest.TestCase):
         )
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
-    
+
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
-
-        # Uniform feature type class (should reject)
-        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Uniform], Scope([0])), ([FeatureTypes.Uniform(0.0, 1.0)], Scope([1]))]))
+        self.assertFalse(
+            UniformLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
         # Uniform feature type instance
-        self.assertTrue(UniformLayer.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0])), ([FeatureTypes.Uniform(start=1.0, end=3.0)], Scope([1]))]))
+        self.assertTrue(
+            UniformLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
+                    ),
+                    FeatureContext(
+                        Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
+                    ),
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Uniform(-1.0, 2.0)], Scope([1]))]))
+        self.assertFalse(
+            UniformLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                    FeatureContext(
+                        Scope([1]), [FeatureTypes.Uniform(-1.0, 2.0)]
+                    ),
+                ]
+            )
+        )
 
         # conditional scope
-        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0], [1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0, 1]))]))
+        self.assertFalse(
+            UniformLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0], [1]),
+                        [FeatureTypes.Uniform(start=-1.0, end=2.0)],
+                    )
+                ]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(UniformLayer.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0), FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0, 1]))]))
+        self.assertFalse(
+            UniformLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [
+                            FeatureTypes.Uniform(start=-1.0, end=2.0),
+                            FeatureTypes.Uniform(start=-1.0, end=2.0),
+                        ],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        uniform = UniformLayer.from_signatures([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0])), ([FeatureTypes.Uniform(start=1.0, end=3.0)], Scope([1]))])
+        uniform = UniformLayer.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
+                ),
+                FeatureContext(
+                    Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
+                ),
+            ]
+        )
         self.assertTrue(np.all(uniform.start == np.array([-1.0, 1.0])))
         self.assertTrue(np.all(uniform.end == np.array([2.0, 3.0])))
         self.assertTrue(uniform.scopes_out == [Scope([0]), Scope([1])])
@@ -180,22 +233,37 @@ class TestLayer(unittest.TestCase):
         # ----- invalid arguments -----
 
         # discrete meta type
-        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
-
-        # Bernoulli feature type class
-        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Uniform], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            UniformLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+        )
 
         # invalid feature type
-        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            UniformLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            UniformLayer.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, UniformLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            UniformLayer.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -203,10 +271,31 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(UniformLayer))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(UniformLayer, AutoLeaf.infer([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0])), ([FeatureTypes.Uniform(start=1.0, end=3.0)], Scope([1]))]))
+        self.assertEqual(
+            UniformLayer,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(
+                        Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
+                    ),
+                    FeatureContext(
+                        Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
+                    ),
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        uniform = AutoLeaf([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0])), ([FeatureTypes.Uniform(start=1.0, end=3.0)], Scope([1]))])
+        uniform = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
+                ),
+                FeatureContext(
+                    Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
+                ),
+            ]
+        )
         self.assertTrue(np.all(uniform.start == np.array([-1.0, 1.0])))
         self.assertTrue(np.all(uniform.end == np.array([2.0, 3.0])))
         self.assertTrue(uniform.scopes_out == [Scope([0]), Scope([1])])

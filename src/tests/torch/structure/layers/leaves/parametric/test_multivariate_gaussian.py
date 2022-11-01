@@ -14,6 +14,7 @@ from spflow.base.structure.layers.leaves.parametric.multivariate_gaussian import
 )
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 import torch
 import numpy as np
 import unittest
@@ -184,55 +185,173 @@ class TestNode(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta types
-        self.assertTrue(MultivariateGaussianLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1])), ([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([1, 2]))]))
+        self.assertTrue(
+            MultivariateGaussianLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    ),
+                    FeatureContext(
+                        Scope([1, 2]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    ),
+                ]
+            )
+        )
 
         # Gaussian feature type class
-        self.assertTrue(MultivariateGaussianLayer.accepts([([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([0, 1])), ([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([1, 2]))]))
+        self.assertTrue(
+            MultivariateGaussianLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Gaussian, FeatureTypes.Gaussian],
+                    ),
+                    FeatureContext(
+                        Scope([1, 2]),
+                        [FeatureTypes.Gaussian, FeatureTypes.Gaussian],
+                    ),
+                ]
+            )
+        )
 
         # Gaussian feature type instance
-        self.assertTrue(MultivariateGaussianLayer.accepts([([FeatureTypes.Gaussian(0.0, 1.0), FeatureTypes.Gaussian(0.0, 1.0)], Scope([0, 1])), ([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([1, 2]))]))
+        self.assertTrue(
+            MultivariateGaussianLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [
+                            FeatureTypes.Gaussian(0.0, 1.0),
+                            FeatureTypes.Gaussian(0.0, 1.0),
+                        ],
+                    ),
+                    FeatureContext(
+                        Scope([1, 2]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    ),
+                ]
+            )
+        )
 
         # continuous meta and Gaussian feature types
-        self.assertTrue(MultivariateGaussianLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Gaussian], Scope([0, 1]))]))
+        self.assertTrue(
+            MultivariateGaussianLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Continuous, FeatureTypes.Gaussian],
+                    )
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(MultivariateGaussianLayer.accepts([([FeatureTypes.Discrete, FeatureTypes.Continuous], Scope([0, 1]))]))
+        self.assertFalse(
+            MultivariateGaussianLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Discrete, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
         # conditional scope
-        self.assertFalse(MultivariateGaussianLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(MultivariateGaussianLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1, 2]))]))
+        self.assertFalse(
+            MultivariateGaussianLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        multivariate_gaussian = MultivariateGaussianLayer.from_signatures([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1])), ([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([1, 2]))])
-        self.assertTrue(all([torch.all(mean == torch.zeros(2)) for mean in multivariate_gaussian.mean]))
-        self.assertTrue(all([torch.all(cov == torch.eye(2)) for cov in multivariate_gaussian.cov]))
-        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])])
+        multivariate_gaussian = MultivariateGaussianLayer.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                ),
+                FeatureContext(
+                    Scope([1, 2]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                ),
+            ]
+        )
+        self.assertTrue(
+            multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])]
+        )
 
-        multivariate_gaussian = MultivariateGaussianLayer.from_signatures([([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([0, 1])), ([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([1, 2]))])
-        self.assertTrue(all([torch.all(mean == torch.zeros(2)) for mean in multivariate_gaussian.mean]))
-        self.assertTrue(all([torch.all(cov == torch.eye(2)) for cov in multivariate_gaussian.cov]))
-        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])])
-    
-        multivariate_gaussian = MultivariateGaussianLayer.from_signatures([([FeatureTypes.Gaussian(-1.0, 1.5), FeatureTypes.Gaussian(1.0, 0.5)], Scope([0, 1])), ([FeatureTypes.Gaussian(1.0, 0.5), FeatureTypes.Gaussian(-1.0, 1.5)], Scope([1, 2]))])
-        self.assertTrue(torch.all(multivariate_gaussian.mean[0] == torch.tensor([-1.0, 1.0])))
-        self.assertTrue(torch.all(multivariate_gaussian.mean[1] == torch.tensor([1.0, -1.0])))
-        self.assertTrue(torch.allclose(multivariate_gaussian.cov[0], torch.tensor([[1.5, 0.0], [0.0, 0.5]])))
-        self.assertTrue(torch.allclose(multivariate_gaussian.cov[1], torch.tensor([[0.5, 0.0], [0.0, 1.5]])))
-        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])])
-        
+        multivariate_gaussian = MultivariateGaussianLayer.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Gaussian, FeatureTypes.Gaussian],
+                ),
+                FeatureContext(
+                    Scope([1, 2]),
+                    [FeatureTypes.Gaussian, FeatureTypes.Gaussian],
+                ),
+            ]
+        )
+        self.assertTrue(
+            multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])]
+        )
+
+        multivariate_gaussian = MultivariateGaussianLayer.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [
+                        FeatureTypes.Gaussian(-1.0, 1.5),
+                        FeatureTypes.Gaussian(1.0, 0.5),
+                    ],
+                ),
+                FeatureContext(
+                    Scope([1, 2]),
+                    [
+                        FeatureTypes.Gaussian(1.0, 0.5),
+                        FeatureTypes.Gaussian(-1.0, 1.5),
+                    ],
+                ),
+            ]
+        )
+        self.assertTrue(
+            multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])]
+        )
+
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, MultivariateGaussianLayer.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            MultivariateGaussianLayer.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Discrete, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, MultivariateGaussianLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, MultivariateGaussianLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            MultivariateGaussianLayer.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -240,15 +359,44 @@ class TestNode(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(MultivariateGaussianLayer))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(MultivariateGaussianLayer, AutoLeaf.infer([([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([0, 1])), ([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([1, 2]))]))
+        self.assertEqual(
+            MultivariateGaussianLayer,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Gaussian, FeatureTypes.Gaussian],
+                    ),
+                    FeatureContext(
+                        Scope([1, 2]),
+                        [FeatureTypes.Gaussian, FeatureTypes.Gaussian],
+                    ),
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        multivariate_gaussian = AutoLeaf([([FeatureTypes.Gaussian(mean=-1.0, std=1.5), FeatureTypes.Gaussian(mean=1.0, std=0.5)], Scope([0, 1])), ([FeatureTypes.Gaussian(1.0, 0.5), FeatureTypes.Gaussian(-1.0, 1.5)], Scope([1, 2]))])
-        self.assertTrue(torch.all(multivariate_gaussian.mean[0] == torch.tensor([-1.0, 1.0])))
-        self.assertTrue(torch.all(multivariate_gaussian.mean[1] == torch.tensor([1.0, -1.0])))
-        self.assertTrue(torch.allclose(multivariate_gaussian.cov[0], torch.tensor([[1.5, 0.0], [0.0, 0.5]])))
-        self.assertTrue(torch.allclose(multivariate_gaussian.cov[1], torch.tensor([[0.5, 0.0], [0.0, 1.5]])))
-        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])])
+        multivariate_gaussian = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [
+                        FeatureTypes.Gaussian(mean=-1.0, std=1.5),
+                        FeatureTypes.Gaussian(mean=1.0, std=0.5),
+                    ],
+                ),
+                FeatureContext(
+                    Scope([1, 2]),
+                    [
+                        FeatureTypes.Gaussian(1.0, 0.5),
+                        FeatureTypes.Gaussian(-1.0, 1.5),
+                    ],
+                ),
+            ]
+        )
+        self.assertTrue(
+            multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])]
+        )
 
     def test_layer_structural_marginalization(self):
 

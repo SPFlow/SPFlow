@@ -57,9 +57,22 @@ from spflow.torch.structure.layers.layer import (
     SPNHadamardLayer,
     marginalize,
 )
-from spflow.torch.structure.layers.cond_layer import SPNCondSumLayer, marginalize
-from spflow.torch.structure.nodes.node import SPNSumNode, marginalize, toBase, toTorch
-from spflow.torch.structure.nodes.cond_node import SPNCondSumNode, marginalize, toBase, toTorch
+from spflow.torch.structure.layers.cond_layer import (
+    SPNCondSumLayer,
+    marginalize,
+)
+from spflow.torch.structure.nodes.node import (
+    SPNSumNode,
+    marginalize,
+    toBase,
+    toTorch,
+)
+from spflow.torch.structure.nodes.cond_node import (
+    SPNCondSumNode,
+    marginalize,
+    toBase,
+    toTorch,
+)
 from spflow.torch.structure.rat.rat_spn import (
     RatSPN,
     marginalize,
@@ -103,7 +116,7 @@ leaf_node_classes = (
     CondLogNormal,
     CondMultivariateGaussian,
     CondNegativeBinomial,
-    CondPoisson
+    CondPoisson,
 )
 
 leaf_layer_classes = (
@@ -128,8 +141,9 @@ leaf_layer_classes = (
     CondLogNormalLayer,
     CondMultivariateGaussianLayer,
     CondNegativeBinomialLayer,
-    CondPoissonLayer
+    CondPoissonLayer,
 )
+
 
 def get_rat_spn_properties(rat_spn: RatSPN):
 
@@ -170,10 +184,10 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=2, replicas=1
+        region_graph = random_region_graph(scope, depth=2, replicas=1)
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         self.assertRaises(
             ValueError,
@@ -208,20 +222,24 @@ class TestRatSpn(unittest.TestCase):
             feature_ctx,
             n_root_nodes=1,
             n_region_nodes=1,
-            n_leaf_nodes=1
+            n_leaf_nodes=1,
         )
 
     def test_rat_spn_1(self):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=2, replicas=1
+        region_graph = random_region_graph(scope, depth=2, replicas=1)
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
-            region_graph, feature_ctx, n_root_nodes=1, n_region_nodes=1, n_leaf_nodes=1
+            region_graph,
+            feature_ctx,
+            n_root_nodes=1,
+            n_region_nodes=1,
+            n_leaf_nodes=1,
         )
 
         n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
@@ -235,13 +253,17 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-           scope, depth=3, replicas=1
+        region_graph = random_region_graph(scope, depth=3, replicas=1)
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
-            region_graph, feature_ctx, n_root_nodes=1, n_region_nodes=1, n_leaf_nodes=1
+            region_graph,
+            feature_ctx,
+            n_root_nodes=1,
+            n_region_nodes=1,
+            n_leaf_nodes=1,
         )
 
         n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
@@ -255,13 +277,17 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=3, replicas=2
+        region_graph = random_region_graph(scope, depth=3, replicas=2)
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
-            region_graph, feature_ctx, n_root_nodes=2, n_region_nodes=2, n_leaf_nodes=2
+            region_graph,
+            feature_ctx,
+            n_root_nodes=2,
+            n_region_nodes=2,
+            n_leaf_nodes=2,
         )
 
         n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
@@ -275,13 +301,17 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=3, replicas=3
+        region_graph = random_region_graph(scope, depth=3, replicas=3)
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
-            region_graph, feature_ctx, n_root_nodes=3, n_region_nodes=3, n_leaf_nodes=3
+            region_graph,
+            feature_ctx,
+            n_root_nodes=3,
+            n_region_nodes=3,
+            n_leaf_nodes=3,
         )
 
         n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
@@ -298,10 +328,16 @@ class TestRatSpn(unittest.TestCase):
         region_graph = random_region_graph(
             scope, depth=2, replicas=1, n_splits=3
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
+        )
 
         rat_spn = RatSPN(
-            region_graph, feature_ctx, n_root_nodes=1, n_region_nodes=1, n_leaf_nodes=1
+            region_graph,
+            feature_ctx,
+            n_root_nodes=1,
+            n_region_nodes=1,
+            n_leaf_nodes=1,
         )
 
         n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
@@ -318,10 +354,16 @@ class TestRatSpn(unittest.TestCase):
         region_graph = random_region_graph(
             scope, depth=3, replicas=1, n_splits=3
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
+        )
 
         rat_spn = RatSPN(
-            region_graph, feature_ctx, n_root_nodes=1, n_region_nodes=1, n_leaf_nodes=1
+            region_graph,
+            feature_ctx,
+            n_root_nodes=1,
+            n_region_nodes=1,
+            n_leaf_nodes=1,
         )
 
         n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
@@ -338,10 +380,16 @@ class TestRatSpn(unittest.TestCase):
         region_graph = random_region_graph(
             scope, depth=2, replicas=2, n_splits=3
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
+        )
 
         rat_spn = RatSPN(
-            region_graph, feature_ctx, n_root_nodes=2, n_region_nodes=2, n_leaf_nodes=2
+            region_graph,
+            feature_ctx,
+            n_root_nodes=2,
+            n_region_nodes=2,
+            n_leaf_nodes=2,
         )
 
         n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
@@ -358,10 +406,16 @@ class TestRatSpn(unittest.TestCase):
         region_graph = random_region_graph(
             scope, depth=3, replicas=3, n_splits=3
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
+        )
 
         rat_spn = RatSPN(
-            region_graph, feature_ctx, n_root_nodes=3, n_region_nodes=3, n_leaf_nodes=2
+            region_graph,
+            feature_ctx,
+            n_root_nodes=3,
+            n_region_nodes=3,
+            n_leaf_nodes=2,
         )
 
         n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
@@ -374,11 +428,11 @@ class TestRatSpn(unittest.TestCase):
     def test_conditional_rat(self):
 
         random_variables = list(range(7))
-        scope = Scope(random_variables, [7]) # conditional scope
-        region_graph = random_region_graph(
-            scope, depth=2, replicas=1
+        scope = Scope(random_variables, [7])  # conditional scope
+        region_graph = random_region_graph(scope, depth=2, replicas=1)
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -398,11 +452,17 @@ class TestRatSpn(unittest.TestCase):
         region_graph = random_region_graph(
             scope, depth=5, replicas=2, n_splits=2
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
+        )
 
         # create torch rat spn from region graph
         torch_rat = RatSPN(
-            region_graph, feature_ctx, n_root_nodes=4, n_region_nodes=2, n_leaf_nodes=3
+            region_graph,
+            feature_ctx,
+            n_root_nodes=4,
+            n_region_nodes=2,
+            n_leaf_nodes=3,
         )
 
         # change some parameters
@@ -467,11 +527,17 @@ class TestRatSpn(unittest.TestCase):
         region_graph = random_region_graph(
             scope, depth=5, replicas=2, n_splits=2
         )
-        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
+        feature_ctx = FeatureContext(
+            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
+        )
 
         # create torch rat spn from region graph
         base_rat = BaseRatSPN(
-            region_graph, feature_ctx, n_root_nodes=4, n_region_nodes=2, n_leaf_nodes=3
+            region_graph,
+            feature_ctx,
+            n_root_nodes=4,
+            n_region_nodes=2,
+            n_leaf_nodes=3,
         )
 
         # change some parameters

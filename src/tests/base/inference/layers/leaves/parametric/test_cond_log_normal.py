@@ -23,7 +23,9 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_mean(self):
 
         log_normal = CondLogNormalLayer(
-            Scope([0], [1]), cond_f=lambda data: {"std": [0.25, 0.25]}, n_nodes=2
+            Scope([0], [1]),
+            cond_f=lambda data: {"std": [0.25, 0.25]},
+            n_nodes=2,
         )
         self.assertRaises(
             KeyError, log_likelihood, log_normal, np.array([[0], [1]])
@@ -49,7 +51,9 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"mean": [0.0, 0.0], "std": [0.25, 0.25]}
 
-        log_normal = CondLogNormalLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
+        log_normal = CondLogNormalLayer(
+            Scope([0], [1]), n_nodes=2, cond_f=cond_f
+        )
 
         # create test inputs/outputs
         data = np.array([[0.5], [1.0], [1.5]])

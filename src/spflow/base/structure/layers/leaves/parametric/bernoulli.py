@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains Bernoulli leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Type
+from typing import List, Union, Optional, Iterable, Tuple
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
@@ -12,7 +12,8 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli
 
@@ -97,10 +98,16 @@ class BernoulliLayer(Module):
     def p(self) -> np.ndarray:
         """Returns the success probabilities of the represented distributions."""
         return np.array([node.p for node in self.nodes])
-    
+
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``BernoulliLayer`` can represent one or more univariate nodes with ``MetaType.discrete`` or ``BernoulliType`` domains.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf has at least one output
         if len(signatures) < 1:
             return False
@@ -112,31 +119,44 @@ class BernoulliLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "BernoulliLayer":
-        """TODO"""
+    def from_signatures(
+        self, signatures: List[FeatureContext]
+    ) -> "BernoulliLayer":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``BernoulliLayer`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'BernoulliLayer' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'BernoulliLayer' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         p = []
         scopes = []
 
-        for types, scope in signatures:
+        for feature_ctx in signatures:
 
-            type = types[0]
+            domain = feature_ctx.get_domains()[0]
 
             # read or initialize parameters
-            if type == MetaType.Discrete:
+            if domain == MetaType.Discrete:
                 p.append(0.5)
-            elif type == FeatureTypes.Bernoulli:
+            elif domain == FeatureTypes.Bernoulli:
                 # instantiate object
-                p.append(type().p)
-            elif isinstance(type, FeatureTypes.Bernoulli):
-                p.append(type.p)
+                p.append(domain().p)
+            elif isinstance(domain, FeatureTypes.Bernoulli):
+                p.append(domain.p)
             else:
-                raise ValueError(f"Unknown signature type {type} for 'BernoulliLayer' that was not caught during acception checking.")
+                raise ValueError(
+                    f"Unknown signature domain {domain} for 'BernoulliLayer' that was not caught during acception checking."
+                )
 
-            scopes.append(scope)
-    
+            scopes.append(feature_ctx.scope)
+
         return BernoulliLayer(scopes, p=p)
 
     def set_params(

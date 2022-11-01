@@ -7,7 +7,9 @@ from spflow.torch.learning.learn_spn.learn_spn import (
     learn_spn,
 )
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import CondGaussian
+from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import (
+    CondGaussian,
+)
 from spflow.torch.structure.nodes.node import SPNProductNode, SPNSumNode
 from spflow.torch.structure.nodes.cond_node import SPNCondSumNode
 
@@ -188,7 +190,9 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         data = torch.randn((100, 3))
-        feature_ctx = FeatureContext(Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)})
+        feature_ctx = FeatureContext(
+            Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)}
+        )
 
         # ----- min_features_slice > scope size (no splitting or clustering) -----
 
@@ -219,7 +223,9 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         data = torch.randn((100, 3))
-        feature_ctx = FeatureContext(Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)})
+        feature_ctx = FeatureContext(
+            Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)}
+        )
 
         # ----- min_instances_slice_100, alternate partitioning -----
 
@@ -273,7 +279,9 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         data = torch.randn((100, 3))
-        feature_ctx = FeatureContext(Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)})
+        feature_ctx = FeatureContext(
+            Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)}
+        )
 
         # ----- successive partitioning -----
 
@@ -311,7 +319,9 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         data = torch.randn(100, 3)
-        feature_ctx = FeatureContext(Scope([0, 1, 2], [3]), {k: FeatureTypes.Gaussian for k in range(3)})
+        feature_ctx = FeatureContext(
+            Scope([0, 1, 2], [3]), {k: FeatureTypes.Gaussian for k in range(3)}
+        )
 
         # ----- min_instances_slice_100, alternate partitioning -----
 
@@ -362,14 +372,21 @@ class TestNode(unittest.TestCase):
 
         # scope length does not match data shape
         self.assertRaises(
-            ValueError, learn_spn, torch.randn((1, 3)), FeatureContext(Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)})
+            ValueError,
+            learn_spn,
+            torch.randn((1, 3)),
+            FeatureContext(
+                Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)}
+            ),
         )
         # invalid clustering method
         self.assertRaises(
             ValueError,
             learn_spn,
             torch.randn((1, 3)),
-            FeatureContext(Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)}),
+            FeatureContext(
+                Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)}
+            ),
             clustering_method="invalid_option",
             partitioning_method="rdc",
         )
@@ -378,21 +395,41 @@ class TestNode(unittest.TestCase):
             ValueError,
             learn_spn,
             torch.randn((1, 3)),
-            FeatureContext(Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)}),
+            FeatureContext(
+                Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)}
+            ),
             clustering_method="kmeans",
             partitioning_method="invalid_option",
         )
         # invalid min number of instances for slicing
         self.assertRaises(
-            ValueError, learn_spn, torch.randn((1, 3)), FeatureContext(Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)}), min_instances_slice=1
+            ValueError,
+            learn_spn,
+            torch.randn((1, 3)),
+            FeatureContext(
+                Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)}
+            ),
+            min_instances_slice=1,
         )
         # invalid min number of features for slicing
         self.assertRaises(
-            ValueError, learn_spn, torch.randn((1, 3)), FeatureContext(Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)}), min_features_slice=1
+            ValueError,
+            learn_spn,
+            torch.randn((1, 3)),
+            FeatureContext(
+                Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)}
+            ),
+            min_features_slice=1,
         )
         # conditional scope with enabled 'fit_params' option
         self.assertRaises(
-            ValueError, learn_spn, torch.randn(1, 3), FeatureContext(Scope([0, 1, 2], [3]), {k: FeatureTypes.Gaussian for k in range(3)})
+            ValueError,
+            learn_spn,
+            torch.randn(1, 3),
+            FeatureContext(
+                Scope([0, 1, 2], [3]),
+                {k: FeatureTypes.Gaussian for k in range(3)},
+            ),
         )
 
 

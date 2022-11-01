@@ -1,5 +1,6 @@
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.node import marginalize
 from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial
@@ -46,55 +47,96 @@ class TestBinomial(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(Binomial.accepts([([FeatureTypes.Discrete], Scope([0]))]))
-
-        # Bernoulli feature type class (should reject)
-        self.assertFalse(Binomial.accepts([([FeatureTypes.Binomial], Scope([0]))]))
+        self.assertFalse(
+            Binomial.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
+            )
+        )
 
         # Bernoulli feature type instance
-        self.assertTrue(Binomial.accepts([([FeatureTypes.Binomial(n=3)], Scope([0]))]))
+        self.assertTrue(
+            Binomial.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(Binomial.accepts([([FeatureTypes.Continuous], Scope([0]))]))
+        self.assertFalse(
+            Binomial.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # conditional scope
-        self.assertFalse(Binomial.accepts([([FeatureTypes.Binomial(n=3)], Scope([0], [1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(Binomial.accepts([([FeatureTypes.Binomial(n=3)], Scope([0, 1]))]))
+        self.assertFalse(
+            Binomial.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(Binomial.accepts([([FeatureTypes.Binomial(n=3), FeatureTypes.Binomial(n=3)], Scope([0, 1]))]))
+        self.assertFalse(
+            Binomial.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [
+                            FeatureTypes.Binomial(n=3),
+                            FeatureTypes.Binomial(n=3),
+                        ],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        binomial = Binomial.from_signatures([([FeatureTypes.Binomial(n=3)], Scope([0]))])
+        binomial = Binomial.from_signatures(
+            [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]
+        )
         self.assertEqual(binomial.n, 3)
         self.assertEqual(binomial.p, 0.5)
 
-        binomial = Binomial.from_signatures([([FeatureTypes.Binomial(n=3, p=0.75)], Scope([0]))])
+        binomial = Binomial.from_signatures(
+            [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)])]
+        )
         self.assertEqual(binomial.n, 3)
         self.assertEqual(binomial.p, 0.75)
 
         # ----- invalid arguments -----
 
         # discrete meta type
-        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
-
-        # Bernoulli feature type class
-        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Binomial], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            Binomial.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # invalid feature type
-        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            Binomial.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Discrete], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            Binomial.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, Binomial.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            Binomial.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Discrete, FeatureTypes.Discrete],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -102,10 +144,17 @@ class TestBinomial(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(Binomial))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(Binomial, AutoLeaf.infer([([FeatureTypes.Binomial(n=3)], Scope([0]))]))
+        self.assertEqual(
+            Binomial,
+            AutoLeaf.infer(
+                [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        binomial = AutoLeaf([([FeatureTypes.Binomial(n=3, p=0.75)], Scope([0]))])
+        binomial = AutoLeaf(
+            [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)])]
+        )
         self.assertTrue(isinstance(binomial, Binomial))
         self.assertEqual(binomial.n, 3)
         self.assertEqual(binomial.p, 0.75)

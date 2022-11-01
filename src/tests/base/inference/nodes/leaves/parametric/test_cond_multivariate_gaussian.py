@@ -145,7 +145,8 @@ class TestMultivariateGaussian(unittest.TestCase):
         )
 
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1, 2], [3]), cond_f=lambda data: {"mean": mean, "cov": cov}
+            Scope([0, 1, 2], [3]),
+            cond_f=lambda data: {"mean": mean, "cov": cov},
         )
 
         # create test inputs/outputs
@@ -170,7 +171,8 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         # dummy distribution and data
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1], [2]), cond_f=lambda data: {"mean": None, "cov": np.eye(2)}
+            Scope([0, 1], [2]),
+            cond_f=lambda data: {"mean": None, "cov": np.eye(2)},
         )
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
 

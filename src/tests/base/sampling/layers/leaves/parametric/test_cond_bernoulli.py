@@ -32,7 +32,9 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         bernoulli_layer = CondBernoulliLayer(
-            scope=Scope([0], [1]), cond_f=lambda data: {"p": [0.8, 0.3]}, n_nodes=2
+            scope=Scope([0], [1]),
+            cond_f=lambda data: {"p": [0.8, 0.3]},
+            n_nodes=2,
         )
         s1 = SPNSumNode(children=[bernoulli_layer], weights=[0.3, 0.7])
 

@@ -28,7 +28,9 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_beta(self):
 
         gamma = CondGammaLayer(
-            Scope([0], [1]), cond_f=lambda data: {"alpha": [1.0, 1.0]}, n_nodes=2
+            Scope([0], [1]),
+            cond_f=lambda data: {"alpha": [1.0, 1.0]},
+            n_nodes=2,
         )
         self.assertRaises(KeyError, log_likelihood, gamma, np.array([[0], [1]]))
 

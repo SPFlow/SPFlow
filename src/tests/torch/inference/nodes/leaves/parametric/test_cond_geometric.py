@@ -130,7 +130,9 @@ class TestGeometric(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.5}
+        )
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1
@@ -142,7 +144,9 @@ class TestGeometric(unittest.TestCase):
 
         # Support for Geometric distribution: integers N\{0}
 
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.5}
+        )
 
         # check infinite values
         self.assertRaises(

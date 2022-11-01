@@ -1,5 +1,6 @@
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.uniform import (
     Uniform as BaseUniform,
@@ -63,51 +64,103 @@ class TestUniform(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(Uniform.accepts([([FeatureTypes.Continuous], Scope([0]))]))
+        self.assertFalse(
+            Uniform.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
+            )
+        )
 
-        # Bernoulli feature type class (should reject)
-        self.assertFalse(Uniform.accepts([([FeatureTypes.Uniform], Scope([0]))]))
-
-        # Bernoulli feature type instance
-        self.assertTrue(Uniform.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0]))]))
+        # feature type instance
+        self.assertTrue(
+            Uniform.accepts(
+                [
+                    FeatureContext(
+                        Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
+                    )
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(Uniform.accepts([([FeatureTypes.Discrete], Scope([0]))]))
+        self.assertFalse(
+            Uniform.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
+            )
+        )
 
         # conditional scope
-        self.assertFalse(Uniform.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0], [1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(Uniform.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0, 1]))]))
+        self.assertFalse(
+            Uniform.accepts(
+                [
+                    FeatureContext(
+                        Scope([0], [1]),
+                        [FeatureTypes.Uniform(start=-1.0, end=2.0)],
+                    )
+                ]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(Uniform.accepts([([FeatureTypes.Uniform(start=-1.0, end=2.0), FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0, 1]))]))
+        self.assertFalse(
+            Uniform.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [
+                            FeatureTypes.Uniform(start=-1.0, end=2.0),
+                            FeatureTypes.Uniform(start=-1.0, end=2.0),
+                        ],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        uniform = Uniform.from_signatures([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0]))])
+        uniform = Uniform.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
+                )
+            ]
+        )
         self.assertTrue(torch.isclose(uniform.start, torch.tensor(-1.0)))
         self.assertTrue(torch.isclose(uniform.end, torch.tensor(2.0)))
 
         # ----- invalid arguments -----
 
         # discrete meta type
-        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
-
-        # Bernoulli feature type class
-        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Uniform], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            Uniform.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+        )
 
         # invalid feature type
-        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            Uniform.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            Uniform.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, Uniform.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            Uniform.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -115,10 +168,25 @@ class TestUniform(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(Uniform))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(Uniform, AutoLeaf.infer([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0]))]))
+        self.assertEqual(
+            Uniform,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(
+                        Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
+                    )
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        uniform = AutoLeaf([([FeatureTypes.Uniform(start=-1.0, end=2.0)], Scope([0]))])
+        uniform = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
+                )
+            ]
+        )
         self.assertTrue(isinstance(uniform, Uniform))
         self.assertTrue(torch.isclose(uniform.start, torch.tensor(-1.0)))
         self.assertTrue(torch.isclose(uniform.end, torch.tensor(2.0)))

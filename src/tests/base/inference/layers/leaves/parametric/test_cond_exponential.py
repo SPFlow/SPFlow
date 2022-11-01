@@ -31,7 +31,9 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"l": [0.5, 1.0]}
 
-        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
+        exponential = CondExponentialLayer(
+            Scope([0], [1]), n_nodes=2, cond_f=cond_f
+        )
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
@@ -88,7 +90,9 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_1(self):
 
         exponential_layer = CondExponentialLayer(
-            scope=Scope([0], [1]), cond_f=lambda data: {"l": [0.5, 1.0]}, n_nodes=2
+            scope=Scope([0], [1]),
+            cond_f=lambda data: {"l": [0.5, 1.0]},
+            n_nodes=2,
         )
         s1 = SPNSumNode(children=[exponential_layer], weights=[0.3, 0.7])
 

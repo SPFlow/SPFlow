@@ -1,5 +1,6 @@
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
@@ -29,13 +30,14 @@ class TestMultivariateGaussian(unittest.TestCase):
         multivariate_gaussian = CondMultivariateGaussian(Scope([0], [1]))
         self.assertTrue(multivariate_gaussian.cond_f is None)
         multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1], [2]), lambda x: {"mean": torch.zeros(2), "cov": torch.eye(2)}
+            Scope([0, 1], [2]),
+            lambda x: {"mean": torch.zeros(2), "cov": torch.eye(2)},
         )
         self.assertTrue(isinstance(multivariate_gaussian.cond_f, Callable))
 
         # invalid scopes
         self.assertRaises(Exception, CondMultivariateGaussian, Scope([]))
-        self.assertRaises(Exception, CondMultivariateGaussian, Scope([0,1]))
+        self.assertRaises(Exception, CondMultivariateGaussian, Scope([0, 1]))
 
     def test_retrieve_params(self):
 
@@ -207,42 +209,135 @@ class TestMultivariateGaussian(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta types
-        self.assertTrue(CondMultivariateGaussian.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+        self.assertTrue(
+            CondMultivariateGaussian.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
         # Gaussian feature type class
-        self.assertTrue(CondMultivariateGaussian.accepts([([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([0, 1], [2]))]))
+        self.assertTrue(
+            CondMultivariateGaussian.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [FeatureTypes.Gaussian, FeatureTypes.Gaussian],
+                    )
+                ]
+            )
+        )
 
         # Gaussian feature type instance
-        self.assertTrue(CondMultivariateGaussian.accepts([([FeatureTypes.Gaussian(0.0, 1.0), FeatureTypes.Gaussian(0.0, 1.0)], Scope([0, 1], [2]))]))
+        self.assertTrue(
+            CondMultivariateGaussian.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [
+                            FeatureTypes.Gaussian(0.0, 1.0),
+                            FeatureTypes.Gaussian(0.0, 1.0),
+                        ],
+                    )
+                ]
+            )
+        )
 
         # continuous meta and Gaussian feature types
-        self.assertTrue(CondMultivariateGaussian.accepts([([FeatureTypes.Continuous, FeatureTypes.Gaussian], Scope([0, 1], [2]))]))
+        self.assertTrue(
+            CondMultivariateGaussian.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [FeatureTypes.Continuous, FeatureTypes.Gaussian],
+                    )
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(CondMultivariateGaussian.accepts([([FeatureTypes.Discrete, FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+        self.assertFalse(
+            CondMultivariateGaussian.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [FeatureTypes.Discrete, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
         # non-conditional scope
-        self.assertFalse(CondMultivariateGaussian.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(CondMultivariateGaussian.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1, 2], [3]))]))
+        self.assertFalse(
+            CondMultivariateGaussian.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        CondMultivariateGaussian.from_signatures([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))])
-        CondMultivariateGaussian.from_signatures([([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([0, 1], [2]))])
-        CondMultivariateGaussian.from_signatures([([FeatureTypes.Gaussian(-1.0, 1.5), FeatureTypes.Gaussian(1.0, 0.5)], Scope([0, 1], [2]))])
+        CondMultivariateGaussian.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ]
+        )
+        CondMultivariateGaussian.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [FeatureTypes.Gaussian, FeatureTypes.Gaussian],
+                )
+            ]
+        )
+        CondMultivariateGaussian.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [
+                        FeatureTypes.Gaussian(-1.0, 1.5),
+                        FeatureTypes.Gaussian(1.0, 0.5),
+                    ],
+                )
+            ]
+        )
 
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, CondMultivariateGaussian.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Continuous], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondMultivariateGaussian.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [FeatureTypes.Discrete, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
         # non-conditional scope
-        self.assertRaises(ValueError, CondMultivariateGaussian.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, CondMultivariateGaussian.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondMultivariateGaussian.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -250,11 +345,33 @@ class TestMultivariateGaussian(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(CondMultivariateGaussian))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(CondMultivariateGaussian, AutoLeaf.infer([([FeatureTypes.Gaussian, FeatureTypes.Gaussian], Scope([0, 1], [2]))]))
+        self.assertEqual(
+            CondMultivariateGaussian,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [FeatureTypes.Gaussian, FeatureTypes.Gaussian],
+                    )
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        multivariate_gaussian = AutoLeaf([([FeatureTypes.Gaussian(mean=-1.0, std=1.5), FeatureTypes.Gaussian(mean=1.0, std=0.5)], Scope([0, 1], [2]))])
-        self.assertTrue(isinstance(multivariate_gaussian, CondMultivariateGaussian))
+        multivariate_gaussian = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [
+                        FeatureTypes.Gaussian(mean=-1.0, std=1.5),
+                        FeatureTypes.Gaussian(mean=1.0, std=0.5),
+                    ],
+                )
+            ]
+        )
+        self.assertTrue(
+            isinstance(multivariate_gaussian, CondMultivariateGaussian)
+        )
 
     def test_structural_marginalization(self):
 
@@ -273,7 +390,9 @@ class TestMultivariateGaussian(unittest.TestCase):
 
     def test_base_backend_conversion(self):
 
-        torch_multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1, 2], [3]))
+        torch_multivariate_gaussian = CondMultivariateGaussian(
+            Scope([0, 1, 2], [3])
+        )
         node_multivariate_gaussian = BaseCondMultivariateGaussian(
             Scope([0, 1, 2], [3])
         )

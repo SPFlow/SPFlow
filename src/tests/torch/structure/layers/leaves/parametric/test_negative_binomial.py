@@ -13,6 +13,7 @@ from spflow.base.structure.layers.leaves.parametric.negative_binomial import (
 )
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 import torch
 import numpy as np
 import unittest
@@ -179,57 +180,128 @@ class TestNode(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(NegativeBinomialLayer.accepts([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Discrete], Scope([1]))]))
+        self.assertFalse(
+            NegativeBinomialLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Discrete]),
+                ]
+            )
+        )
 
-        # Bernoulli feature type class (should reject)
-        self.assertFalse(NegativeBinomialLayer.accepts([([FeatureTypes.NegativeBinomial], Scope([0])), ([FeatureTypes.Discrete], Scope([1]))]))
-
-        # Bernoulli feature type instance
-        self.assertTrue(NegativeBinomialLayer.accepts([([FeatureTypes.NegativeBinomial(n=3)], Scope([0])), ([FeatureTypes.NegativeBinomial(n=3)], Scope([1]))]))
+        # feature type instance
+        self.assertTrue(
+            NegativeBinomialLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0]), [FeatureTypes.NegativeBinomial(n=3)]
+                    ),
+                    FeatureContext(
+                        Scope([1]), [FeatureTypes.NegativeBinomial(n=3)]
+                    ),
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(NegativeBinomialLayer.accepts([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.NegativeBinomial(n=3)], Scope([1]))]))
+        self.assertFalse(
+            NegativeBinomialLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                    FeatureContext(
+                        Scope([1]), [FeatureTypes.NegativeBinomial(n=3)]
+                    ),
+                ]
+            )
+        )
 
         # conditional scope
-        self.assertFalse(NegativeBinomialLayer.accepts([([FeatureTypes.NegativeBinomial(n=3)], Scope([0], [1])), ([FeatureTypes.NegativeBinomial(n=3)], Scope([1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(NegativeBinomialLayer.accepts([([FeatureTypes.NegativeBinomial(n=3)], Scope([0, 1]))]))
+        self.assertFalse(
+            NegativeBinomialLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)]
+                    )
+                ]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(NegativeBinomialLayer.accepts([([FeatureTypes.NegativeBinomial(n=3), FeatureTypes.Binomial(n=3)], Scope([0, 1]))]))
+        self.assertFalse(
+            NegativeBinomialLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [
+                            FeatureTypes.NegativeBinomial(n=3),
+                            FeatureTypes.Binomial(n=3),
+                        ],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        negative_binomial = NegativeBinomialLayer.from_signatures([([FeatureTypes.NegativeBinomial(n=3)], Scope([0])), ([FeatureTypes.NegativeBinomial(n=5)], Scope([1]))])
+        negative_binomial = NegativeBinomialLayer.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.NegativeBinomial(n=3)]
+                ),
+                FeatureContext(
+                    Scope([1]), [FeatureTypes.NegativeBinomial(n=5)]
+                ),
+            ]
+        )
         self.assertTrue(torch.all(negative_binomial.n == torch.tensor([3, 5])))
-        self.assertTrue(torch.all(negative_binomial.p == torch.tensor([0.5, 0.5])))
-        self.assertTrue(negative_binomial.scopes_out == [Scope([0]), Scope([1])])
-
-        negative_binomial = NegativeBinomialLayer.from_signatures([([FeatureTypes.NegativeBinomial(n=3, p=0.75)], Scope([0])), ([FeatureTypes.NegativeBinomial(n=5, p=0.25)], Scope([1]))])
-        self.assertTrue(torch.all(negative_binomial.n == torch.tensor([3, 5])))
-        self.assertTrue(torch.all(negative_binomial.p == torch.tensor([0.75, 0.25])))
-        self.assertTrue(negative_binomial.scopes_out == [Scope([0]), Scope([1])])
+        self.assertTrue(
+            torch.allclose(negative_binomial.p, torch.tensor([0.5, 0.5]))
+        )
+        self.assertTrue(
+            negative_binomial.scopes_out == [Scope([0]), Scope([1])]
+        )
 
         # ----- invalid arguments -----
 
         # discrete meta type
-        self.assertRaises(ValueError, NegativeBinomialLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
-
-        # Bernoulli feature type class
-        self.assertRaises(ValueError, NegativeBinomialLayer.from_signatures, [([FeatureTypes.Binomial], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # invalid feature type
-        self.assertRaises(ValueError, NegativeBinomialLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, NegativeBinomialLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, NegativeBinomialLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0], [1]), [FeatureTypes.NegativeBinomial(3)]
+                )
+            ],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, NegativeBinomialLayer.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            NegativeBinomialLayer.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [
+                        FeatureTypes.NegativeBinomial(3),
+                        FeatureTypes.NegativeBinomial(5),
+                    ],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -237,13 +309,38 @@ class TestNode(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(NegativeBinomialLayer))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(NegativeBinomialLayer, AutoLeaf.infer([([FeatureTypes.NegativeBinomial(n=3)], Scope([0])), ([FeatureTypes.NegativeBinomial(n=5)], Scope([1]))]))
+        self.assertEqual(
+            NegativeBinomialLayer,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(
+                        Scope([0]), [FeatureTypes.NegativeBinomial(n=3)]
+                    ),
+                    FeatureContext(
+                        Scope([1]), [FeatureTypes.NegativeBinomial(n=5)]
+                    ),
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        negative_binomial = AutoLeaf([([FeatureTypes.NegativeBinomial(n=3, p=0.75)], Scope([0])), ([FeatureTypes.NegativeBinomial(n=5, p=0.25)], Scope([1]))])
+        negative_binomial = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.NegativeBinomial(n=3, p=0.75)]
+                ),
+                FeatureContext(
+                    Scope([1]), [FeatureTypes.NegativeBinomial(n=5, p=0.25)]
+                ),
+            ]
+        )
         self.assertTrue(torch.all(negative_binomial.n == torch.tensor([3, 5])))
-        self.assertTrue(torch.all(negative_binomial.p == torch.tensor([0.75, 0.25])))
-        self.assertTrue(negative_binomial.scopes_out == [Scope([0]), Scope([1])])
+        self.assertTrue(
+            torch.allclose(negative_binomial.p, torch.tensor([0.75, 0.25]))
+        )
+        self.assertTrue(
+            negative_binomial.scopes_out == [Scope([0]), Scope([1])]
+        )
 
     def test_layer_structural_marginalization(self):
 

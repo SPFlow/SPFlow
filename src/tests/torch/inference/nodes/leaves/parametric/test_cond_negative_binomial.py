@@ -36,7 +36,9 @@ class TestNegativeBinomial(unittest.TestCase):
 
         cond_f = lambda data: {"p": 1.0}
 
-        negative_binomial = CondNegativeBinomial(Scope([0], [1]), n=1, cond_f=cond_f)
+        negative_binomial = CondNegativeBinomial(
+            Scope([0], [1]), n=1, cond_f=cond_f
+        )
 
         # create test inputs/outputs
         data = torch.tensor([[0.0], [1.0]])

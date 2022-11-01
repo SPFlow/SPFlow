@@ -7,6 +7,7 @@ from spflow.base.structure.nodes.leaves.parametric.cond_gamma import CondGamma
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 import numpy as np
 import unittest
 
@@ -21,7 +22,10 @@ class TestLayer(unittest.TestCase):
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
         self.assertTrue(
-            np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])])
+            np.all(
+                l.scopes_out
+                == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]
+            )
         )
 
         # ---- different scopes -----
@@ -30,7 +34,9 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, CondGammaLayer, Scope([0], [1]), n_nodes=0)
+        self.assertRaises(
+            ValueError, CondGammaLayer, Scope([0], [1]), n_nodes=0
+        )
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondGammaLayer, Scope([]), n_nodes=3)
@@ -177,54 +183,123 @@ class TestLayer(unittest.TestCase):
         self.assertRaises(
             ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
         )
-    
+
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(CondGammaLayer.accepts([([FeatureTypes.Continuous], Scope([0], [2])), ([FeatureTypes.Continuous], Scope([1], [2]))]))
+        self.assertTrue(
+            CondGammaLayer.accepts(
+                [
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
+                    FeatureContext(Scope([1], [3]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
-        # Gamma feature type class
-        self.assertTrue(CondGammaLayer.accepts([([FeatureTypes.Gamma], Scope([0], [2])), ([FeatureTypes.Continuous], Scope([1], [2]))]))
+        # feature type class
+        self.assertTrue(
+            CondGammaLayer.accepts(
+                [
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Gamma]),
+                    FeatureContext(Scope([1], [3]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
-        # Gamma feature type instance
-        self.assertTrue(CondGammaLayer.accepts([([FeatureTypes.Gamma(1.0, 1.0)], Scope([0], [2])), ([FeatureTypes.Gamma(1.0, 1.0)], Scope([1], [2]))]))
+        # feature type instance
+        self.assertTrue(
+            CondGammaLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0], [2]), [FeatureTypes.Gamma(1.0, 1.0)]
+                    ),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(CondGammaLayer.accepts([([FeatureTypes.Discrete], Scope([0], [2])), ([FeatureTypes.Continuous], Scope([1], [2]))]))
+        self.assertFalse(
+            CondGammaLayer.accepts(
+                [
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Discrete]),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
         # non-conditional scope
-        self.assertFalse(CondGammaLayer.accepts([([FeatureTypes.Continuous], Scope([0]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(CondGammaLayer.accepts([([FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+        self.assertFalse(
+            CondGammaLayer.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(CondGammaLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+        self.assertFalse(
+            CondGammaLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        gamma = CondGammaLayer.from_signatures([([FeatureTypes.Continuous], Scope([0], [2])), ([FeatureTypes.Continuous], Scope([1], [2]))])
+        gamma = CondGammaLayer.from_signatures(
+            [
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Continuous]),
+            ]
+        )
         self.assertTrue(gamma.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
-        gamma = CondGammaLayer.from_signatures([([FeatureTypes.Gamma], Scope([0], [2])), ([FeatureTypes.Gamma], Scope([1], [2]))])
+        gamma = CondGammaLayer.from_signatures(
+            [
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Gamma]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Gamma]),
+            ]
+        )
         self.assertTrue(gamma.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
-        gamma = CondGammaLayer.from_signatures([([FeatureTypes.Gamma(1.5, 0.5)], Scope([0], [2])), ([FeatureTypes.Gamma(0.5, 1.5)], Scope([1], [2]))])
+        gamma = CondGammaLayer.from_signatures(
+            [
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Gamma(1.0, 1.0)]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Gamma(1.0, 1.0)]),
+            ]
+        )
         self.assertTrue(gamma.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, CondGammaLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
+        self.assertRaises(
+            ValueError,
+            CondGammaLayer.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
+        )
 
         # non-conditional scope
-        self.assertRaises(ValueError, CondGammaLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, CondGammaLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondGammaLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, CondGammaLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondGammaLayer.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -232,10 +307,27 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(CondGammaLayer))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(CondGammaLayer, AutoLeaf.infer([([FeatureTypes.Gamma], Scope([0], [2])), ([FeatureTypes.Gamma], Scope([1], [2]))]))
+        self.assertEqual(
+            CondGammaLayer,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Gamma]),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.Gamma]),
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        gamma = AutoLeaf([([FeatureTypes.Gamma(alpha=1.5, beta=0.5)], Scope([0], [2])), ([FeatureTypes.Gamma(alpha=0.5, beta=1.5)], Scope([1], [2]))])
+        gamma = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0], [2]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)]
+                ),
+                FeatureContext(
+                    Scope([1], [2]), [FeatureTypes.Gamma(alpha=0.5, beta=1.5)]
+                ),
+            ]
+        )
         self.assertTrue(gamma.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
     def test_layer_structural_marginalization(self):

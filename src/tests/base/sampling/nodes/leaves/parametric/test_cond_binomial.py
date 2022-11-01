@@ -68,7 +68,9 @@ class TestCondBinomial(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        binomial = CondBinomial(Scope([0], [1]), n=5, cond_f=lambda data: {"p": 0.5})
+        binomial = CondBinomial(
+            Scope([0], [1]), n=5, cond_f=lambda data: {"p": 0.5}
+        )
 
         # make sure that instance ids out of bounds raise errors
         self.assertRaises(

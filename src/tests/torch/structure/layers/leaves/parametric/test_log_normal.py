@@ -11,6 +11,7 @@ from spflow.base.structure.layers.leaves.parametric.log_normal import (
 )
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 import torch
 import numpy as np
 import unittest
@@ -193,56 +194,118 @@ class TestNode(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(LogNormalLayer.accepts([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
+        self.assertTrue(
+            LogNormalLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
-        # LogNormal feature type class
-        self.assertTrue(LogNormalLayer.accepts([([FeatureTypes.LogNormal], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
+        # feature type class
+        self.assertTrue(
+            LogNormalLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.LogNormal]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
-        # LogNormal feature type instance
-        self.assertTrue(LogNormalLayer.accepts([([FeatureTypes.LogNormal(0.0, 1.0)], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
+        # feature type instance
+        self.assertTrue(
+            LogNormalLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0]), [FeatureTypes.LogNormal(0.0, 1.0)]
+                    ),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(LogNormalLayer.accepts([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
+        self.assertFalse(
+            LogNormalLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
         # conditional scope
-        self.assertFalse(LogNormalLayer.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(LogNormalLayer.accepts([([FeatureTypes.Continuous], Scope([0, 1]))]))
+        self.assertFalse(
+            LogNormalLayer.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(LogNormalLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))]))
+        self.assertFalse(
+            LogNormalLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        log_normal = LogNormalLayer.from_signatures([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))])
-        self.assertTrue(torch.all(log_normal.mean == torch.tensor([0.0, 0.0])))
-        self.assertTrue(torch.all(log_normal.std == torch.tensor([1.0, 1.0])))
+        log_normal = LogNormalLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+            ]
+        )
         self.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
 
-        log_normal = LogNormalLayer.from_signatures([([FeatureTypes.LogNormal], Scope([0])), ([FeatureTypes.LogNormal], Scope([1]))])
-        self.assertTrue(torch.all(log_normal.mean == torch.tensor([0.0, 0.0])))
-        self.assertTrue(torch.all(log_normal.std == torch.tensor([1.0, 1.0])))
+        log_normal = LogNormalLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.LogNormal]),
+                FeatureContext(Scope([1]), [FeatureTypes.LogNormal]),
+            ]
+        )
         self.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
 
-        log_normal = LogNormalLayer.from_signatures([([FeatureTypes.LogNormal(-1.0, 1.5)], Scope([0])), ([FeatureTypes.LogNormal(1.0, 0.5)], Scope([1]))])
-        self.assertTrue(torch.all(log_normal.mean == torch.tensor([-1.0, 1.0])))
-        self.assertTrue(torch.all(log_normal.std == torch.tensor([1.5, 0.5])))
+        log_normal = LogNormalLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.LogNormal(0.0, 1.0)]),
+                FeatureContext(Scope([1]), [FeatureTypes.LogNormal(0.0, 1.0)]),
+            ]
+        )
         self.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
-
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, LogNormalLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            LogNormalLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, LogNormalLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, LogNormalLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            LogNormalLayer.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, LogNormalLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            LogNormalLayer.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -250,12 +313,27 @@ class TestNode(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(LogNormalLayer))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(LogNormalLayer, AutoLeaf.infer([([FeatureTypes.LogNormal], Scope([0])), ([FeatureTypes.LogNormal], Scope([1]))]))
+        self.assertEqual(
+            LogNormalLayer,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.LogNormal]),
+                    FeatureContext(Scope([1]), [FeatureTypes.LogNormal]),
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        log_normal = AutoLeaf([([FeatureTypes.LogNormal(mean=-1.0, std=1.5)], Scope([0])), ([FeatureTypes.LogNormal(mean=1.0, std=0.5)], Scope([1]))])
-        self.assertTrue(torch.all(log_normal.mean == torch.tensor([-1.0, 1.0])))
-        self.assertTrue(torch.all(log_normal.std == torch.tensor([1.5, 0.5])))
+        log_normal = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.LogNormal(mean=-1.0, std=1.5)]
+                ),
+                FeatureContext(
+                    Scope([1]), [FeatureTypes.LogNormal(mean=1.0, std=0.5)]
+                ),
+            ]
+        )
         self.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
 
     def test_layer_structural_marginalization(self):

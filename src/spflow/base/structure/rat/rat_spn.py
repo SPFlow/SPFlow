@@ -98,7 +98,8 @@ class RatSPN(Module):
         self.from_region_graph(region_graph, feature_ctx)
 
     def from_region_graph(
-        self, region_graph: RegionGraph,
+        self,
+        region_graph: RegionGraph,
         feature_ctx: FeatureContext,
     ) -> None:
         r"""Function to create explicit RAT-SPN from an abstract region graph.
@@ -113,6 +114,7 @@ class RatSPN(Module):
         Raises:
             ValueError: Invalid arguments.
         """
+
         def convert_partition(partition: Partition) -> SPNPartitionLayer:
 
             return SPNPartitionLayer(
@@ -128,22 +130,34 @@ class RatSPN(Module):
 
             # non-leaf region
             if region.partitions:
-                children = [convert_partition(partition) for partition in region.partitions]
-                sum_layer = SPNCondSumLayer(children=children, n_nodes=n_nodes) if region.scope.is_conditional() else SPNSumLayer(children=children, n_nodes=n_nodes)
+                children = [
+                    convert_partition(partition)
+                    for partition in region.partitions
+                ]
+                sum_layer = (
+                    SPNCondSumLayer(children=children, n_nodes=n_nodes)
+                    if region.scope.is_conditional()
+                    else SPNSumLayer(children=children, n_nodes=n_nodes)
+                )
                 return sum_layer
             # leaf region
             else:
                 # split leaf scope into univariate ones and combine them element-wise
                 if len(region.scope.query) > 1:
                     partition_signatures = [
-                        [(feature_ctx.get_domains([rv]), Scope([rv], region.scope.evidence))] * self.n_leaf_nodes
+                        [feature_ctx.select([rv])] * self.n_leaf_nodes
                         for rv in region.scope.query
                     ]
-                    child_partitions = [ [AutoLeaf(signatures)] for signatures in partition_signatures ]
+                    child_partitions = [
+                        [AutoLeaf(signatures)]
+                        for signatures in partition_signatures
+                    ]
                     return SPNHadamardLayer(child_partitions=child_partitions)
                 # create univariate leaf region
                 elif len(region.scope.query) == 1:
-                    signatures = [(feature_ctx.get_domains(region.scope.query), region.scope)] * self.n_leaf_nodes
+                    signatures = [
+                        feature_ctx.select(region.scope.query)
+                    ] * self.n_leaf_nodes
                     return AutoLeaf(signatures)
                 else:
                     raise ValueError(
@@ -151,13 +165,19 @@ class RatSPN(Module):
                     )
 
         if feature_ctx.scope != region_graph.scope:
-            raise ValueError(f"Scope of specified feature context {feature_ctx.scope} does not match scope of specified region graph {region_graph.scope}.")
+            raise ValueError(
+                f"Scope of specified feature context {feature_ctx.scope} does not match scope of specified region graph {region_graph.scope}."
+            )
 
         if region_graph.root_region is not None:
             self.root_region = convert_region(
                 region_graph.root_region, n_nodes=self.n_root_nodes
             )
-            self.root_node = SPNCondSumNode(children=[self.root_region]) if region_graph.scope.is_conditional() else SPNSumNode(children=[self.root_region])
+            self.root_node = (
+                SPNCondSumNode(children=[self.root_region])
+                if region_graph.scope.is_conditional()
+                else SPNSumNode(children=[self.root_region])
+            )
         else:
             self.root_region = None
             self.root_node = None

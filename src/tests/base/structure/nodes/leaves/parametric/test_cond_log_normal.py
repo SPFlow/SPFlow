@@ -1,5 +1,6 @@
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.node import marginalize
@@ -100,45 +101,99 @@ class TestLogNormal(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(CondLogNormal.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
+        self.assertTrue(
+            CondLogNormal.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # LogNormal feature type class
-        self.assertTrue(CondLogNormal.accepts([([FeatureTypes.LogNormal], Scope([0], [1]))]))
+        self.assertTrue(
+            CondLogNormal.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])]
+            )
+        )
 
         # LogNormal feature type instance
-        self.assertTrue(CondLogNormal.accepts([([FeatureTypes.LogNormal(0.0, 1.0)], Scope([0], [1]))]))
+        self.assertTrue(
+            CondLogNormal.accepts(
+                [
+                    FeatureContext(
+                        Scope([0], [1]), [FeatureTypes.LogNormal(0.0, 1.0)]
+                    )
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(CondLogNormal.accepts([([FeatureTypes.Discrete], Scope([0], [1]))]))
+        self.assertFalse(
+            CondLogNormal.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
+            )
+        )
 
         # non-conditional scope
-        self.assertFalse(CondLogNormal.accepts([([FeatureTypes.Continuous], Scope([0]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(CondLogNormal.accepts([([FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+        self.assertFalse(
+            CondLogNormal.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(CondLogNormal.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+        self.assertFalse(
+            CondLogNormal.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        CondLogNormal.from_signatures([([FeatureTypes.Continuous], Scope([0], [1]))])
-        CondLogNormal.from_signatures([([FeatureTypes.LogNormal], Scope([0], [1]))])
-        CondLogNormal.from_signatures([([FeatureTypes.LogNormal(-1.0, 1.5)], Scope([0], [1]))])
+        CondLogNormal.from_signatures(
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
+        )
+        CondLogNormal.from_signatures(
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])]
+        )
+        CondLogNormal.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0], [1]), [FeatureTypes.LogNormal(-1.0, 1.5)]
+                )
+            ]
+        )
 
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, CondLogNormal.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
+        self.assertRaises(
+            ValueError,
+            CondLogNormal.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
+        )
 
         # non-conditional scope
-        self.assertRaises(ValueError, CondLogNormal.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, CondLogNormal.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondLogNormal.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, CondLogNormal.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondLogNormal.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -146,10 +201,17 @@ class TestLogNormal(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(CondLogNormal))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(CondLogNormal, AutoLeaf.infer([([FeatureTypes.LogNormal], Scope([0], [1]))]))
+        self.assertEqual(
+            CondLogNormal,
+            AutoLeaf.infer(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        log_normal = AutoLeaf([([FeatureTypes.LogNormal], Scope([0], [1]))])
+        log_normal = AutoLeaf(
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])]
+        )
         self.assertTrue(isinstance(log_normal, CondLogNormal))
 
     def test_structural_marginalization(self):

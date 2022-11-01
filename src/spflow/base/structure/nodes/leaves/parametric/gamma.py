@@ -5,6 +5,7 @@ from typing import Tuple, List, Union, Type
 import numpy as np
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.nodes.node import LeafNode
 
 from scipy.stats import gamma  # type: ignore
@@ -65,48 +66,74 @@ class Gamma(LeafNode):
         self.set_params(alpha, beta)
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``Gamma`` can represent a single univariate node with ``MetaType.Continuous`` or ``GammaType`` domain.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf only has one output
         if len(signatures) != 1:
             return False
 
         # get single output signature
-        types, scope = signatures[0]
+        feature_ctx = signatures[0]
+        domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+        if (
+            len(domains) != 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) != 0
+        ):
             return False
-        
+
         # leaf is a continuous Gamma distribution
-        if not (types[0] == FeatureTypes.Continuous or types[0] == FeatureTypes.Gamma or isinstance(types[0], FeatureTypes.Gamma)):
+        if not (
+            domains[0] == FeatureTypes.Continuous
+            or domains[0] == FeatureTypes.Gamma
+            or isinstance(domains[0], FeatureTypes.Gamma)
+        ):
             return False
 
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "Gamma":
-        """TODO"""
+    def from_signatures(self, signatures: List[FeatureContext]) -> "Gamma":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``Gamma`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'Gamma' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'Gamma' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         # get single output signature
-        types, scope = signatures[0]
-        type = types[0]
+        feature_ctx = signatures[0]
+        domain = feature_ctx.get_domains()[0]
 
         # read or initialize parameters
-        if type == MetaType.Continuous:
+        if domain == MetaType.Continuous:
             alpha, beta = 1.0, 1.0
-        elif type == FeatureTypes.Gamma:
+        elif domain == FeatureTypes.Gamma:
             # instantiate object
-            type = type()
-            alpha, beta = type.alpha, type.beta
-        elif isinstance(type, FeatureTypes.Gamma):
-            alpha, beta = type.alpha, type.beta
+            domain = domain()
+            alpha, beta = domain.alpha, domain.beta
+        elif isinstance(domain, FeatureTypes.Gamma):
+            alpha, beta = domain.alpha, domain.beta
         else:
-            raise ValueError(f"Unknown signature type {type} for 'Gamma' that was not caught during acception checking.")
+            raise ValueError(
+                f"Unknown signature type {domain} for 'Gamma' that was not caught during acception checking."
+            )
 
-        return Gamma(scope, alpha=alpha, beta=beta)
+        return Gamma(feature_ctx.scope, alpha=alpha, beta=beta)
 
     @property
     def dist(self) -> rv_frozen:

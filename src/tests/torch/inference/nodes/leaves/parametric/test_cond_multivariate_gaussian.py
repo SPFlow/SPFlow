@@ -112,10 +112,12 @@ class TestMultivariateGaussian(unittest.TestCase):
         cov = np.array([[2, 2, 1], [2, 3, 2], [1, 2, 3]])
 
         torch_multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1, 2], [3]), cond_f=lambda data: {"mean": mean, "cov": cov}
+            Scope([0, 1, 2], [3]),
+            cond_f=lambda data: {"mean": mean, "cov": cov},
         )
         node_multivariate_gaussian = BaseCondMultivariateGaussian(
-            Scope([0, 1, 2], [3]), cond_f=lambda data: {"mean": mean, "cov": cov}
+            Scope([0, 1, 2], [3]),
+            cond_f=lambda data: {"mean": mean, "cov": cov},
         )
 
         # create dummy input data (batch size x random variables)
@@ -142,7 +144,8 @@ class TestMultivariateGaussian(unittest.TestCase):
         )
 
         torch_multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1, 2], [3]), cond_f=lambda data: {"mean": mean, "cov": cov}
+            Scope([0, 1, 2], [3]),
+            cond_f=lambda data: {"mean": mean, "cov": cov},
         )
 
         # create dummy input data (batch size x random variables)
@@ -197,7 +200,8 @@ class TestMultivariateGaussian(unittest.TestCase):
                     cond_f=lambda data: {"mean": 0.0, "std": math.sqrt(2.0)},
                 ),  # requires standard deviation instead of variance
                 CondGaussian(
-                    Scope([1], [2]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
+                    Scope([1], [2]),
+                    cond_f=lambda data: {"mean": 0.0, "std": 1.0},
                 ),
             ],
         )

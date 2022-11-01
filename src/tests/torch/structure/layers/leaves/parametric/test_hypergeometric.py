@@ -13,6 +13,7 @@ from spflow.base.structure.layers.leaves.parametric.hypergeometric import (
 )
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 import torch
 import numpy as np
 import unittest
@@ -259,29 +260,80 @@ class TestNode(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Discrete], Scope([1]))]))
+        self.assertFalse(
+            HypergeometricLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Discrete]),
+                ]
+            )
+        )
 
-        # Bernoulli feature type class (should reject)
-        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Hypergeometric], Scope([0])), ([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([1]))]))
-
-        # Bernoulli feature type instance
-        self.assertTrue(HypergeometricLayer.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0])), ([FeatureTypes.Hypergeometric(N=6, M=5, n=4)], Scope([1]))]))
+        # feature type instance
+        self.assertTrue(
+            HypergeometricLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
+                    ),
+                    FeatureContext(
+                        Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]
+                    ),
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Hypergeometric(N=6, M=5, n=4)], Scope([1]))]))
+        self.assertFalse(
+            HypergeometricLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                    FeatureContext(
+                        Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]
+                    ),
+                ]
+            )
+        )
 
         # conditional scope
-        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0], [1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0, 1]))]))
+        self.assertFalse(
+            HypergeometricLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0], [1]),
+                        [FeatureTypes.Hypergeometric(N=4, M=2, n=3)],
+                    )
+                ]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(HypergeometricLayer.accepts([([FeatureTypes.Hypergeometric(N=4, M=2, n=3), FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0, 1]))]))
+        self.assertFalse(
+            HypergeometricLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [
+                            FeatureTypes.Hypergeometric(N=4, M=2, n=3),
+                            FeatureTypes.Hypergeometric(N=4, M=2, n=3),
+                        ],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        hypergeometric = HypergeometricLayer.from_signatures([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0])), ([FeatureTypes.Hypergeometric(N=6, M=5, n=4)], Scope([1]))])
+        hypergeometric = HypergeometricLayer.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
+                ),
+                FeatureContext(
+                    Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]
+                ),
+            ]
+        )
         self.assertTrue(torch.all(hypergeometric.N == torch.tensor([4, 6])))
         self.assertTrue(torch.all(hypergeometric.M == torch.tensor([2, 5])))
         self.assertTrue(torch.all(hypergeometric.n == torch.tensor([3, 4])))
@@ -290,22 +342,37 @@ class TestNode(unittest.TestCase):
         # ----- invalid arguments -----
 
         # discrete meta type
-        self.assertRaises(ValueError, HypergeometricLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
-
-        # Bernoulli feature type class
-        self.assertRaises(ValueError, HypergeometricLayer.from_signatures, [([FeatureTypes.Hypergeometric], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            HypergeometricLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # invalid feature type
-        self.assertRaises(ValueError, HypergeometricLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            HypergeometricLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, HypergeometricLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, HypergeometricLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            HypergeometricLayer.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, Hypergeometric.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            Hypergeometric.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Discrete, FeatureTypes.Discrete],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -313,10 +380,31 @@ class TestNode(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(HypergeometricLayer))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(HypergeometricLayer, AutoLeaf.infer([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0])), ([FeatureTypes.Hypergeometric(N=6, M=5, n=4)], Scope([1]))]))
+        self.assertEqual(
+            HypergeometricLayer,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(
+                        Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
+                    ),
+                    FeatureContext(
+                        Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]
+                    ),
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        hypergeometric = AutoLeaf([([FeatureTypes.Hypergeometric(N=4, M=2, n=3)], Scope([0])), ([FeatureTypes.Hypergeometric(N=6, M=5, n=4)], Scope([1]))])
+        hypergeometric = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
+                ),
+                FeatureContext(
+                    Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]
+                ),
+            ]
+        )
         self.assertTrue(isinstance(hypergeometric, HypergeometricLayer))
         self.assertTrue(torch.all(hypergeometric.N == torch.tensor([4, 6])))
         self.assertTrue(torch.all(hypergeometric.M == torch.tensor([2, 5])))

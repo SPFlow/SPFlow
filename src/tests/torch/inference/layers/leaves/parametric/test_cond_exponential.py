@@ -38,7 +38,9 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"l": [0.5, 1.0]}
 
-        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
+        exponential = CondExponentialLayer(
+            Scope([0], [1]), n_nodes=2, cond_f=cond_f
+        )
 
         # create test inputs/outputs
         data = torch.tensor([[2], [5]])
@@ -113,7 +115,8 @@ class TestNode(unittest.TestCase):
         l = torch.tensor([random.random(), random.random()], requires_grad=True)
 
         torch_exponential = CondExponentialLayer(
-            scope=[Scope([0], [2]), Scope([1], [2])], cond_f=lambda data: {"l": l}
+            scope=[Scope([0], [2]), Scope([1], [2])],
+            cond_f=lambda data: {"l": l},
         )
 
         # create dummy input data (batch size x random variables)

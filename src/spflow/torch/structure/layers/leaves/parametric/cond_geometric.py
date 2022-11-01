@@ -15,6 +15,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.cond_geometric import (
     CondGeometric,
@@ -108,8 +109,14 @@ class CondGeometricLayer(Module):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``CondGeometricLayer`` can represent one or more univariate nodes with ``MetaType.Discrete`` or ``GeometricType`` domains.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf has at least one output
         if len(signatures) < 1:
             return False
@@ -121,24 +128,41 @@ class CondGeometricLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "CondGeometricLayer":
-        """TODO"""
+    def from_signatures(
+        self, signatures: List[FeatureContext]
+    ) -> "CondGeometricLayer":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``CondGeometricLayer`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'CondGeometricLayer' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'CondGeometricLayer' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         scopes = []
 
-        for types, scope in signatures:
+        for feature_ctx in signatures:
 
-            type = types[0]
+            domain = feature_ctx.get_domains()[0]
 
             # read or initialize parameters
-            if type == MetaType.Discrete or type == FeatureTypes.Geometric or isinstance(type, FeatureTypes.Geometric):
+            if (
+                domain == MetaType.Discrete
+                or domain == FeatureTypes.Geometric
+                or isinstance(domain, FeatureTypes.Geometric)
+            ):
                 pass
             else:
-                raise ValueError(f"Unknown signature type {type} for 'CondGeometricLayer' that was not caught during acception checking.")
+                raise ValueError(
+                    f"Unknown signature type {domain} for 'CondGeometricLayer' that was not caught during acception checking."
+                )
 
-            scopes.append(scope)
+            scopes.append(feature_ctx.scope)
 
         return CondGeometricLayer(scopes)
 
