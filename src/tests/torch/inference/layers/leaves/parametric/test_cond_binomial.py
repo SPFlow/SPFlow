@@ -40,7 +40,9 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"p": [0.8, 0.5]}
 
-        binomial = CondBinomialLayer(Scope([0], [1]), n=1, n_nodes=2, cond_f=cond_f)
+        binomial = CondBinomialLayer(
+            Scope([0], [1]), n=1, n_nodes=2, cond_f=cond_f
+        )
 
         # create test inputs/outputs
         data = torch.tensor([[0], [1]])
@@ -117,7 +119,9 @@ class TestNode(unittest.TestCase):
         p = torch.tensor([random.random(), random.random()], requires_grad=True)
 
         torch_binomial = CondBinomialLayer(
-            scope=[Scope([0], [2]), Scope([1], [2])], n=n, cond_f=lambda data: {"p": p}
+            scope=[Scope([0], [2]), Scope([1], [2])],
+            n=n,
+            cond_f=lambda data: {"p": p},
         )
 
         # create dummy input data (batch size x random variables)

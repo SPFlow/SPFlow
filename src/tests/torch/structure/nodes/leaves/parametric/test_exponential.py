@@ -1,5 +1,6 @@
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.exponential import (
     Exponential as BaseExponential,
@@ -61,50 +62,96 @@ class TestExponential(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(Exponential.accepts([([FeatureTypes.Continuous], Scope([0]))]))
+        self.assertTrue(
+            Exponential.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # Exponential feature type class
-        self.assertTrue(Exponential.accepts([([FeatureTypes.Exponential], Scope([0]))]))
+        self.assertTrue(
+            Exponential.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Exponential])]
+            )
+        )
 
         # Exponential feature type instance
-        self.assertTrue(Exponential.accepts([([FeatureTypes.Exponential(1.0)], Scope([0]))]))
+        self.assertTrue(
+            Exponential.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Exponential(1.0)])]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(Exponential.accepts([([FeatureTypes.Discrete], Scope([0]))]))
+        self.assertFalse(
+            Exponential.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
+            )
+        )
 
         # conditional scope
-        self.assertFalse(Exponential.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(Exponential.accepts([([FeatureTypes.Continuous], Scope([0, 1]))]))
+        self.assertFalse(
+            Exponential.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(Exponential.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))]))
+        self.assertFalse(
+            Exponential.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        exponential = Exponential.from_signatures([([FeatureTypes.Continuous], Scope([0]))])
+        exponential = Exponential.from_signatures(
+            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
+        )
         self.assertTrue(torch.isclose(exponential.l, torch.tensor(1.0)))
 
-        exponential = Exponential.from_signatures([([FeatureTypes.Exponential], Scope([0]))])
+        exponential = Exponential.from_signatures(
+            [FeatureContext(Scope([0]), [FeatureTypes.Exponential])]
+        )
         self.assertTrue(torch.isclose(exponential.l, torch.tensor(1.0)))
-    
-        exponential = Exponential.from_signatures([([FeatureTypes.Exponential(l=1.5)], Scope([0]))])
+
+        exponential = Exponential.from_signatures(
+            [FeatureContext(Scope([0]), [FeatureTypes.Exponential(l=1.5)])]
+        )
         self.assertTrue(torch.isclose(exponential.l, torch.tensor(1.5)))
 
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, Exponential.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            Exponential.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, Exponential.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, Exponential.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            Exponential.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, Exponential.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            Exponential.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -112,10 +159,17 @@ class TestExponential(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(Exponential))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(Exponential, AutoLeaf.infer([([FeatureTypes.Exponential], Scope([0]))]))
+        self.assertEqual(
+            Exponential,
+            AutoLeaf.infer(
+                [FeatureContext(Scope([0]), [FeatureTypes.Exponential])]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        exponential = AutoLeaf([([FeatureTypes.Exponential(l=1.5)], Scope([0]))])
+        exponential = AutoLeaf(
+            [FeatureContext(Scope([0]), [FeatureTypes.Exponential(l=1.5)])]
+        )
         self.assertTrue(isinstance(exponential, Exponential))
         self.assertTrue(torch.isclose(exponential.l, torch.tensor(1.5)))
 

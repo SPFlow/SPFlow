@@ -1,5 +1,6 @@
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.node import marginalize
@@ -77,45 +78,91 @@ class TestCondBernoulli(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type
-        self.assertTrue(CondBernoulli.accepts([([FeatureTypes.Discrete], Scope([0], [1]))]))
+        self.assertTrue(
+            CondBernoulli.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
+            )
+        )
 
         # Bernoulli feature type class
-        self.assertTrue(CondBernoulli.accepts([([FeatureTypes.Bernoulli], Scope([0], [1]))]))
+        self.assertTrue(
+            CondBernoulli.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])]
+            )
+        )
 
         # Bernoulli feature type instance
-        self.assertTrue(CondBernoulli.accepts([([FeatureTypes.Bernoulli(0.5)], Scope([0], [1]))]))
+        self.assertTrue(
+            CondBernoulli.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli(0.5)])]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(CondBernoulli.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
+        self.assertFalse(
+            CondBernoulli.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # non-conditional scope
-        self.assertFalse(CondBernoulli.accepts([([FeatureTypes.Discrete], Scope([0]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(CondBernoulli.accepts([([FeatureTypes.Discrete], Scope([0, 1], [2]))]))
+        self.assertFalse(
+            CondBernoulli.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(CondBernoulli.accepts([([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1], [2]))]))
+        self.assertFalse(
+            CondBernoulli.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [FeatureTypes.Discrete, FeatureTypes.Discrete],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        CondBernoulli.from_signatures([([FeatureTypes.Discrete], Scope([0], [1]))])
-        CondBernoulli.from_signatures([([FeatureTypes.Bernoulli], Scope([0], [1]))])
-        CondBernoulli.from_signatures([([FeatureTypes.Bernoulli(p=0.75)], Scope([0], [1]))])
+        CondBernoulli.from_signatures(
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
+        )
+        CondBernoulli.from_signatures(
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])]
+        )
+        CondBernoulli.from_signatures(
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli(p=0.75)])]
+        )
 
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, CondBernoulli.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
+        self.assertRaises(
+            ValueError,
+            CondBernoulli.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+        )
 
         # non-conditional scope
-        self.assertRaises(ValueError, CondBernoulli.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, CondBernoulli.from_signatures, [([FeatureTypes.Discrete], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondBernoulli.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, CondBernoulli.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondBernoulli.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [FeatureTypes.Discrete, FeatureTypes.Discrete],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -123,10 +170,17 @@ class TestCondBernoulli(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(CondBernoulli))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(CondBernoulli, AutoLeaf.infer([([FeatureTypes.Bernoulli], Scope([0], [1]))]))
+        self.assertEqual(
+            CondBernoulli,
+            AutoLeaf.infer(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        bernoulli = AutoLeaf([([FeatureTypes.Bernoulli], Scope([0], [1]))])
+        bernoulli = AutoLeaf(
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])]
+        )
         self.assertTrue(isinstance(bernoulli, CondBernoulli))
 
     def test_conditional_marginalization(self):

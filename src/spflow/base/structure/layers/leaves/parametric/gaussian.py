@@ -13,6 +13,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 
@@ -111,8 +112,14 @@ class GaussianLayer(Module):
         return np.array([node.std for node in self.nodes])
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``GaussianLayer`` can represent one or more univariate nodes with ``MetaType.Continuous`` or ``GaussianType`` domains.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf has at least one output
         if len(signatures) < 1:
             return False
@@ -120,39 +127,52 @@ class GaussianLayer(Module):
         for signature in signatures:
             if not Gaussian.accepts([signature]):
                 return False
-    
+
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "GaussianLayer":
-        """TODO"""
+    def from_signatures(
+        self, signatures: List[FeatureContext]
+    ) -> "GaussianLayer":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``GaussianLayer`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'GaussianLayer' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'GaussianLayer' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         mean = []
         std = []
         scopes = []
 
-        for types, scope in signatures:
-        
-            type = types[0]
+        for feature_ctx in signatures:
+
+            domain = feature_ctx.get_domains()[0]
 
             # read or initialize parameters
-            if type == MetaType.Continuous:
+            if domain == MetaType.Continuous:
                 mean.append(0.0)
                 std.append(1.0)
-            elif type == FeatureTypes.Gaussian:
+            elif domain == FeatureTypes.Gaussian:
                 # instantiate object
-                type = type()
-                mean.append(type.mean)
-                std.append(type.std)
-            elif isinstance(type, FeatureTypes.Gaussian):
-                mean.append(type.mean)
-                std.append(type.std)
+                domain = domain()
+                mean.append(domain.mean)
+                std.append(domain.std)
+            elif isinstance(domain, FeatureTypes.Gaussian):
+                mean.append(domain.mean)
+                std.append(domain.std)
             else:
-                raise ValueError(f"Unknown signature type {type} for 'GaussianLayer' that was not caught during acception checking.")
+                raise ValueError(
+                    f"Unknown signature type {domain} for 'GaussianLayer' that was not caught during acception checking."
+                )
 
-            scopes.append(scope)
+            scopes.append(feature_ctx.scope)
 
         return GaussianLayer(scopes, mean=mean, std=std)
 

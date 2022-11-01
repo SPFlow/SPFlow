@@ -17,14 +17,18 @@ import math
 class TestCondGaussian(unittest.TestCase):
     def test_likelihood_no_mean(self):
 
-        gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"std": 1.0})
+        gaussian = CondGaussian(
+            Scope([0], [1]), cond_f=lambda data: {"std": 1.0}
+        )
         self.assertRaises(
             KeyError, log_likelihood, gaussian, np.array([[0], [1]])
         )
 
     def test_likelihood_no_std(self):
 
-        gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.0})
+        gaussian = CondGaussian(
+            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0}
+        )
         self.assertRaises(
             KeyError, log_likelihood, gaussian, np.array([[0], [1]])
         )

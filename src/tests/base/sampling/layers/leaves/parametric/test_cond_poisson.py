@@ -32,7 +32,9 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         poisson_layer = CondPoissonLayer(
-            scope=Scope([0], [1]), cond_f=lambda data: {"l": [0.8, 0.3]}, n_nodes=2
+            scope=Scope([0], [1]),
+            cond_f=lambda data: {"l": [0.8, 0.3]},
+            n_nodes=2,
         )
         s1 = SPNSumNode(children=[poisson_layer], weights=[0.3, 0.7])
 
@@ -85,7 +87,9 @@ class TestNode(unittest.TestCase):
     def test_sampling_3(self):
 
         poisson_layer = CondPoissonLayer(
-            scope=Scope([0], [1]), cond_f=lambda data: {"l": [0.8, 0.3]}, n_nodes=2
+            scope=Scope([0], [1]),
+            cond_f=lambda data: {"l": [0.8, 0.3]},
+            n_nodes=2,
         )
 
         # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails

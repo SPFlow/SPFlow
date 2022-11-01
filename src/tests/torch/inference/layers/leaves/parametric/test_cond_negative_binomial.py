@@ -132,7 +132,9 @@ class TestNode(unittest.TestCase):
         p = torch.tensor([random.random(), random.random()], requires_grad=True)
 
         torch_negative_binomial = CondNegativeBinomialLayer(
-            scope=[Scope([0], [2]), Scope([1], [2])], n=n, cond_f=lambda data: {"p": p}
+            scope=[Scope([0], [2]), Scope([1], [2])],
+            n=n,
+            cond_f=lambda data: {"p": p},
         )
 
         # create dummy input data (batch size x random variables)

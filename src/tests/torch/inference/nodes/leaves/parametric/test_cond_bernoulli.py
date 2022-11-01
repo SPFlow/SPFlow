@@ -133,7 +133,9 @@ class TestBernoulli(unittest.TestCase):
     def test_likelihood_p_0(self):
 
         # p = 0
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.0})
+        bernoulli = CondBernoulli(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.0}
+        )
 
         data = torch.tensor([[0.0], [1.0]])
         targets = torch.tensor([[1.0], [0.0]])
@@ -147,7 +149,9 @@ class TestBernoulli(unittest.TestCase):
     def test_likelihood_p_1(self):
 
         # p = 1
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 1.0})
+        bernoulli = CondBernoulli(
+            Scope([0], [1]), cond_f=lambda data: {"p": 1.0}
+        )
 
         data = torch.tensor([[0.0], [1.0]])
         targets = torch.tensor([[0.0], [1.0]])

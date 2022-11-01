@@ -6,8 +6,8 @@ from typing import Tuple
 
 
 class MetaType(Enum):
-    """Enum containing meta types underlying any data feature type.
-    """
+    """Enum containing meta types underlying any data feature type."""
+
     Unknown: int = -1
     Continuous: int = 0
     Discrete: int = 1

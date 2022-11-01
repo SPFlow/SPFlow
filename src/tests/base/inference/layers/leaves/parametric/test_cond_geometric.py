@@ -31,7 +31,9 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"p": [0.2, 0.5]}
 
-        geometric = CondGeometricLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
+        geometric = CondGeometricLayer(
+            Scope([0], [1]), n_nodes=2, cond_f=cond_f
+        )
 
         # create test inputs/outputs
         data = np.array([[1], [5], [10]])
@@ -88,7 +90,9 @@ class TestNode(unittest.TestCase):
     def test_layer_likelihood_1(self):
 
         geometric_layer = CondGeometricLayer(
-            scope=Scope([0], [1]), cond_f=lambda data: {"p": [0.2, 0.5]}, n_nodes=2
+            scope=Scope([0], [1]),
+            cond_f=lambda data: {"p": [0.2, 0.5]},
+            n_nodes=2,
         )
         s1 = SPNSumNode(children=[geometric_layer], weights=[0.3, 0.7])
 

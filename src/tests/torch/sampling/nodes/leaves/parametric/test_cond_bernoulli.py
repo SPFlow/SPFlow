@@ -29,7 +29,9 @@ class TestBernoulli(unittest.TestCase):
 
         # ----- p = 0 -----
 
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.0})
+        bernoulli = CondBernoulli(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.0}
+        )
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
@@ -49,7 +51,9 @@ class TestBernoulli(unittest.TestCase):
 
         # ----- p = 1 -----
 
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 1.0})
+        bernoulli = CondBernoulli(
+            Scope([0], [1]), cond_f=lambda data: {"p": 1.0}
+        )
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 

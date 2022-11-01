@@ -31,7 +31,9 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"p": [0.8, 0.5]}
 
-        binomial = CondBinomialLayer(Scope([0], [1]), n=1, n_nodes=2, cond_f=cond_f)
+        binomial = CondBinomialLayer(
+            Scope([0], [1]), n=1, n_nodes=2, cond_f=cond_f
+        )
 
         # create test inputs/outputs
         data = np.array([[0], [1]])

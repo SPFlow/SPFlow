@@ -123,7 +123,8 @@ class TestNode(unittest.TestCase):
         )
 
         torch_poisson = CondPoissonLayer(
-            scope=[Scope([0], [2]), Scope([1], [2])], cond_f=lambda data: {"l": l}
+            scope=[Scope([0], [2]), Scope([1], [2])],
+            cond_f=lambda data: {"l": l},
         )
 
         # create dummy input data (batch size x random variables)

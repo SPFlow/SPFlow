@@ -6,6 +6,7 @@ from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 import numpy as np
 import unittest
 
@@ -157,60 +158,121 @@ class TestLayer(unittest.TestCase):
         l = GammaLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
-    
+
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(GammaLayer.accepts([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
+        self.assertTrue(
+            GammaLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
-        # Gamma feature type class
-        self.assertTrue(GammaLayer.accepts([([FeatureTypes.Gamma], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
+        # feature type class
+        self.assertTrue(
+            GammaLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Gamma]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
-        # Gamma feature type instance
-        self.assertTrue(GammaLayer.accepts([([FeatureTypes.Gamma(1.0, 1.0)], Scope([0])), ([FeatureTypes.Gamma(1.0, 1.0)], Scope([1]))]))
+        # feature type instance
+        self.assertTrue(
+            GammaLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Gamma(1.0, 1.0)]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(GammaLayer.accepts([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
+        self.assertFalse(
+            GammaLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
         # conditional scope
-        self.assertFalse(GammaLayer.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(GammaLayer.accepts([([FeatureTypes.Continuous], Scope([0, 1]))]))
+        self.assertFalse(
+            GammaLayer.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(GammaLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))]))
+        self.assertFalse(
+            GammaLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        gamma = GammaLayer.from_signatures([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))])
-        self.assertTrue(np.all(gamma.alpha == np.array([1.0, 1.0])))
-        self.assertTrue(np.all(gamma.beta == np.array([1.0, 1.0])))
+        gamma = GammaLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+            ]
+        )
         self.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
 
-        gamma = GammaLayer.from_signatures([([FeatureTypes.Gamma], Scope([0])), ([FeatureTypes.Gamma], Scope([1]))])
-        self.assertTrue(np.all(gamma.alpha == np.array([1.0, 1.0])))
-        self.assertTrue(np.all(gamma.beta == np.array([1.0, 1.0])))
+        gamma = GammaLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Gamma]),
+                FeatureContext(Scope([1]), [FeatureTypes.Gamma]),
+            ]
+        )
         self.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
 
-        gamma = GammaLayer.from_signatures([([FeatureTypes.Gamma(1.5, 0.5)], Scope([0])), ([FeatureTypes.Gamma(0.5, 1.5)], Scope([1]))])
-        self.assertTrue(np.all(gamma.alpha == np.array([1.5, 0.5])))
-        self.assertTrue(np.all(gamma.beta == np.array([0.5, 1.5])))
+        gamma = GammaLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Gamma(1.0, 1.0)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Gamma(1.0, 1.0)]),
+            ]
+        )
         self.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
 
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, GammaLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            GammaLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, GammaLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, GammaLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            GammaLayer.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, GammaLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            GammaLayer.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -218,12 +280,27 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(GammaLayer))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(GammaLayer, AutoLeaf.infer([([FeatureTypes.Gamma], Scope([0])), ([FeatureTypes.Gamma], Scope([1]))]))
+        self.assertEqual(
+            GammaLayer,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Gamma]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Gamma]),
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        gamma = AutoLeaf([([FeatureTypes.Gamma(alpha=1.5, beta=0.5)], Scope([0])), ([FeatureTypes.Gamma(alpha=0.5, beta=1.5)], Scope([1]))])
-        self.assertTrue(np.all(gamma.alpha == np.array([1.5, 0.5])))
-        self.assertTrue(np.all(gamma.beta == np.array([0.5, 1.5])))
+        gamma = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)]
+                ),
+                FeatureContext(
+                    Scope([1]), [FeatureTypes.Gamma(alpha=0.5, beta=1.5)]
+                ),
+            ]
+        )
         self.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
 
     def test_layer_structural_marginalization(self):

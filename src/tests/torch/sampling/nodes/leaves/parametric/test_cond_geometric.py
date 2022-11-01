@@ -30,7 +30,9 @@ class TestGeometric(unittest.TestCase):
 
         # ----- p = 1.0 -----
 
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 1.0})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 1.0}
+        )
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
@@ -50,7 +52,9 @@ class TestGeometric(unittest.TestCase):
 
         # ----- p = 0.5 -----
 
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.5}
+        )
 
         samples = sample(geometric, 1000)
         self.assertTrue(
@@ -66,7 +70,9 @@ class TestGeometric(unittest.TestCase):
 
         # ----- p = 0.8 -----
 
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.8})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.8}
+        )
 
         samples = sample(geometric, 1000)
         self.assertTrue(

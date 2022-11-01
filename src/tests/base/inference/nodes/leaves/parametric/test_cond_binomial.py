@@ -82,7 +82,9 @@ class TestCondBinomial(unittest.TestCase):
         n = 10
         p = 0.5
 
-        binomial = CondBinomial(Scope([0], [1]), n, cond_f=lambda data: {"p": p})
+        binomial = CondBinomial(
+            Scope([0], [1]), n, cond_f=lambda data: {"p": p}
+        )
 
         # create test inputs/outputs
         data = np.array([[0], [5], [10]])
@@ -100,7 +102,9 @@ class TestCondBinomial(unittest.TestCase):
         n = 5
         p = 0.8
 
-        binomial = CondBinomial(Scope([0], [1]), n, cond_f=lambda data: {"p": p})
+        binomial = CondBinomial(
+            Scope([0], [1]), n, cond_f=lambda data: {"p": p}
+        )
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
@@ -118,7 +122,9 @@ class TestCondBinomial(unittest.TestCase):
         n = 15
         p = 0.3
 
-        binomial = CondBinomial(Scope([0], [1]), n, cond_f=lambda data: {"p": p})
+        binomial = CondBinomial(
+            Scope([0], [1]), n, cond_f=lambda data: {"p": p}
+        )
 
         # create test inputs/outputs
         data = np.array([[0], [7], [15]])
@@ -133,7 +139,9 @@ class TestCondBinomial(unittest.TestCase):
     def test_likelihood_p_0(self):
 
         # p = 0
-        binomial = CondBinomial(Scope([0], [1]), 1, cond_f=lambda data: {"p": 0.0})
+        binomial = CondBinomial(
+            Scope([0], [1]), 1, cond_f=lambda data: {"p": 0.0}
+        )
 
         data = np.array([[0.0], [1.0]])
         targets = np.array([[1.0], [0.0]])
@@ -147,7 +155,9 @@ class TestCondBinomial(unittest.TestCase):
     def test_likelihood_p_1(self):
 
         # p = 1
-        binomial = CondBinomial(Scope([0], [1]), 1, cond_f=lambda data: {"p": 1.0})
+        binomial = CondBinomial(
+            Scope([0], [1]), 1, cond_f=lambda data: {"p": 1.0}
+        )
 
         data = np.array([[0.0], [1.0]])
         targets = np.array([[0.0], [1.0]])
@@ -161,7 +171,9 @@ class TestCondBinomial(unittest.TestCase):
     def test_likelihood_n_0(self):
 
         # n = 0
-        binomial = CondBinomial(Scope([0], [1]), 0, cond_f=lambda data: {"p": 0.5})
+        binomial = CondBinomial(
+            Scope([0], [1]), 0, cond_f=lambda data: {"p": 0.5}
+        )
 
         data = np.array([[0.0]])
         targets = np.array([[1.0]])
@@ -174,7 +186,9 @@ class TestCondBinomial(unittest.TestCase):
 
     def test_likelihood_p_none(self):
 
-        binomial = CondBinomial(Scope([0], [1]), 1, cond_f=lambda data: {"p": None})
+        binomial = CondBinomial(
+            Scope([0], [1]), 1, cond_f=lambda data: {"p": None}
+        )
 
         data = np.array([[0.0]])
 
@@ -183,7 +197,9 @@ class TestCondBinomial(unittest.TestCase):
 
     def test_likelihood_n_none(self):
 
-        binomial = CondBinomial(Scope([0], [1]), 1, cond_f=lambda data: {"p": 0.5})
+        binomial = CondBinomial(
+            Scope([0], [1]), 1, cond_f=lambda data: {"p": 0.5}
+        )
 
         data = np.array([[0.0]])
 
@@ -193,7 +209,9 @@ class TestCondBinomial(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        binomial = CondBinomial(Scope([0], [1]), 5, cond_f=lambda data: {"p": 0.5})
+        binomial = CondBinomial(
+            Scope([0], [1]), 5, cond_f=lambda data: {"p": 0.5}
+        )
         data = np.array([[np.nan]])
 
         # should not raise and error and should return 1 (0 in log-space)
@@ -211,7 +229,9 @@ class TestCondBinomial(unittest.TestCase):
         #   likelihood:         0->0.000000001, 1.0->0.999999999
         #   log-likelihood: -inf->fmin
 
-        binomial = CondBinomial(Scope([0], [1]), 5, cond_f=lambda data: {"p": 0.5})
+        binomial = CondBinomial(
+            Scope([0], [1]), 5, cond_f=lambda data: {"p": 0.5}
+        )
 
         # check infinite values
         self.assertRaises(

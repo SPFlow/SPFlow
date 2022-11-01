@@ -1,5 +1,6 @@
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.node import marginalize
@@ -71,45 +72,95 @@ class TestCondExponential(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(CondExponential.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
+        self.assertTrue(
+            CondExponential.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # Exponential feature type class
-        self.assertTrue(CondExponential.accepts([([FeatureTypes.Exponential], Scope([0], [1]))]))
+        self.assertTrue(
+            CondExponential.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
+            )
+        )
 
         # Exponential feature type instance
-        self.assertTrue(CondExponential.accepts([([FeatureTypes.Exponential(1.0)], Scope([0], [1]))]))
+        self.assertTrue(
+            CondExponential.accepts(
+                [
+                    FeatureContext(
+                        Scope([0], [1]), [FeatureTypes.Exponential(1.0)]
+                    )
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(CondExponential.accepts([([FeatureTypes.Discrete], Scope([0], [1]))]))
+        self.assertFalse(
+            CondExponential.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
+            )
+        )
 
         # non-conditional scope
-        self.assertFalse(CondExponential.accepts([([FeatureTypes.Continuous], Scope([0]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(CondExponential.accepts([([FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+        self.assertFalse(
+            CondExponential.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(CondExponential.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))]))
+        self.assertFalse(
+            CondExponential.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        CondExponential.from_signatures([([FeatureTypes.Continuous], Scope([0], [1]))])
-        CondExponential.from_signatures([([FeatureTypes.Exponential], Scope([0], [1]))])
-        CondExponential.from_signatures([([FeatureTypes.Exponential(l=1.5)], Scope([0], [1]))])
+        CondExponential.from_signatures(
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
+        )
+        CondExponential.from_signatures(
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
+        )
+        CondExponential.from_signatures(
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential(l=1.5)])]
+        )
 
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, CondExponential.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
+        self.assertRaises(
+            ValueError,
+            CondExponential.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
+        )
 
         # non-conditional scope
-        self.assertRaises(ValueError, CondExponential.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, CondExponential.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondExponential.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, CondExponential.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondExponential.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -117,10 +168,17 @@ class TestCondExponential(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(CondExponential))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(CondExponential, AutoLeaf.infer([([FeatureTypes.Exponential], Scope([0], [1]))]))
+        self.assertEqual(
+            CondExponential,
+            AutoLeaf.infer(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        exponential = AutoLeaf([([FeatureTypes.Exponential], Scope([0], [1]))])
+        exponential = AutoLeaf(
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
+        )
         self.assertTrue(isinstance(exponential, CondExponential))
 
     def test_structural_marginalization(self):

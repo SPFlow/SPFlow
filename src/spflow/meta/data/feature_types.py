@@ -14,6 +14,7 @@ class FeatureType(ABC):
         meta_type:
             ``MetaType`` underlying the feature type.
     """
+
     meta_type: MetaType
 
     @abstractmethod
@@ -31,6 +32,7 @@ class ExponentialType(FeatureType):
             Floating point representing the rate parameter, greater than 0.0.
             Defaults to 1.0.
     """
+
     meta_type: ClassVar[MetaType] = MetaType.Continuous
     l: float = 1.0
 
@@ -50,6 +52,7 @@ class GammaType(FeatureType):
             Floating point representing the rate parameter, greater than 0.0.
             Defaults to 1.0.
     """
+
     meta_type: ClassVar[MetaType] = MetaType.Continuous
     alpha: float = 1.0
     beta: float = 1.0
@@ -70,6 +73,7 @@ class GaussianType(FeatureType):
             Floating point representing the standard deviation, greater than 0.0.
             Defaults to 1.0.
     """
+
     meta_type: ClassVar[MetaType] = MetaType.Continuous
     mean: float = 0.0
     std: float = 1.0
@@ -90,12 +94,14 @@ class LogNormalType(FeatureType):
             Floating point representing the standard deviation, greater than 0.0.
             Defaults to 1.0.
     """
+
     meta_type: ClassVar[MetaType] = MetaType.Continuous
     mean: float = 0.0
     std: float = 1.0
 
     def get_params(self) -> Tuple[float, float]:
         return (self.mean, self.std)
+
 
 @dataclass
 class UniformType(FeatureType):
@@ -108,6 +114,7 @@ class UniformType(FeatureType):
             Floating point representing the end of the interval (including).
             Must be larger than ``start``.
     """
+
     meta_type: ClassVar[MetaType] = MetaType.Continuous
     start: float
     end: float
@@ -126,6 +133,7 @@ class BernoulliType(FeatureType):
             Success probability between 0 and 1.
             Defaults to 0.5.
     """
+
     meta_type: ClassVar[MetaType] = MetaType.Discrete
     p: float = 0.5
 
@@ -144,6 +152,7 @@ class BinomialType(FeatureType):
             Success probability between 0 and 1.
             Defaults to 0.5.
     """
+
     meta_type: ClassVar[MetaType] = MetaType.Discrete
     n: int
     p: float = 0.5
@@ -180,6 +189,7 @@ class HypergeometricType(FeatureType):
         n:
             Number of draws from the population, greater or equal to 0 and less than or equal to ``N``+``M``.
     """
+
     meta_type: ClassVar[MetaType] = MetaType.Discrete
     N: int
     M: int
@@ -217,6 +227,7 @@ class PoissonType(FeatureType):
             Floating point representing the rate parameter, greater than or equal to 0.0.
             Defaults to 1.0.
     """
+
     meta_type: ClassVar[MetaType] = MetaType.Discrete
     l: float = 1.0
 
@@ -241,11 +252,11 @@ class FeatureTypes(ABC):
             Indicates discrete data, without any additional specification.
         Bernoulli:
             Alias for ``BernoulliType``, indicating Bernoulli-distributed data.
-            Optional parameter ``p`` in :math:`[0,1]`, representing the success probability. 
+            Optional parameter ``p`` in :math:`[0,1]`, representing the success probability.
         Binomial:
             Alias for ``BinomialType``, indicating Binomial-distributed data.
             Required parameter ``n`` greater than or equal to 0, representing the number of i.i.d. Bernoulli trials.
-            Optional parameter ``p`` in :math:`[0,1]`, representing the success probability. 
+            Optional parameter ``p`` in :math:`[0,1]`, representing the success probability.
         Exponential:
             Alias for ``ExponentialType``, indicating Exponential-distributed data.
             Optional parameter ``l``, representing the rate parameter, greater than 0.0.
@@ -264,13 +275,13 @@ class FeatureTypes(ABC):
             Required parameters ``N``, ``M`` and ``n``.
             ``N`` represents the number of entities in the population, greater than or equal to 0.
             ``M`` represents the number of entities of interest in the population, greater than or equal to zero and less than or equal to ``N``.
-            ``n`` represents the number of draws, greater than or equal to zero and less than or equal to ``N``. 
+            ``n`` represents the number of draws, greater than or equal to zero and less than or equal to ``N``.
         Log-Normal:
             Alias for ``LogNormalType``, indicating Log-Normal-distributed data.
             Optional parameters ``mean``,``std``, representing the mean and standard deviation (the latter greater than 0.0).
         NegativeBinomial:
             Required parameter ``n`` greater than or equal to 0, representing the number of total successes.
-            Optional parameter ``p`` in :math:`(0,1]`, representing the success probability. 
+            Optional parameter ``p`` in :math:`(0,1]`, representing the success probability.
         Poisson:
             Alias for ``PoissonType``, indicating Poisson-distributed data.
             Optional parameter ``l``, representing the rate parameter, greater than or equal to 0.0.

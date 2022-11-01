@@ -5,6 +5,7 @@ from typing import Tuple, List, Union, Type
 import numpy as np
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.nodes.node import LeafNode
 
 from scipy.stats import norm  # type: ignore
@@ -63,48 +64,74 @@ class Gaussian(LeafNode):
         self.set_params(mean, std)
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``Gaussian`` can represent a single univariate node with ``MetaType.Continuous`` or ``GaussianType`` domain.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf only has one output
         if len(signatures) != 1:
             return False
 
         # get single output signature
-        types, scope = signatures[0]
+        feature_ctx = signatures[0]
+        domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+        if (
+            len(domains) != 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) != 0
+        ):
             return False
-        
+
         # leaf is a continuous Gaussian distribution
-        if not (types[0] == FeatureTypes.Continuous or types[0] == FeatureTypes.Gaussian or isinstance(types[0], FeatureTypes.Gaussian)):
+        if not (
+            domains[0] == FeatureTypes.Continuous
+            or domains[0] == FeatureTypes.Gaussian
+            or isinstance(domains[0], FeatureTypes.Gaussian)
+        ):
             return False
 
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "Gaussian":
-        """TODO"""
+    def from_signatures(self, signatures: List[FeatureContext]) -> "Gaussian":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``Gaussian`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'Gaussian' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'Gaussian' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         # get single output signature
-        types, scope = signatures[0]
-        type = types[0]
+        feature_ctx = signatures[0]
+        domain = feature_ctx.get_domains()[0]
 
         # read or initialize parameters
-        if type == MetaType.Continuous:
+        if domain == MetaType.Continuous:
             mean, std = 0.0, 1.0
-        elif type == FeatureTypes.Gaussian:
+        elif domain == FeatureTypes.Gaussian:
             # instantiate object
-            type = type()
-            mean, std = type.mean, type.std
-        elif isinstance(type, FeatureTypes.Gaussian):
-            mean, std = type.mean, type.std
+            domain = domain()
+            mean, std = domain.mean, domain.std
+        elif isinstance(domain, FeatureTypes.Gaussian):
+            mean, std = domain.mean, domain.std
         else:
-            raise ValueError(f"Unknown signature type {type} for 'Gaussian' that was not caught during acception checking.")
+            raise ValueError(
+                f"Unknown signature type {domain} for 'Gaussian' that was not caught during acception checking."
+            )
 
-        return Gaussian(scope, mean=mean, std=std)
+        return Gaussian(feature_ctx.scope, mean=mean, std=std)
 
     @property
     def dist(self) -> rv_frozen:

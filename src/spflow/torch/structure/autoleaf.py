@@ -5,36 +5,105 @@ from typing import Tuple, List, Union, Optional, Dict, Type
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.feature_types import FeatureType
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.module import Module
+
 # ----- non-conditional modules -----
-from spflow.torch.structure.layers.leaves.parametric.bernoulli import Bernoulli, BernoulliLayer
-from spflow.torch.structure.layers.leaves.parametric.binomial import Binomial, BinomialLayer
-from spflow.torch.structure.layers.leaves.parametric.exponential import Exponential, ExponentialLayer
-from spflow.torch.structure.layers.leaves.parametric.gamma import Gamma, GammaLayer
-from spflow.torch.structure.layers.leaves.parametric.gaussian import Gaussian, GaussianLayer
-from spflow.torch.structure.layers.leaves.parametric.geometric import Geometric, GeometricLayer
-from spflow.torch.structure.layers.leaves.parametric.hypergeometric import Hypergeometric, HypergeometricLayer
-from spflow.torch.structure.layers.leaves.parametric.log_normal import LogNormal, LogNormalLayer
-from spflow.torch.structure.layers.leaves.parametric.multivariate_gaussian import MultivariateGaussian, MultivariateGaussianLayer
-from spflow.torch.structure.layers.leaves.parametric.negative_binomial import NegativeBinomial, NegativeBinomialLayer
-from spflow.torch.structure.layers.leaves.parametric.poisson import Poisson, PoissonLayer
-from spflow.torch.structure.layers.leaves.parametric.uniform import Uniform, UniformLayer
+from spflow.torch.structure.layers.leaves.parametric.bernoulli import (
+    Bernoulli,
+    BernoulliLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.binomial import (
+    Binomial,
+    BinomialLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.exponential import (
+    Exponential,
+    ExponentialLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.gamma import (
+    Gamma,
+    GammaLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.gaussian import (
+    Gaussian,
+    GaussianLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.geometric import (
+    Geometric,
+    GeometricLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.hypergeometric import (
+    Hypergeometric,
+    HypergeometricLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.log_normal import (
+    LogNormal,
+    LogNormalLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussian,
+    MultivariateGaussianLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.negative_binomial import (
+    NegativeBinomial,
+    NegativeBinomialLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.poisson import (
+    Poisson,
+    PoissonLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.uniform import (
+    Uniform,
+    UniformLayer,
+)
+
 # ----- conditional modules -----
-from spflow.torch.structure.layers.leaves.parametric.cond_bernoulli import CondBernoulli, CondBernoulliLayer
-from spflow.torch.structure.layers.leaves.parametric.cond_binomial import CondBinomial, CondBinomialLayer
-from spflow.torch.structure.layers.leaves.parametric.cond_exponential import CondExponential, CondExponentialLayer
-from spflow.torch.structure.layers.leaves.parametric.cond_gamma import CondGamma, CondGammaLayer
-from spflow.torch.structure.layers.leaves.parametric.cond_gaussian import CondGaussian, CondGaussianLayer
-from spflow.torch.structure.layers.leaves.parametric.cond_geometric import CondGeometric, CondGeometricLayer
-from spflow.torch.structure.layers.leaves.parametric.cond_log_normal import CondLogNormal, CondLogNormalLayer
-from spflow.torch.structure.layers.leaves.parametric.cond_multivariate_gaussian import CondMultivariateGaussian, CondMultivariateGaussianLayer
-from spflow.torch.structure.layers.leaves.parametric.cond_negative_binomial import CondNegativeBinomial, CondNegativeBinomialLayer
-from spflow.torch.structure.layers.leaves.parametric.cond_poisson import CondPoisson, CondPoissonLayer
+from spflow.torch.structure.layers.leaves.parametric.cond_bernoulli import (
+    CondBernoulli,
+    CondBernoulliLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.cond_binomial import (
+    CondBinomial,
+    CondBinomialLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.cond_exponential import (
+    CondExponential,
+    CondExponentialLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.cond_gamma import (
+    CondGamma,
+    CondGammaLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.cond_gaussian import (
+    CondGaussian,
+    CondGaussianLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.cond_geometric import (
+    CondGeometric,
+    CondGeometricLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.cond_log_normal import (
+    CondLogNormal,
+    CondLogNormalLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussian,
+    CondMultivariateGaussianLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.cond_negative_binomial import (
+    CondNegativeBinomial,
+    CondNegativeBinomialLayer,
+)
+from spflow.torch.structure.layers.leaves.parametric.cond_poisson import (
+    CondPoisson,
+    CondPoissonLayer,
+)
 
 
-class AutoLeaf():
-    """TODO
-    """
+class AutoLeaf:
+    """TODO"""
+
     __leaf_map: Dict[int, Module] = {
         # univariate nodes
         0: Bernoulli,
@@ -83,14 +152,17 @@ class AutoLeaf():
         219: CondPoissonLayer,
         # multivariate layers (make sure they have lower priority than univariate layers since they may also match univariate signatures)
         300: MultivariateGaussianLayer,
-        301: CondMultivariateGaussianLayer
+        301: CondMultivariateGaussianLayer,
     }
 
-    def __new__(cls, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]):
+    def __new__(cls, signatures: List[FeatureContext]):
+        """"""
         leaf_type = AutoLeaf.infer(signatures)
 
         if leaf_type is None:
-            raise ValueError("Could not infer leaf type from the following signatures: {signatures}.")
+            raise ValueError(
+                "Could not infer leaf type from the following signatures: {signatures}."
+            )
 
         return leaf_type.from_signatures(signatures)
 
@@ -106,14 +178,14 @@ class AutoLeaf():
         self.__leaf_map[key + 1] = value
 
     @classmethod
-    def __next_key(self, start: Optional[int]=None) -> id:
+    def __next_key(self, start: Optional[int] = None) -> id:
         """TODO"""
         if start is None:
             # start from beginning
             key = 0
         else:
             key = start
-        
+
         # find next best available value
         while key in self.__leaf_map.keys():
             key += 1
@@ -121,7 +193,14 @@ class AutoLeaf():
         return key
 
     @classmethod
-    def register(self, module: Module, priority: Optional[int]=None, before: Optional[List[Module]]=None, type: str='node', arity: str='uni') -> None:
+    def register(
+        self,
+        module: Module,
+        priority: Optional[int] = None,
+        before: Optional[List[Module]] = None,
+        type: str = "node",
+        arity: str = "uni",
+    ) -> None:
         """TODO"""
         # if module already registered it is registered again at bottom of priority list
         for id, m in list(self.__leaf_map.items()):
@@ -137,7 +216,7 @@ class AutoLeaf():
                 start += 200
             else:
                 ValueError("TODO.")
-            
+
             if arity == "uni":
                 pass
             elif arity == "multi":
@@ -162,7 +241,11 @@ class AutoLeaf():
                         if m == ref:
                             before_ids.append(k)
             # take minimum value as lower bound
-            before = min(before_ids) if before_ids else max(self.__leaf_map.keys()) + 2
+            before = (
+                min(before_ids)
+                if before_ids
+                else max(self.__leaf_map.keys()) + 2
+            )
 
         if priority < before:
             # use value preference

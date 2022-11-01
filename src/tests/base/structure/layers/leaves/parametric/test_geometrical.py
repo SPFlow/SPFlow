@@ -6,6 +6,7 @@ from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.geometric import Geometric
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 import numpy as np
 import unittest
 
@@ -94,57 +95,111 @@ class TestLayer(unittest.TestCase):
         l = GeometricLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
-    
+
     def test_accept(self):
 
         # discrete meta type
-        self.assertTrue(GeometricLayer.accepts([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Discrete], Scope([1]))]))
+        self.assertTrue(
+            GeometricLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Discrete]),
+                ]
+            )
+        )
 
-        # Geometric feature type class
-        self.assertTrue(GeometricLayer.accepts([([FeatureTypes.Geometric], Scope([0])), ([FeatureTypes.Geometric], Scope([1]))]))
-
-        # Geometric feature type instance
-        self.assertTrue(GeometricLayer.accepts([([FeatureTypes.Geometric(0.5)], Scope([0])), ([FeatureTypes.Geometric(0.5)], Scope([1]))]))
+        # feature type instance
+        self.assertTrue(
+            GeometricLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Geometric]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Geometric]),
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(GeometricLayer.accepts([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Discrete], Scope([1]))]))
+        self.assertFalse(
+            GeometricLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Geometric]),
+                ]
+            )
+        )
 
         # conditional scope
-        self.assertFalse(GeometricLayer.accepts([([FeatureTypes.Discrete], Scope([0], [1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(GeometricLayer.accepts([([FeatureTypes.Discrete], Scope([0, 1]))]))
+        self.assertFalse(
+            GeometricLayer.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(GeometricLayer.accepts([([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1]))]))
+        self.assertFalse(
+            GeometricLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Geometric, FeatureTypes.Geometric],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        geometric = GeometricLayer.from_signatures([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Discrete], Scope([1]))])
-        self.assertTrue(np.all(geometric.p == np.array([0.5, 0.5])))
+        geometric = GeometricLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                FeatureContext(Scope([1]), [FeatureTypes.Discrete]),
+            ]
+        )
         self.assertTrue(geometric.scopes_out == [Scope([0]), Scope([1])])
 
-        geometric = GeometricLayer.from_signatures([([FeatureTypes.Geometric], Scope([0])), ([FeatureTypes.Geometric], Scope([1]))])
-        self.assertTrue(np.all(geometric.p == np.array([0.5, 0.5])))
+        geometric = GeometricLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Geometric]),
+                FeatureContext(Scope([1]), [FeatureTypes.Geometric]),
+            ]
+        )
         self.assertTrue(geometric.scopes_out == [Scope([0]), Scope([1])])
-    
-        geometric = GeometricLayer.from_signatures([([FeatureTypes.Geometric(p=0.75)], Scope([0])), ([FeatureTypes.Geometric(p=0.25)], Scope([1]))])
-        self.assertTrue(np.all(geometric.p == np.array([0.75, 0.25])))
+
+        geometric = GeometricLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Geometric(0.5)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Geometric(0.5)]),
+            ]
+        )
         self.assertTrue(geometric.scopes_out == [Scope([0]), Scope([1])])
 
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, GeometricLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            GeometricLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, GeometricLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0], [1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, GeometricLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            GeometricLayer.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, GeometricLayer.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            GeometricLayer.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Discrete, FeatureTypes.Discrete],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -152,11 +207,23 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(GeometricLayer))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(GeometricLayer, AutoLeaf.infer([([FeatureTypes.Geometric], Scope([0])), ([FeatureTypes.Geometric], Scope([1]))]))
+        self.assertEqual(
+            GeometricLayer,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Geometric]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Geometric]),
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        geometric = AutoLeaf([([FeatureTypes.Geometric(p=0.75)], Scope([0])), ([FeatureTypes.Geometric(p=0.25)], Scope([1]))])
-        self.assertTrue(np.all(geometric.p == np.array([0.75, 0.25])))
+        geometric = AutoLeaf(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Geometric(p=0.75)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Geometric(p=0.25)]),
+            ]
+        )
         self.assertTrue(geometric.scopes_out == [Scope([0]), Scope([1])])
 
     def test_layer_structural_marginalization(self):

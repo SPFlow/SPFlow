@@ -5,6 +5,7 @@ from typing import Tuple, List, Union, Type
 import numpy as np
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.nodes.node import LeafNode
 
 from scipy.stats import bernoulli  # type: ignore
@@ -58,47 +59,73 @@ class Bernoulli(LeafNode):
         self.set_params(p)
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``Bernoulli`` can represent a single univariate node with ``MetaType.Discrete`` or ``BernoulliType`` domain.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf only has one output
         if len(signatures) != 1:
             return False
 
         # get single output signature
-        types, scope = signatures[0]
+        feature_ctx = signatures[0]
+        domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+        if (
+            len(domains) != 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) != 0
+        ):
             return False
 
         # leaf is a discrete Bernoulli distribution
-        if not (types[0] == FeatureTypes.Discrete or types[0] == FeatureTypes.Bernoulli or isinstance(types[0], FeatureTypes.Bernoulli)):
+        if not (
+            domains[0] == FeatureTypes.Discrete
+            or domains[0] == FeatureTypes.Bernoulli
+            or isinstance(domains[0], FeatureTypes.Bernoulli)
+        ):
             return False
 
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "Bernoulli":
-        """TODO"""
+    def from_signatures(self, signatures: List[FeatureContext]) -> "Bernoulli":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``Bernoulli`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'Bernoulli' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'Bernoulli' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         # get single output signature
-        types, scope = signatures[0]
-        type = types[0]
+        feature_ctx = signatures[0]
+        domain = feature_ctx.get_domains()[0]
 
         # read or initialize parameters
-        if type == MetaType.Discrete:
+        if domain == MetaType.Discrete:
             p = 0.5
-        elif type == FeatureTypes.Bernoulli:
+        elif domain == FeatureTypes.Bernoulli:
             # instantiate object
-            p = type().p
-        elif isinstance(type, FeatureTypes.Bernoulli):
-            p = type.p
+            p = domain().p
+        elif isinstance(domain, FeatureTypes.Bernoulli):
+            p = domain.p
         else:
-            raise ValueError(f"Unknown signature type {type} for 'Bernoulli' that was not caught during acception checking.")
+            raise ValueError(
+                f"Unknown signature type {domain} for 'Bernoulli' that was not caught during acception checking."
+            )
 
-        return Bernoulli(scope, p=p)
+        return Bernoulli(feature_ctx.scope, p=p)
 
     @property
     def dist(self) -> rv_frozen:

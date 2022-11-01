@@ -15,7 +15,9 @@ import unittest
 class TestCondLogNormal(unittest.TestCase):
     def test_likelihood_no_mean(self):
 
-        log_normal = CondLogNormal(Scope([0], [1]), cond_f=lambda data: {"std": 1.0})
+        log_normal = CondLogNormal(
+            Scope([0], [1]), cond_f=lambda data: {"std": 1.0}
+        )
         self.assertRaises(
             KeyError, log_likelihood, log_normal, np.array([[0], [1]])
         )

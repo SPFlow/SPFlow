@@ -9,6 +9,7 @@ from spflow.base.structure.nodes.leaves.parametric.cond_bernoulli import (
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 import numpy as np
 import unittest
 
@@ -23,7 +24,10 @@ class TestLayer(unittest.TestCase):
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
         self.assertTrue(
-            np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])])
+            np.all(
+                l.scopes_out
+                == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]
+            )
         )
 
         # ---- different scopes -----
@@ -32,7 +36,9 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, CondBernoulliLayer, Scope([0], [1]), n_nodes=0)
+        self.assertRaises(
+            ValueError, CondBernoulliLayer, Scope([0], [1]), n_nodes=0
+        )
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondBernoulliLayer, Scope([]), n_nodes=3)
@@ -40,7 +46,9 @@ class TestLayer(unittest.TestCase):
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
-        l = CondBernoulliLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3)
+        l = CondBernoulliLayer(
+            scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3
+        )
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
 
@@ -112,50 +120,131 @@ class TestLayer(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type
-        self.assertTrue(CondBernoulliLayer.accepts([([FeatureTypes.Discrete], Scope([0], [2])), ([FeatureTypes.Discrete], Scope([1], [3]))]))
+        self.assertTrue(
+            CondBernoulliLayer.accepts(
+                [
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Discrete]),
+                    FeatureContext(Scope([1], [3]), [FeatureTypes.Discrete]),
+                ]
+            )
+        )
 
         # Bernoulli feature type class
-        self.assertTrue(CondBernoulliLayer.accepts([([FeatureTypes.Bernoulli], Scope([0], [2])), ([FeatureTypes.Discrete], Scope([1], [3]))]))
+        self.assertTrue(
+            CondBernoulliLayer.accepts(
+                [
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Bernoulli]),
+                    FeatureContext(Scope([1], [3]), [FeatureTypes.Discrete]),
+                ]
+            )
+        )
 
         # Bernoulli feature type instance
-        self.assertTrue(CondBernoulliLayer.accepts([([FeatureTypes.Bernoulli(0.5)], Scope([0], [2])), ([FeatureTypes.Bernoulli(0.5)], Scope([1], [3]))]))
+        self.assertTrue(
+            CondBernoulliLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0], [2]), [FeatureTypes.Bernoulli(0.5)]
+                    ),
+                    FeatureContext(
+                        Scope([1], [3]), [FeatureTypes.Bernoulli(0.5)]
+                    ),
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(CondBernoulliLayer.accepts([([FeatureTypes.Continuous], Scope([0], [2])), ([FeatureTypes.Continuous], Scope([1], [3]))]))
+        self.assertFalse(
+            CondBernoulliLayer.accepts(
+                [
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
+                    FeatureContext(Scope([1], [3]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
         # non-conditional scope
-        self.assertFalse(CondBernoulliLayer.accepts([([FeatureTypes.Discrete], Scope([0]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(CondBernoulliLayer.accepts([([FeatureTypes.Discrete], Scope([0, 1], [2]))]))
+        self.assertFalse(
+            CondBernoulliLayer.accepts(
+                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(CondBernoulliLayer.accepts([([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1], [2]))]))
+        self.assertFalse(
+            CondBernoulliLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1], [2]),
+                        [FeatureTypes.Discrete, FeatureTypes.Discrete],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        bernoulli = CondBernoulliLayer.from_signatures([([FeatureTypes.Discrete], Scope([0], [2])), ([FeatureTypes.Discrete], Scope([1], [3]))])
-        self.assertTrue(bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])])
+        bernoulli = CondBernoulliLayer.from_signatures(
+            [
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Discrete]),
+                FeatureContext(Scope([1], [3]), [FeatureTypes.Discrete]),
+            ]
+        )
+        self.assertTrue(
+            bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])]
+        )
 
-        bernoulli = CondBernoulliLayer.from_signatures([([FeatureTypes.Bernoulli], Scope([0], [2])), ([FeatureTypes.Bernoulli], Scope([1], [3]))])
-        self.assertTrue(bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])])
-    
-        bernoulli = CondBernoulliLayer.from_signatures([([FeatureTypes.Bernoulli(p=0.75)], Scope([0], [2])), ([FeatureTypes.Bernoulli(p=0.25)], Scope([1], [3]))])
-        self.assertTrue(bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])])
+        bernoulli = CondBernoulliLayer.from_signatures(
+            [
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Bernoulli]),
+                FeatureContext(Scope([1], [3]), [FeatureTypes.Bernoulli]),
+            ]
+        )
+        self.assertTrue(
+            bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])]
+        )
+
+        bernoulli = CondBernoulliLayer.from_signatures(
+            [
+                FeatureContext(
+                    Scope([0], [2]), [FeatureTypes.Bernoulli(p=0.75)]
+                ),
+                FeatureContext(
+                    Scope([1], [3]), [FeatureTypes.Bernoulli(p=0.25)]
+                ),
+            ]
+        )
+        self.assertTrue(
+            bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])]
+        )
 
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, CondBernoulliLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
+        self.assertRaises(
+            ValueError,
+            CondBernoulliLayer.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+        )
 
         # non-conditional scope
-        self.assertRaises(ValueError, CondBernoulliLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, CondBernoulliLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondBernoulliLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, CondBernoulliLayer.from_signatures, [([FeatureTypes.Discrete, FeatureTypes.Discrete], Scope([0, 1], [2]))])
+        self.assertRaises(
+            ValueError,
+            CondBernoulliLayer.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [FeatureTypes.Discrete, FeatureTypes.Discrete],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -163,11 +252,30 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(CondBernoulliLayer))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(CondBernoulliLayer, AutoLeaf.infer([([FeatureTypes.Bernoulli()], Scope([0], [2])), ([FeatureTypes.Bernoulli()], Scope([1], [3]))]))
+        self.assertEqual(
+            CondBernoulliLayer,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Bernoulli()]),
+                    FeatureContext(Scope([1], [3]), [FeatureTypes.Bernoulli()]),
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        bernoulli = AutoLeaf([([FeatureTypes.Bernoulli(p=0.75)], Scope([0], [2])), ([FeatureTypes.Bernoulli(p=0.25)], Scope([1], [3]))])
-        self.assertTrue(bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])])
+        bernoulli = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0], [2]), [FeatureTypes.Bernoulli(p=0.75)]
+                ),
+                FeatureContext(
+                    Scope([1], [3]), [FeatureTypes.Bernoulli(p=0.25)]
+                ),
+            ]
+        )
+        self.assertTrue(
+            bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])]
+        )
 
     def test_layer_structural_marginalization(self):
 

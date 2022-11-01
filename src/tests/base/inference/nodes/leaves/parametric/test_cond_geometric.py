@@ -75,7 +75,9 @@ class TestCondGeometric(unittest.TestCase):
     def test_likelihood_1(self):
 
         # ----- configuration 1 -----
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.2})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.2}
+        )
 
         # create test inputs/outputs
         data = np.array([[1], [5], [10]])
@@ -90,7 +92,9 @@ class TestCondGeometric(unittest.TestCase):
     def test_likelihood_2(self):
 
         # ----- configuration 2 -----
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.5}
+        )
 
         # create test inputs/outputs
         data = np.array([[1], [5], [10]])
@@ -105,7 +109,9 @@ class TestCondGeometric(unittest.TestCase):
     def test_likelihood_3(self):
 
         # ----- configuration 3 -----
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.8})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.8}
+        )
 
         # create test inputs/outputs
         data = np.array([[1], [5], [10]])
@@ -120,14 +126,18 @@ class TestCondGeometric(unittest.TestCase):
     def test_likelihood_p_none(self):
 
         # dummy distribution and data
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": None})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": None}
+        )
         data = np.array([[1], [5], [10]])
 
         self.assertRaises(Exception, likelihood, geometric, data)
 
     def test_likelihood_marginalization(self):
 
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.5}
+        )
         data = np.array([[np.nan]])
 
         # should not raise and error and should return 1 (0 in log-space)
@@ -145,7 +155,9 @@ class TestCondGeometric(unittest.TestCase):
         #   likelihood:         0->0.000000001, 1.0->0.999999999
         #   log-likelihood: -inf->fmin
 
-        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
+        geometric = CondGeometric(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.5}
+        )
 
         # check infinite values
         self.assertRaises(

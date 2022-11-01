@@ -22,6 +22,7 @@ class Scope:
         evidence:
             List of non-negative integers representing evidence variables.
     """
+
     def __init__(
         self,
         query: Optional[List[int]] = None,
@@ -145,7 +146,7 @@ class Scope:
             Boolean indicating whether the scope is empty (True) or not (False).
         """
         return not bool(self.query)
-        
+
     def is_conditional(self) -> bool:
         """Checks if the scope is conditional.
 
@@ -176,7 +177,7 @@ class Scope:
                 ``Scope`` object to compute the union with.
 
         Returns:
-            ``Scope`` object representing the union of both scopes.        
+            ``Scope`` object representing the union of both scopes.
         """
         # compute union of query RVs
         joint_query = list(set(self.query).union(other.query))

@@ -136,7 +136,9 @@ class TestBinomial(unittest.TestCase):
     def test_likelihood_p_0(self):
 
         # p = 0
-        binomial = CondBinomial(Scope([0], [1]), 1, cond_f=lambda data: {"p": 0.0})
+        binomial = CondBinomial(
+            Scope([0], [1]), 1, cond_f=lambda data: {"p": 0.0}
+        )
 
         data = torch.tensor([[0.0], [1.0]])
         targets = torch.tensor([[1.0], [0.0]])
@@ -150,7 +152,9 @@ class TestBinomial(unittest.TestCase):
     def test_likelihood_p_1(self):
 
         # p = 1
-        binomial = CondBinomial(Scope([0], [1]), 1, cond_f=lambda data: {"p": 1.0})
+        binomial = CondBinomial(
+            Scope([0], [1]), 1, cond_f=lambda data: {"p": 1.0}
+        )
 
         data = torch.tensor([[0.0], [1.0]])
         targets = torch.tensor([[0.0], [1.0]])
@@ -164,7 +168,9 @@ class TestBinomial(unittest.TestCase):
     def test_likelihood_n_0(self):
 
         # n = 0
-        binomial = CondBinomial(Scope([0], [1]), 0, cond_f=lambda data: {"p": 0.5})
+        binomial = CondBinomial(
+            Scope([0], [1]), 0, cond_f=lambda data: {"p": 0.5}
+        )
 
         data = torch.tensor([[0.0]])
         targets = torch.tensor([[1.0]])
@@ -177,7 +183,9 @@ class TestBinomial(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        binomial = CondBinomial(Scope([0], [1]), 5, cond_f=lambda data: {"p": 0.5})
+        binomial = CondBinomial(
+            Scope([0], [1]), 5, cond_f=lambda data: {"p": 0.5}
+        )
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1 (0 in log-space)
@@ -189,7 +197,9 @@ class TestBinomial(unittest.TestCase):
 
         # Support for Binomial distribution: integers {0,...,n}
 
-        binomial = CondBinomial(Scope([0], [1]), 2, cond_f=lambda data: {"p": 0.5})
+        binomial = CondBinomial(
+            Scope([0], [1]), 2, cond_f=lambda data: {"p": 0.5}
+        )
 
         # check infinite values
         self.assertRaises(

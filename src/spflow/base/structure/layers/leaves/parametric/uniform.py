@@ -13,6 +13,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.module import Module
 from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
 
@@ -105,8 +106,14 @@ class UniformLayer(Module):
         return np.array([node.end for node in self.nodes])
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``UniformLayer`` can represent one or more univariate nodes with ``UniformType`` domains.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf has at least one output
         if len(signatures) < 1:
             return False
@@ -114,31 +121,44 @@ class UniformLayer(Module):
         for signature in signatures:
             if not Uniform.accepts([signature]):
                 return False
-    
+
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "UniformLayer":
-        """TODO"""
+    def from_signatures(
+        self, signatures: List[FeatureContext]
+    ) -> "UniformLayer":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``UniformLayer`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'UniformLayer' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'UniformLayer' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         start = []
         end = []
         scopes = []
 
-        for types, scope in signatures:
-        
-            type = types[0]
+        for feature_ctx in signatures:
+
+            domain = feature_ctx.get_domains()[0]
 
             # read or initialize parameters
-            if isinstance(type, FeatureTypes.Uniform):
-                start.append(type.start)
-                end.append(type.end)
+            if isinstance(domain, FeatureTypes.Uniform):
+                start.append(domain.start)
+                end.append(domain.end)
             else:
-                raise ValueError(f"Unknown signature type {type} for 'UniformLayer' that was not caught during acception checking.")
+                raise ValueError(
+                    f"Unknown signature type {domain} for 'UniformLayer' that was not caught during acception checking."
+                )
 
-            scopes.append(scope)
+            scopes.append(feature_ctx.scope)
 
         return UniformLayer(scopes, start=start, end=end)
 

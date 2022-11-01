@@ -9,6 +9,7 @@ from typing import List, Tuple, Union, Optional, Iterable, Type
 from .projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -117,7 +118,7 @@ class MultivariateGaussian(LeafNode):
 
     @property
     def covariance_tril(self) -> torch.Tensor:
-        """TODO"""
+        """Returns the lower triangular matrix of the Cholesky-decomposed covariance matrix."""
         # create zero matrix of appropriate dimension
         L_nondiag = torch.zeros(self.d, self.d)
         # fill non-diagonal values of lower triangular matrix
@@ -129,57 +130,90 @@ class MultivariateGaussian(LeafNode):
 
     @property
     def cov(self) -> torch.Tensor:
-        """TODO"""
+        """Returns the covariance matrix."""
         # get lower triangular matrix
         L = self.covariance_tril
         # return covariance matrix
         return torch.matmul(L, L.T)
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``MultivariateGaussian`` can represent a single univariate node with ``MetaType.Continuous`` or ``GaussianType`` domains.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf only has one output
         if len(signatures) != 1:
             return False
 
         # get single output signature
-        types, scope = signatures[0]
+        feature_ctx = signatures[0]
+        domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional (possibly multivariate) node
-        if len(types) < 1 or len(scope.query) != len(types) or len(scope.evidence) != 0:
+        if (
+            len(domains) < 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) != 0
+        ):
             return False
 
         # leaf is a continuous (multivariate) Gaussian distribution
-        if not all([type == FeatureTypes.Continuous or type == FeatureTypes.Gaussian or isinstance(type, FeatureTypes.Gaussian) for type in types]):
+        if not all(
+            [
+                domain == FeatureTypes.Continuous
+                or domain == FeatureTypes.Gaussian
+                or isinstance(domain, FeatureTypes.Gaussian)
+                for domain in domains
+            ]
+        ):
             return False
 
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "MultivariateGaussian":
-        """TODO"""
+    def from_signatures(
+        self, signatures: List[FeatureContext]
+    ) -> "MultivariateGaussian":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``MultivariateGaussian`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'MultivariateGaussian' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'MultivariateGaussian' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         # get single output signature
-        types, scope = signatures[0]
+        feature_ctx = signatures[0]
 
-        mean, cov = np.zeros(len(scope.query)), np.eye(len(scope.query))
+        mean, cov = np.zeros(len(feature_ctx.scope.query)), np.eye(
+            len(feature_ctx.scope.query)
+        )
 
-        for i, type in enumerate(types):
+        for i, domain in enumerate(feature_ctx.get_domains()):
             # read or initialize parameters
-            if type == MetaType.Continuous:
+            if domain == MetaType.Continuous:
                 pass
-            elif type == FeatureTypes.Gaussian:
+            elif domain == FeatureTypes.Gaussian:
                 # instantiate object
-                type = type()
-                mean[i], cov[i][i] = type.mean, type.std
-            elif isinstance(type, FeatureTypes.Gaussian):
-                mean[i], cov[i][i] = type.mean, type.std
+                domain = domain()
+                mean[i], cov[i][i] = domain.mean, domain.std
+            elif isinstance(domain, FeatureTypes.Gaussian):
+                mean[i], cov[i][i] = domain.mean, domain.std
             else:
-                raise ValueError(f"Unknown signature type {type} for 'MultivariateGaussian' that was not caught during acception checking.")
+                raise ValueError(
+                    f"Unknown signature type {domain} for 'MultivariateGaussian' that was not caught during acception checking."
+                )
 
-        return MultivariateGaussian(scope, mean=mean, cov=cov)
+        return MultivariateGaussian(feature_ctx.scope, mean=mean, cov=cov)
 
     @property
     def dist(self) -> D.Distribution:

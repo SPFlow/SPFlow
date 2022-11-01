@@ -4,7 +4,7 @@ import unittest
 
 class TestNode(unittest.TestCase):
     def test_autoleaf(self):
-        #TODO: access, registration etc.
+        # TODO: access, registration etc.
         pass
 
 

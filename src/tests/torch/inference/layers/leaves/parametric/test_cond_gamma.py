@@ -37,7 +37,9 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_beta(self):
 
         gamma = CondGammaLayer(
-            Scope([0], [1]), cond_f=lambda data: {"alpha": [1.0, 1.0]}, n_nodes=2
+            Scope([0], [1]),
+            cond_f=lambda data: {"alpha": [1.0, 1.0]},
+            n_nodes=2,
         )
         self.assertRaises(
             KeyError, log_likelihood, gamma, torch.tensor([[0], [1]])
@@ -126,7 +128,8 @@ class TestNode(unittest.TestCase):
                 Scope([1], [2]), cond_f=lambda data: {"alpha": 1.0, "beta": 0.3}
             ),
             CondGamma(
-                Scope([0], [2]), cond_f=lambda data: {"alpha": 2.3, "beta": 0.97}
+                Scope([0], [2]),
+                cond_f=lambda data: {"alpha": 2.3, "beta": 0.97},
             ),
         ]
 

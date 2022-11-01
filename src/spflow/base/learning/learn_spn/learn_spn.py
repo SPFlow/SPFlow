@@ -99,7 +99,7 @@ def cluster_by_kmeans(
 
 def learn_spn(
     data: np.ndarray,
-    feature_ctx: Optional[FeatureContext]=None,
+    feature_ctx: Optional[FeatureContext] = None,
     min_features_slice: int = 2,
     min_instances_slice: int = 100,
     fit_params: bool = True,
@@ -160,13 +160,15 @@ def learn_spn(
         feature_ctx = feature_ctx(Scope(list(range(data.shape[1]))))
 
     scope = feature_ctx.scope
-    
+
     if len(scope.query) != data.shape[1]:
         raise ValueError(
             f"Number of query variables in 'scope' does not match number of features in data."
         )
     if scope.is_conditional() and fit_params:
-        raise ValueError("Option 'fit_params' is set to True, but is incompatible with a conditional scope.")
+        raise ValueError(
+            "Option 'fit_params' is set to True, but is incompatible with a conditional scope."
+        )
 
     # available off-the-shelf clustering methods provided by SPFlow
     if isinstance(clustering_method, str):
@@ -206,7 +208,7 @@ def learn_spn(
     # helper functions
     def create_uv_leaf(scope: Scope, data: np.ndarray, fit_params: bool = True):
         # create leaf node
-        signature = (feature_ctx.get_domains(scope.query), scope)
+        signature = feature_ctx.select(scope.query)
         leaf = AutoLeaf([signature])
 
         if fit_params:
@@ -225,7 +227,7 @@ def learn_spn(
 
         for rv in scope.query:
             # create leaf node
-            signature = (feature_ctx.get_domains([rv]), Scope([rv], scope.evidence))
+            signature = feature_ctx.select([rv])
             leaf = AutoLeaf([signature])
             leaves.append(leaf)
 
@@ -263,7 +265,9 @@ def learn_spn(
                     # compute child trees recursively
                     learn_spn(
                         data[:, partition],
-                        feature_ctx=feature_ctx.select([scope.query[rv] for rv in partition]),
+                        feature_ctx=feature_ctx.select(
+                            [scope.query[rv] for rv in partition]
+                        ),
                         clustering_method=clustering_method,
                         partitioning_method=partitioning_method,
                         fit_params=fit_params,
@@ -283,7 +287,14 @@ def learn_spn(
 
                 # non-conditional clusters
                 if not scope.is_conditional():
-                    weights = [(labels == cluster_id).sum() / data.shape[0] for cluster_id in np.unique(labels)] if fit_params else None
+                    weights = (
+                        [
+                            (labels == cluster_id).sum() / data.shape[0]
+                            for cluster_id in np.unique(labels)
+                        ]
+                        if fit_params
+                        else None
+                    )
 
                     return SPNSumNode(
                         children=[

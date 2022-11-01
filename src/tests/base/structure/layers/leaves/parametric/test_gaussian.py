@@ -6,6 +6,7 @@ from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 import numpy as np
 import unittest
 
@@ -151,60 +152,123 @@ class TestLayer(unittest.TestCase):
         l = GaussianLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
-    
+
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(GaussianLayer.accepts([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
+        self.assertTrue(
+            GaussianLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
-        # Gaussian feature type class
-        self.assertTrue(GaussianLayer.accepts([([FeatureTypes.Gaussian], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
+        # feature type class
+        self.assertTrue(
+            GaussianLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Gaussian]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
-        # Gaussian feature type instance
-        self.assertTrue(GaussianLayer.accepts([([FeatureTypes.Gaussian(0.0, 1.0)], Scope([0])), ([FeatureTypes.Gaussian(0.0, 1.0)], Scope([1]))]))
+        # feature type instance
+        self.assertTrue(
+            GaussianLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0]), [FeatureTypes.Gaussian(0.0, 1.0)]
+                    ),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
         # invalid feature type
-        self.assertFalse(GaussianLayer.accepts([([FeatureTypes.Discrete], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))]))
+        self.assertFalse(
+            GaussianLayer.accepts(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+                ]
+            )
+        )
 
         # conditional scope
-        self.assertFalse(GaussianLayer.accepts([([FeatureTypes.Continuous], Scope([0], [1]))]))
-
-        # scope length does not match number of types
-        self.assertFalse(GaussianLayer.accepts([([FeatureTypes.Continuous], Scope([0, 1]))]))
+        self.assertFalse(
+            GaussianLayer.accepts(
+                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
+            )
+        )
 
         # multivariate signature
-        self.assertFalse(GaussianLayer.accepts([([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))]))
+        self.assertFalse(
+            GaussianLayer.accepts(
+                [
+                    FeatureContext(
+                        Scope([0, 1]),
+                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    )
+                ]
+            )
+        )
 
     def test_initialization_from_signatures(self):
 
-        gaussian = GaussianLayer.from_signatures([([FeatureTypes.Continuous], Scope([0])), ([FeatureTypes.Continuous], Scope([1]))])
-        self.assertTrue(np.all(gaussian.mean == np.array([0.0, 0.0])))
-        self.assertTrue(np.all(gaussian.std == np.array([1.0, 1.0])))
+        gaussian = GaussianLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+            ]
+        )
         self.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
 
-        gaussian = GaussianLayer.from_signatures([([FeatureTypes.Gaussian], Scope([0])), ([FeatureTypes.Gaussian], Scope([1]))])
-        self.assertTrue(np.all(gaussian.mean == np.array([0.0, 0.0])))
-        self.assertTrue(np.all(gaussian.std == np.array([1.0, 1.0])))
+        gaussian = GaussianLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Gaussian]),
+                FeatureContext(Scope([1]), [FeatureTypes.Gaussian]),
+            ]
+        )
         self.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
 
-        gaussian = GaussianLayer.from_signatures([([FeatureTypes.Gaussian(-1.0, 1.5)], Scope([0])), ([FeatureTypes.Gaussian(1.0, 0.5)], Scope([1]))])
-        self.assertTrue(np.all(gaussian.mean == np.array([-1.0, 1.0])))
-        self.assertTrue(np.all(gaussian.std == np.array([1.5, 0.5])))
+        gaussian = GaussianLayer.from_signatures(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Gaussian(0.0, 1.0)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Gaussian(0.0, 1.0)]),
+            ]
+        )
         self.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
 
         # ----- invalid arguments -----
 
         # invalid feature type
-        self.assertRaises(ValueError, GaussianLayer.from_signatures, [([FeatureTypes.Discrete], Scope([0]))])
+        self.assertRaises(
+            ValueError,
+            GaussianLayer.from_signatures,
+            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+        )
 
         # conditional scope
-        self.assertRaises(ValueError, GaussianLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0], [1]))])
-
-        # scope length does not match number of types
-        self.assertRaises(ValueError, GaussianLayer.from_signatures, [([FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            GaussianLayer.from_signatures,
+            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+        )
 
         # multivariate signature
-        self.assertRaises(ValueError, GaussianLayer.from_signatures, [([FeatureTypes.Continuous, FeatureTypes.Continuous], Scope([0, 1]))])
+        self.assertRaises(
+            ValueError,
+            GaussianLayer.from_signatures,
+            [
+                FeatureContext(
+                    Scope([0, 1]),
+                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                )
+            ],
+        )
 
     def test_autoleaf(self):
 
@@ -212,13 +276,28 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(AutoLeaf.is_registered(GaussianLayer))
 
         # make sure leaf is correctly inferred
-        self.assertEqual(GaussianLayer, AutoLeaf.infer([([FeatureTypes.Gaussian], Scope([0])), ([FeatureTypes.Gaussian], Scope([1]))]))
+        self.assertEqual(
+            GaussianLayer,
+            AutoLeaf.infer(
+                [
+                    FeatureContext(Scope([0]), [FeatureTypes.Gaussian]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Gaussian]),
+                ]
+            ),
+        )
 
         # make sure AutoLeaf can return correctly instantiated object
-        gaussian = AutoLeaf([([FeatureTypes.Gaussian(mean=-1.0, std=1.5)], Scope([0])), ([FeatureTypes.Gaussian(mean=1.0, std=0.5)], Scope([1]))])
+        gaussian = AutoLeaf(
+            [
+                FeatureContext(
+                    Scope([0]), [FeatureTypes.Gaussian(mean=-1.0, std=1.5)]
+                ),
+                FeatureContext(
+                    Scope([1]), [FeatureTypes.Gaussian(mean=1.0, std=0.5)]
+                ),
+            ]
+        )
         self.assertTrue(isinstance(gaussian, GaussianLayer))
-        self.assertTrue(np.all(gaussian.mean == np.array([-1.0, 1.0])))
-        self.assertTrue(np.all(gaussian.std == np.array([1.5, 0.5])))
         self.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
 
     def test_layer_structural_marginalization(self):

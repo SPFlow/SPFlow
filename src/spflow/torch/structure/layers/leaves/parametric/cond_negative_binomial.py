@@ -15,6 +15,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.cond_negative_binomial import (
     CondNegativeBinomial,
@@ -121,8 +122,14 @@ class CondNegativeBinomialLayer(Module):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``CondNegativeBinomial`` can represent one or more univariate nodes with ``NegativeBinomialType`` domains.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf has at least one output
         if len(signatures) < 1:
             return False
@@ -130,29 +137,42 @@ class CondNegativeBinomialLayer(Module):
         for signature in signatures:
             if not CondNegativeBinomial.accepts([signature]):
                 return False
-    
+
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "CondNegativeBinomialLayer":
-        """TODO"""
+    def from_signatures(
+        self, signatures: List[FeatureContext]
+    ) -> "CondNegativeBinomialLayer":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``CondNegativeBinomialLayer`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'CondNegativeBinomialLayer' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'CondNegativeBinomialLayer' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         n = []
         scopes = []
 
-        for types, scope in signatures:
-        
-            type = types[0]
+        for feature_ctx in signatures:
+
+            domain = feature_ctx.get_domains()[0]
 
             # read or initialize parameters
-            if isinstance(type, FeatureTypes.NegativeBinomial):
-                n.append(type.n)
+            if isinstance(domain, FeatureTypes.NegativeBinomial):
+                n.append(domain.n)
             else:
-                raise ValueError(f"Unknown signature type {type} for 'CondNegativeBinomialLayer' that was not caught during acception checking.")
+                raise ValueError(
+                    f"Unknown signature type {domain} for 'CondNegativeBinomialLayer' that was not caught during acception checking."
+                )
 
-            scopes.append(scope)
+            scopes.append(feature_ctx.scope)
 
         return CondNegativeBinomialLayer(scopes, n=n)
 

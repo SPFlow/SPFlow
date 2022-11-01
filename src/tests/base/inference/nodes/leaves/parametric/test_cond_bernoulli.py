@@ -82,7 +82,9 @@ class TestCondBernoulli(unittest.TestCase):
         # Valid parameters for Bernoulli distribution: p in [0,1]
 
         # p = 0
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.0})
+        bernoulli = CondBernoulli(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.0}
+        )
 
         data = np.array([[0.0], [1.0]])
         targets = np.array([[1.0], [0.0]])
@@ -96,7 +98,9 @@ class TestCondBernoulli(unittest.TestCase):
     def test_likelihood_p_1(self):
 
         # p = 1
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 1.0})
+        bernoulli = CondBernoulli(
+            Scope([0], [1]), cond_f=lambda data: {"p": 1.0}
+        )
 
         data = np.array([[0.0], [1.0]])
         targets = np.array([[0.0], [1.0]])
@@ -109,7 +113,9 @@ class TestCondBernoulli(unittest.TestCase):
 
     def test_likelihood_p_none(self):
 
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": None})
+        bernoulli = CondBernoulli(
+            Scope([0], [1]), cond_f=lambda data: {"p": None}
+        )
 
         data = np.array([[0.0], [1.0]])
 
@@ -118,7 +124,9 @@ class TestCondBernoulli(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
+        bernoulli = CondBernoulli(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.5}
+        )
         data = np.array([[np.nan]])
 
         # should not raise and error and should return 1 (0 in log-space)
@@ -132,7 +140,9 @@ class TestCondBernoulli(unittest.TestCase):
 
         # Support for Bernoulli distribution: integers {0,1}
 
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
+        bernoulli = CondBernoulli(
+            Scope([0], [1]), cond_f=lambda data: {"p": 0.5}
+        )
 
         # check infinite values
         self.assertRaises(

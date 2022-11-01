@@ -10,6 +10,7 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
@@ -82,44 +83,77 @@ class CondMultivariateGaussian(LeafNode):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``CondMultivariateGaussian`` can represent a single multivariate node with ``MetaType.Continuous`` or ``GaussianType`` domains.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf only has one output
         if len(signatures) != 1:
             return False
 
         # get single output signature
-        types, scope = signatures[0]
+        feature_ctx = signatures[0]
+        domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional (possibly multivariate) node
-        if len(types) < 1 or len(scope.query) != len(types) or len(scope.evidence) == 0:
+        if (
+            len(domains) < 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) == 0
+        ):
             return False
 
         # leaf is a continuous (multivariate) Gaussian distribution
-        if not all([type == FeatureTypes.Continuous or type == FeatureTypes.Gaussian or isinstance(type, FeatureTypes.Gaussian) for type in types]):
+        if not all(
+            [
+                domain == FeatureTypes.Continuous
+                or domain == FeatureTypes.Gaussian
+                or isinstance(domain, FeatureTypes.Gaussian)
+                for domain in domains
+            ]
+        ):
             return False
 
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "CondMultivariateGaussian":
-        """TODO"""
+    def from_signatures(
+        self, signatures: List[FeatureContext]
+    ) -> "CondMultivariateGaussian":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``CondMultivariateGaussian`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'CondMultivariateGaussian' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'CondMultivariateGaussian' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         # get single output signature
-        types, scope = signatures[0]
+        feature_ctx = signatures[0]
 
-        mean, cov = np.zeros(len(scope.query)), np.eye(len(scope.query))
-
-        for i, type in enumerate(types):
+        for domain in feature_ctx.get_domains():
             # read or initialize parameters
-            if type == MetaType.Continuous or type == FeatureTypes.Gaussian or isinstance(type, FeatureTypes.Gaussian):
+            if (
+                domain == MetaType.Continuous
+                or domain == FeatureTypes.Gaussian
+                or isinstance(domain, FeatureTypes.Gaussian)
+            ):
                 pass
             else:
-                raise ValueError(f"Unknown signature type {type} for 'CondMultivariateGaussian' that was not caught during acception checking.")
+                raise ValueError(
+                    f"Unknown signature type {type} for 'CondMultivariateGaussian' that was not caught during acception checking."
+                )
 
-        return CondMultivariateGaussian(scope)
+        return CondMultivariateGaussian(feature_ctx.scope)
 
     def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         r"""Sets the function to retrieve the node's conditonal parameter.

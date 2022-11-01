@@ -15,6 +15,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
@@ -128,8 +129,14 @@ class MultivariateGaussianLayer(Module):
         self.set_params(mean, cov)
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``MultivariateGaussianLayer`` can represent one or more multivariate nodes with ``MetaType.Continuous`` or ``GaussianType`` domains.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf has at least one output
         if len(signatures) < 1:
             return False
@@ -137,39 +144,54 @@ class MultivariateGaussianLayer(Module):
         for signature in signatures:
             if not MultivariateGaussian.accepts([signature]):
                 return False
-    
+
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "MultivariateGaussianLayer":
-        """TODO"""
+    def from_signatures(
+        self, signatures: List[FeatureContext]
+    ) -> "MultivariateGaussianLayer":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``MultivariateGaussianLayer`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'MultivariateGaussianLayer' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'MultivariateGaussianLayer' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         mean_list = []
         cov_list = []
         scopes = []
 
-        for types, scope in signatures:
-        
-            mean, cov = np.zeros(len(scope.query)), np.eye(len(scope.query))
+        for feature_ctx in signatures:
 
-            for i, type in enumerate(types):
+            mean, cov = np.zeros(len(feature_ctx.scope.query)), np.eye(
+                len(feature_ctx.scope.query)
+            )
+
+            for i, domain in enumerate(feature_ctx.get_domains()):
                 # read or initialize parameters
-                if type == MetaType.Continuous:
+                if domain == MetaType.Continuous:
                     pass
-                elif type == FeatureTypes.Gaussian:
+                elif domain == FeatureTypes.Gaussian:
                     # instantiate object
-                    type = type()
-                    mean[i], cov[i][i] = type.mean, type.std
-                elif isinstance(type, FeatureTypes.Gaussian):
-                    mean[i], cov[i][i] = type.mean, type.std
+                    domain = domain()
+                    mean[i], cov[i][i] = domain.mean, domain.std
+                elif isinstance(domain, FeatureTypes.Gaussian):
+                    mean[i], cov[i][i] = domain.mean, domain.std
                 else:
-                    raise ValueError(f"Unknown signature type {type} for 'MultivariateGaussianLayer' that was not caught during acception checking.")
+                    raise ValueError(
+                        f"Unknown signature type {domain} for 'MultivariateGaussianLayer' that was not caught during acception checking."
+                    )
 
             mean_list.append(mean)
             cov_list.append(cov)
-            scopes.append(scope)
+            scopes.append(feature_ctx.scope)
 
         return MultivariateGaussianLayer(scopes, mean=mean_list, cov=cov_list)
 
@@ -180,12 +202,12 @@ class MultivariateGaussianLayer(Module):
 
     @property
     def mean(self) -> List[np.ndarray]:
-        """TODO"""
+        """Returns the means of the represented distributions."""
         return [node.mean for node in self.nodes]
 
     @property
     def cov(self) -> List[np.ndarray]:
-        """TODO"""
+        """Returns the covariance matrices of the represented distributions."""
         return [node.cov for node in self.nodes]
 
     def dist(

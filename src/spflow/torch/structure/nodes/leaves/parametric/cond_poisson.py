@@ -6,6 +6,7 @@ import torch.distributions as D
 from typing import List, Tuple, Optional, Callable, Union, Type
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -62,42 +63,74 @@ class CondPoisson(LeafNode):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> bool:
-        """TODO"""
+    def accepts(self, signatures: List[FeatureContext]) -> bool:
+        """Checks if a specified signature can be represented by the module.
+
+        ``CondPoisson`` can represent a single univariate node with ``MetaType.Discrete`` or ``PoissonType`` domain.
+
+        Returns:
+            Boolean indicating whether the module can represent the specified signature (True) or not (False).
+        """
         # leaf only has one output
         if len(signatures) != 1:
             return False
 
         # get single output signature
-        types, scope = signatures[0]
+        feature_ctx = signatures[0]
+        domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if len(types) != 1 or len(scope.query) != len(types) or len(scope.evidence) == 0:
+        if (
+            len(domains) != 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) == 0
+        ):
             return False
 
         # leaf is a discrete Poisson distribution
-        if not (types[0] == FeatureTypes.Discrete or types[0] == FeatureTypes.Poisson or isinstance(types[0], FeatureTypes.Poisson)):
+        if not (
+            domains[0] == FeatureTypes.Discrete
+            or domains[0] == FeatureTypes.Poisson
+            or isinstance(domains[0], FeatureTypes.Poisson)
+        ):
             return False
 
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> "CondPoisson":
-        """TODO"""
+    def from_signatures(
+        self, signatures: List[FeatureContext]
+    ) -> "CondPoisson":
+        """Creates an instance from a specified signature.
+
+        Returns:
+            ``CondPoisson`` instance.
+
+        Raises:
+            Signatures not accepted by the module.
+        """
         if not self.accepts(signatures):
-            raise ValueError(f"'CondPoisson' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'CondPoisson' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         # get single output signature
-        types, scope = signatures[0]
-        type = types[0]
+        feature_ctx = signatures[0]
+        domain = feature_ctx.get_domains()[0]
 
         # read or initialize parameters
-        if type == MetaType.Discrete or type == FeatureTypes.Poisson or isinstance(type, FeatureTypes.Poisson):
+        if (
+            domain == MetaType.Discrete
+            or domain == FeatureTypes.Poisson
+            or isinstance(domain, FeatureTypes.Poisson)
+        ):
             pass
         else:
-            raise ValueError(f"Unknown signature type {type} for 'CondPoisson' that was not caught during acception checking.")
+            raise ValueError(
+                f"Unknown signature type {domain} for 'CondPoisson' that was not caught during acception checking."
+            )
 
-        return CondPoisson(scope)
+        return CondPoisson(feature_ctx.scope)
 
     def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         r"""Sets the function to retrieve the node's conditonal parameter.
