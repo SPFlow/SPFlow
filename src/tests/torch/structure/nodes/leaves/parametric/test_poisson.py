@@ -11,7 +11,7 @@ from spflow.torch.structure.nodes.leaves.parametric.poisson import (
     toBase,
     toTorch,
 )
-from spflow.torch.structure.nodes.node import marginalize
+from spflow.torch.structure.spn.nodes.node import marginalize
 from spflow.torch.inference.nodes.leaves.parametric.poisson import (
     log_likelihood,
 )

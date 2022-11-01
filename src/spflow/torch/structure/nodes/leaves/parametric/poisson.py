@@ -15,7 +15,7 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.nodes.node import LeafNode
+from spflow.torch.structure.spn.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.poisson import (
     Poisson as BasePoisson,
 )

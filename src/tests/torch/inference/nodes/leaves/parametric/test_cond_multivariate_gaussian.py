@@ -6,8 +6,8 @@ from spflow.base.structure.nodes.leaves.parametric.cond_multivariate_gaussian im
 from spflow.base.inference.nodes.leaves.parametric.cond_multivariate_gaussian import (
     log_likelihood,
 )
-from spflow.torch.structure.nodes.node import SPNProductNode
-from spflow.torch.inference.nodes.node import log_likelihood
+from spflow.torch.structure.spn.nodes.node import SPNProductNode
+from spflow.torch.inference.spn.nodes.node import log_likelihood
 from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
     toBase,

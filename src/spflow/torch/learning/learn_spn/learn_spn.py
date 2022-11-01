@@ -16,8 +16,8 @@ from spflow.torch.utils.randomized_dependency_coefficients import (
 from spflow.torch.utils.connected_components import connected_components
 from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.torch.utils.kmeans import kmeans
-from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
-from spflow.torch.structure.nodes.cond_node import SPNCondSumNode
+from spflow.torch.structure.spn.nodes.node import SPNSumNode, SPNProductNode
+from spflow.torch.structure.spn.nodes.cond_node import SPNCondSumNode
 from spflow.torch.structure.module import Module
 
 

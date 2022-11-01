@@ -17,7 +17,7 @@ from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.nodes.node import marginalize
+from spflow.torch.structure.spn.nodes.node import marginalize
 from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
     marginalize,

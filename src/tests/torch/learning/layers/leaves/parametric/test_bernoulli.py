@@ -3,9 +3,9 @@ from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.torch.structure.layers.leaves.parametric.bernoulli import (
     BernoulliLayer,
 )
-from spflow.torch.structure.nodes.node import SPNSumNode, SPNProductNode
-from spflow.torch.inference.nodes.node import log_likelihood
-from spflow.torch.learning.nodes.node import em
+from spflow.torch.structure.spn.nodes.node import SPNSumNode, SPNProductNode
+from spflow.torch.inference.spn.nodes.node import log_likelihood
+from spflow.torch.learning.spn.nodes.node import em
 from spflow.torch.learning.layers.leaves.parametric.bernoulli import (
     maximum_likelihood_estimation,
     em,
