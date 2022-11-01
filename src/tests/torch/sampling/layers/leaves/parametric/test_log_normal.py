@@ -5,7 +5,7 @@ from spflow.torch.inference.nodes.leaves.parametric.log_normal import (
     log_likelihood,
 )
 from spflow.torch.sampling.nodes.leaves.parametric.log_normal import sample
-from spflow.torch.sampling.nodes.node import sample
+from spflow.torch.sampling.spn.nodes.node import sample
 from spflow.torch.structure.layers.leaves.parametric.log_normal import (
     LogNormalLayer,
 )
@@ -13,7 +13,7 @@ from spflow.torch.inference.layers.leaves.parametric.log_normal import (
     log_likelihood,
 )
 from spflow.torch.sampling.layers.leaves.parametric.log_normal import sample
-from spflow.torch.sampling.layers.layer import sample
+from spflow.torch.sampling.spn.layers.layer import sample
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 

@@ -5,7 +5,7 @@ from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
     log_likelihood,
 )
 from spflow.torch.sampling.nodes.leaves.parametric.gaussian import sample
-from spflow.torch.sampling.nodes.node import sample
+from spflow.torch.sampling.spn.nodes.node import sample
 from spflow.torch.structure.layers.leaves.parametric.gaussian import (
     GaussianLayer,
 )
@@ -13,7 +13,7 @@ from spflow.torch.inference.layers.leaves.parametric.gaussian import (
     log_likelihood,
 )
 from spflow.torch.sampling.layers.leaves.parametric.gaussian import sample
-from spflow.torch.sampling.layers.layer import sample
+from spflow.torch.sampling.spn.layers.layer import sample
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 

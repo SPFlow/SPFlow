@@ -4,9 +4,9 @@ from spflow.base.inference.layers.leaves.parametric.uniform import (
     log_likelihood,
 )
 from spflow.base.sampling.layers.leaves.parametric.uniform import sample
-from spflow.base.structure.nodes.node import SPNSumNode, SPNProductNode
-from spflow.base.inference.nodes.node import log_likelihood
-from spflow.base.sampling.nodes.node import sample
+from spflow.base.structure.spn.nodes.node import SPNSumNode, SPNProductNode
+from spflow.base.inference.spn.nodes.node import log_likelihood
+from spflow.base.sampling.spn.nodes.node import sample
 from spflow.base.structure.nodes.leaves.parametric.uniform import Uniform
 from spflow.base.inference.nodes.leaves.parametric.uniform import log_likelihood
 from spflow.base.sampling.nodes.leaves.parametric.uniform import sample

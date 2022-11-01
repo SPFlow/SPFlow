@@ -13,7 +13,7 @@ from spflow.torch.structure.nodes.leaves.parametric.gaussian import (
     toBase,
     toTorch,
 )
-from spflow.torch.structure.nodes.node import marginalize
+from spflow.torch.structure.spn.nodes.node import marginalize
 from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
     log_likelihood,
 )

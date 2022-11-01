@@ -11,7 +11,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.nodes.node import LeafNode
+from spflow.base.structure.spn.nodes.node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )

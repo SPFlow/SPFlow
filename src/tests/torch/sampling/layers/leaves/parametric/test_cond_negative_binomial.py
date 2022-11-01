@@ -9,7 +9,7 @@ from spflow.torch.inference.nodes.leaves.parametric.cond_negative_binomial impor
 from spflow.torch.sampling.nodes.leaves.parametric.cond_negative_binomial import (
     sample,
 )
-from spflow.torch.sampling.nodes.node import sample
+from spflow.torch.sampling.spn.nodes.node import sample
 from spflow.torch.structure.layers.leaves.parametric.cond_negative_binomial import (
     CondNegativeBinomialLayer,
 )
@@ -19,7 +19,7 @@ from spflow.torch.inference.layers.leaves.parametric.cond_negative_binomial impo
 from spflow.torch.sampling.layers.leaves.parametric.cond_negative_binomial import (
     sample,
 )
-from spflow.torch.sampling.layers.layer import sample
+from spflow.torch.sampling.spn.layers.layer import sample
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 

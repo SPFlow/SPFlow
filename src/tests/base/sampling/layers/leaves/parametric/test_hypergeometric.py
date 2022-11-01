@@ -6,9 +6,9 @@ from spflow.base.inference.layers.leaves.parametric.hypergeometric import (
     log_likelihood,
 )
 from spflow.base.sampling.layers.leaves.parametric.hypergeometric import sample
-from spflow.base.structure.nodes.node import SPNSumNode, SPNProductNode
-from spflow.base.inference.nodes.node import log_likelihood
-from spflow.base.sampling.nodes.node import sample
+from spflow.base.structure.spn.nodes.node import SPNSumNode, SPNProductNode
+from spflow.base.inference.spn.nodes.node import log_likelihood
+from spflow.base.sampling.spn.nodes.node import sample
 from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
     Hypergeometric,
 )

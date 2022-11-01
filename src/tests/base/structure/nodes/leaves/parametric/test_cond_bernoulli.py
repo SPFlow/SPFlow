@@ -3,7 +3,7 @@ from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.nodes.node import marginalize
+from spflow.base.structure.spn.nodes.node import marginalize
 from spflow.base.structure.nodes.leaves.parametric.cond_bernoulli import (
     CondBernoulli,
 )
