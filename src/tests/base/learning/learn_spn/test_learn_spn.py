@@ -1,11 +1,15 @@
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.learning.learn_spn.learn_spn import (
     cluster_by_kmeans,
     partition_by_rdc,
     learn_spn,
 )
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import CondGaussian
 from spflow.base.structure.nodes.node import SPNProductNode, SPNSumNode
+from spflow.base.structure.nodes.cond_node import SPNCondSumNode
 
 import numpy as np
 import unittest
@@ -167,6 +171,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         data = np.random.randn(100, 3)
+        feature_ctx = FeatureContext(Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)})
 
         # ----- min_features_slice > scope size (no splitting or clustering) -----
 
@@ -175,6 +180,7 @@ class TestNode(unittest.TestCase):
 
         spn = learn_spn(
             data,
+            feature_ctx,
             partitioning_method=partitioning_fn,
             clustering_method=clustering_fn,
             fit_params=False,
@@ -195,6 +201,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         data = np.random.randn(100, 3)
+        feature_ctx = FeatureContext(Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)})
 
         # ----- min_instances_slice_100, alternate partitioning -----
 
@@ -203,6 +210,7 @@ class TestNode(unittest.TestCase):
 
         spn = learn_spn(
             data,
+            feature_ctx,
             partitioning_method=partitioning_fn,
             clustering_method=clustering_fn,
             fit_params=False,
@@ -247,6 +255,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         data = np.random.randn(100, 3)
+        feature_ctx = FeatureContext(Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)})
 
         # ----- successive partitioning -----
 
@@ -254,6 +263,7 @@ class TestNode(unittest.TestCase):
 
         spn = learn_spn(
             data,
+            feature_ctx,
             partitioning_method=partitioning_fn,
             clustering_method=clustering_fn,
             fit_params=False,
@@ -271,21 +281,72 @@ class TestNode(unittest.TestCase):
         # partition 2
         self.assertTrue(isinstance(partition_2, Gaussian))
 
+    def test_conditional_spn(self):
+
+        # set seed
+        np.random.seed(0)
+        random.seed(0)
+
+        data = np.random.randn(100, 3)
+        feature_ctx = FeatureContext(Scope([0, 1, 2], [3]), {k: FeatureTypes.Gaussian for k in range(3)})
+
+        # ----- min_instances_slice_100, alternate partitioning -----
+
+        partitioning_fn.alternate = True
+        partitioning_fn.partition = True
+
+        spn = learn_spn(
+            data,
+            feature_ctx,
+            partitioning_method=partitioning_fn,
+            clustering_method=clustering_fn,
+            fit_params=False,
+            min_instances_slice=51,
+        )
+
+        # check resulting graph
+        self.assertTrue(isinstance(spn, SPNProductNode))
+        partition_1, partition_2 = spn.children
+        # partition 1
+        self.assertTrue(isinstance(partition_1, SPNCondSumNode))
+        (
+            partition_1_clustering_1,
+            partition_1_clustering_2,
+        ) = partition_1.children
+        # children of both clusterings should be product nodes since this partition is originally multivariate
+        self.assertTrue(isinstance(partition_1_clustering_1, SPNProductNode))
+        self.assertTrue(
+            all(
+                [
+                    isinstance(child, CondGaussian)
+                    for child in partition_1_clustering_1.children
+                ]
+            )
+        )
+        self.assertTrue(isinstance(partition_1_clustering_1, SPNProductNode))
+        self.assertTrue(
+            all(
+                [
+                    isinstance(child, CondGaussian)
+                    for child in partition_1_clustering_2.children
+                ]
+            )
+        )
+        # partition 2
+        self.assertTrue(isinstance(partition_2, CondGaussian))
+
     def test_learn_spn_invalid_arguments(self):
 
-        # evidence in scope
-        self.assertRaises(
-            ValueError, learn_spn, np.random.randn(1, 2), Scope([0, 1], [2])
-        )
         # scope length does not match data shape
         self.assertRaises(
-            ValueError, learn_spn, np.random.randn(1, 3), Scope([0, 1])
+            ValueError, learn_spn, np.random.randn(1, 3), FeatureContext(Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)})
         )
         # invalid clustering method
         self.assertRaises(
             ValueError,
             learn_spn,
             np.random.randn(1, 3),
+            FeatureContext(Scope([0, 1, 2], [3]), {k: FeatureTypes.Gaussian for k in range(3)}),
             clustering_method="invalid_option",
             partitioning_method="rdc",
         )
@@ -294,16 +355,21 @@ class TestNode(unittest.TestCase):
             ValueError,
             learn_spn,
             np.random.randn(1, 3),
+            FeatureContext(Scope([0, 1, 2], [3]), {k: FeatureTypes.Gaussian for k in range(3)}),
             clustering_method="kmeans",
             partitioning_method="invalid_option",
         )
         # invalid min number of instances for slicing
         self.assertRaises(
-            ValueError, learn_spn, np.random.randn(1, 3), min_instances_slice=1
+            ValueError, learn_spn, np.random.randn(1, 3), FeatureContext(Scope([0, 1, 2], [3]), {k: FeatureTypes.Gaussian for k in range(3)}), min_instances_slice=1
         )
         # invalid min number of features for slicing
         self.assertRaises(
-            ValueError, learn_spn, np.random.randn(1, 3), min_features_slice=1
+            ValueError, learn_spn, np.random.randn(1, 3), FeatureContext(Scope([0, 1, 2], [3]), {k: FeatureTypes.Gaussian for k in range(3)}), min_features_slice=1
+        )
+        # conditional scope with enabled 'fit_params' option
+        self.assertRaises(
+            ValueError, learn_spn, np.random.randn(1, 3), FeatureContext(Scope([0, 1, 2], [3]), {k: FeatureTypes.Gaussian for k in range(3)})
         )
 
 
