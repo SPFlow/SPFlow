@@ -145,6 +145,16 @@ class Scope:
             Boolean indicating whether the scope is empty (True) or not (False).
         """
         return not bool(self.query)
+        
+    def is_conditional(self) -> bool:
+        """Checks if the scope is conditional.
+
+        A scope is conditional, if it contains evidence RVs
+
+        Returns:
+            Boolean indicating whether the scope is conditional (True) or not (False).
+        """
+        return len(self.evidence) != 0
 
     def isdisjoint(self, other: "Scope") -> bool:
         """Checks if the scope is disjoint to another scope.
