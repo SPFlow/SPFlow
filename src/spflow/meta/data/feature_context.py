@@ -49,6 +49,19 @@ class FeatureContext:
 
             self.domain_map[feature_id] = feature_type
 
-    def get_domains(self, feature_ids: List[int]) -> List[Union[MetaType, FeatureType, Type[FeatureType]]]:
+    def get_domains(self, feature_ids: Union[int, List[int]]) -> Union[Union[MetaType, FeatureType, Type[FeatureType]], List[Union[MetaType, FeatureType, Type[FeatureType]]]]:
         """TODO"""
-        return [self.domain_map[feature_id] for feature_id in feature_ids]
+        if isinstance(feature_ids, int):
+            return self.domain_map[feature_ids]
+        else:
+            return [self.domain_map[feature_id] for feature_id in feature_ids]
+    
+    def select(self, feature_ids: Union[int, List[int]]) -> "FeatureContext":
+        """TODO"""
+        if isinstance(feature_ids, int):
+            feature_ids = [feature_ids]
+
+        scope = Scope(feature_ids, self.scope.evidence)
+        domains = {feature_id: self.domain_map[feature_id] for feature_id in feature_ids}
+
+        return FeatureContext(scope, domains)
