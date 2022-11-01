@@ -1,52 +1,54 @@
 # -*- coding: utf-8 -*-
 """TODO
 """
-"""
+from spflow.meta.data.scope import Scope
 from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.feature_types import FeatureType
 
-from typing import Optional, Union, Iterable, Dict, Literal
+from typing import Optional, Union, List, Dict, Type
 from inspect import isclass
 
 
 class FeatureContext:
-    def __init__(self, domains: Optional[Union[
-                                Dict[int, Union[MetaType, FeatureType]],
-                                Iterable[Union[MetaType, FeatureType]]
-                            ]]=None):
-    
+    """TODO"""
+    def __init__(self, scope: Scope, domains: Optional[Dict[int, Union[MetaType, FeatureType, Type[FeatureType]]]]=None):
+        """TODO"""
         if domains is None:
             domains = {}
 
+        # store scope
+        self.scope = scope
+
         # initialize map
-        self.domain_map = {}
+        self.domain_map = {feature_id: MetaType.Unknown for feature_id in scope.query}
 
         # parse and add type contexts
-        self.add(domains)
+        self.set_domains(domains)
 
     @classmethod
     def parse_type(self, type: FeatureType):
+        """TODO"""
         if isclass(type):
             type = type()
-    
+
         return type
     
-    def add(self,
-        domains: Union[
-            Dict[int, Union[MetaType, FeatureType]],
-            Iterable[Union[MetaType, FeatureType]]
-        ],
-        overwrite: bool=True):
-
-        if not isinstance(domains, Dict):
-            domains = {i: t for i, t in enumerate(domains)}
-
+    def set_domains(self,
+        domains: Dict[int, Union[MetaType, FeatureType, Type[FeatureType]]],
+        overwrite: bool=False):
+        """TODO"""
         for feature_id, feature_type in domains.items():
             # convert to instance if necessary
             feature_type = self.parse_type(feature_type)
 
-            if feature_id in self.domain_map and not overwrite:
-                raise ValueError("Context for data index {feature_id} is already specified. If context should be overwritten, enable 'overwrite'.")
+            if feature_id not in self.scope.query:
+                raise ValueError(f"Feature index {feature_id} is not part of the query scope.")
 
-            self.map[feature_id] = feature_type
-"""
+            if self.domain_map[feature_id] != MetaType.Unknown and not overwrite:
+                raise ValueError(f"Domain for feature index {feature_id} is already specified (i.e., not 'MetaType.Unknown'). If domain should be overwritten, enable 'overwrite'.")
+
+            self.domain_map[feature_id] = feature_type
+
+    def get_domains(self, feature_ids: List[int]) -> List[Union[MetaType, FeatureType, Type[FeatureType]]]:
+        """TODO"""
+        return [self.domain_map[feature_id] for feature_id in feature_ids]

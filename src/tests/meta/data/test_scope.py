@@ -1,5 +1,4 @@
 from spflow.meta.data.scope import Scope
-import numpy as np
 import unittest
 
 

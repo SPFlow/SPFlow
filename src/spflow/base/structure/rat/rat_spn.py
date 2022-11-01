@@ -2,6 +2,7 @@
 """Contains the SPFlow architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the ``base`` backend.
 """
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -12,15 +13,18 @@ from spflow.base.structure.rat.region_graph import (
     Partition,
     Region,
 )
+from spflow.base.structure.autoleaf import AutoLeaf
 from spflow.base.structure.nodes.node import SPNSumNode, marginalize
+from spflow.base.structure.nodes.cond_node import SPNCondSumNode, marginalize
 from spflow.base.structure.layers.layer import (
     SPNSumLayer,
     SPNPartitionLayer,
     SPNHadamardLayer,
     marginalize,
 )
-from spflow.base.structure.layers.leaves.parametric.gaussian import (
-    GaussianLayer,
+from spflow.base.structure.layers.cond_layer import (
+    SPNCondSumLayer,
+    marginalize,
 )
 from spflow.base.structure.module import Module
 
@@ -49,6 +53,7 @@ class RatSPN(Module):
     def __init__(
         self,
         region_graph: RegionGraph,
+        feature_ctx: FeatureContext,
         n_root_nodes: int,
         n_region_nodes: int,
         n_leaf_nodes: int,
@@ -59,6 +64,9 @@ class RatSPN(Module):
         Args:
             region_graph:
                 ``RegionGraph`` instance to create RAT-SPN architecture from.
+            feature_ctx:
+                ``FeatureContext`` instance specifying the domains of the scopes.
+                Scope must match the region graphs scope.
             n_root_nodes:
                 Integer specifying the number of sum nodes in the root region (C in the original paper).
             n_region_nodes:
@@ -87,20 +95,24 @@ class RatSPN(Module):
             )
 
         # create RAT-SPN from region graph
-        self.from_region_graph(region_graph)
+        self.from_region_graph(region_graph, feature_ctx)
 
     def from_region_graph(
-        self, region_graph: RegionGraph
-    ) -> Union[SPNSumLayer, GaussianLayer, SPNHadamardLayer]:
+        self, region_graph: RegionGraph,
+        feature_ctx: FeatureContext,
+    ) -> None:
         r"""Function to create explicit RAT-SPN from an abstract region graph.
 
         Args:
             region_graph:
                 ``RegionGraph`` instance to create RAT-SPN architecture from.
-        Returns:
+            feature_ctx:
+                ``FeatureContext`` instance specifying the domains of the scopes.
+                Scope must match the region graphs scope.
+
+        Raises:
             ValueError: Invalid arguments.
         """
-
         def convert_partition(partition: Partition) -> SPNPartitionLayer:
 
             return SPNPartitionLayer(
@@ -112,47 +124,40 @@ class RatSPN(Module):
 
         def convert_region(
             region: Region, n_nodes: int
-        ) -> Union[SPNSumLayer, SPNHadamardLayer, GaussianLayer]:
+        ) -> Union[SPNSumLayer, SPNHadamardLayer, Module]:
 
             # non-leaf region
             if region.partitions:
-                return SPNSumLayer(
-                    children=[
-                        convert_partition(partition)
-                        for partition in region.partitions
-                    ],
-                    n_nodes=n_nodes,
-                )
+                children = [convert_partition(partition) for partition in region.partitions]
+                sum_layer = SPNCondSumLayer(children=children, n_nodes=n_nodes) if region.scope.is_conditional() else SPNSumLayer(children=children, n_nodes=n_nodes)
+                return sum_layer
             # leaf region
             else:
                 # split leaf scope into univariate ones and combine them element-wise
                 if len(region.scope.query) > 1:
-                    return SPNHadamardLayer(
-                        child_partitions=[
-                            [
-                                GaussianLayer(
-                                    Scope([rv], region.scope.evidence),
-                                    n_nodes=self.n_leaf_nodes,
-                                )
-                            ]
-                            for rv in region.scope.query
-                        ]
-                    )
+                    partition_signatures = [
+                        [(feature_ctx.get_domains([rv]), Scope([rv], region.scope.evidence))] * self.n_leaf_nodes
+                        for rv in region.scope.query
+                    ]
+                    child_partitions = [ [AutoLeaf(signatures)] for signatures in partition_signatures ]
+                    return SPNHadamardLayer(child_partitions=child_partitions)
                 # create univariate leaf region
                 elif len(region.scope.query) == 1:
-                    return GaussianLayer(
-                        region.scope, n_nodes=self.n_leaf_nodes
-                    )
+                    signatures = [(feature_ctx.get_domains(region.scope.query), region.scope)] * self.n_leaf_nodes
+                    return AutoLeaf(signatures)
                 else:
                     raise ValueError(
                         "Query scope for region is empty and cannot be converted into appropriate RAT-SPN layer representation."
                     )
 
+        if feature_ctx.scope != region_graph.scope:
+            raise ValueError(f"Scope of specified feature context {feature_ctx.scope} does not match scope of specified region graph {region_graph.scope}.")
+
         if region_graph.root_region is not None:
             self.root_region = convert_region(
                 region_graph.root_region, n_nodes=self.n_root_nodes
             )
-            self.root_node = SPNSumNode(children=[self.root_region])
+            self.root_node = SPNCondSumNode(children=[self.root_region]) if region_graph.scope.is_conditional() else SPNSumNode(children=[self.root_region])
         else:
             self.root_region = None
             self.root_node = None
