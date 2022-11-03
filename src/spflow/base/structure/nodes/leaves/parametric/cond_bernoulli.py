@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """Contains conditional Bernoulli leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple, Optional, Callable, Union, List, Type
+from typing import Tuple, Optional, Callable, Union, List
 import numpy as np
 from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+from spflow.meta.data.feature_types import MetaType, FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.spn.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaf_node import LeafNode
 
 from scipy.stats import bernoulli  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore

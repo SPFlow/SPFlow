@@ -14,15 +14,24 @@ from spflow.base.structure.spn.rat.region_graph import (
     Region,
 )
 from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.torch.structure.spn.nodes.node import SPNSumNode, marginalize
-from spflow.torch.structure.spn.nodes.cond_node import SPNCondSumNode, marginalize
-from spflow.torch.structure.spn.layers.layer import (
+from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode, marginalize
+from spflow.torch.structure.spn.nodes.cond_sum_node import (
+    SPNCondSumNode,
+    marginalize,
+)
+from spflow.torch.structure.spn.layers.sum_layer import (
     SPNSumLayer,
+    marginalize,
+)
+from spflow.torch.structure.spn.layers.partition_layer import (
     SPNPartitionLayer,
+    marginalize,
+)
+from spflow.torch.structure.spn.layers.hadamard_layer import (
     SPNHadamardLayer,
     marginalize,
 )
-from spflow.torch.structure.spn.layers.cond_layer import (
+from spflow.torch.structure.spn.layers.cond_sum_layer import (
     SPNCondSumLayer,
     marginalize,
 )

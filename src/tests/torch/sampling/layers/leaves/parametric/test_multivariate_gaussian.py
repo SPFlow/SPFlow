@@ -19,7 +19,7 @@ from spflow.torch.inference.layers.leaves.parametric.multivariate_gaussian impor
 from spflow.torch.sampling.layers.leaves.parametric.multivariate_gaussian import (
     sample,
 )
-from spflow.torch.sampling.spn.layers.layer import sample
+from spflow.torch.sampling.spn.layers.sum_layer import sample
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 

@@ -7,14 +7,22 @@ from spflow.base.inference.spn.rat.rat_spn import log_likelihood
 from spflow.base.sampling.spn.rat.rat_spn import sample
 from spflow.base.inference.module import log_likelihood
 from spflow.base.sampling.module import sample
-from spflow.base.inference.spn.nodes.node import log_likelihood
-from spflow.base.sampling.spn.nodes.node import sample
+from spflow.base.inference.nested_module import log_likelihood
+from spflow.base.sampling.nested_module import sample
+from spflow.base.inference.spn.nodes.sum_node import log_likelihood
+from spflow.base.inference.spn.nodes.product_node import log_likelihood
+from spflow.base.sampling.spn.nodes.sum_node import sample
+from spflow.base.sampling.spn.nodes.product_node import sample
 from spflow.base.inference.nodes.leaves.parametric.gaussian import (
     log_likelihood,
 )
 from spflow.base.sampling.nodes.leaves.parametric.gaussian import sample
-from spflow.base.inference.spn.layers.layer import log_likelihood
-from spflow.base.sampling.spn.layers.layer import sample
+from spflow.base.inference.spn.layers.sum_layer import log_likelihood
+from spflow.base.inference.spn.layers.partition_layer import log_likelihood
+from spflow.base.inference.spn.layers.hadamard_layer import log_likelihood
+from spflow.base.sampling.spn.layers.sum_layer import sample
+from spflow.base.sampling.spn.layers.partition_layer import sample
+from spflow.base.sampling.spn.layers.hadamard_layer import sample
 from spflow.base.inference.layers.leaves.parametric.gaussian import (
     log_likelihood,
 )

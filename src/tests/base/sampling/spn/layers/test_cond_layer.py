@@ -1,11 +1,11 @@
 from spflow.meta.dispatch.sampling_context import SamplingContext
 from spflow.meta.data.scope import Scope
-from spflow.base.structure.spn.nodes.node import SPNSumNode
-from spflow.base.inference.spn.nodes.node import log_likelihood
-from spflow.base.sampling.spn.nodes.node import sample
-from spflow.base.structure.spn.layers.cond_layer import SPNCondSumLayer
-from spflow.base.inference.spn.layers.cond_layer import log_likelihood
-from spflow.base.sampling.spn.layers.cond_layer import sample
+from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.base.inference.spn.nodes.sum_node import log_likelihood
+from spflow.base.sampling.spn.nodes.sum_node import sample
+from spflow.base.structure.spn.layers.cond_sum_layer import SPNCondSumLayer
+from spflow.base.inference.spn.layers.cond_sum_layer import log_likelihood
+from spflow.base.sampling.spn.layers.cond_sum_layer import sample
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.inference.nodes.leaves.parametric.gaussian import (
     log_likelihood,

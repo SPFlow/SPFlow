@@ -5,11 +5,13 @@ from spflow.base.structure.spn.rat.region_graph import random_region_graph
 from spflow.torch.structure.spn.rat.rat_spn import RatSPN
 from spflow.torch.inference.spn.rat.rat_spn import log_likelihood
 from spflow.torch.inference.module import log_likelihood
-from spflow.torch.inference.spn.nodes.node import log_likelihood
+from spflow.torch.inference.spn.nodes.sum_node import log_likelihood
 from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
     log_likelihood,
 )
-from spflow.torch.inference.spn.layers.layer import log_likelihood
+from spflow.torch.inference.spn.layers.sum_layer import log_likelihood
+from spflow.torch.inference.spn.layers.partition_layer import log_likelihood
+from spflow.torch.inference.spn.layers.hadamard_layer import log_likelihood
 from spflow.torch.inference.layers.leaves.parametric.gaussian import (
     log_likelihood,
 )

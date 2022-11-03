@@ -1,16 +1,22 @@
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.sampling_context import SamplingContext
-from spflow.torch.structure.spn.nodes.node import SPNSumNode, SPNProductNode
-from spflow.torch.inference.spn.nodes.node import log_likelihood
+from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
+from spflow.torch.inference.spn.nodes.sum_node import log_likelihood
+from spflow.torch.inference.spn.nodes.product_node import log_likelihood
 from spflow.torch.sampling.spn.nodes.node import sample
-from spflow.torch.structure.spn.layers.layer import (
-    SPNSumLayer,
-    SPNProductLayer,
-    SPNPartitionLayer,
-    SPNHadamardLayer,
-)
-from spflow.torch.inference.spn.layers.layer import log_likelihood
-from spflow.torch.sampling.spn.layers.layer import sample
+from spflow.torch.structure.spn.layers.sum_layer import SPNSumLayer
+from spflow.torch.inference.spn.layers.sum_layer import log_likelihood
+from spflow.torch.sampling.spn.layers.sum_layer import sample
+from spflow.torch.structure.spn.layers.product_layer import SPNProductLayer
+from spflow.torch.inference.spn.layers.product_layer import log_likelihood
+from spflow.torch.sampling.spn.layers.product_layer import sample
+from spflow.torch.structure.spn.layers.partition_layer import SPNPartitionLayer
+from spflow.torch.inference.spn.layers.partition_layer import log_likelihood
+from spflow.torch.sampling.spn.layers.partition_layer import sample
+from spflow.torch.structure.spn.layers.hadamard_layer import SPNHadamardLayer
+from spflow.torch.inference.spn.layers.hadamard_layer import log_likelihood
+from spflow.torch.sampling.spn.layers.hadamard_layer import sample
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
     log_likelihood,

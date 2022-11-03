@@ -6,7 +6,7 @@ from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian as BaseCondMultivariateGaussian,
 )
-from spflow.torch.structure.spn.nodes.node import SPNProductNode
+from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
 from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
     toBase,

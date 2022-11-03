@@ -1,5 +1,4 @@
 from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.layers.leaves.parametric.bernoulli import (
     BernoulliLayer,
 )
@@ -10,8 +9,10 @@ from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli
 from spflow.base.inference.nodes.leaves.parametric.bernoulli import (
     log_likelihood,
 )
-from spflow.base.structure.spn.nodes.node import SPNProductNode, SPNSumNode
-from spflow.base.inference.spn.nodes.node import log_likelihood
+from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.base.inference.spn.nodes.sum_node import log_likelihood
+from spflow.base.structure.spn.nodes.product_node import SPNProductNode
+from spflow.base.inference.spn.nodes.product_node import log_likelihood
 from spflow.base.inference.module import log_likelihood
 import numpy as np
 import unittest

@@ -13,7 +13,7 @@ from spflow.torch.structure.nodes.leaves.parametric.exponential import (
     toBase,
     toTorch,
 )
-from spflow.torch.structure.spn.nodes.node import marginalize
+from spflow.torch.structure.spn.nodes.sum_node import marginalize
 from spflow.torch.inference.nodes.leaves.parametric.exponential import (
     log_likelihood,
 )

@@ -11,7 +11,7 @@ from spflow.torch.structure.nodes.leaves.parametric.uniform import (
     toBase,
     toTorch,
 )
-from spflow.torch.structure.spn.nodes.node import marginalize
+from spflow.torch.structure.spn.nodes.sum_node import marginalize
 from spflow.torch.inference.nodes.leaves.parametric.uniform import (
     log_likelihood,
 )

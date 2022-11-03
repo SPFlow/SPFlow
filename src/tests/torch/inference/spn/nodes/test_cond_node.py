@@ -1,9 +1,10 @@
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.spn.nodes.cond_node import SPNCondSumNode
-from spflow.torch.structure.spn.nodes.node import SPNProductNode
+from spflow.torch.structure.spn.nodes.cond_sum_node import SPNCondSumNode
+from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.torch.inference.spn.nodes.node import log_likelihood
+from spflow.torch.inference.spn.nodes.sum_node import log_likelihood
+from spflow.torch.inference.spn.nodes.product_node import log_likelihood
 from spflow.torch.inference.spn.nodes.cond_node import log_likelihood
 from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
     log_likelihood,

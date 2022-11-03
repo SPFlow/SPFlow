@@ -1,5 +1,5 @@
 from spflow.meta.data.scope import Scope
-from spflow.base.structure.spn.nodes.node import SPNSumNode
+from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
 from .spn.nodes.dummy_node import DummyNode
 from .dummy_module import DummyModule, DummyNestedModule
 import unittest
