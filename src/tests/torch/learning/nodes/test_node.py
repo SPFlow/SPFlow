@@ -1,9 +1,9 @@
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.spn.nodes.node import SPNSumNode
-from spflow.torch.learning.spn.nodes.node import em
-from spflow.torch.inference.spn.nodes.node import log_likelihood
+from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.torch.learning.spn.nodes.sum_node import em
+from spflow.torch.inference.spn.nodes.product_node import log_likelihood
 from ...structure.spn.nodes.dummy_node import DummyLeaf, log_likelihood, em
 from typing import Optional
 import torch

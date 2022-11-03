@@ -1,11 +1,11 @@
 from spflow.meta.data.scope import Scope
-from spflow.base.structure.spn.nodes.cond_node import SPNCondSumNode
-from spflow.base.structure.spn.nodes.node import SPNProductNode
+from spflow.base.structure.spn.nodes.cond_sum_node import SPNCondSumNode
+from spflow.base.structure.spn.nodes.product_node import SPNProductNode
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.base.sampling.spn.nodes.cond_node import sample
-from spflow.base.sampling.spn.nodes.node import sample
+from spflow.base.sampling.spn.nodes.cond_sum_node import sample
+from spflow.base.sampling.spn.nodes.product_node import sample
 from spflow.base.inference.spn.nodes.cond_node import log_likelihood
-from spflow.base.inference.spn.nodes.node import log_likelihood
+from spflow.base.inference.spn.nodes.product_node import log_likelihood
 from spflow.base.inference.nodes.leaves.parametric.gaussian import (
     log_likelihood,
 )

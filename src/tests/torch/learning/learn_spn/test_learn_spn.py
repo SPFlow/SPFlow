@@ -10,8 +10,9 @@ from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )
-from spflow.torch.structure.spn.nodes.node import SPNProductNode, SPNSumNode
-from spflow.torch.structure.spn.nodes.cond_node import SPNCondSumNode
+from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
+from spflow.torch.structure.spn.nodes.cond_sum_node import SPNCondSumNode
 
 import numpy as np
 import torch

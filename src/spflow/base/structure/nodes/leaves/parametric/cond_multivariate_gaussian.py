@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains conditional Multivariate Normal leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple, List, Union, Optional, Iterable, Union, Callable, Type
+from typing import Tuple, List, Union, Optional, Iterable, Union, Callable
 import numpy as np
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -9,9 +9,9 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+from spflow.meta.data.feature_types import MetaType, FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.spn.nodes.node import LeafNode
+from spflow.base.structure.nodes.leaf_node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )

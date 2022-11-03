@@ -4,9 +4,9 @@
 import numpy as np
 import torch
 import torch.distributions as D
-from typing import Tuple, Optional, List, Union, Type
+from typing import Tuple, Optional, List
 from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 
 from spflow.meta.dispatch.dispatch import dispatch
@@ -14,7 +14,7 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.spn.nodes.node import LeafNode
+from spflow.torch.structure.nodes.leaf_node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.uniform import (
     Uniform as BaseUniform,
 )

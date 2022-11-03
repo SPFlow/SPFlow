@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains Hypergeometric leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Type
+from typing import List, Union, Optional, Iterable, Tuple
 from functools import reduce
 import numpy as np
 import torch
@@ -12,8 +12,7 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import (

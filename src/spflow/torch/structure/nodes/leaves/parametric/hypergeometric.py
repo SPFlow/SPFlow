@@ -3,16 +3,16 @@
 """
 import numpy as np
 import torch
-from typing import List, Tuple, Optional, Union, Type
+from typing import List, Tuple, Optional
 from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.spn.nodes.node import LeafNode
+from spflow.torch.structure.nodes.leaf_node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
     Hypergeometric as BaseHypergeometric,
 )

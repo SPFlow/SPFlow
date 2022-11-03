@@ -5,7 +5,6 @@ import numpy as np
 from functools import partial
 from typing import Callable, Union, Optional, Dict, Any
 from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.utils.randomized_dependency_coefficients import (
     randomized_dependency_coefficients,
@@ -15,8 +14,9 @@ from spflow.base.learning.nodes.leaves.parametric.gaussian import (
 )
 from spflow.base.utils.connected_components import connected_components
 from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.spn.nodes.node import SPNSumNode, SPNProductNode
-from spflow.base.structure.spn.nodes.cond_node import SPNCondSumNode
+from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.base.structure.spn.nodes.product_node import SPNProductNode
+from spflow.base.structure.spn.nodes.cond_sum_node import SPNCondSumNode
 from spflow.base.structure.module import Module
 from sklearn.cluster import KMeans
 

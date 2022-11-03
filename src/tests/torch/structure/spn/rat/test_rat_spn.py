@@ -51,23 +51,29 @@ from spflow.torch.structure.autoleaf import (
     CondNegativeBinomialLayer,
     CondPoissonLayer,
 )
-from spflow.torch.structure.spn.layers.layer import (
+from spflow.torch.structure.spn.layers.sum_layer import (
     SPNSumLayer,
+    marginalize,
+)
+from spflow.torch.structure.spn.layers.partition_layer import (
     SPNPartitionLayer,
+    marginalize,
+)
+from spflow.torch.structure.spn.layers.hadamard_layer import (
     SPNHadamardLayer,
     marginalize,
 )
-from spflow.torch.structure.spn.layers.cond_layer import (
+from spflow.torch.structure.spn.layers.cond_sum_layer import (
     SPNCondSumLayer,
     marginalize,
 )
-from spflow.torch.structure.spn.nodes.node import (
+from spflow.torch.structure.spn.nodes.sum_node import (
     SPNSumNode,
     marginalize,
     toBase,
     toTorch,
 )
-from spflow.torch.structure.spn.nodes.cond_node import (
+from spflow.torch.structure.spn.nodes.cond_sum_node import (
     SPNCondSumNode,
     marginalize,
     toBase,
@@ -81,12 +87,16 @@ from spflow.torch.structure.spn.rat.rat_spn import (
 )
 from spflow.base.structure.spn.rat.region_graph import random_region_graph
 from spflow.base.structure.spn.rat.rat_spn import RatSPN as BaseRatSPN
-from spflow.base.structure.spn.nodes.node import SPNSumNode as BaseSPNSumNode
-from spflow.base.structure.spn.layers.layer import SPNSumLayer as BaseSPNSumLayer
-from spflow.base.structure.spn.layers.layer import (
+from spflow.base.structure.spn.nodes.sum_node import (
+    SPNSumNode as BaseSPNSumNode,
+)
+from spflow.base.structure.spn.layers.sum_layer import (
+    SPNSumLayer as BaseSPNSumLayer,
+)
+from spflow.base.structure.spn.layers.partition_layer import (
     SPNPartitionLayer as BaseSPNPartitionLayer,
 )
-from spflow.base.structure.spn.layers.layer import (
+from spflow.base.structure.spn.layers.hadamard_layer import (
     SPNHadamardLayer as BaseSPNHadamardLayer,
 )
 from spflow.base.structure.layers.leaves.parametric.gaussian import (

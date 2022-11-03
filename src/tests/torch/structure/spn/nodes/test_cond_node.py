@@ -1,16 +1,16 @@
-from spflow.torch.structure.spn.nodes.cond_node import (
+from spflow.torch.structure.spn.nodes.cond_sum_node import (
     SPNCondSumNode,
     marginalize,
     toBase,
     torch,
 )
-from spflow.torch.structure.spn.nodes.node import (
+from spflow.torch.structure.spn.nodes.product_node import (
     SPNProductNode,
     marginalize,
     toBase,
     toTorch,
 )
-from spflow.base.structure.spn.nodes.cond_node import (
+from spflow.base.structure.spn.nodes.cond_sum_node import (
     SPNCondSumNode as BaseSPNCondSumNode,
 )
 from spflow.torch.structure.nodes.leaves.parametric.gaussian import (
@@ -27,7 +27,6 @@ from .dummy_node import DummyNode
 import numpy as np
 import torch
 import unittest
-import random
 
 
 class TestTorchNode(unittest.TestCase):

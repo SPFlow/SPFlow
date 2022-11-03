@@ -10,8 +10,9 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.spn.nodes.node import SPNSumNode, SPNProductNode
-from spflow.torch.inference.spn.nodes.node import log_likelihood
+from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
+from spflow.torch.inference.spn.nodes.product_node import log_likelihood
 from spflow.torch.sampling.module import sample
 
 import torch

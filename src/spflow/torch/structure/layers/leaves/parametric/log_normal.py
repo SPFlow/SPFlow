@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 """Contains Log-Normal leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Type
+from typing import List, Union, Optional, Iterable, Tuple
 from functools import reduce
 import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from ....nodes.leaves.parametric.projections import (
-    proj_bounded_to_real,
-    proj_real_to_bounded,
-)
 
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -19,8 +15,12 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
+from spflow.torch.utils.projections import (
+    proj_bounded_to_real,
+    proj_real_to_bounded,
+)
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.leaves.parametric.log_normal import LogNormal
 from spflow.base.structure.layers.leaves.parametric.log_normal import (

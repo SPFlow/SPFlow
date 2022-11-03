@@ -1,5 +1,7 @@
 from typing import Optional
-from spflow.base.structure.module import Module, NestedModule
+from spflow.base.structure.module import Module
+from spflow.base.structure.nested_module import NestedModule
+from spflow.base.inference.nested_module import log_likelihood
 from spflow.meta.data.scope import Scope
 from typing import List
 

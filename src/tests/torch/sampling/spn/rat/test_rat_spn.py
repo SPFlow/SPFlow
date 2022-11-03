@@ -7,14 +7,18 @@ from spflow.torch.inference.spn.rat.rat_spn import log_likelihood
 from spflow.torch.sampling.spn.rat.rat_spn import sample
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
-from spflow.torch.inference.spn.nodes.node import log_likelihood
+from spflow.torch.inference.spn.nodes.product_node import log_likelihood
 from spflow.torch.sampling.spn.nodes.node import sample
 from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
     log_likelihood,
 )
 from spflow.torch.sampling.nodes.leaves.parametric.gaussian import sample
-from spflow.torch.inference.spn.layers.layer import log_likelihood
-from spflow.torch.sampling.spn.layers.layer import sample
+from spflow.torch.inference.spn.layers.sum_layer import log_likelihood
+from spflow.torch.sampling.spn.layers.sum_layer import sample
+from spflow.torch.inference.spn.layers.partition_layer import log_likelihood
+from spflow.torch.sampling.spn.layers.partition_layer import sample
+from spflow.torch.inference.spn.layers.hadamard_layer import log_likelihood
+from spflow.torch.sampling.spn.layers.hadamard_layer import sample
 from spflow.torch.inference.layers.leaves.parametric.gaussian import (
     log_likelihood,
 )

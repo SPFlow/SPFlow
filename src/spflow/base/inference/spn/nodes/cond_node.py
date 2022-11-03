@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Contains inference methods for SPN-like conditional nodes for SPFlow in the ``base`` backend.
+"""Contains inference methods for SPN-like conditional sum nodes for SPFlow in the ``base`` backend.
 """
-import numpy as np
-from scipy.special import logsumexp  # type: ignore
-from typing import List, Type, Dict, Optional
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.base.structure.spn.nodes.cond_node import SPNCondSumNode
+from spflow.base.structure.spn.nodes.cond_sum_node import SPNCondSumNode
+
+from typing import Optional
+from scipy.special import logsumexp  # type: ignore
+import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -10,8 +10,9 @@ from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )
-from spflow.base.structure.spn.nodes.node import SPNProductNode, SPNSumNode
-from spflow.base.structure.spn.nodes.cond_node import SPNCondSumNode
+from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.base.structure.spn.nodes.product_node import SPNProductNode
+from spflow.base.structure.spn.nodes.cond_sum_node import SPNCondSumNode
 
 import numpy as np
 import unittest

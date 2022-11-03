@@ -1,14 +1,16 @@
 from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.spn.layers.layer import (
-    SPNSumLayer,
-    SPNProductLayer,
-    SPNPartitionLayer,
-    SPNHadamardLayer,
-)
-from spflow.base.inference.spn.layers.layer import log_likelihood
-from spflow.base.structure.spn.nodes.node import SPNSumNode, SPNProductNode
-from spflow.base.inference.spn.nodes.node import log_likelihood
+from spflow.base.structure.spn.layers.sum_layer import SPNSumLayer
+from spflow.base.structure.spn.layers.product_layer import SPNProductLayer
+from spflow.base.structure.spn.layers.partition_layer import SPNPartitionLayer
+from spflow.base.structure.spn.layers.hadamard_layer import SPNHadamardLayer
+from spflow.base.inference.spn.layers.sum_layer import log_likelihood
+from spflow.base.inference.spn.layers.product_layer import log_likelihood
+from spflow.base.inference.spn.layers.partition_layer import log_likelihood
+from spflow.base.inference.spn.layers.hadamard_layer import log_likelihood
+from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.base.inference.spn.nodes.sum_node import log_likelihood
+from spflow.base.structure.spn.nodes.product_node import SPNProductNode
+from spflow.base.inference.spn.nodes.product_node import log_likelihood
 from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.base.inference.nodes.leaves.parametric.gaussian import (
     log_likelihood,

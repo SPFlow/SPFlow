@@ -6,16 +6,19 @@ import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
 from typing import Tuple, Optional, Union, List, Type
-from .projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.torch.utils.projections import (
+    proj_bounded_to_real,
+    proj_real_to_bounded,
+)
 from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.spn.nodes.node import LeafNode
+from spflow.torch.structure.nodes.leaf_node import LeafNode
 from spflow.base.structure.nodes.leaves.parametric.negative_binomial import (
     NegativeBinomial as BaseNegativeBinomial,
 )
