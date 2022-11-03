@@ -1,25 +1,10 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
-    Hypergeometric as BaseHypergeometric,
-)
-from spflow.base.inference.nodes.leaves.parametric.hypergeometric import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import (
-    Hypergeometric,
-    toBase,
-    toTorch,
-)
-from spflow.torch.structure.spn.nodes.sum_node import marginalize
-from spflow.torch.inference.nodes.leaves.parametric.hypergeometric import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import likelihood
-
-# from spflow.torch.sampling import sample
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.torch.structure import AutoLeaf
+from spflow.torch.structure.spn import Hypergeometric
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.inference import log_likelihood
+from spflow.base.structure.spn import Hypergeometric as BaseHypergeometric
+from spflow.base.inference import log_likelihood
 
 import torch
 import numpy as np

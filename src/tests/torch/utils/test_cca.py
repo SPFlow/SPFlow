@@ -1,4 +1,4 @@
-from spflow.torch.utils.cca import cca
+from spflow.torch.utils import cca
 from sklearn.cross_decomposition import CCA
 
 import torch

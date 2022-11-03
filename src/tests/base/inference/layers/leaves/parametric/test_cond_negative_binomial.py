@@ -1,22 +1,12 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.layers.leaves.parametric.cond_negative_binomial import (
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.base.inference import log_likelihood, likelihood
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    CondNegativeBinomial,
     CondNegativeBinomialLayer,
 )
-from spflow.base.inference.layers.leaves.parametric.cond_negative_binomial import (
-    log_likelihood,
-)
-from spflow.base.structure.nodes.leaves.parametric.cond_negative_binomial import (
-    CondNegativeBinomial,
-)
-from spflow.base.inference.nodes.leaves.parametric.cond_negative_binomial import (
-    log_likelihood,
-)
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.inference.spn.nodes.sum_node import log_likelihood
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.inference.spn.nodes.product_node import log_likelihood
-from spflow.base.inference.module import log_likelihood, likelihood
 import numpy as np
 import unittest
 
@@ -97,7 +87,7 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"p": [0.8, 0.3]},
             n_nodes=2,
         )
-        s1 = SPNSumNode(children=[negative_binomial_layer], weights=[0.3, 0.7])
+        s1 = SumNode(children=[negative_binomial_layer], weights=[0.3, 0.7])
 
         negative_binomial_nodes = [
             CondNegativeBinomial(
@@ -107,7 +97,7 @@ class TestNode(unittest.TestCase):
                 Scope([0], [1]), n=3, cond_f=lambda data: {"p": 0.3}
             ),
         ]
-        s2 = SPNSumNode(children=negative_binomial_nodes, weights=[0.3, 0.7])
+        s2 = SumNode(children=negative_binomial_nodes, weights=[0.3, 0.7])
 
         data = np.array([[0], [1], [0]])
 
@@ -122,7 +112,7 @@ class TestNode(unittest.TestCase):
             n=[3, 5],
             cond_f=lambda data: {"p": [0.8, 0.3]},
         )
-        p1 = SPNProductNode(children=[negative_binomial_layer])
+        p1 = ProductNode(children=[negative_binomial_layer])
 
         negative_binomial_nodes = [
             CondNegativeBinomial(
@@ -132,7 +122,7 @@ class TestNode(unittest.TestCase):
                 Scope([1], [2]), n=5, cond_f=lambda data: {"p": 0.3}
             ),
         ]
-        p2 = SPNProductNode(children=negative_binomial_nodes)
+        p2 = ProductNode(children=negative_binomial_nodes)
 
         data = np.array([[0, 1], [1, 1], [0, 0]])
 

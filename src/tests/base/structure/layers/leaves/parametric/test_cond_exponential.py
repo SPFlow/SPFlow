@@ -1,15 +1,11 @@
-from spflow.base.structure.layers.leaves.parametric.cond_exponential import (
+from spflow.meta.dispatch import DispatchContext
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.base.structure.spn import (
+    CondExponential,
     CondExponentialLayer,
     marginalize,
 )
-from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.nodes.leaves.parametric.cond_exponential import (
-    CondExponential,
-)
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
+from spflow.base.structure import AutoLeaf
 import numpy as np
 import unittest
 

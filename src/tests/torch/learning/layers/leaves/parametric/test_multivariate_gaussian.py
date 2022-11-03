@@ -1,14 +1,15 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.leaves.parametric.multivariate_gaussian import (
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure.spn import (
+    SumNode,
+    ProductNode,
     MultivariateGaussianLayer,
 )
-from spflow.torch.learning.layers.leaves.parametric.multivariate_gaussian import (
-    maximum_likelihood_estimation,
+from spflow.torch.inference import log_likelihood
+from spflow.torch.learning import (
     em,
-)
-from spflow.torch.inference.layers.leaves.parametric.multivariate_gaussian import (
-    log_likelihood,
+    maximum_likelihood_estimation,
+    expectation_maximization,
 )
 
 import torch

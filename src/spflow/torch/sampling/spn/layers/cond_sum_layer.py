@@ -10,7 +10,7 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.spn.layers.cond_sum_layer import SPNCondSumLayer
+from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 
@@ -20,7 +20,7 @@ from typing import Optional
 
 @dispatch  # type: ignore
 def sample(
-    sum_layer: SPNCondSumLayer,
+    sum_layer: CondSumLayer,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
@@ -59,7 +59,7 @@ def sample(
 
     # all nodes in sum layer have same scope
     if any([len(out) != 1 for out in sampling_ctx.output_ids]):
-        raise ValueError("'SPNCondSumLayer only allows single output sampling.")
+        raise ValueError("'CondSumLayer only allows single output sampling.")
 
     # retrieve value for 'weights'
     weights = sum_layer.retrieve_params(data, dispatch_ctx)

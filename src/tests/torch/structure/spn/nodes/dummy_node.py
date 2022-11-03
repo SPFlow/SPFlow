@@ -1,8 +1,8 @@
 from typing import Optional, Iterable, Union
-from spflow.torch.structure.nodes.leaf_node import LeafNode
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import (
+from spflow.torch.structure import LeafNode
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import (
+    dispatch,
     DispatchContext,
     init_default_dispatch_context,
 )

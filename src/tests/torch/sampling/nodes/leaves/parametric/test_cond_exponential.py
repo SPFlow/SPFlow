@@ -1,12 +1,7 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.sampling_context import SamplingContext
-from spflow.torch.structure.nodes.leaves.parametric.cond_exponential import (
-    CondExponential,
-)
-from spflow.torch.sampling.nodes.leaves.parametric.cond_exponential import (
-    sample,
-)
-from spflow.torch.sampling.module import sample
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
+from spflow.torch.structure.spn import CondExponential
+from spflow.torch.sampling import sample
 
 import torch
 import numpy as np

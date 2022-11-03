@@ -1,20 +1,11 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.layers.leaves.parametric.geometric import (
+from spflow.meta.data import Scope
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    Geometric,
     GeometricLayer,
 )
-from spflow.base.inference.layers.leaves.parametric.geometric import (
-    log_likelihood,
-)
-from spflow.base.structure.nodes.leaves.parametric.geometric import Geometric
-from spflow.base.inference.nodes.leaves.parametric.geometric import (
-    log_likelihood,
-)
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.inference.spn.nodes.sum_node import log_likelihood
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.inference.spn.nodes.product_node import log_likelihood
-from spflow.base.inference.module import log_likelihood
 import numpy as np
 import unittest
 
@@ -25,13 +16,13 @@ class TestNode(unittest.TestCase):
         geometric_layer = GeometricLayer(
             scope=Scope([0]), p=[0.8, 0.3], n_nodes=2
         )
-        s1 = SPNSumNode(children=[geometric_layer], weights=[0.3, 0.7])
+        s1 = SumNode(children=[geometric_layer], weights=[0.3, 0.7])
 
         geometric_nodes = [
             Geometric(Scope([0]), p=0.8),
             Geometric(Scope([0]), p=0.3),
         ]
-        s2 = SPNSumNode(children=geometric_nodes, weights=[0.3, 0.7])
+        s2 = SumNode(children=geometric_nodes, weights=[0.3, 0.7])
 
         data = np.array([[3], [1], [5]])
 
@@ -44,13 +35,13 @@ class TestNode(unittest.TestCase):
         geometric_layer = GeometricLayer(
             scope=[Scope([0]), Scope([1])], p=[0.8, 0.3]
         )
-        p1 = SPNProductNode(children=[geometric_layer])
+        p1 = ProductNode(children=[geometric_layer])
 
         geometric_nodes = [
             Geometric(Scope([0]), p=0.8),
             Geometric(Scope([1]), p=0.3),
         ]
-        p2 = SPNProductNode(children=geometric_nodes)
+        p2 = ProductNode(children=geometric_nodes)
 
         data = np.array([[3, 1], [2, 7], [5, 4]])
 

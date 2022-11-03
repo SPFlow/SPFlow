@@ -1,20 +1,7 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.spn.rat.region_graph import random_region_graph
-from spflow.torch.structure.spn.rat.rat_spn import RatSPN
-from spflow.torch.inference.spn.rat.rat_spn import log_likelihood
-from spflow.torch.inference.module import log_likelihood
-from spflow.torch.inference.spn.nodes.sum_node import log_likelihood
-from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
-    log_likelihood,
-)
-from spflow.torch.inference.spn.layers.sum_layer import log_likelihood
-from spflow.torch.inference.spn.layers.partition_layer import log_likelihood
-from spflow.torch.inference.spn.layers.hadamard_layer import log_likelihood
-from spflow.torch.inference.layers.leaves.parametric.gaussian import (
-    log_likelihood,
-)
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.torch.structure.spn.rat import random_region_graph, RatSPN
+from spflow.torch.inference import log_likelihood
+
 import torch
 import numpy as np
 import unittest

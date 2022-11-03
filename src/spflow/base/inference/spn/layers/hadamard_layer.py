@@ -6,7 +6,7 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.base.structure.spn.layers.hadamard_layer import SPNHadamardLayer
+from spflow.base.structure.spn.layers.hadamard_layer import HadamardLayer
 
 from typing import Optional
 import numpy as np
@@ -14,7 +14,7 @@ import numpy as np
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
-    hadamard_layer: SPNHadamardLayer,
+    hadamard_layer: HadamardLayer,
     data: np.ndarray,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,

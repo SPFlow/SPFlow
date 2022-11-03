@@ -8,7 +8,7 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.meta.data.scope import Scope
 from spflow.base.structure.spn.nodes.sum_node import (
-    SPNSumNode as BaseSPNSumNode,
+    SumNode as BaseSumNode,
 )
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.node import Node
@@ -23,7 +23,7 @@ import numpy as np
 import torch
 
 
-class SPNSumNode(Node):
+class SumNode(Node):
     """SPN-like sum node in the ``torch`` backend.
 
     Represents a convex combination of its children over the same scope.
@@ -49,7 +49,7 @@ class SPNSumNode(Node):
         children: List[Module],
         weights: Optional[Union[np.ndarray, torch.Tensor, List[float]]] = None,
     ) -> None:
-        """Initializes 'SPNSumNode' object.
+        """Initializes 'SumNode' object.
 
         Args:
             children:
@@ -62,11 +62,11 @@ class SPNSumNode(Node):
         Raises:
             ValueError: Invalid arguments.
         """
-        super(SPNSumNode, self).__init__(children=children)
+        super(SumNode, self).__init__(children=children)
 
         if not children:
             raise ValueError(
-                "'SPNSumNode' requires at least one child to be specified."
+                "'SumNode' requires at least one child to be specified."
             )
 
         scope = None
@@ -78,7 +78,7 @@ class SPNSumNode(Node):
                 else:
                     if not scope.equal_query(s):
                         raise ValueError(
-                            f"'SPNSumNode' requires child scopes to have the same query variables."
+                            f"'SumNode' requires child scopes to have the same query variables."
                         )
 
                 scope = scope.join(s)
@@ -119,17 +119,17 @@ class SPNSumNode(Node):
             values = torch.tensor(values).float()
         if values.ndim != 1:
             raise ValueError(
-                f"Torch tensor of weight values for 'SPNSumNode' is expected to be one-dimensional, but is {values.ndim}-dimensional."
+                f"Torch tensor of weight values for 'SumNode' is expected to be one-dimensional, but is {values.ndim}-dimensional."
             )
         if not torch.all(values > 0):
-            raise ValueError("Weights for 'SPNSumNode' must be all positive.")
+            raise ValueError("Weights for 'SumNode' must be all positive.")
         if not torch.isclose(
             values.sum(), torch.tensor(1.0, dtype=values.dtype)
         ):
-            raise ValueError("Weights for 'SPNSumNode' must sum up to one.")
+            raise ValueError("Weights for 'SumNode' must sum up to one.")
         if not (len(values) == self.n_in):
             raise ValueError(
-                "Number of weights for 'SPNSumNode' does not match total number of child outputs."
+                "Number of weights for 'SumNode' does not match total number of child outputs."
             )
 
         self.weights_aux.data = proj_convex_to_real(values)
@@ -137,12 +137,12 @@ class SPNSumNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    sum_node: SPNSumNode,
+    sum_node: SumNode,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ):
-    """Structural marginalization for ``SPNSumNode`` objects in the ``torch`` backend.
+    """Structural marginalization for ``SumNode`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified sum node.
     If the sum node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -188,16 +188,16 @@ def marginalize(
             if marg_child:
                 marg_children.append(marg_child)
 
-        return SPNSumNode(children=marg_children, weights=sum_node.weights)
+        return SumNode(children=marg_children, weights=sum_node.weights)
     else:
         return deepcopy(sum_node)
 
 
 @dispatch(memoize=True)  # type: ignore
 def toBase(
-    sum_node: SPNSumNode, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseSPNSumNode:
-    """Conversion for ``SPNSumNode`` from ``torch`` backend to ``base`` backend.
+    sum_node: SumNode, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseSumNode:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
 
     Args:
         sum_node:
@@ -206,7 +206,7 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseSPNSumNode(
+    return BaseSumNode(
         children=[
             toBase(child, dispatch_ctx=dispatch_ctx)
             for child in sum_node.children()
@@ -217,9 +217,9 @@ def toBase(
 
 @dispatch(memoize=True)  # type: ignore
 def toTorch(
-    sum_node: BaseSPNSumNode, dispatch_ctx: Optional[DispatchContext] = None
-) -> SPNSumNode:
-    """Conversion for ``SPNSumNode`` from ``base`` backend to ``torch`` backend.
+    sum_node: BaseSumNode, dispatch_ctx: Optional[DispatchContext] = None
+) -> SumNode:
+    """Conversion for ``SumNode`` from ``base`` backend to ``torch`` backend.
 
     Args:
         sum_node:
@@ -228,7 +228,7 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return SPNSumNode(
+    return SumNode(
         children=[
             toTorch(child, dispatch_ctx=dispatch_ctx)
             for child in sum_node.children

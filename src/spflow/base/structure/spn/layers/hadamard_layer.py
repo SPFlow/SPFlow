@@ -9,14 +9,14 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.base.structure.module import Module
 from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
+from spflow.base.structure.spn.nodes.product_node import ProductNode
 
 from typing import Optional, Union, Iterable, List
 from copy import deepcopy
 import numpy as np
 
 
-class SPNHadamardLayer(NestedModule):
+class HadamardLayer(NestedModule):
     """Layer representing multiple SPN-like product nodes in the ``base`` backend as element-wise products of inputs from different partitions.
 
     A partition is a group of inputs over the same scope. Different partitions have pair-wise disjoint scopes.
@@ -26,7 +26,7 @@ class SPNHadamardLayer(NestedModule):
 
     Example:
 
-        layer = SPNHadamardLayer([[node1, node2], [node3], [node4, node5]])
+        layer = HadamardLayer([[node1, node2], [node3], [node4, node5]])
 
         In this example the layer will have 2 product nodes over the following inputs (in this order):
 
@@ -41,7 +41,7 @@ class SPNHadamardLayer(NestedModule):
         scopes_out:
             List of scopes representing the output scopes.
         nodes:
-            List of ``SPNProductNode`` objects for the nodes in this layer.
+            List of ``ProductNode`` objects for the nodes in this layer.
         modules_per_partition:
             List of integers keeping track of the number of total inputs each input partition represents.
         partition_scopes:
@@ -49,7 +49,7 @@ class SPNHadamardLayer(NestedModule):
     """
 
     def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
-        r"""Initializes ``SPNHadamardLayer`` object.
+        r"""Initializes ``HadamardLayer`` object.
 
         Args:
             child_partitions:
@@ -62,7 +62,7 @@ class SPNHadamardLayer(NestedModule):
             ValueError: Invalid arguments.
         """
         if len(child_partitions) == 0:
-            raise ValueError("No partitions for 'SPNHadamardLayer' specified.")
+            raise ValueError("No partitions for 'HadamardLayer' specified.")
 
         scope = Scope()
         partition_sizes = []
@@ -75,7 +75,7 @@ class SPNHadamardLayer(NestedModule):
             # check if partition is empty
             if len(partition) == 0:
                 raise ValueError(
-                    "All partitions for 'SPNHadamardLayer' must be non-empty"
+                    "All partitions for 'HadamardLayer' must be non-empty"
                 )
 
             self.modules_per_partition.append(len(partition))
@@ -120,7 +120,7 @@ class SPNHadamardLayer(NestedModule):
                     "Scopes of partitions must be pair-wise disjoint."
                 )
 
-        super(SPNHadamardLayer, self).__init__(
+        super(HadamardLayer, self).__init__(
             children=sum(child_partitions, []), **kwargs
         )
 
@@ -139,7 +139,7 @@ class SPNHadamardLayer(NestedModule):
             ]
         ):
             ph = self.create_placeholder(list(input_ids))
-            self.nodes.append(SPNProductNode(children=[ph]))
+            self.nodes.append(ProductNode(children=[ph]))
 
         self._n_out = len(self.nodes)
         self.scope = scope
@@ -157,11 +157,11 @@ class SPNHadamardLayer(NestedModule):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    layer: SPNHadamardLayer,
+    layer: HadamardLayer,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[SPNHadamardLayer, Module, None]:
+) -> Union[HadamardLayer, Module, None]:
     """Structural marginalization for SPN-like Hadamard layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -243,6 +243,6 @@ def marginalize(
         ):
             return marg_partitions[0][0]
         else:
-            return SPNHadamardLayer(child_partitions=marg_partitions)
+            return HadamardLayer(child_partitions=marg_partitions)
     else:
         return deepcopy(layer)

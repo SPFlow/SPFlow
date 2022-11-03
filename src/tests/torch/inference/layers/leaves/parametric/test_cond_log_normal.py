@@ -1,21 +1,9 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.leaves.parametric.cond_log_normal import (
-    CondLogNormalLayer,
-)
-from spflow.torch.inference.layers.leaves.parametric.cond_log_normal import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.cond_log_normal import (
-    CondLogNormal,
-)
-from spflow.torch.inference.nodes.leaves.parametric.cond_log_normal import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import log_likelihood, likelihood
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure.spn import CondLogNormal, CondLogNormalLayer
+from spflow.torch.inference import log_likelihood, likelihood
 import torch
 import unittest
-import itertools
 import random
 
 

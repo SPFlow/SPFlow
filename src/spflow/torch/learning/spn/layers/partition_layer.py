@@ -8,17 +8,17 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.spn.layers.partition_layer import SPNPartitionLayer
+from spflow.torch.structure.spn.layers.partition_layer import PartitionLayer
 
 
 @dispatch(memoize=True)  # type: ignore
 def em(
-    layer: SPNPartitionLayer,
+    layer: PartitionLayer,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> None:
-    """Performs a single expectation maximizaton (EM) step for ``SPNPartitionLayer`` in the ``torch`` backend.
+    """Performs a single expectation maximizaton (EM) step for ``PartitionLayer`` in the ``torch`` backend.
 
     Args:
         layer:

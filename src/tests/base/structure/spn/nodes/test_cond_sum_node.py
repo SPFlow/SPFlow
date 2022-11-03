@@ -1,13 +1,6 @@
-from spflow.base.structure.spn.nodes.cond_sum_node import (
-    SPNCondSumNode,
-    marginalize,
-)
-from spflow.base.structure.spn.nodes.product_node import (
-    SPNProductNode,
-    marginalize,
-)
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.meta.data.scope import Scope
+from spflow.base.structure.spn import ProductNode, CondSumNode, marginalize
+from spflow.meta.dispatch import DispatchContext
+from spflow.meta.data import Scope
 from .dummy_node import DummyNode
 from typing import Callable
 
@@ -18,34 +11,28 @@ import unittest
 class TestSumNode(unittest.TestCase):
     def test_initialization(self):
 
-        sum_node = SPNCondSumNode(
-            [DummyNode(Scope([0])), DummyNode(Scope([0]))]
-        )
+        sum_node = CondSumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
         self.assertTrue(sum_node.cond_f is None)
-        sum_node = SPNCondSumNode(
+        sum_node = CondSumNode(
             [DummyNode(Scope([0])), DummyNode(Scope([0]))],
             lambda x: {"weights": [0.5, 0.5]},
         )
         self.assertTrue(isinstance(sum_node.cond_f, Callable))
 
         # empty children
-        self.assertRaises(ValueError, SPNCondSumNode, [], [])
+        self.assertRaises(ValueError, CondSumNode, [], [])
         # non-Module children
-        self.assertRaises(
-            ValueError, SPNCondSumNode, [DummyNode(Scope([0])), 0]
-        )
+        self.assertRaises(ValueError, CondSumNode, [DummyNode(Scope([0])), 0])
         # children with different scopes
         self.assertRaises(
             ValueError,
-            SPNCondSumNode,
+            CondSumNode,
             [DummyNode(Scope([0])), DummyNode(Scope([1]))],
         )
 
     def test_retrieve_params(self):
 
-        sum_node = SPNCondSumNode(
-            [DummyNode(Scope([0])), DummyNode(Scope([0]))]
-        )
+        sum_node = CondSumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
 
         # number of child outputs not matching number of weights
         sum_node.set_cond_f(lambda data: {"weights": [1.0]})
@@ -99,7 +86,7 @@ class TestSumNode(unittest.TestCase):
 
     def test_marginalization_1(self):
 
-        s = SPNCondSumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
+        s = CondSumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
 
         s_marg = marginalize(s, [1])
         self.assertEqual(s_marg.scopes_out, s.scopes_out)
@@ -109,10 +96,10 @@ class TestSumNode(unittest.TestCase):
 
     def test_marginalization_2(self):
 
-        s = SPNCondSumNode(
+        s = CondSumNode(
             [
-                SPNProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
-                SPNProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
+                ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
+                ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
             ]
         )
 

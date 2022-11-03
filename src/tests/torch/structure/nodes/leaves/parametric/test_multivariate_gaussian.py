@@ -1,35 +1,17 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import (
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.torch.structure import AutoLeaf
+from spflow.torch.structure.spn import MultivariateGaussian, Gaussian
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.inference import log_likelihood
+from spflow.base.structure.spn import (
     MultivariateGaussian as BaseMultivariateGaussian,
 )
-from spflow.base.inference.nodes.leaves.parametric.multivariate_gaussian import (
-    log_likelihood,
-)
-from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
-from spflow.torch.inference.spn.nodes.product_node import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import (
-    MultivariateGaussian,
-    toBase,
-    toTorch,
-    marginalize,
-)
-from spflow.torch.inference.nodes.leaves.parametric.multivariate_gaussian import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import likelihood
+from spflow.base.inference import log_likelihood
 
 import torch
 import numpy as np
 
-import math
-
+import random
 import unittest
 
 

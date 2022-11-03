@@ -1,18 +1,16 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.learning.spn.learn_spn.learn_spn import (
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.base.learning.spn.learn_spn import (
     cluster_by_kmeans,
     partition_by_rdc,
     learn_spn,
 )
-from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import (
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    CondSumNode,
+    Gaussian,
     CondGaussian,
 )
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.structure.spn.nodes.cond_sum_node import SPNCondSumNode
 
 import numpy as np
 import unittest
@@ -193,7 +191,7 @@ class TestNode(unittest.TestCase):
         )
 
         # check resulting graph
-        self.assertTrue(isinstance(spn, SPNProductNode))
+        self.assertTrue(isinstance(spn, ProductNode))
         # children of product node should be leaves since scope is originally multivariate and no partitioning/clustering occurs
         self.assertTrue(
             all([isinstance(child, Gaussian) for child in spn.children])
@@ -225,16 +223,16 @@ class TestNode(unittest.TestCase):
         )
 
         # check resulting graph
-        self.assertTrue(isinstance(spn, SPNProductNode))
+        self.assertTrue(isinstance(spn, ProductNode))
         partition_1, partition_2 = spn.children
         # partition 1
-        self.assertTrue(isinstance(partition_1, SPNSumNode))
+        self.assertTrue(isinstance(partition_1, SumNode))
         (
             partition_1_clustering_1,
             partition_1_clustering_2,
         ) = partition_1.children
         # children of both clusterings should be product nodes since this partition is originally multivariate
-        self.assertTrue(isinstance(partition_1_clustering_1, SPNProductNode))
+        self.assertTrue(isinstance(partition_1_clustering_1, ProductNode))
         self.assertTrue(
             all(
                 [
@@ -243,7 +241,7 @@ class TestNode(unittest.TestCase):
                 ]
             )
         )
-        self.assertTrue(isinstance(partition_1_clustering_1, SPNProductNode))
+        self.assertTrue(isinstance(partition_1_clustering_1, ProductNode))
         self.assertTrue(
             all(
                 [
@@ -280,10 +278,10 @@ class TestNode(unittest.TestCase):
         )
 
         # check resulting graph
-        self.assertTrue(isinstance(spn, SPNProductNode))
+        self.assertTrue(isinstance(spn, ProductNode))
         partition_1, partition_2 = spn.children
         # partition 1
-        self.assertTrue(isinstance(partition_1, SPNProductNode))
+        self.assertTrue(isinstance(partition_1, ProductNode))
         self.assertTrue(
             all([isinstance(child, Gaussian) for child in partition_1.children])
         )
@@ -316,16 +314,16 @@ class TestNode(unittest.TestCase):
         )
 
         # check resulting graph
-        self.assertTrue(isinstance(spn, SPNProductNode))
+        self.assertTrue(isinstance(spn, ProductNode))
         partition_1, partition_2 = spn.children
         # partition 1
-        self.assertTrue(isinstance(partition_1, SPNCondSumNode))
+        self.assertTrue(isinstance(partition_1, CondSumNode))
         (
             partition_1_clustering_1,
             partition_1_clustering_2,
         ) = partition_1.children
         # children of both clusterings should be product nodes since this partition is originally multivariate
-        self.assertTrue(isinstance(partition_1_clustering_1, SPNProductNode))
+        self.assertTrue(isinstance(partition_1_clustering_1, ProductNode))
         self.assertTrue(
             all(
                 [
@@ -334,7 +332,7 @@ class TestNode(unittest.TestCase):
                 ]
             )
         )
-        self.assertTrue(isinstance(partition_1_clustering_1, SPNProductNode))
+        self.assertTrue(isinstance(partition_1_clustering_1, ProductNode))
         self.assertTrue(
             all(
                 [

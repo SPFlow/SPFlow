@@ -1,4 +1,4 @@
-from spflow.base.utils.empirical_cdf import empirical_cdf
+from spflow.base.utils import empirical_cdf
 
 import numpy as np
 import unittest

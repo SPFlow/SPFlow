@@ -9,14 +9,14 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.meta.data.scope import Scope
 from spflow.base.structure.module import Module
 from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.base.structure.spn.nodes.sum_node import SumNode
 
 from typing import List, Union, Optional, Iterable
 from copy import deepcopy
 import numpy as np
 
 
-class SPNSumLayer(NestedModule):
+class SumLayer(NestedModule):
     r"""Layer representing multiple SPN-like sum nodes over all children in the ``base`` backend.
 
     Represents multiple convex combinations of its children over the same scope.
@@ -32,7 +32,7 @@ class SPNSumLayer(NestedModule):
         scopes_out:
             List of scopes representing the output scopes.
         nodes:
-            List of ``SPNSumNode`` objects for the nodes in this layer.
+            List of ``SumNode`` objects for the nodes in this layer.
     """
 
     def __init__(
@@ -44,7 +44,7 @@ class SPNSumLayer(NestedModule):
         ] = None,
         **kwargs,
     ) -> None:
-        r"""Initializes ``SPNSumLayer`` object.
+        r"""Initializes ``SumLayer`` object.
 
         Args:
             n_nodes:
@@ -64,15 +64,15 @@ class SPNSumLayer(NestedModule):
         """
         if n_nodes < 1:
             raise ValueError(
-                "Number of nodes for 'SPNSumLayer' must be greater of equal to 1."
+                "Number of nodes for 'SumLayer' must be greater of equal to 1."
             )
 
         if len(children) == 0:
             raise ValueError(
-                "'SPNSumLayer' requires at least one child to be specified."
+                "'SumLayer' requires at least one child to be specified."
             )
 
-        super(SPNSumLayer, self).__init__(children=children, **kwargs)
+        super(SumLayer, self).__init__(children=children, **kwargs)
 
         self._n_out = n_nodes
         self.n_in = sum(child.n_out for child in self.children)
@@ -81,7 +81,7 @@ class SPNSumLayer(NestedModule):
         ph = self.create_placeholder(list(range(self.n_in)))
 
         # create sum nodes
-        self.nodes = [SPNSumNode(children=[ph]) for _ in range(n_nodes)]
+        self.nodes = [SumNode(children=[ph]) for _ in range(n_nodes)]
 
         # parse weights
         if weights is not None:
@@ -126,17 +126,17 @@ class SPNSumLayer(NestedModule):
             values = np.array(values)
         if values.ndim != 1 and values.ndim != 2:
             raise ValueError(
-                f"Numpy array of weight values for 'SPNSumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional."
+                f"Numpy array of weight values for 'SumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional."
             )
         if not np.all(values > 0):
-            raise ValueError("Weights for 'SPNSumLayer' must be all positive.")
+            raise ValueError("Weights for 'SumLayer' must be all positive.")
         if not np.allclose(values.sum(axis=-1), 1.0):
             raise ValueError(
-                "Weights for 'SPNSumLayer' must sum up to one in last dimension."
+                "Weights for 'SumLayer' must sum up to one in last dimension."
             )
         if not (values.shape[-1] == self.n_in):
             raise ValueError(
-                "Number of weights for 'SPNSumLayer' in last dimension does not match total number of child outputs."
+                "Number of weights for 'SumLayer' in last dimension does not match total number of child outputs."
             )
 
         # same weights for all sum nodes
@@ -155,17 +155,17 @@ class SPNSumLayer(NestedModule):
             # incorrect number of specified weights
             else:
                 raise ValueError(
-                    f"Incorrect number of weights for 'SPNSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
+                    f"Incorrect number of weights for 'SumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
                 )
 
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    layer: SPNSumLayer,
+    layer: SumLayer,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[SPNSumLayer, Module, None]:
+) -> Union[SumLayer, Module, None]:
     """Structural marginalization for SPN-like sum layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -213,7 +213,7 @@ def marginalize(
             if marg_child:
                 marg_children.append(marg_child)
 
-        return SPNSumLayer(
+        return SumLayer(
             n_nodes=layer.n_out, children=marg_children, weights=layer.weights
         )
     else:

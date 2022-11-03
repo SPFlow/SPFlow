@@ -1,12 +1,6 @@
-from spflow.base.structure.layers.leaves.parametric.binomial import (
-    BinomialLayer,
-    marginalize,
-)
-from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.nodes.leaves.parametric.binomial import Binomial
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.base.structure.spn import Binomial, BinomialLayer, marginalize
+from spflow.base.structure import AutoLeaf
 import numpy as np
 import unittest
 

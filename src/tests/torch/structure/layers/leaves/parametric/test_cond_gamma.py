@@ -1,18 +1,9 @@
-from spflow.torch.structure.layers.leaves.parametric.cond_gamma import (
-    CondGammaLayer,
-    marginalize,
-    toTorch,
-    toBase,
-)
-from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.torch.structure.nodes.leaves.parametric.cond_gamma import CondGamma
-from spflow.base.structure.layers.leaves.parametric.cond_gamma import (
-    CondGammaLayer as BaseCondGammaLayer,
-)
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
+from spflow.torch.structure import AutoLeaf
+from spflow.torch.structure.spn import CondGamma, CondGammaLayer
+from spflow.torch.structure import marginalize, toTorch, toBase
+from spflow.base.structure.spn import CondGammaLayer as BaseCondGammaLayer
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.meta.dispatch import DispatchContext
 import torch
 import numpy as np
 import unittest

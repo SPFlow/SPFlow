@@ -1,4 +1,4 @@
-from spflow.torch.utils.kmeans import kmeans
+from spflow.torch.utils import kmeans
 from sklearn.cluster import KMeans
 
 import torch

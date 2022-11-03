@@ -1,4 +1,4 @@
-from spflow.torch.utils.corrcoef import corrcoef
+from spflow.torch.utils import corrcoef
 
 import torch
 import numpy as np

@@ -14,9 +14,9 @@ from spflow.base.learning.nodes.leaves.parametric.gaussian import (
 )
 from spflow.base.utils.connected_components import connected_components
 from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.structure.spn.nodes.cond_sum_node import SPNCondSumNode
+from spflow.base.structure.spn.nodes.sum_node import SumNode
+from spflow.base.structure.spn.nodes.product_node import ProductNode
+from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.base.structure.module import Module
 from sklearn.cluster import KMeans
 
@@ -237,7 +237,7 @@ def learn_spn(
                     leaf, data[:, [rv]], check_support=check_support
                 )
 
-        return SPNProductNode(children=leaves)
+        return ProductNode(children=leaves)
 
     # features does not need to be split any further
     if len(scope.query) < min_features_slice:
@@ -260,7 +260,7 @@ def learn_spn(
 
         # multiple partition (i.e., data can be partitioned)
         if len(partitions) > 1:
-            return SPNProductNode(
+            return ProductNode(
                 children=[
                     # compute child trees recursively
                     learn_spn(
@@ -296,7 +296,7 @@ def learn_spn(
                         else None
                     )
 
-                    return SPNSumNode(
+                    return SumNode(
                         children=[
                             learn_spn(
                                 data[labels == cluster_id, :],
@@ -313,7 +313,7 @@ def learn_spn(
                     )
                 # conditional clusters
                 else:
-                    return SPNCondSumNode(
+                    return CondSumNode(
                         children=[
                             learn_spn(
                                 data[labels == cluster_id, :],

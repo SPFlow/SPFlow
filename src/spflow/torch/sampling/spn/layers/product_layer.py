@@ -10,7 +10,7 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.spn.layers.product_layer import SPNProductLayer
+from spflow.torch.structure.spn.layers.product_layer import ProductLayer
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 
@@ -21,7 +21,7 @@ from typing import Optional
 
 @dispatch  # type: ignore
 def sample(
-    product_layer: SPNProductLayer,
+    product_layer: ProductLayer,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
@@ -60,7 +60,7 @@ def sample(
 
     # all nodes in sum layer have same scope
     if any([len(out) != 1 for out in sampling_ctx.output_ids]):
-        raise ValueError("'SPNProductLayer only allows single output sampling.")
+        raise ValueError("'ProductLayer only allows single output sampling.")
 
     # all product nodes are over (all) children
     for child in product_layer.children():

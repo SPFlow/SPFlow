@@ -1,22 +1,11 @@
-from spflow.torch.structure.spn.layers.cond_sum_layer import (
-    SPNCondSumLayer,
-    marginalize,
-    toBase,
-    toTorch,
-)
-from spflow.torch.structure.nodes.leaves.parametric.gaussian import (
-    Gaussian,
-    toBase,
-    toTorch,
-)
-from spflow.base.structure.spn.layers.cond_sum_layer import (
-    SPNCondSumLayer as BaseSPNCondSumLayer,
-)
-from spflow.base.structure.nodes.leaves.parametric.gaussian import (
+from spflow.torch.structure.spn import Gaussian, CondSumLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.base.structure.spn import (
+    CondSumLayer as BaseCondSumLayer,
     Gaussian as BaseGaussian,
 )
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.meta.data.scope import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.meta.data import Scope
 from ..nodes.dummy_node import DummyNode
 import torch
 import numpy as np
@@ -35,7 +24,7 @@ class TestNode(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNCondSumLayer(n_nodes=3, children=input_nodes)
+        l = CondSumLayer(n_nodes=3, children=input_nodes)
         # make sure scopes are correct
         self.assertTrue(
             np.all(
@@ -46,7 +35,7 @@ class TestNode(unittest.TestCase):
         # ----- children of different scopes -----
         self.assertRaises(
             ValueError,
-            SPNCondSumLayer,
+            CondSumLayer,
             n_nodes=3,
             children=[
                 DummyNode(Scope([0, 1])),
@@ -56,15 +45,15 @@ class TestNode(unittest.TestCase):
         )
 
         # ----- no children -----
-        self.assertRaises(ValueError, SPNCondSumLayer, n_nodes=3, children=[])
+        self.assertRaises(ValueError, CondSumLayer, n_nodes=3, children=[])
 
         # ----- invalid number of nodes -----
         self.assertRaises(
-            ValueError, SPNCondSumLayer, n_nodes=0, children=input_nodes
+            ValueError, CondSumLayer, n_nodes=0, children=input_nodes
         )
 
         # -----number of cond_f functions -----
-        SPNCondSumLayer(
+        CondSumLayer(
             children=input_nodes,
             n_nodes=2,
             cond_f=[
@@ -74,7 +63,7 @@ class TestNode(unittest.TestCase):
         )
         self.assertRaises(
             ValueError,
-            SPNCondSumLayer,
+            CondSumLayer,
             children=input_nodes,
             n_nodes=2,
             cond_f=[lambda data: {"weights": [0.5, 0.3, 0.2]}],
@@ -93,7 +82,7 @@ class TestNode(unittest.TestCase):
         weights = torch.tensor([[0.3, 0.3, 0.4]])
 
         # two dimensional weight array
-        l = SPNCondSumLayer(
+        l = CondSumLayer(
             n_nodes=3,
             children=input_nodes,
             cond_f=lambda data: {"weights": weights},
@@ -222,7 +211,7 @@ class TestNode(unittest.TestCase):
             DummyNode(Scope([0, 1])),
             DummyNode(Scope([0, 1])),
         ]
-        l = SPNCondSumLayer(n_nodes=3, children=input_nodes)
+        l = CondSumLayer(n_nodes=3, children=input_nodes)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
@@ -241,7 +230,7 @@ class TestNode(unittest.TestCase):
 
     def test_sum_layer_backend_conversion_1(self):
 
-        torch_sum_layer = SPNCondSumLayer(
+        torch_sum_layer = CondSumLayer(
             n_nodes=3,
             children=[
                 Gaussian(Scope([0])),
@@ -255,7 +244,7 @@ class TestNode(unittest.TestCase):
 
     def test_sum_layer_backend_conversion_2(self):
 
-        base_sum_layer = BaseSPNCondSumLayer(
+        base_sum_layer = BaseCondSumLayer(
             n_nodes=3,
             children=[
                 BaseGaussian(Scope([0])),

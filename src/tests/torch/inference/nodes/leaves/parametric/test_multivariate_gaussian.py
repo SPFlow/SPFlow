@@ -1,33 +1,20 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import (
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import (
     MultivariateGaussian as BaseMultivariateGaussian,
 )
-from spflow.base.inference.nodes.leaves.parametric.multivariate_gaussian import (
-    log_likelihood,
-)
-from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
-from spflow.torch.inference.spn.nodes.product_node import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import (
+from spflow.base.inference import log_likelihood, likelihood
+from spflow.torch.structure.spn import (
+    ProductNode,
+    Gaussian,
     MultivariateGaussian,
-    toBase,
-    toTorch,
-    marginalize,
 )
-from spflow.torch.inference.nodes.leaves.parametric.multivariate_gaussian import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import likelihood
+from spflow.torch.structure import marginalize
+from spflow.torch.inference import log_likelihood, likelihood
 
 import torch
 import numpy as np
-
-import math
-
 import unittest
+import math
 
 
 class TestMultivariateGaussian(unittest.TestCase):
@@ -226,7 +213,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         self.assertTrue(torch.allclose(mv_probs, targets))
 
         # inference using univariate gaussians for each random variable (combined via product node for convenience)
-        univariate_gaussians = SPNProductNode(
+        univariate_gaussians = ProductNode(
             children=[
                 Gaussian(
                     Scope([0]), 0.0, math.sqrt(2.0)
@@ -241,7 +228,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         self.assertTrue(torch.allclose(mv_probs, uv_probs))
 
         # inference using "structurally" marginalized multivariate gaussians for each random variable (combined via product node for convenience)
-        marginalized_mv_gaussians = SPNProductNode(
+        marginalized_mv_gaussians = ProductNode(
             children=[
                 marginalize(multivariate_gaussian, [1]),
                 marginalize(multivariate_gaussian, [0]),

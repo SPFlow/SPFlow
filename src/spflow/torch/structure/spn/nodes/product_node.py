@@ -8,7 +8,7 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.meta.data.scope import Scope
 from spflow.base.structure.spn.nodes.product_node import (
-    SPNProductNode as BaseSPNProductNode,
+    ProductNode as BaseProductNode,
 )
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.nodes.node import Node
@@ -17,7 +17,7 @@ from typing import List, Union, Optional, Iterable
 from copy import deepcopy
 
 
-class SPNProductNode(Node):
+class ProductNode(Node):
     """SPN-like product node in the ``torch`` backend.
 
     Represents a product of its children over pair-wise disjoint scopes.
@@ -34,7 +34,7 @@ class SPNProductNode(Node):
     """
 
     def __init__(self, children: List[Module]) -> None:
-        """Initializes ``SPNProductNode`` object.
+        """Initializes ``ProductNode`` object.
 
         Args:
             children:
@@ -43,11 +43,11 @@ class SPNProductNode(Node):
         Raises:
             ValueError: Invalid arguments.
         """
-        super(SPNProductNode, self).__init__(children=children)
+        super(ProductNode, self).__init__(children=children)
 
         if not children:
             raise ValueError(
-                "'SPNProductNode' requires at least one child to be specified."
+                "'ProductNode' requires at least one child to be specified."
             )
 
         scope = Scope()
@@ -56,7 +56,7 @@ class SPNProductNode(Node):
             for s in child.scopes_out:
                 if not scope.isdisjoint(s):
                     raise ValueError(
-                        f"'SPNProductNode' requires child scopes to be pair-wise disjoint."
+                        f"'ProductNode' requires child scopes to be pair-wise disjoint."
                     )
 
                 scope = scope.join(s)
@@ -66,12 +66,12 @@ class SPNProductNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    product_node: SPNProductNode,
+    product_node: ProductNode,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> Union[Node, None]:
-    """Structural marginalization for 'SPNProductNode' objects in the ``torch`` backend.
+    """Structural marginalization for 'ProductNode' objects in the ``torch`` backend.
 
     Structurally marginalizes the specified product node.
     If the product node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -123,16 +123,16 @@ def marginalize(
         if len(marg_children) == 1 and prune:
             return marg_children[0]
         else:
-            return SPNProductNode(marg_children)
+            return ProductNode(marg_children)
     else:
         return deepcopy(product_node)
 
 
 @dispatch(memoize=True)  # type: ignore
 def toBase(
-    product_node: SPNProductNode, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseSPNProductNode:
-    """Conversion for ``SPNProductNode`` from ``torch`` backend to ``base`` backend.
+    product_node: ProductNode, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseProductNode:
+    """Conversion for ``ProductNode`` from ``torch`` backend to ``base`` backend.
 
     Args:
         sum_node:
@@ -141,7 +141,7 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseSPNProductNode(
+    return BaseProductNode(
         children=[
             toBase(child, dispatch_ctx=dispatch_ctx)
             for child in product_node.children()
@@ -151,10 +151,10 @@ def toBase(
 
 @dispatch(memoize=True)  # type: ignore
 def toTorch(
-    product_node: BaseSPNProductNode,
+    product_node: BaseProductNode,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> SPNProductNode:
-    """Conversion for ``SPNProductNode`` from ``base`` backend to ``torch`` backend.
+) -> ProductNode:
+    """Conversion for ``ProductNode`` from ``base`` backend to ``torch`` backend.
 
     Args:
         sum_node:
@@ -163,7 +163,7 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return SPNProductNode(
+    return ProductNode(
         children=[
             toTorch(child, dispatch_ctx=dispatch_ctx)
             for child in product_node.children

@@ -1,9 +1,9 @@
-from spflow.base.structure.spn.layers.cond_sum_layer import (
-    SPNCondSumLayer,
+from spflow.base.structure.spn import (
+    CondSumLayer,
     marginalize,
 )
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.meta.data.scope import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.meta.data import Scope
 from ..nodes.dummy_node import DummyNode
 import numpy as np
 import unittest
@@ -21,7 +21,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNCondSumLayer(n_nodes=3, children=input_nodes)
+        l = CondSumLayer(n_nodes=3, children=input_nodes)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
@@ -34,7 +34,7 @@ class TestLayer(unittest.TestCase):
         # ----- children of different scopes -----
         self.assertRaises(
             ValueError,
-            SPNCondSumLayer,
+            CondSumLayer,
             n_nodes=3,
             children=[
                 DummyNode(Scope([0, 1])),
@@ -44,15 +44,15 @@ class TestLayer(unittest.TestCase):
         )
 
         # ----- no children -----
-        self.assertRaises(ValueError, SPNCondSumLayer, n_nodes=3, children=[])
+        self.assertRaises(ValueError, CondSumLayer, n_nodes=3, children=[])
 
         # ----- invalid number of nodes -----
         self.assertRaises(
-            ValueError, SPNCondSumLayer, n_nodes=0, children=input_nodes
+            ValueError, CondSumLayer, n_nodes=0, children=input_nodes
         )
 
         # -----number of cond_f functions -----
-        SPNCondSumLayer(
+        CondSumLayer(
             children=input_nodes,
             n_nodes=2,
             cond_f=[
@@ -62,7 +62,7 @@ class TestLayer(unittest.TestCase):
         )
         self.assertRaises(
             ValueError,
-            SPNCondSumLayer,
+            CondSumLayer,
             children=input_nodes,
             n_nodes=2,
             cond_f=[lambda data: {"weights": [0.5, 0.3, 0.2]}],
@@ -81,7 +81,7 @@ class TestLayer(unittest.TestCase):
         weights = np.array([[0.3, 0.3, 0.4]])
 
         # two dimensional weight array
-        l = SPNCondSumLayer(
+        l = CondSumLayer(
             n_nodes=3,
             children=input_nodes,
             cond_f=lambda data: {"weights": weights},
@@ -184,7 +184,7 @@ class TestLayer(unittest.TestCase):
             DummyNode(Scope([0, 1])),
             DummyNode(Scope([0, 1])),
         ]
-        l = SPNCondSumLayer(n_nodes=3, children=input_nodes)
+        l = CondSumLayer(n_nodes=3, children=input_nodes)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)

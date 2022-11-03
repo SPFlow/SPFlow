@@ -10,7 +10,7 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
+from spflow.base.structure.spn.nodes.product_node import ProductNode
 from spflow.base.sampling.module import sample
 
 import numpy as np
@@ -19,7 +19,7 @@ from typing import Optional
 
 @dispatch  # type: ignore
 def sample(
-    node: SPNProductNode,
+    node: ProductNode,
     data: np.ndarray,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,

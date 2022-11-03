@@ -8,17 +8,17 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.spn.layers.sum_layer import SPNSumLayer
+from spflow.torch.structure.spn.layers.sum_layer import SumLayer
 
 
 @dispatch(memoize=True)  # type: ignore
 def em(
-    layer: SPNSumLayer,
+    layer: SumLayer,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> None:
-    """Performs a single expectation maximizaton (EM) step for ``SPNSumLayer`` in the ``torch`` backend.
+    """Performs a single expectation maximizaton (EM) step for ``SumLayer`` in the ``torch`` backend.
 
     Args:
         layer:

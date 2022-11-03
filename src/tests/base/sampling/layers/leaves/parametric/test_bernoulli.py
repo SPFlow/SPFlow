@@ -1,25 +1,12 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.layers.leaves.parametric.bernoulli import (
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    Bernoulli,
     BernoulliLayer,
 )
-from spflow.base.inference.layers.leaves.parametric.bernoulli import (
-    log_likelihood,
-)
-from spflow.base.sampling.layers.leaves.parametric.bernoulli import sample
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.inference.spn.nodes.sum_node import log_likelihood
-from spflow.base.sampling.spn.nodes.sum_node import sample
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.inference.spn.nodes.product_node import log_likelihood
-from spflow.base.sampling.spn.nodes.product_node import sample
-from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli
-from spflow.base.inference.nodes.leaves.parametric.bernoulli import (
-    log_likelihood,
-)
-from spflow.base.sampling.nodes.leaves.parametric.bernoulli import sample
-from spflow.base.inference.module import log_likelihood
-from spflow.base.sampling.module import sample
-
+from spflow.base.inference import log_likelihood
+from spflow.base.sampling import sample
 import numpy as np
 import random
 import unittest
@@ -35,13 +22,13 @@ class TestNode(unittest.TestCase):
         bernoulli_layer = BernoulliLayer(
             scope=Scope([0]), p=[0.8, 0.3], n_nodes=2
         )
-        s1 = SPNSumNode(children=[bernoulli_layer], weights=[0.3, 0.7])
+        s1 = SumNode(children=[bernoulli_layer], weights=[0.3, 0.7])
 
         bernoulli_nodes = [
             Bernoulli(Scope([0]), p=0.8),
             Bernoulli(Scope([0]), p=0.3),
         ]
-        s2 = SPNSumNode(children=bernoulli_nodes, weights=[0.3, 0.7])
+        s2 = SumNode(children=bernoulli_nodes, weights=[0.3, 0.7])
 
         layer_samples = sample(s1, 10000)
         nodes_samples = sample(s2, 10000)
@@ -63,13 +50,13 @@ class TestNode(unittest.TestCase):
         bernoulli_layer = BernoulliLayer(
             scope=[Scope([0]), Scope([1])], p=[0.8, 0.3]
         )
-        p1 = SPNProductNode(children=[bernoulli_layer])
+        p1 = ProductNode(children=[bernoulli_layer])
 
         bernoulli_nodes = [
             Bernoulli(Scope([0]), p=0.8),
             Bernoulli(Scope([1]), p=0.3),
         ]
-        p2 = SPNProductNode(children=bernoulli_nodes)
+        p2 = ProductNode(children=bernoulli_nodes)
 
         layer_samples = sample(p1, 10000)
         nodes_samples = sample(p2, 10000)

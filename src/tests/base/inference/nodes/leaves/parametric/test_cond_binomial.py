@@ -1,16 +1,10 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.nodes.leaves.parametric.cond_binomial import (
-    CondBinomial,
-)
-from spflow.base.inference.nodes.leaves.parametric.cond_binomial import (
-    log_likelihood,
-)
-from spflow.base.inference.module import likelihood
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.base.structure.spn import CondBinomial
+from spflow.base.inference import log_likelihood, likelihood
 import numpy as np
-
-import random
 import unittest
+import random
 
 
 class TestCondBinomial(unittest.TestCase):

@@ -1,21 +1,10 @@
-from spflow.torch.structure.spn.layers.product_layer import (
-    SPNProductLayer,
-    marginalize,
-    toBase,
-    toTorch,
-)
-from spflow.torch.structure.nodes.leaves.parametric.gaussian import (
-    Gaussian,
-    toBase,
-    toTorch,
-)
-from spflow.base.structure.spn.layers.product_layer import (
-    SPNProductLayer as BaseSPNProductLayer,
-)
-from spflow.base.structure.nodes.leaves.parametric.gaussian import (
+from spflow.torch.structure.spn import ProductLayer, Gaussian
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.base.structure.spn import (
+    ProductLayer as BaseProductLayer,
     Gaussian as BaseGaussian,
 )
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope
 from ..nodes.dummy_node import DummyNode
 import numpy as np
 import unittest
@@ -33,7 +22,7 @@ class TestNode(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNProductLayer(n_nodes=3, children=input_nodes)
+        l = ProductLayer(n_nodes=3, children=input_nodes)
         # make sure scopes are correct
         self.assertTrue(
             np.all(
@@ -52,10 +41,10 @@ class TestNode(unittest.TestCase):
             DummyNode(Scope([3])),
             DummyNode(Scope([1])),
         ]
-        self.assertRaises(ValueError, SPNProductLayer, 3, input_nodes)
+        self.assertRaises(ValueError, ProductLayer, 3, input_nodes)
 
         # ----- no children -----
-        self.assertRaises(ValueError, SPNProductLayer, 3, [])
+        self.assertRaises(ValueError, ProductLayer, 3, [])
 
     def test_product_layer_structural_marginalization(self):
 
@@ -65,7 +54,7 @@ class TestNode(unittest.TestCase):
             DummyNode(Scope([3])),
             DummyNode(Scope([2])),
         ]
-        l = SPNProductLayer(n_nodes=3, children=input_nodes)
+        l = ProductLayer(n_nodes=3, children=input_nodes)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1, 2, 3]) == None)
@@ -87,14 +76,14 @@ class TestNode(unittest.TestCase):
         )
 
         # ----- pruning -----
-        l = SPNProductLayer(n_nodes=3, children=input_nodes[:2])
+        l = ProductLayer(n_nodes=3, children=input_nodes[:2])
 
         l_marg = marginalize(l, [0, 1], prune=True)
         self.assertTrue(isinstance(l_marg, DummyNode))
 
     def test_product_layer_backend_conversion_1(self):
 
-        torch_product_layer = SPNProductLayer(
+        torch_product_layer = ProductLayer(
             n_nodes=3,
             children=[
                 Gaussian(Scope([0])),
@@ -108,7 +97,7 @@ class TestNode(unittest.TestCase):
 
     def test_product_layer_backend_conversion_2(self):
 
-        base_product_layer = BaseSPNProductLayer(
+        base_product_layer = BaseProductLayer(
             n_nodes=3,
             children=[
                 BaseGaussian(Scope([0])),

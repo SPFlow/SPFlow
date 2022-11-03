@@ -1,4 +1,4 @@
-from spflow.torch.utils.empirical_cdf import empirical_cdf
+from spflow.torch.utils import empirical_cdf
 
 import torch
 import unittest

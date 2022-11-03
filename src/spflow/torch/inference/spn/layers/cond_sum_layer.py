@@ -9,12 +9,12 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.torch.structure.spn.layers.cond_sum_layer import SPNCondSumLayer
+from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer
 
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
-    sum_layer: SPNCondSumLayer,
+    sum_layer: CondSumLayer,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,

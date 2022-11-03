@@ -8,7 +8,7 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.base.structure.spn.layers.product_layer import (
-    SPNProductLayer as BaseSPNProductLayer,
+    ProductLayer as BaseProductLayer,
 )
 from spflow.torch.structure.module import Module
 
@@ -16,7 +16,7 @@ from typing import Optional, Iterable, Union, List
 from copy import deepcopy
 
 
-class SPNProductLayer(Module):
+class ProductLayer(Module):
     r"""Layer representing multiple SPN-like product nodes over all children in the ``torch`` backend.
 
     Represents multiple products of its children over pair-wise disjoint scopes.
@@ -33,7 +33,7 @@ class SPNProductLayer(Module):
     """
 
     def __init__(self, n_nodes: int, children: List[Module], **kwargs) -> None:
-        r"""Initializes ``SPNProductLayer`` object.
+        r"""Initializes ``ProductLayer`` object.
 
         Args:
             n_nodes:
@@ -46,17 +46,17 @@ class SPNProductLayer(Module):
         """
         if n_nodes < 1:
             raise ValueError(
-                "Number of nodes for 'SPNProductLayer' must be greater of equal to 1."
+                "Number of nodes for 'ProductLayer' must be greater of equal to 1."
             )
 
         self._n_out = n_nodes
 
         if not children:
             raise ValueError(
-                "'SPNProductLayer' requires at least one child to be specified."
+                "'ProductLayer' requires at least one child to be specified."
             )
 
-        super(SPNProductLayer, self).__init__(children=children, **kwargs)
+        super(ProductLayer, self).__init__(children=children, **kwargs)
 
         # compute scope
         scope = Scope()
@@ -65,7 +65,7 @@ class SPNProductLayer(Module):
             for s in child.scopes_out:
                 if not scope.isdisjoint(s):
                     raise ValueError(
-                        f"'SPNProductNode' requires child scopes to be pair-wise disjoint."
+                        f"'ProductNode' requires child scopes to be pair-wise disjoint."
                     )
 
                 scope = scope.join(s)
@@ -85,11 +85,11 @@ class SPNProductLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    layer: SPNProductLayer,
+    layer: ProductLayer,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[SPNProductLayer, Module, None]:
+) -> Union[ProductLayer, Module, None]:
     """Structural marginalization for SPN-like product layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -143,17 +143,17 @@ def marginalize(
         if len(marg_children) == 1 and prune:
             return marg_children[0]
         else:
-            return SPNProductLayer(n_nodes=layer.n_out, children=marg_children)
+            return ProductLayer(n_nodes=layer.n_out, children=marg_children)
     else:
         return deepcopy(layer)
 
 
 @dispatch(memoize=True)  # type: ignore
 def toBase(
-    product_layer: SPNProductLayer,
+    product_layer: ProductLayer,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> BaseSPNProductLayer:
-    """Conversion for ``SPNProductLayer`` from ``torch`` backend to ``base`` backend.
+) -> BaseProductLayer:
+    """Conversion for ``ProductLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
         product_layer:
@@ -162,7 +162,7 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseSPNProductLayer(
+    return BaseProductLayer(
         n_nodes=product_layer.n_out,
         children=[
             toBase(child, dispatch_ctx=dispatch_ctx)
@@ -173,10 +173,10 @@ def toBase(
 
 @dispatch(memoize=True)  # type: ignore
 def toTorch(
-    product_layer: BaseSPNProductLayer,
+    product_layer: BaseProductLayer,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> SPNProductLayer:
-    """Conversion for ``SPNProductLayer`` from ``base`` backend to ``torch`` backend.
+) -> ProductLayer:
+    """Conversion for ``ProductLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
         product_layer:
@@ -185,7 +185,7 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return SPNProductLayer(
+    return ProductLayer(
         n_nodes=product_layer.n_out,
         children=[
             toTorch(child, dispatch_ctx=dispatch_ctx)

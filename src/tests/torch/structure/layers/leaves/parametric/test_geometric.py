@@ -1,17 +1,8 @@
-from spflow.torch.structure.layers.leaves.parametric.geometric import (
-    GeometricLayer,
-    marginalize,
-    toTorch,
-    toBase,
-)
-from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.torch.structure.nodes.leaves.parametric.geometric import Geometric
-from spflow.base.structure.layers.leaves.parametric.geometric import (
-    GeometricLayer as BaseGeometricLayer,
-)
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
+from spflow.torch.structure import AutoLeaf
+from spflow.torch.structure.spn import Geometric, GeometricLayer
+from spflow.torch.structure import marginalize, toTorch, toBase
+from spflow.base.structure.spn import GeometricLayer as BaseGeometricLayer
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 import torch
 import numpy as np
 import unittest

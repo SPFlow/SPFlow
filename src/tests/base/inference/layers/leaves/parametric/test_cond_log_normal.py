@@ -1,22 +1,12 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.layers.leaves.parametric.cond_log_normal import (
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.base.inference import log_likelihood, likelihood
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    CondLogNormal,
     CondLogNormalLayer,
 )
-from spflow.base.inference.layers.leaves.parametric.cond_log_normal import (
-    log_likelihood,
-)
-from spflow.base.structure.nodes.leaves.parametric.cond_log_normal import (
-    CondLogNormal,
-)
-from spflow.base.inference.nodes.leaves.parametric.cond_log_normal import (
-    log_likelihood,
-)
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.inference.spn.nodes.sum_node import log_likelihood
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.inference.spn.nodes.product_node import log_likelihood
-from spflow.base.inference.module import log_likelihood, likelihood
 import numpy as np
 import unittest
 
@@ -113,7 +103,7 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"mean": [0.8, 0.3], "std": [1.3, 0.4]},
             n_nodes=2,
         )
-        s1 = SPNSumNode(children=[log_normal_layer], weights=[0.3, 0.7])
+        s1 = SumNode(children=[log_normal_layer], weights=[0.3, 0.7])
 
         log_normal_nodes = [
             CondLogNormal(
@@ -123,7 +113,7 @@ class TestNode(unittest.TestCase):
                 Scope([0], [1]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
             ),
         ]
-        s2 = SPNSumNode(children=log_normal_nodes, weights=[0.3, 0.7])
+        s2 = SumNode(children=log_normal_nodes, weights=[0.3, 0.7])
 
         data = np.array([[0.5], [1.5], [0.3]])
 
@@ -137,7 +127,7 @@ class TestNode(unittest.TestCase):
             scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"mean": [0.8, 0.3], "std": [1.3, 0.4]},
         )
-        p1 = SPNProductNode(children=[log_normal_layer])
+        p1 = ProductNode(children=[log_normal_layer])
 
         log_normal_nodes = [
             CondLogNormal(
@@ -147,7 +137,7 @@ class TestNode(unittest.TestCase):
                 Scope([1], [2]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
             ),
         ]
-        p2 = SPNProductNode(children=log_normal_nodes)
+        p2 = ProductNode(children=log_normal_nodes)
 
         data = np.array([[0.5, 1.6], [0.1, 0.3], [0.47, 0.7]])
 

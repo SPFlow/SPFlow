@@ -17,7 +17,7 @@ from spflow.base.structure.module import Module
 from spflow.base.structure.spn.nodes.product_node import Node
 
 
-class SPNCondSumNode(Node):
+class CondSumNode(Node):
     """Conditional SPN-like sum node in the ``base`` backend.
 
     Represents a convex combination of its children over the same scope.
@@ -38,7 +38,7 @@ class SPNCondSumNode(Node):
     def __init__(
         self, children: List[Module], cond_f: Optional[Callable] = None
     ) -> None:
-        """Initializes ``SPNCondSumNode`` object.
+        """Initializes ``CondSumNode`` object.
 
         Args:
             children:
@@ -52,11 +52,11 @@ class SPNCondSumNode(Node):
         Raises:
             ValueError: Invalid arguments.
         """
-        super(SPNCondSumNode, self).__init__(children=children)
+        super(CondSumNode, self).__init__(children=children)
 
         if not children:
             raise ValueError(
-                "'SPNCondSumNode' requires at least one child to be specified."
+                "'CondSumNode' requires at least one child to be specified."
             )
 
         scope = None
@@ -68,7 +68,7 @@ class SPNCondSumNode(Node):
                 else:
                     if not scope.equal_query(s):
                         raise ValueError(
-                            f"'SPNCondSumNode' requires child scopes to have the same query variables."
+                            f"'CondSumNode' requires child scopes to have the same query variables."
                         )
 
                 scope = scope.join(s)
@@ -130,7 +130,7 @@ class SPNCondSumNode(Node):
         # if neither 'weights' nor 'cond_f' is specified (via node or arguments)
         if weights is None and cond_f is None:
             raise ValueError(
-                "'SPNCondSumNode' requires either 'weights' or 'cond_f' to retrieve 'weights' to be specified."
+                "'CondSumNode' requires either 'weights' or 'cond_f' to retrieve 'weights' to be specified."
             )
 
         # if 'weights' was not already specified, retrieve it
@@ -142,19 +142,19 @@ class SPNCondSumNode(Node):
             weights = np.array(weights)
         if weights.ndim != 1:
             raise ValueError(
-                f"Numpy array of weight values for 'SPNCondSumNode' is expected to be one-dimensional, but is {weights.ndim}-dimensional."
+                f"Numpy array of weight values for 'CondSumNode' is expected to be one-dimensional, but is {weights.ndim}-dimensional."
             )
         if not np.all(weights > 0):
             raise ValueError(
-                "Weights for 'CondSPNCondSumNode' must be all positive."
+                "Weights for 'CondCondSumNode' must be all positive."
             )
         if not np.isclose(weights.sum(), 1.0):
             raise ValueError(
-                "Weights for 'CondSPNCondSumNode' must sum up to one."
+                "Weights for 'CondCondSumNode' must sum up to one."
             )
         if not (len(weights) == self.n_in):
             raise ValueError(
-                "Number of weights for 'CondSPNCondSumNode' does not match total number of child outputs."
+                "Number of weights for 'CondCondSumNode' does not match total number of child outputs."
             )
 
         return weights
@@ -162,12 +162,12 @@ class SPNCondSumNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    sum_node: SPNCondSumNode,
+    sum_node: CondSumNode,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ):
-    """Structural marginalization for ``SPNCondSumNode`` objects in the ``base`` backend.
+    """Structural marginalization for ``CondSumNode`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified sum node.
     If the sum node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -213,6 +213,6 @@ def marginalize(
             if marg_child:
                 marg_children.append(marg_child)
 
-        return SPNCondSumNode(children=marg_children)
+        return CondSumNode(children=marg_children)
     else:
         return deepcopy(sum_node)

@@ -1,16 +1,7 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.leaves.parametric.cond_gamma import (
-    CondGammaLayer,
-)
-from spflow.torch.inference.layers.leaves.parametric.cond_gamma import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.cond_gamma import CondGamma
-from spflow.torch.inference.nodes.leaves.parametric.cond_gamma import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import log_likelihood, likelihood
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure.spn import CondGamma, CondGammaLayer
+from spflow.torch.inference import log_likelihood, likelihood
 import torch
 import unittest
 import random

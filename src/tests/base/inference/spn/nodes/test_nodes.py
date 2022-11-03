@@ -1,34 +1,26 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.base.inference.spn.nodes.sum_node import log_likelihood
-from spflow.base.inference.spn.nodes.product_node import log_likelihood
-from spflow.base.inference.nodes.leaves.parametric.gaussian import (
-    log_likelihood,
-)
-from spflow.base.inference.module import likelihood, log_likelihood
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import SumNode, ProductNode, Gaussian
+from spflow.base.inference import likelihood, log_likelihood
 from ....structure.spn.nodes.dummy_node import DummyNode
 import numpy as np
 import unittest
-import random
 
 
 def create_example_spn():
-    spn = SPNSumNode(
+    spn = SumNode(
         children=[
-            SPNProductNode(
+            ProductNode(
                 children=[
                     Gaussian(Scope([0])),
-                    SPNSumNode(
+                    SumNode(
                         children=[
-                            SPNProductNode(
+                            ProductNode(
                                 children=[
                                     Gaussian(Scope([1])),
                                     Gaussian(Scope([2])),
                                 ]
                             ),
-                            SPNProductNode(
+                            ProductNode(
                                 children=[
                                     Gaussian(Scope([1])),
                                     Gaussian(Scope([2])),
@@ -39,9 +31,9 @@ def create_example_spn():
                     ),
                 ],
             ),
-            SPNProductNode(
+            ProductNode(
                 children=[
-                    SPNProductNode(
+                    ProductNode(
                         children=[
                             Gaussian(Scope([0])),
                             Gaussian(Scope([1])),

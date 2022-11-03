@@ -14,7 +14,7 @@ from copy import deepcopy
 import numpy as np
 
 
-class SPNSumNode(Node):
+class SumNode(Node):
     """SPN-like sum node in the ``base`` backend.
 
     Represents a convex combination of its children over the same scope.
@@ -35,7 +35,7 @@ class SPNSumNode(Node):
         children: List[Module],
         weights: Optional[Union[np.ndarray, List[float]]] = None,
     ) -> None:
-        r"""Initializes ``SPNSumNode`` object.
+        r"""Initializes ``SumNode`` object.
 
         Args:
             children:
@@ -48,11 +48,11 @@ class SPNSumNode(Node):
         Raises:
             ValueError: Invalid arguments.
         """
-        super(SPNSumNode, self).__init__(children=children)
+        super(SumNode, self).__init__(children=children)
 
         if not children:
             raise ValueError(
-                "'SPNSumNode' requires at least one child to be specified."
+                "'SumNode' requires at least one child to be specified."
             )
 
         scope = None
@@ -64,7 +64,7 @@ class SPNSumNode(Node):
                 else:
                     if not scope.equal_query(s):
                         raise ValueError(
-                            f"'SPNSumNode' requires child scopes to have the same query variables."
+                            f"'SumNode' requires child scopes to have the same query variables."
                         )
 
                 scope = scope.join(s)
@@ -99,15 +99,15 @@ class SPNSumNode(Node):
             values = np.array(values)
         if values.ndim != 1:
             raise ValueError(
-                f"Numpy array of weight values for 'SPNSumNode' is expected to be one-dimensional, but is {values.ndim}-dimensional."
+                f"Numpy array of weight values for 'SumNode' is expected to be one-dimensional, but is {values.ndim}-dimensional."
             )
         if not np.all(values > 0):
-            raise ValueError("Weights for 'SPNSumNode' must be all positive.")
+            raise ValueError("Weights for 'SumNode' must be all positive.")
         if not np.isclose(values.sum(), 1.0):
-            raise ValueError("Weights for 'SPNSumNode' must sum up to one.")
+            raise ValueError("Weights for 'SumNode' must sum up to one.")
         if not (len(values) == self.n_in):
             raise ValueError(
-                "Number of weights for 'SPNSumNode' does not match total number of child outputs."
+                "Number of weights for 'SumNode' does not match total number of child outputs."
             )
 
         self._weights = values
@@ -115,12 +115,12 @@ class SPNSumNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    sum_node: SPNSumNode,
+    sum_node: SumNode,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[SPNSumNode, None]:
-    r"""Structural marginalization for ``SPNSumNode`` objects in the ``base`` backend.
+) -> Union[SumNode, None]:
+    r"""Structural marginalization for ``SumNode`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified sum node.
     If the sum node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -166,6 +166,6 @@ def marginalize(
             if marg_child:
                 marg_children.append(marg_child)
 
-        return SPNSumNode(children=marg_children, weights=sum_node.weights)
+        return SumNode(children=marg_children, weights=sum_node.weights)
     else:
         return deepcopy(sum_node)

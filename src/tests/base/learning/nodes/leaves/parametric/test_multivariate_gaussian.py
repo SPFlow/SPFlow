@@ -1,8 +1,8 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import (
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import (
     MultivariateGaussian,
 )
-from spflow.base.learning.nodes.leaves.parametric.multivariate_gaussian import (
+from spflow.base.learning import (
     maximum_likelihood_estimation,
 )
 

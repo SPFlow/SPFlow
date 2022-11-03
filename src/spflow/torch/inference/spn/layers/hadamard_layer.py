@@ -7,7 +7,7 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 
-from spflow.torch.structure.spn.layers.hadamard_layer import SPNHadamardLayer
+from spflow.torch.structure.spn.layers.hadamard_layer import HadamardLayer
 
 from typing import Optional
 import numpy as np
@@ -16,7 +16,7 @@ import torch
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
-    partition_layer: SPNHadamardLayer,
+    partition_layer: HadamardLayer,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,

@@ -1,22 +1,14 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
-from spflow.torch.inference.spn.nodes.sum_node import log_likelihood
-from spflow.torch.inference.spn.nodes.product_node import log_likelihood
-from spflow.torch.learning.spn.nodes.sum_node import em
-from spflow.torch.learning.spn.nodes.product_node import em
-from spflow.torch.structure.layers.leaves.parametric.negative_binomial import (
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure.spn import (
+    SumNode,
+    ProductNode,
     NegativeBinomialLayer,
 )
-from spflow.torch.learning.layers.leaves.parametric.negative_binomial import (
-    maximum_likelihood_estimation,
+from spflow.torch.inference import log_likelihood
+from spflow.torch.learning import (
     em,
-)
-from spflow.torch.inference.layers.leaves.parametric.negative_binomial import (
-    log_likelihood,
-)
-from spflow.torch.learning.expectation_maximization.expectation_maximization import (
+    maximum_likelihood_estimation,
     expectation_maximization,
 )
 
@@ -266,7 +258,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         layer = NegativeBinomialLayer([Scope([0]), Scope([1])], n=[3, 5])
-        prod_node = SPNProductNode([layer])
+        prod_node = ProductNode([layer])
 
         data = torch.tensor(
             np.hstack(
@@ -295,7 +287,7 @@ class TestNode(unittest.TestCase):
         layer = NegativeBinomialLayer(
             [Scope([0]), Scope([0])], n=3, p=[0.4, 0.6]
         )
-        sum_node = SPNSumNode([layer], weights=[0.5, 0.5])
+        sum_node = SumNode([layer], weights=[0.5, 0.5])
 
         data = torch.tensor(
             np.vstack(

@@ -1,4 +1,4 @@
-from spflow.base.utils.connected_components import connected_components
+from spflow.base.utils import connected_components
 
 import numpy as np
 import unittest

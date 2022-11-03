@@ -1,22 +1,12 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.layers.leaves.parametric.cond_geometric import (
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.base.inference import log_likelihood, likelihood
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    CondGeometric,
     CondGeometricLayer,
 )
-from spflow.base.inference.layers.leaves.parametric.cond_geometric import (
-    log_likelihood,
-)
-from spflow.base.structure.nodes.leaves.parametric.cond_geometric import (
-    CondGeometric,
-)
-from spflow.base.inference.nodes.leaves.parametric.cond_geometric import (
-    log_likelihood,
-)
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.inference.spn.nodes.sum_node import log_likelihood
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.inference.spn.nodes.product_node import log_likelihood
-from spflow.base.inference.module import log_likelihood, likelihood
 import numpy as np
 import unittest
 
@@ -96,13 +86,13 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"p": [0.2, 0.5]},
             n_nodes=2,
         )
-        s1 = SPNSumNode(children=[geometric_layer], weights=[0.3, 0.7])
+        s1 = SumNode(children=[geometric_layer], weights=[0.3, 0.7])
 
         geometric_nodes = [
             CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.2}),
             CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5}),
         ]
-        s2 = SPNSumNode(children=geometric_nodes, weights=[0.3, 0.7])
+        s2 = SumNode(children=geometric_nodes, weights=[0.3, 0.7])
 
         data = np.array([[3], [1], [5]])
 
@@ -116,13 +106,13 @@ class TestNode(unittest.TestCase):
             scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"p": [0.2, 0.5]},
         )
-        p1 = SPNProductNode(children=[geometric_layer])
+        p1 = ProductNode(children=[geometric_layer])
 
         geometric_nodes = [
             CondGeometric(Scope([0], [2]), cond_f=lambda data: {"p": 0.2}),
             CondGeometric(Scope([1], [2]), cond_f=lambda data: {"p": 0.5}),
         ]
-        p2 = SPNProductNode(children=geometric_nodes)
+        p2 = ProductNode(children=geometric_nodes)
 
         data = np.array([[3, 1], [2, 7], [5, 4]])
 

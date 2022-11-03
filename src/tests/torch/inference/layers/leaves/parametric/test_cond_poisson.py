@@ -1,18 +1,7 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.leaves.parametric.cond_poisson import (
-    CondPoissonLayer,
-)
-from spflow.torch.inference.layers.leaves.parametric.cond_poisson import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.cond_poisson import (
-    CondPoisson,
-)
-from spflow.torch.inference.nodes.leaves.parametric.cond_poisson import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import log_likelihood, likelihood
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure.spn import CondPoisson, CondPoissonLayer
+from spflow.torch.inference import log_likelihood, likelihood
 import torch
 import unittest
 import random

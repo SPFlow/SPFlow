@@ -10,7 +10,7 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.spn.layers.hadamard_layer import SPNHadamardLayer
+from spflow.base.structure.spn.layers.hadamard_layer import HadamardLayer
 
 from typing import Optional
 import numpy as np
@@ -18,7 +18,7 @@ import numpy as np
 
 @dispatch  # type: ignore
 def sample(
-    hadamard_layer: SPNHadamardLayer,
+    hadamard_layer: HadamardLayer,
     data: np.ndarray,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,

@@ -8,17 +8,17 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.spn.layers.product_layer import SPNProductLayer
+from spflow.torch.structure.spn.layers.product_layer import ProductLayer
 
 
 @dispatch(memoize=True)  # type: ignore
 def em(
-    layer: SPNProductLayer,
+    layer: ProductLayer,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> None:
-    """Performs a single expectation maximizaton (EM) step for ``SPNProductLayer`` in the ``torch`` backend.
+    """Performs a single expectation maximizaton (EM) step for ``ProductLayer`` in the ``torch`` backend.
 
     Args:
         layer:

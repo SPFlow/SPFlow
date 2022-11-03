@@ -8,17 +8,17 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.torch.structure.spn.nodes.sum_node import SumNode
 
 
 @dispatch(memoize=True)  # type: ignore
 def em(
-    node: SPNSumNode,
+    node: SumNode,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> None:
-    """Performs a single expectation maximizaton (EM) step for ``SPNSumNode`` in the ``torch`` backend.
+    """Performs a single expectation maximizaton (EM) step for ``SumNode`` in the ``torch`` backend.
 
     Args:
         node:

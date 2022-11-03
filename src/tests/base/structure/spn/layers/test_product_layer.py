@@ -1,8 +1,8 @@
 from spflow.base.structure.spn.layers.product_layer import (
-    SPNProductLayer,
+    ProductLayer,
     marginalize,
 )
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope
 from ..nodes.dummy_node import DummyNode
 import numpy as np
 import unittest
@@ -20,7 +20,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNProductLayer(n_nodes=3, children=input_nodes)
+        l = ProductLayer(n_nodes=3, children=input_nodes)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
@@ -41,13 +41,13 @@ class TestLayer(unittest.TestCase):
             DummyNode(Scope([3])),
             DummyNode(Scope([1])),
         ]
-        self.assertRaises(ValueError, SPNProductLayer, 3, input_nodes)
+        self.assertRaises(ValueError, ProductLayer, 3, input_nodes)
 
         # ----- no children -----
-        self.assertRaises(ValueError, SPNProductLayer, 3, [])
+        self.assertRaises(ValueError, ProductLayer, 3, [])
 
         # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, SPNProductLayer, 0, input_nodes)
+        self.assertRaises(ValueError, ProductLayer, 0, input_nodes)
 
     def test_product_layer_structural_marginalization(self):
 
@@ -57,7 +57,7 @@ class TestLayer(unittest.TestCase):
             DummyNode(Scope([3])),
             DummyNode(Scope([2])),
         ]
-        l = SPNProductLayer(n_nodes=3, children=input_nodes)
+        l = ProductLayer(n_nodes=3, children=input_nodes)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1, 2, 3]) == None)
@@ -79,7 +79,7 @@ class TestLayer(unittest.TestCase):
         )
 
         # ----- pruning -----
-        l = SPNProductLayer(n_nodes=3, children=input_nodes[:2])
+        l = ProductLayer(n_nodes=3, children=input_nodes[:2])
 
         l_marg = marginalize(l, [0, 1], prune=True)
         self.assertTrue(isinstance(l_marg, DummyNode))

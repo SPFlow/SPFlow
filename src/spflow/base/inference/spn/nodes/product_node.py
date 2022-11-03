@@ -8,12 +8,12 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
+from spflow.base.structure.spn.nodes.product_node import ProductNode
 
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
-    product_node: SPNProductNode,
+    product_node: ProductNode,
     data: np.ndarray,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,

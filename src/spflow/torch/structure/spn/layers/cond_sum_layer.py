@@ -9,7 +9,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.meta.data.scope import Scope
 from spflow.torch.structure.module import Module
 from spflow.base.structure.spn.layers.cond_sum_layer import (
-    SPNCondSumLayer as BaseSPNCondSumLayer,
+    CondSumLayer as BaseCondSumLayer,
 )
 
 from typing import List, Union, Optional, Iterable, Callable
@@ -18,7 +18,7 @@ import numpy as np
 import torch
 
 
-class SPNCondSumLayer(Module):
+class CondSumLayer(Module):
     r"""Layer representing multiple SPN-like sum nodes over all children in the ``torch`` backend.
 
     Represents multiple convex combinations of its children over the same scope.
@@ -42,7 +42,7 @@ class SPNCondSumLayer(Module):
         scopes_out:
             List of scopes representing the output scopes.
         nodes:
-            List of ``SPNSumNode`` objects for the nodes in this layer.
+            List of ``SumNode`` objects for the nodes in this layer.
     """
 
     def __init__(
@@ -52,7 +52,7 @@ class SPNCondSumLayer(Module):
         cond_f: Optional[Union[Callable, List[Callable]]] = None,
         **kwargs,
     ) -> None:
-        r"""Initializes ``SPNCondSumLayer`` object.
+        r"""Initializes ``CondSumLayer`` object.
 
         Args:
             n_nodes:
@@ -72,15 +72,15 @@ class SPNCondSumLayer(Module):
         """
         if n_nodes < 1:
             raise ValueError(
-                "Number of nodes for 'SPNCondSumLayer' must be greater of equal to 1."
+                "Number of nodes for 'CondSumLayer' must be greater of equal to 1."
             )
 
         if not children:
             raise ValueError(
-                "'SPNCondSumLayer' requires at least one child to be specified."
+                "'CondSumLayer' requires at least one child to be specified."
             )
 
-        super(SPNCondSumLayer, self).__init__(children=children, **kwargs)
+        super(CondSumLayer, self).__init__(children=children, **kwargs)
 
         self._n_out = n_nodes
         self.n_in = sum(child.n_out for child in self.children())
@@ -95,7 +95,7 @@ class SPNCondSumLayer(Module):
                 else:
                     if not scope.equal_query(s):
                         raise ValueError(
-                            f"'SPNCondSumLayer' requires child scopes to have the same query variables."
+                            f"'CondSumLayer' requires child scopes to have the same query variables."
                         )
 
                 scope = scope.join(s)
@@ -135,7 +135,7 @@ class SPNCondSumLayer(Module):
         """
         if isinstance(cond_f, List) and len(cond_f) != self.n_out:
             raise ValueError(
-                "'SPNCondSumLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
+                "'CondSumLayer' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
             )
 
         self.cond_f = cond_f
@@ -181,7 +181,7 @@ class SPNCondSumLayer(Module):
         # if neither 'weights' nor 'cond_f' is specified (via node or arguments)
         if weights is None and cond_f is None:
             raise ValueError(
-                "'SPNCondSumLayer' requires either 'weights' or 'cond_f' to retrieve 'weights' to be specified."
+                "'CondSumLayer' requires either 'weights' or 'cond_f' to retrieve 'weights' to be specified."
             )
 
         # if 'weights' was not already specified, retrieve it
@@ -196,17 +196,17 @@ class SPNCondSumLayer(Module):
             weights = torch.tensor(weights).type(torch.get_default_dtype())
         if weights.ndim != 1 and weights.ndim != 2:
             raise ValueError(
-                f"Torch tensor of weight values for 'SPNCondSumLayer' is expected to be one- or two-dimensional, but is {weights.ndim}-dimensional."
+                f"Torch tensor of weight values for 'CondSumLayer' is expected to be one- or two-dimensional, but is {weights.ndim}-dimensional."
             )
         if not torch.all(weights > 0):
-            raise ValueError("Weights for 'SPNSumLayer' must be all positive.")
+            raise ValueError("Weights for 'SumLayer' must be all positive.")
         if not torch.allclose(weights.sum(dim=-1), torch.tensor(1.0)):
             raise ValueError(
-                "Weights for 'SPNCondSumLayer' must sum up to one in last dimension."
+                "Weights for 'CondSumLayer' must sum up to one in last dimension."
             )
         if not (weights.shape[-1] == self.n_in):
             raise ValueError(
-                "Number of weights for 'SPNCondSumLayer' in last dimension does not match total number of child outputs."
+                "Number of weights for 'CondSumLayer' in last dimension does not match total number of child outputs."
             )
 
         # same weights for all sum nodes
@@ -227,7 +227,7 @@ class SPNCondSumLayer(Module):
             # incorrect number of specified weights
             else:
                 raise ValueError(
-                    f"Incorrect number of weights for 'SPNCondSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {weights.shape[0]}."
+                    f"Incorrect number of weights for 'CondSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {weights.shape[0]}."
                 )
 
         return weights
@@ -235,11 +235,11 @@ class SPNCondSumLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    layer: SPNCondSumLayer,
+    layer: CondSumLayer,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[None, SPNCondSumLayer]:
+) -> Union[None, CondSumLayer]:
     """Structural marginalization for conditional SPN-like sum layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -287,16 +287,16 @@ def marginalize(
             if marg_child:
                 marg_children.append(marg_child)
 
-        return SPNCondSumLayer(n_nodes=layer.n_out, children=marg_children)
+        return CondSumLayer(n_nodes=layer.n_out, children=marg_children)
     else:
         return deepcopy(layer)
 
 
 @dispatch(memoize=True)  # type: ignore
 def toBase(
-    sum_layer: SPNCondSumLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseSPNCondSumLayer:
-    """Conversion for ``SPNCondSumLayer`` from ``torch`` backend to ``base`` backend.
+    sum_layer: CondSumLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseCondSumLayer:
+    """Conversion for ``CondSumLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
         sum_layer:
@@ -305,7 +305,7 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseSPNCondSumLayer(
+    return BaseCondSumLayer(
         n_nodes=sum_layer.n_out,
         children=[
             toBase(child, dispatch_ctx=dispatch_ctx)
@@ -316,10 +316,10 @@ def toBase(
 
 @dispatch(memoize=True)  # type: ignore
 def toTorch(
-    sum_layer: BaseSPNCondSumLayer,
+    sum_layer: BaseCondSumLayer,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> SPNCondSumLayer:
-    """Conversion for ``SPNCondSumLayer`` from ``base`` backend to ``torch`` backend.
+) -> CondSumLayer:
+    """Conversion for ``CondSumLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
         sum_layer:
@@ -328,7 +328,7 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return SPNCondSumLayer(
+    return CondSumLayer(
         n_nodes=sum_layer.n_out,
         children=[
             toTorch(child, dispatch_ctx=dispatch_ctx)

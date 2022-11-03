@@ -6,8 +6,8 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.base.structure.spn.layers.cond_sum_layer import SPNCondSumLayer
-from spflow.base.inference.spn.nodes.cond_node import log_likelihood
+from spflow.base.structure.spn.layers.cond_sum_layer import CondSumLayer
+from spflow.base.inference.spn.nodes.cond_sum_node import log_likelihood
 
 from typing import Optional
 import numpy as np
@@ -15,7 +15,7 @@ import numpy as np
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
-    sum_layer: SPNCondSumLayer,
+    sum_layer: CondSumLayer,
     data: np.ndarray,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,

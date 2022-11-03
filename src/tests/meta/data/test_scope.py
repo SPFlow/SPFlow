@@ -1,4 +1,4 @@
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope
 import unittest
 
 

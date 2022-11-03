@@ -6,7 +6,7 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.spn.layers.product_layer import SPNProductLayer
+from spflow.torch.structure.spn.layers.product_layer import ProductLayer
 
 from typing import Optional
 import torch
@@ -14,7 +14,7 @@ import torch
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
-    product_layer: SPNProductLayer,
+    product_layer: ProductLayer,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,

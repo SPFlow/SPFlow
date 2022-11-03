@@ -1,21 +1,8 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.leaves.parametric.hypergeometric import (
-    HypergeometricLayer,
-)
-from spflow.torch.inference.layers.leaves.parametric.hypergeometric import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.hypergeometric import (
-    Hypergeometric,
-)
-from spflow.torch.inference.nodes.leaves.parametric.hypergeometric import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import log_likelihood
+from spflow.meta.data import Scope
+from spflow.torch.structure.spn import Hypergeometric, HypergeometricLayer
+from spflow.torch.inference import log_likelihood
 import torch
 import unittest
-import itertools
 
 
 class TestNode(unittest.TestCase):
