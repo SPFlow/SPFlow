@@ -1,28 +1,7 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.spn.rat.region_graph import random_region_graph
-from spflow.torch.structure.spn.rat.rat_spn import RatSPN
-from spflow.torch.inference.spn.rat.rat_spn import log_likelihood
-from spflow.torch.sampling.spn.rat.rat_spn import sample
-from spflow.torch.inference.module import log_likelihood
-from spflow.torch.sampling.module import sample
-from spflow.torch.inference.spn.nodes.product_node import log_likelihood
-from spflow.torch.sampling.spn.nodes.node import sample
-from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
-    log_likelihood,
-)
-from spflow.torch.sampling.nodes.leaves.parametric.gaussian import sample
-from spflow.torch.inference.spn.layers.sum_layer import log_likelihood
-from spflow.torch.sampling.spn.layers.sum_layer import sample
-from spflow.torch.inference.spn.layers.partition_layer import log_likelihood
-from spflow.torch.sampling.spn.layers.partition_layer import sample
-from spflow.torch.inference.spn.layers.hadamard_layer import log_likelihood
-from spflow.torch.sampling.spn.layers.hadamard_layer import sample
-from spflow.torch.inference.layers.leaves.parametric.gaussian import (
-    log_likelihood,
-)
-from spflow.torch.sampling.layers.leaves.parametric.gaussian import sample
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.torch.structure.spn.rat import random_region_graph, RatSPN
+from spflow.torch.inference import log_likelihood
+from spflow.torch.sampling import sample
 import unittest
 
 import torch

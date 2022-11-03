@@ -1,35 +1,20 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.base.structure.spn import (
     CondMultivariateGaussian as BaseCondMultivariateGaussian,
 )
-from spflow.base.inference.nodes.leaves.parametric.cond_multivariate_gaussian import (
-    log_likelihood,
-)
-from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
-from spflow.torch.inference.spn.nodes.product_node import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
-    CondMultivariateGaussian,
-    toBase,
-    toTorch,
-)
-from spflow.torch.inference.nodes.leaves.parametric.cond_multivariate_gaussian import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import (
+from spflow.base.inference import log_likelihood
+from spflow.torch.structure.spn import (
+    ProductNode,
     CondGaussian,
+    CondMultivariateGaussian,
 )
-from spflow.torch.inference.nodes.leaves.parametric.cond_gaussian import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import likelihood
+from spflow.torch.inference import log_likelihood, likelihood
 
 import torch
 import numpy as np
-
-import math
-
 import unittest
+import math
 
 
 class TestMultivariateGaussian(unittest.TestCase):
@@ -193,7 +178,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         self.assertTrue(torch.allclose(mv_probs, targets))
 
         # inference using univariate gaussians for each random variable (combined via product node for convenience)
-        univariate_gaussians = SPNProductNode(
+        univariate_gaussians = ProductNode(
             children=[
                 CondGaussian(
                     Scope([0], [2]),

@@ -10,7 +10,7 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.spn.layers.sum_layer import SPNSumLayer
+from spflow.torch.structure.spn.layers.sum_layer import SumLayer
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 
@@ -21,7 +21,7 @@ from typing import Optional
 
 @dispatch  # type: ignore
 def sample(
-    sum_layer: SPNSumLayer,
+    sum_layer: SumLayer,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
@@ -60,7 +60,7 @@ def sample(
 
     # all nodes in sum layer have same scope
     if any([len(out) != 1 for out in sampling_ctx.output_ids]):
-        raise ValueError("'SPNSumLayer only allows single output sampling.")
+        raise ValueError("'SumLayer only allows single output sampling.")
 
     # create mask for instane ids
     instance_ids_mask = torch.zeros(data.shape[0]).bool()

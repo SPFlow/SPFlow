@@ -1,21 +1,10 @@
-from spflow.torch.structure.spn.layers.hadamard_layer import (
-    SPNHadamardLayer,
-    marginalize,
-    toBase,
-    toTorch,
-)
-from spflow.torch.structure.nodes.leaves.parametric.gaussian import (
-    Gaussian,
-    toBase,
-    toTorch,
-)
-from spflow.base.structure.spn.layers.hadamard_layer import (
-    SPNHadamardLayer as BaseSPNHadamardLayer,
-)
-from spflow.base.structure.nodes.leaves.parametric.gaussian import (
+from spflow.torch.structure.spn import HadamardLayer, Gaussian
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.base.structure.spn import (
+    HadamardLayer as BaseHadamardLayer,
     Gaussian as BaseGaussian,
 )
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope
 from ..nodes.dummy_node import DummyNode
 import torch
 import numpy as np
@@ -43,7 +32,7 @@ class TestNode(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNHadamardLayer(child_partitions=input_partitions)
+        l = HadamardLayer(child_partitions=input_partitions)
         # make sure number of creates nodes is correct
         self.assertEqual(l.n_out, 3)
         # make sure scopes are correct
@@ -54,7 +43,7 @@ class TestNode(unittest.TestCase):
         )
 
         # only one partition
-        l = SPNHadamardLayer(
+        l = HadamardLayer(
             child_partitions=[
                 [
                     DummyNode(Scope([1, 3])),
@@ -71,15 +60,15 @@ class TestNode(unittest.TestCase):
         )
 
         # ----- no child partitions -----
-        self.assertRaises(ValueError, SPNHadamardLayer, [])
+        self.assertRaises(ValueError, HadamardLayer, [])
 
         # ----- empty partition -----
-        self.assertRaises(ValueError, SPNHadamardLayer, [[]])
+        self.assertRaises(ValueError, HadamardLayer, [[]])
 
         # ----- scopes inside partition differ -----
         self.assertRaises(
             ValueError,
-            SPNHadamardLayer,
+            HadamardLayer,
             [
                 [DummyNode(Scope([0]))],
                 [DummyNode(Scope([1])), DummyNode(Scope([2]))],
@@ -89,7 +78,7 @@ class TestNode(unittest.TestCase):
         # ----- partitions of non-pair-wise disjoint scopes -----
         self.assertRaises(
             ValueError,
-            SPNHadamardLayer,
+            HadamardLayer,
             [
                 [DummyNode(Scope([0]))],
                 [DummyNode(Scope([0])), DummyNode(Scope([0]))],
@@ -99,7 +88,7 @@ class TestNode(unittest.TestCase):
         # ----- invalid total outputs of partitions -----
         self.assertRaises(
             ValueError,
-            SPNHadamardLayer,
+            HadamardLayer,
             [
                 [DummyNode(Scope([0])), DummyNode(Scope([0]))],
                 [
@@ -128,7 +117,7 @@ class TestNode(unittest.TestCase):
             ],
         ]
 
-        l = SPNHadamardLayer(child_partitions=input_partitions)
+        l = HadamardLayer(child_partitions=input_partitions)
         # should marginalize entire module
         l_marg = marginalize(l, [0, 1, 2, 3, 4])
         self.assertTrue(l_marg is None)
@@ -151,14 +140,14 @@ class TestNode(unittest.TestCase):
         )
 
         # ----- pruning -----
-        l = SPNHadamardLayer(child_partitions=input_partitions[:2])
+        l = HadamardLayer(child_partitions=input_partitions[:2])
 
         l_marg = marginalize(l, [1, 3], prune=True)
         self.assertTrue(isinstance(l_marg, DummyNode))
 
     def test_hadamard_layer_backend_conversion_1(self):
 
-        torch_hadamard_layer = SPNHadamardLayer(
+        torch_hadamard_layer = HadamardLayer(
             child_partitions=[
                 [Gaussian(Scope([0])), Gaussian(Scope([0]))],
                 [Gaussian(Scope([1]))],
@@ -171,7 +160,7 @@ class TestNode(unittest.TestCase):
 
     def test_hadamard_layer_backend_conversion_2(self):
 
-        base_hadamard_layer = BaseSPNHadamardLayer(
+        base_hadamard_layer = BaseHadamardLayer(
             child_partitions=[
                 [BaseGaussian(Scope([0])), BaseGaussian(Scope([0]))],
                 [BaseGaussian(Scope([1]))],

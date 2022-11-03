@@ -6,7 +6,7 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.spn.layers.sum_layer import SPNSumLayer
+from spflow.torch.structure.spn.layers.sum_layer import SumLayer
 
 from typing import Optional
 import numpy as np
@@ -15,7 +15,7 @@ import torch
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
-    sum_layer: SPNSumLayer,
+    sum_layer: SumLayer,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,

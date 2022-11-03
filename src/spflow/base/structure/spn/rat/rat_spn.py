@@ -14,25 +14,25 @@ from spflow.base.structure.spn.rat.region_graph import (
     Region,
 )
 from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode, marginalize
+from spflow.base.structure.spn.nodes.sum_node import SumNode, marginalize
 from spflow.base.structure.spn.nodes.cond_sum_node import (
-    SPNCondSumNode,
+    CondSumNode,
     marginalize,
 )
 from spflow.base.structure.spn.layers.sum_layer import (
-    SPNSumLayer,
+    SumLayer,
     marginalize,
 )
 from spflow.base.structure.spn.layers.partition_layer import (
-    SPNPartitionLayer,
+    PartitionLayer,
     marginalize,
 )
 from spflow.base.structure.spn.layers.hadamard_layer import (
-    SPNHadamardLayer,
+    HadamardLayer,
     marginalize,
 )
 from spflow.base.structure.spn.layers.cond_sum_layer import (
-    SPNCondSumLayer,
+    CondSumLayer,
     marginalize,
 )
 from spflow.base.structure.module import Module
@@ -124,9 +124,9 @@ class RatSPN(Module):
             ValueError: Invalid arguments.
         """
 
-        def convert_partition(partition: Partition) -> SPNPartitionLayer:
+        def convert_partition(partition: Partition) -> PartitionLayer:
 
-            return SPNPartitionLayer(
+            return PartitionLayer(
                 child_partitions=[
                     [convert_region(region, n_nodes=self.n_region_nodes)]
                     for region in partition.regions
@@ -135,7 +135,7 @@ class RatSPN(Module):
 
         def convert_region(
             region: Region, n_nodes: int
-        ) -> Union[SPNSumLayer, SPNHadamardLayer, Module]:
+        ) -> Union[SumLayer, HadamardLayer, Module]:
 
             # non-leaf region
             if region.partitions:
@@ -144,9 +144,9 @@ class RatSPN(Module):
                     for partition in region.partitions
                 ]
                 sum_layer = (
-                    SPNCondSumLayer(children=children, n_nodes=n_nodes)
+                    CondSumLayer(children=children, n_nodes=n_nodes)
                     if region.scope.is_conditional()
-                    else SPNSumLayer(children=children, n_nodes=n_nodes)
+                    else SumLayer(children=children, n_nodes=n_nodes)
                 )
                 return sum_layer
             # leaf region
@@ -161,7 +161,7 @@ class RatSPN(Module):
                         [AutoLeaf(signatures)]
                         for signatures in partition_signatures
                     ]
-                    return SPNHadamardLayer(child_partitions=child_partitions)
+                    return HadamardLayer(child_partitions=child_partitions)
                 # create univariate leaf region
                 elif len(region.scope.query) == 1:
                     signatures = [
@@ -183,9 +183,9 @@ class RatSPN(Module):
                 region_graph.root_region, n_nodes=self.n_root_nodes
             )
             self.root_node = (
-                SPNCondSumNode(children=[self.root_region])
+                CondSumNode(children=[self.root_region])
                 if region_graph.scope.is_conditional()
-                else SPNSumNode(children=[self.root_region])
+                else SumNode(children=[self.root_region])
             )
         else:
             self.root_region = None

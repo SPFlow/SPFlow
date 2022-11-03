@@ -1,25 +1,13 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.log_normal import (
-    LogNormal as BaseLogNormal,
-)
-from spflow.base.inference.nodes.leaves.parametric.log_normal import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.log_normal import (
-    LogNormal,
-    toBase,
-    toTorch,
-)
-from spflow.torch.inference.nodes.leaves.parametric.log_normal import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import likelihood
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import LogNormal as BaseLogNormal
+from spflow.base.inference import log_likelihood, likelihood
+from spflow.torch.structure.spn import LogNormal
+from spflow.torch.inference import log_likelihood, likelihood
 
 import torch
 import numpy as np
-
-import random
 import unittest
+import random
 
 
 class TestLogNormal(unittest.TestCase):

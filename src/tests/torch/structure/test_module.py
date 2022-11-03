@@ -1,5 +1,5 @@
-from spflow.meta.data.scope import Scope
-from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.meta.data import Scope
+from spflow.torch.structure.spn import SumNode
 from .spn.nodes.dummy_node import DummyNode
 from .dummy_module import DummyModule, DummyNestedModule
 import unittest
@@ -8,7 +8,7 @@ import unittest
 class TestNode(unittest.TestCase):
     def test_input_to_output_id_1(self):
 
-        s = SPNSumNode(
+        s = SumNode(
             [
                 DummyNode(Scope([0])),
                 DummyNode(Scope([0])),
@@ -26,7 +26,7 @@ class TestNode(unittest.TestCase):
 
     def test_input_to_output_id_2(self):
 
-        s = SPNSumNode(
+        s = SumNode(
             [
                 DummyModule(n=2, scope=Scope([0])),
                 DummyNode(Scope([0])),

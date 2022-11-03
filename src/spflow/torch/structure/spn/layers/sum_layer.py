@@ -13,7 +13,7 @@ from spflow.torch.structure.spn.nodes.sum_node import (
     proj_convex_to_real,
 )
 from spflow.base.structure.spn.layers.sum_layer import (
-    SPNSumLayer as BaseSPNSumLayer,
+    SumLayer as BaseSumLayer,
 )
 
 from typing import List, Union, Optional, Iterable
@@ -22,7 +22,7 @@ import numpy as np
 import torch
 
 
-class SPNSumLayer(Module):
+class SumLayer(Module):
     r"""Layer representing multiple SPN-like sum nodes over all children in the 'base' backend.
 
     Represents multiple convex combinations of its children over the same scope.
@@ -54,7 +54,7 @@ class SPNSumLayer(Module):
         ] = None,
         **kwargs,
     ) -> None:
-        r"""Initializes ``SPNSumLayer`` object.
+        r"""Initializes ``SumLayer`` object.
 
         Args:
             n_nodes:
@@ -74,15 +74,15 @@ class SPNSumLayer(Module):
         """
         if n_nodes < 1:
             raise ValueError(
-                "Number of nodes for 'SPNSumLayer' must be greater of equal to 1."
+                "Number of nodes for 'SumLayer' must be greater of equal to 1."
             )
 
         if not children:
             raise ValueError(
-                "'SPNSumLayer' requires at least one child to be specified."
+                "'SumLayer' requires at least one child to be specified."
             )
 
-        super(SPNSumLayer, self).__init__(children=children, **kwargs)
+        super(SumLayer, self).__init__(children=children, **kwargs)
 
         self._n_out = n_nodes
         self.n_in = sum(child.n_out for child in self.children())
@@ -107,7 +107,7 @@ class SPNSumLayer(Module):
                 else:
                     if not scope.equal_query(s):
                         raise ValueError(
-                            f"'SPNSumLayer' requires child scopes to have the same query variables."
+                            f"'SumLayer' requires child scopes to have the same query variables."
                         )
 
                 scope = scope.join(s)
@@ -152,17 +152,17 @@ class SPNSumLayer(Module):
             values = torch.tensor(values).type(torch.get_default_dtype())
         if values.ndim != 1 and values.ndim != 2:
             raise ValueError(
-                f"Torch tensor of weight values for 'SPNSumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional."
+                f"Torch tensor of weight values for 'SumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional."
             )
         if not torch.all(values > 0):
-            raise ValueError("Weights for 'SPNSumLayer' must be all positive.")
+            raise ValueError("Weights for 'SumLayer' must be all positive.")
         if not torch.allclose(values.sum(dim=-1), torch.tensor(1.0)):
             raise ValueError(
-                "Weights for 'SPNSumLayer' must sum up to one in last dimension."
+                "Weights for 'SumLayer' must sum up to one in last dimension."
             )
         if not (values.shape[-1] == self.n_in):
             raise ValueError(
-                "Number of weights for 'SPNSumLayer' in last dimension does not match total number of child outputs."
+                "Number of weights for 'SumLayer' in last dimension does not match total number of child outputs."
             )
 
         # same weights for all sum nodes
@@ -182,17 +182,17 @@ class SPNSumLayer(Module):
             # incorrect number of specified weights
             else:
                 raise ValueError(
-                    f"Incorrect number of weights for 'SPNSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
+                    f"Incorrect number of weights for 'SumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
                 )
 
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    layer: SPNSumLayer,
+    layer: SumLayer,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[None, SPNSumLayer]:
+) -> Union[None, SumLayer]:
     """Structural marginalization for SPN-like sum layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -240,7 +240,7 @@ def marginalize(
             if marg_child:
                 marg_children.append(marg_child)
 
-        return SPNSumLayer(
+        return SumLayer(
             n_nodes=layer.n_out, children=marg_children, weights=layer.weights
         )
     else:
@@ -249,9 +249,9 @@ def marginalize(
 
 @dispatch(memoize=True)  # type: ignore
 def toBase(
-    sum_layer: SPNSumLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseSPNSumLayer:
-    """Conversion for ``SPNSumLayer`` from ``torch`` backend to ``base`` backend.
+    sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> BaseSumLayer:
+    """Conversion for ``SumLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
         sum_layer:
@@ -260,7 +260,7 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseSPNSumLayer(
+    return BaseSumLayer(
         n_nodes=sum_layer.n_out,
         children=[
             toBase(child, dispatch_ctx=dispatch_ctx)
@@ -272,9 +272,9 @@ def toBase(
 
 @dispatch(memoize=True)  # type: ignore
 def toTorch(
-    sum_layer: BaseSPNSumLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> SPNSumLayer:
-    """Conversion for ``SPNSumLayer`` from ``base`` backend to ``torch`` backend.
+    sum_layer: BaseSumLayer, dispatch_ctx: Optional[DispatchContext] = None
+) -> SumLayer:
+    """Conversion for ``SumLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
         sum_layer:
@@ -283,7 +283,7 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return SPNSumLayer(
+    return SumLayer(
         n_nodes=sum_layer.n_out,
         children=[
             toTorch(child, dispatch_ctx=dispatch_ctx)

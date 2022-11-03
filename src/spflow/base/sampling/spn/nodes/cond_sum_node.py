@@ -10,8 +10,8 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.spn.nodes.cond_sum_node import SPNCondSumNode
-from spflow.base.inference.spn.nodes.cond_node import log_likelihood
+from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode
+from spflow.base.inference.spn.nodes.cond_sum_node import log_likelihood
 from spflow.base.sampling.module import sample
 
 import numpy as np
@@ -20,7 +20,7 @@ from typing import Optional
 
 @dispatch  # type: ignore
 def sample(
-    node: SPNCondSumNode,
+    node: CondSumNode,
     data: np.ndarray,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,

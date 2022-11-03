@@ -1,19 +1,7 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.layers.leaves.parametric.gamma import GammaLayer
-from spflow.base.inference.layers.leaves.parametric.gamma import log_likelihood
-from spflow.base.sampling.layers.leaves.parametric.gamma import sample
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.inference.spn.nodes.sum_node import log_likelihood
-from spflow.base.sampling.spn.nodes.sum_node import sample
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.inference.spn.nodes.product_node import log_likelihood
-from spflow.base.sampling.spn.nodes.product_node import sample
-from spflow.base.structure.nodes.leaves.parametric.gamma import Gamma
-from spflow.base.inference.nodes.leaves.parametric.gamma import log_likelihood
-from spflow.base.sampling.nodes.leaves.parametric.gamma import sample
-from spflow.base.inference.module import log_likelihood
-from spflow.base.sampling.module import sample
-
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import SumNode, ProductNode, Gamma, GammaLayer
+from spflow.base.inference import log_likelihood
+from spflow.base.sampling import sample
 import numpy as np
 import random
 import unittest
@@ -29,13 +17,13 @@ class TestNode(unittest.TestCase):
         gamma_layer = GammaLayer(
             scope=Scope([0]), alpha=[0.8, 0.3], beta=[1.3, 0.4], n_nodes=2
         )
-        s1 = SPNSumNode(children=[gamma_layer], weights=[0.3, 0.7])
+        s1 = SumNode(children=[gamma_layer], weights=[0.3, 0.7])
 
         gamma_nodes = [
             Gamma(Scope([0]), alpha=0.8, beta=1.3),
             Gamma(Scope([0]), alpha=0.3, beta=0.4),
         ]
-        s2 = SPNSumNode(children=gamma_nodes, weights=[0.3, 0.7])
+        s2 = SumNode(children=gamma_nodes, weights=[0.3, 0.7])
 
         layer_samples = sample(s1, 10000)
         nodes_samples = sample(s2, 10000)
@@ -57,13 +45,13 @@ class TestNode(unittest.TestCase):
         gamma_layer = GammaLayer(
             scope=[Scope([0]), Scope([1])], alpha=[0.8, 0.3], beta=[1.3, 0.4]
         )
-        p1 = SPNProductNode(children=[gamma_layer])
+        p1 = ProductNode(children=[gamma_layer])
 
         gamma_nodes = [
             Gamma(Scope([0]), alpha=0.8, beta=1.3),
             Gamma(Scope([1]), alpha=0.3, beta=0.4),
         ]
-        p2 = SPNProductNode(children=gamma_nodes)
+        p2 = ProductNode(children=gamma_nodes)
 
         layer_samples = sample(p1, 10000)
         nodes_samples = sample(p2, 10000)

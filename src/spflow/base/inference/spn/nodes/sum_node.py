@@ -6,7 +6,7 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
+from spflow.base.structure.spn.nodes.sum_node import SumNode
 
 from scipy.special import logsumexp  # type: ignore
 from typing import Optional
@@ -15,7 +15,7 @@ import numpy as np
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
-    sum_node: SPNSumNode,
+    sum_node: SumNode,
     data: np.ndarray,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,

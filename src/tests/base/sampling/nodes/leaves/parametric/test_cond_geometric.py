@@ -1,15 +1,11 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.sampling_context import SamplingContext
-from spflow.base.structure.nodes.leaves.parametric.cond_geometric import (
-    CondGeometric,
-)
-from spflow.base.sampling.nodes.leaves.parametric.cond_geometric import sample
-from spflow.base.sampling.module import sample
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
+from spflow.base.structure.spn import CondGeometric
+from spflow.base.sampling import sample
 
 import numpy as np
-import random
-
 import unittest
+import random
 
 
 class TestCondGeometric(unittest.TestCase):

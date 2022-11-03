@@ -1,8 +1,8 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.layers.leaves.parametric.binomial import (
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import (
     BinomialLayer,
 )
-from spflow.base.learning.layers.leaves.parametric.binomial import (
+from spflow.base.learning import (
     maximum_likelihood_estimation,
 )
 

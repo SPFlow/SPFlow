@@ -1,24 +1,12 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.nodes.leaves.parametric.cond_gaussian import (
-    CondGaussian as BaseCondGaussian,
-)
-from spflow.base.inference.nodes.leaves.parametric.cond_gaussian import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.cond_gaussian import (
-    CondGaussian,
-    toBase,
-    toTorch,
-)
-from spflow.torch.inference.nodes.leaves.parametric.cond_gaussian import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import likelihood
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.base.structure.spn import CondGaussian as BaseCondGaussian
+from spflow.base.inference import log_likelihood
+from spflow.torch.structure.spn import CondGaussian
+from spflow.torch.inference import log_likelihood, likelihood
 
 import torch
 import numpy as np
-
 import random
 import unittest
 

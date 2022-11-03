@@ -9,13 +9,13 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.base.structure.module import Module
 from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
+from spflow.base.structure.spn.nodes.product_node import ProductNode
 
 from typing import Optional, Iterable, Union, List
 from copy import deepcopy
 
 
-class SPNProductLayer(NestedModule):
+class ProductLayer(NestedModule):
     r"""Layer representing multiple SPN-like product nodes over all children in the ``base`` backend.
 
     Represents multiple products of its children over pair-wise disjoint scopes.
@@ -28,11 +28,11 @@ class SPNProductLayer(NestedModule):
         scopes_out:
             List of scopes representing the output scopes.
         nodes:
-            List of ``SPNProductNode`` objects for the nodes in this layer.
+            List of ``ProductNode`` objects for the nodes in this layer.
     """
 
     def __init__(self, n_nodes: int, children: List[Module], **kwargs) -> None:
-        r"""Initializes ``SPNProductLayer`` object.
+        r"""Initializes ``ProductLayer`` object.
 
         Args:
             n_nodes:
@@ -45,24 +45,24 @@ class SPNProductLayer(NestedModule):
         """
         if n_nodes < 1:
             raise ValueError(
-                "Number of nodes for 'SPNProductLayer' must be greater of equal to 1."
+                "Number of nodes for 'ProductLayer' must be greater of equal to 1."
             )
 
         self._n_out = n_nodes
 
         if len(children) == 0:
             raise ValueError(
-                "'SPNProductLayer' requires at least one child to be specified."
+                "'ProductLayer' requires at least one child to be specified."
             )
 
-        super(SPNProductLayer, self).__init__(children=children, **kwargs)
+        super(ProductLayer, self).__init__(children=children, **kwargs)
 
         # create input placeholder
         ph = self.create_placeholder(
             list(range(sum(child.n_out for child in self.children)))
         )
         # create prodcut nodes
-        self.nodes = [SPNProductNode(children=[ph]) for _ in range(n_nodes)]
+        self.nodes = [ProductNode(children=[ph]) for _ in range(n_nodes)]
 
         self.scope = self.nodes[0].scope
 
@@ -79,11 +79,11 @@ class SPNProductLayer(NestedModule):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    layer: SPNProductLayer,
+    layer: ProductLayer,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[SPNProductLayer, Module, None]:
+) -> Union[ProductLayer, Module, None]:
     """Structural marginalization for SPN-like product layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -137,6 +137,6 @@ def marginalize(
         if len(marg_children) == 1 and marg_children[0].n_out == 1 and prune:
             return marg_children[0]
         else:
-            return SPNProductLayer(n_nodes=layer.n_out, children=marg_children)
+            return ProductLayer(n_nodes=layer.n_out, children=marg_children)
     else:
         return deepcopy(layer)

@@ -1,8 +1,8 @@
-from spflow.base.structure.spn.layers.partition_layer import (
-    SPNPartitionLayer,
+from spflow.base.structure.spn import (
+    PartitionLayer,
     marginalize,
 )
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope
 from ..nodes.dummy_node import DummyNode
 import numpy as np
 import unittest
@@ -25,7 +25,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNPartitionLayer(child_partitions=input_partitions)
+        l = PartitionLayer(child_partitions=input_partitions)
         # make sure number of creates nodes is correct
         self.assertEqual(
             len(l.nodes),
@@ -52,15 +52,15 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(node.children[0].input_ids == indices)
 
         # ----- no child partitions -----
-        self.assertRaises(ValueError, SPNPartitionLayer, [])
+        self.assertRaises(ValueError, PartitionLayer, [])
 
         # ----- empty partition -----
-        self.assertRaises(ValueError, SPNPartitionLayer, [[]])
+        self.assertRaises(ValueError, PartitionLayer, [[]])
 
         # ----- scopes inside partition differ -----
         self.assertRaises(
             ValueError,
-            SPNPartitionLayer,
+            PartitionLayer,
             [
                 [DummyNode(Scope([0]))],
                 [DummyNode(Scope([1])), DummyNode(Scope([2]))],
@@ -70,7 +70,7 @@ class TestLayer(unittest.TestCase):
         # ----- partitions of non-pair-wise disjoint scopes -----
         self.assertRaises(
             ValueError,
-            SPNPartitionLayer,
+            PartitionLayer,
             [
                 [DummyNode(Scope([0]))],
                 [DummyNode(Scope([0])), DummyNode(Scope([0]))],
@@ -90,7 +90,7 @@ class TestLayer(unittest.TestCase):
             [DummyNode(Scope([2]))],
         ]
 
-        l = SPNPartitionLayer(child_partitions=input_partitions)
+        l = PartitionLayer(child_partitions=input_partitions)
         # should marginalize entire module
         l_marg = marginalize(l, [0, 1, 2, 3])
         self.assertTrue(l_marg is None)
@@ -116,7 +116,7 @@ class TestLayer(unittest.TestCase):
         )
 
         # ----- pruning -----
-        l = SPNPartitionLayer(child_partitions=input_partitions[1:])
+        l = PartitionLayer(child_partitions=input_partitions[1:])
 
         l_marg = marginalize(l, [1, 3], prune=True)
         self.assertTrue(isinstance(l_marg, DummyNode))

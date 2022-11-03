@@ -1,11 +1,9 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.torch.learning.spn.nodes.sum_node import em
-from spflow.torch.inference.spn.nodes.product_node import log_likelihood
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure.spn import SumNode
+from spflow.torch.inference import log_likelihood
+from spflow.torch.learning import em
 from ...structure.spn.nodes.dummy_node import DummyLeaf, log_likelihood, em
-from typing import Optional
 import torch
 import numpy as np
 import unittest
@@ -30,7 +28,7 @@ class TestNode(unittest.TestCase):
 
         l1 = DummyLeaf(Scope([0]), loc=2.0)
         l2 = DummyLeaf(Scope([0]), loc=-2.0)
-        sum_node = SPNSumNode([l1, l2], weights=[0.5, 0.5])
+        sum_node = SumNode([l1, l2], weights=[0.5, 0.5])
 
         data = torch.tensor(
             np.vstack(

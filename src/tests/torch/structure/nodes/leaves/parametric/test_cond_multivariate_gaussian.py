@@ -1,4 +1,4 @@
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.autoleaf import AutoLeaf
@@ -6,7 +6,7 @@ from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian as BaseCondMultivariateGaussian,
 )
-from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
+from spflow.torch.structure.spn.nodes.product_node import ProductNode
 from spflow.torch.structure.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
     toBase,

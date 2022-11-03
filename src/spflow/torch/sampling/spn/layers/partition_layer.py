@@ -10,7 +10,7 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.spn.layers.partition_layer import SPNPartitionLayer
+from spflow.torch.structure.spn.layers.partition_layer import PartitionLayer
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 
@@ -21,7 +21,7 @@ from typing import Optional
 
 @dispatch  # type: ignore
 def sample(
-    partition_layer: SPNPartitionLayer,
+    partition_layer: PartitionLayer,
     data: torch.Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
@@ -60,9 +60,7 @@ def sample(
 
     # all nodes in sum layer have same scope
     if any([len(out) != 1 for out in sampling_ctx.output_ids]):
-        raise ValueError(
-            "'SPNPartitionLayer only allows single output sampling."
-        )
+        raise ValueError("'PartitionLayer only allows single output sampling.")
 
     # TODO: precompute indices
     partition_indices = torch.tensor_split(

@@ -1,19 +1,8 @@
-from spflow.torch.structure.layers.leaves.parametric.exponential import (
-    ExponentialLayer,
-    marginalize,
-    toTorch,
-    toBase,
-)
-from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.torch.structure.nodes.leaves.parametric.exponential import (
-    Exponential,
-)
-from spflow.base.structure.layers.leaves.parametric.exponential import (
-    ExponentialLayer as BaseExponentialLayer,
-)
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
+from spflow.torch.structure import AutoLeaf
+from spflow.torch.structure.spn import Exponential, ExponentialLayer
+from spflow.torch.structure import marginalize, toTorch, toBase
+from spflow.base.structure.spn import ExponentialLayer as BaseExponentialLayer
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 import torch
 import numpy as np
 import unittest

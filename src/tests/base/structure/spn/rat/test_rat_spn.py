@@ -1,7 +1,6 @@
 import unittest
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.autoleaf import (
     AutoLeaf,
     Bernoulli,
@@ -49,25 +48,25 @@ from spflow.base.structure.autoleaf import (
     CondNegativeBinomialLayer,
     CondPoissonLayer,
 )
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode, marginalize
+from spflow.base.structure.spn.nodes.sum_node import SumNode, marginalize
 from spflow.base.structure.spn.nodes.cond_sum_node import (
-    SPNCondSumNode,
+    CondSumNode,
     marginalize,
 )
 from spflow.base.structure.spn.layers.cond_sum_layer import (
-    SPNCondSumLayer,
+    CondSumLayer,
     marginalize,
 )
 from spflow.base.structure.spn.layers.sum_layer import (
-    SPNSumLayer,
+    SumLayer,
     marginalize,
 )
 from spflow.base.structure.spn.layers.partition_layer import (
-    SPNPartitionLayer,
+    PartitionLayer,
     marginalize,
 )
 from spflow.base.structure.spn.layers.hadamard_layer import (
-    SPNHadamardLayer,
+    HadamardLayer,
     marginalize,
 )
 from spflow.base.structure.spn.rat.rat_spn import RatSPN, marginalize
@@ -137,13 +136,13 @@ def get_rat_spn_properties(rat_spn: RatSPN):
         layer = layers.pop()
 
         # internal region
-        if isinstance(layer, (SPNSumLayer, SPNCondSumLayer)):
+        if isinstance(layer, (SumLayer, CondSumLayer)):
             n_sum_nodes += layer.n_out
         # partition
-        elif isinstance(layer, SPNPartitionLayer):
+        elif isinstance(layer, PartitionLayer):
             n_product_nodes += layer.n_out
         # multivariate leaf region
-        elif isinstance(layer, SPNHadamardLayer):
+        elif isinstance(layer, HadamardLayer):
             n_product_nodes += layer.n_out
         # leaf node
         elif isinstance(layer, leaf_node_classes):
@@ -424,8 +423,8 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        self.assertTrue(isinstance(rat_spn.root_node, SPNCondSumNode))
-        self.assertTrue(isinstance(rat_spn.root_region, SPNCondSumLayer))
+        self.assertTrue(isinstance(rat_spn.root_node, CondSumNode))
+        self.assertTrue(isinstance(rat_spn.root_region, CondSumLayer))
 
 
 if __name__ == "__main__":

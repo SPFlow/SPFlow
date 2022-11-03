@@ -1,4 +1,4 @@
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch_context import DispatchContext

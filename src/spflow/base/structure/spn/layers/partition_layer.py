@@ -9,7 +9,7 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.base.structure.module import Module
 from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
+from spflow.base.structure.spn.nodes.product_node import ProductNode
 
 from typing import Optional, Union, Iterable, List
 from copy import deepcopy
@@ -17,7 +17,7 @@ import numpy as np
 import itertools
 
 
-class SPNPartitionLayer(NestedModule):
+class PartitionLayer(NestedModule):
     """Layer representing multiple SPN-like product nodes in the ``base`` backend as combinations of inputs from different partitions.
 
     A partition is a group of inputs over the same scope. Different partitions have pair-wise disjoint scopes.
@@ -26,7 +26,7 @@ class SPNPartitionLayer(NestedModule):
 
     Example:
 
-        layer = SPNPartitionLayer([[node1, node2], [node3], [node4, node5, node6]])
+        layer = PartitionLayer([[node1, node2], [node3], [node4, node5, node6]])
 
         In this example the layer will have 2*1*3=6 product nodes over the following inputs (in this order):
 
@@ -45,7 +45,7 @@ class SPNPartitionLayer(NestedModule):
         scopes_out:
             List of scopes representing the output scopes.
         nodes:
-            List of ``SPNProductNode`` objects for the nodes in this layer.
+            List of ``ProductNode`` objects for the nodes in this layer.
         modules_per_partition:
             List of integers keeping track of the number of total inputs each input partition represents.
         partition_scopes:
@@ -53,7 +53,7 @@ class SPNPartitionLayer(NestedModule):
     """
 
     def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
-        r"""Initializes ``SPNPartitionLayer`` object.
+        r"""Initializes ``PartitionLayer`` object.
 
         Args:
             child_partitions:
@@ -64,7 +64,7 @@ class SPNPartitionLayer(NestedModule):
             ValueError: Invalid arguments.
         """
         if len(child_partitions) == 0:
-            raise ValueError("No partitions for 'SPNPartitionLayer' specified.")
+            raise ValueError("No partitions for 'PartitionLayer' specified.")
 
         scope = Scope()
         partition_sizes = []
@@ -76,7 +76,7 @@ class SPNPartitionLayer(NestedModule):
             # check if partition is empty
             if len(partition) == 0:
                 raise ValueError(
-                    "All partitions for 'SPNPartitionLayer' must be non-empty"
+                    "All partitions for 'PartitionLayer' must be non-empty"
                 )
 
             self.modules_per_partition.append(len(partition))
@@ -113,7 +113,7 @@ class SPNPartitionLayer(NestedModule):
                     "Scopes of partitions must be pair-wise disjoint."
                 )
 
-        super(SPNPartitionLayer, self).__init__(
+        super(PartitionLayer, self).__init__(
             children=sum(child_partitions, []), **kwargs
         )
 
@@ -125,7 +125,7 @@ class SPNPartitionLayer(NestedModule):
             *np.split(list(range(self.n_in)), np.cumsum(partition_sizes[:-1]))
         ):
             ph = self.create_placeholder(input_ids)
-            self.nodes.append(SPNProductNode(children=[ph]))
+            self.nodes.append(ProductNode(children=[ph]))
 
         self._n_out = len(self.nodes)
         self.scope = scope
@@ -143,11 +143,11 @@ class SPNPartitionLayer(NestedModule):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    layer: SPNPartitionLayer,
+    layer: PartitionLayer,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[SPNPartitionLayer, Module, None]:
+) -> Union[PartitionLayer, Module, None]:
     """Structural marginalization for SPN-like partition layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -229,6 +229,6 @@ def marginalize(
         ):
             return marg_partitions[0][0]
         else:
-            return SPNPartitionLayer(child_partitions=marg_partitions)
+            return PartitionLayer(child_partitions=marg_partitions)
     else:
         return deepcopy(layer)

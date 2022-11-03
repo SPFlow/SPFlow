@@ -1,22 +1,12 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.layers.leaves.parametric.cond_bernoulli import (
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.base.inference import log_likelihood, likelihood
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    CondBernoulli,
     CondBernoulliLayer,
 )
-from spflow.base.inference.layers.leaves.parametric.cond_bernoulli import (
-    log_likelihood,
-)
-from spflow.base.structure.nodes.leaves.parametric.cond_bernoulli import (
-    CondBernoulli,
-)
-from spflow.base.inference.nodes.leaves.parametric.cond_bernoulli import (
-    log_likelihood,
-)
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.inference.spn.nodes.sum_node import log_likelihood
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.inference.spn.nodes.product_node import log_likelihood
-from spflow.base.inference.module import log_likelihood, likelihood
 import numpy as np
 import unittest
 
@@ -90,13 +80,13 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"p": [0.8, 0.3]},
             n_nodes=2,
         )
-        s1 = SPNSumNode(children=[bernoulli_layer], weights=[0.3, 0.7])
+        s1 = SumNode(children=[bernoulli_layer], weights=[0.3, 0.7])
 
         bernoulli_nodes = [
             CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.8}),
             CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.3}),
         ]
-        s2 = SPNSumNode(children=bernoulli_nodes, weights=[0.3, 0.7])
+        s2 = SumNode(children=bernoulli_nodes, weights=[0.3, 0.7])
 
         data = np.array([[0], [1], [0]])
 
@@ -110,13 +100,13 @@ class TestNode(unittest.TestCase):
             scope=[Scope([0], [2]), Scope([1], [2])],
             cond_f=lambda data: {"p": [0.8, 0.3]},
         )
-        p1 = SPNProductNode(children=[bernoulli_layer])
+        p1 = ProductNode(children=[bernoulli_layer])
 
         bernoulli_nodes = [
             CondBernoulli(Scope([0], [2]), cond_f=lambda data: {"p": 0.8}),
             CondBernoulli(Scope([1], [2]), cond_f=lambda data: {"p": 0.3}),
         ]
-        p2 = SPNProductNode(children=bernoulli_nodes)
+        p2 = ProductNode(children=bernoulli_nodes)
 
         data = np.array([[0, 1], [1, 1], [0, 0]])
 

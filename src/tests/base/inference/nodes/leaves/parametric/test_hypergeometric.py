@@ -1,14 +1,9 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.hypergeometric import (
-    Hypergeometric,
-)
-from spflow.base.inference.nodes.leaves.parametric.hypergeometric import (
-    log_likelihood,
-)
-from spflow.base.inference.module import likelihood
-
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import Hypergeometric
+from spflow.base.inference import log_likelihood, likelihood
 import numpy as np
 import unittest
+import random
 
 
 class TestHypergeometric(unittest.TestCase):

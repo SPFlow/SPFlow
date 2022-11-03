@@ -1,17 +1,10 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
-from spflow.torch.inference.spn.nodes.sum_node import log_likelihood
-from spflow.torch.inference.spn.nodes.product_node import log_likelihood
-from spflow.torch.learning.spn.nodes.sum_node import em
-from spflow.torch.learning.spn.nodes.product_node import em
-from spflow.torch.structure.layers.leaves.parametric.gamma import GammaLayer
-from spflow.torch.learning.layers.leaves.parametric.gamma import (
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure.spn import SumNode, ProductNode, GammaLayer
+from spflow.torch.inference import log_likelihood
+from spflow.torch.learning import (
+    em,
     maximum_likelihood_estimation,
-)
-from spflow.torch.inference.layers.leaves.parametric.gamma import log_likelihood
-from spflow.torch.learning.expectation_maximization.expectation_maximization import (
     expectation_maximization,
 )
 
@@ -252,7 +245,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         layer = GammaLayer([Scope([0]), Scope([1])])
-        prod_node = SPNProductNode([layer])
+        prod_node = ProductNode([layer])
 
         data = torch.tensor(
             np.hstack(
@@ -290,7 +283,7 @@ class TestNode(unittest.TestCase):
         layer = GammaLayer(
             [Scope([0]), Scope([0])], alpha=[1.2, 0.6], beta=[0.5, 1.9]
         )
-        sum_node = SPNSumNode([layer], weights=[0.5, 0.5])
+        sum_node = SumNode([layer], weights=[0.5, 0.5])
 
         data = torch.tensor(
             np.vstack(

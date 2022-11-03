@@ -1,7 +1,6 @@
 from typing import Optional
-from spflow.torch.structure.module import Module
-from spflow.torch.structure.nested_module import NestedModule
-from spflow.meta.data.scope import Scope
+from spflow.torch.structure import Module, NestedModule
+from spflow.meta.data import Scope
 from typing import List
 
 

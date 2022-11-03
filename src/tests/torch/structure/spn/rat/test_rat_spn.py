@@ -1,7 +1,7 @@
 import unittest
 import torch
 import numpy as np
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.autoleaf import (
@@ -52,29 +52,29 @@ from spflow.torch.structure.autoleaf import (
     CondPoissonLayer,
 )
 from spflow.torch.structure.spn.layers.sum_layer import (
-    SPNSumLayer,
+    SumLayer,
     marginalize,
 )
 from spflow.torch.structure.spn.layers.partition_layer import (
-    SPNPartitionLayer,
+    PartitionLayer,
     marginalize,
 )
 from spflow.torch.structure.spn.layers.hadamard_layer import (
-    SPNHadamardLayer,
+    HadamardLayer,
     marginalize,
 )
 from spflow.torch.structure.spn.layers.cond_sum_layer import (
-    SPNCondSumLayer,
+    CondSumLayer,
     marginalize,
 )
 from spflow.torch.structure.spn.nodes.sum_node import (
-    SPNSumNode,
+    SumNode,
     marginalize,
     toBase,
     toTorch,
 )
 from spflow.torch.structure.spn.nodes.cond_sum_node import (
-    SPNCondSumNode,
+    CondSumNode,
     marginalize,
     toBase,
     toTorch,
@@ -88,16 +88,16 @@ from spflow.torch.structure.spn.rat.rat_spn import (
 from spflow.base.structure.spn.rat.region_graph import random_region_graph
 from spflow.base.structure.spn.rat.rat_spn import RatSPN as BaseRatSPN
 from spflow.base.structure.spn.nodes.sum_node import (
-    SPNSumNode as BaseSPNSumNode,
+    SumNode as BaseSumNode,
 )
 from spflow.base.structure.spn.layers.sum_layer import (
-    SPNSumLayer as BaseSPNSumLayer,
+    SumLayer as BaseSumLayer,
 )
 from spflow.base.structure.spn.layers.partition_layer import (
-    SPNPartitionLayer as BaseSPNPartitionLayer,
+    PartitionLayer as BasePartitionLayer,
 )
 from spflow.base.structure.spn.layers.hadamard_layer import (
-    SPNHadamardLayer as BaseSPNHadamardLayer,
+    HadamardLayer as BaseHadamardLayer,
 )
 from spflow.base.structure.layers.leaves.parametric.gaussian import (
     GaussianLayer as BaseGaussianLayer,
@@ -167,13 +167,13 @@ def get_rat_spn_properties(rat_spn: RatSPN):
         layer = layers.pop()
 
         # internal region
-        if isinstance(layer, (SPNSumLayer, SPNCondSumLayer)):
+        if isinstance(layer, (SumLayer, CondSumLayer)):
             n_sum_nodes += layer.n_out
         # partition
-        elif isinstance(layer, SPNPartitionLayer):
+        elif isinstance(layer, PartitionLayer):
             n_product_nodes += layer.n_out
         # multivariate leaf region
-        elif isinstance(layer, SPNHadamardLayer):
+        elif isinstance(layer, HadamardLayer):
             n_product_nodes += layer.n_out
         # leaf node
         elif isinstance(layer, leaf_node_classes):
@@ -452,8 +452,8 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        self.assertTrue(isinstance(rat_spn.root_node, SPNCondSumNode))
-        self.assertTrue(isinstance(rat_spn.root_region, SPNCondSumLayer))
+        self.assertTrue(isinstance(rat_spn.root_node, CondSumNode))
+        self.assertTrue(isinstance(rat_spn.root_region, CondSumLayer))
 
     def test_rat_spn_backend_conversion_1(self):
 
@@ -500,23 +500,23 @@ class TestRatSpn(unittest.TestCase):
 
             torch_module, base_module = modules.pop()
 
-            if isinstance(torch_module, SPNSumNode):
-                if not isinstance(base_module, BaseSPNSumNode):
+            if isinstance(torch_module, SumNode):
+                if not isinstance(base_module, BaseSumNode):
                     raise TypeError()
                 self.assertTrue(
                     torch.allclose(torch_module.weights, torch_module.weights)
                 )
-            if isinstance(torch_module, SPNSumLayer):
-                if not isinstance(base_module, BaseSPNSumLayer):
+            if isinstance(torch_module, SumLayer):
+                if not isinstance(base_module, BaseSumLayer):
                     raise TypeError()
                 self.assertTrue(
                     torch.allclose(torch_module.weights, torch_module.weights)
                 )
-            if isinstance(torch_module, SPNPartitionLayer):
-                if not isinstance(base_module, BaseSPNPartitionLayer):
+            if isinstance(torch_module, PartitionLayer):
+                if not isinstance(base_module, BasePartitionLayer):
                     raise TypeError()
-            if isinstance(torch_module, SPNHadamardLayer):
-                if not isinstance(base_module, BaseSPNHadamardLayer):
+            if isinstance(torch_module, HadamardLayer):
+                if not isinstance(base_module, BaseHadamardLayer):
                     raise TypeError()
             if isinstance(torch_module, GaussianLayer):
                 if not isinstance(base_module, BaseGaussianLayer):
@@ -575,23 +575,23 @@ class TestRatSpn(unittest.TestCase):
 
             torch_module, base_module = modules.pop()
 
-            if isinstance(torch_module, SPNSumNode):
-                if not isinstance(base_module, BaseSPNSumNode):
+            if isinstance(torch_module, SumNode):
+                if not isinstance(base_module, BaseSumNode):
                     raise TypeError()
                 self.assertTrue(
                     torch.allclose(torch_module.weights, torch_module.weights)
                 )
-            if isinstance(torch_module, SPNSumLayer):
-                if not isinstance(base_module, BaseSPNSumLayer):
+            if isinstance(torch_module, SumLayer):
+                if not isinstance(base_module, BaseSumLayer):
                     raise TypeError()
                 self.assertTrue(
                     torch.allclose(torch_module.weights, torch_module.weights)
                 )
-            if isinstance(torch_module, SPNPartitionLayer):
-                if not isinstance(base_module, BaseSPNPartitionLayer):
+            if isinstance(torch_module, PartitionLayer):
+                if not isinstance(base_module, BasePartitionLayer):
                     raise TypeError()
-            if isinstance(torch_module, SPNHadamardLayer):
-                if not isinstance(base_module, BaseSPNHadamardLayer):
+            if isinstance(torch_module, HadamardLayer):
+                if not isinstance(base_module, BaseHadamardLayer):
                     raise TypeError()
             if isinstance(torch_module, GaussianLayer):
                 if not isinstance(base_module, BaseGaussianLayer):

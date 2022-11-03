@@ -1,20 +1,9 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.leaves.parametric.bernoulli import (
-    BernoulliLayer,
-)
-from spflow.torch.inference.layers.leaves.parametric.bernoulli import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.bernoulli import Bernoulli
-from spflow.torch.inference.nodes.leaves.parametric.bernoulli import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import log_likelihood
+from spflow.meta.data import Scope
+from spflow.torch.structure.spn import Bernoulli, BernoulliLayer
+from spflow.torch.inference import log_likelihood
 import torch
 import numpy as np
 import unittest
-import itertools
 import random
 
 

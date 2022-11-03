@@ -1,20 +1,11 @@
-from spflow.torch.structure.layers.leaves.parametric.cond_log_normal import (
-    CondLogNormalLayer,
-    marginalize,
-    toTorch,
-    toBase,
-)
-from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.torch.structure.nodes.leaves.parametric.cond_log_normal import (
-    CondLogNormal,
-)
-from spflow.base.structure.layers.leaves.parametric.cond_log_normal import (
+from spflow.torch.structure import AutoLeaf
+from spflow.torch.structure.spn import CondLogNormal, CondLogNormalLayer
+from spflow.torch.structure import marginalize, toTorch, toBase
+from spflow.base.structure.spn import (
     CondLogNormalLayer as BaseCondLogNormalLayer,
 )
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.meta.dispatch import DispatchContext
 import torch
 import numpy as np
 import unittest

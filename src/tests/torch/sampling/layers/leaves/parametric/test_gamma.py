@@ -1,21 +1,13 @@
-from spflow.meta.dispatch.sampling_context import SamplingContext
-from spflow.meta.data.scope import Scope
-from spflow.torch.structure.nodes.leaves.parametric.gamma import Gamma
-from spflow.torch.inference.nodes.leaves.parametric.gamma import log_likelihood
-from spflow.torch.sampling.nodes.leaves.parametric.gamma import sample
-from spflow.torch.sampling.spn.nodes.node import sample
-from spflow.torch.structure.layers.leaves.parametric.gamma import GammaLayer
-from spflow.torch.inference.layers.leaves.parametric.gamma import log_likelihood
-from spflow.torch.sampling.layers.leaves.parametric.gamma import sample
-from spflow.torch.sampling.spn.layers.sum_layer import sample
-from spflow.torch.inference.module import log_likelihood
-from spflow.torch.sampling.module import sample
+from spflow.meta.dispatch import SamplingContext
+from spflow.meta.data import Scope
+from spflow.torch.structure.spn import Gamma, GammaLayer
+from spflow.torch.inference import log_likelihood
+from spflow.torch.sampling import sample
 
 import torch
 import numpy as np
 import random
 import unittest
-import itertools
 
 
 class TestNode(unittest.TestCase):

@@ -8,7 +8,7 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.base.structure.spn.layers.partition_layer import (
-    SPNPartitionLayer as BaseSPNPartitionLayer,
+    PartitionLayer as BasePartitionLayer,
 )
 from spflow.torch.structure.module import Module
 
@@ -18,7 +18,7 @@ import numpy as np
 import torch
 
 
-class SPNPartitionLayer(Module):
+class PartitionLayer(Module):
     """Layer representing multiple SPN-like product nodes in the ``torch`` backend as combinations of inputs from different partitions.
 
     A partition is a group of inputs over the same scope. Different partitions have pair-wise disjoint scopes.
@@ -27,7 +27,7 @@ class SPNPartitionLayer(Module):
 
     Example:
 
-        layer = SPNPartitionLayer([[node1, node2], [node3], [node4, node5, node6]])
+        layer = PartitionLayer([[node1, node2], [node3], [node4, node5, node6]])
 
         In this example the layer will have 2*1*3=6 product nodes over the following inputs (in this order):
 
@@ -54,7 +54,7 @@ class SPNPartitionLayer(Module):
     """
 
     def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
-        r"""Initializes ``SPNPartitionLayer`` object.
+        r"""Initializes ``PartitionLayer`` object.
 
         Args:
             child_partitions:
@@ -65,7 +65,7 @@ class SPNPartitionLayer(Module):
             ValueError: Invalid arguments.
         """
         if len(child_partitions) == 0:
-            raise ValueError("No partitions for 'SPNPartitionLayer' specified.")
+            raise ValueError("No partitions for 'PartitionLayer' specified.")
 
         scope = Scope()
         self.partition_sizes = []
@@ -77,7 +77,7 @@ class SPNPartitionLayer(Module):
             # check if partition is empty
             if len(partition) == 0:
                 raise ValueError(
-                    "All partitions for 'SPNPartitionLayer' must be non-empty"
+                    "All partitions for 'PartitionLayer' must be non-empty"
                 )
 
             self.modules_per_partition.append(len(partition))
@@ -114,7 +114,7 @@ class SPNPartitionLayer(Module):
                     "Scopes of partitions must be pair-wise disjoint."
                 )
 
-        super(SPNPartitionLayer, self).__init__(
+        super(PartitionLayer, self).__init__(
             children=sum(child_partitions, []), **kwargs
         )
 
@@ -135,11 +135,11 @@ class SPNPartitionLayer(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    layer: SPNPartitionLayer,
+    layer: PartitionLayer,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[SPNPartitionLayer, Module, None]:
+) -> Union[PartitionLayer, Module, None]:
     """Structural marginalization for SPN-like partition layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -216,17 +216,17 @@ def marginalize(
         if len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and prune:
             return marg_partitions[0][0]
         else:
-            return SPNPartitionLayer(child_partitions=marg_partitions)
+            return PartitionLayer(child_partitions=marg_partitions)
     else:
         return deepcopy(layer)
 
 
 @dispatch(memoize=True)  # type: ignore
 def toBase(
-    partition_layer: SPNPartitionLayer,
+    partition_layer: PartitionLayer,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> BaseSPNPartitionLayer:
-    """Conversion for ``SPNPartitionLayer`` from ``torch`` backend to ``base`` backend.
+) -> BasePartitionLayer:
+    """Conversion for ``PartitionLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
         partition_layer:
@@ -241,7 +241,7 @@ def toBase(
         children, np.cumsum(partition_layer.modules_per_partition[:-1])
     )
 
-    return BaseSPNPartitionLayer(
+    return BasePartitionLayer(
         child_partitions=[
             [toBase(child, dispatch_ctx=dispatch_ctx) for child in partition]
             for partition in partitions
@@ -251,10 +251,10 @@ def toBase(
 
 @dispatch(memoize=True)  # type: ignore
 def toTorch(
-    partition_layer: BaseSPNPartitionLayer,
+    partition_layer: BasePartitionLayer,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> SPNPartitionLayer:
-    """Conversion for ``SPNPartitionLayer`` from ``base`` backend to ``torch`` backend.
+) -> PartitionLayer:
+    """Conversion for ``PartitionLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
         partition_layer:
@@ -269,7 +269,7 @@ def toTorch(
         children, np.cumsum(partition_layer.modules_per_partition[:-1])
     )
 
-    return SPNPartitionLayer(
+    return PartitionLayer(
         child_partitions=[
             [toTorch(child, dispatch_ctx=dispatch_ctx) for child in partition]
             for partition in partitions

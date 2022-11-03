@@ -1,13 +1,7 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.spn.layers.cond_sum_layer import SPNCondSumLayer
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import SumNode, CondSumLayer, Gaussian
 from spflow.base.inference.spn.layers.cond_sum_layer import log_likelihood
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.inference.spn.nodes.sum_node import log_likelihood
-from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.base.inference.nodes.leaves.parametric.gaussian import (
-    log_likelihood,
-)
-from spflow.base.inference.module import log_likelihood
+from spflow.base.inference import log_likelihood
 import numpy as np
 import unittest
 
@@ -21,9 +15,9 @@ class TestNode(unittest.TestCase):
             Gaussian(Scope([0])),
         ]
 
-        layer_spn = SPNSumNode(
+        layer_spn = SumNode(
             children=[
-                SPNCondSumLayer(
+                CondSumLayer(
                     n_nodes=3,
                     children=input_nodes,
                     cond_f=lambda data: {
@@ -38,11 +32,11 @@ class TestNode(unittest.TestCase):
             weights=[0.3, 0.4, 0.3],
         )
 
-        nodes_spn = SPNSumNode(
+        nodes_spn = SumNode(
             children=[
-                SPNSumNode(children=input_nodes, weights=[0.8, 0.1, 0.1]),
-                SPNSumNode(children=input_nodes, weights=[0.2, 0.3, 0.5]),
-                SPNSumNode(children=input_nodes, weights=[0.2, 0.7, 0.1]),
+                SumNode(children=input_nodes, weights=[0.8, 0.1, 0.1]),
+                SumNode(children=input_nodes, weights=[0.2, 0.3, 0.5]),
+                SumNode(children=input_nodes, weights=[0.2, 0.7, 0.1]),
             ],
             weights=[0.3, 0.4, 0.3],
         )

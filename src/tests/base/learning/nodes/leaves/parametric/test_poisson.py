@@ -1,6 +1,6 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.poisson import Poisson
-from spflow.base.learning.nodes.leaves.parametric.poisson import (
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import Poisson
+from spflow.base.learning import (
     maximum_likelihood_estimation,
 )
 

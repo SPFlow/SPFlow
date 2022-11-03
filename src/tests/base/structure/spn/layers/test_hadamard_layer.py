@@ -1,8 +1,8 @@
-from spflow.base.structure.spn.layers.hadamard_layer import (
-    SPNHadamardLayer,
+from spflow.base.structure.spn import (
+    HadamardLayer,
     marginalize,
 )
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope
 from ..nodes.dummy_node import DummyNode
 import numpy as np
 import unittest
@@ -29,7 +29,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNHadamardLayer(child_partitions=input_partitions)
+        l = HadamardLayer(child_partitions=input_partitions)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
@@ -46,7 +46,7 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(node.children[0].input_ids == indices)
 
         # only one partition
-        l = SPNHadamardLayer(
+        l = HadamardLayer(
             child_partitions=[
                 [
                     DummyNode(Scope([1, 3])),
@@ -66,15 +66,15 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(node.children[0].input_ids == indices)
 
         # ----- no child partitions -----
-        self.assertRaises(ValueError, SPNHadamardLayer, [])
+        self.assertRaises(ValueError, HadamardLayer, [])
 
         # ----- empty partition -----
-        self.assertRaises(ValueError, SPNHadamardLayer, [[]])
+        self.assertRaises(ValueError, HadamardLayer, [[]])
 
         # ----- scopes inside partition differ -----
         self.assertRaises(
             ValueError,
-            SPNHadamardLayer,
+            HadamardLayer,
             [
                 [DummyNode(Scope([0]))],
                 [DummyNode(Scope([1])), DummyNode(Scope([2]))],
@@ -84,7 +84,7 @@ class TestLayer(unittest.TestCase):
         # ----- partitions of non-pair-wise disjoint scopes -----
         self.assertRaises(
             ValueError,
-            SPNHadamardLayer,
+            HadamardLayer,
             [
                 [DummyNode(Scope([0]))],
                 [DummyNode(Scope([0])), DummyNode(Scope([0]))],
@@ -94,7 +94,7 @@ class TestLayer(unittest.TestCase):
         # ----- invalid total outputs of partitions -----
         self.assertRaises(
             ValueError,
-            SPNHadamardLayer,
+            HadamardLayer,
             [
                 [DummyNode(Scope([0])), DummyNode(Scope([0]))],
                 [
@@ -123,7 +123,7 @@ class TestLayer(unittest.TestCase):
             ],
         ]
 
-        l = SPNHadamardLayer(child_partitions=input_partitions)
+        l = HadamardLayer(child_partitions=input_partitions)
         # should marginalize entire module
         l_marg = marginalize(l, [0, 1, 2, 3, 4])
         self.assertTrue(l_marg is None)
@@ -146,7 +146,7 @@ class TestLayer(unittest.TestCase):
         )
 
         # ----- pruning -----
-        l = SPNHadamardLayer(child_partitions=input_partitions[:2])
+        l = HadamardLayer(child_partitions=input_partitions[:2])
 
         l_marg = marginalize(l, [1, 3], prune=True)
         self.assertTrue(isinstance(l_marg, DummyNode))

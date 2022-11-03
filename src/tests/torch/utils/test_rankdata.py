@@ -1,4 +1,4 @@
-from spflow.torch.utils.rankdata import rankdata
+from spflow.torch.utils import rankdata
 from scipy.stats import rankdata as scipy_rankdata
 
 import torch

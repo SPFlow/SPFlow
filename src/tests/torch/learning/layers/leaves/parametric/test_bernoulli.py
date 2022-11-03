@@ -1,22 +1,10 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.leaves.parametric.bernoulli import (
-    BernoulliLayer,
-)
-from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
-from spflow.torch.inference.spn.nodes.sum_node import log_likelihood
-from spflow.torch.inference.spn.nodes.product_node import log_likelihood
-from spflow.torch.learning.spn.nodes.sum_node import em
-from spflow.torch.learning.spn.nodes.product_node import em
-from spflow.torch.learning.layers.leaves.parametric.bernoulli import (
-    maximum_likelihood_estimation,
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure.spn import SumNode, ProductNode, BernoulliLayer
+from spflow.torch.inference import log_likelihood
+from spflow.torch.learning import (
     em,
-)
-from spflow.torch.inference.layers.leaves.parametric.bernoulli import (
-    log_likelihood,
-)
-from spflow.torch.learning.expectation_maximization.expectation_maximization import (
+    maximum_likelihood_estimation,
     expectation_maximization,
 )
 
@@ -264,7 +252,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         layer = BernoulliLayer([Scope([0]), Scope([1])])
-        prod_node = SPNProductNode([layer])
+        prod_node = ProductNode([layer])
 
         data = torch.tensor(
             np.hstack(
@@ -291,7 +279,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         leaf = BernoulliLayer(Scope([0]), n_nodes=2, p=[0.4, 0.6])
-        sum_node = SPNSumNode([leaf], weights=[0.5, 0.5])
+        sum_node = SumNode([leaf], weights=[0.5, 0.5])
 
         data = torch.tensor(
             np.vstack(

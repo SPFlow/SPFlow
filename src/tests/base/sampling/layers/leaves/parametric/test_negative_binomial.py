@@ -1,31 +1,12 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.layers.leaves.parametric.negative_binomial import (
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    NegativeBinomial,
     NegativeBinomialLayer,
 )
-from spflow.base.inference.layers.leaves.parametric.negative_binomial import (
-    log_likelihood,
-)
-from spflow.base.sampling.layers.leaves.parametric.negative_binomial import (
-    sample,
-)
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.inference.spn.nodes.sum_node import log_likelihood
-from spflow.base.sampling.spn.nodes.sum_node import sample
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.inference.spn.nodes.product_node import log_likelihood
-from spflow.base.sampling.spn.nodes.product_node import sample
-from spflow.base.structure.nodes.leaves.parametric.negative_binomial import (
-    NegativeBinomial,
-)
-from spflow.base.inference.nodes.leaves.parametric.negative_binomial import (
-    log_likelihood,
-)
-from spflow.base.sampling.nodes.leaves.parametric.negative_binomial import (
-    sample,
-)
-from spflow.base.inference.module import log_likelihood
-from spflow.base.sampling.module import sample
-
+from spflow.base.inference import log_likelihood
+from spflow.base.sampling import sample
 import numpy as np
 import random
 import unittest
@@ -41,13 +22,13 @@ class TestNode(unittest.TestCase):
         negative_binomial_layer = NegativeBinomialLayer(
             scope=Scope([0]), n=3, p=[0.8, 0.3], n_nodes=2
         )
-        s1 = SPNSumNode(children=[negative_binomial_layer], weights=[0.3, 0.7])
+        s1 = SumNode(children=[negative_binomial_layer], weights=[0.3, 0.7])
 
         negative_binomial_nodes = [
             NegativeBinomial(Scope([0]), n=3, p=0.8),
             NegativeBinomial(Scope([0]), n=3, p=0.3),
         ]
-        s2 = SPNSumNode(children=negative_binomial_nodes, weights=[0.3, 0.7])
+        s2 = SumNode(children=negative_binomial_nodes, weights=[0.3, 0.7])
 
         layer_samples = sample(s1, 10000)
         nodes_samples = sample(s2, 10000)
@@ -69,13 +50,13 @@ class TestNode(unittest.TestCase):
         negative_binomial_layer = NegativeBinomialLayer(
             scope=[Scope([0]), Scope([1])], n=[3, 5], p=[0.8, 0.3]
         )
-        p1 = SPNProductNode(children=[negative_binomial_layer])
+        p1 = ProductNode(children=[negative_binomial_layer])
 
         negative_binomial_nodes = [
             NegativeBinomial(Scope([0]), n=3, p=0.8),
             NegativeBinomial(Scope([1]), n=5, p=0.3),
         ]
-        p2 = SPNProductNode(children=negative_binomial_nodes)
+        p2 = ProductNode(children=negative_binomial_nodes)
 
         layer_samples = sample(p1, 10000)
         nodes_samples = sample(p2, 10000)

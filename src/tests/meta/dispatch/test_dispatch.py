@@ -1,10 +1,10 @@
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.structure.module import MetaModule
-from spflow.meta.dispatch.dispatch_context import (
+from spflow.meta.dispatch import (
+    dispatch,
     DispatchContext,
     init_default_dispatch_context,
     default_dispatch_context,
 )
+from spflow.meta.structure.module import MetaModule
 from typing import Optional
 import unittest
 

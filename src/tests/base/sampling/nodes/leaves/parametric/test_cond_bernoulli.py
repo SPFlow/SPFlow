@@ -1,12 +1,9 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.sampling_context import SamplingContext
-from spflow.base.structure.nodes.leaves.parametric.cond_bernoulli import (
-    CondBernoulli,
-)
-from spflow.base.sampling.nodes.leaves.parametric.cond_bernoulli import sample
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
+from spflow.base.structure.spn import CondBernoulli
+from spflow.base.sampling import sample
 
 import numpy as np
-
 import unittest
 
 

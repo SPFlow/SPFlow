@@ -1,30 +1,11 @@
-from spflow.torch.structure.spn.nodes.sum_node import (
-    SPNSumNode,
-    marginalize,
-    toBase,
-    toTorch,
-)
-from spflow.torch.structure.spn.nodes.product_node import (
-    SPNProductNode,
-    marginalize,
-    toBase,
-    toTorch,
-)
-from spflow.base.structure.spn.nodes.sum_node import (
-    SPNSumNode as BaseSPNSumNode,
-)
-from spflow.base.structure.spn.nodes.product_node import (
-    SPNProductNode as BaseSPNProductNode,
-)
-from spflow.torch.structure.nodes.leaves.parametric.gaussian import (
-    Gaussian,
-    toBase,
-    toTorch,
-)
-from spflow.base.structure.nodes.leaves.parametric.gaussian import (
+from spflow.torch.structure.spn import SumNode, ProductNode, Gaussian
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.base.structure.spn import (
+    SumNode as BaseSumNode,
+    ProductNode as BaseProductNode,
     Gaussian as BaseGaussian,
 )
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope
 from .dummy_node import DummyNode
 import numpy as np
 import torch
@@ -35,58 +16,54 @@ class TestTorchNode(unittest.TestCase):
     def test_sum_node_initialization(self):
 
         # empty children
-        self.assertRaises(ValueError, SPNSumNode, [], [])
+        self.assertRaises(ValueError, SumNode, [], [])
         # non-Module children
         self.assertRaises(
-            ValueError, SPNSumNode, [DummyNode(Scope([0])), 0], [0.5, 0.5]
+            ValueError, SumNode, [DummyNode(Scope([0])), 0], [0.5, 0.5]
         )
         # children with different scopes
         self.assertRaises(
             ValueError,
-            SPNSumNode,
+            SumNode,
             [DummyNode(Scope([0])), DummyNode(Scope([1]))],
             [0.5, 0.5],
         )
         # number of child outputs not matching number of weights
         self.assertRaises(
             ValueError,
-            SPNSumNode,
+            SumNode,
             [DummyNode(Scope([0])), DummyNode(Scope([0]))],
             [1.0],
         )
         # non-positive weights
-        self.assertRaises(
-            ValueError, SPNSumNode, [DummyNode(Scope([0]))], [0.0]
-        )
+        self.assertRaises(ValueError, SumNode, [DummyNode(Scope([0]))], [0.0])
         # weights not summing up to one
         self.assertRaises(
             ValueError,
-            SPNSumNode,
+            SumNode,
             [DummyNode(Scope([0])), DummyNode(Scope([0]))],
             [0.3, 0.5],
         )
         # weights of invalid shape
-        self.assertRaises(
-            ValueError, SPNSumNode, [DummyNode(Scope([0]))], [[1.0]]
-        )
+        self.assertRaises(ValueError, SumNode, [DummyNode(Scope([0]))], [[1.0]])
 
         # weights as list of floats
-        SPNSumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], [0.5, 0.5])
+        SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], [0.5, 0.5])
         # weights as numpy array
-        SPNSumNode(
+        SumNode(
             [DummyNode(Scope([0])), DummyNode(Scope([0]))], np.array([0.5, 0.5])
         )
         # weights as torch tensor
-        SPNSumNode(
+        SumNode(
             [DummyNode(Scope([0])), DummyNode(Scope([0]))],
             torch.tensor([0.5, 0.5]),
         )
         # no weights
-        SPNSumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
+        SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
 
     def test_sum_node_marginalization_1(self):
 
-        s = SPNSumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
+        s = SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
 
         s_marg = marginalize(s, [1])
         self.assertEqual(s_marg.scopes_out, s.scopes_out)
@@ -96,10 +73,10 @@ class TestTorchNode(unittest.TestCase):
 
     def test_sum_node_marginalization_2(self):
 
-        s = SPNSumNode(
+        s = SumNode(
             [
-                SPNProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
-                SPNProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
+                ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
+                ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
             ]
         )
 
@@ -115,23 +92,21 @@ class TestTorchNode(unittest.TestCase):
     def test_product_node_initialization(self):
 
         # empty children
-        self.assertRaises(ValueError, SPNProductNode, [])
+        self.assertRaises(ValueError, ProductNode, [])
         # non-Module children
-        self.assertRaises(
-            ValueError, SPNProductNode, [DummyNode(Scope([0])), 0]
-        )
+        self.assertRaises(ValueError, ProductNode, [DummyNode(Scope([0])), 0])
         # children with non-disjoint scopes
         self.assertRaises(
             ValueError,
-            SPNProductNode,
+            ProductNode,
             [DummyNode(Scope([0])), DummyNode(Scope([0]))],
         )
 
-        SPNProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))])
+        ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))])
 
     def test_product_node_marginalization_1(self):
 
-        p = SPNProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))])
+        p = ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))])
 
         p_marg = marginalize(p, [2])
         self.assertEqual(p_marg.scopes_out, p.scopes_out)
@@ -145,10 +120,10 @@ class TestTorchNode(unittest.TestCase):
 
     def test_product_node_marginalization_2(self):
 
-        p = SPNProductNode(
+        p = ProductNode(
             [
-                SPNProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
-                SPNProductNode([DummyNode(Scope([2])), DummyNode(Scope([3]))]),
+                ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
+                ProductNode([DummyNode(Scope([2])), DummyNode(Scope([3]))]),
             ]
         )
 
@@ -165,13 +140,13 @@ class TestTorchNode(unittest.TestCase):
         weights_2 /= weights_2.sum()
 
         # INode graph
-        graph = BaseSPNProductNode(
+        graph = BaseProductNode(
             [
-                BaseSPNSumNode(
+                BaseSumNode(
                     [BaseGaussian(Scope([0])), BaseGaussian(Scope([0]))],
                     weights=weights_1,
                 ),
-                BaseSPNSumNode([BaseGaussian(Scope([1]))], weights=weights_2),
+                BaseSumNode([BaseGaussian(Scope([1]))], weights=weights_2),
             ]
         )
 

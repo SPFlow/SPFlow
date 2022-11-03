@@ -1,11 +1,9 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.spn.nodes.product_node import marginalize
-from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.base.structure.nodes.leaves.parametric.multivariate_gaussian import (
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.base.structure import AutoLeaf
+from spflow.base.structure.spn import (
+    Gaussian,
     MultivariateGaussian,
+    marginalize,
 )
 
 import numpy as np

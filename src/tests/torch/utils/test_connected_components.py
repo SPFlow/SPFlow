@@ -1,4 +1,4 @@
-from spflow.torch.utils.connected_components import connected_components
+from spflow.torch.utils import connected_components
 
 import torch
 import numpy as np

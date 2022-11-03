@@ -1,25 +1,17 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
-from spflow.torch.inference.spn.nodes.sum_node import log_likelihood
-from spflow.torch.inference.spn.nodes.product_node import log_likelihood
-from spflow.torch.learning.spn.nodes.sum_node import em
-from spflow.torch.learning.spn.nodes.product_node import em
-from spflow.torch.structure.nodes.leaves.parametric.gamma import Gamma
-from spflow.torch.learning.nodes.leaves.parametric.gamma import (
-    maximum_likelihood_estimation,
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure.spn import SumNode, ProductNode, Gamma
+from spflow.torch.inference import log_likelihood
+from spflow.torch.learning import (
     em,
-)
-from spflow.torch.inference.nodes.leaves.parametric.gamma import log_likelihood
-from spflow.torch.learning.expectation_maximization.expectation_maximization import (
     expectation_maximization,
+    maximum_likelihood_estimation,
 )
 
 import torch
 import numpy as np
-import unittest
 import random
+import unittest
 
 
 class TestNode(unittest.TestCase):
@@ -237,7 +229,7 @@ class TestNode(unittest.TestCase):
 
         l1 = Gamma(Scope([0]))
         l2 = Gamma(Scope([1]))
-        prod_node = SPNProductNode([l1, l2])
+        prod_node = ProductNode([l1, l2])
 
         data = torch.tensor(
             np.hstack(
@@ -276,7 +268,7 @@ class TestNode(unittest.TestCase):
 
         l1 = Gamma(Scope([0]), alpha=1.2, beta=0.5)
         l2 = Gamma(Scope([0]), alpha=0.6, beta=1.9)
-        sum_node = SPNSumNode([l1, l2], weights=[0.5, 0.5])
+        sum_node = SumNode([l1, l2], weights=[0.5, 0.5])
 
         data = torch.tensor(
             np.vstack(

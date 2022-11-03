@@ -14,7 +14,7 @@ from typing import List, Union, Optional, Iterable
 from copy import deepcopy
 
 
-class SPNProductNode(Node):
+class ProductNode(Node):
     r"""SPN-like product node in the ``base`` backend.
 
     Represents a product of its children over pair-wise disjoint scopes.
@@ -29,7 +29,7 @@ class SPNProductNode(Node):
     """
 
     def __init__(self, children: List[Module]) -> None:
-        r"""Initializes ``SPNProductNode`` object.
+        r"""Initializes ``ProductNode`` object.
 
         Args:
             children:
@@ -38,11 +38,11 @@ class SPNProductNode(Node):
         Raises:
             ValueError: Invalid arguments.
         """
-        super(SPNProductNode, self).__init__(children=children)
+        super(ProductNode, self).__init__(children=children)
 
         if not children:
             raise ValueError(
-                "'SPNProductNode' requires at least one child to be specified."
+                "'ProductNode' requires at least one child to be specified."
             )
 
         scope = Scope()
@@ -51,7 +51,7 @@ class SPNProductNode(Node):
             for s in child.scopes_out:
                 if not scope.isdisjoint(s):
                     raise ValueError(
-                        f"'SPNProductNode' requires child scopes to be pair-wise disjoint."
+                        f"'ProductNode' requires child scopes to be pair-wise disjoint."
                     )
 
                 scope = scope.join(s)
@@ -61,12 +61,12 @@ class SPNProductNode(Node):
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
-    product_node: SPNProductNode,
+    product_node: ProductNode,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[SPNProductNode, Node, None]:
-    r"""Structural marginalization for ``SPNProductNode`` objects in the ``base`` backend.
+) -> Union[ProductNode, Node, None]:
+    r"""Structural marginalization for ``ProductNode`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified product node.
     If the product node's scope contains non of the random variables to marginalize, then the node is returned unaltered.
@@ -118,6 +118,6 @@ def marginalize(
         if len(marg_children) == 1 and marg_children[0].n_out == 1 and prune:
             return marg_children[0]
         else:
-            return SPNProductNode(marg_children)
+            return ProductNode(marg_children)
     else:
         return deepcopy(product_node)

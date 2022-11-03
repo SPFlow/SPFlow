@@ -8,7 +8,7 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.base.structure.spn.layers.hadamard_layer import (
-    SPNHadamardLayer as BaseSPNHadamardLayer,
+    HadamardLayer as BaseHadamardLayer,
 )
 from spflow.torch.structure.module import Module
 
@@ -17,7 +17,7 @@ from copy import deepcopy
 import numpy as np
 
 
-class SPNHadamardLayer(Module):
+class HadamardLayer(Module):
     """Layer representing multiple SPN-like product nodes in the ``torch`` backend as element-wise products of inputs from different partitions.
 
     A partition is a group of inputs over the same scope. Different partitions have pair-wise disjoint scopes.
@@ -27,7 +27,7 @@ class SPNHadamardLayer(Module):
 
     Example:
 
-        layer = SPNHadamardLayer([[node1, node2], [node3], [node4, node5]])
+        layer = HadamardLayer([[node1, node2], [node3], [node4, node5]])
 
         In this example the layer will have 2 product nodes over the following inputs (in this order):
 
@@ -50,7 +50,7 @@ class SPNHadamardLayer(Module):
     """
 
     def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
-        r"""Initializes ``SPNHadamardLayer`` object.
+        r"""Initializes ``HadamardLayer`` object.
 
         Args:
             child_partitions:
@@ -63,7 +63,7 @@ class SPNHadamardLayer(Module):
             ValueError: Invalid arguments.
         """
         if len(child_partitions) == 0:
-            raise ValueError("No partitions for 'SPNHadamardLayer' specified.")
+            raise ValueError("No partitions for 'HadamardLayer' specified.")
 
         scope = Scope()
         max_size = 1
@@ -76,7 +76,7 @@ class SPNHadamardLayer(Module):
             # check if partition is empty
             if len(partition) == 0:
                 raise ValueError(
-                    "All partitions for 'SPNPartitionLayer' must be non-empty"
+                    "All partitions for 'PartitionLayer' must be non-empty"
                 )
 
             self.modules_per_partition.append(len(partition))
@@ -121,7 +121,7 @@ class SPNHadamardLayer(Module):
                     "Scopes of partitions must be pair-wise disjoint."
                 )
 
-        super(SPNHadamardLayer, self).__init__(
+        super(HadamardLayer, self).__init__(
             children=sum(child_partitions, []), **kwargs
         )
 
@@ -142,11 +142,11 @@ class SPNHadamardLayer(Module):
 
 @dispatch(memoize=True)  # typ: ignore
 def marginalize(
-    layer: SPNHadamardLayer,
+    layer: HadamardLayer,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[SPNHadamardLayer, Module, None]:
+) -> Union[HadamardLayer, Module, None]:
     """Structural marginalization for SPN-like Hadamard layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -223,17 +223,17 @@ def marginalize(
         if len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and prune:
             return marg_partitions[0][0]
         else:
-            return SPNHadamardLayer(child_partitions=marg_partitions)
+            return HadamardLayer(child_partitions=marg_partitions)
     else:
         return deepcopy(layer)
 
 
 @dispatch(memoize=True)  # type: ignore
 def toBase(
-    hadamard_layer: SPNHadamardLayer,
+    hadamard_layer: HadamardLayer,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> BaseSPNHadamardLayer:
-    """Conversion for ``SPNHadamardLayer`` from ``torch`` backend to ``base`` backend.
+) -> BaseHadamardLayer:
+    """Conversion for ``HadamardLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
         hadamard_layer:
@@ -248,7 +248,7 @@ def toBase(
         children, np.cumsum(hadamard_layer.modules_per_partition[:-1])
     )
 
-    return BaseSPNHadamardLayer(
+    return BaseHadamardLayer(
         child_partitions=[
             [toBase(child, dispatch_ctx=dispatch_ctx) for child in partition]
             for partition in partitions
@@ -258,10 +258,10 @@ def toBase(
 
 @dispatch(memoize=True)  # type: ignore
 def toTorch(
-    hadamard_layer: BaseSPNHadamardLayer,
+    hadamard_layer: BaseHadamardLayer,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> SPNHadamardLayer:
-    """Conversion for ``SPNHadamardLayer`` from ``base`` backend to ``torch`` backend.
+) -> HadamardLayer:
+    """Conversion for ``HadamardLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
         hadamard_layer:
@@ -276,7 +276,7 @@ def toTorch(
         children, np.cumsum(hadamard_layer.modules_per_partition[:-1])
     )
 
-    return SPNHadamardLayer(
+    return HadamardLayer(
         child_partitions=[
             [toTorch(child, dispatch_ctx=dispatch_ctx) for child in partition]
             for partition in partitions

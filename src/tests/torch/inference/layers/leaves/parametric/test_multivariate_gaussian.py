@@ -1,22 +1,12 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.layers.leaves.parametric.multivariate_gaussian import (
+from spflow.meta.data import Scope
+from spflow.torch.structure.spn import (
+    MultivariateGaussian,
     MultivariateGaussianLayer,
 )
-from spflow.torch.inference.layers.leaves.parametric.multivariate_gaussian import (
-    log_likelihood,
-)
-from spflow.torch.structure.nodes.leaves.parametric.multivariate_gaussian import (
-    MultivariateGaussian,
-)
-from spflow.torch.inference.nodes.leaves.parametric.multivariate_gaussian import (
-    log_likelihood,
-)
-from spflow.torch.inference.module import log_likelihood
-import torch
+from spflow.torch.inference import log_likelihood
 import numpy as np
+import torch
 import unittest
-import random
 
 
 class TestNode(unittest.TestCase):

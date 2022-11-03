@@ -1,5 +1,5 @@
-from spflow.base.structure.spn.layers.sum_layer import SPNSumLayer, marginalize
-from spflow.meta.data.scope import Scope
+from spflow.base.structure.spn import SumLayer, marginalize
+from spflow.meta.data import Scope
 from ..nodes.dummy_node import DummyNode
 import numpy as np
 import unittest
@@ -17,7 +17,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNSumLayer(n_nodes=3, children=input_nodes)
+        l = SumLayer(n_nodes=3, children=input_nodes)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
@@ -35,13 +35,13 @@ class TestLayer(unittest.TestCase):
         weights = np.array([[0.3, 0.3, 0.4]])
 
         # two dimensional weight array
-        l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights)
+        l = SumLayer(n_nodes=3, children=input_nodes, weights=weights)
 
         for node in l.nodes:
             self.assertTrue(np.all(node.weights == weights))
 
         # one dimensional weight array
-        l = SPNSumLayer(
+        l = SumLayer(
             n_nodes=3, children=input_nodes, weights=weights.squeeze(0)
         )
 
@@ -51,7 +51,7 @@ class TestLayer(unittest.TestCase):
         # ----- different weights for all nodes -----
         weights = np.array([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3], [0.1, 0.7, 0.2]])
 
-        l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights)
+        l = SumLayer(n_nodes=3, children=input_nodes, weights=weights)
 
         for node, node_weights in zip(l.nodes, weights):
             self.assertTrue(np.all(node.weights == node_weights))
@@ -59,29 +59,29 @@ class TestLayer(unittest.TestCase):
         # ----- two dimensional weight array of wrong shape -----
         weights = np.array([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3]])
 
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights)
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights.T)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights.T)
         self.assertRaises(
-            ValueError, SPNSumLayer, 3, input_nodes, np.expand_dims(weights, 0)
+            ValueError, SumLayer, 3, input_nodes, np.expand_dims(weights, 0)
         )
         self.assertRaises(
-            ValueError, SPNSumLayer, 3, input_nodes, np.expand_dims(weights, -1)
+            ValueError, SumLayer, 3, input_nodes, np.expand_dims(weights, -1)
         )
 
         # ----- incorrect number of weights -----
         weights = np.array([[0.3, 0.3, 0.3, 0.1], [0.5, 0.2, 0.2, 0.1]])
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights)
 
         weights = np.array([[0.3, 0.7], [0.5, 0.5]])
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights)
 
         # ----- weights not summing up to one per row -----
         weights = np.array([[0.3, 0.3, 0.4], [0.5, 0.7, 0.3], [0.1, 0.7, 0.2]])
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights)
 
         # ----- non-positive weights -----
         weights = np.array([[0.3, 0.3, 0.4], [0.5, 0.0, 0.5], [0.1, 0.7, 0.2]])
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights)
 
         # ----- children of different scopes -----
         input_nodes = [
@@ -89,13 +89,13 @@ class TestLayer(unittest.TestCase):
             DummyNode(Scope([0, 1])),
             DummyNode(Scope([0])),
         ]
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes)
 
         # ----- no children -----
-        self.assertRaises(ValueError, SPNSumLayer, 3, [])
+        self.assertRaises(ValueError, SumLayer, 3, [])
 
         # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, SPNSumLayer, 0, input_nodes)
+        self.assertRaises(ValueError, SumLayer, 0, input_nodes)
 
     def test_sum_layer_structural_marginalization(self):
 
@@ -105,7 +105,7 @@ class TestLayer(unittest.TestCase):
             DummyNode(Scope([0, 1])),
             DummyNode(Scope([0, 1])),
         ]
-        l = SPNSumLayer(n_nodes=3, children=input_nodes)
+        l = SumLayer(n_nodes=3, children=input_nodes)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)

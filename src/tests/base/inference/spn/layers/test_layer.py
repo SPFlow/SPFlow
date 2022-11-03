@@ -1,21 +1,14 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.spn.layers.sum_layer import SPNSumLayer
-from spflow.base.structure.spn.layers.product_layer import SPNProductLayer
-from spflow.base.structure.spn.layers.partition_layer import SPNPartitionLayer
-from spflow.base.structure.spn.layers.hadamard_layer import SPNHadamardLayer
-from spflow.base.inference.spn.layers.sum_layer import log_likelihood
-from spflow.base.inference.spn.layers.product_layer import log_likelihood
-from spflow.base.inference.spn.layers.partition_layer import log_likelihood
-from spflow.base.inference.spn.layers.hadamard_layer import log_likelihood
-from spflow.base.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.base.inference.spn.nodes.sum_node import log_likelihood
-from spflow.base.structure.spn.nodes.product_node import SPNProductNode
-from spflow.base.inference.spn.nodes.product_node import log_likelihood
-from spflow.base.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.base.inference.nodes.leaves.parametric.gaussian import (
-    log_likelihood,
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    SumLayer,
+    ProductLayer,
+    PartitionLayer,
+    HadamardLayer,
+    Gaussian,
 )
-from spflow.base.inference.module import log_likelihood
+from spflow.base.inference import log_likelihood
 import numpy as np
 import unittest
 import itertools
@@ -30,9 +23,9 @@ class TestNode(unittest.TestCase):
             Gaussian(Scope([0])),
         ]
 
-        layer_spn = SPNSumNode(
+        layer_spn = SumNode(
             children=[
-                SPNSumLayer(
+                SumLayer(
                     n_nodes=3,
                     children=input_nodes,
                     weights=[[0.8, 0.1, 0.1], [0.2, 0.3, 0.5], [0.2, 0.7, 0.1]],
@@ -41,11 +34,11 @@ class TestNode(unittest.TestCase):
             weights=[0.3, 0.4, 0.3],
         )
 
-        nodes_spn = SPNSumNode(
+        nodes_spn = SumNode(
             children=[
-                SPNSumNode(children=input_nodes, weights=[0.8, 0.1, 0.1]),
-                SPNSumNode(children=input_nodes, weights=[0.2, 0.3, 0.5]),
-                SPNSumNode(children=input_nodes, weights=[0.2, 0.7, 0.1]),
+                SumNode(children=input_nodes, weights=[0.8, 0.1, 0.1]),
+                SumNode(children=input_nodes, weights=[0.2, 0.3, 0.5]),
+                SumNode(children=input_nodes, weights=[0.2, 0.7, 0.1]),
             ],
             weights=[0.3, 0.4, 0.3],
         )
@@ -73,16 +66,16 @@ class TestNode(unittest.TestCase):
             Gaussian(Scope([2])),
         ]
 
-        layer_spn = SPNSumNode(
-            children=[SPNProductLayer(n_nodes=3, children=input_nodes)],
+        layer_spn = SumNode(
+            children=[ProductLayer(n_nodes=3, children=input_nodes)],
             weights=[0.3, 0.4, 0.3],
         )
 
-        nodes_spn = SPNSumNode(
+        nodes_spn = SumNode(
             children=[
-                SPNProductNode(children=input_nodes),
-                SPNProductNode(children=input_nodes),
-                SPNProductNode(children=input_nodes),
+                ProductNode(children=input_nodes),
+                ProductNode(children=input_nodes),
+                ProductNode(children=input_nodes),
             ],
             weights=[0.3, 0.4, 0.3],
         )
@@ -104,14 +97,14 @@ class TestNode(unittest.TestCase):
             [Gaussian(Scope([2]))],
         ]
 
-        layer_spn = SPNSumNode(
-            children=[SPNPartitionLayer(child_partitions=input_partitions)],
+        layer_spn = SumNode(
+            children=[PartitionLayer(child_partitions=input_partitions)],
             weights=[0.2, 0.1, 0.2, 0.2, 0.2, 0.1],
         )
 
-        nodes_spn = SPNSumNode(
+        nodes_spn = SumNode(
             children=[
-                SPNProductNode(
+                ProductNode(
                     children=[
                         input_partitions[0][i],
                         input_partitions[1][j],
@@ -141,14 +134,14 @@ class TestNode(unittest.TestCase):
             [Gaussian(Scope([3])), Gaussian(Scope([3])), Gaussian(Scope([3]))],
         ]
 
-        layer_spn = SPNSumNode(
-            children=[SPNHadamardLayer(child_partitions=input_partitions)],
+        layer_spn = SumNode(
+            children=[HadamardLayer(child_partitions=input_partitions)],
             weights=[0.3, 0.2, 0.5],
         )
 
-        nodes_spn = SPNSumNode(
+        nodes_spn = SumNode(
             children=[
-                SPNProductNode(
+                ProductNode(
                     children=[
                         input_partitions[0][i],
                         input_partitions[1][j],

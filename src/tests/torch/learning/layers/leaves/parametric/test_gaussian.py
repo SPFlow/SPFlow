@@ -1,25 +1,12 @@
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.spn.nodes.sum_node import SPNSumNode
-from spflow.torch.structure.spn.nodes.product_node import SPNProductNode
-from spflow.torch.inference.spn.nodes.sum_node import log_likelihood
-from spflow.torch.inference.spn.nodes.product_node import log_likelihood
-from spflow.torch.learning.spn.nodes.sum_node import em
-from spflow.torch.learning.spn.nodes.product_node import em
-from spflow.torch.structure.layers.leaves.parametric.gaussian import (
-    GaussianLayer,
-)
-from spflow.torch.learning.layers.leaves.parametric.gaussian import (
-    maximum_likelihood_estimation,
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure.spn import SumNode, ProductNode, GaussianLayer
+from spflow.torch.inference import log_likelihood
+from spflow.torch.learning import (
     em,
-)
-from spflow.torch.inference.layers.leaves.parametric.gaussian import (
-    log_likelihood,
-)
-from spflow.torch.learning.expectation_maximization.expectation_maximization import (
+    maximum_likelihood_estimation,
     expectation_maximization,
 )
-
 
 import torch
 import numpy as np
@@ -287,7 +274,7 @@ class TestNode(unittest.TestCase):
         layer = GaussianLayer(
             [Scope([0]), Scope([1])], mean=[1.5, -2.5], std=[0.75, 1.5]
         )
-        prod_node = SPNProductNode([layer])
+        prod_node = ProductNode([layer])
 
         data = torch.tensor(
             np.hstack(
@@ -321,7 +308,7 @@ class TestNode(unittest.TestCase):
         layer = GaussianLayer(
             [Scope([0]), Scope([0])], mean=[1.5, -2.5], std=[0.75, 1.5]
         )
-        sum_node = SPNSumNode([layer], weights=[0.5, 0.5])
+        sum_node = SumNode([layer], weights=[0.5, 0.5])
 
         data = torch.tensor(
             np.vstack(

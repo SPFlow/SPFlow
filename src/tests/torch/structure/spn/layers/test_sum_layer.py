@@ -1,26 +1,14 @@
-from spflow.torch.structure.spn.layers.sum_layer import (
-    SPNSumLayer,
-    marginalize,
-    toBase,
-    toTorch,
-)
-from spflow.torch.structure.nodes.leaves.parametric.gaussian import (
-    Gaussian,
-    toBase,
-    toTorch,
-)
-from spflow.base.structure.spn.layers.sum_layer import (
-    SPNSumLayer as BaseSPNSumLayer,
-)
-from spflow.base.structure.nodes.leaves.parametric.gaussian import (
+from spflow.torch.structure.spn import SumLayer, Gaussian
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.base.structure.spn import (
+    SumLayer as BaseSumLayer,
     Gaussian as BaseGaussian,
 )
-from spflow.meta.data.scope import Scope
+from spflow.meta.data import Scope
 from ..nodes.dummy_node import DummyNode
 import torch
 import numpy as np
 import unittest
-import itertools
 
 
 class TestNode(unittest.TestCase):
@@ -35,7 +23,7 @@ class TestNode(unittest.TestCase):
 
         # ----- check attributes after correct initialization -----
 
-        l = SPNSumLayer(n_nodes=3, children=input_nodes)
+        l = SumLayer(n_nodes=3, children=input_nodes)
         # make sure scopes are correct
         self.assertTrue(
             np.all(
@@ -49,13 +37,13 @@ class TestNode(unittest.TestCase):
         weights = torch.tensor([[0.3, 0.3, 0.4]])
 
         # two dimensional weight array
-        l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights)
+        l = SumLayer(n_nodes=3, children=input_nodes, weights=weights)
 
         for i in range(3):
             self.assertTrue(torch.allclose(l.weights[i], weights))
 
         # one dimensional weight array
-        l = SPNSumLayer(
+        l = SumLayer(
             n_nodes=3, children=input_nodes, weights=weights.squeeze(0)
         )
 
@@ -67,27 +55,27 @@ class TestNode(unittest.TestCase):
             [[0.3, 0.3, 0.4], [0.5, 0.2, 0.3], [0.1, 0.7, 0.2]]
         )
 
-        l = SPNSumLayer(n_nodes=3, children=input_nodes, weights=weights)
+        l = SumLayer(n_nodes=3, children=input_nodes, weights=weights)
         for i in range(3):
             self.assertTrue(torch.allclose(l.weights[i], weights[i]))
 
         # ----- two dimensional weight array of wrong shape -----
         weights = torch.tensor([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3]])
 
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights)
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights.T)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights.T)
 
         # ----- weights not summing up to one per row -----
         weights = torch.tensor(
             [[0.3, 0.3, 0.4], [0.5, 0.7, 0.3], [0.1, 0.7, 0.2]]
         )
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights)
 
         # ----- non-positive weights -----
         weights = torch.tensor(
             [[0.3, 0.3, 0.4], [0.5, 0.0, 0.5], [0.1, 0.7, 0.2]]
         )
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes, weights)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights)
 
         # ----- children of different scopes -----
         input_nodes = [
@@ -95,10 +83,10 @@ class TestNode(unittest.TestCase):
             DummyNode(Scope([0, 1])),
             DummyNode(Scope([0])),
         ]
-        self.assertRaises(ValueError, SPNSumLayer, 3, input_nodes)
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes)
 
         # ----- no children -----
-        self.assertRaises(ValueError, SPNSumLayer, 3, [])
+        self.assertRaises(ValueError, SumLayer, 3, [])
 
     def test_sum_layer_structural_marginalization(self):
 
@@ -108,7 +96,7 @@ class TestNode(unittest.TestCase):
             DummyNode(Scope([0, 1])),
             DummyNode(Scope([0, 1])),
         ]
-        l = SPNSumLayer(n_nodes=3, children=input_nodes)
+        l = SumLayer(n_nodes=3, children=input_nodes)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
@@ -129,7 +117,7 @@ class TestNode(unittest.TestCase):
 
     def test_sum_layer_backend_conversion_1(self):
 
-        torch_sum_layer = SPNSumLayer(
+        torch_sum_layer = SumLayer(
             n_nodes=3,
             children=[
                 Gaussian(Scope([0])),
@@ -148,7 +136,7 @@ class TestNode(unittest.TestCase):
 
     def test_sum_layer_backend_conversion_2(self):
 
-        base_sum_layer = BaseSPNSumLayer(
+        base_sum_layer = BaseSumLayer(
             n_nodes=3,
             children=[
                 BaseGaussian(Scope([0])),

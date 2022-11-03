@@ -1,13 +1,8 @@
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.nodes.leaves.parametric.bernoulli import Bernoulli
-from spflow.base.inference.nodes.leaves.parametric.bernoulli import (
-    log_likelihood,
-)
-from spflow.base.inference.module import likelihood
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import Bernoulli
+from spflow.base.inference import log_likelihood, likelihood
 import numpy as np
-
 import unittest
-
 import random
 
 
