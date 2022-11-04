@@ -6,7 +6,7 @@ from functools import partial
 from typing import Callable, Union, Optional, Dict, Any
 from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.learning.nodes.leaves.parametric.gaussian import (
+from spflow.torch.learning.general.nodes.leaves.parametric.gaussian import (
     maximum_likelihood_estimation,
 )
 from spflow.torch.utils.randomized_dependency_coefficients import (

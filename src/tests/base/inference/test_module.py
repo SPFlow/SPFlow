@@ -1,5 +1,5 @@
 from ..structure.dummy_module import DummyNestedModule
-from ..structure.spn.nodes.dummy_node import DummyNode
+from ..structure.general.nodes.dummy_node import DummyNode
 from spflow.meta.data import Scope
 from spflow.base.inference import likelihood, log_likelihood
 import numpy as np

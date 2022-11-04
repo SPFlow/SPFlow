@@ -5,7 +5,7 @@ from spflow.base.structure.spn import (
     Gaussian as BaseGaussian,
 )
 from spflow.meta.data import Scope
-from ..nodes.dummy_node import DummyNode
+from ...general.nodes.dummy_node import DummyNode
 import torch
 import numpy as np
 import unittest

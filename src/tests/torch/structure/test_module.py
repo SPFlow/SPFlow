@@ -1,6 +1,6 @@
 from spflow.meta.data import Scope
 from spflow.torch.structure.spn import SumNode
-from .spn.nodes.dummy_node import DummyNode
+from .general.nodes.dummy_node import DummyNode
 from .dummy_module import DummyModule, DummyNestedModule
 import unittest
 

@@ -3,7 +3,7 @@ from spflow.base.structure.spn import (
     marginalize,
 )
 from spflow.meta.data import Scope
-from .dummy_node import DummyNode
+from ...general.nodes.dummy_node import DummyNode
 import unittest
 
 

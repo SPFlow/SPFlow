@@ -9,7 +9,7 @@ from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.utils.randomized_dependency_coefficients import (
     randomized_dependency_coefficients,
 )
-from spflow.base.learning.nodes.leaves.parametric.gaussian import (
+from spflow.base.learning.general.nodes.leaves.parametric.gaussian import (
     maximum_likelihood_estimation,
 )
 from spflow.base.utils.connected_components import connected_components

@@ -11,7 +11,7 @@ from spflow.base.structure.spn.nodes.product_node import (
     ProductNode as BaseProductNode,
 )
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.nodes.node import Node
+from spflow.torch.structure.general.nodes.node import Node
 
 from typing import List, Union, Optional, Iterable
 from copy import deepcopy
