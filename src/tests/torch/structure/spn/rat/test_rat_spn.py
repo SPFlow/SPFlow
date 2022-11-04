@@ -99,7 +99,7 @@ from spflow.base.structure.spn.layers.partition_layer import (
 from spflow.base.structure.spn.layers.hadamard_layer import (
     HadamardLayer as BaseHadamardLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.gaussian import (
+from spflow.base.structure.general.layers.leaves.parametric.gaussian import (
     GaussianLayer as BaseGaussianLayer,
 )
 

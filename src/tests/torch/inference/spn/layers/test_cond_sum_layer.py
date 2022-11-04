@@ -4,8 +4,8 @@ from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer
 from spflow.torch.inference.spn.layers.cond_sum_layer import log_likelihood
 from spflow.torch.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.torch.inference.spn.nodes.cond_sum_node import log_likelihood
-from spflow.torch.structure.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.torch.inference.nodes.leaves.parametric.gaussian import (
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.torch.inference.general.nodes.leaves.parametric.gaussian import (
     log_likelihood,
 )
 from spflow.torch.inference.module import log_likelihood

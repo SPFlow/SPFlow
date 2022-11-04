@@ -11,7 +11,7 @@ from spflow.base.structure.spn.nodes.sum_node import (
     SumNode as BaseSumNode,
 )
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.nodes.node import Node
+from spflow.torch.structure.general.nodes.node import Node
 from spflow.torch.utils.projections import (
     proj_convex_to_real,
     proj_real_to_convex,

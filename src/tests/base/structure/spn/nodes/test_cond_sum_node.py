@@ -1,7 +1,7 @@
 from spflow.base.structure.spn import ProductNode, CondSumNode, marginalize
 from spflow.meta.dispatch import DispatchContext
 from spflow.meta.data import Scope
-from .dummy_node import DummyNode
+from ...general.nodes.dummy_node import DummyNode
 from typing import Callable
 
 import numpy as np

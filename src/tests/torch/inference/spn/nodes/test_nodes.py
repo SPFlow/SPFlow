@@ -6,7 +6,7 @@ from spflow.torch.utils.projections import (
     proj_real_to_convex,
 )
 from spflow.torch.inference import log_likelihood, likelihood
-from ....structure.spn.nodes.dummy_node import DummyNode
+from ....structure.general.nodes.dummy_node import DummyNode
 import torch
 import unittest
 

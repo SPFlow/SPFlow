@@ -9,93 +9,93 @@ from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.module import Module
 
 # ----- non-conditional modules -----
-from spflow.base.structure.layers.leaves.parametric.bernoulli import (
+from spflow.base.structure.general.layers.leaves.parametric.bernoulli import (
     Bernoulli,
     BernoulliLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.binomial import (
+from spflow.base.structure.general.layers.leaves.parametric.binomial import (
     Binomial,
     BinomialLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.exponential import (
+from spflow.base.structure.general.layers.leaves.parametric.exponential import (
     Exponential,
     ExponentialLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.gamma import (
+from spflow.base.structure.general.layers.leaves.parametric.gamma import (
     Gamma,
     GammaLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.gaussian import (
+from spflow.base.structure.general.layers.leaves.parametric.gaussian import (
     Gaussian,
     GaussianLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.geometric import (
+from spflow.base.structure.general.layers.leaves.parametric.geometric import (
     Geometric,
     GeometricLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.hypergeometric import (
+from spflow.base.structure.general.layers.leaves.parametric.hypergeometric import (
     Hypergeometric,
     HypergeometricLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.log_normal import (
+from spflow.base.structure.general.layers.leaves.parametric.log_normal import (
     LogNormal,
     LogNormalLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.multivariate_gaussian import (
+from spflow.base.structure.general.layers.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
     MultivariateGaussianLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.negative_binomial import (
+from spflow.base.structure.general.layers.leaves.parametric.negative_binomial import (
     NegativeBinomial,
     NegativeBinomialLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.poisson import (
+from spflow.base.structure.general.layers.leaves.parametric.poisson import (
     Poisson,
     PoissonLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.uniform import (
+from spflow.base.structure.general.layers.leaves.parametric.uniform import (
     Uniform,
     UniformLayer,
 )
 
 # ----- conditional modules -----
-from spflow.base.structure.layers.leaves.parametric.cond_bernoulli import (
+from spflow.base.structure.general.layers.leaves.parametric.cond_bernoulli import (
     CondBernoulli,
     CondBernoulliLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.cond_binomial import (
+from spflow.base.structure.general.layers.leaves.parametric.cond_binomial import (
     CondBinomial,
     CondBinomialLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.cond_exponential import (
+from spflow.base.structure.general.layers.leaves.parametric.cond_exponential import (
     CondExponential,
     CondExponentialLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.cond_gamma import (
+from spflow.base.structure.general.layers.leaves.parametric.cond_gamma import (
     CondGamma,
     CondGammaLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.cond_gaussian import (
+from spflow.base.structure.general.layers.leaves.parametric.cond_gaussian import (
     CondGaussian,
     CondGaussianLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.cond_geometric import (
+from spflow.base.structure.general.layers.leaves.parametric.cond_geometric import (
     CondGeometric,
     CondGeometricLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.cond_log_normal import (
+from spflow.base.structure.general.layers.leaves.parametric.cond_log_normal import (
     CondLogNormal,
     CondLogNormalLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.cond_multivariate_gaussian import (
+from spflow.base.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
     CondMultivariateGaussianLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.cond_negative_binomial import (
+from spflow.base.structure.general.layers.leaves.parametric.cond_negative_binomial import (
     CondNegativeBinomial,
     CondNegativeBinomialLayer,
 )
-from spflow.base.structure.layers.leaves.parametric.cond_poisson import (
+from spflow.base.structure.general.layers.leaves.parametric.cond_poisson import (
     CondPoisson,
     CondPoissonLayer,
 )

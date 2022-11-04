@@ -8,7 +8,7 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.meta.data.scope import Scope
 from spflow.base.structure.module import Module
-from spflow.base.structure.nodes.node import Node
+from spflow.base.structure.general.nodes.node import Node
 
 from typing import List, Union, Optional, Iterable
 from copy import deepcopy
