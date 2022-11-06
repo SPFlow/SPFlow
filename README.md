@@ -152,6 +152,21 @@ Note, that instanced returned by instantiating `AutoLeaf`, is not actually an in
 ```python
 from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 from spflow.<backend>.structure import AutoLeaf
+from spflow.<backend>.structure.spn import MultivariateGaussian
+
+feature_ctx = FeatureContext(Scope([0, 1]), [
+    FeatureTypes.Gaussian(),
+    FeatureTypes.Gaussian()
+])
+
+leaf = AutoLeaf([feature_ctx])
+print(isinstance(leaf, MultivariateGaussian)) # True
+```
+correclty returns an instance for a multivariate Gaussian distribution. Recall however, that the univariate Gaussian example earlier, matched `Gaussian`, even though the `MultivariateGaussian` class can also represent univariate Gaussians. This is because the `Gaussian` leaf module class is checked before `MultivariateGaussian` by default.
+The same principle can be seen in the following example:
+```python
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.<backend>.structure import AutoLeaf
 from spflow.<backend>.structure.spn import GaussianLayer
 
 feature_contexts = [
@@ -162,19 +177,6 @@ feature_contexts = [
 leaf = AutoLeaf(feature_contexts)
 print(isinstance(leaf, GaussianLayer)) # True
 ```
-correclty returns an instance for a multivariate Gaussian distribution. Recall however, that the univariate Gaussian example earlier, matched `Gaussian`, even though the `MultivariateGaussian` class can also represent univariate Gaussians. This is because the `Gaussian` leaf module class is checked before `MultivariateGaussian` by default.
-The same principle can be seen in the following example:
-```python
-from spflow.meta.data import Scope, FeatureType, FeatureContext
-from spflow.<backend>.structure import AutoLeaf
-from spflow.<backend>.structure.spn import GaussianLayer
-
-feature_contexts = [
-    FeatureContext(Scope([0], [FeatureTypes.Gaussian()]),
-    FeatureContext(Scope([1], [FeatureTypes.Gaussian()])
-leaf = AutoLeaf(feature_contexts)
-isinstance(leaf, GaussianLayer) # True
-```
 `AutoLeaf` correctly matches `GaussianLayer`, since we now passed multiple feature context as a signature, which cannot be represented by a single Gaussian object. However, `GaussianLayer` can also represent single distributions. But as seen earlier, passing a single feature context will match `Gaussian` instead, because it is checked before `GaussianLayer`. To change the priorities (i.e., order) of known leaf modules, see `AutoLeaf` (CLASS AutoLeaf). To learn, how to create and register a custom leaf module, see (#custom-modules).
 
 ### Structure Learning
@@ -183,7 +185,7 @@ Instead of manually creating a model architecture, one can also use a structure 
 ```python
 from spflow.<backend>.learning.spn import learn_spn
 
-spn = learn_spn(data)
+spn = learn_spn(data, feature_ctx)
 ```
 The algorithm uses randomized dependence coefficients (RDCs) to determine (in)dependencies between features for partitioning and k-Means clustering to divide the input data instances. However, custom partitioning and clustering methods can be specified. Note, that LearnSPN also learns the parameter values by default. For more details see (REF DOCUMENTATION LearnSPN).
 
@@ -241,15 +243,16 @@ The routine fills the data tensor in-place, taking specified evidence into accou
 The `SamplingContext` class controls the sampling process and is passed to the sampling routing. It is mostly used internally, although users can use it manually if needed. It consists of two parts: a list of instance indices of the data set to sample and a list of lists of output indices, specifying the outputs of the module to sample. For example (in the `base` backend here, but works analogously in the torch backend):
 ```python
 import numpy as np
-from spflow.meta.data import Scope, SamplingContext
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
 from spflow.base.structure.spn import GaussianLayer
 from spflow.base.sampling import sample
 
 # create a layer consisting of three univariate Gaussians (the first two with scope 0 and the last one with scope 1)
-module = GaussianLayer(scope=[Scope([0]), Scope([0]), Scope([1])]
+model = GaussianLayer(scope=[Scope([0]), Scope([0]), Scope([1])])
 
 # initialize empty data set
-data = np.full((4, 2), np.NaN)
+data = np.full((4, 2), np.NaN, dtype=float)
 
 # create sampling context
 sampling_ctx = SamplingContext(instance_ids=[0, 3], output_ids=[[0], [1, 2]])
@@ -257,7 +260,7 @@ sampling_ctx = SamplingContext(instance_ids=[0, 3], output_ids=[[0], [1, 2]])
 # sample
 data = sample(model, data, sampling_ctx=sampling_ctx)
 
-~np.isnan(data)
+print(~np.isnan(data))
 #  True, False
 # False, False
 # False, False
@@ -273,7 +276,7 @@ from spflow.base.structure.spn import GaussianLayer
 from spflow.base.sampling import sample
 
 # create a layer consisting of three univariate Gaussians (the first two with scope 0 and the last one with scope 1)
-module = GaussianLayer(scope=[Scope([0]), Scope([0]), Scope([1])]
+module = GaussianLayer(scope=[Scope([0]), Scope([0]), Scope([1])])
 
 # initialize empty data set
 data = np.full((4, 2), np.NaN)
@@ -351,11 +354,20 @@ data = sample(model, data, dispatch_ctx=dispatch_ctx)
 ```
 In this case the cached log-likelihood values (required for sampling in the presence of evidence) are re-used during sampling instead of being computed again.
 
-The dispatch context can also be used to specify alternative evaluation functions for modules of a certain type. This may be useful for experimental purposes or to extract metrics of interest. This can be done as follows:
+The dispatch context can also be used to specify alternative evaluation functions for modules of a certain type. This may be useful for experimental purposes or to extract metrics of interest. This can be done as follows (example in `base` backend, analogously in `torch` backend):
 ```python
+import numpy as np
+from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.<backend>.structure.spn import Gaussian
-from spflow.<backend>.inference import log_likelihood
+from spflow.base.structure.spn import Gaussian
+from spflow.base.inference import log_likelihood
+
+model = Gaussian(Scope([0]))
+data = np.random.randn(10, 1)
+
+# dummy function that simply outputs 1's
+def alternative_f(gaussian, data, *args, **kwargs):
+    return np.ones((data.shape[0], 1))
 
 # create dispatch context
 dispatch_ctx = DispatchContext()
@@ -363,6 +375,7 @@ dispatch_ctx.funcs[Gaussian] = alternative_f
 
 # compute log likelihoods using alternative_f for all instances of type Gaussian in 'model'
 log_likelihoods = log_likelihood(model, data, dispatch_ctx=dispatch_ctx)
+print(log_likelihoods)
 ```
 Note, that the alternative function must have the same argument signature as the originally dispatched function. This functionality makes most sense in the base backend since all models are constructed from explicitly modeled nodes. That means, that in order to evaluate all nodes of certain type differently, it should be sufficient to provide an alternative implementation for the node type, instead of all nodes, layers or other modules that may be optimized and do not contain any explicit nodes.
 
@@ -374,14 +387,14 @@ from spflow.<backend>.structure.spn import CondGaussian
 from spflow.<backend>.inference import log_likelihood
 
 # create conditional Gaussian leaf
-cond_gaussian = CondGaussian(Scope([0])
+cond_gaussian = CondGaussian(Scope([0]))
 
 # create dispatch context
 dispatch_ctx = DispatchContext()
 dispatch_ctx.update_args(cond_gaussian, {'p': 0.8})
 
 # compute log likelihoods (value of 'p' is read out of the dispatch context by CondGaussian)
-log_likelihoods = log_likelihood(model, data, dispatch_ctx=dispatch_ctx)
+log_likelihoods = log_likelihood(cond_gaussian, data, dispatch_ctx=dispatch_ctx)
 ```
 For more details on conditional modules, see for example (REF DOCUMENTATION: `CondGaussian`).
 
