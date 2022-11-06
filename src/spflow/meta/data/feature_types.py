@@ -17,10 +17,6 @@ class FeatureType(ABC):
 
     meta_type: MetaType
 
-    @abstractmethod
-    def get_params(self) -> Tuple:
-        return tuple([])
-
 
 # ----- continuous types -----
 @dataclass
@@ -35,9 +31,6 @@ class ExponentialType(FeatureType):
 
     meta_type: ClassVar[MetaType] = MetaType.Continuous
     l: float = 1.0
-
-    def get_params(self) -> Tuple[float]:
-        return (self.l,)
 
 
 @dataclass
@@ -57,9 +50,6 @@ class GammaType(FeatureType):
     alpha: float = 1.0
     beta: float = 1.0
 
-    def get_params(self) -> Tuple[float, float]:
-        return (self.alpha, self.beta)
-
 
 @dataclass
 class GaussianType(FeatureType):
@@ -77,9 +67,6 @@ class GaussianType(FeatureType):
     meta_type: ClassVar[MetaType] = MetaType.Continuous
     mean: float = 0.0
     std: float = 1.0
-
-    def get_params(self) -> Tuple[float, float]:
-        return (self.mean, self.std)
 
 
 @dataclass
@@ -99,9 +86,6 @@ class LogNormalType(FeatureType):
     mean: float = 0.0
     std: float = 1.0
 
-    def get_params(self) -> Tuple[float, float]:
-        return (self.mean, self.std)
-
 
 @dataclass
 class UniformType(FeatureType):
@@ -119,9 +103,6 @@ class UniformType(FeatureType):
     start: float
     end: float
 
-    def get_params(self) -> Tuple[float, float]:
-        return (self.start, self.end)
-
 
 # ----- discrete types -----
 @dataclass
@@ -136,9 +117,6 @@ class BernoulliType(FeatureType):
 
     meta_type: ClassVar[MetaType] = MetaType.Discrete
     p: float = 0.5
-
-    def get_params(self) -> Tuple[float]:
-        return (self.p,)
 
 
 @dataclass
@@ -157,9 +135,6 @@ class BinomialType(FeatureType):
     n: int
     p: float = 0.5
 
-    def get_params(self) -> Tuple[int, float]:
-        return (self.n, self.p)
-
 
 @dataclass
 class GeometricType(FeatureType):
@@ -172,9 +147,6 @@ class GeometricType(FeatureType):
     """
     meta_type: ClassVar[MetaType] = MetaType.Discrete
     p: float = 0.5
-
-    def get_params(self) -> Tuple[float]:
-        return (self.p,)
 
 
 @dataclass
@@ -195,9 +167,6 @@ class HypergeometricType(FeatureType):
     M: int
     n: int
 
-    def get_params(self) -> Tuple[float, float]:
-        return (self.n, self.M, self.n)
-
 
 @dataclass
 class NegativeBinomialType(FeatureType):
@@ -214,9 +183,6 @@ class NegativeBinomialType(FeatureType):
     n: int
     p: float = 0.5
 
-    def get_params(self) -> Tuple[int, float]:
-        return (self.n, self.p)
-
 
 @dataclass
 class PoissonType(FeatureType):
@@ -230,9 +196,6 @@ class PoissonType(FeatureType):
 
     meta_type: ClassVar[MetaType] = MetaType.Discrete
     l: float = 1.0
-
-    def get_params(self) -> Tuple[float]:
-        return (self.l,)
 
 
 class FeatureTypes(ABC):
