@@ -18,7 +18,9 @@ from spflow.base.structure.module import Module
 from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
 )
-from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.base.structure.general.nodes.leaves.parametric.gaussian import (
+    Gaussian,
+)
 
 
 class MultivariateGaussianLayer(Module):

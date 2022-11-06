@@ -22,7 +22,9 @@ from spflow.torch.utils.projections import (
     proj_real_to_bounded,
 )
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.general.nodes.leaves.parametric.geometric import Geometric
+from spflow.torch.structure.general.nodes.leaves.parametric.geometric import (
+    Geometric,
+)
 from spflow.base.structure.general.layers.leaves.parametric.geometric import (
     GeometricLayer as BaseGeometricLayer,
 )

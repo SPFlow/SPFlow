@@ -22,7 +22,9 @@ from spflow.torch.utils.projections import (
     proj_real_to_bounded,
 )
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.general.nodes.leaves.parametric.poisson import Poisson
+from spflow.torch.structure.general.nodes.leaves.parametric.poisson import (
+    Poisson,
+)
 from spflow.base.structure.general.layers.leaves.parametric.poisson import (
     PoissonLayer as BasePoissonLayer,
 )

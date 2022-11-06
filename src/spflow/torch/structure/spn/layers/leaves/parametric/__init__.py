@@ -8,7 +8,9 @@ from spflow.torch.structure.general.layers.leaves.parametric.binomial import (
 from spflow.torch.structure.general.layers.leaves.parametric.exponential import (
     ExponentialLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.gamma import GammaLayer
+from spflow.torch.structure.general.layers.leaves.parametric.gamma import (
+    GammaLayer,
+)
 from spflow.torch.structure.general.layers.leaves.parametric.gaussian import (
     GaussianLayer,
 )
@@ -27,8 +29,12 @@ from spflow.torch.structure.general.layers.leaves.parametric.multivariate_gaussi
 from spflow.torch.structure.general.layers.leaves.parametric.negative_binomial import (
     NegativeBinomialLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.poisson import PoissonLayer
-from spflow.torch.structure.general.layers.leaves.parametric.uniform import UniformLayer
+from spflow.torch.structure.general.layers.leaves.parametric.poisson import (
+    PoissonLayer,
+)
+from spflow.torch.structure.general.layers.leaves.parametric.uniform import (
+    UniformLayer,
+)
 from spflow.torch.structure.general.layers.leaves.parametric.cond_bernoulli import (
     CondBernoulliLayer,
 )

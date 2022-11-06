@@ -9,7 +9,9 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.uniform import UniformLayer
+from spflow.torch.structure.general.layers.leaves.parametric.uniform import (
+    UniformLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore

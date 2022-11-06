@@ -81,6 +81,36 @@ class SamplingContext:
 
         return tuple(output_id_dict.items())
 
+    def unique_outputs_ids(
+        self, return_indices: bool = False
+    ) -> Union[List[List[int]], Tuple[List[List[int]], List[List[int]]]]:
+        """Return the list of unique lists of output indices, not the individual indices
+
+        Args:
+            return_indices:
+                Boolean indicating whether or not to additionally return the indices of the unique lists.
+                Defaults to False.
+
+        Returns:
+            List of lists of integers, containing the unique lists of output indices in the sampling context.
+            If ``return_indices`` is set to True, then an additional list of lists of integers is return, containing the indices for the unique lists.
+        """
+        unique_lists = []
+        indices = []
+
+        for i, output_ids in enumerate(self.output_ids):
+            if not output_ids in unique_lists:
+                unique_lists.append(output_ids)
+                indices.append([i])
+            else:
+                idx = unique_lists.index(output_ids)
+                indices[idx].append(i)
+
+        if return_indices:
+            return unique_lists, indices
+        else:
+            return unique_lists
+
 
 def default_sampling_context(n: int) -> SamplingContext:
     """Returns an initialized ``SamplingContext`` object.

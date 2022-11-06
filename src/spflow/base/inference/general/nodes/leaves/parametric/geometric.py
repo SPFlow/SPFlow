@@ -6,7 +6,9 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.base.structure.general.nodes.leaves.parametric.geometric import Geometric
+from spflow.base.structure.general.nodes.leaves.parametric.geometric import (
+    Geometric,
+)
 
 from typing import Optional
 import numpy as np

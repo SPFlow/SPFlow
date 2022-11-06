@@ -29,7 +29,9 @@ from .general.layers.leaves.parametric.cond_gamma import marginalize
 from .general.layers.leaves.parametric.cond_gaussian import marginalize
 from .general.layers.leaves.parametric.cond_geometric import marginalize
 from .general.layers.leaves.parametric.cond_log_normal import marginalize
-from .general.layers.leaves.parametric.cond_multivariate_gaussian import marginalize
+from .general.layers.leaves.parametric.cond_multivariate_gaussian import (
+    marginalize,
+)
 from .general.layers.leaves.parametric.cond_negative_binomial import marginalize
 from .general.layers.leaves.parametric.cond_poisson import marginalize
 from .spn.nodes.sum_node import marginalize

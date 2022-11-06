@@ -10,7 +10,9 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.general.nodes.leaves.parametric.poisson import Poisson
+from spflow.base.structure.general.nodes.leaves.parametric.poisson import (
+    Poisson,
+)
 
 import numpy as np
 from typing import Optional

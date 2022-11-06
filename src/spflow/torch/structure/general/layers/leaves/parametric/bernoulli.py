@@ -22,7 +22,9 @@ from spflow.torch.utils.projections import (
     proj_real_to_bounded,
 )
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
+from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import (
+    Bernoulli,
+)
 from spflow.base.structure.general.layers.leaves.parametric.bernoulli import (
     BernoulliLayer as BaseBernoulliLayer,
 )

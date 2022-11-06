@@ -10,7 +10,9 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import LogNormal
+from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import (
+    LogNormal,
+)
 
 import torch
 from typing import Optional

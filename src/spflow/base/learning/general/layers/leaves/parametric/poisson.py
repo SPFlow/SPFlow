@@ -11,7 +11,9 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.base.learning.general.nodes.leaves.parametric.poisson import (
     maximum_likelihood_estimation,
 )
-from spflow.base.structure.general.layers.leaves.parametric.poisson import PoissonLayer
+from spflow.base.structure.general.layers.leaves.parametric.poisson import (
+    PoissonLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore
