@@ -20,7 +20,9 @@ from spflow.torch.structure.module import Module
 from spflow.torch.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import (
+    Gaussian,
+)
 from spflow.base.structure.general.layers.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussianLayer as BaseMultivariateGaussianLayer,
 )

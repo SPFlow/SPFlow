@@ -16,7 +16,9 @@ from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.general.nodes.leaves.parametric.uniform import Uniform
+from spflow.torch.structure.general.nodes.leaves.parametric.uniform import (
+    Uniform,
+)
 from spflow.base.structure.general.layers.leaves.parametric.uniform import (
     UniformLayer as BaseUniformLayer,
 )

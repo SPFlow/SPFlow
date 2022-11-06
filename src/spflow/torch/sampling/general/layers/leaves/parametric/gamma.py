@@ -11,7 +11,9 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.gamma import GammaLayer
+from spflow.torch.structure.general.layers.leaves.parametric.gamma import (
+    GammaLayer,
+)
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
 

@@ -20,7 +20,9 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.torch.utils.nearest_sym_pd import nearest_sym_pd
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
-from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import (
+    Gaussian,
+)
 from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian as BaseMultivariateGaussian,
 )

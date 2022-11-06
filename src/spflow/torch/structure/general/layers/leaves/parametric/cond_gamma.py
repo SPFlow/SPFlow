@@ -17,7 +17,9 @@ from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_gamma import (
+    CondGamma,
+)
 from spflow.base.structure.general.layers.leaves.parametric.cond_gamma import (
     CondGammaLayer as BaseCondGammaLayer,
 )
