@@ -10,7 +10,9 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.meta.dispatch.dispatch import dispatch
-from spflow.torch.structure.general.layers.leaves.parametric.poisson import PoissonLayer
+from spflow.torch.structure.general.layers.leaves.parametric.poisson import (
+    PoissonLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore

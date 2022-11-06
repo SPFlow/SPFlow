@@ -11,7 +11,9 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.base.learning.general.nodes.leaves.parametric.uniform import (
     maximum_likelihood_estimation,
 )
-from spflow.base.structure.general.layers.leaves.parametric.uniform import UniformLayer
+from spflow.base.structure.general.layers.leaves.parametric.uniform import (
+    UniformLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore

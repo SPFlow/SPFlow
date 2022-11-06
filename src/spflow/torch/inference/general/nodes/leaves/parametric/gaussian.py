@@ -8,7 +8,9 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import (
+    Gaussian,
+)
 
 
 @dispatch(memoize=True)  # type: ignore

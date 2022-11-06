@@ -63,7 +63,9 @@ def sample(
     )
 
     # sample accoding to sampling_context
-    for node_ids in np.unique(sampling_ctx.output_ids, axis=0):
+    for node_ids, indices in zip(
+        *sampling_ctx.unique_outputs_ids(return_indices=True)
+    ):
         if len(node_ids) != 1 or (len(node_ids) == 0 and sum_layer.n_out != 1):
             raise ValueError(
                 "Too many output ids specified for outputs over same scope."
@@ -71,9 +73,7 @@ def sample(
 
         # single node id
         node_id = node_ids[0]
-        node_instance_ids = np.array(sampling_ctx.instance_ids)[
-            np.where(sampling_ctx.output_ids == node_ids)[0]
-        ].tolist()
+        node_instance_ids = np.array(sampling_ctx.instance_ids)[indices]
 
         sample(
             sum_layer.nodes[node_id],

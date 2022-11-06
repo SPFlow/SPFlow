@@ -209,11 +209,17 @@ def learn_spn(
     def fit_leaf(leaf: Module, data: np.ndarray, scope: Scope):
 
         # create empty data set with data at correct leaf scope indices
-        leaf_data =  np.empty((data.shape[0], max(scope.query)+1), dtype=np.float)
-        leaf_data[:, scope.query] = data[:, [scope.query.index(rv) for rv in scope.query]]
+        leaf_data = np.empty(
+            (data.shape[0], max(scope.query) + 1), dtype=np.float
+        )
+        leaf_data[:, scope.query] = data[
+            :, [scope.query.index(rv) for rv in scope.query]
+        ]
 
         # estimate leaf node parameters from data
-        maximum_likelihood_estimation(leaf, leaf_data, check_support=check_support)
+        maximum_likelihood_estimation(
+            leaf, leaf_data, check_support=check_support
+        )
 
     def create_uv_leaf(scope: Scope, data: np.ndarray, fit_params: bool = True):
         # create leaf node

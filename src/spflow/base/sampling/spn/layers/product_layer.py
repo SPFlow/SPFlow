@@ -55,7 +55,7 @@ def sample(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    for node_ids in np.unique(sampling_ctx.output_ids, axis=0):
+    for node_ids in sampling_ctx.unique_outputs_ids():
         if len(node_ids) != 1 or (
             len(node_ids) == 0 and product_layer.n_out != 1
         ):

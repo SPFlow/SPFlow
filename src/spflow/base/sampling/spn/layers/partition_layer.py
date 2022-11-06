@@ -56,7 +56,9 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # sample accoding to sampling_context
-    for node_ids in np.unique(sampling_ctx.output_ids, axis=0):
+    for node_ids, indices in zip(
+        *sampling_ctx.unique_outputs_ids(return_indices=True)
+    ):
         if len(node_ids) != 1 or (
             len(node_ids) == 0 and partition_layer.n_out != 1
         ):
@@ -65,9 +67,7 @@ def sample(
             )
 
         node_id = node_ids[0]
-        node_instance_ids = np.array(sampling_ctx.instance_ids)[
-            np.where(sampling_ctx.output_ids == node_ids)[0]
-        ].tolist()
+        node_instance_ids = np.array(sampling_ctx.instance_ids)[indices]
 
         sample(
             partition_layer.nodes[node_id],

@@ -12,7 +12,9 @@ from spflow.meta.data.scope import Scope
 from spflow.meta.data.feature_types import MetaType, FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.general.nodes.leaf_node import LeafNode
-from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.base.structure.general.nodes.leaves.parametric.gaussian import (
+    Gaussian,
+)
 
 from scipy.stats import multivariate_normal  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore

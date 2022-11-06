@@ -69,7 +69,7 @@ def sample(
         dispatch_ctx.update_args(node, {"mean": mean, "cov": cov})
 
     # sample
-    for output_ids in np.unique(sampling_ctx.output_ids, axis=0):
+    for output_ids in sampling_ctx.unique_outputs_ids():
         if len(output_ids) == 0:
             output_ids = list(range(layer.n_out))
 
