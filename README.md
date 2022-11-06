@@ -1,6 +1,6 @@
 # SPFlow: An Easy and Extensible Library for Probabilistic Circuits
 
-Development branch for SPFlow 1.0.0
+#### Development branch for SPFlow 1.0.0
 
 —
 
@@ -11,14 +11,14 @@ Cite using: TODO
 —
 
 # Table of Contents
-    * [User Guide](#user-guide)
-        * [Backends](#backends)
-        * [Creating Models](#creating-models)
-        * [Backend Conversion](#backend-conversion)
-        * [Interacting with Models](#interacting-with-models)
-    * [Developer Guide](#user-guide)
-        * [Custom Modules](#custom-modules)
-        * [Implementing Dispatched Routines](#implementing-dispatched-routines)
+* [User Guide](#user-guide)
+  * [Backends](#backends)
+  * [Creating Models](#creating-models)
+  * [Backend Conversion](#backend-conversion)
+  * [Interacting with Models](#interacting-with-models)
+* [Developer Guide](#user-guide)
+  * [Custom Modules](#custom-modules)
+  * [Implementing Dispatched Routines](#implementing-dispatched-routines)
 
 # User Guide
 ## Backends
@@ -45,53 +45,59 @@ The `torch` backend provides optimized PyTorch representations, where nodes do n
 Models in SPFlow are built from Modules, that can represent one ore more nodes and there are different ways to create models. One way is to create graph manually using nodes:
 
 ```python
-form spflow.meta.data import Scope
+from spflow.meta.data import Scope
 import spflow.<backend>.structure.spn as spn
 
 model = spn.SumNode(
             children=[
-                spn.ProductNode(children=
+                spn.ProductNode(
                     children=[
-                        spn.Gaussian(Scope([0], mean=-1.0, std=0.5),
-                        spn.Gaussian(Scope([1], mean=1.0, std=1.2),
-                    ])
-                spn.ProductNode(children=
+                        spn.Gaussian(Scope([0]), mean=-1.0, std=0.5),
+                        spn.Gaussian(Scope([1]), mean=1.0, std=1.2),
+                    ]),
+                spn.ProductNode(
                     children=[
-                        spn.Gaussian(Scope([0], mean=2.5, std=1.0),
-                        spn.Gaussian(Scope([1], mean=1.0, std=0.7),
+                        spn.Gaussian(Scope([0]), mean=2.5, std=1.0),
+                        spn.Gaussian(Scope([1]), mean=1.0, std=0.7),
                     ])
             ],
             weights = [0.3, 0.7]
         )
 ```
 The resulting graph structure can be visualized as follows:
-[! Example node SPN](./img/example_node_spn.png)
+
+![Example node SPN](img/example_node_spn.png)
+
 Working with individual nodes directly may quickly get tedious for creating larger models. The same graph can instead also be created using layers, representing multiple nodes:
 ```python
-form spflow.meta.data import Scope
+from spflow.meta.data import Scope
 import spflow.<backend>.structure.spn as spn
 
-model = spn.SumNode(children=[
-                spn.HadamardLayer(children=[
-                    spn.GaussianLayer(scope=[Scope([0]), n_nodes=2, mean=[-1.0, 2.5], std=[0.5, 1.0]],
-                    spn.GaussianLayer(scope=[Scope([1]), n_nodes=2, mean=[1.0, 0.5], std=[1.2, 0.7]]
-                ])
-            ])],
-            weights = [0.3, 0.7]
+model = spn.SumNode(
+            children=[
+                spn.HadamardLayer(
+                    child_partitions=[
+                        [spn.GaussianLayer(scope=Scope([0]), n_nodes=2, mean=[-1.0, 2.5], std=[0.5, 1.0])],
+                        [spn.GaussianLayer(scope=Scope([1]), n_nodes=2, mean=[1.0, 0.5], std=[1.2, 0.7])]
+                    ])
+                ],
+                weights = [0.3, 0.7]
         )
 ```
-[! Example layer SPN](./img/example_layer_spn.png)
+
+![Example layer SPN](img/example_layer_spn.png)
+
 In addition to being easier, layers may benefit from performance boots in optimized backends. Nodes and layers can be further combined and nested into new modules, building even more powerful and high-level building blocks or entire models. One example -- shipped with SPFlow -- are random and tensorized SPNs (RAT-SPNs):
 ```python
-form spflow.meta.data import Scope, FeatureTypes, FeatureContext
-import spflow.<backend>.structure.spn as spn
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.<backend>.structure.spn.rat import RatSPN, random_region_graph
 
-scope = Scope(list(range(1028)))
-model = spn.RatSPN(random_region_graph(scope, n_slits=2, depth=4),
+scope = Scope(list(range(1024)))
+model = RatSPN(random_region_graph(scope, replicas=2, depth=4, n_splits=2),
             FeatureContext(scope, domains=[FeatureTypes.Gaussian] * len(scope)),
-            n_nodes_root = 3,
-            n_nodes_region = 2,
-            n_nodes_leaf = 4
+            n_root_nodes = 3,
+            n_region_nodes = 2,
+            n_leaf_nodes = 4
         )
 ```
 Refer to more (DEVELOPER GUIDE, CUSTOM MODULES) for more details on how to declare custom modules.
@@ -101,20 +107,20 @@ Refer to more (DEVELOPER GUIDE, CUSTOM MODULES) for more details on how to decla
 When creating a model, it is sometimes not clear which leaf module is the best to use in a given scenario. This is especially true for automated modular architectures like RAT-SPNs or some structure learners (e.g., LearnSPN, see #structure-learning). The AutoLeaf class provides functionality to automatically select and create an appropriate leaf module for one or more given data scopes. The user specifies information about the data in a FeatureContext, for example:
 
 ```python
-from spflow.meta.data import Scope, FeatureType, FeatureContext
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 
 feature_ctx = FeatureContext(Scope([0]), [FeatureTypes.Gaussian])
 ```
 The feature context now contains a scope and the specified domain information about the random variables in the scope. In this case the data is univariate and Gaussian-distributed. We could also specify (part of) the parameters of the distribution:
 
 ```python
-from spflow.meta.data import Scope, FeatureType, FeatureContext
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 
 feature_ctx = FeatureContext(Scope([0]), [FeatureTypes.Gaussian(mean=1.7, std=0.3)])
 ```
 Notice, that in the first example we used `FeatureTypes.Gaussian`, which is a class, but now we created an instance of the class with specific parameters. `FeatureContext` checks if a class is specified, and automatically creates an instance with default arguments. Therefore, the first example is equivalent to
 ```python
-from spflow.meta.data import Scope, FeatureType, FeatureContext
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 
 feature_ctx = FeatureContext(Scope([0]), [FeatureTypes.Gaussian()])
 ```
@@ -122,33 +128,39 @@ and is simply a convenient way for specify the distribution of a feature without
 
 Once, we have a feature context, we can now use `AutoLeaf` to automatically deduce the Gaussian leaf node to represent this distribution:
 ```python
-from spflow.meta.data import Scope, FeatureType, FeatureContext
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 from spflow.<backend>.structure import AutoLeaf
 from spflow.<backend>.structure.spn import Gaussian
 
 feature_ctx = FeatureContext(Scope([0]), [FeatureTypes.Gaussian()])
+
 leaf_class = AutoLeaf.infer([feature_ctx])
-leaf_class == Gaussian # True
+print(leaf_class == Gaussian) # True
 ```
 We can directly instantiate the leaf module by "instantiating" `AutoLeaf`:
 ```python
-from spflow.meta.data import Scope, FeatureType, FeatureContext
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 from spflow.<backend>.structure import AutoLeaf
 from spflow.<backend>.structure.spn import Gaussian
 
 feature_ctx = FeatureContext(Scope([0]), [FeatureTypes.Gaussian()])
+
 leaf = AutoLeaf([feature_ctx])
-isinstance(leaf, Gaussian) # True
+print(isinstance(leaf, Gaussian)) # True
 ```
 Note, that instanced returned by instantiating `AutoLeaf`, is not actually an instance of `AutoLeaf`, but of the class returned by `AutoLeaf.infer()`. `AutoLeaf` uses an ordered list of known (i.e., registered) leaf modules, which implement an accepts class-method to determine whether or not a module is able to represent a specified scope signature. Leaf modules are called in order and the first match is returned. If no appropriate leaf module for given feature contexts can be matched, `AutoLeaf.infer()` will return `None` instead. Similarly, `AutoLeaf()` will raise an exception in this case. The order of the leaf modules in `AutoLeaf` can be used to prioritize leaf modules for certain signatures, that may have more than one possible match. For example,
 ```python
-from spflow.meta.data import Scope, FeatureType, FeatureContext
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 from spflow.<backend>.structure import AutoLeaf
-from spflow.<backend>.structure.spn import MultivariateGaussian
+from spflow.<backend>.structure.spn import GaussianLayer
 
-feature_ctx = FeatureContext(Scope([0,1], [FeatureTypes.Gaussian(), FeatureTypes.Gaussian()])
-leaf_ = AutoLeaf([feature_ctx])
-isinstance(leaf, MultivariateGaussian) # True
+feature_contexts = [
+    FeatureContext(Scope([0]), [FeatureTypes.Gaussian()]),
+    FeatureContext(Scope([1]), [FeatureTypes.Gaussian()])
+]
+
+leaf = AutoLeaf(feature_contexts)
+print(isinstance(leaf, GaussianLayer)) # True
 ```
 correclty returns an instance for a multivariate Gaussian distribution. Recall however, that the univariate Gaussian example earlier, matched `Gaussian`, even though the `MultivariateGaussian` class can also represent univariate Gaussians. This is because the `Gaussian` leaf module class is checked before `MultivariateGaussian` by default.
 The same principle can be seen in the following example:
