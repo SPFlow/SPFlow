@@ -585,7 +585,7 @@ class MyModule(Module):
 ```
 It can then be registered using `AutoLeaf.register()`.
 
-To create a new feature type, one should subclass `spflow.meta.data.FeatureType`:
+To create a new feature type, one should subclass `spflow.meta.data.FeatureType`, similar to:
 ```python
 from spflow.meta.data import MetaType, FeatureContext
 from spflow.<backend>.structure import Module
@@ -594,10 +594,7 @@ from typing import Any
 class MyFeatureType(FeatureType):
     meta_type: MetaType # required class attribute
     ...
-    
-    def get_params(self) -> Any:
-       ...
+    def __init__(self, required_param, optional_param=0.5):
+        ...
 ```
 The feature type can then be registered using `spflow.meta.data.FeatureTypes.register()` to be accessed conveniently through the `spflow.meta.data.FeatureTypes` class, along all other feature types.
-
-—
