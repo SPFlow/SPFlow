@@ -10,7 +10,9 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
+from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import (
+    Bernoulli,
+)
 
 import torch
 from typing import Optional

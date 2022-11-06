@@ -11,7 +11,9 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.base.learning.general.nodes.leaves.parametric.gamma import (
     maximum_likelihood_estimation,
 )
-from spflow.base.structure.general.layers.leaves.parametric.gamma import GammaLayer
+from spflow.base.structure.general.layers.leaves.parametric.gamma import (
+    GammaLayer,
+)
 
 
 @dispatch(memoize=True)  # type: ignore

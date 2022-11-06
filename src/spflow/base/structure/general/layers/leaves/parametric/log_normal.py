@@ -15,7 +15,9 @@ from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.structure.module import Module
-from spflow.base.structure.general.nodes.leaves.parametric.log_normal import LogNormal
+from spflow.base.structure.general.nodes.leaves.parametric.log_normal import (
+    LogNormal,
+)
 
 
 class LogNormalLayer(Module):
