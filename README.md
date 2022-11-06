@@ -11,14 +11,14 @@ Cite using: TODO
 —
 
 # Table of Contents
-    * [User Guide](#user-guide)
-        * [Backends](#backends)
-        * [Creating Models](#creating-models)
-        * [Backend Conversion](#backend-conversion)
-        * [Interacting with Models](#interacting-with-models)
-    * [Developer Guide](#user-guide)
-        * [Custom Modules](#custom-modules)
-        * [Implementing Dispatched Routines](#implementing-dispatched-routines)
+* [User Guide](#user-guide)
+  * [Backends](#backends)
+  * [Creating Models](#creating-models)
+  * [Backend Conversion](#backend-conversion)
+  * [Interacting with Models](#interacting-with-models)
+* [Developer Guide](#user-guide)
+  * [Custom Modules](#custom-modules)
+  * [Implementing Dispatched Routines](#implementing-dispatched-routines)
 
 # User Guide
 ## Backends
@@ -65,7 +65,9 @@ model = spn.SumNode(
         )
 ```
 The resulting graph structure can be visualized as follows:
-[! Example node SPN](./img/example_node_spn.png)
+
+[! Example node SPN](img/example_node_spn.png)
+
 Working with individual nodes directly may quickly get tedious for creating larger models. The same graph can instead also be created using layers, representing multiple nodes:
 ```python
 form spflow.meta.data import Scope
@@ -80,7 +82,9 @@ model = spn.SumNode(children=[
             weights = [0.3, 0.7]
         )
 ```
-[! Example layer SPN](./img/example_layer_spn.png)
+
+[! Example layer SPN](img/example_layer_spn.png)
+
 In addition to being easier, layers may benefit from performance boots in optimized backends. Nodes and layers can be further combined and nested into new modules, building even more powerful and high-level building blocks or entire models. One example -- shipped with SPFlow -- are random and tensorized SPNs (RAT-SPNs):
 ```python
 form spflow.meta.data import Scope, FeatureTypes, FeatureContext
