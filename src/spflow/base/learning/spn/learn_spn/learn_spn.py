@@ -157,7 +157,7 @@ def learn_spn(
     """
     # initialize feature context
     if feature_ctx is None:
-        feature_ctx = feature_ctx(Scope(list(range(data.shape[1]))))
+        feature_ctx = FeatureContext(Scope(list(range(data.shape[1]))))
 
     scope = feature_ctx.scope
 
@@ -206,16 +206,22 @@ def learn_spn(
         )
 
     # helper functions
+    def fit_leaf(leaf: Module, data: np.ndarray, scope: Scope):
+
+        # create empty data set with data at correct leaf scope indices
+        leaf_data =  np.empty((data.shape[0], max(scope.query)+1), dtype=np.float)
+        leaf_data[:, scope.query] = data[:, [scope.query.index(rv) for rv in scope.query]]
+
+        # estimate leaf node parameters from data
+        maximum_likelihood_estimation(leaf, leaf_data, check_support=check_support)
+
     def create_uv_leaf(scope: Scope, data: np.ndarray, fit_params: bool = True):
         # create leaf node
         signature = feature_ctx.select(scope.query)
         leaf = AutoLeaf([signature])
 
         if fit_params:
-            # estimate leaf node parameters from data
-            maximum_likelihood_estimation(
-                leaf, data, check_support=check_support
-            )
+            fit_leaf(leaf, data, scope)
 
         return leaf
 
@@ -232,10 +238,7 @@ def learn_spn(
             leaves.append(leaf)
 
             if fit_params:
-                # estimate leaf node parameters from data
-                maximum_likelihood_estimation(
-                    leaf, data[:, [rv]], check_support=check_support
-                )
+                fit_leaf(leaf, data, scope)
 
         return ProductNode(children=leaves)
 
