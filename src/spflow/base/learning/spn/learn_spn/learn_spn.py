@@ -118,9 +118,9 @@ def learn_spn(
             Two-dimensional NumPy array containing the input data.
             Each row corresponds to a sample.
         feature_ctx:
-                ``FeatureContext`` instance specifying the domains of the scopes.
-                Scope query RVs must match the data features.
-                Defaults to None, in which case a feature context is initialized from ``data``.
+            ``FeatureContext`` instance specifying the domains of the scopes.
+            Scope query RVs must match the data features.
+            Defaults to None, in which case a feature context is initialized from ``data``.
         min_features_slice:
             Integer value specifying the minimum number of features required to partition.
             Defaults to 2.
