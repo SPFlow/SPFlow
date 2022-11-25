@@ -106,7 +106,7 @@ class CondBernoulliLayer(Module):
         return self._n_out
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondBernoulliLayer`` can represent one or more univariate nodes with ``MetaType.Discrete`` or ``BernoulliType`` domains.

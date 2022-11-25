@@ -273,7 +273,7 @@ class FeatureTypes(ABC):
     Poisson = PoissonType
 
     @classmethod
-    def register(self, name: str, type: FeatureType, overwrite=False) -> None:
+    def register(cls, name: str, type: FeatureType, overwrite=False) -> None:
         """Registers a feature type.
 
         Args:

@@ -38,7 +38,7 @@ class FeatureContext:
         self.set_domains(domains)
 
     @classmethod
-    def parse_type(self, type: FeatureType):
+    def parse_type(cls, type: FeatureType):
         """TODO"""
         if isclass(type):
             type = type()

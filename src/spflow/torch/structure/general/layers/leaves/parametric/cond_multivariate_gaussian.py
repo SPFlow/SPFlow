@@ -127,7 +127,7 @@ class CondMultivariateGaussianLayer(Module):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondMultivariateGaussianLayer`` can represent one or more multivariate nodes with ``MetaType.Continuous`` or ``GammaType`` domains.
