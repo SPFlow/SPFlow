@@ -1,6 +1,10 @@
 name: Development Build & Test
 
-on: [push]
+on:
+  release:
+    types: [ published ]
+  pull_request:
+  push:
 
 jobs:
   build:
