@@ -121,7 +121,7 @@ class NegativeBinomialLayer(Module):
         self.set_params(n, p)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``NegativeBinomialLayer`` can represent one or more univariate nodes ``NegativeBinomialType`` domains.

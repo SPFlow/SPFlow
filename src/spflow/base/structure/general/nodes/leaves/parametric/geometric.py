@@ -53,7 +53,7 @@ class Geometric(LeafNode):
         self.set_params(p)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``Geometric`` can represent a single univariate node with ``MetaType.Discrete`` or ``GeometricType`` domain.
@@ -88,7 +88,7 @@ class Geometric(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[FeatureContext]) -> "Geometric":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "Geometric":
         """Creates an instance from a specified signature.
 
         Returns:
