@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains the SPFlow architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the ``torch`` backend.
 """
 from spflow.meta.data.scope import Scope
@@ -68,7 +67,7 @@ class RatSPN(Module):
         n_region_nodes: int,
         n_leaf_nodes: int,
     ) -> None:
-        super(RatSPN, self).__init__(children=[])
+        super().__init__(children=[])
         r"""Initializer for ``RatSPN`` object.
 
         Args:

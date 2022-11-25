@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Bernoulli leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List
@@ -53,7 +52,7 @@ class Bernoulli(LeafNode):
                 f"Evidence scope for 'Bernoulli' should be empty, but was {scope.evidence}."
             )
 
-        super(Bernoulli, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # set parameters
         self.set_params(p)

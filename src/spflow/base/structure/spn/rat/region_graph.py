@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains classes and functions to create Region Graphs.
 """
 import random

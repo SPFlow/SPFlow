@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Log-Normal leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
@@ -105,7 +104,7 @@ class LogNormalLayer(Module):
                     f"Evidence scope for 'LogNormalLayer' should be empty, but was {s.evidence}."
                 )
 
-        super(LogNormalLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # register auxiliary torch parameter for rate l of each implicit node
         self.mean = Parameter()

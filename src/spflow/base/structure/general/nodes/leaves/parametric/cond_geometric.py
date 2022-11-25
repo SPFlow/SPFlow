@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Geometric leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional, Callable, Union, List
@@ -53,7 +52,7 @@ class CondGeometric(LeafNode):
                 f"Evidence scope for 'CondGeometric' should not be empty."
             )
 
-        super(CondGeometric, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # set optional conditional function
         self.set_cond_f(cond_f)

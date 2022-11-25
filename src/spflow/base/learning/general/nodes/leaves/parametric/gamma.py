@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains learning methods for ``Gamma`` nodes for SPFlow in the ``base`` backend.
 """
 from typing import Optional, Union, Callable

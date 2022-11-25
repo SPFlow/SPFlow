@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains inference methods for ``Poisson`` nodes for SPFlow in the ``torch`` backend.
 """
 import torch

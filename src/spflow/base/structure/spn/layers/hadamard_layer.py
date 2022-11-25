@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains SPN-like hadamard layer for SPFlow in the ``base`` backend.
 """
 from spflow.meta.data.scope import Scope
@@ -120,7 +119,7 @@ class HadamardLayer(NestedModule):
                     "Scopes of partitions must be pair-wise disjoint."
                 )
 
-        super(HadamardLayer, self).__init__(
+        super().__init__(
             children=sum(child_partitions, []), **kwargs
         )
 

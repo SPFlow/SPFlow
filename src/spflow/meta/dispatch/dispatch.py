@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains the standard 'dispatch' decorator for SPFlow.
 
 Typical usage example:

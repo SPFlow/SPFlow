@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains inference methods for SPN-like sum nodes for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch

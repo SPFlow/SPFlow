@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Hypergeometric leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
@@ -100,7 +99,7 @@ class HypergeometricLayer(Module):
                     f"Evidence scope for 'HypergeometricLayer' should be empty, but was {s.evidence}."
                 )
 
-        super(HypergeometricLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # register number of trials n as torch buffer (should not be changed)
         self.register_buffer("N", torch.empty(size=[]))

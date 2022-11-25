@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Gamma leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
@@ -101,7 +100,7 @@ class CondGammaLayer(Module):
                     f"Evidence scope for 'CondGammaLayer' should not be empty."
                 )
 
-        super(CondGammaLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # compute scope
         self.scopes_out = scope

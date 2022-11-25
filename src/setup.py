@@ -1,7 +1,7 @@
 from os import path
 import setuptools  # type: ignore
 
-with open("../requirements.txt", "r") as fh:
+with open("../requirements.txt") as fh:
     requirements = fh.readlines()
 
 setuptools.setup(

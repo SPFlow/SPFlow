@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Negative Binomial leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List
@@ -54,7 +53,7 @@ class NegativeBinomial(LeafNode):
                 f"Evidence scope for 'NegativeBinomial' should be empty, but was {scope.evidence}."
             )
 
-        super(NegativeBinomial, self).__init__(scope=scope)
+        super().__init__(scope=scope)
         self.set_params(n, p)
 
     @classmethod

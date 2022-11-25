@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains sampling methods for SPN-like Hadamard layers for SPFlow in the ``base`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch

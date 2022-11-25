@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Log-Normal leaf node for SPFlow in the ``torch`` backend.
 """
 import torch
@@ -59,7 +58,7 @@ class CondLogNormal(LeafNode):
                 f"Evidence scope for 'CondLogNormal' should not be empty."
             )
 
-        super(CondLogNormal, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 

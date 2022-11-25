@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Multivariate Normal leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List, Union, Optional, Iterable, Union, Callable
@@ -77,7 +76,7 @@ class CondMultivariateGaussian(LeafNode):
                 "Size of query scope for 'CondMultivariateGaussian' must be at least 1."
             )
 
-        super(CondMultivariateGaussian, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # set optional conditional function
         self.set_cond_f(cond_f)

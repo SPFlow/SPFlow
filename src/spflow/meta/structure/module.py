@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains the abstract ``MetaModule`` class for SPFlow modules.
 
 All valid SPFlow modules should be a subclass of this class.
