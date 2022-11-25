@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Gamma leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List
@@ -62,7 +61,7 @@ class Gamma(LeafNode):
                 f"Evidence scope for 'Gamma' should be empty, but was {scope.evidence}."
             )
 
-        super(Gamma, self).__init__(scope=scope)
+        super().__init__(scope=scope)
         self.set_params(alpha, beta)
 
     @classmethod

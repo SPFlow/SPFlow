@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Algorithm to compute the closest positive definite matrix to a given matrix.
 
 Typical usage example:

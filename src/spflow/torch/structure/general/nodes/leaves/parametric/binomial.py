@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Binomial leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
@@ -71,7 +70,7 @@ class Binomial(LeafNode):
                 f"Evidence scope for 'Binomial' should be empty, but was {scope.evidence}."
             )
 
-        super(Binomial, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # register number of trials n as torch buffer (should not be changed)
         self.register_buffer("n", torch.empty(size=[]))

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Hypergeometric leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
@@ -65,7 +64,7 @@ class Hypergeometric(LeafNode):
                 f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}."
             )
 
-        super(Hypergeometric, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # register parameters as torch buffers (should not be changed)
         self.register_buffer("N", torch.empty(size=[]))

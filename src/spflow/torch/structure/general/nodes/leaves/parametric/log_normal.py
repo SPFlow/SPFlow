@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Log-Normal leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
@@ -76,7 +75,7 @@ class LogNormal(LeafNode):
                 f"Evidence scope for 'LogNormal' should be empty, but was {scope.evidence}."
             )
 
-        super(LogNormal, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # register mean as torch parameter
         self.mean = Parameter()

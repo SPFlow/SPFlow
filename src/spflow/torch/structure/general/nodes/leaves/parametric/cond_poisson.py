@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Poisson leaf node for SPFlow in the ``torch`` backend.
 """
 import torch
@@ -58,7 +57,7 @@ class CondPoisson(LeafNode):
                 f"Evidence scope for 'CondPoisson' should not be empty."
             )
 
-        super(CondPoisson, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 

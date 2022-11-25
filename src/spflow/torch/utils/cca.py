@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Algorithm for canonical correlation analysis (CCA) between to data sets.
 
 Typical usage example:

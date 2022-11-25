@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Gamma leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Type
@@ -85,7 +84,7 @@ class GammaLayer(Module):
 
             self._n_out = len(scope)
 
-        super(GammaLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [Gamma(s) for s in scope]

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains sampling methods for ``CondExponentialLayer`` leaves for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.data.scope import Scope
@@ -64,9 +63,9 @@ def sample(
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    unique_output_signatures = set(
+    unique_output_signatures = {
         frozenset(l) for l in sampling_ctx.output_ids
-    )
+    }
 
     # retrieve value for 'l'
     l = layer.retrieve_params(data, dispatch_ctx)

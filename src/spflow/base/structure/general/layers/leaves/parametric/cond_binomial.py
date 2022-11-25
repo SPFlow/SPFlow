@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Binomial leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable, Type
@@ -98,7 +97,7 @@ class CondBinomialLayer(Module):
 
             self._n_out = len(scope)
 
-        super(CondBinomialLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [CondBinomial(s, 1) for s in scope]

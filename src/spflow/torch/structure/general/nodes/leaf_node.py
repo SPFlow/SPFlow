@@ -27,6 +27,6 @@ class LeafNode(Node, ABC):
             scope:
                 Scope object representing the scope of the leaf node,
         """
-        super(LeafNode, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         self.scope = scope

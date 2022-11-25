@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Exponential leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
@@ -66,7 +65,7 @@ class Exponential(LeafNode):
                 f"Evidence scope for 'Exponential' should be empty, but was {scope.evidence}."
             )
 
-        super(Exponential, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # register auxiliary torch parameter for parameter l
         self.l_aux = Parameter()

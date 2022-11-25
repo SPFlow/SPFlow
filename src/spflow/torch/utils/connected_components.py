@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Algorithm to find connected components in an undirected graph.
 
 Typical usage example:
@@ -45,7 +44,7 @@ def connected_components(adjacency_matrix: torch.Tensor) -> List[Set[int]]:
 
         # perform breadth-first search
         visited = set()
-        active_set = set([vertices.pop()])
+        active_set = {vertices.pop()}
 
         # while there are previously unvisited vertices
         while active_set:

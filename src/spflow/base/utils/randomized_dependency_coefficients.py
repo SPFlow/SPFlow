@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Algorithm to compute randomized dependency coefficients (RDCs) for a data set.
 
 Typical usage example:
