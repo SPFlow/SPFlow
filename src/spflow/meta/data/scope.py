@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains the ``Scope`` class for representing scopes over random variables.
 
 Typical usage example:

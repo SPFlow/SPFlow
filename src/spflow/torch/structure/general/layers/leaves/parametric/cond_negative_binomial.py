@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Negative Binomial leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
@@ -104,7 +103,7 @@ class CondNegativeBinomialLayer(Module):
                     f"Evidence scope for 'CondNegativeBinomialLayer' should not be empty."
                 )
 
-        super(CondNegativeBinomialLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # register number of trials n as torch buffer (should not be changed)
         self.register_buffer("n", torch.empty(size=[]))
@@ -332,7 +331,7 @@ class CondNegativeBinomialLayer(Module):
                 f"Values for 'n' of 'NegativeBinomialLayer' must to greater of equal to 0, but was: {n}"
             )
 
-        if not torch.all((torch.remainder(n, 1.0) == torch.tensor(0.0))):
+        if not torch.all(torch.remainder(n, 1.0) == torch.tensor(0.0)):
             raise ValueError(
                 f"Values for 'n' of 'NegativeBinomialLayer' must be (equal to) an integer value, but was: {n}"
             )

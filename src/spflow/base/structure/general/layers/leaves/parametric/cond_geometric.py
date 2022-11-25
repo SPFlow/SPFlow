@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Geometric leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable, Type
@@ -87,7 +86,7 @@ class CondGeometricLayer(Module):
 
             self._n_out = len(scope)
 
-        super(CondGeometricLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [CondGeometric(s) for s in scope]

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Geometric leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
@@ -65,7 +64,7 @@ class Geometric(LeafNode):
                 f"Evidence scope for 'Geometric' should be empty, but was {scope.evidence}."
             )
 
-        super(Geometric, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # register auxiliary torch parameter for the success probability p
         self.p_aux = Parameter()

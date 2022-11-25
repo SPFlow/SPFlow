@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains sampling methods for ``GammaLayer`` leaves for SPFlow in the ``base`` backend.
 """
 import numpy as np

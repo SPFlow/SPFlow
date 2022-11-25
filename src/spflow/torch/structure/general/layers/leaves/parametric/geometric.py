@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Geometric leaf layer for SPFlow in the ``torche`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
@@ -97,7 +96,7 @@ class GeometricLayer(Module):
                     f"Evidence scope for 'GeometricLayer' should be empty, but was {s.evidence}."
                 )
 
-        super(GeometricLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # register auxiliary torch parameter for success probability p of each implicit node
         self.p_aux = Parameter()

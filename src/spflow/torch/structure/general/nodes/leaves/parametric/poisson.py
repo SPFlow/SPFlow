@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Poisson leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
@@ -65,7 +64,7 @@ class Poisson(LeafNode):
                 f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}."
             )
 
-        super(Poisson, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # register auxiliary torch parameter for lambda l
         self.l_aux = Parameter()

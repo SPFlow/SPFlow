@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Multivariate Gaussian leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
@@ -109,7 +108,7 @@ class CondMultivariateGaussianLayer(Module):
 
             self._n_out = len(scope)
 
-        super(CondMultivariateGaussianLayer, self).__init__(
+        super().__init__(
             children=[], **kwargs
         )
 

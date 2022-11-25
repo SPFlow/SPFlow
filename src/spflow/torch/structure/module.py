@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains the abstract ``Module`` class for SPFlow modules in the 'torch' backend.
 
 All valid SPFlow modules in the ``torch`` backend should inherit from this class or a subclass of it.
@@ -37,7 +36,7 @@ class Module(MetaModule, nn.Module, ABC):
         Raises:
             ValueError: children of invalid type.
         """
-        super(Module, self).__init__()
+        super().__init__()
 
         if children is None:
             children = []
@@ -47,7 +46,7 @@ class Module(MetaModule, nn.Module, ABC):
 
         # register children
         for i, child in enumerate(children):
-            self.add_module("child_{}".format(i + 1), child)
+            self.add_module(f"child_{i + 1}", child)
 
     def input_to_output_ids(
         self, input_ids: Union[List[int], torch.Tensor]

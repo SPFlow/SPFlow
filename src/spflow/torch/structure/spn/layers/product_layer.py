@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains SPN-like product layer for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.data.scope import Scope
@@ -56,7 +55,7 @@ class ProductLayer(Module):
                 "'ProductLayer' requires at least one child to be specified."
             )
 
-        super(ProductLayer, self).__init__(children=children, **kwargs)
+        super().__init__(children=children, **kwargs)
 
         # compute scope
         scope = Scope()

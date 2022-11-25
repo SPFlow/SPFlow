@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains a convenient decorator to automatically check for alternative function during dispatch.
 
 Typical usage example:

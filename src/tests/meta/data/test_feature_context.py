@@ -10,7 +10,7 @@ class TestFeatureContext(unittest.TestCase):
         # make sure scope is correctly stored
         self.assertEqual(Scope([0, 1, 2, 3]), feature_ctx.scope)
         # make sure default domains are correctly set
-        self.assertTrue(set(feature_ctx.domain_map.keys()) == set([0, 1, 2, 3]))
+        self.assertTrue(set(feature_ctx.domain_map.keys()) == {0, 1, 2, 3})
         self.assertTrue(
             all(
                 [
