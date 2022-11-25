@@ -13,5 +13,5 @@ class MetaType(Enum):
     Discrete: int = 1
 
     @classmethod
-    def get_params(self) -> Tuple:
+    def get_params(cls) -> Tuple:
         return tuple([])

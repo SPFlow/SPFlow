@@ -81,7 +81,7 @@ class Exponential(LeafNode):
         return proj_real_to_bounded(self.l_aux, lb=0.0)  # type: ignore
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``Exponential`` can represent a single univariate node with ``MetaType.Continuous`` or ``ExponentialType`` domain.

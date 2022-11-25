@@ -102,7 +102,7 @@ class BernoulliLayer(Module):
         return np.array([node.p for node in self.nodes])
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``BernoulliLayer`` can represent one or more univariate nodes with ``MetaType.discrete`` or ``BernoulliType`` domains.

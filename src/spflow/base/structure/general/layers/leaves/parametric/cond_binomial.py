@@ -122,7 +122,7 @@ class CondBinomialLayer(Module):
         return np.array([node.n for node in self.nodes])
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondBinomialLayer`` can represent one or more univariate nodes with ``BinomialType`` domains.
