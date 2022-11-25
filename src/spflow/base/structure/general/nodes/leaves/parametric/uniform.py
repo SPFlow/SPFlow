@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Uniform leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List
@@ -63,7 +62,7 @@ class Uniform(LeafNode):
                 f"Evidence scope for 'Uniform' should be empty, but was {scope.evidence}."
             )
 
-        super(Uniform, self).__init__(scope=scope)
+        super().__init__(scope=scope)
         self.set_params(start, end, support_outside)
 
     @classmethod

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Poisson leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Callable
@@ -98,7 +97,7 @@ class CondPoissonLayer(Module):
                     f"Evidence scope for 'CondPoissonLayer' should not be empty."
                 )
 
-        super(CondPoissonLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # compute scope
         self.scopes_out = scope

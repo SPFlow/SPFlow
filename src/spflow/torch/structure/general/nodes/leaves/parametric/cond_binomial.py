@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Binomial leaf node for SPFlow in the ``torch`` backend.
 """
 import torch
@@ -67,7 +66,7 @@ class CondBinomial(LeafNode):
                 f"Evidence scope for 'CondBinomial' should not be empty."
             )
 
-        super(CondBinomial, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # register number of trials n as torch buffer (should not be changed)
         self.register_buffer("n", torch.empty(size=[]))

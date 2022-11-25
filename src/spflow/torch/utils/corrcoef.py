@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Algorithm to compute Pearson correlation coefficients for a data set.
 
 Typical usage example:

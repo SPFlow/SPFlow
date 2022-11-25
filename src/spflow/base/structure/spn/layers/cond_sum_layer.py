@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional SPN-like sum layer for SPFlow in the ``base`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
@@ -76,7 +75,7 @@ class CondSumLayer(NestedModule):
                 "'CondSumLayer' requires at least one child to be specified."
             )
 
-        super(CondSumLayer, self).__init__(children=children, **kwargs)
+        super().__init__(children=children, **kwargs)
 
         self._n_out = n_nodes
         self.n_in = sum(child.n_out for child in self.children)

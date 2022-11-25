@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Bernoulli leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable, Type
@@ -90,7 +89,7 @@ class CondBernoulliLayer(Module):
 
             self._n_out = len(scope)
 
-        super(CondBernoulliLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [CondBernoulli(s) for s in scope]

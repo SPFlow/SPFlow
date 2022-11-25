@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains learning methods for Random and Tensorized Sum-Product Networks (RAT-SPNs) for SPFlow in the ``torch`` backend.
 """
 from typing import Optional

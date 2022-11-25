@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Bernoulli leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
@@ -98,7 +97,7 @@ class BernoulliLayer(Module):
                     f"Evidence scope for 'BernoulliLayer' should be empty, but was {s.evidence}."
                 )
 
-        super(BernoulliLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # register auxiliary torch parameter for the success probabilities p for each implicit node
         self.p_aux = Parameter()

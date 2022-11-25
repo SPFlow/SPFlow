@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains SPN-like product layer for SPFlow in the ``base`` backend.
 """
 from spflow.meta.data.scope import Scope
@@ -55,7 +54,7 @@ class ProductLayer(NestedModule):
                 "'ProductLayer' requires at least one child to be specified."
             )
 
-        super(ProductLayer, self).__init__(children=children, **kwargs)
+        super().__init__(children=children, **kwargs)
 
         # create input placeholder
         ph = self.create_placeholder(

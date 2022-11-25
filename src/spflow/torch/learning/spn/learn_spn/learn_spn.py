@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains the LearnSPN structure and parameter learner for SPFlow in the ``torch`` backend.
 """
 import torch

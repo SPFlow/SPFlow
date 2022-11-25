@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Bernoulli leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
@@ -80,7 +79,7 @@ class BernoulliLayer(Module):
 
             self._n_out = len(scope)
 
-        super(BernoulliLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [Bernoulli(s) for s in scope]

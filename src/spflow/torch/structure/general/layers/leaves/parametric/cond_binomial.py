@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Binomial leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
@@ -108,7 +107,7 @@ class CondBinomialLayer(Module):
                     f"Evidence scope for 'CondBinomialLayer' should not be empty."
                 )
 
-        super(CondBinomialLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # register number of trials n as torch buffer (should not be changed)
         self.register_buffer("n", torch.empty(size=[]))
@@ -333,7 +332,7 @@ class CondBinomialLayer(Module):
                 f"Values for 'n' of 'BinomialLayer' must to greater of equal to 0, but was: {n}"
             )
 
-        if not torch.all((torch.remainder(n, 1.0) == torch.tensor(0.0))):
+        if not torch.all(torch.remainder(n, 1.0) == torch.tensor(0.0)):
             raise ValueError(
                 f"Values for 'n' of 'BinomialLayer' must be (equal to) an integer value, but was: {n}"
             )

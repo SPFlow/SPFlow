@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Negative Binomial leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional, Callable, Union, List
@@ -60,7 +59,7 @@ class CondNegativeBinomial(LeafNode):
                 f"Evidence scope for 'CondNegativeBinomial' should be empty."
             )
 
-        super(CondNegativeBinomial, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # set non-conditional parameters
         self.set_params(n)

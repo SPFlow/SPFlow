@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains the abstract ``NestedModule`` class for SPFlow modules in the ``base`` backend.
 """
 from spflow.meta.dispatch.dispatch_context import DispatchContext
@@ -35,7 +34,7 @@ class NestedModule(Module, ABC):
         if children is None:
             children = []
 
-        super(NestedModule, self).__init__(children=children, **kwargs)
+        super().__init__(children=children, **kwargs)
         self.placeholders = []
 
     def create_placeholder(self, input_ids: List[int]) -> "Placeholder":

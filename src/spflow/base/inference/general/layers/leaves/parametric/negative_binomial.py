@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains inference methods for ``NegativeBinomialLayer`` leaves for SPFlow in the ``base`` backend.
 """
 import numpy as np
