@@ -107,7 +107,7 @@ class Binomial(LeafNode):
         self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)  # type: ignore
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``Binomial`` can represent a single univariate node with ``BinomialType`` domain.
@@ -139,7 +139,7 @@ class Binomial(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[FeatureContext]) -> "Binomial":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "Binomial":
         """Creates an instance from a specified signature.
 
         Returns:

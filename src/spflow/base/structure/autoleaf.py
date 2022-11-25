@@ -167,7 +167,7 @@ class AutoLeaf:
         return leaf_type.from_signatures(signatures)
 
     @classmethod
-    def __push_down(self, key) -> None:
+    def __push_down(cls, key) -> None:
         """TODO"""
         if key not in self.__leaf_map.keys():
             return
@@ -178,7 +178,7 @@ class AutoLeaf:
         self.__leaf_map[key + 1] = value
 
     @classmethod
-    def __next_key(self, start: Optional[int] = None) -> id:
+    def __next_key(cls, start: Optional[int] = None) -> id:
         """TODO"""
         if start is None:
             # start from beginning
@@ -257,12 +257,12 @@ class AutoLeaf:
             self.__leaf_map[before] = module
 
     @classmethod
-    def is_registered(self, module) -> bool:
+    def is_registered(cls, module) -> bool:
         """TODO"""
         return module in list(self.__leaf_map.values())
 
     @classmethod
-    def infer(self, signatures: List[FeatureContext]) -> Union[Module, None]:  # type: ignore
+    def infer(cls, signatures: List[FeatureContext]) -> Union[Module, None]:  # type: ignore
         """TODO"""
         keys = sorted(list(self.__leaf_map.keys()))
 

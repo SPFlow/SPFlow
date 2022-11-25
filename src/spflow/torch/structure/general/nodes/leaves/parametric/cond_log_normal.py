@@ -64,7 +64,7 @@ class CondLogNormal(LeafNode):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondLogNormal`` can represent a single univariate node with ``MetaType.Continuous`` or ``LogNormalType`` domain.

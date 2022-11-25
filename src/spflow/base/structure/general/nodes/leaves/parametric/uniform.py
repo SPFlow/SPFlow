@@ -67,7 +67,7 @@ class Uniform(LeafNode):
         self.set_params(start, end, support_outside)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``Uniform`` can represent a single univariate node with with ``UniformType`` domain.
@@ -99,7 +99,7 @@ class Uniform(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[FeatureContext]) -> "Uniform":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "Uniform":
         """Creates an instance from a specified signature.
 
         Returns:

@@ -64,7 +64,7 @@ class Gaussian(LeafNode):
         self.set_params(mean, std)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``Gaussian`` can represent a single univariate node with ``MetaType.Continuous`` or ``GaussianType`` domain.
@@ -99,7 +99,7 @@ class Gaussian(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[FeatureContext]) -> "Gaussian":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "Gaussian":
         """Creates an instance from a specified signature.
 
         Returns:
