@@ -20,9 +20,9 @@ def preproc(data, ds_context, pre_proc, ohe):
         f = None
         if pre_proc == "tf-idf":
             f = lambda data: TfidfTransformer().fit_transform(data)
-        elif ds_context == "log+1":
+        elif pre_proc == "log+1":
             f = lambda data: np.log(data + 1)
-        elif ds_context == "sqrt":
+        elif pre_proc == "sqrt":
             f = lambda data: np.sqrt(data)
 
         if f is not None:
