@@ -134,7 +134,7 @@ class BinomialLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "BinomialLayer":
         """Creates an instance from a specified signature.
 
@@ -144,7 +144,7 @@ class BinomialLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'BinomialLayer' cannot be instantiated from the following signatures: {signatures}."
             )

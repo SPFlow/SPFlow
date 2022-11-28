@@ -130,7 +130,7 @@ class CondExponentialLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondExponentialLayer":
         """Creates an instance from a specified signature.
 
@@ -140,7 +140,7 @@ class CondExponentialLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondExponentialLayer' cannot be instantiated from the following signatures: {signatures}."
             )

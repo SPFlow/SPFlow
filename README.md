@@ -575,11 +575,11 @@ class MyModule(Module):
     ...
 
     @classmethod
-    accepts(self, signature: List[FeatureContext]) -> bool:
+    accepts(cls, signature: List[FeatureContext]) -> bool:
         ...
     
     @classmethod
-    from_signatures(self, signatures: List[FeatureContext]) -> "MyModyle":
+    from_signatures(cls, signatures: List[FeatureContext]) -> "MyModyle":
         ...
 
 ```
