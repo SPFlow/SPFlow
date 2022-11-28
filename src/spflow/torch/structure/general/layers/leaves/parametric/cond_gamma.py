@@ -132,7 +132,7 @@ class CondGammaLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondGammaLayer":
         """Creates an instance from a specified signature.
 
@@ -142,7 +142,7 @@ class CondGammaLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondGammaLayer' cannot be instantiated from the following signatures: {signatures}."
             )
