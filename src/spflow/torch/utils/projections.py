@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Projections between unbounded and bounded intervals.
 
 Used for internal projections of PyTorch parameters.

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Gaussian leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
@@ -73,7 +72,7 @@ class Gaussian(LeafNode):
                 f"Evidence scope for 'Gaussian' should be empty, but was {scope.evidence}."
             )
 
-        super(Gaussian, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # register mean as torch parameter
         self.mean = Parameter()

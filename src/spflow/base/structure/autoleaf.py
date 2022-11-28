@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """TODO
 """
 from typing import Tuple, List, Union, Optional, Dict, Type

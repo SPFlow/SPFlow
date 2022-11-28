@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """TODO
 """
 from spflow.meta.data.scope import Scope

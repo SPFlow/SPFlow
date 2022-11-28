@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Geometric leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List
@@ -49,7 +48,7 @@ class Geometric(LeafNode):
                 f"Evidence scope for 'Geometric' should be empty, but was {scope.evidence}."
             )
 
-        super(Geometric, self).__init__(scope=scope)
+        super().__init__(scope=scope)
         self.set_params(p)
 
     @classmethod

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains ``ProductNode`` for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
@@ -43,7 +42,7 @@ class ProductNode(Node):
         Raises:
             ValueError: Invalid arguments.
         """
-        super(ProductNode, self).__init__(children=children)
+        super().__init__(children=children)
 
         if not children:
             raise ValueError(

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Poisson leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List
@@ -49,7 +48,7 @@ class Poisson(LeafNode):
                 f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}."
             )
 
-        super(Poisson, self).__init__(scope=scope)
+        super().__init__(scope=scope)
         self.set_params(l)
 
     @classmethod

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-probability
 """Contains inference methods for ``CondBinomialLayer`` leaves for SPFlow in the ``torch`` backend.
 """
 import torch

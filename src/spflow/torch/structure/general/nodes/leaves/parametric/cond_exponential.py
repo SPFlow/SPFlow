@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Binomial leaf node for SPFlow in the ``torch`` backend.
 """
 import torch
@@ -59,7 +58,7 @@ class CondExponential(LeafNode):
                 f"Evidence scope for 'CondExponential' should not be empty."
             )
 
-        super(CondExponential, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 

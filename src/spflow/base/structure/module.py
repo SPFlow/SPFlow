@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains the abstract ``Module`` class for SPFlow modules in the ``base`` backend.
 
 All valid SPFlow modules in the ``base`` backend should inherit from this class or a subclass of it.

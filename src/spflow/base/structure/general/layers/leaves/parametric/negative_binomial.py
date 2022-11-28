@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Negative Binomial leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Type
@@ -86,7 +85,7 @@ class NegativeBinomialLayer(Module):
 
             self._n_out = len(scope)
 
-        super(NegativeBinomialLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [NegativeBinomial(s, 1, 0.5) for s in scope]
