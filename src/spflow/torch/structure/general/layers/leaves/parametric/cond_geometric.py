@@ -109,7 +109,7 @@ class CondGeometricLayer(Module):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondGeometricLayer`` can represent one or more univariate nodes with ``MetaType.Discrete`` or ``GeometricType`` domains.
@@ -129,7 +129,7 @@ class CondGeometricLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondGeometricLayer":
         """Creates an instance from a specified signature.
 
@@ -139,7 +139,7 @@ class CondGeometricLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondGeometricLayer' cannot be instantiated from the following signatures: {signatures}."
             )

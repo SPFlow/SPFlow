@@ -93,7 +93,7 @@ class LogNormal(LeafNode):
         return proj_real_to_bounded(self.std_aux, lb=0.0)  # type: ignore
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``LogNormal`` can represent a single univariate node with ``MetaType.Continuous`` or ``LogNormalType`` domain.
@@ -128,7 +128,7 @@ class LogNormal(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[FeatureContext]) -> "LogNormal":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "LogNormal":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -137,7 +137,7 @@ class LogNormal(LeafNode):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'LogNormal' cannot be instantiated from the following signatures: {signatures}."
             )

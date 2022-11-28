@@ -62,7 +62,7 @@ class CondGamma(LeafNode):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondGamma`` can represent a single univariate node with ``MetaType.Continuous`` or ``GammaType`` domain.
@@ -97,7 +97,7 @@ class CondGamma(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[FeatureContext]) -> "CondGamma":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondGamma":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -106,7 +106,7 @@ class CondGamma(LeafNode):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondGamma' cannot be instantiated from the following signatures: {signatures}."
             )

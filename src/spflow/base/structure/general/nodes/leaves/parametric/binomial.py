@@ -61,7 +61,7 @@ class Binomial(LeafNode):
         self.set_params(n, p)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``Binomial`` can represent a single univariate node with ``BinomialType`` domain.
@@ -93,7 +93,7 @@ class Binomial(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[FeatureContext]) -> "Binomial":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "Binomial":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -102,7 +102,7 @@ class Binomial(LeafNode):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'Binomial' cannot be instantiated from the following signatures: {signatures}."
             )

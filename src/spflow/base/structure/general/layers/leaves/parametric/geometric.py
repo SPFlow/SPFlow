@@ -101,7 +101,7 @@ class GeometricLayer(Module):
         return np.array([node.p for node in self.nodes])
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``GeometricLayer`` can represent one or more univariate nodes with ``MetaType.Discrete`` or ``GeometricType`` domains.
@@ -121,7 +121,7 @@ class GeometricLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "GeometricLayer":
         """Creates an instance from a specified signature.
 
@@ -131,7 +131,7 @@ class GeometricLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'GeometricLayer' cannot be instantiated from the following signatures: {signatures}."
             )

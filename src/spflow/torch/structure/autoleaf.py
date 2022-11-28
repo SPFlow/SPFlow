@@ -167,18 +167,18 @@ class AutoLeaf:
         return leaf_type.from_signatures(signatures)
 
     @classmethod
-    def __push_down(self, key) -> None:
+    def __push_down(cls, key) -> None:
         """TODO"""
-        if key not in self.__leaf_map.keys():
+        if key not in cls.__leaf_map.keys():
             return
-        if key + 1 in self.__leaf_map.keys():
-            self.__push_down(key + 1)
+        if key + 1 in cls.__leaf_map.keys():
+            cls.__push_down(key + 1)
         # delete entry under current id
-        value = self.__leaf_map.pop(key)
-        self.__leaf_map[key + 1] = value
+        value = cls.__leaf_map.pop(key)
+        cls.__leaf_map[key + 1] = value
 
     @classmethod
-    def __next_key(self, start: Optional[int] = None) -> id:
+    def __next_key(cls, start: Optional[int] = None) -> id:
         """TODO"""
         if start is None:
             # start from beginning
@@ -187,14 +187,14 @@ class AutoLeaf:
             key = start
 
         # find next best available value
-        while key in self.__leaf_map.keys():
+        while key in cls.__leaf_map.keys():
             key += 1
 
         return key
 
     @classmethod
     def register(
-        self,
+        cls,
         module: Module,
         priority: Optional[int] = None,
         before: Optional[List[Module]] = None,
@@ -203,9 +203,9 @@ class AutoLeaf:
     ) -> None:
         """TODO"""
         # if module already registered it is registered again at bottom of priority list
-        for id, m in list(self.__leaf_map.items()):
+        for id, m in list(cls.__leaf_map.items()):
             if module == m:
-                del self.__leaf_map[id]
+                del cls.__leaf_map[id]
 
         if priority is None:
             start = 0
@@ -224,11 +224,11 @@ class AutoLeaf:
             else:
                 ValueError("TODO.")
 
-            priority = self.__next_key(start)
+            priority = cls.__next_key(start)
 
         if before is None:
             # right beneath largest value
-            before = max(self.__leaf_map.keys()) + 2
+            before = max(cls.__leaf_map.keys()) + 2
         else:
             before_ids = []
             for ref in before:
@@ -237,37 +237,37 @@ class AutoLeaf:
                     before_ids.append(ref)
                 else:
                     # reference is a module
-                    for k, m in self.__leaf_map.items():
+                    for k, m in cls.__leaf_map.items():
                         if m == ref:
                             before_ids.append(k)
             # take minimum value as lower bound
             before = (
                 min(before_ids)
                 if before_ids
-                else max(self.__leaf_map.keys()) + 2
+                else max(cls.__leaf_map.keys()) + 2
             )
 
         if priority < before:
             # use value preference
-            self.__push_down(priority)
-            self.__leaf_map[priority] = module
+            cls.__push_down(priority)
+            cls.__leaf_map[priority] = module
         else:
             # take value of lower bound
-            self.__push_down(before)
-            self.__leaf_map[before] = module
+            cls.__push_down(before)
+            cls.__leaf_map[before] = module
 
     @classmethod
-    def is_registered(self, module) -> bool:
+    def is_registered(cls, module) -> bool:
         """TODO"""
-        return module in list(self.__leaf_map.values())
+        return module in list(cls.__leaf_map.values())
 
     @classmethod
-    def infer(self, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> Union[Module, None]:  # type: ignore
+    def infer(cls, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> Union[Module, None]:  # type: ignore
         """TODO"""
-        keys = sorted(list(self.__leaf_map.keys()))
+        keys = sorted(list(cls.__leaf_map.keys()))
 
         for key in keys:
-            if self.__leaf_map[key].accepts(signatures):
-                return self.__leaf_map[key]
+            if cls.__leaf_map[key].accepts(signatures):
+                return cls.__leaf_map[key]
 
         return None

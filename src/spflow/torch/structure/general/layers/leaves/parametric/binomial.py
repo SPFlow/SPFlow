@@ -122,7 +122,7 @@ class BinomialLayer(Module):
         self.set_params(n, p)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``BinomialLayer`` can represent one or more univariate nodes with ``BinomialType`` domains.
@@ -142,7 +142,7 @@ class BinomialLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "BinomialLayer":
         """Creates an instance from a specified signature.
 
@@ -152,7 +152,7 @@ class BinomialLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'BinomialLayer' cannot be instantiated from the following signatures: {signatures}."
             )
