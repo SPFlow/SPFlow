@@ -102,7 +102,7 @@ class ExponentialLayer(Module):
         return np.array([node.l for node in self.nodes])
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``ExponentialLayer`` can represent one or more univariate nodes with ``MetaType.Continuous`` or ``ExponentialType`` domains.
@@ -122,7 +122,7 @@ class ExponentialLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "ExponentialLayer":
         """Creates an instance from a specified signature.
 
@@ -132,7 +132,7 @@ class ExponentialLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'ExponentialLayer' cannot be instantiated from the following signatures: {signatures}."
             )

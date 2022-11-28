@@ -80,7 +80,7 @@ class Geometric(LeafNode):
         return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)  # type: ignore
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``Geometric`` can represent a single univariate node with ``MetaType.Discrete`` or ``GeometricType`` domain.
@@ -115,7 +115,7 @@ class Geometric(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[FeatureContext]) -> "Geometric":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "Geometric":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -124,7 +124,7 @@ class Geometric(LeafNode):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'Geometric' cannot be instantiated from the following signatures: {signatures}."
             )

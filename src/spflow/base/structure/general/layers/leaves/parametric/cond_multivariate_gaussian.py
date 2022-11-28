@@ -120,7 +120,7 @@ class CondMultivariateGaussianLayer(Module):
         return self._n_out
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondMultivariateGaussianLayer`` can represent one or more multivariate nodes with ``MetaType.Continuous`` or ``GammaType`` domains.
@@ -140,7 +140,7 @@ class CondMultivariateGaussianLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondMultivariateGaussianLayer":
         """Creates an instance from a specified signature.
 
@@ -150,7 +150,7 @@ class CondMultivariateGaussianLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondMultivariateGaussianLayer' cannot be instantiated from the following signatures: {signatures}."
             )
