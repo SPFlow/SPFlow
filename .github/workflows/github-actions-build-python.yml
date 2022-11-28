@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false  # Don't fail fast to explore which configurations fail
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11']
+        python-version: ['3.7', '3.8', '3.9', '3.10']
         pytorch-version: ['1.10.2', '1.11.0', '1.12.1', '1.13.0']
         exclude:
           - python-version: '3.10'
