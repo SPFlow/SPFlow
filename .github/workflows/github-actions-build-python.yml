@@ -17,7 +17,7 @@ jobs:
           - {name: '3.9', python-version: '3.9', os: ubuntu-latest}
           - {name: '3.8', python-version: '3.8', os: ubuntu-latest}
           - {name: '3.7', python-version: '3.7', os: ubuntu-latest}
-          - {name: '3.6', python-version: '3.6', os: ubuntu-20.04}
+          - {name: '3.6', python-version: '3.6', os: ubuntu-20.04}  # ubuntu-latest does not have python-3.6
         exclude:
           # exclude python 3.6 for torch 1.11.0.
           - pytorch-version: 1.11.0
