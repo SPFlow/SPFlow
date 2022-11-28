@@ -117,7 +117,7 @@ class HypergeometricLayer(Module):
         self.set_params(N, M, n)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``HypergeometricLayer`` can represent one or more univariate nodes with ``HypergeometricType`` domains.
@@ -137,7 +137,7 @@ class HypergeometricLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "HypergeometricLayer":
         """Creates an instance from a specified signature.
 
@@ -147,7 +147,7 @@ class HypergeometricLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'HypergeometricLayer' cannot be instantiated from the following signatures: {signatures}."
             )

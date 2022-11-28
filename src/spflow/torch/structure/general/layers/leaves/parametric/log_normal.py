@@ -121,7 +121,7 @@ class LogNormalLayer(Module):
         self.set_params(mean, std)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``LogNormalLayer`` can represent one or more univariate nodes with ``MetaType.Continuous`` or ``LogNormalType`` domains.
@@ -141,7 +141,7 @@ class LogNormalLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "LogNormalLayer":
         """Creates an instance from a specified signature.
 
@@ -151,7 +151,7 @@ class LogNormalLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'LogNormalLayer' cannot be instantiated from the following signatures: {signatures}."
             )

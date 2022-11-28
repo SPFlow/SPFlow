@@ -112,7 +112,7 @@ class CondGammaLayer(Module):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondGammaLayer`` can represent one or more univariate nodes with ``MetaType.Continuous`` or ``GammaType`` domains.
@@ -132,7 +132,7 @@ class CondGammaLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondGammaLayer":
         """Creates an instance from a specified signature.
 
@@ -142,7 +142,7 @@ class CondGammaLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondGammaLayer' cannot be instantiated from the following signatures: {signatures}."
             )

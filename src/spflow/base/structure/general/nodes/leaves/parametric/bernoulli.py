@@ -59,7 +59,7 @@ class Bernoulli(LeafNode):
         self.set_params(p)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``Bernoulli`` can represent a single univariate node with ``MetaType.Discrete`` or ``BernoulliType`` domain.
@@ -94,7 +94,7 @@ class Bernoulli(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[FeatureContext]) -> "Bernoulli":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "Bernoulli":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -103,7 +103,7 @@ class Bernoulli(LeafNode):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'Bernoulli' cannot be instantiated from the following signatures: {signatures}."
             )

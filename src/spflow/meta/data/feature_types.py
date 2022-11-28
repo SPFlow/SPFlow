@@ -273,7 +273,7 @@ class FeatureTypes(ABC):
     Poisson = PoissonType
 
     @classmethod
-    def register(self, name: str, type: FeatureType, overwrite=False) -> None:
+    def register(cls, name: str, type: FeatureType, overwrite=False) -> None:
         """Registers a feature type.
 
         Args:
@@ -285,9 +285,9 @@ class FeatureTypes(ABC):
                 Boolean indicating whether or not to overwrite any potentially existing feature type registered under the same name.
                 Defaults to False.
         """
-        if hasattr(self, name) and not overwrite:
+        if hasattr(cls, name) and not overwrite:
             raise ValueError(
                 "Feature type {name} is already registered. If type should be overwritten, enable 'overwrite'."
             )
 
-        setattr(self, name, type)
+        setattr(cls, name, type)

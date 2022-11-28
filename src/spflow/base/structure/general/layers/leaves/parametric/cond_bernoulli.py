@@ -106,7 +106,7 @@ class CondBernoulliLayer(Module):
         return self._n_out
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondBernoulliLayer`` can represent one or more univariate nodes with ``MetaType.Discrete`` or ``BernoulliType`` domains.
@@ -126,7 +126,7 @@ class CondBernoulliLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondBernoulliLayer":
         """Creates an instance from a specified signature.
 
@@ -136,7 +136,7 @@ class CondBernoulliLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondBernoulliLayer' cannot be instantiated from the following signatures: {signatures}."
             )
