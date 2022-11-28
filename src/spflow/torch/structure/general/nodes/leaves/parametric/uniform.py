@@ -128,7 +128,7 @@ class Uniform(LeafNode):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'Uniform' cannot be instantiated from the following signatures: {signatures}."
             )

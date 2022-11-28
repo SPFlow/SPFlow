@@ -169,13 +169,13 @@ class AutoLeaf:
     @classmethod
     def __push_down(cls, key) -> None:
         """TODO"""
-        if key not in self.__leaf_map.keys():
+        if key not in cls.__leaf_map.keys():
             return
-        if key + 1 in self.__leaf_map.keys():
-            self.__push_down(key + 1)
+        if key + 1 in cls.__leaf_map.keys():
+            cls.__push_down(key + 1)
         # delete entry under current id
-        value = self.__leaf_map.pop(key)
-        self.__leaf_map[key + 1] = value
+        value = cls.__leaf_map.pop(key)
+        cls.__leaf_map[key + 1] = value
 
     @classmethod
     def __next_key(cls, start: Optional[int] = None) -> id:
@@ -187,7 +187,7 @@ class AutoLeaf:
             key = start
 
         # find next best available value
-        while key in self.__leaf_map.keys():
+        while key in cls.__leaf_map.keys():
             key += 1
 
         return key
@@ -259,15 +259,15 @@ class AutoLeaf:
     @classmethod
     def is_registered(cls, module) -> bool:
         """TODO"""
-        return module in list(self.__leaf_map.values())
+        return module in list(cls.__leaf_map.values())
 
     @classmethod
     def infer(cls, signatures: List[Tuple[List[Union[MetaType, FeatureType, Type[FeatureType]]], Scope]]) -> Union[Module, None]:  # type: ignore
         """TODO"""
-        keys = sorted(list(self.__leaf_map.keys()))
+        keys = sorted(list(cls.__leaf_map.keys()))
 
         for key in keys:
-            if self.__leaf_map[key].accepts(signatures):
-                return self.__leaf_map[key]
+            if cls.__leaf_map[key].accepts(signatures):
+                return cls.__leaf_map[key]
 
         return None
