@@ -9,10 +9,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9, 3.10, 3.11]
-        pytorch-version: [1.10.2, 1.11.0, 1.12.1, 1.13.0]
+        python-version: ['3.6', '3.7', '3.8', '3.9', '3.10']
+        pytorch-version: ['1.10.2', '1.11.0', '1.12.1', '1.13.0']
         include:
-          - {name: '3.11', python-version: '3.11', os: ubuntu-latest}
           - {name: '3.10', python-version: '3.10', os: ubuntu-latest}
           - {name: '3.9', python-version: '3.9', os: ubuntu-latest}
           - {name: '3.8', python-version: '3.8', os: ubuntu-latest}
@@ -20,8 +19,8 @@ jobs:
           - {name: '3.6', python-version: '3.6', os: ubuntu-20.04}  # ubuntu-latest does not have python-3.6
         exclude:
           # exclude python 3.6 for torch 1.11.0.
-          - pytorch-version: 1.11.0
-            python-version: 3.6
+          - pytorch-version: '1.11.0'
+            python-version: '3.6'
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}, PyTorch ${{ matrix.pytorch-version }}
