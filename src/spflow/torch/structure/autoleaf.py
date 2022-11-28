@@ -194,7 +194,7 @@ class AutoLeaf:
 
     @classmethod
     def register(
-        self,
+        cls,
         module: Module,
         priority: Optional[int] = None,
         before: Optional[List[Module]] = None,
@@ -203,9 +203,9 @@ class AutoLeaf:
     ) -> None:
         """TODO"""
         # if module already registered it is registered again at bottom of priority list
-        for id, m in list(self.__leaf_map.items()):
+        for id, m in list(cls.__leaf_map.items()):
             if module == m:
-                del self.__leaf_map[id]
+                del cls.__leaf_map[id]
 
         if priority is None:
             start = 0
@@ -224,11 +224,11 @@ class AutoLeaf:
             else:
                 ValueError("TODO.")
 
-            priority = self.__next_key(start)
+            priority = cls.__next_key(start)
 
         if before is None:
             # right beneath largest value
-            before = max(self.__leaf_map.keys()) + 2
+            before = max(cls.__leaf_map.keys()) + 2
         else:
             before_ids = []
             for ref in before:
@@ -237,24 +237,24 @@ class AutoLeaf:
                     before_ids.append(ref)
                 else:
                     # reference is a module
-                    for k, m in self.__leaf_map.items():
+                    for k, m in cls.__leaf_map.items():
                         if m == ref:
                             before_ids.append(k)
             # take minimum value as lower bound
             before = (
                 min(before_ids)
                 if before_ids
-                else max(self.__leaf_map.keys()) + 2
+                else max(cls.__leaf_map.keys()) + 2
             )
 
         if priority < before:
             # use value preference
-            self.__push_down(priority)
-            self.__leaf_map[priority] = module
+            cls.__push_down(priority)
+            cls.__leaf_map[priority] = module
         else:
             # take value of lower bound
-            self.__push_down(before)
-            self.__leaf_map[before] = module
+            cls.__push_down(before)
+            cls.__leaf_map[before] = module
 
     @classmethod
     def is_registered(cls, module) -> bool:

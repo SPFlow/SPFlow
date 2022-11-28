@@ -147,7 +147,7 @@ class CondMultivariateGaussianLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondMultivariateGaussianLayer":
         """Creates an instance from a specified signature.
 
@@ -157,7 +157,7 @@ class CondMultivariateGaussianLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondMultivariateGaussianLayer' cannot be instantiated from the following signatures: {signatures}."
             )

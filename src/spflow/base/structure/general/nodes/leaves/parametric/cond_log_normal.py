@@ -96,7 +96,7 @@ class CondLogNormal(LeafNode):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondLogNormal":
         """Creates an instance from a specified signature.
 
@@ -106,7 +106,7 @@ class CondLogNormal(LeafNode):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondLogNormal' cannot be instantiated from the following signatures: {signatures}."
             )
