@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Log-Normal leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Optional, Tuple, Callable, Union, List
@@ -54,7 +53,7 @@ class CondLogNormal(LeafNode):
                 f"Evidence scope for LogNormal should not be empty."
             )
 
-        super(CondLogNormal, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # set optional conditional function
         self.set_cond_f(cond_f)

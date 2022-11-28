@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Gamma leaf node for SPFlow in the ``torch`` backend.
 """
 import torch
@@ -61,7 +60,7 @@ class CondGamma(LeafNode):
                 f"Evidence scope for CondGamma should not be empty."
             )
 
-        super(CondGamma, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 

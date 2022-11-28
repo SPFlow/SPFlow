@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains learning methods for SPN-like partition layers for SPFlow in the ``torch`` backend.
 """
 from typing import Optional

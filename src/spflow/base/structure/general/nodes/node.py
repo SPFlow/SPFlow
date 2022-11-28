@@ -43,7 +43,7 @@ class Node(Module, ABC):
         if children is None:
             children = []
 
-        super(Node, self).__init__(children=children, **kwargs)
+        super().__init__(children=children, **kwargs)
 
     @property
     def n_out(self) -> int:

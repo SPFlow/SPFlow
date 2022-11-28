@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Log-Normal leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Callable
@@ -99,7 +98,7 @@ class CondLogNormalLayer(Module):
                     f"Evidence scope for 'CondLogNormalLayer' should not be empty."
                 )
 
-        super(CondLogNormalLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # compute scope
         self.scopes_out = scope

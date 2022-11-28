@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Poisson leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Type
@@ -77,7 +76,7 @@ class PoissonLayer(Module):
 
             self._n_out = len(scope)
 
-        super(PoissonLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [Poisson(s) for s in scope]

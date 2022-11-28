@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Algorithm to compute k-Means clusters from data.
 
 Typical usage example:

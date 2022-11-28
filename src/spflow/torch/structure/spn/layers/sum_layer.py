@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains SPN-like sum layer for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
@@ -82,7 +81,7 @@ class SumLayer(Module):
                 "'SumLayer' requires at least one child to be specified."
             )
 
-        super(SumLayer, self).__init__(children=children, **kwargs)
+        super().__init__(children=children, **kwargs)
 
         self._n_out = n_nodes
         self.n_in = sum(child.n_out for child in self.children())

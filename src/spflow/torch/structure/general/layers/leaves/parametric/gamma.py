@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Gamma leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
@@ -105,7 +104,7 @@ class GammaLayer(Module):
                     f"Evidence scope for 'GammaLayer' should be empty, but was {s.evidence}."
                 )
 
-        super(GammaLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # register auxiliary torch parameter for rate l of each implicit node
         self.alpha_aux = Parameter()

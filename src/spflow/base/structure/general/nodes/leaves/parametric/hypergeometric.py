@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Hypergeometric leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List
@@ -59,7 +58,7 @@ class Hypergeometric(LeafNode):
                 f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}."
             )
 
-        super(Hypergeometric, self).__init__(scope=scope)
+        super().__init__(scope=scope)
         self.set_params(N, M, n)
 
     @classmethod

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains sampling methods for ``Hypergeometric`` nodes for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch

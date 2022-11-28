@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Exponential leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
@@ -98,7 +97,7 @@ class ExponentialLayer(Module):
                     f"Evidence scope for 'ExponentialLayer' should be empty, but was {s.evidence}."
                 )
 
-        super(ExponentialLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # register auxiliary torch parameter for rate l of each implicit node
         self.l_aux = Parameter()

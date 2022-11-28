@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains inference methods for ``CondGeometric`` nodes for SPFlow in the ``base`` backend.
 """
 from spflow.meta.dispatch.dispatch_context import (

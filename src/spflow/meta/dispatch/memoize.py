@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains a convenient decorator to automatically check for cached values during dispatch.
 
 Typical usage example:
