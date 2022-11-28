@@ -138,7 +138,7 @@ class CondNegativeBinomialLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondNegativeBinomialLayer":
         """Creates an instance from a specified signature.
 
@@ -148,7 +148,7 @@ class CondNegativeBinomialLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondNegativeBinomialLayer' cannot be instantiated from the following signatures: {signatures}."
             )
