@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Gaussian leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List
@@ -60,7 +59,7 @@ class Gaussian(LeafNode):
                 f"Evidence scope for 'Gaussian' should be empty, but was {scope.evidence}."
             )
 
-        super(Gaussian, self).__init__(scope=scope)
+        super().__init__(scope=scope)
         self.set_params(mean, std)
 
     @classmethod

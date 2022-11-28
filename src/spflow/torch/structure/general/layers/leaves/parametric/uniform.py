@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Uniform leaf node for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
@@ -98,7 +97,7 @@ class UniformLayer(Module):
                     f"Evidence scope for 'UniformLayer' should be empty, but was {s.evidence}."
                 )
 
-        super(UniformLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # register interval bounds as torch buffers (should not be changed)
         self.register_buffer("start", torch.empty(size=[]))

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Gaussian leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Type
@@ -87,7 +86,7 @@ class GaussianLayer(Module):
 
             self._n_out = len(scope)
 
-        super(GaussianLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [Gaussian(s, 0.0, 1.0) for s in scope]

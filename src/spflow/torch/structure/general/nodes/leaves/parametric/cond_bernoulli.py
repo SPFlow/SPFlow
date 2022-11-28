@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Bernoulli leaf node for SPFlow in the ``torch`` backend.
 """
 import torch
@@ -59,7 +58,7 @@ class CondBernoulli(LeafNode):
                 f"Evidence scope for 'CondBernoulli' should not be empty."
             )
 
-        super(CondBernoulli, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         self.set_cond_f(cond_f)
 

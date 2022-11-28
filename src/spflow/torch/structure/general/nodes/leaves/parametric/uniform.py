@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Uniform leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
@@ -76,7 +75,7 @@ class Uniform(LeafNode):
                 f"Evidence scope for 'Uniform' should be empty, but was {scope.evidence}."
             )
 
-        super(Uniform, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # register interval bounds as torch buffers (should not be changed)
         self.register_buffer("start", torch.empty(size=[]))

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Algorithm to compute the empirical cummulative distribution function (CDF) for input data.
 
 Typical usage example:

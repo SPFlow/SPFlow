@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Exponential leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List
@@ -50,7 +49,7 @@ class Exponential(LeafNode):
                 f"Evidence scope for 'Exponential' should be empty, but was {scope.evidence}."
             )
 
-        super(Exponential, self).__init__(scope=scope)
+        super().__init__(scope=scope)
         self.set_params(l)
 
     @classmethod

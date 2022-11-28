@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains the sampling context used in SPFlow
 
 Typical usage example:

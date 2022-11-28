@@ -17,7 +17,7 @@ class DummyNode(LeafNode):
         if scope is None:
             scope = Scope([0])
 
-        super(DummyNode, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
 
 @dispatch(memoize=True)

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Bernoulli leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional, Callable, Union, List
@@ -54,7 +53,7 @@ class CondBernoulli(LeafNode):
                 f"Evidence scope for 'CondBernoulli' should not be empty."
             )
 
-        super(CondBernoulli, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # set optional conditional function
         self.set_cond_f(cond_f)

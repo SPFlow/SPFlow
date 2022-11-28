@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Hypergeometric leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Type
@@ -93,7 +92,7 @@ class HypergeometricLayer(Module):
 
             self._n_out = len(scope)
 
-        super(HypergeometricLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [Hypergeometric(s, 1, 1, 1) for s in scope]

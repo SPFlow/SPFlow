@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains SPN-like partition layer for SPFlow in the ``base`` backend.
 """
 from spflow.meta.data.scope import Scope
@@ -113,7 +112,7 @@ class PartitionLayer(NestedModule):
                     "Scopes of partitions must be pair-wise disjoint."
                 )
 
-        super(PartitionLayer, self).__init__(
+        super().__init__(
             children=sum(child_partitions, []), **kwargs
         )
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Multivariate Normal leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
@@ -79,7 +78,7 @@ class CondMultivariateGaussian(LeafNode):
                 "Size of query scope for 'CondMultivariateGaussian' must be at least 1."
             )
 
-        super(CondMultivariateGaussian, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # dimensions
         self.d = len(scope)

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Multivariate Normal leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, List, Union, Optional, Iterable
@@ -76,7 +75,7 @@ class MultivariateGaussian(LeafNode):
                 "Size of query scope for 'MultivariateGaussian' must be at least 1."
             )
 
-        super(MultivariateGaussian, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         if mean is None:
             mean = np.zeros((1, len(scope.query)))

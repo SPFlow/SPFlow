@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains ``SumNode`` for SPFlow in the ``base`` backend.
 """
 from spflow.meta.dispatch.dispatch import dispatch
@@ -48,7 +47,7 @@ class SumNode(Node):
         Raises:
             ValueError: Invalid arguments.
         """
-        super(SumNode, self).__init__(children=children)
+        super().__init__(children=children)
 
         if not children:
             raise ValueError(

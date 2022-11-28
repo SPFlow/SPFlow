@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Feature types indicating the distribution or meta type of data features.
 """
 from spflow.meta.data.meta_type import MetaType

@@ -13,7 +13,7 @@ class DummyModule(Module):
         self.scope = scope
         self.n = n
 
-        super(DummyModule, self).__init__(children=[])
+        super().__init__(children=[])
 
     @property
     def n_out(self) -> int:
@@ -27,7 +27,7 @@ class DummyModule(Module):
 class DummyNestedModule(NestedModule):
     def __init__(self, children):
 
-        super(DummyNestedModule, self).__init__(children=children)
+        super().__init__(children=children)
 
         self.n_in = sum([child.n_out for child in children])
         self.create_placeholder(list(range(self.n_in)))

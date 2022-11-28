@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Exponential leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional, Callable, Union, List
@@ -54,7 +53,7 @@ class CondExponential(LeafNode):
                 f"Evidence scope for 'CondExponential' should not be empty."
             )
 
-        super(CondExponential, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # set optional conditional function
         self.set_cond_f(cond_f)
