@@ -579,7 +579,7 @@ class MyModule(Module):
         ...
     
     @classmethod
-    from_signatures(cls, signatures: List[FeatureContext]) -> "MyModyle":
+    from_signatures(cls, signatures: List[FeatureContext]) -> "MyModule":
         ...
 
 ```
