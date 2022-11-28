@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+addopts = "--color=yes --doctest-modules"
+testpaths = [
+    # for the doctests:
+    "src/spflow",
+    # for the actual tests:
+    "src/tests"
+]
