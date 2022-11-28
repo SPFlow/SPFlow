@@ -69,7 +69,7 @@ class CondNegativeBinomial(LeafNode):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondNegativeBinomial`` can represent a single univariate node with ``NegativeBinomialType`` domain.
@@ -102,7 +102,7 @@ class CondNegativeBinomial(LeafNode):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondNegativeBinomial":
         """Creates an instance from a specified signature.
 
@@ -112,7 +112,7 @@ class CondNegativeBinomial(LeafNode):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondNegativeBinomial' cannot be instantiated from the following signatures: {signatures}."
             )

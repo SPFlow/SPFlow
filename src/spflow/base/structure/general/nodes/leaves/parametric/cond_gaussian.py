@@ -64,7 +64,7 @@ class CondGaussian(LeafNode):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondGaussian`` can represent a single univariate node with ``MetaType.Continuous`` or ``GamamType`` domain.
@@ -100,7 +100,7 @@ class CondGaussian(LeafNode):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondGaussian":
         """Creates an instance from a specified signature.
 
@@ -110,7 +110,7 @@ class CondGaussian(LeafNode):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondGaussian' cannot be instantiated from the following signatures: {signatures}."
             )

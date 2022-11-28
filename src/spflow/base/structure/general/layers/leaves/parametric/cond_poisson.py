@@ -103,7 +103,7 @@ class CondPoissonLayer(Module):
         return self._n_out
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondPoissonLayer`` can represent one or more univariate nodes with ``MetaType.Discrete`` or ``PoissonType`` domains.
@@ -123,7 +123,7 @@ class CondPoissonLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondPoissonLayer":
         """Creates an instance from a specified signature.
 
@@ -133,7 +133,7 @@ class CondPoissonLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondPoissonLayer' cannot be instantiated from the following signatures: {signatures}."
             )

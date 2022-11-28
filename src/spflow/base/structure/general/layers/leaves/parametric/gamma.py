@@ -112,7 +112,7 @@ class GammaLayer(Module):
         return np.array([node.beta for node in self.nodes])
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``GammaLayer`` can represent one or more univariate nodes with ``MetaType.Continuous`` or ``GammaType`` domains.
@@ -131,7 +131,7 @@ class GammaLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(self, signatures: List[FeatureContext]) -> "GammaLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "GammaLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -140,7 +140,7 @@ class GammaLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'GammaLayer' cannot be instantiated from the following signatures: {signatures}."
             )

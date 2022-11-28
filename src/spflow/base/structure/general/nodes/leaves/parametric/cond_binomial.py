@@ -70,7 +70,7 @@ class CondBinomial(LeafNode):
         self.set_cond_f(cond_f)
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``CondBinomial`` can represent a single univariate node with ``BinomialType`` domain.
@@ -103,7 +103,7 @@ class CondBinomial(LeafNode):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "CondBinomial":
         """Creates an instance from a specified signature.
 
@@ -113,7 +113,7 @@ class CondBinomial(LeafNode):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'CondBinomial' cannot be instantiated from the following signatures: {signatures}."
             )

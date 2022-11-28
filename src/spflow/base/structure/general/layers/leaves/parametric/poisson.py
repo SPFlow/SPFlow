@@ -99,7 +99,7 @@ class PoissonLayer(Module):
         return np.array([node.l for node in self.nodes])
 
     @classmethod
-    def accepts(self, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: List[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
         ``PoissonLayer`` can represent one or more univariate nodes with ``MetaType.Discrete`` or ``PoissonType`` domains.
@@ -119,7 +119,7 @@ class PoissonLayer(Module):
 
     @classmethod
     def from_signatures(
-        self, signatures: List[FeatureContext]
+        cls, signatures: List[FeatureContext]
     ) -> "PoissonLayer":
         """Creates an instance from a specified signature.
 
@@ -129,7 +129,7 @@ class PoissonLayer(Module):
         Raises:
             Signatures not accepted by the module.
         """
-        if not self.accepts(signatures):
+        if not cls.accepts(signatures):
             raise ValueError(
                 f"'PoissonLayer' cannot be instantiated from the following signatures: {signatures}."
             )
