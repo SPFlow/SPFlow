@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Poisson leaf node for SPFlow in the ``base`` backend.
 """
 from typing import Tuple, Optional, Callable, Union, List
@@ -53,7 +52,7 @@ class CondPoisson(LeafNode):
                 f"Evidence scope for 'CondPoisson' should be empty."
             )
 
-        super(CondPoisson, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         # set optional conditional function
         self.set_cond_f(cond_f)

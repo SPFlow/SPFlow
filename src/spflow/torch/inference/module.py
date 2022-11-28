@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains inference methods for ``Module`` objects for SPFlow in the ``torch`` backend.
 """
 from spflow.meta.dispatch.dispatch_context import (

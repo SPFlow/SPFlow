@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Exponential leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Type
@@ -80,7 +79,7 @@ class ExponentialLayer(Module):
 
             self._n_out = len(scope)
 
-        super(ExponentialLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [Exponential(s) for s in scope]

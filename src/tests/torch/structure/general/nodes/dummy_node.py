@@ -20,7 +20,7 @@ class DummyNode(LeafNode):
 
         self.loc = torch.tensor(loc)
 
-        super(DummyNode, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
 
 @dispatch(memoize=True)
@@ -62,7 +62,7 @@ class DummyLeaf(LeafNode):
 
         self.loc = torch.tensor(loc)
 
-        super(DummyLeaf, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
 
 @dispatch(memoize=True)

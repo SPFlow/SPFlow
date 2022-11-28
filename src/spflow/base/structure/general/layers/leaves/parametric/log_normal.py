@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Log-Normal leaf layer for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Type
@@ -87,7 +86,7 @@ class LogNormalLayer(Module):
 
             self._n_out = len(scope)
 
-        super(LogNormalLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [LogNormal(s, 0.0, 1.0) for s in scope]

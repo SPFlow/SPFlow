@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Multivariate Normal leaf node for SPFlow in the ``torch`` backend.
 """
 import numpy as np
@@ -95,7 +94,7 @@ class MultivariateGaussian(LeafNode):
                 "Size of query scope for 'MultivariateGaussian' must be at least 1."
             )
 
-        super(MultivariateGaussian, self).__init__(scope=scope)
+        super().__init__(scope=scope)
 
         if mean is None:
             mean = torch.zeros((1, len(scope)))

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains inference methods for ``CondPoissonLayer`` leaves for SPFlow in the ``torch`` backend.
 """
 import torch

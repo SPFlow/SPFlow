@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional SPN-like sum node for SPFlow in the ``torch`` backend.
 """
 from typing import List, Optional, Iterable, Callable
@@ -57,7 +56,7 @@ class CondSumNode(Node):
         Raises:
             ValueError: Invalid arguments.
         """
-        super(CondSumNode, self).__init__(children=children)
+        super().__init__(children=children)
 
         if not children:
             raise ValueError(

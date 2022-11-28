@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains learning methods for ``NegativeBinomialLayer`` leaves for SPFlow in the ``torch`` backend.
 """
 from typing import Optional, Union, Callable

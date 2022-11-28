@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Algorithm to compute the ranks of specified data.
 
 Typical usage example:

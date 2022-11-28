@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains learning methods for ``MultivariateGaussianLayer`` leaves for SPFlow in the ``base`` backend.
 """
 from typing import Optional, Union, Callable

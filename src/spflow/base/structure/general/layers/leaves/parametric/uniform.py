@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains conditional Uniform leaf node for SPFlow in the ``base`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple, Type
@@ -81,7 +80,7 @@ class UniformLayer(Module):
 
             self._n_out = len(scope)
 
-        super(UniformLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [Uniform(s, 0.0, 1.0) for s in scope]

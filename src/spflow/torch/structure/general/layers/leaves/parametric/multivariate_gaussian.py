@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains Multivariate Gaussian leaf layer for SPFlow in the ``torch`` backend.
 """
 from typing import List, Union, Optional, Iterable, Tuple
@@ -109,7 +108,7 @@ class MultivariateGaussianLayer(Module):
 
             self._n_out = len(scope)
 
-        super(MultivariateGaussianLayer, self).__init__(children=[], **kwargs)
+        super().__init__(children=[], **kwargs)
 
         if mean is None:
             mean = [torch.zeros(len(s.query)) for s in scope]

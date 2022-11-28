@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Contains the expectation maximization optimization parameter learner for SPFlow in the ``torch`` backend.
 """
 from typing import List

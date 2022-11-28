@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Meta types for data feature types.
 """
 from enum import Enum
