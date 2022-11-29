@@ -1,6 +1,0 @@
-plum-dispatch>=1.7.4
-mypy>=0.770
-numpy>=1.17.4
-scipy>=1.5.0
-torch>=1.6.0
-scikit-learn>=1.0
