@@ -4,8 +4,9 @@ Typical usage example:
 
     dispatch_ctx = DispatchContext()
 """
+from typing import Any, Dict, Union
+
 from spflow.meta.structure.module import MetaModule
-from typing import Any, Union, Dict, Any
 
 
 class DispatchContext:

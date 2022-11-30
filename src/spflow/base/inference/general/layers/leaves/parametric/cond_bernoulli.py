@@ -1,14 +1,16 @@
 """Contains inference methods for ``CondBernoulliLayer`` leaves for SPFlow in the ``base`` backend.
 """
-import numpy as np
 from typing import Optional
+
+import numpy as np
+
+from spflow.base.structure.general.layers.leaves.parametric.cond_bernoulli import (
+    CondBernoulliLayer,
+)
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
-)
-from spflow.base.structure.general.layers.leaves.parametric.cond_bernoulli import (
-    CondBernoulliLayer,
 )
 
 

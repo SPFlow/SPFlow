@@ -4,8 +4,9 @@ Typical usage example:
 
     cc_list = connected_components(adjacency_matrix)
 """
-import numpy as np
 from typing import List, Set
+
+import numpy as np
 
 
 def connected_components(adjacency_matrix: np.ndarray) -> List[Set[int]]:

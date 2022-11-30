@@ -2,7 +2,8 @@
 
 Used for internal projections of PyTorch parameters.
 """
-from typing import Union, Optional
+from typing import Optional, Union
+
 import torch
 
 
