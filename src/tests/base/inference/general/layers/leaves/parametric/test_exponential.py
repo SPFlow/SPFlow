@@ -1,13 +1,15 @@
-from spflow.meta.data import Scope
+import unittest
+
+import numpy as np
+
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
     Exponential,
     ExponentialLayer,
+    ProductNode,
+    SumNode,
 )
-import numpy as np
-import unittest
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):

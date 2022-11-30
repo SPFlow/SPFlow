@@ -1,5 +1,11 @@
 """Contains sampling methods for SPN-like product nodes for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.sampling.module import sample
+from spflow.base.structure.spn.nodes.product_node import ProductNode
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,11 +15,6 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.spn.nodes.product_node import ProductNode
-from spflow.base.sampling.module import sample
-
-import numpy as np
-from typing import Optional
 
 
 @dispatch  # type: ignore

@@ -1,9 +1,10 @@
-from spflow.torch.utils import corrcoef
-
-import torch
-import numpy as np
-import unittest
 import random
+import unittest
+
+import numpy as np
+import torch
+
+from spflow.torch.utils import corrcoef
 
 
 class TestNode(unittest.TestCase):

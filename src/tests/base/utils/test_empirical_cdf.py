@@ -1,7 +1,8 @@
-from spflow.base.utils import empirical_cdf
+import unittest
 
 import numpy as np
-import unittest
+
+from spflow.base.utils import empirical_cdf
 
 
 class TestNode(unittest.TestCase):

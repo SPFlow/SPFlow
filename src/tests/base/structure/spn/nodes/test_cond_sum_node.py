@@ -1,11 +1,13 @@
-from spflow.base.structure.spn import ProductNode, CondSumNode, marginalize
-from spflow.meta.dispatch import DispatchContext
-from spflow.meta.data import Scope
-from ...general.nodes.dummy_node import DummyNode
+import unittest
 from typing import Callable
 
 import numpy as np
-import unittest
+
+from spflow.base.structure.spn import CondSumNode, ProductNode, marginalize
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+
+from ...general.nodes.dummy_node import DummyNode
 
 
 class TestSumNode(unittest.TestCase):

@@ -1,5 +1,6 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 import unittest
+
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestFeatureContext(unittest.TestCase):

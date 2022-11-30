@@ -1,17 +1,18 @@
+import random
+import unittest
+
+import numpy as np
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure.spn import SumNode, ProductNode, Exponential
 from spflow.torch.inference import log_likelihood
 from spflow.torch.learning import (
     em,
     expectation_maximization,
     maximum_likelihood_estimation,
 )
-
-import torch
-import numpy as np
-import random
-import unittest
+from spflow.torch.structure.spn import Exponential, ProductNode, SumNode
 
 
 class TestNode(unittest.TestCase):

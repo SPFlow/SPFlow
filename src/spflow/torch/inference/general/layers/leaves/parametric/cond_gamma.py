@@ -1,14 +1,16 @@
 """Contains inference methods for ``CondGammaLayer`` leaves for SPFlow in the ``torch`` backend.
 """
-import torch
-import numpy as np
 from typing import Optional
+
+import numpy as np
+import torch
+
 from spflow.meta.data.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.torch.structure.general.layers.leaves.parametric.cond_gamma import (
     CondGammaLayer,
 )

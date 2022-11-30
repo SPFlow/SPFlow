@@ -1,15 +1,15 @@
 """Contains inference methods for SPN-like sum layer for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.structure.spn.layers.sum_layer import SumLayer
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.base.structure.spn.layers.sum_layer import SumLayer
-
-from typing import Optional
-import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore

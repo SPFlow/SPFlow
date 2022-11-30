@@ -1,15 +1,17 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
-    NegativeBinomial,
-    NegativeBinomialLayer,
-)
-from spflow.base.inference import log_likelihood
-from spflow.base.sampling import sample
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import (
+    NegativeBinomial,
+    NegativeBinomialLayer,
+    ProductNode,
+    SumNode,
+)
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
