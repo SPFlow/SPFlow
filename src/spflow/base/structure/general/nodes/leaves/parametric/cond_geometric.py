@@ -45,13 +45,9 @@ class CondGeometric(LeafNode):
                 a floating point value in :math:`(0,1]`.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'CondGeometric' should be 1, but was {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'CondGeometric' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence) == 0:
-            raise ValueError(
-                f"Evidence scope for 'CondGeometric' should not be empty."
-            )
+            raise ValueError(f"Evidence scope for 'CondGeometric' should not be empty.")
 
         super().__init__(scope=scope)
 
@@ -76,11 +72,7 @@ class CondGeometric(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) == 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) == 0:
             return False
 
         # leaf is a discrete Geometric distribution
@@ -94,9 +86,7 @@ class CondGeometric(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondGeometric":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondGeometric":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -106,9 +96,7 @@ class CondGeometric(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondGeometric' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondGeometric' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -139,9 +127,7 @@ class CondGeometric(LeafNode):
         """
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> Tuple[Union[np.ndarray, float]]:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[Union[np.ndarray, float]]:
         r"""Retrieves the conditional parameter of the leaf node.
 
         First, checks if conditional parameters (``p``) is passed as an additional argument in the dispatch context.
@@ -179,9 +165,7 @@ class CondGeometric(LeafNode):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError(
-                "'CondGeometric' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
-            )
+            raise ValueError("'CondGeometric' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
 
         # if 'p' was not already specified, retrieve it
         if p is None:
@@ -207,9 +191,7 @@ class CondGeometric(LeafNode):
         """
         return geom(p=p)
 
-    def check_support(
-        self, data: np.ndarray, is_scope_data: bool = False
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, is_scope_data: bool = False) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Geometric distribution, which is:
@@ -252,9 +234,7 @@ class CondGeometric(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= (
-            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
-        )
+        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
 
         # check if values are in valid range
         valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] >= 1

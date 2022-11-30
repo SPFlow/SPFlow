@@ -43,9 +43,7 @@ def expectation_maximization(
         dispatch_ctx = DispatchContext()
 
         # compute log likelihoods and sum them together
-        acc_ll = log_likelihood(
-            module, data, check_support=check_support, dispatch_ctx=dispatch_ctx
-        ).sum()
+        acc_ll = log_likelihood(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx).sum()
 
         avg_ll = acc_ll.detach().clone() / data.shape[0]
         ll_history.append(avg_ll)

@@ -17,12 +17,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]))
 
         # ---- different scopes -----
         l = CondGeometricLayer(scope=Scope([1], [0]), n_nodes=3)
@@ -30,9 +25,7 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, CondGeometricLayer, Scope([0], [1]), n_nodes=0
-        )
+        self.assertRaises(ValueError, CondGeometricLayer, Scope([0], [1]), n_nodes=0)
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondGeometricLayer, Scope([]), n_nodes=3)
@@ -40,9 +33,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
-        l = CondGeometricLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3
-        )
+        l = CondGeometricLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
 
@@ -64,9 +55,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- float/int parameter values -----
         p_value = 0.13
-        l = CondGeometricLayer(
-            scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value}
-        )
+        l = CondGeometricLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value})
 
         for p in l.retrieve_params(np.array([[1.0]]), DispatchContext()):
             self.assertTrue(p == p_value)
@@ -75,41 +64,29 @@ class TestLayer(unittest.TestCase):
         p_values = [0.17, 0.8, 0.53]
         l.set_cond_f(lambda data: {"p": p_values})
 
-        for p_node, p_actual in zip(
-            l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values
-        ):
+        for p_node, p_actual in zip(l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values):
             self.assertTrue(p_node == p_actual)
 
         # wrong number of values
         l.set_cond_f(lambda data: {"p": p_values[:-1]})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(lambda data: {"p": [p_values for _ in range(3)]})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # ----- numpy parameter values -----
         l.set_cond_f(lambda data: {"p": np.array(p_values)})
-        for p_node, p_actual in zip(
-            l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values
-        ):
+        for p_node, p_actual in zip(l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values):
             self.assertTrue(p_node == p_actual)
 
         # wrong number of values
         l.set_cond_f(lambda data: {"p": np.array(p_values[:-1])})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(lambda data: {"p": np.array([p_values for _ in range(3)])})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
     def test_accept(self):
 
@@ -144,11 +121,7 @@ class TestLayer(unittest.TestCase):
         )
 
         # non-conditional scope
-        self.assertFalse(
-            CondGeometricLayer.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Geometric])]
-            )
-        )
+        self.assertFalse(CondGeometricLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Geometric])]))
 
         # multivariate signature
         self.assertFalse(
@@ -170,9 +143,7 @@ class TestLayer(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Discrete]),
             ]
         )
-        self.assertTrue(
-            geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         geometric = CondGeometricLayer.from_signatures(
             [
@@ -180,9 +151,7 @@ class TestLayer(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Geometric]),
             ]
         )
-        self.assertTrue(
-            geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         geometric = CondGeometricLayer.from_signatures(
             [
@@ -190,9 +159,7 @@ class TestLayer(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Geometric(0.5)]),
             ]
         )
-        self.assertTrue(
-            geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         # ----- invalid arguments -----
 
@@ -241,17 +208,11 @@ class TestLayer(unittest.TestCase):
         # make sure AutoLeaf can return correctly instantiated object
         geometric = AutoLeaf(
             [
-                FeatureContext(
-                    Scope([0], [2]), [FeatureTypes.Geometric(p=0.75)]
-                ),
-                FeatureContext(
-                    Scope([1], [2]), [FeatureTypes.Geometric(p=0.25)]
-                ),
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Geometric(p=0.75)]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Geometric(p=0.25)]),
             ]
         )
-        self.assertTrue(
-            geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
     def test_layer_structural_marginalization(self):
 

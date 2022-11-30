@@ -82,9 +82,7 @@ def sample(
     # group sampled branches
     for branch in np.unique(branches):
         # group instances by sampled branch
-        branch_instance_ids = np.array(sampling_ctx.instance_ids)[
-            branches == branch
-        ].tolist()
+        branch_instance_ids = np.array(sampling_ctx.instance_ids)[branches == branch].tolist()
 
         # get corresponding child and output id for sampled branch
         child_ids, output_ids = node.input_to_output_ids([branch])

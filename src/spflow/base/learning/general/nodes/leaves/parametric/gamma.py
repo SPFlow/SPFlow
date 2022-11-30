@@ -76,17 +76,13 @@ def maximum_likelihood_estimation(
 
     if check_support:
         if np.any(~leaf.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'Gamma'."
-            )
+            raise ValueError("Encountered values outside of the support for 'Gamma'.")
 
     # NaN entries (no information)
     nan_mask = np.isnan(scope_data)
 
     if np.all(nan_mask):
-        raise ValueError(
-            "Cannot compute maximum-likelihood estimation on nan-only data."
-        )
+        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
 
     if nan_strategy is None and np.any(nan_mask):
         raise ValueError(
@@ -99,9 +95,7 @@ def maximum_likelihood_estimation(
             scope_data = scope_data[~nan_mask.squeeze(1)]
             weights = weights[~nan_mask.squeeze(1)]
         else:
-            raise ValueError(
-                "Unknown strategy for handling missing (NaN) values for 'Gamma'."
-            )
+            raise ValueError("Unknown strategy for handling missing (NaN) values for 'Gamma'.")
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
         # TODO: how to handle weights?
@@ -134,10 +128,7 @@ def maximum_likelihood_estimation(
         alpha_est = 1.0 / (
             1.0 / alpha_prev
             + (mean_log - log_mean + np.log(alpha_prev) - digamma(alpha_prev))
-            / (
-                alpha_prev ** 2
-                * (1.0 / alpha_prev - polygamma(n=1, x=alpha_prev))
-            )
+            / (alpha_prev**2 * (1.0 / alpha_prev - polygamma(n=1, x=alpha_prev)))
         )
 
     # compute beta estimate

@@ -18,9 +18,7 @@ class TestNode(unittest.TestCase):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
             Scope([0, 1], [2]),
-            cond_f=lambda data: {
-                "cov": [[[1.0, 0.0], [0.0, 1.0]], [[1.0, 0.0], [0.0, 1.0]]]
-            },
+            cond_f=lambda data: {"cov": [[[1.0, 0.0], [0.0, 1.0]], [[1.0, 0.0], [0.0, 1.0]]]},
             n_nodes=2,
         )
         self.assertRaises(
@@ -46,9 +44,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_mean_cov(self):
 
-        multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0], [1]), n_nodes=2
-        )
+        multivariate_gaussian = CondMultivariateGaussianLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError,
             log_likelihood,
@@ -63,9 +59,7 @@ class TestNode(unittest.TestCase):
             "cov": [[[1.0, 0.0], [0.0, 1.0]], [[1.0, 0.0], [0.0, 1.0]]],
         }
 
-        multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1], [2]), n_nodes=2, cond_f=cond_f
-        )
+        multivariate_gaussian = CondMultivariateGaussianLayer(Scope([0, 1], [2]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
@@ -79,9 +73,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args(self):
 
-        multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1], [2]), n_nodes=2
-        )
+        multivariate_gaussian = CondMultivariateGaussianLayer(Scope([0, 1], [2]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[multivariate_gaussian] = {
@@ -93,21 +85,15 @@ class TestNode(unittest.TestCase):
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
         targets = np.array([[0.1591549, 0.1591549], [0.0585498, 0.0585498]])
 
-        probs = likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
-        log_probs = log_likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
+        probs = likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
+        log_probs = log_likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
 
     def test_likelihood_args_cond_f(self):
 
-        multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1], [2]), n_nodes=2
-        )
+        multivariate_gaussian = CondMultivariateGaussianLayer(Scope([0, 1], [2]), n_nodes=2)
 
         cond_f = lambda data: {
             "mean": [[0.0, 0.0], [0.0, 0.0]],
@@ -121,12 +107,8 @@ class TestNode(unittest.TestCase):
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
         targets = np.array([[0.1591549, 0.1591549], [0.0585498, 0.0585498]])
 
-        probs = likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
-        log_probs = log_likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
+        probs = likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
+        log_probs = log_likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -163,9 +145,7 @@ class TestNode(unittest.TestCase):
 
         data = np.array([[0.5, 0.3], [1.5, -0.3], [0.3, 0.0]])
 
-        self.assertTrue(
-            np.all(log_likelihood(s1, data) == log_likelihood(s2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(s1, data) == log_likelihood(s2, data)))
 
     def test_layer_likelihood_2(self):
 
@@ -204,9 +184,7 @@ class TestNode(unittest.TestCase):
             ]
         )
 
-        self.assertTrue(
-            np.all(log_likelihood(p1, data) == log_likelihood(p2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(p1, data) == log_likelihood(p2, data)))
 
 
 if __name__ == "__main__":

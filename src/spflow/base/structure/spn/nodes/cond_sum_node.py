@@ -34,9 +34,7 @@ class CondSumNode(Node):
             List of scopes representing the output scopes.
     """
 
-    def __init__(
-        self, children: List[Module], cond_f: Optional[Callable] = None
-    ) -> None:
+    def __init__(self, children: List[Module], cond_f: Optional[Callable] = None) -> None:
         """Initializes ``CondSumNode`` object.
 
         Args:
@@ -54,9 +52,7 @@ class CondSumNode(Node):
         super().__init__(children=children)
 
         if not children:
-            raise ValueError(
-                "'CondSumNode' requires at least one child to be specified."
-            )
+            raise ValueError("'CondSumNode' requires at least one child to be specified.")
 
         scope = None
 
@@ -66,9 +62,7 @@ class CondSumNode(Node):
                     scope = s
                 else:
                     if not scope.equal_query(s):
-                        raise ValueError(
-                            f"'CondSumNode' requires child scopes to have the same query variables."
-                        )
+                        raise ValueError(f"'CondSumNode' requires child scopes to have the same query variables.")
 
                 scope = scope.join(s)
 
@@ -88,9 +82,7 @@ class CondSumNode(Node):
         """
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> np.ndarray:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> np.ndarray:
         """Retrieves the conditional weights of the sum node.
 
         First, checks if conditional weights (``weights``) are passed as an additional argument in the dispatch context.
@@ -144,17 +136,11 @@ class CondSumNode(Node):
                 f"Numpy array of weight values for 'CondSumNode' is expected to be one-dimensional, but is {weights.ndim}-dimensional."
             )
         if not np.all(weights > 0):
-            raise ValueError(
-                "Weights for 'CondCondSumNode' must be all positive."
-            )
+            raise ValueError("Weights for 'CondCondSumNode' must be all positive.")
         if not np.isclose(weights.sum(), 1.0):
-            raise ValueError(
-                "Weights for 'CondCondSumNode' must sum up to one."
-            )
+            raise ValueError("Weights for 'CondCondSumNode' must sum up to one.")
         if not (len(weights) == self.n_in):
-            raise ValueError(
-                "Number of weights for 'CondCondSumNode' does not match total number of child outputs."
-            )
+            raise ValueError("Number of weights for 'CondCondSumNode' does not match total number of child outputs.")
 
         return weights
 
@@ -204,9 +190,7 @@ def marginalize(
 
         # marginalize child modules
         for child in sum_node.children:
-            marg_child = marginalize(
-                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
-            )
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:

@@ -38,12 +38,7 @@ def em(
 
     with torch.no_grad():
         # ----- expectation step -----
-        child_lls = torch.hstack(
-            [
-                dispatch_ctx.cache["log_likelihood"][child]
-                for child in layer.children()
-            ]
-        )
+        child_lls = torch.hstack([dispatch_ctx.cache["log_likelihood"][child] for child in layer.children()])
 
         # TODO: output shape ?
         # get cached log-likelihood gradients w.r.t. module log-likelihoods

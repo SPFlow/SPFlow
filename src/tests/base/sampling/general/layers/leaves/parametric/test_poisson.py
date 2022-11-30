@@ -39,9 +39,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        poisson_layer = PoissonLayer(
-            scope=[Scope([0]), Scope([1])], l=[0.8, 0.3]
-        )
+        poisson_layer = PoissonLayer(scope=[Scope([0]), Scope([1])], l=[0.8, 0.3])
         p1 = ProductNode(children=[poisson_layer])
 
         poisson_nodes = [Poisson(Scope([0]), l=0.8), Poisson(Scope([1]), l=0.3)]

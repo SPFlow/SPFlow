@@ -55,13 +55,9 @@ class Poisson(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'Poisson' should be 1, but was: {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'Poisson' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
 
@@ -95,11 +91,7 @@ class Poisson(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a discrete Poisson distribution
@@ -123,9 +115,7 @@ class Poisson(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Poisson' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'Poisson' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -163,14 +153,10 @@ class Poisson(LeafNode):
                 Floating point value representing the rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0).
         """
         if not np.isfinite(l):
-            raise ValueError(
-                f"Value of l for Poisson distribution must be finite, but was: {l}"
-            )
+            raise ValueError(f"Value of l for Poisson distribution must be finite, but was: {l}")
 
         if l < 0:
-            raise ValueError(
-                f"Value of l for Poisson distribution must be non-negative, but was: {l}"
-            )
+            raise ValueError(f"Value of l for Poisson distribution must be non-negative, but was: {l}")
 
         self.l_aux.data = proj_bounded_to_real(torch.tensor(float(l)), lb=0.0)
 
@@ -182,9 +168,7 @@ class Poisson(LeafNode):
         """
         return (self.l.data.cpu().numpy(),)  # type: ignore
 
-    def check_support(
-        self, data: torch.Tensor, is_scope_data: bool = False
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Poisson distribution, which is:
@@ -225,25 +209,16 @@ class Poisson(LeafNode):
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check if all values are valid integers
-        valid[~nan_mask & valid] &= (
-            torch.remainder(
-                scope_data[~nan_mask & valid], torch.tensor(1)
-            ).squeeze(-1)
-            == 0
-        )
+        valid[~nan_mask & valid] &= torch.remainder(scope_data[~nan_mask & valid], torch.tensor(1)).squeeze(-1) == 0
 
         # check for infinite values
-        valid[~nan_mask & valid] &= (
-            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
-        )
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    node: BasePoisson, dispatch_ctx: Optional[DispatchContext] = None
-) -> Poisson:
+def toTorch(node: BasePoisson, dispatch_ctx: Optional[DispatchContext] = None) -> Poisson:
     """Conversion for ``Poisson`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -257,9 +232,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    node: Poisson, dispatch_ctx: Optional[DispatchContext] = None
-) -> BasePoisson:
+def toBase(node: Poisson, dispatch_ctx: Optional[DispatchContext] = None) -> BasePoisson:
     """Conversion for ``Poisson`` from ``torch`` backend to ``base`` backend.
 
     Args:

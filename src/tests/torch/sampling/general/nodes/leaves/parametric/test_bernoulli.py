@@ -34,9 +34,7 @@ class TestBernoulli(unittest.TestCase):
 
         samples = sample(bernoulli, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
         self.assertTrue(all(samples[~samples.isnan()] == 0.0))
 
     def test_sampling_1(self):
@@ -52,13 +50,9 @@ class TestBernoulli(unittest.TestCase):
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
-        samples = sample(
-            bernoulli, data, sampling_ctx=SamplingContext([0, 2], [[0], [0]])
-        )
+        samples = sample(bernoulli, data, sampling_ctx=SamplingContext([0, 2], [[0], [0]]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
         self.assertTrue(all(samples[~samples.isnan()] == 1.0))
 
 

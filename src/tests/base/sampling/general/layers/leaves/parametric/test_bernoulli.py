@@ -16,9 +16,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        bernoulli_layer = BernoulliLayer(
-            scope=Scope([0]), p=[0.8, 0.3], n_nodes=2
-        )
+        bernoulli_layer = BernoulliLayer(scope=Scope([0]), p=[0.8, 0.3], n_nodes=2)
         s1 = SumNode(children=[bernoulli_layer], weights=[0.3, 0.7])
 
         bernoulli_nodes = [
@@ -44,9 +42,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        bernoulli_layer = BernoulliLayer(
-            scope=[Scope([0]), Scope([1])], p=[0.8, 0.3]
-        )
+        bernoulli_layer = BernoulliLayer(scope=[Scope([0]), Scope([1])], p=[0.8, 0.3])
         p1 = ProductNode(children=[bernoulli_layer])
 
         bernoulli_nodes = [
@@ -68,9 +64,7 @@ class TestNode(unittest.TestCase):
 
     def test_sampling_3(self):
 
-        bernoulli_layer = BernoulliLayer(
-            scope=[Scope([0]), Scope([0])], p=[0.8, 0.3]
-        )
+        bernoulli_layer = BernoulliLayer(scope=[Scope([0]), Scope([0])], p=[0.8, 0.3])
 
         # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails
         self.assertRaises(ValueError, sample, bernoulli_layer)

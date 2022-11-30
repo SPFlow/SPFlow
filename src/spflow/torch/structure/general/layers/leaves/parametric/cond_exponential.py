@@ -85,9 +85,7 @@ class CondExponentialLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondExponentialLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondExponentialLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -95,17 +93,13 @@ class CondExponentialLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) == 0:
-                raise ValueError(
-                    f"Evidence scope for 'CondExponentialLayer' should not be empty."
-                )
+                raise ValueError(f"Evidence scope for 'CondExponentialLayer' should not be empty.")
 
         super().__init__(children=[], **kwargs)
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
 
@@ -129,9 +123,7 @@ class CondExponentialLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondExponentialLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondExponentialLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -172,9 +164,7 @@ class CondExponentialLayer(Module):
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -196,9 +186,7 @@ class CondExponentialLayer(Module):
 
         self.cond_f = cond_f
 
-    def dist(
-        self, l: torch.Tensor, node_ids: Optional[List[int]] = None
-    ) -> D.Distribution:
+    def dist(self, l: torch.Tensor, node_ids: Optional[List[int]] = None) -> D.Distribution:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -216,9 +204,7 @@ class CondExponentialLayer(Module):
 
         return D.Exponential(rate=l[node_ids])
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> torch.Tensor:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> torch.Tensor:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameter (``l``) is passed as an additional argument in the dispatch context.
@@ -256,9 +242,7 @@ class CondExponentialLayer(Module):
 
         # if neither 'l' nor 'cond_f' is specified (via node or arguments)
         if l is None and cond_f is None:
-            raise ValueError(
-                "'CondExponentialLayer' requires either 'l' or 'cond_f' to retrieve 'l' to be specified."
-            )
+            raise ValueError("'CondExponentialLayer' requires either 'l' or 'cond_f' to retrieve 'l' to be specified.")
 
         # if 'l' was not already specified, retrieve it
         if l is None:
@@ -282,9 +266,7 @@ class CondExponentialLayer(Module):
             )
 
         if torch.any(l <= 0) or not torch.any(torch.isfinite(l)):
-            raise ValueError(
-                f"Values for 'l' of 'CondExponentialLayer' must to greater of equal to 0, but was: {l}"
-            )
+            raise ValueError(f"Values for 'l' of 'CondExponentialLayer' must to greater of equal to 0, but was: {l}")
 
         return l
 
@@ -328,9 +310,7 @@ class CondExponentialLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(torch.ones(self.n_out), node_ids).support.check(scope_data)  # type: ignore

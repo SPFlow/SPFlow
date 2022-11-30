@@ -24,18 +24,11 @@ class TestNode(unittest.TestCase):
     def test_layer_initialization(self):
 
         # ----- check attributes after correct initialization -----
-        l = CondNegativeBinomialLayer(
-            scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])], n=2
-        )
+        l = CondNegativeBinomialLayer(scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])], n=2)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1], [3]), Scope([0], [3]), Scope([2], [3])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1], [3]), Scope([0], [3]), Scope([2], [3])]))
 
         # ----- n initialization -----
         l = CondNegativeBinomialLayer(
@@ -94,18 +87,12 @@ class TestNode(unittest.TestCase):
         )
 
         # ----- invalid scope -----
-        self.assertRaises(
-            ValueError, CondNegativeBinomialLayer, Scope([]), n_nodes=3, n=2
-        )
-        self.assertRaises(
-            ValueError, CondNegativeBinomialLayer, [], n_nodes=3, n=2
-        )
+        self.assertRaises(ValueError, CondNegativeBinomialLayer, Scope([]), n_nodes=3, n=2)
+        self.assertRaises(ValueError, CondNegativeBinomialLayer, [], n_nodes=3, n=2)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
-        l = CondNegativeBinomialLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3, n=2
-        )
+        l = CondNegativeBinomialLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3, n=2)
 
         for layer_scope, node_scope in zip(l.scopes_out, scopes):
             self.assertEqual(layer_scope, node_scope)
@@ -138,9 +125,7 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"p": p_value},
         )
 
-        for n_layer_node, p_layer_node in zip(
-            l.n, l.retrieve_params(torch.tensor([[1]]), DispatchContext())
-        ):
+        for n_layer_node, p_layer_node in zip(l.n, l.retrieve_params(torch.tensor([[1]]), DispatchContext())):
             self.assertTrue(torch.all(n_layer_node == n_value))
             self.assertTrue(torch.all(p_layer_node == p_value))
 
@@ -238,12 +223,8 @@ class TestNode(unittest.TestCase):
         self.assertTrue(
             CondNegativeBinomialLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0], [2]), [FeatureTypes.NegativeBinomial(n=3)]
-                    ),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=3)]
-                    ),
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.NegativeBinomial(n=3)]),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=3)]),
                 ]
             )
         )
@@ -253,22 +234,14 @@ class TestNode(unittest.TestCase):
             CondNegativeBinomialLayer.accepts(
                 [
                     FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=3)]
-                    ),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=3)]),
                 ]
             )
         )
 
         # non-conditional scope
         self.assertFalse(
-            CondNegativeBinomialLayer.accepts(
-                [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.NegativeBinomial(n=3)]
-                    )
-                ]
-            )
+            CondNegativeBinomialLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.NegativeBinomial(n=3)])])
         )
 
         # multivariate signature
@@ -290,17 +263,11 @@ class TestNode(unittest.TestCase):
 
         negative_binomial = CondNegativeBinomialLayer.from_signatures(
             [
-                FeatureContext(
-                    Scope([0], [2]), [FeatureTypes.NegativeBinomial(n=3)]
-                ),
-                FeatureContext(
-                    Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=5)]
-                ),
+                FeatureContext(Scope([0], [2]), [FeatureTypes.NegativeBinomial(n=3)]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=5)]),
             ]
         )
-        self.assertTrue(
-            negative_binomial.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(negative_binomial.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         # ----- invalid arguments -----
 
@@ -350,12 +317,8 @@ class TestNode(unittest.TestCase):
             CondNegativeBinomialLayer,
             AutoLeaf.infer(
                 [
-                    FeatureContext(
-                        Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)]
-                    ),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=5)]
-                    ),
+                    FeatureContext(Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)]),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=5)]),
                 ]
             ),
         )
@@ -373,9 +336,7 @@ class TestNode(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            negative_binomial.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(negative_binomial.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
     def test_layer_structural_marginalization(self):
 
@@ -393,9 +354,7 @@ class TestNode(unittest.TestCase):
 
         # ---------- different scopes -----------
 
-        l = CondNegativeBinomialLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n=[3, 2]
-        )
+        l = CondNegativeBinomialLayer(scope=[Scope([1], [2]), Scope([0], [2])], n=[3, 2])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
@@ -429,23 +388,15 @@ class TestNode(unittest.TestCase):
         # ----- full dist -----
         dist = l.dist(p_values)
 
-        for n_value, p_value, n_dist, p_dist in zip(
-            n_values, p_values, dist.total_count, dist.probs
-        ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(n_value).double(), n_dist)
-            )
+        for n_value, p_value, n_dist, p_dist in zip(n_values, p_values, dist.total_count, dist.probs):
+            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
             self.assertTrue(torch.allclose(1 - p_value, p_dist))
 
         # ----- partial dist -----
         dist = l.dist(p_values, [1, 2])
 
-        for n_value, p_value, n_dist, p_dist in zip(
-            n_values[1:], p_values[1:], dist.total_count, dist.probs
-        ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(n_value).double(), n_dist)
-            )
+        for n_value, p_value, n_dist, p_dist in zip(n_values[1:], p_values[1:], dist.total_count, dist.probs):
+            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
             self.assertTrue(torch.allclose(1 - p_value, p_dist))
 
         dist = l.dist(p_values, [1, 0])
@@ -456,9 +407,7 @@ class TestNode(unittest.TestCase):
             dist.total_count,
             dist.probs,
         ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(n_value).double(), n_dist)
-            )
+            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
             self.assertTrue(torch.allclose(1 - p_value, p_dist))
 
     def test_layer_backend_conversion_1(self):

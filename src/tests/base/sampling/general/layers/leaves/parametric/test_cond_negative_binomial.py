@@ -30,12 +30,8 @@ class TestNode(unittest.TestCase):
         s1 = SumNode(children=[negative_binomial_layer], weights=[0.3, 0.7])
 
         negative_binomial_nodes = [
-            CondNegativeBinomial(
-                Scope([0], [1]), n=3, cond_f=lambda data: {"p": 0.8}
-            ),
-            CondNegativeBinomial(
-                Scope([0], [1]), n=3, cond_f=lambda data: {"p": 0.3}
-            ),
+            CondNegativeBinomial(Scope([0], [1]), n=3, cond_f=lambda data: {"p": 0.8}),
+            CondNegativeBinomial(Scope([0], [1]), n=3, cond_f=lambda data: {"p": 0.3}),
         ]
         s2 = SumNode(children=negative_binomial_nodes, weights=[0.3, 0.7])
 
@@ -64,12 +60,8 @@ class TestNode(unittest.TestCase):
         p1 = ProductNode(children=[negative_binomial_layer])
 
         negative_binomial_nodes = [
-            CondNegativeBinomial(
-                Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.8}
-            ),
-            CondNegativeBinomial(
-                Scope([1], [2]), n=5, cond_f=lambda data: {"p": 0.3}
-            ),
+            CondNegativeBinomial(Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.8}),
+            CondNegativeBinomial(Scope([1], [2]), n=5, cond_f=lambda data: {"p": 0.3}),
         ]
         p2 = ProductNode(children=negative_binomial_nodes)
 

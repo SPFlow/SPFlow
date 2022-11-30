@@ -26,11 +26,7 @@ class TestNode(unittest.TestCase):
 
         l = SumLayer(n_nodes=3, children=input_nodes)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out == [Scope([0, 1]), Scope([0, 1]), Scope([0, 1])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([0, 1]), Scope([0, 1]), Scope([0, 1])]))
         # make sure weight property works correctly
         self.assertTrue(l.weights.shape == (3, 3))
 
@@ -44,17 +40,13 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(l.weights[i], weights))
 
         # one dimensional weight array
-        l = SumLayer(
-            n_nodes=3, children=input_nodes, weights=weights.squeeze(0)
-        )
+        l = SumLayer(n_nodes=3, children=input_nodes, weights=weights.squeeze(0))
 
         for i in range(3):
             self.assertTrue(torch.allclose(l.weights[i], weights))
 
         # ----- different weights for all nodes -----
-        weights = torch.tensor(
-            [[0.3, 0.3, 0.4], [0.5, 0.2, 0.3], [0.1, 0.7, 0.2]]
-        )
+        weights = torch.tensor([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3], [0.1, 0.7, 0.2]])
 
         l = SumLayer(n_nodes=3, children=input_nodes, weights=weights)
         for i in range(3):
@@ -67,15 +59,11 @@ class TestNode(unittest.TestCase):
         self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights.T)
 
         # ----- weights not summing up to one per row -----
-        weights = torch.tensor(
-            [[0.3, 0.3, 0.4], [0.5, 0.7, 0.3], [0.1, 0.7, 0.2]]
-        )
+        weights = torch.tensor([[0.3, 0.3, 0.4], [0.5, 0.7, 0.3], [0.1, 0.7, 0.2]])
         self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights)
 
         # ----- non-positive weights -----
-        weights = torch.tensor(
-            [[0.3, 0.3, 0.4], [0.5, 0.0, 0.5], [0.1, 0.7, 0.2]]
-        )
+        weights = torch.tensor([[0.3, 0.3, 0.4], [0.5, 0.0, 0.5], [0.1, 0.7, 0.2]])
         self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights)
 
         # ----- children of different scopes -----
@@ -104,16 +92,12 @@ class TestNode(unittest.TestCase):
 
         # ----- marginalize over partial scope -----
         l_marg = marginalize(l, [0])
-        self.assertTrue(
-            l_marg.scopes_out == [Scope([1]), Scope([1]), Scope([1])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
         self.assertTrue(torch.allclose(l.weights, l_marg.weights))
 
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
-        self.assertTrue(
-            l_marg.scopes_out == [Scope([0, 1]), Scope([0, 1]), Scope([0, 1])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 1]), Scope([0, 1]), Scope([0, 1])])
         self.assertTrue(torch.allclose(l.weights, l_marg.weights))
 
     def test_sum_layer_backend_conversion_1(self):
@@ -128,11 +112,7 @@ class TestNode(unittest.TestCase):
         )
 
         base_sum_layer = toBase(torch_sum_layer)
-        self.assertTrue(
-            np.allclose(
-                base_sum_layer.weights, torch_sum_layer.weights.detach().numpy()
-            )
-        )
+        self.assertTrue(np.allclose(base_sum_layer.weights, torch_sum_layer.weights.detach().numpy()))
         self.assertEqual(base_sum_layer.n_out, torch_sum_layer.n_out)
 
     def test_sum_layer_backend_conversion_2(self):
@@ -147,11 +127,7 @@ class TestNode(unittest.TestCase):
         )
 
         torch_sum_layer = toTorch(base_sum_layer)
-        self.assertTrue(
-            np.allclose(
-                base_sum_layer.weights, torch_sum_layer.weights.detach().numpy()
-            )
-        )
+        self.assertTrue(np.allclose(base_sum_layer.weights, torch_sum_layer.weights.detach().numpy()))
         self.assertEqual(base_sum_layer.n_out, torch_sum_layer.n_out)
 
 

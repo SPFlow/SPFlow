@@ -31,21 +31,13 @@ class TestNode(unittest.TestCase):
 
         l = PartitionLayer(child_partitions=input_partitions)
         # make sure number of creates nodes is correct
-        self.assertEqual(
-            l.n_out, np.prod([len(partition) for partition in input_partitions])
-        )
+        self.assertEqual(l.n_out, np.prod([len(partition) for partition in input_partitions]))
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out == [Scope([0, 1, 2, 3]) for _ in range(l.n_out)]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([0, 1, 2, 3]) for _ in range(l.n_out)]))
         # make sure order of nodes is correct (important)
         for indices, indices_torch in zip(
             itertools.product([0, 1], [2, 3, 4], [5]),
-            torch.cartesian_prod(
-                torch.tensor([0, 1]), torch.tensor([2, 3, 4]), torch.tensor([5])
-            ),
+            torch.cartesian_prod(torch.tensor([0, 1]), torch.tensor([2, 3, 4]), torch.tensor([5])),
         ):
             self.assertTrue(torch.all(torch.tensor(indices) == indices_torch))
 
@@ -120,9 +112,7 @@ class TestNode(unittest.TestCase):
         )
 
         base_partition_layer = toBase(torch_partition_layer)
-        self.assertEqual(
-            base_partition_layer.n_out, torch_partition_layer.n_out
-        )
+        self.assertEqual(base_partition_layer.n_out, torch_partition_layer.n_out)
 
     def test_partition_layer_backend_conversion_2(self):
 
@@ -139,9 +129,7 @@ class TestNode(unittest.TestCase):
         )
 
         torch_partition_layer = toTorch(base_partition_layer)
-        self.assertEqual(
-            base_partition_layer.n_out, torch_partition_layer.n_out
-        )
+        self.assertEqual(base_partition_layer.n_out, torch_partition_layer.n_out)
 
 
 if __name__ == "__main__":

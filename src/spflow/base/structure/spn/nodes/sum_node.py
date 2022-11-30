@@ -51,9 +51,7 @@ class SumNode(Node):
         super().__init__(children=children)
 
         if not children:
-            raise ValueError(
-                "'SumNode' requires at least one child to be specified."
-            )
+            raise ValueError("'SumNode' requires at least one child to be specified.")
 
         scope = None
 
@@ -63,9 +61,7 @@ class SumNode(Node):
                     scope = s
                 else:
                     if not scope.equal_query(s):
-                        raise ValueError(
-                            f"'SumNode' requires child scopes to have the same query variables."
-                        )
+                        raise ValueError(f"'SumNode' requires child scopes to have the same query variables.")
 
                 scope = scope.join(s)
 
@@ -106,9 +102,7 @@ class SumNode(Node):
         if not np.isclose(values.sum(), 1.0):
             raise ValueError("Weights for 'SumNode' must sum up to one.")
         if not (len(values) == self.n_in):
-            raise ValueError(
-                "Number of weights for 'SumNode' does not match total number of child outputs."
-            )
+            raise ValueError("Number of weights for 'SumNode' does not match total number of child outputs.")
 
         self._weights = values
 
@@ -158,9 +152,7 @@ def marginalize(
 
         # marginalize child modules
         for child in sum_node.children:
-            marg_child = marginalize(
-                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
-            )
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:

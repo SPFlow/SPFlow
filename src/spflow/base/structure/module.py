@@ -42,9 +42,7 @@ class Module(MetaModule, ABC):
 
         self.children = children
 
-    def input_to_output_ids(
-        self, input_ids: Union[List[int], np.ndarray]
-    ) -> Tuple[List[int], List[int]]:
+    def input_to_output_ids(self, input_ids: Union[List[int], np.ndarray]) -> Tuple[List[int], List[int]]:
         """Translates input indices into corresponding child module indices and child module output indices.
 
         For a given sequence of input indices (taking the inputs of all child modules into account), computes
@@ -74,14 +72,9 @@ class Module(MetaModule, ABC):
         child_cum_outputs = np.cumsum(child_num_outputs)
 
         # get child module for corresponding input
-        child_ids = np.sum(
-            child_cum_outputs <= input_ids.reshape(-1, 1), axis=1
-        )
+        child_ids = np.sum(child_cum_outputs <= input_ids.reshape(-1, 1), axis=1)
         # get output id of child module for corresponding input
-        output_ids = input_ids - (
-            child_cum_outputs[child_ids.tolist()]
-            - child_num_outputs[child_ids.tolist()]
-        )
+        output_ids = input_ids - (child_cum_outputs[child_ids.tolist()] - child_num_outputs[child_ids.tolist()])
 
         # restore original shape
         child_ids = child_ids.reshape(shape)

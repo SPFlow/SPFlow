@@ -85,9 +85,7 @@ class BinomialLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'BinomialLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'BinomialLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -95,9 +93,7 @@ class BinomialLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) != 0:
-                raise ValueError(
-                    f"Evidence scope for 'BinomialLayer' should be empty, but was {s.evidence}."
-                )
+                raise ValueError(f"Evidence scope for 'BinomialLayer' should be empty, but was {s.evidence}.")
 
         super().__init__(children=[], **kwargs)
 
@@ -109,9 +105,7 @@ class BinomialLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         # parse weights
         self.set_params(n, p)
@@ -136,9 +130,7 @@ class BinomialLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "BinomialLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "BinomialLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -148,9 +140,7 @@ class BinomialLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'BinomialLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'BinomialLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         n = []
         p = []
@@ -185,9 +175,7 @@ class BinomialLayer(Module):
         return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)  # type: ignore
 
     @p.setter
-    def p(
-        self, p: Union[int, float, List[float], np.ndarray, torch.Tensor]
-    ) -> None:
+    def p(self, p: Union[int, float, List[float], np.ndarray, torch.Tensor]) -> None:
         r"""Sets the success probability.
 
         Args:
@@ -212,11 +200,7 @@ class BinomialLayer(Module):
             raise ValueError(
                 f"Length of numpy array of 'p' values for 'BinomialLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
             )
-        if (
-            torch.any(p < 0.0)
-            or torch.any(p > 1.0)
-            or not all(torch.isfinite(p))
-        ):
+        if torch.any(p < 0.0) or torch.any(p > 1.0) or not all(torch.isfinite(p)):
             raise ValueError(
                 f"Values of 'p' for 'BinomialLayer' distribution must to be between 0.0 and 1.0, but are: {p}"
             )
@@ -270,14 +254,10 @@ class BinomialLayer(Module):
             )
 
         if torch.any(n < 0) or not torch.any(torch.isfinite(n)):
-            raise ValueError(
-                f"Values for 'n' of 'BinomialLayer' must to greater of equal to 0, but was: {n}"
-            )
+            raise ValueError(f"Values for 'n' of 'BinomialLayer' must to greater of equal to 0, but was: {n}")
 
         if not torch.all(torch.remainder(n, 1.0) == torch.tensor(0.0)):
-            raise ValueError(
-                f"Values for 'n' of 'BinomialLayer' must be (equal to) an integer value, but was: {n}"
-            )
+            raise ValueError(f"Values for 'n' of 'BinomialLayer' must be (equal to) an integer value, but was: {n}")
 
         node_scopes = torch.tensor([s.query[0] for s in self.scopes_out])
 
@@ -285,9 +265,7 @@ class BinomialLayer(Module):
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not torch.all(n_values == n_values[0]):
-                raise ValueError(
-                    "All values of 'n' for 'BinomialLayer' over the same scope must be identical."
-                )
+                raise ValueError("All values of 'n' for 'BinomialLayer' over the same scope must be identical.")
 
         self.p = p
         self.n.data = n
@@ -341,9 +319,7 @@ class BinomialLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(node_ids).support.check(scope_data)  # type: ignore
@@ -421,9 +397,7 @@ def marginalize(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    layer: BaseBinomialLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BinomialLayer:
+def toTorch(layer: BaseBinomialLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BinomialLayer:
     """Conversion for ``BinomialLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -437,9 +411,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    layer: BinomialLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseBinomialLayer:
+def toBase(layer: BinomialLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BaseBinomialLayer:
     """Conversion for ``BinomialLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -449,6 +421,4 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseBinomialLayer(
-        scope=layer.scopes_out, n=layer.n.numpy(), p=layer.p.detach().numpy()
-    )
+    return BaseBinomialLayer(scope=layer.scopes_out, n=layer.n.numpy(), p=layer.p.detach().numpy())

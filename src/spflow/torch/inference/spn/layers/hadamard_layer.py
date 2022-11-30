@@ -45,9 +45,7 @@ def log_likelihood(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     children = list(partition_layer.children())
-    partitions = np.split(
-        children, np.cumsum(partition_layer.modules_per_partition[:-1])
-    )
+    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
 
     # compute child log-likelihoods
     partition_lls = [
@@ -68,9 +66,7 @@ def log_likelihood(
 
     # pad partition lls to correct shape (relevant for partitions of total output size 1)
     partition_lls = [
-        torch.nn.functional.pad(
-            lls, (0, partition_layer.n_out - lls.shape[1]), mode="replicate"
-        )
+        torch.nn.functional.pad(lls, (0, partition_layer.n_out - lls.shape[1]), mode="replicate")
         for lls in partition_lls
     ]
 

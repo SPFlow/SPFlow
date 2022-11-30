@@ -86,9 +86,7 @@ class HypergeometricLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'HypergeometricLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'HypergeometricLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -96,9 +94,7 @@ class HypergeometricLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) != 0:
-                raise ValueError(
-                    f"Evidence scope for 'HypergeometricLayer' should be empty, but was {s.evidence}."
-                )
+                raise ValueError(f"Evidence scope for 'HypergeometricLayer' should be empty, but was {s.evidence}.")
 
         super().__init__(children=[], **kwargs)
 
@@ -109,9 +105,7 @@ class HypergeometricLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         # parse weights
         self.set_params(N, M, n)
@@ -136,9 +130,7 @@ class HypergeometricLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "HypergeometricLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "HypergeometricLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -239,19 +231,13 @@ class HypergeometricLayer(Module):
             )
 
         if torch.any(N < 0) or not torch.all(torch.isfinite(N)):
-            raise ValueError(
-                f"Value of 'N' for 'HypergeometricLayer' must be greater of equal to 0, but was: {N}"
-            )
+            raise ValueError(f"Value of 'N' for 'HypergeometricLayer' must be greater of equal to 0, but was: {N}")
         if not torch.all(torch.remainder(N, 1.0) == torch.tensor(0.0)):
             raise ValueError(
                 f"Value of 'N' for 'HypergeometricLayer' must be (equal to) an integer value, but was: {N}"
             )
 
-        if (
-            torch.any(M < 0)
-            or torch.any(M > N)
-            or not torch.all(torch.isfinite(M))
-        ):
+        if torch.any(M < 0) or torch.any(M > N) or not torch.all(torch.isfinite(M)):
             raise ValueError(
                 f"Values of 'M' for 'HypergeometricLayer' must be greater of equal to 0 and less or equal to 'N', but was: {M}"
             )
@@ -260,11 +246,7 @@ class HypergeometricLayer(Module):
                 f"Values of 'M' for 'HypergeometricLayer' must be (equal to) an integer value, but was: {M}"
             )
 
-        if (
-            torch.any(n < 0)
-            or torch.any(n > N)
-            or not torch.all(torch.isfinite(n))
-        ):
+        if torch.any(n < 0) or torch.any(n > N) or not torch.all(torch.isfinite(n)):
             raise ValueError(
                 f"Value of 'n' for 'HypergeometricLayer' must be greater of equal to 0 and less or equal to 'N', but was: {n}"
             )
@@ -279,21 +261,15 @@ class HypergeometricLayer(Module):
             # at least one such element exists
             N_values = N[node_scopes == node_scope]
             if not torch.all(N_values == N_values[0]):
-                raise ValueError(
-                    "All values of 'N' for 'HypergeometricLayer' over the same scope must be identical."
-                )
+                raise ValueError("All values of 'N' for 'HypergeometricLayer' over the same scope must be identical.")
             # at least one such element exists
             M_values = M[node_scopes == node_scope]
             if not torch.all(M_values == M_values[0]):
-                raise ValueError(
-                    "All values of 'M' for 'HypergeometricLayer' over the same scope must be identical."
-                )
+                raise ValueError("All values of 'M' for 'HypergeometricLayer' over the same scope must be identical.")
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not torch.all(n_values == n_values[0]):
-                raise ValueError(
-                    "All values of 'n' for 'HypergeometricLayer' over the same scope must be identical."
-                )
+                raise ValueError("All values of 'n' for 'HypergeometricLayer' over the same scope must be identical.")
 
         self.N.data = N
         self.M.data = M
@@ -353,9 +329,7 @@ class HypergeometricLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         valid = torch.ones(scope_data.shape, dtype=torch.bool)
 
@@ -377,15 +351,9 @@ class HypergeometricLayer(Module):
         valid[~nan_mask & valid] &= (
             (
                 scope_data
-                >= torch.max(
-                    torch.vstack(
-                        [
-                            torch.zeros(scope_data.shape[1]),
-                            n_nodes + M_nodes - N_nodes,
-                        ]
-                    ),
-                    dim=0,
-                )[0].unsqueeze(0)
+                >= torch.max(torch.vstack([torch.zeros(scope_data.shape[1]), n_nodes + M_nodes - N_nodes,]), dim=0,)[
+                    0
+                ].unsqueeze(0)
             )
             & (  # type: ignore
                 scope_data <= torch.min(torch.vstack([n_nodes, M_nodes]), dim=0)[0].unsqueeze(0)  # type: ignore
@@ -394,9 +362,7 @@ class HypergeometricLayer(Module):
 
         return valid
 
-    def log_prob(
-        self, k: torch.Tensor, node_ids: Optional[List[int]] = None
-    ) -> torch.Tensor:
+    def log_prob(self, k: torch.Tensor, node_ids: Optional[List[int]] = None) -> torch.Tensor:
         """Computes the log-likelihood for specified input data.
 
         The log-likelihoods of the Hypergeometric distribution are computed according to the logarithm of its probability mass function (PMF).
@@ -540,15 +506,11 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return HypergeometricLayer(
-        scope=layer.scopes_out, N=layer.N, M=layer.M, n=layer.n
-    )
+    return HypergeometricLayer(scope=layer.scopes_out, N=layer.N, M=layer.M, n=layer.n)
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    layer: HypergeometricLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseHypergeometricLayer:
+def toBase(layer: HypergeometricLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BaseHypergeometricLayer:
     """Conversion for ``HypergeometricLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:

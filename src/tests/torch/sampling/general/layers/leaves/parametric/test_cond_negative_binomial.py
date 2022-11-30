@@ -34,15 +34,9 @@ class TestNode(unittest.TestCase):
         )
 
         nodes = [
-            CondNegativeBinomial(
-                Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}
-            ),
-            CondNegativeBinomial(
-                Scope([1], [2]), n=2, cond_f=lambda data: {"p": 0.8}
-            ),
-            CondNegativeBinomial(
-                Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}
-            ),
+            CondNegativeBinomial(Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}),
+            CondNegativeBinomial(Scope([1], [2]), n=2, cond_f=lambda data: {"p": 0.8}),
+            CondNegativeBinomial(Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}),
         ]
 
         # make sure sampling fron non-overlapping scopes works
@@ -69,26 +63,19 @@ class TestNode(unittest.TestCase):
             10000,
             sampling_ctx=SamplingContext(
                 list(range(10000)),
-                [[0, 1] for _ in range(5000)]
-                + [[2, 1] for _ in range(5000, 10000)],
+                [[0, 1] for _ in range(5000)] + [[2, 1] for _ in range(5000, 10000)],
             ),
         )
         nodes_samples = torch.concat(
             [
-                torch.cat(
-                    [sample(nodes[0], 5000), sample(nodes[2], 5000)], dim=0
-                ),
+                torch.cat([sample(nodes[0], 5000), sample(nodes[2], 5000)], dim=0),
                 sample(nodes[1], 10000)[:, [1]],
             ],
             dim=1,
         )
 
         expected_mean = torch.tensor([3 * (1 - 0.2) / 0.2, 2 * (1 - 0.8) / 0.8])
-        self.assertTrue(
-            torch.allclose(
-                nodes_samples.mean(dim=0), expected_mean, atol=0.01, rtol=0.1
-            )
-        )
+        self.assertTrue(torch.allclose(nodes_samples.mean(dim=0), expected_mean, atol=0.01, rtol=0.1))
         self.assertTrue(
             torch.allclose(
                 layer_samples.mean(dim=0),

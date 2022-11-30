@@ -122,16 +122,8 @@ class TestNode(unittest.TestCase):
         # perform an em step
         em(layer, data, dispatch_ctx=dispatch_ctx)
 
-        self.assertTrue(
-            torch.allclose(
-                layer.mean[0], torch.tensor([-0.5, 0.5]), atol=1e-2, rtol=1e-1
-            )
-        )
-        self.assertTrue(
-            torch.allclose(
-                layer.mean[1], torch.tensor([0.5, -0.5]), atol=1e-2, rtol=1e-1
-            )
-        )
+        self.assertTrue(torch.allclose(layer.mean[0], torch.tensor([-0.5, 0.5]), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.allclose(layer.mean[1], torch.tensor([0.5, -0.5]), atol=1e-2, rtol=1e-1))
         self.assertTrue(
             torch.allclose(
                 layer.cov[0],

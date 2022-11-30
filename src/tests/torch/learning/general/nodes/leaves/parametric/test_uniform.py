@@ -34,11 +34,7 @@ class TestNode(unittest.TestCase):
         # perform MLE (should not raise an exception)
         maximum_likelihood_estimation(leaf, data, bias_correction=True)
 
-        self.assertTrue(
-            torch.all(
-                torch.tensor([leaf.start, leaf.end]) == torch.tensor([0.0, 1.0])
-            )
-        )
+        self.assertTrue(torch.all(torch.tensor([leaf.start, leaf.end]) == torch.tensor([0.0, 1.0])))
 
     def test_mle_invalid_support(self):
 
@@ -78,12 +74,7 @@ class TestNode(unittest.TestCase):
         # perform an em step
         em(leaf, data, dispatch_ctx=dispatch_ctx)
 
-        self.assertTrue(
-            torch.all(
-                torch.tensor([leaf.start, leaf.end])
-                == torch.tensor([-3.0, 4.5])
-            )
-        )
+        self.assertTrue(torch.all(torch.tensor([leaf.start, leaf.end]) == torch.tensor([-3.0, 4.5])))
 
     def test_em_product_of_uniforms(self):
 
@@ -107,16 +98,8 @@ class TestNode(unittest.TestCase):
 
         expectation_maximization(prod_node, data, max_steps=10)
 
-        self.assertTrue(
-            torch.all(
-                torch.tensor([l1.start, l1.end]) == torch.tensor([-1.0, 3.0])
-            )
-        )
-        self.assertTrue(
-            torch.all(
-                torch.tensor([l2.start, l2.end]) == torch.tensor([2.0, 5.0])
-            )
-        )
+        self.assertTrue(torch.all(torch.tensor([l1.start, l1.end]) == torch.tensor([-1.0, 3.0])))
+        self.assertTrue(torch.all(torch.tensor([l2.start, l2.end]) == torch.tensor([2.0, 5.0])))
 
     def test_em_sum_of_uniforms(self):
 
@@ -133,16 +116,8 @@ class TestNode(unittest.TestCase):
 
         expectation_maximization(sum_node, data, max_steps=10)
 
-        self.assertTrue(
-            torch.all(
-                torch.tensor([l1.start, l1.end]) == torch.tensor([-1.0, 3.0])
-            )
-        )
-        self.assertTrue(
-            torch.all(
-                torch.tensor([l2.start, l2.end]) == torch.tensor([-1.0, 3.0])
-            )
-        )
+        self.assertTrue(torch.all(torch.tensor([l1.start, l1.end]) == torch.tensor([-1.0, 3.0])))
+        self.assertTrue(torch.all(torch.tensor([l2.start, l2.end]) == torch.tensor([-1.0, 3.0])))
 
 
 if __name__ == "__main__":

@@ -34,21 +34,12 @@ class TestNode(unittest.TestCase):
         leaf = Hypergeometric(Scope([0]), N=10, M=7, n=3)
 
         # simulate data
-        data = np.random.hypergeometric(
-            ngood=7, nbad=10 - 7, nsample=3, size=(10000, 1)
-        )
+        data = np.random.hypergeometric(ngood=7, nbad=10 - 7, nsample=3, size=(10000, 1))
 
         # perform MLE (should not raise an exception)
-        maximum_likelihood_estimation(
-            leaf, torch.tensor(data), bias_correction=True
-        )
+        maximum_likelihood_estimation(leaf, torch.tensor(data), bias_correction=True)
 
-        self.assertTrue(
-            torch.all(
-                torch.tensor([leaf.N, leaf.M, leaf.n])
-                == torch.tensor([10, 7, 3])
-            )
-        )
+        self.assertTrue(torch.all(torch.tensor([leaf.N, leaf.M, leaf.n]) == torch.tensor([10, 7, 3])))
 
     def test_mle_invalid_support(self):
 
@@ -85,11 +76,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         leaf = Hypergeometric(Scope([0]), N=10, M=7, n=3)
-        data = torch.tensor(
-            np.random.hypergeometric(
-                ngood=7, nbad=10 - 7, nsample=3, size=(10000, 1)
-            )
-        )
+        data = torch.tensor(np.random.hypergeometric(ngood=7, nbad=10 - 7, nsample=3, size=(10000, 1)))
         dispatch_ctx = DispatchContext()
 
         # compute gradients of log-likelihoods w.r.t. module log-likelihoods
@@ -100,12 +87,7 @@ class TestNode(unittest.TestCase):
         # perform an em step
         em(leaf, data, dispatch_ctx=dispatch_ctx)
 
-        self.assertTrue(
-            torch.all(
-                torch.tensor([leaf.N, leaf.M, leaf.n])
-                == torch.tensor([10, 7, 3])
-            )
-        )
+        self.assertTrue(torch.all(torch.tensor([leaf.N, leaf.M, leaf.n]) == torch.tensor([10, 7, 3])))
 
     def test_em_product_of_hypergeometrics(self):
 
@@ -121,28 +103,16 @@ class TestNode(unittest.TestCase):
         data = torch.tensor(
             np.hstack(
                 [
-                    np.random.hypergeometric(
-                        ngood=3, nbad=7, nsample=3, size=(15000, 1)
-                    ),
-                    np.random.hypergeometric(
-                        ngood=4, nbad=2, nsample=2, size=(15000, 1)
-                    ),
+                    np.random.hypergeometric(ngood=3, nbad=7, nsample=3, size=(15000, 1)),
+                    np.random.hypergeometric(ngood=4, nbad=2, nsample=2, size=(15000, 1)),
                 ]
             )
         )
 
         expectation_maximization(prod_node, data, max_steps=10)
 
-        self.assertTrue(
-            torch.all(
-                torch.tensor([l1.N, l1.M, l1.n]) == torch.tensor([10, 3, 5])
-            )
-        )
-        self.assertTrue(
-            torch.all(
-                torch.tensor([l2.N, l2.M, l2.n]) == torch.tensor([6, 4, 2])
-            )
-        )
+        self.assertTrue(torch.all(torch.tensor([l1.N, l1.M, l1.n]) == torch.tensor([10, 3, 5])))
+        self.assertTrue(torch.all(torch.tensor([l2.N, l2.M, l2.n]) == torch.tensor([6, 4, 2])))
 
     def test_em_sum_of_hypergeometrics(self):
 
@@ -155,24 +125,12 @@ class TestNode(unittest.TestCase):
         l2 = Hypergeometric(Scope([0]), N=10, M=3, n=5)
         sum_node = SumNode([l1, l2], weights=[0.5, 0.5])
 
-        data = torch.tensor(
-            np.random.hypergeometric(
-                ngood=3, nbad=7, nsample=3, size=(15000, 1)
-            )
-        )
+        data = torch.tensor(np.random.hypergeometric(ngood=3, nbad=7, nsample=3, size=(15000, 1)))
 
         expectation_maximization(sum_node, data, max_steps=10)
 
-        self.assertTrue(
-            torch.all(
-                torch.tensor([l1.N, l1.M, l1.n]) == torch.tensor([10, 3, 5])
-            )
-        )
-        self.assertTrue(
-            torch.all(
-                torch.tensor([l2.N, l2.M, l2.n]) == torch.tensor([10, 3, 5])
-            )
-        )
+        self.assertTrue(torch.all(torch.tensor([l1.N, l1.M, l1.n]) == torch.tensor([10, 3, 5])))
+        self.assertTrue(torch.all(torch.tensor([l2.N, l2.M, l2.n]) == torch.tensor([10, 3, 5])))
 
 
 if __name__ == "__main__":

@@ -26,12 +26,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]))
 
         # ---- different scopes -----
         l = CondGeometricLayer(scope=Scope([1], [0]), n_nodes=3)
@@ -39,9 +34,7 @@ class TestNode(unittest.TestCase):
             self.assertEqual(layer_scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, CondGeometricLayer, Scope([0], [1]), n_nodes=0
-        )
+        self.assertRaises(ValueError, CondGeometricLayer, Scope([0], [1]), n_nodes=0)
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondGeometricLayer, Scope([]), n_nodes=3)
@@ -49,9 +42,7 @@ class TestNode(unittest.TestCase):
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
-        l = CondGeometricLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3
-        )
+        l = CondGeometricLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3)
 
         for layer_scope, node_scope in zip(l.scopes_out, scopes):
             self.assertEqual(layer_scope, node_scope)
@@ -74,13 +65,9 @@ class TestNode(unittest.TestCase):
 
         # ----- float/int parameter values -----
         p_value = 0.73
-        l = CondGeometricLayer(
-            scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value}
-        )
+        l = CondGeometricLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value})
 
-        for p_layer_node in l.retrieve_params(
-            torch.tensor([[1]]), DispatchContext()
-        ):
+        for p_layer_node in l.retrieve_params(torch.tensor([[1]]), DispatchContext()):
             self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
 
         # ----- list parameter values -----
@@ -91,9 +78,7 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"p": p_values},
         )
 
-        for p_layer_node, p_value in zip(
-            l.retrieve_params(torch.tensor([[1]]), DispatchContext()), p_values
-        ):
+        for p_layer_node, p_value in zip(l.retrieve_params(torch.tensor([[1]]), DispatchContext()), p_values):
             self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
 
         # wrong number of values
@@ -173,11 +158,7 @@ class TestNode(unittest.TestCase):
         )
 
         # non-conditional scope
-        self.assertFalse(
-            CondGeometricLayer.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Geometric])]
-            )
-        )
+        self.assertFalse(CondGeometricLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Geometric])]))
 
         # multivariate signature
         self.assertFalse(
@@ -199,9 +180,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Discrete]),
             ]
         )
-        self.assertTrue(
-            geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         geometric = CondGeometricLayer.from_signatures(
             [
@@ -209,9 +188,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Geometric]),
             ]
         )
-        self.assertTrue(
-            geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         geometric = CondGeometricLayer.from_signatures(
             [
@@ -219,9 +196,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Geometric(0.5)]),
             ]
         )
-        self.assertTrue(
-            geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         # ----- invalid arguments -----
 
@@ -270,17 +245,11 @@ class TestNode(unittest.TestCase):
         # make sure AutoLeaf can return correctly instantiated object
         geometric = AutoLeaf(
             [
-                FeatureContext(
-                    Scope([0], [2]), [FeatureTypes.Geometric(p=0.75)]
-                ),
-                FeatureContext(
-                    Scope([1], [2]), [FeatureTypes.Geometric(p=0.25)]
-                ),
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Geometric(p=0.75)]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Geometric(p=0.25)]),
             ]
         )
-        self.assertTrue(
-            geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(geometric.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
     def test_layer_structural_marginalization(self):
 
@@ -341,9 +310,7 @@ class TestNode(unittest.TestCase):
 
     def test_layer_backend_conversion_1(self):
 
-        torch_layer = CondGeometricLayer(
-            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])]
-        )
+        torch_layer = CondGeometricLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
         base_layer = toBase(torch_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
@@ -351,9 +318,7 @@ class TestNode(unittest.TestCase):
 
     def test_layer_backend_conversion_2(self):
 
-        base_layer = BaseCondGeometricLayer(
-            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])]
-        )
+        base_layer = BaseCondGeometricLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
         torch_layer = toTorch(base_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))

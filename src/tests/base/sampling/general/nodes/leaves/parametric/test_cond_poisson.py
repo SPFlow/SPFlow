@@ -23,9 +23,7 @@ class TestCondPoisson(unittest.TestCase):
 
         samples = sample(poisson, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(np.isnan(samples) == np.array([[False], [True], [False]]))
-        )
+        self.assertTrue(all(np.isnan(samples) == np.array([[False], [True], [False]])))
 
         samples = sample(poisson, 1000)
         self.assertTrue(np.isclose(samples.mean(), np.array(1.0), rtol=0.1))

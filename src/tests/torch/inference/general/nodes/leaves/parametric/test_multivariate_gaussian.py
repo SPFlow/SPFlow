@@ -26,41 +26,29 @@ class TestMultivariateGaussian(unittest.TestCase):
         mean = np.arange(3)
         cov = np.array([[2, 2, 1], [2, 3, 2], [1, 2, 3]])
 
-        torch_multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1, 2]), mean, cov
-        )
-        node_multivariate_gaussian = BaseMultivariateGaussian(
-            Scope([0, 1, 2]), mean.tolist(), cov.tolist()
-        )
+        torch_multivariate_gaussian = MultivariateGaussian(Scope([0, 1, 2]), mean, cov)
+        node_multivariate_gaussian = BaseMultivariateGaussian(Scope([0, 1, 2]), mean.tolist(), cov.tolist())
 
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 3)
 
         log_probs = log_likelihood(node_multivariate_gaussian, data)
-        log_probs_torch = log_likelihood(
-            torch_multivariate_gaussian, torch.tensor(data)
-        )
+        log_probs_torch = log_likelihood(torch_multivariate_gaussian, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
         mean = np.arange(3)
         cov = np.array([[2, 2, 1], [2, 3, 2], [1, 2, 3]])
 
-        torch_multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1, 2]), mean, cov
-        )
+        torch_multivariate_gaussian = MultivariateGaussian(Scope([0, 1, 2]), mean, cov)
 
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 3)
 
-        log_probs_torch = log_likelihood(
-            torch_multivariate_gaussian, torch.tensor(data)
-        )
+        log_probs_torch = log_likelihood(torch_multivariate_gaussian, torch.tensor(data))
 
         # create dummy targets
         targets_torch = torch.ones(3, 1)
@@ -69,24 +57,14 @@ class TestMultivariateGaussian(unittest.TestCase):
         loss.backward()
 
         self.assertTrue(torch_multivariate_gaussian.mean.grad is not None)
-        self.assertTrue(
-            torch_multivariate_gaussian.tril_diag_aux.grad is not None
-        )
-        self.assertTrue(
-            torch_multivariate_gaussian.tril_nondiag.grad is not None
-        )
+        self.assertTrue(torch_multivariate_gaussian.tril_diag_aux.grad is not None)
+        self.assertTrue(torch_multivariate_gaussian.tril_nondiag.grad is not None)
 
         mean_orig = torch_multivariate_gaussian.mean.detach().clone()
-        tril_diag_aux_orig = (
-            torch_multivariate_gaussian.tril_diag_aux.detach().clone()
-        )
-        tril_nondiag_orig = (
-            torch_multivariate_gaussian.tril_nondiag.detach().clone()
-        )
+        tril_diag_aux_orig = torch_multivariate_gaussian.tril_diag_aux.detach().clone()
+        tril_nondiag_orig = torch_multivariate_gaussian.tril_nondiag.detach().clone()
 
-        optimizer = torch.optim.SGD(
-            torch_multivariate_gaussian.parameters(), lr=1
-        )
+        optimizer = torch.optim.SGD(torch_multivariate_gaussian.parameters(), lr=1)
         optimizer.step()
 
         # make sure that parameters are correctly updated
@@ -98,15 +76,13 @@ class TestMultivariateGaussian(unittest.TestCase):
         )
         self.assertTrue(
             torch.allclose(
-                tril_diag_aux_orig
-                - torch_multivariate_gaussian.tril_diag_aux.grad,
+                tril_diag_aux_orig - torch_multivariate_gaussian.tril_diag_aux.grad,
                 torch_multivariate_gaussian.tril_diag_aux,
             )
         )
         self.assertTrue(
             torch.allclose(
-                tril_nondiag_orig
-                - torch_multivariate_gaussian.tril_nondiag.grad,
+                tril_nondiag_orig - torch_multivariate_gaussian.tril_nondiag.grad,
                 torch_multivariate_gaussian.tril_nondiag,
             )
         )
@@ -142,14 +118,12 @@ class TestMultivariateGaussian(unittest.TestCase):
         torch.manual_seed(0)
 
         # create dummy data (unit variance Gaussian)
-        data = torch.distributions.MultivariateNormal(
-            loc=torch.zeros(2), covariance_matrix=torch.eye(2)
-        ).sample((100000,))
+        data = torch.distributions.MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2)).sample(
+            (100000,)
+        )
 
         # initialize gradient optimizer
-        optimizer = torch.optim.SGD(
-            torch_multivariate_gaussian.parameters(), lr=0.5
-        )
+        optimizer = torch.optim.SGD(torch_multivariate_gaussian.parameters(), lr=0.5)
 
         # perform optimization (possibly overfitting)
         for i in range(20):
@@ -210,9 +184,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         # inference using univariate gaussians for each random variable (combined via product node for convenience)
         univariate_gaussians = ProductNode(
             children=[
-                Gaussian(
-                    Scope([0]), 0.0, math.sqrt(2.0)
-                ),  # requires standard deviation instead of variance
+                Gaussian(Scope([0]), 0.0, math.sqrt(2.0)),  # requires standard deviation instead of variance
                 Gaussian(Scope([1]), 0.0, 1.0),
             ],
         )
@@ -257,9 +229,7 @@ class TestMultivariateGaussian(unittest.TestCase):
                 [float("nan")] * 4,
             ]
         )
-        targets = torch.tensor(
-            [[0.02004004], [0.10194075], [0.06612934], [1.0]]
-        )
+        targets = torch.tensor([[0.02004004], [0.10194075], [0.06612934], [1.0]])
 
         # inference using multivariate gaussian and partial marginalization
         mv_probs = likelihood(multivariate_gaussian, data)
@@ -270,9 +240,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         # Support for Multivariate Gaussian distribution: floats (inf,+inf)^k
 
-        multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1]), np.zeros(2), np.eye(2)
-        )
+        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), np.zeros(2), np.eye(2))
 
         # check infinite values
         self.assertRaises(

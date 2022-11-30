@@ -55,26 +55,18 @@ def sample(
     # dictionary to hold the
     sampling_ids_per_child = [([], []) for _ in placeholder.host.children()]
 
-    for instance_id, output_ids in zip(
-        sampling_ctx.instance_ids, sampling_ctx.output_ids
-    ):
+    for instance_id, output_ids in zip(sampling_ctx.instance_ids, sampling_ctx.output_ids):
         # convert ids to actual child and output ids of host module
-        child_ids_actual, output_ids_actual = placeholder.input_to_output_ids(
-            output_ids
-        )
+        child_ids_actual, output_ids_actual = placeholder.input_to_output_ids(output_ids)
 
         for child_id in np.unique(child_ids_actual):
             sampling_ids_per_child[child_id][0].append(instance_id)
             sampling_ids_per_child[child_id][1].append(
-                np.array(output_ids_actual)[
-                    child_ids_actual == child_id
-                ].tolist()
+                np.array(output_ids_actual)[child_ids_actual == child_id].tolist()
             )
 
     # sample from children
-    for child_id, (instance_ids, output_ids) in enumerate(
-        sampling_ids_per_child
-    ):
+    for child_id, (instance_ids, output_ids) in enumerate(sampling_ids_per_child):
         if len(instance_ids) == 0:
             continue
         sample(

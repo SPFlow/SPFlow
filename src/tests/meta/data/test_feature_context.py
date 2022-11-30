@@ -12,14 +12,7 @@ class TestFeatureContext(unittest.TestCase):
         self.assertEqual(Scope([0, 1, 2, 3]), feature_ctx.scope)
         # make sure default domains are correctly set
         self.assertTrue(set(feature_ctx.domain_map.keys()) == {0, 1, 2, 3})
-        self.assertTrue(
-            all(
-                [
-                    domain == FeatureTypes.Unknown
-                    for domain in feature_ctx.domain_map.values()
-                ]
-            )
-        )
+        self.assertTrue(all([domain == FeatureTypes.Unknown for domain in feature_ctx.domain_map.values()]))
 
         # ----- initialize with domain dict -----
         feature_ctx = FeatureContext(
@@ -46,9 +39,7 @@ class TestFeatureContext(unittest.TestCase):
         feature_ctx = FeatureContext(Scope([0, 1, 2, 3]))
 
         # ----- add domains as iterable -----
-        feature_ctx.set_domains(
-            {0: FeatureTypes.Continuous, 2: FeatureTypes.Discrete}
-        )
+        feature_ctx.set_domains({0: FeatureTypes.Continuous, 2: FeatureTypes.Discrete})
 
         # make sure default domains are correctly set
         self.assertTrue(feature_ctx.domain_map[0] == FeatureTypes.Continuous)
@@ -57,9 +48,7 @@ class TestFeatureContext(unittest.TestCase):
         self.assertTrue(feature_ctx.domain_map[3] == FeatureTypes.Unknown)
 
         # domains for feature ids that are out of scope
-        self.assertRaises(
-            ValueError, feature_ctx.set_domains, {4: FeatureTypes.Discrete}
-        )
+        self.assertRaises(ValueError, feature_ctx.set_domains, {4: FeatureTypes.Discrete})
 
         # set domain for feature id with existing domain
         self.assertRaises(

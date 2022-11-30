@@ -74,9 +74,7 @@ class ExponentialLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'ExponentialLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'ExponentialLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -121,9 +119,7 @@ class ExponentialLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "ExponentialLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "ExponentialLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -133,9 +129,7 @@ class ExponentialLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'ExponentialLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'ExponentialLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         l = []
         scopes = []
@@ -209,9 +203,7 @@ class ExponentialLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Exponential distributions, which are:
@@ -238,9 +230,7 @@ class ExponentialLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -290,7 +280,5 @@ def marginalize(
         new_node = Exponential(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = ExponentialLayer(
-            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
-        )
+        new_layer = ExponentialLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer

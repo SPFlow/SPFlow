@@ -48,9 +48,7 @@ class Scope:
             evidence = []
 
         if len(query) == 0 and len(evidence) != 0:
-            raise ValueError(
-                "List of query variables for 'Scope' is empty, but list of evidence variables is not."
-            )
+            raise ValueError("List of query variables for 'Scope' is empty, but list of evidence variables is not.")
 
         if any(rv < 0 for rv in query):
             raise ValueError("Query variables must all be non-negative.")
@@ -59,19 +57,13 @@ class Scope:
             raise ValueError("Evidence variables must all be non-negative.")
 
         if len(query) != len(set(query)):
-            raise ValueError(
-                "List of query variables for 'Scope' contains duplicates."
-            )
+            raise ValueError("List of query variables for 'Scope' contains duplicates.")
 
         if len(evidence) != len(set(evidence)):
-            raise ValueError(
-                "List of evidence variables for 'Scope' contains duplicates."
-            )
+            raise ValueError("List of evidence variables for 'Scope' contains duplicates.")
 
         if not set(query).isdisjoint(evidence):
-            raise ValueError(
-                "Specified query and evidence variables for 'Scope' are not disjoint."
-            )
+            raise ValueError("Specified query and evidence variables for 'Scope' are not disjoint.")
 
         self.query = query
         self.evidence = evidence

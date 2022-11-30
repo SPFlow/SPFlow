@@ -64,9 +64,7 @@ def sample(
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    unique_output_signatures = {
-        frozenset(l) for l in sampling_ctx.output_ids
-    }
+    unique_output_signatures = {frozenset(l) for l in sampling_ctx.output_ids}
 
     # make sure that no scopes are overlapping
     # TODO: suppress check
@@ -74,9 +72,7 @@ def sample(
         if len(output_ids) == 0:
             output_ids = list(range(layer.n_out))
 
-        if not Scope.all_pairwise_disjoint(
-            [layer.scopes_out[id] for id in output_ids]
-        ):
+        if not Scope.all_pairwise_disjoint([layer.scopes_out[id] for id in output_ids]):
             raise ValueError(
                 "Sampling from output with non-pair-wise disjoint scopes is not permitted for 'HypergeometricLayer'."
             )
@@ -86,9 +82,7 @@ def sample(
 
         node_scope = layer.scopes_out[node_id]
 
-        marg_ids = (
-            torch.isnan(data[:, node_scope.query]) == len(node_scope.query)
-        ).squeeze(1)
+        marg_ids = (torch.isnan(data[:, node_scope.query]) == len(node_scope.query)).squeeze(1)
 
         instance_ids_mask = torch.zeros(data.shape[0])
         instance_ids_mask[torch.tensor(instances)] = 1
@@ -98,16 +92,10 @@ def sample(
 
         # TODO: may be inefficient
         # create random permutations of N elements
-        rand_perm = torch.argsort(
-            torch.rand(sampling_ids.shape[0], layer.N[node_id]), dim=1
-        )
+        rand_perm = torch.argsort(torch.rand(sampling_ids.shape[0], layer.N[node_id]), dim=1)
 
         # assuming that first M indices are the M objects of interest, count how many of these indices were "drawn" in the first n draws (with replacement since all indices are unique per row)
-        data[
-            torch.meshgrid(
-                sampling_ids, torch.tensor(node_scope.query), indexing="ij"
-            )
-        ] = (
+        data[torch.meshgrid(sampling_ids, torch.tensor(node_scope.query), indexing="ij")] = (
             (rand_perm[:, : layer.n[node_id]] < layer.M[node_id])
             .sum(dim=1)
             .type(torch.get_default_dtype())

@@ -35,10 +35,7 @@ class TestCondExponential(unittest.TestCase):
 
         # l > 0
         exponential.set_cond_f(lambda data: {"l": np.nextafter(0.0, 1.0)})
-        self.assertTrue(
-            exponential.retrieve_params(np.array([[1.0]]), DispatchContext())
-            == np.nextafter(0.0, 1.0)
-        )
+        self.assertTrue(exponential.retrieve_params(np.array([[1.0]]), DispatchContext()) == np.nextafter(0.0, 1.0))
         # l = 0 and l < 0
         exponential.set_cond_f(lambda data: {"l": 0.0})
         self.assertRaises(
@@ -73,43 +70,19 @@ class TestCondExponential(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            CondExponential.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertTrue(CondExponential.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # Exponential feature type class
-        self.assertTrue(
-            CondExponential.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
-            )
-        )
+        self.assertTrue(CondExponential.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]))
 
         # Exponential feature type instance
-        self.assertTrue(
-            CondExponential.accepts(
-                [
-                    FeatureContext(
-                        Scope([0], [1]), [FeatureTypes.Exponential(1.0)]
-                    )
-                ]
-            )
-        )
+        self.assertTrue(CondExponential.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential(1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            CondExponential.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondExponential.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # non-conditional scope
-        self.assertFalse(
-            CondExponential.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondExponential.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -125,15 +98,9 @@ class TestCondExponential(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        CondExponential.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-        )
-        CondExponential.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
-        )
-        CondExponential.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential(l=1.5)])]
-        )
+        CondExponential.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])])
+        CondExponential.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])])
+        CondExponential.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential(l=1.5)])])
 
         # ----- invalid arguments -----
 
@@ -171,15 +138,11 @@ class TestCondExponential(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondExponential,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        exponential = AutoLeaf(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
-        )
+        exponential = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])])
         self.assertTrue(isinstance(exponential, CondExponential))
 
     def test_structural_marginalization(self):

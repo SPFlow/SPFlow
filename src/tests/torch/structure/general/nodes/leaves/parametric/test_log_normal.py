@@ -26,9 +26,7 @@ class TestLogNormal(unittest.TestCase):
 
         # std <= 0
         self.assertRaises(Exception, LogNormal, Scope([0]), mean, 0.0)
-        self.assertRaises(
-            Exception, LogNormal, Scope([0]), mean, np.nextafter(0.0, -1.0)
-        )
+        self.assertRaises(Exception, LogNormal, Scope([0]), mean, np.nextafter(0.0, -1.0))
         # std = +-inf and std = nan
         self.assertRaises(Exception, LogNormal, Scope([0]), mean, np.inf)
         self.assertRaises(Exception, LogNormal, Scope([0]), mean, -np.inf)
@@ -49,39 +47,19 @@ class TestLogNormal(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            LogNormal.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertTrue(LogNormal.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # LogNormal feature type class
-        self.assertTrue(
-            LogNormal.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.LogNormal])]
-            )
-        )
+        self.assertTrue(LogNormal.accepts([FeatureContext(Scope([0]), [FeatureTypes.LogNormal])]))
 
         # LogNormal feature type instance
-        self.assertTrue(
-            LogNormal.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.LogNormal(0.0, 1.0)])]
-            )
-        )
+        self.assertTrue(LogNormal.accepts([FeatureContext(Scope([0]), [FeatureTypes.LogNormal(0.0, 1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            LogNormal.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(LogNormal.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # conditional scope
-        self.assertFalse(
-            LogNormal.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(LogNormal.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -97,21 +75,15 @@ class TestLogNormal(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        log_normal = LogNormal.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-        )
+        log_normal = LogNormal.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Continuous])])
         self.assertTrue(torch.isclose(log_normal.mean, torch.tensor(0.0)))
         self.assertTrue(torch.isclose(log_normal.std, torch.tensor(1.0)))
 
-        log_normal = LogNormal.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.LogNormal])]
-        )
+        log_normal = LogNormal.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.LogNormal])])
         self.assertTrue(torch.isclose(log_normal.mean, torch.tensor(0.0)))
         self.assertTrue(torch.isclose(log_normal.std, torch.tensor(1.0)))
 
-        log_normal = LogNormal.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.LogNormal(-1.0, 1.5)])]
-        )
+        log_normal = LogNormal.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.LogNormal(-1.0, 1.5)])])
         self.assertTrue(torch.isclose(log_normal.mean, torch.tensor(-1.0)))
         self.assertTrue(torch.isclose(log_normal.std, torch.tensor(1.5)))
 
@@ -151,19 +123,11 @@ class TestLogNormal(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             LogNormal,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0]), [FeatureTypes.LogNormal])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.LogNormal])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        log_normal = AutoLeaf(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.LogNormal(mean=-1.0, std=0.5)]
-                )
-            ]
-        )
+        log_normal = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.LogNormal(mean=-1.0, std=0.5)])])
         self.assertTrue(isinstance(log_normal, LogNormal))
         self.assertTrue(torch.isclose(log_normal.mean, torch.tensor(-1.0)))
         self.assertTrue(torch.isclose(log_normal.std, torch.tensor(0.5)))

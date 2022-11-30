@@ -34,9 +34,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[3, 1], [1, 2], [0, 0]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -69,36 +67,22 @@ class TestNode(unittest.TestCase):
 
         # make sure that parameters are correctly updated
         self.assertTrue(torch.allclose(n_orig, torch_binomial.n))
-        self.assertTrue(
-            torch.allclose(
-                p_aux_orig - torch_binomial.p_aux.grad, torch_binomial.p_aux
-            )
-        )
+        self.assertTrue(torch.allclose(p_aux_orig - torch_binomial.p_aux.grad, torch_binomial.p_aux))
 
         # verify that distribution parameters match parameters
-        self.assertTrue(
-            torch.equal(
-                torch_binomial.n, torch_binomial.dist().total_count.long()
-            )
-        )
-        self.assertTrue(
-            torch.allclose(torch_binomial.p, torch_binomial.dist().probs)
-        )
+        self.assertTrue(torch.equal(torch_binomial.n, torch_binomial.dist().total_count.long()))
+        self.assertTrue(torch.allclose(torch_binomial.p, torch_binomial.dist().probs))
 
     def test_gradient_optimization(self):
 
         torch.manual_seed(0)
 
         # initialize distribution
-        torch_binomial = BinomialLayer(
-            scope=[Scope([0]), Scope([1])], n=[5, 3], p=0.3
-        )
+        torch_binomial = BinomialLayer(scope=[Scope([0]), Scope([1])], n=[5, 3], p=0.3)
 
         # create dummy data
         p_target = torch.tensor([0.8, 0.5])
-        data = torch.distributions.Binomial(
-            torch.tensor([5, 3]), p_target
-        ).sample((100000,))
+        data = torch.distributions.Binomial(torch.tensor([5, 3]), p_target).sample((100000,))
 
         # initialize gradient optimizer
         optimizer = torch.optim.SGD(torch_binomial.parameters(), lr=0.5)
@@ -116,15 +100,11 @@ class TestNode(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(
-            torch.allclose(torch_binomial.p, p_target, atol=1e-3, rtol=1e-3)
-        )
+        self.assertTrue(torch.allclose(torch_binomial.p, p_target, atol=1e-3, rtol=1e-3))
 
     def test_likelihood_marginalization(self):
 
-        binomial = BinomialLayer(
-            scope=[Scope([0]), Scope([1])], n=5, p=random.random()
-        )
+        binomial = BinomialLayer(scope=[Scope([0]), Scope([1])], n=5, p=random.random())
         data = torch.tensor([[float("nan"), float("nan")]])
 
         # should not raise and error and should return 1
