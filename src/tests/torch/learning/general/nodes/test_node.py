@@ -1,13 +1,16 @@
+import random
+import unittest
+
+import numpy as np
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure.spn import SumNode
 from spflow.torch.inference import log_likelihood
 from spflow.torch.learning import em
-from ....structure.general.nodes.dummy_node import DummyLeaf, log_likelihood, em
-import torch
-import numpy as np
-import unittest
-import random
+from spflow.torch.structure.spn import SumNode
+
+from ....structure.general.nodes.dummy_node import DummyLeaf, em, log_likelihood
 
 
 class TestNode(unittest.TestCase):

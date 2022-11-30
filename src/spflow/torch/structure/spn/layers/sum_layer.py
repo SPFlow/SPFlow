@@ -1,24 +1,23 @@
 """Contains SPN-like sum layer for SPFlow in the ``torch`` backend.
 """
+from copy import deepcopy
+from typing import Iterable, List, Optional, Union
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn.layers.sum_layer import SumLayer as BaseSumLayer
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.spn.nodes.sum_node import (
-    proj_real_to_convex,
     proj_convex_to_real,
+    proj_real_to_convex,
 )
-from spflow.base.structure.spn.layers.sum_layer import (
-    SumLayer as BaseSumLayer,
-)
-
-from typing import List, Union, Optional, Iterable
-from copy import deepcopy
-import numpy as np
-import torch
 
 
 class SumLayer(Module):

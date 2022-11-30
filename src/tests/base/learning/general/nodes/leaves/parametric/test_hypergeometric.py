@@ -1,14 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    Hypergeometric,
-)
-from spflow.base.learning import (
-    maximum_likelihood_estimation,
-)
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.learning import maximum_likelihood_estimation
+from spflow.base.structure.spn import Hypergeometric
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):

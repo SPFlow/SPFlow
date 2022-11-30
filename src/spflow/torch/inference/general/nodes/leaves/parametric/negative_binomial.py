@@ -1,7 +1,9 @@
 """Contains inference methods for ``NegativeBinomial`` nodes for SPFlow in the ``torch`` backend.
 """
-import torch
 from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

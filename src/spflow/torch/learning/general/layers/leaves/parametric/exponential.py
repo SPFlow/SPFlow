@@ -1,7 +1,9 @@
 """Contains learning methods for ``ExponentialLayer`` leaves for SPFlow in the ``torch`` backend.
 """
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

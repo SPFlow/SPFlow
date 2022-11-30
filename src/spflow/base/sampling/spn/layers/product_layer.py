@@ -1,5 +1,10 @@
 """Contains sampling methods for SPN-like product layers for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.structure.spn.layers.product_layer import ProductLayer
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,10 +14,6 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.spn.layers.product_layer import ProductLayer
-
-from typing import Optional
-import numpy as np
 
 
 @dispatch  # type: ignore

@@ -1,14 +1,15 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
-from spflow.base.structure.spn import CondBinomial as BaseCondBinomial
-from spflow.base.inference import log_likelihood
-from spflow.torch.structure.spn import CondBinomial
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import CondBinomial as BaseCondBinomial
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import CondBinomial
 
 
 class TestBinomial(unittest.TestCase):

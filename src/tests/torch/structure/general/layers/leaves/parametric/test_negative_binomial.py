@@ -1,13 +1,12 @@
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import NegativeBinomial, NegativeBinomialLayer
-from spflow.torch.structure import marginalize, toTorch, toBase
-from spflow.base.structure.spn import (
-    NegativeBinomialLayer as BaseNegativeBinomialLayer,
-)
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-import torch
-import numpy as np
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn import NegativeBinomialLayer as BaseNegativeBinomialLayer
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import NegativeBinomial, NegativeBinomialLayer
 
 
 class TestNode(unittest.TestCase):

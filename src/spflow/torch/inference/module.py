@@ -1,14 +1,15 @@
 """Contains inference methods for ``Module`` objects for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import torch
+
+from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.torch.structure.module import Module
-
-import torch
-from typing import Optional
 
 
 @dispatch(memoize=True)  # type: ignore
