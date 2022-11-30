@@ -114,7 +114,7 @@ class NestedModule(Module, ABC):
             ) = self.input_to_output_ids(list(range(len(input_ids))))
 
             # get child scopes
-            child_scopes = sum([child.scopes_out for child in host.children], [])
+            child_scopes = sum([child.scopes_out for child in host.chs], [])
 
             # compute scope for placeholder
             self.scopes_out = [child_scopes[i] for i in input_ids]

@@ -69,7 +69,7 @@ class SumLayer(NestedModule):
         super().__init__(children=children, **kwargs)
 
         self._n_out = n_nodes
-        self.n_in = sum(child.n_out for child in self.children)
+        self.n_in = sum(child.n_out for child in self.chs)
 
         # create input placeholder
         ph = self.create_placeholder(list(range(self.n_in)))
@@ -194,7 +194,7 @@ def marginalize(
         marg_children = []
 
         # marginalize child modules
-        for child in layer.children:
+        for child in layer.chs:
             marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None

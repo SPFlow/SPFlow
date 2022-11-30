@@ -52,7 +52,7 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in hadamard_layer.children
+            for child in hadamard_layer.chs
         ],
         axis=1,
     )
