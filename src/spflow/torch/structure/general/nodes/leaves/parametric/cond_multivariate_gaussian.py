@@ -1,12 +1,17 @@
 """Contains conditional Multivariate Normal leaf node for SPFlow in the ``torch`` backend.
 """
+from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
+
 import numpy as np
 import torch
 import torch.distributions as D
-from typing import Tuple, Union, Optional, Iterable, Callable, List, Type
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+
+from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussian as BaseCondMultivariateGaussian,
+)
 from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes, MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -15,9 +20,6 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
-)
-from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
-    CondMultivariateGaussian as BaseCondMultivariateGaussian,
 )
 
 

@@ -1,18 +1,19 @@
 """Contains SPN-like sum layer for SPFlow in the ``base`` backend.
 """
+from copy import deepcopy
+from typing import Iterable, List, Optional, Union
+
+import numpy as np
+
+from spflow.base.structure.module import Module
+from spflow.base.structure.nested_module import NestedModule
+from spflow.base.structure.spn.nodes.sum_node import SumNode
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.module import Module
-from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.sum_node import SumNode
-
-from typing import List, Union, Optional, Iterable
-from copy import deepcopy
-import numpy as np
 
 
 class SumLayer(NestedModule):

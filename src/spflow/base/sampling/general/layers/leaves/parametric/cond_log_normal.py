@@ -1,7 +1,13 @@
 """Contains sampling methods for ``CondLogNormalLayer`` leaves for SPFlow in the ``base`` backend.
 """
-import numpy as np
 from typing import Optional
+
+import numpy as np
+
+from spflow.base.sampling.module import sample
+from spflow.base.structure.general.layers.leaves.parametric.cond_log_normal import (
+    CondLogNormalLayer,
+)
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -12,10 +18,6 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.general.layers.leaves.parametric.cond_log_normal import (
-    CondLogNormalLayer,
-)
-from spflow.base.sampling.module import sample
 
 
 @dispatch  # type: ignore

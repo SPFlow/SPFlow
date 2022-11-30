@@ -2,17 +2,17 @@
 
 All nodes in the ``base`` backend should inherit from ``Node`` or a subclass of it.
 """
+from abc import ABC
+from copy import deepcopy
+from typing import Iterable, List, Optional, Union
+
+from spflow.base.structure.module import Module
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.base.structure.module import Module
-
-from typing import Optional, Union, Iterable, List
-from copy import deepcopy
-from abc import ABC
 
 
 class Node(Module, ABC):

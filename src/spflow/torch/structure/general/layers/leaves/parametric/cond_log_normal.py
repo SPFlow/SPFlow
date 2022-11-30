@@ -1,27 +1,28 @@
 """Contains conditional Log-Normal leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Callable
 from functools import reduce
+from typing import Callable, Iterable, List, Optional, Tuple, Union
+
 import numpy as np
 import torch
 import torch.distributions as D
 
+from spflow.base.structure.general.layers.leaves.parametric.cond_log_normal import (
+    CondLogNormalLayer as BaseCondLogNormalLayer,
+)
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.module import Module
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_log_normal import (
     CondLogNormal,
 )
-from spflow.base.structure.general.layers.leaves.parametric.cond_log_normal import (
-    CondLogNormalLayer as BaseCondLogNormalLayer,
-)
+from spflow.torch.structure.module import Module
 
 
 class CondLogNormalLayer(Module):

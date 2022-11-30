@@ -4,7 +4,8 @@ Typical usage example:
 
     labels = kmeans(data, n_clusters)
 """
-from typing import Union, Tuple
+from typing import Tuple, Union
+
 import torch
 
 

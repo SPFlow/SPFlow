@@ -2,11 +2,12 @@
 
 All valid SPFlow modules in the ``base`` backend should inherit from this class or a subclass of it.
 """
-from spflow.meta.structure.module import MetaModule
-
-from typing import List, Tuple, Optional, Union
 from abc import ABC
+from typing import List, Optional, Tuple, Union
+
 import numpy as np
+
+from spflow.meta.structure.module import MetaModule
 
 
 class Module(MetaModule, ABC):
