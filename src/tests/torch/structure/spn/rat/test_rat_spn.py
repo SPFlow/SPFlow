@@ -184,7 +184,7 @@ def get_rat_spn_properties(rat_spn: RatSPN):
         else:
             raise TypeError(f"Encountered unknown layer of type {type(layer)}.")
 
-        layers += list(layer.children())
+        layers += list(layer.chs)
 
     return n_sum_nodes, n_product_nodes, n_leaf_nodes
 
@@ -490,7 +490,7 @@ class TestRatSpn(unittest.TestCase):
                     std=torch.rand(module.std.shape) + 1e-8,
                 )
 
-            modules += list(module.children())
+            modules += list(module.chs)
 
         base_rat = toBase(torch_rat)
 
@@ -528,7 +528,7 @@ class TestRatSpn(unittest.TestCase):
                     torch.allclose(torch_module.std, torch_module.std)
                 )
 
-            modules += list(zip(torch_module.children(), base_module.children))
+            modules += list(zip(torch_module.chs, base_module.children))
 
     def test_rat_spn_backend_conversion_2(self):
 
@@ -603,7 +603,7 @@ class TestRatSpn(unittest.TestCase):
                     torch.allclose(torch_module.std, torch_module.std)
                 )
 
-            modules += list(zip(torch_module.children(), base_module.children))
+            modules += list(zip(torch_module.chs, base_module.children))
 
 
 if __name__ == "__main__":

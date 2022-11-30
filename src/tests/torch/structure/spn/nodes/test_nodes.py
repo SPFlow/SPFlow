@@ -156,14 +156,14 @@ class TestTorchNode(unittest.TestCase):
         # check first sum node
         self.assertTrue(
             np.allclose(
-                list(graph_torch.children())[0].weights.detach().numpy(),
+                list(graph_torch.chs)[0].weights.detach().numpy(),
                 graph.children[0].weights,
             )
         )
         # check first gaussian
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.children())[0].children())[0]
+                list(list(graph_torch.chs)[0].chs)[0]
                 .mean.detach()
                 .numpy(),
                 graph.children[0].children[0].mean,
@@ -171,7 +171,7 @@ class TestTorchNode(unittest.TestCase):
         )
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.children())[0].children())[0]
+                list(list(graph_torch.chs)[0].chs)[0]
                 .std.detach()
                 .numpy(),
                 graph.children[0].children[0].std,
@@ -180,7 +180,7 @@ class TestTorchNode(unittest.TestCase):
         # check second gaussian
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.children())[0].children())[0]
+                list(list(graph_torch.chs)[0].chs)[0]
                 .mean.detach()
                 .numpy(),
                 graph.children[0].children[0].mean,
@@ -188,7 +188,7 @@ class TestTorchNode(unittest.TestCase):
         )
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.children())[0].children())[1]
+                list(list(graph_torch.chs)[0].chs)[1]
                 .std.detach()
                 .numpy(),
                 graph.children[0].children[1].std,
@@ -197,14 +197,14 @@ class TestTorchNode(unittest.TestCase):
         # check second sum node
         self.assertTrue(
             np.allclose(
-                list(graph_torch.children())[1].weights.detach().numpy(),
+                list(graph_torch.chs)[1].weights.detach().numpy(),
                 graph.children[1].weights,
             )
         )
         # check third gaussian
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.children())[1].children())[0]
+                list(list(graph_torch.chs)[1].chs)[0]
                 .mean.detach()
                 .numpy(),
                 graph.children[1].children[0].mean,
@@ -212,7 +212,7 @@ class TestTorchNode(unittest.TestCase):
         )
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.children())[1].children())[0]
+                list(list(graph_torch.chs)[1].chs)[0]
                 .std.detach()
                 .numpy(),
                 graph.children[1].children[0].std,

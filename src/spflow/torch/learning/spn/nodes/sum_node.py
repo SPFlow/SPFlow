@@ -39,7 +39,7 @@ def em(
         child_lls = torch.hstack(
             [
                 dispatch_ctx.cache["log_likelihood"][child]
-                for child in node.children()
+                for child in node.chs
             ]
         )
 
@@ -56,5 +56,5 @@ def em(
         # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
 
     # recursively call EM on children
-    for child in node.children():
+    for child in node.chs:
         em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)

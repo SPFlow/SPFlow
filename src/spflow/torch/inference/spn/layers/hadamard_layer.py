@@ -44,7 +44,7 @@ def log_likelihood(
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    children = list(partition_layer.children())
+    children = list(partition_layer.chs)
     partitions = np.split(
         children, np.cumsum(partition_layer.modules_per_partition[:-1])
     )

@@ -129,7 +129,7 @@ def marginalize(
         marg_children = []
 
         # marginalize child modules
-        for child in layer.children():
+        for child in layer.chs:
             marg_child = marginalize(
                 child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
             )
@@ -165,7 +165,7 @@ def toBase(
         n_nodes=product_layer.n_out,
         children=[
             toBase(child, dispatch_ctx=dispatch_ctx)
-            for child in product_layer.children()
+            for child in product_layer.chs
         ],
     )
 

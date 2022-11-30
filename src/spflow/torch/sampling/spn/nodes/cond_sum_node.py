@@ -61,7 +61,7 @@ def sample(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in node.children()
+            for child in node.chs
         ],
         dim=1,
     )
@@ -88,7 +88,7 @@ def sample(
 
         # sample from child module
         sample(
-            list(node.children())[child_ids[0]],
+            list(node.chs)[child_ids[0]],
             data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,

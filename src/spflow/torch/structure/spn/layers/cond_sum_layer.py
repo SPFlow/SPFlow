@@ -82,7 +82,7 @@ class CondSumLayer(Module):
         super().__init__(children=children, **kwargs)
 
         self._n_out = n_nodes
-        self.n_in = sum(child.n_out for child in self.children())
+        self.n_in = sum(child.n_out for child in self.chs)
 
         # compute scope
         scope = None
@@ -277,7 +277,7 @@ def marginalize(
         marg_children = []
 
         # marginalize child modules
-        for child in layer.children():
+        for child in layer.chs:
             marg_child = marginalize(
                 child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
             )
@@ -308,7 +308,7 @@ def toBase(
         n_nodes=sum_layer.n_out,
         children=[
             toBase(child, dispatch_ctx=dispatch_ctx)
-            for child in sum_layer.children()
+            for child in sum_layer.chs
         ],
     )
 
