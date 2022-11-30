@@ -1,23 +1,22 @@
 """Contains conditional Multivariate Normal leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Callable, Iterable, List, Optional, Tuple, Union
-
+from typing import Tuple, List, Union, Optional, Iterable, Union, Callable
 import numpy as np
-from scipy.stats import multivariate_normal  # type: ignore
-from scipy.stats.distributions import rv_frozen  # type: ignore
-
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
-from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import (
-    CondGaussian,
-)
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes, MetaType
-from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import (
+    CondGaussian,
+)
+
+from scipy.stats import multivariate_normal  # type: ignore
+from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class CondMultivariateGaussian(LeafNode):

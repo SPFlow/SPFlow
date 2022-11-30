@@ -1,17 +1,17 @@
 """Contains learning methods for ``PoissonLayer`` leaves for SPFlow in the ``base`` backend.
 """
-from typing import Callable, Optional, Union
-
+from typing import Optional, Union, Callable
 import numpy as np
-
-from spflow.base.learning.general.nodes.leaves.parametric.poisson import (
-    maximum_likelihood_estimation,
-)
-from spflow.base.structure.general.layers.leaves.parametric.poisson import PoissonLayer
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
+)
+from spflow.base.learning.general.nodes.leaves.parametric.poisson import (
+    maximum_likelihood_estimation,
+)
+from spflow.base.structure.general.layers.leaves.parametric.poisson import (
+    PoissonLayer,
 )
 
 

@@ -1,10 +1,9 @@
 """Feature types indicating the distribution or meta type of data features.
 """
+from spflow.meta.data.meta_type import MetaType
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import ClassVar, Tuple, Type, Union
-
-from spflow.meta.data.meta_type import MetaType
+from typing import ClassVar, Type, Union, Tuple
 
 
 class FeatureType(ABC):

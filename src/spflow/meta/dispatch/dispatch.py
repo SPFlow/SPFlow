@@ -7,12 +7,12 @@ Typical usage example:
         pass
 """
 import warnings
-from typing import Any, Callable
-
+from typing import Callable, Any
 from plum import dispatch as plum_dispatch  # type: ignore
-
 from spflow.meta.dispatch.memoize import memoize as memoize_decorator
-from spflow.meta.dispatch.substitutable import substitutable as substitutable_decorator
+from spflow.meta.dispatch.substitutable import (
+    substitutable as substitutable_decorator,
+)
 
 
 def dispatch(*args, memoize=False, substitutable=True) -> Callable:

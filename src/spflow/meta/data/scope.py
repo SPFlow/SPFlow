@@ -4,10 +4,9 @@ Typical usage example:
 
     scope = Scope(query_rvs, evidence_rvs)
 """
-from typing import Iterable, List, Optional, Type, Union
-
-from spflow.meta.data.feature_types import FeatureType
 from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureType
+from typing import List, Optional, Iterable, Union, Type
 
 
 class Scope:

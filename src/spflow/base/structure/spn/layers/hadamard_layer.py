@@ -1,19 +1,18 @@
 """Contains SPN-like hadamard layer for SPFlow in the ``base`` backend.
 """
-from copy import deepcopy
-from typing import Iterable, List, Optional, Union
-
-import numpy as np
-
-from spflow.base.structure.module import Module
-from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.product_node import ProductNode
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.base.structure.module import Module
+from spflow.base.structure.nested_module import NestedModule
+from spflow.base.structure.spn.nodes.product_node import ProductNode
+
+from typing import Optional, Union, Iterable, List
+from copy import deepcopy
+import numpy as np
 
 
 class HadamardLayer(NestedModule):

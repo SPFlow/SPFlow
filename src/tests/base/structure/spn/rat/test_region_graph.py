@@ -1,13 +1,12 @@
-import unittest
 from typing import Tuple
-
+from spflow.meta.data import Scope
 from spflow.base.structure.spn.rat import (
-    Partition,
     Region,
+    Partition,
     RegionGraph,
     random_region_graph,
 )
-from spflow.meta.data import Scope
+import unittest
 
 
 def get_region_graph_properties(

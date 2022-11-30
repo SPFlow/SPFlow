@@ -1,10 +1,13 @@
-import unittest
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.base.structure import AutoLeaf
+from spflow.base.structure.spn import (
+    Gaussian,
+    MultivariateGaussian,
+    marginalize,
+)
 
 import numpy as np
-
-from spflow.base.structure import AutoLeaf
-from spflow.base.structure.spn import Gaussian, MultivariateGaussian, marginalize
-from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+import unittest
 
 
 class TestMultivariateGaussian(unittest.TestCase):

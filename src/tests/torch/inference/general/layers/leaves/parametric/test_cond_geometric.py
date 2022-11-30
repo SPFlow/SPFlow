@@ -1,12 +1,10 @@
-import random
-import unittest
-
-import torch
-
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import CondGeometric, CondGeometricLayer
+from spflow.torch.inference import log_likelihood, likelihood
+import torch
+import unittest
+import random
 
 
 class TestNode(unittest.TestCase):

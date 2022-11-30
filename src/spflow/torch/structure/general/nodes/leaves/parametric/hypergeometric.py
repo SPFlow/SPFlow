@@ -1,22 +1,20 @@
 """Contains Hypergeometric leaf node for SPFlow in the ``torch`` backend.
 """
-from typing import List, Optional, Tuple
-
 import numpy as np
 import torch
-
-from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import (
-    Hypergeometric as BaseHypergeometric,
-)
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes
+from typing import List, Tuple, Optional
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
+from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric as BaseHypergeometric,
+)
 
 
 class Hypergeometric(LeafNode):

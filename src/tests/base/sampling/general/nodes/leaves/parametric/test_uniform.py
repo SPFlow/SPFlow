@@ -1,12 +1,11 @@
-import random
-import unittest
-
-import numpy as np
-
-from spflow.base.sampling import sample
-from spflow.base.structure.spn import Uniform
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
+from spflow.base.structure.spn import Uniform
+from spflow.base.sampling import sample
+
+import numpy as np
+import unittest
+import random
 
 
 class TestUniform(unittest.TestCase):

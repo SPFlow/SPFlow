@@ -1,15 +1,14 @@
 """Contains Negative Binomial leaf node for SPFlow in the ``base`` backend.
 """
-from typing import List, Tuple
-
+from typing import Tuple, List
 import numpy as np
+from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.base.structure.general.nodes.leaf_node import LeafNode
+
 from scipy.stats import nbinom  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
-
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.scope import Scope
 
 
 class NegativeBinomial(LeafNode):

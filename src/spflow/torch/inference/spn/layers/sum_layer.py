@@ -1,16 +1,15 @@
 """Contains inference methods for SPN-like sum layer for SPFlow in the ``torch`` backend.
 """
-from typing import Optional
-
-import numpy as np
-import torch
-
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.torch.structure.spn.layers.sum_layer import SumLayer
+
+from typing import Optional
+import numpy as np
+import torch
 
 
 @dispatch(memoize=True)  # type: ignore

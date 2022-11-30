@@ -1,7 +1,7 @@
-from typing import List, Optional
-
+from typing import Optional
 from spflow.base.structure import Module, NestedModule
 from spflow.meta.data import Scope
+from typing import List
 
 
 class DummyModule(Module):

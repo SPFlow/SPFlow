@@ -1,18 +1,16 @@
 """Contains learning methods for ``MultivariateGaussian`` nodes for SPFlow in the ``base`` backend.
 """
-from typing import Callable, Optional, Union
-
+from typing import Optional, Union, Callable
 import numpy as np
 import numpy.ma as ma
-
-from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
-    MultivariateGaussian,
-)
-from spflow.base.utils.nearest_sym_pd import nearest_sym_pd
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
+)
+from spflow.base.utils.nearest_sym_pd import nearest_sym_pd
+from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussian,
 )
 
 

@@ -1,27 +1,43 @@
 """Contains the SPFlow architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the ``torch`` backend.
 """
-from typing import Iterable, List, Optional, Union
-
-from spflow.base.structure.spn.rat.rat_spn import RatSPN as BaseRatSPN
-from spflow.base.structure.spn.rat.region_graph import Partition, Region, RegionGraph
-from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.base.structure.spn.rat.region_graph import (
+    RegionGraph,
+    Partition,
+    Region,
+)
 from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.torch.structure.module import Module
-from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer, marginalize
-from spflow.torch.structure.spn.layers.hadamard_layer import HadamardLayer, marginalize
+from spflow.torch.structure.spn.nodes.sum_node import SumNode, marginalize
+from spflow.torch.structure.spn.nodes.cond_sum_node import (
+    CondSumNode,
+    marginalize,
+)
+from spflow.torch.structure.spn.layers.sum_layer import (
+    SumLayer,
+    marginalize,
+)
 from spflow.torch.structure.spn.layers.partition_layer import (
     PartitionLayer,
     marginalize,
 )
-from spflow.torch.structure.spn.layers.sum_layer import SumLayer, marginalize
-from spflow.torch.structure.spn.nodes.cond_sum_node import CondSumNode, marginalize
-from spflow.torch.structure.spn.nodes.sum_node import SumNode, marginalize
+from spflow.torch.structure.spn.layers.hadamard_layer import (
+    HadamardLayer,
+    marginalize,
+)
+from spflow.torch.structure.spn.layers.cond_sum_layer import (
+    CondSumLayer,
+    marginalize,
+)
+from spflow.torch.structure.module import Module
+from spflow.base.structure.spn.rat.rat_spn import RatSPN as BaseRatSPN
+
+from typing import Union, Iterable, Optional, List
 
 
 class RatSPN(Module):

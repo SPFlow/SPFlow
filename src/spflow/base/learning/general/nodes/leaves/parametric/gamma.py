@@ -1,17 +1,15 @@
 """Contains learning methods for ``Gamma`` nodes for SPFlow in the ``base`` backend.
 """
-from typing import Callable, Optional, Union
-
+from typing import Optional, Union, Callable
 import numpy as np
-from scipy.special import digamma, polygamma
 from scipy.stats import gamma
-
-from spflow.base.structure.general.nodes.leaves.parametric.gamma import Gamma
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.base.structure.general.nodes.leaves.parametric.gamma import Gamma
+from scipy.special import digamma, polygamma
 
 
 @dispatch(memoize=True)  # type: ignore

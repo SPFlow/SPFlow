@@ -1,28 +1,32 @@
 """Contains Poisson leaf layer for SPFlow in the ``torch`` backend.
 """
+from typing import List, Union, Optional, Iterable, Tuple
 from functools import reduce
-from typing import Iterable, List, Optional, Tuple, Union
-
 import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
 
-from spflow.base.structure.general.layers.leaves.parametric.poisson import (
-    PoissonLayer as BasePoissonLayer,
-)
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.poisson import Poisson
+from spflow.meta.data.scope import Scope
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.torch.utils.projections import (
+    proj_bounded_to_real,
+    proj_real_to_bounded,
+)
 from spflow.torch.structure.module import Module
-from spflow.torch.utils.projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.torch.structure.general.nodes.leaves.parametric.poisson import (
+    Poisson,
+)
+from spflow.base.structure.general.layers.leaves.parametric.poisson import (
+    PoissonLayer as BasePoissonLayer,
+)
 
 
 class PoissonLayer(Module):

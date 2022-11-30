@@ -1,11 +1,10 @@
-import random
-import unittest
-
-import numpy as np
-import torch
+from spflow.torch.utils import kmeans
 from sklearn.cluster import KMeans
 
-from spflow.torch.utils import kmeans
+import torch
+import numpy as np
+import unittest
+import random
 
 
 class TestNode(unittest.TestCase):

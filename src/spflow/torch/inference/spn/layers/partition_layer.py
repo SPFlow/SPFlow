@@ -1,15 +1,14 @@
 """Contains inference methods for SPN-like partition layer for SPFlow in the ``torch`` backend.
 """
-from typing import Optional
-
-import torch
-
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.torch.structure.spn.layers.partition_layer import PartitionLayer
+
+from typing import Optional
+import torch
 
 
 @dispatch(memoize=True)  # type: ignore

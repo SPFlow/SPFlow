@@ -1,25 +1,23 @@
 """Contains the LearnSPN structure and parameter learner for SPFlow in the ``torch`` backend.
 """
-from functools import partial
-from typing import Any, Callable, Dict, Optional, Union
-
 import torch
-
-from spflow.meta.data.feature_context import FeatureContext
+from functools import partial
+from typing import Callable, Union, Optional, Dict, Any
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.learning.general.nodes.leaves.parametric.gaussian import (
     maximum_likelihood_estimation,
 )
-from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.torch.structure.module import Module
-from spflow.torch.structure.spn.nodes.cond_sum_node import CondSumNode
-from spflow.torch.structure.spn.nodes.product_node import ProductNode
-from spflow.torch.structure.spn.nodes.sum_node import SumNode
-from spflow.torch.utils.connected_components import connected_components
-from spflow.torch.utils.kmeans import kmeans
 from spflow.torch.utils.randomized_dependency_coefficients import (
     randomized_dependency_coefficients,
 )
+from spflow.torch.utils.connected_components import connected_components
+from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.torch.utils.kmeans import kmeans
+from spflow.torch.structure.spn.nodes.sum_node import SumNode
+from spflow.torch.structure.spn.nodes.product_node import ProductNode
+from spflow.torch.structure.spn.nodes.cond_sum_node import CondSumNode
+from spflow.torch.structure.module import Module
 
 
 def partition_by_rdc(

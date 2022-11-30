@@ -1,9 +1,5 @@
 """Contains sampling methods for ``CondBernoulli`` nodes for SPFlow in the ``torch`` backend.
 """
-from typing import Optional
-
-import torch
-
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -16,6 +12,9 @@ from spflow.meta.dispatch.sampling_context import (
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_bernoulli import (
     CondBernoulli,
 )
+
+import torch
+from typing import Optional
 
 
 @dispatch  # type: ignore

@@ -1,15 +1,15 @@
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import Exponential as BaseExponential
+from spflow.base.inference import log_likelihood, likelihood
+from spflow.torch.structure.spn import Exponential
+from spflow.torch.inference import log_likelihood, likelihood
+
+import torch
+import numpy as np
+
 import random
 import unittest
-
-import numpy as np
-import torch
 from packaging import version
-
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import Exponential as BaseExponential
-from spflow.meta.data import Scope
-from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import Exponential
 
 
 class TestExponential(unittest.TestCase):
