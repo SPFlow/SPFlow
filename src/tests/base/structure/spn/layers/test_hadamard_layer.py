@@ -36,7 +36,7 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(np.all(l.scopes_out == [Scope([0, 1, 2, 3, 4]) for _ in range(len(l.nodes))]))
         # make sure order of nodes is correct (important)
         for indices, node in zip([[0, 1, 4, 5], [0, 2, 4, 6], [0, 3, 4, 7]], l.nodes):
-            self.assertTrue(node.children[0].input_ids == indices)
+            self.assertTrue(node.chs[0].input_ids == indices)
 
         # only one partition
         l = HadamardLayer(
@@ -54,7 +54,7 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(np.all(l.scopes_out == [Scope([1, 3]) for _ in range(len(l.nodes))]))
         # make sure order of nodes is correct (important)
         for indices, node in zip([[0], [1], [2]], l.nodes):
-            self.assertTrue(node.children[0].input_ids == indices)
+            self.assertTrue(node.chs[0].input_ids == indices)
 
         # ----- no child partitions -----
         self.assertRaises(ValueError, HadamardLayer, [])

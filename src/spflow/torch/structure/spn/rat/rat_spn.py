@@ -201,7 +201,7 @@ def marginalize(
             n_leaf_nodes=rat_spn.n_leaf_nodes,
         )
         marg_rat.root_node = marg_root_node
-        marg_rat.root_region = marg_root_node.children[0]
+        marg_rat.root_region = marg_root_node.chs[0]
 
         return marg_rat
 
