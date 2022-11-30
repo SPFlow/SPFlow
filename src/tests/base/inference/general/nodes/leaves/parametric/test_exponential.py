@@ -93,12 +93,8 @@ class TestExponential(unittest.TestCase):
         exponential = Exponential(Scope([0]), l)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, exponential, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, exponential, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, exponential, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, exponential, np.array([[np.inf]]))
 
         # check valid float values (within range)
         log_likelihood(exponential, np.array([[np.nextafter(0.0, 1.0)]]))

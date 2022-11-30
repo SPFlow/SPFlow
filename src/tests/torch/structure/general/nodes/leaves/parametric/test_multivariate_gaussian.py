@@ -58,12 +58,8 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         # covariance matrix of wrong shape
         M = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-        self.assertRaises(
-            Exception, MultivariateGaussian, Scope([0, 1]), torch.zeros(2), M
-        )
-        self.assertRaises(
-            Exception, MultivariateGaussian, Scope([0, 1]), torch.zeros(2), M.T
-        )
+        self.assertRaises(Exception, MultivariateGaussian, Scope([0, 1]), torch.zeros(2), M)
+        self.assertRaises(Exception, MultivariateGaussian, Scope([0, 1]), torch.zeros(2), M.T)
         self.assertRaises(
             Exception,
             MultivariateGaussian,
@@ -131,27 +127,17 @@ class TestMultivariateGaussian(unittest.TestCase):
         )
 
         # initialize using lists
-        MultivariateGaussian(
-            Scope([0, 1]), [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]]
-        )
+        MultivariateGaussian(Scope([0, 1]), [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
 
         # initialize using numpy arrays
         MultivariateGaussian(Scope([0, 1]), np.zeros(2), np.eye(2))
 
     def test_structural_marginalization(self):
 
-        multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1]), [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]]
-        )
+        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
 
-        self.assertTrue(
-            isinstance(
-                marginalize(multivariate_gaussian, [2]), MultivariateGaussian
-            )
-        )
-        self.assertTrue(
-            isinstance(marginalize(multivariate_gaussian, [1]), Gaussian)
-        )
+        self.assertTrue(isinstance(marginalize(multivariate_gaussian, [2]), MultivariateGaussian))
+        self.assertTrue(isinstance(marginalize(multivariate_gaussian, [1]), Gaussian))
         self.assertTrue(marginalize(multivariate_gaussian, [0, 1]) is None)
 
     def test_accept(self):
@@ -241,9 +227,7 @@ class TestMultivariateGaussian(unittest.TestCase):
                 )
             ]
         )
-        self.assertTrue(
-            torch.allclose(multivariate_gaussian.mean, torch.zeros(2))
-        )
+        self.assertTrue(torch.allclose(multivariate_gaussian.mean, torch.zeros(2)))
         self.assertTrue(torch.allclose(multivariate_gaussian.cov, torch.eye(2)))
 
         multivariate_gaussian = MultivariateGaussian.from_signatures(
@@ -254,9 +238,7 @@ class TestMultivariateGaussian(unittest.TestCase):
                 )
             ]
         )
-        self.assertTrue(
-            torch.allclose(multivariate_gaussian.mean, torch.zeros(2))
-        )
+        self.assertTrue(torch.allclose(multivariate_gaussian.mean, torch.zeros(2)))
         self.assertTrue(torch.allclose(multivariate_gaussian.cov, torch.eye(2)))
 
         multivariate_gaussian = MultivariateGaussian.from_signatures(
@@ -270,11 +252,7 @@ class TestMultivariateGaussian(unittest.TestCase):
                 )
             ]
         )
-        self.assertTrue(
-            torch.allclose(
-                multivariate_gaussian.mean, torch.tensor([-1.0, 1.0])
-            )
-        )
+        self.assertTrue(torch.allclose(multivariate_gaussian.mean, torch.tensor([-1.0, 1.0])))
         self.assertTrue(
             torch.allclose(
                 multivariate_gaussian.cov,
@@ -339,11 +317,7 @@ class TestMultivariateGaussian(unittest.TestCase):
             ]
         )
         self.assertTrue(isinstance(multivariate_gaussian, MultivariateGaussian))
-        self.assertTrue(
-            torch.allclose(
-                multivariate_gaussian.mean, torch.tensor([-1.0, 1.0])
-            )
-        )
+        self.assertTrue(torch.allclose(multivariate_gaussian.mean, torch.tensor([-1.0, 1.0])))
         self.assertTrue(
             torch.allclose(
                 multivariate_gaussian.cov,
@@ -356,12 +330,8 @@ class TestMultivariateGaussian(unittest.TestCase):
         mean = np.arange(3)
         cov = np.array([[2, 2, 1], [2, 3, 2], [1, 2, 3]])
 
-        torch_multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1, 2]), mean, cov
-        )
-        node_multivariate_gaussian = BaseMultivariateGaussian(
-            Scope([0, 1, 2]), mean.tolist(), cov.tolist()
-        )
+        torch_multivariate_gaussian = MultivariateGaussian(Scope([0, 1, 2]), mean, cov)
+        node_multivariate_gaussian = BaseMultivariateGaussian(Scope([0, 1, 2]), mean.tolist(), cov.tolist())
 
         node_params = node_multivariate_gaussian.get_params()
         torch_params = torch_multivariate_gaussian.get_params()

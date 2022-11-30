@@ -21,9 +21,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_l(self):
 
         poisson = CondPoissonLayer(Scope([0], [1]), n_nodes=2)
-        self.assertRaises(
-            ValueError, log_likelihood, poisson, torch.tensor([[0], [1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[0], [1]]))
 
     def test_likelihood_module_cond_f(self):
 
@@ -33,9 +31,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = torch.tensor([[0], [2], [5]])
-        targets = torch.tensor(
-            [[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]]
-        )
+        targets = torch.tensor([[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]])
 
         probs = likelihood(poisson, data)
         log_probs = log_likelihood(poisson, data)
@@ -52,9 +48,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = torch.tensor([[0], [2], [5]])
-        targets = torch.tensor(
-            [[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]]
-        )
+        targets = torch.tensor([[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]])
 
         probs = likelihood(poisson, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(poisson, data, dispatch_ctx=dispatch_ctx)
@@ -73,9 +67,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = torch.tensor([[0], [2], [5]])
-        targets = torch.tensor(
-            [[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]]
-        )
+        targets = torch.tensor([[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]])
 
         probs = likelihood(poisson, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(poisson, data, dispatch_ctx=dispatch_ctx)
@@ -99,9 +91,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[1, 3], [3, 7], [2, 1]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -119,9 +109,7 @@ class TestNode(unittest.TestCase):
         )
 
         # create dummy input data (batch size x random variables)
-        data = torch.cat(
-            [torch.randint(0, 10, (3, 1)), torch.randint(0, 10, (3, 1))], dim=1
-        )
+        data = torch.cat([torch.randint(0, 10, (3, 1)), torch.randint(0, 10, (3, 1))], dim=1)
 
         log_probs_torch = log_likelihood(torch_poisson, data)
 

@@ -52,13 +52,9 @@ class CondBernoulli(LeafNode):
                 a floating point, scalar NumPy array or scalar PyTorch tensor representing the success probability in :math:`[0,1]`.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'CondBernoulli' should be 1, but was: {len(scope.query)}"
-            )
+            raise ValueError(f"Query scope size for 'CondBernoulli' should be 1, but was: {len(scope.query)}")
         if len(scope.evidence) == 0:
-            raise ValueError(
-                f"Evidence scope for 'CondBernoulli' should not be empty."
-            )
+            raise ValueError(f"Evidence scope for 'CondBernoulli' should not be empty.")
 
         super().__init__(scope=scope)
 
@@ -82,11 +78,7 @@ class CondBernoulli(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) == 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) == 0:
             return False
 
         # leaf is a discrete Bernoulli distribution
@@ -100,9 +92,7 @@ class CondBernoulli(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondBernoulli":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondBernoulli":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -112,9 +102,7 @@ class CondBernoulli(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondBernoulli' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondBernoulli' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -145,9 +133,7 @@ class CondBernoulli(LeafNode):
         """
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: torch.Tensor, dispatch_ctx: DispatchContext
-    ) -> Tuple[torch.Tensor]:
+    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor]:
         r"""Retrieves the conditional parameter of the leaf node.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -185,9 +171,7 @@ class CondBernoulli(LeafNode):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError(
-                "'CondBernoulli' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
-            )
+            raise ValueError("'CondBernoulli' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
 
         # if 'p' was not already specified, retrieve it
         if p is None:
@@ -216,9 +200,7 @@ class CondBernoulli(LeafNode):
         """
         return D.Bernoulli(probs=p)
 
-    def check_support(
-        self, data: torch.Tensor, is_scope_data: bool = False
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Bernoulli distribution, which is:
@@ -259,17 +241,13 @@ class CondBernoulli(LeafNode):
         valid[~nan_mask] = self.dist(p=torch.tensor(0.0)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= (
-            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
-        )
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    node: BaseCondBernoulli, dispatch_ctx: Optional[DispatchContext] = None
-) -> CondBernoulli:
+def toTorch(node: BaseCondBernoulli, dispatch_ctx: Optional[DispatchContext] = None) -> CondBernoulli:
     """Conversion for ``CondBernoulli`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -283,9 +261,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    node: CondBernoulli, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseCondBernoulli:
+def toBase(node: CondBernoulli, dispatch_ctx: Optional[DispatchContext] = None) -> BaseCondBernoulli:
     """Conversion for ``CondBernoulli`` from ``torch`` backend to ``base`` backend.
 
     Args:

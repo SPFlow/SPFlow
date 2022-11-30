@@ -34,9 +34,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[0.5, -0.3], [0.9, 0.21], [0.5, 0.0]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -45,9 +43,7 @@ class TestNode(unittest.TestCase):
         start = torch.tensor([random.random(), random.random()])
         end = start + 1e-7 + torch.tensor([random.random(), random.random()])
 
-        torch_uniform = UniformLayer(
-            scope=[Scope([0]), Scope([1])], start=start, end=end
-        )
+        torch_uniform = UniformLayer(scope=[Scope([0]), Scope([1])], start=start, end=end)
 
         data_torch = torch.stack(
             [

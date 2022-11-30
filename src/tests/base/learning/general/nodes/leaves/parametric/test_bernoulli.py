@@ -134,18 +134,14 @@ class TestNode(unittest.TestCase):
     def test_mle_nan_strategy_ignore(self):
 
         leaf = Bernoulli(Scope([0]))
-        maximum_likelihood_estimation(
-            leaf, np.array([[np.nan], [1], [0], [1]]), nan_strategy="ignore"
-        )
+        maximum_likelihood_estimation(leaf, np.array([[np.nan], [1], [0], [1]]), nan_strategy="ignore")
         self.assertTrue(np.isclose(leaf.p, 2.0 / 3.0))
 
     def test_mle_nan_strategy_callable(self):
 
         leaf = Bernoulli(Scope([0]))
         # should not raise an issue
-        maximum_likelihood_estimation(
-            leaf, np.array([[1], [0], [1]]), nan_strategy=lambda x: x
-        )
+        maximum_likelihood_estimation(leaf, np.array([[1], [0], [1]]), nan_strategy=lambda x: x)
 
     def test_mle_nan_strategy_invalid(self):
 

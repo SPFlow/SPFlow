@@ -41,13 +41,9 @@ class Geometric(LeafNode):
                 Defaults to 0.5.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'Geometric' should be 1, but was {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'Geometric' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'Geometric' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'Geometric' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
         self.set_params(p)
@@ -70,11 +66,7 @@ class Geometric(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a discrete Geometric distribution
@@ -98,9 +90,7 @@ class Geometric(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Geometric' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'Geometric' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -152,9 +142,7 @@ class Geometric(LeafNode):
         """
         return (self.p,)
 
-    def check_support(
-        self, data: np.ndarray, is_scope_data: bool = False
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, is_scope_data: bool = False) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Geometric distribution, which is:
@@ -197,9 +185,7 @@ class Geometric(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= (
-            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
-        )
+        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
 
         # check if values are in valid range
         valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] >= 1

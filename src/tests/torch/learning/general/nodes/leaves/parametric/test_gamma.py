@@ -36,16 +36,10 @@ class TestNode(unittest.TestCase):
         data = np.random.gamma(shape=0.3, scale=1.0 / 1.7, size=(30000, 1))
 
         # perform MLE
-        maximum_likelihood_estimation(
-            leaf, torch.tensor(data), bias_correction=True
-        )
+        maximum_likelihood_estimation(leaf, torch.tensor(data), bias_correction=True)
 
-        self.assertTrue(
-            torch.isclose(leaf.alpha, torch.tensor(0.3), atol=1e-3, rtol=1e-2)
-        )
-        self.assertTrue(
-            torch.isclose(leaf.beta, torch.tensor(1.7), atol=1e-3, rtol=1e-2)
-        )
+        self.assertTrue(torch.isclose(leaf.alpha, torch.tensor(0.3), atol=1e-3, rtol=1e-2))
+        self.assertTrue(torch.isclose(leaf.beta, torch.tensor(1.7), atol=1e-3, rtol=1e-2))
 
     def test_mle_2(self):
 
@@ -59,16 +53,10 @@ class TestNode(unittest.TestCase):
         data = np.random.gamma(shape=1.9, scale=1.0 / 0.7, size=(30000, 1))
 
         # perform MLE
-        maximum_likelihood_estimation(
-            leaf, torch.tensor(data), bias_correction=True
-        )
+        maximum_likelihood_estimation(leaf, torch.tensor(data), bias_correction=True)
 
-        self.assertTrue(
-            torch.isclose(leaf.alpha, torch.tensor(1.9), atol=1e-2, rtol=1e-2)
-        )
-        self.assertTrue(
-            torch.isclose(leaf.beta, torch.tensor(0.7), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(torch.isclose(leaf.alpha, torch.tensor(1.9), atol=1e-2, rtol=1e-2))
+        self.assertTrue(torch.isclose(leaf.beta, torch.tensor(0.7), atol=1e-2, rtol=1e-2))
 
     def test_mle_only_nans(self):
 
@@ -144,9 +132,7 @@ class TestNode(unittest.TestCase):
 
         leaf = Gamma(Scope([0]))
         # should not raise an issue
-        maximum_likelihood_estimation(
-            leaf, torch.tensor([[0.5], [1]]), nan_strategy=lambda x: x
-        )
+        maximum_likelihood_estimation(leaf, torch.tensor([[0.5], [1]]), nan_strategy=lambda x: x)
 
     def test_mle_nan_strategy_invalid(self):
 
@@ -173,12 +159,8 @@ class TestNode(unittest.TestCase):
         data = torch.tensor(
             np.vstack(
                 [
-                    np.random.gamma(
-                        shape=1.7, scale=1.0 / 0.8, size=(10000, 1)
-                    ),
-                    np.random.gamma(
-                        shape=0.5, scale=1.0 / 1.4, size=(10000, 1)
-                    ),
+                    np.random.gamma(shape=1.7, scale=1.0 / 0.8, size=(10000, 1)),
+                    np.random.gamma(shape=0.5, scale=1.0 / 1.4, size=(10000, 1)),
                 ]
             )
         )
@@ -186,12 +168,8 @@ class TestNode(unittest.TestCase):
 
         maximum_likelihood_estimation(leaf, data, weights)
 
-        self.assertTrue(
-            torch.isclose(leaf.alpha, torch.tensor(0.5), atol=1e-3, rtol=1e-2)
-        )
-        self.assertTrue(
-            torch.isclose(leaf.beta, torch.tensor(1.4), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(torch.isclose(leaf.alpha, torch.tensor(0.5), atol=1e-3, rtol=1e-2))
+        self.assertTrue(torch.isclose(leaf.beta, torch.tensor(1.4), atol=1e-2, rtol=1e-2))
 
     def test_em_step(self):
 
@@ -201,9 +179,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         leaf = Gamma(Scope([0]))
-        data = torch.tensor(
-            np.random.gamma(shape=0.3, scale=1.0 / 1.7, size=(30000, 1))
-        )
+        data = torch.tensor(np.random.gamma(shape=0.3, scale=1.0 / 1.7, size=(30000, 1)))
         dispatch_ctx = DispatchContext()
 
         # compute gradients of log-likelihoods w.r.t. module log-likelihoods
@@ -214,12 +190,8 @@ class TestNode(unittest.TestCase):
         # perform an em step
         em(leaf, data, dispatch_ctx=dispatch_ctx)
 
-        self.assertTrue(
-            torch.isclose(leaf.alpha, torch.tensor(0.3), atol=1e-3, rtol=1e-2)
-        )
-        self.assertTrue(
-            torch.isclose(leaf.beta, torch.tensor(1.7), atol=1e-3, rtol=1e-2)
-        )
+        self.assertTrue(torch.isclose(leaf.alpha, torch.tensor(0.3), atol=1e-3, rtol=1e-2))
+        self.assertTrue(torch.isclose(leaf.beta, torch.tensor(1.7), atol=1e-3, rtol=1e-2))
 
     def test_em_product_of_gammas(self):
 
@@ -235,30 +207,18 @@ class TestNode(unittest.TestCase):
         data = torch.tensor(
             np.hstack(
                 [
-                    np.random.gamma(
-                        shape=0.3, scale=1.0 / 1.7, size=(15000, 1)
-                    ),
-                    np.random.gamma(
-                        shape=1.4, scale=1.0 / 0.8, size=(15000, 1)
-                    ),
+                    np.random.gamma(shape=0.3, scale=1.0 / 1.7, size=(15000, 1)),
+                    np.random.gamma(shape=1.4, scale=1.0 / 0.8, size=(15000, 1)),
                 ]
             )
         )
 
         expectation_maximization(prod_node, data, max_steps=10)
 
-        self.assertTrue(
-            torch.isclose(l1.alpha, torch.tensor(0.3), atol=1e-2, rtol=1e-2)
-        )
-        self.assertTrue(
-            torch.isclose(l2.alpha, torch.tensor(1.4), atol=1e-2, rtol=1e-2)
-        )
-        self.assertTrue(
-            torch.isclose(l1.beta, torch.tensor(1.7), atol=1e-2, rtol=1e-2)
-        )
-        self.assertTrue(
-            torch.isclose(l2.beta, torch.tensor(0.8), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(torch.isclose(l1.alpha, torch.tensor(0.3), atol=1e-2, rtol=1e-2))
+        self.assertTrue(torch.isclose(l2.alpha, torch.tensor(1.4), atol=1e-2, rtol=1e-2))
+        self.assertTrue(torch.isclose(l1.beta, torch.tensor(1.7), atol=1e-2, rtol=1e-2))
+        self.assertTrue(torch.isclose(l2.beta, torch.tensor(0.8), atol=1e-2, rtol=1e-2))
 
     def test_em_sum_of_gammas(self):
 
@@ -274,30 +234,18 @@ class TestNode(unittest.TestCase):
         data = torch.tensor(
             np.vstack(
                 [
-                    np.random.gamma(
-                        shape=0.9, scale=1.0 / 1.9, size=(20000, 1)
-                    ),
-                    np.random.gamma(
-                        shape=1.4, scale=1.0 / 0.8, size=(20000, 1)
-                    ),
+                    np.random.gamma(shape=0.9, scale=1.0 / 1.9, size=(20000, 1)),
+                    np.random.gamma(shape=1.4, scale=1.0 / 0.8, size=(20000, 1)),
                 ]
             )
         )
 
         expectation_maximization(sum_node, data, max_steps=10)
 
-        self.assertTrue(
-            torch.isclose(l1.alpha, torch.tensor(1.4), atol=1e-2, rtol=1e-1)
-        )
-        self.assertTrue(
-            torch.isclose(l2.alpha, torch.tensor(0.9), atol=1e-2, rtol=1e-1)
-        )
-        self.assertTrue(
-            torch.isclose(l1.beta, torch.tensor(0.8), atol=1e-2, rtol=1e-1)
-        )
-        self.assertTrue(
-            torch.isclose(l2.beta, torch.tensor(1.9), atol=1e-2, rtol=1e-1)
-        )
+        self.assertTrue(torch.isclose(l1.alpha, torch.tensor(1.4), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.isclose(l2.alpha, torch.tensor(0.9), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.isclose(l1.beta, torch.tensor(0.8), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.isclose(l2.beta, torch.tensor(1.9), atol=1e-2, rtol=1e-1))
 
 
 if __name__ == "__main__":

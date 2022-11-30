@@ -94,9 +94,7 @@ class CondBinomialLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondBinomialLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondBinomialLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -104,9 +102,7 @@ class CondBinomialLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) == 0:
-                raise ValueError(
-                    f"Evidence scope for 'CondBinomialLayer' should not be empty."
-                )
+                raise ValueError(f"Evidence scope for 'CondBinomialLayer' should not be empty.")
 
         super().__init__(children=[], **kwargs)
 
@@ -115,9 +111,7 @@ class CondBinomialLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         # parse weights
         self.set_params(n)
@@ -144,9 +138,7 @@ class CondBinomialLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondBinomialLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondBinomialLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -156,9 +148,7 @@ class CondBinomialLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondBinomialLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondBinomialLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         n = []
         scopes = []
@@ -184,9 +174,7 @@ class CondBinomialLayer(Module):
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -208,9 +196,7 @@ class CondBinomialLayer(Module):
 
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> torch.Tensor:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> torch.Tensor:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -248,9 +234,7 @@ class CondBinomialLayer(Module):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError(
-                "'CondBinomialLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
-            )
+            raise ValueError("'CondBinomialLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
 
         # if 'p' was not already specified, retrieve it
         if p is None:
@@ -274,20 +258,14 @@ class CondBinomialLayer(Module):
             raise ValueError(
                 f"Length of numpy array of 'p' values for 'CondBinomialLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
             )
-        if (
-            torch.any(p < 0.0)
-            or torch.any(p > 1.0)
-            or not all(torch.isfinite(p))
-        ):
+        if torch.any(p < 0.0) or torch.any(p > 1.0) or not all(torch.isfinite(p)):
             raise ValueError(
                 f"Values of 'p' for 'CondBinomialLayer' distribution must to be between 0.0 and 1.0, but are: {p}"
             )
 
         return p
 
-    def dist(
-        self, p: torch.Tensor, node_ids: Optional[List[int]] = None
-    ) -> D.Distribution:
+    def dist(self, p: torch.Tensor, node_ids: Optional[List[int]] = None) -> D.Distribution:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -305,9 +283,7 @@ class CondBinomialLayer(Module):
 
         return D.Binomial(total_count=self.n[node_ids], probs=p[node_ids])
 
-    def set_params(
-        self, n: Union[int, List[int], np.ndarray, torch.Tensor]
-    ) -> None:
+    def set_params(self, n: Union[int, List[int], np.ndarray, torch.Tensor]) -> None:
         """Sets the parameters for the represented distributions.
 
         Args:
@@ -329,14 +305,10 @@ class CondBinomialLayer(Module):
             )
 
         if torch.any(n < 0) or not torch.any(torch.isfinite(n)):
-            raise ValueError(
-                f"Values for 'n' of 'BinomialLayer' must to greater of equal to 0, but was: {n}"
-            )
+            raise ValueError(f"Values for 'n' of 'BinomialLayer' must to greater of equal to 0, but was: {n}")
 
         if not torch.all(torch.remainder(n, 1.0) == torch.tensor(0.0)):
-            raise ValueError(
-                f"Values for 'n' of 'BinomialLayer' must be (equal to) an integer value, but was: {n}"
-            )
+            raise ValueError(f"Values for 'n' of 'BinomialLayer' must be (equal to) an integer value, but was: {n}")
 
         node_scopes = torch.tensor([s.query[0] for s in self.scopes_out])
 
@@ -344,9 +316,7 @@ class CondBinomialLayer(Module):
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not torch.all(n_values == n_values[0]):
-                raise ValueError(
-                    "All values of 'n' for 'BinomialLayer' over the same scope must be identical."
-                )
+                raise ValueError("All values of 'n' for 'BinomialLayer' over the same scope must be identical.")
 
         self.n.data = n
 
@@ -398,9 +368,7 @@ class CondBinomialLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(torch.ones(self.n_out), node_ids).support.check(scope_data)  # type: ignore
@@ -464,19 +432,13 @@ def marginalize(
         return None
     elif len(marginalized_node_ids) == 1 and prune:
         node_id = marginalized_node_ids.pop()
-        return CondBinomial(
-            scope=marginalized_scopes[0], n=layer.n[node_id].item()
-        )
+        return CondBinomial(scope=marginalized_scopes[0], n=layer.n[node_id].item())
     else:
-        return CondBinomialLayer(
-            scope=marginalized_scopes, n=layer.n[marginalized_node_ids].detach()
-        )
+        return CondBinomialLayer(scope=marginalized_scopes, n=layer.n[marginalized_node_ids].detach())
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    layer: BaseCondBinomialLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> CondBinomialLayer:
+def toTorch(layer: BaseCondBinomialLayer, dispatch_ctx: Optional[DispatchContext] = None) -> CondBinomialLayer:
     """Conversion for ``CondBinomialLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -503,6 +465,4 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseCondBinomialLayer(
-        scope=torch_layer.scopes_out, n=torch_layer.n.numpy()
-    )
+    return BaseCondBinomialLayer(scope=torch_layer.scopes_out, n=torch_layer.n.numpy())

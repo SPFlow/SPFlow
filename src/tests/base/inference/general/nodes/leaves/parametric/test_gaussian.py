@@ -19,9 +19,7 @@ class TestGaussian(unittest.TestCase):
         gaussian = Gaussian(Scope([0]), mean, math.sqrt(var))
 
         # create test inputs/outputs
-        data = np.array(
-            [[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]]
-        )
+        data = np.array([[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]])
         targets = np.array([[0.398942], [0.241971], [0.241971]])
 
         probs = likelihood(gaussian, data)
@@ -39,9 +37,7 @@ class TestGaussian(unittest.TestCase):
         gaussian = Gaussian(Scope([0]), mean, math.sqrt(var))
 
         # create test inputs/outputs
-        data = np.array(
-            [[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]]
-        )
+        data = np.array([[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]])
         targets = np.array([[0.178412], [0.108212], [0.108212]])
 
         probs = likelihood(gaussian, data)
@@ -59,9 +55,7 @@ class TestGaussian(unittest.TestCase):
         gaussian = Gaussian(Scope([0]), mean, math.sqrt(var))
 
         # create test inputs/outputs
-        data = np.array(
-            [[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]]
-        )
+        data = np.array([[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]])
         targets = np.array([[0.892062], [0.541062], [0.541062]])
 
         probs = likelihood(gaussian, data)
@@ -113,12 +107,8 @@ class TestGaussian(unittest.TestCase):
         gaussian = Gaussian(Scope([0]), 0.0, 1.0)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, gaussian, np.array([[np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, gaussian, np.array([[-np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, gaussian, np.array([[np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, gaussian, np.array([[-np.inf]]))
 
 
 if __name__ == "__main__":

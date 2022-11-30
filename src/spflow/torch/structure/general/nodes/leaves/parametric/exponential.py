@@ -56,13 +56,9 @@ class Exponential(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'Exponential' should be 1, but was {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'Exponential' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'Exponential' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'Exponential' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
 
@@ -96,11 +92,7 @@ class Exponential(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a discrete Exponential distribution
@@ -114,9 +106,7 @@ class Exponential(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "Exponential":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "Exponential":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -126,9 +116,7 @@ class Exponential(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Exponential' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'Exponential' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -168,9 +156,7 @@ class Exponential(LeafNode):
                 Floating point value representing the rate parameter (:math:`\lambda`) of the Exponential distribution (must be greater than 0).
         """
         if l <= 0.0 or not np.isfinite(l):
-            raise ValueError(
-                f"Value of 'l' for 'Exponential' must be greater than 0, but was: {l}"
-            )
+            raise ValueError(f"Value of 'l' for 'Exponential' must be greater than 0, but was: {l}")
 
         self.l_aux.data = proj_bounded_to_real(torch.tensor(float(l)), lb=0.0)
 
@@ -182,9 +168,7 @@ class Exponential(LeafNode):
         """
         return (self.l.data.cpu().numpy(),)  # type: ignore
 
-    def check_support(
-        self, data: torch.Tensor, is_scope_data: bool = False
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Exponential distribution, which is:
@@ -225,17 +209,13 @@ class Exponential(LeafNode):
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= (
-            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
-        )
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    node: BaseExponential, dispatch_ctx: Optional[DispatchContext] = None
-) -> Exponential:
+def toTorch(node: BaseExponential, dispatch_ctx: Optional[DispatchContext] = None) -> Exponential:
     """Conversion for ``Exponential`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -249,9 +229,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    node: Exponential, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseExponential:
+def toBase(node: Exponential, dispatch_ctx: Optional[DispatchContext] = None) -> BaseExponential:
     """Conversion for ``Exponential`` from ``torch`` backend to ``base`` backend.
 
     Args:

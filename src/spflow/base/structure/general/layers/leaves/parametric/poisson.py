@@ -63,9 +63,7 @@ class PoissonLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(
-                    f"Number of nodes for 'PoissonLayer' must be greater or equal to 1, but was {n_nodes}"
-                )
+                raise ValueError(f"Number of nodes for 'PoissonLayer' must be greater or equal to 1, but was {n_nodes}")
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
@@ -116,9 +114,7 @@ class PoissonLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "PoissonLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "PoissonLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -128,9 +124,7 @@ class PoissonLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'PoissonLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'PoissonLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         l = []
         scopes = []
@@ -205,9 +199,7 @@ class PoissonLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Poisson distributions, which are:
@@ -234,9 +226,7 @@ class PoissonLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -286,7 +276,5 @@ def marginalize(
         new_node = Poisson(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = PoissonLayer(
-            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
-        )
+        new_layer = PoissonLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer

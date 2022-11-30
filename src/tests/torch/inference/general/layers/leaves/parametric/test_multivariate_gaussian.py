@@ -42,20 +42,14 @@ class TestNode(unittest.TestCase):
         )
 
         nodes = [
-            MultivariateGaussian(
-                Scope([0, 1]), mean=mean_values[0], cov=cov_values[0]
-            ),
-            MultivariateGaussian(
-                Scope([2, 3, 4]), mean=mean_values[1], cov=cov_values[1]
-            ),
+            MultivariateGaussian(Scope([0, 1]), mean=mean_values[0], cov=cov_values[0]),
+            MultivariateGaussian(Scope([2, 3, 4]), mean=mean_values[1], cov=cov_values[1]),
         ]
 
         dummy_data = torch.vstack([torch.zeros(5), torch.ones(5)])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -79,47 +73,15 @@ class TestNode(unittest.TestCase):
         loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
         loss.backward()
 
-        self.assertTrue(
-            all(
-                [
-                    n.mean.grad is not None
-                    for n in torch_multivariate_gaussian.nodes
-                ]
-            )
-        )
-        self.assertTrue(
-            all(
-                [
-                    n.tril_diag_aux.grad is not None
-                    for n in torch_multivariate_gaussian.nodes
-                ]
-            )
-        )
-        self.assertTrue(
-            all(
-                [
-                    n.tril_nondiag.grad is not None
-                    for n in torch_multivariate_gaussian.nodes
-                ]
-            )
-        )
+        self.assertTrue(all([n.mean.grad is not None for n in torch_multivariate_gaussian.nodes]))
+        self.assertTrue(all([n.tril_diag_aux.grad is not None for n in torch_multivariate_gaussian.nodes]))
+        self.assertTrue(all([n.tril_nondiag.grad is not None for n in torch_multivariate_gaussian.nodes]))
 
-        mean_orig = [
-            node.mean.detach().clone()
-            for node in torch_multivariate_gaussian.nodes
-        ]
-        tril_diag_aux_orig = [
-            node.tril_diag_aux.detach().clone()
-            for node in torch_multivariate_gaussian.nodes
-        ]
-        tril_nondiag_orig = [
-            node.tril_nondiag.detach().clone()
-            for node in torch_multivariate_gaussian.nodes
-        ]
+        mean_orig = [node.mean.detach().clone() for node in torch_multivariate_gaussian.nodes]
+        tril_diag_aux_orig = [node.tril_diag_aux.detach().clone() for node in torch_multivariate_gaussian.nodes]
+        tril_nondiag_orig = [node.tril_nondiag.detach().clone() for node in torch_multivariate_gaussian.nodes]
 
-        optimizer = torch.optim.SGD(
-            torch_multivariate_gaussian.parameters(), lr=1
-        )
+        optimizer = torch.optim.SGD(torch_multivariate_gaussian.parameters(), lr=1)
         optimizer.step()
 
         # make sure that parameters are correctly updated
@@ -127,9 +89,7 @@ class TestNode(unittest.TestCase):
             all(
                 [
                     torch.allclose(m_orig - m_current.grad, m_current)
-                    for m_orig, m_current in zip(
-                        mean_orig, torch_multivariate_gaussian.mean
-                    )
+                    for m_orig, m_current in zip(mean_orig, torch_multivariate_gaussian.mean)
                 ]
             )
         )
@@ -139,10 +99,7 @@ class TestNode(unittest.TestCase):
                     torch.allclose(t_orig - t_current.grad, t_current)
                     for t_orig, t_current in zip(
                         tril_diag_aux_orig,
-                        [
-                            n.tril_diag_aux
-                            for n in torch_multivariate_gaussian.nodes
-                        ],
+                        [n.tril_diag_aux for n in torch_multivariate_gaussian.nodes],
                     )
                 ]
             )
@@ -153,10 +110,7 @@ class TestNode(unittest.TestCase):
                     torch.allclose(t_orig - t_current.grad, t_current)
                     for t_orig, t_current in zip(
                         tril_nondiag_orig,
-                        [
-                            n.tril_nondiag
-                            for n in torch_multivariate_gaussian.nodes
-                        ],
+                        [n.tril_nondiag for n in torch_multivariate_gaussian.nodes],
                     )
                 ]
             )

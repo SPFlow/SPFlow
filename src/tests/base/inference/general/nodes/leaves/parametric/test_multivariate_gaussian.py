@@ -14,9 +14,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         mean = np.zeros(2)
         cov = np.eye(2)
 
-        multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1]), mean.tolist(), cov.tolist()
-        )
+        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), mean.tolist(), cov.tolist())
 
         # create test inputs/outputs
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
@@ -41,9 +39,7 @@ class TestMultivariateGaussian(unittest.TestCase):
             ]
         )
 
-        multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1, 2]), mean.tolist(), cov.tolist()
-        )
+        multivariate_gaussian = MultivariateGaussian(Scope([0, 1, 2]), mean.tolist(), cov.tolist())
 
         # create test inputs/outputs
         data = np.stack(
@@ -66,9 +62,7 @@ class TestMultivariateGaussian(unittest.TestCase):
     def test_likelihood_mean_none(self):
 
         # dummy distribution and data
-        multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1]), np.zeros(2), np.eye(2)
-        )
+        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), np.zeros(2), np.eye(2))
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
 
         # set parameters to None manually
@@ -78,9 +72,7 @@ class TestMultivariateGaussian(unittest.TestCase):
     def test_likelihood_cov_none(self):
 
         # dummy distribution and data
-        multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1]), np.zeros(2), np.eye(2)
-        )
+        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), np.zeros(2), np.eye(2))
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
 
         # set parameters to None manually
@@ -89,9 +81,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1]), np.zeros(2), np.eye(2)
-        )
+        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), np.zeros(2), np.eye(2))
         data = np.array([[np.nan, np.nan]])
 
         # should not raise and error and should return 1 (0 in log-space)
@@ -112,9 +102,7 @@ class TestMultivariateGaussian(unittest.TestCase):
     def test_support(self):
 
         # Support for Multivariate Gaussian distribution: floats (inf,+inf)^k
-        multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1]), np.zeros(2), np.eye(2)
-        )
+        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), np.zeros(2), np.eye(2))
 
         # check infinite values
         self.assertRaises(

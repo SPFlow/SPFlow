@@ -16,9 +16,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        binomial_layer = BinomialLayer(
-            scope=Scope([0]), n=3, p=[0.8, 0.3], n_nodes=2
-        )
+        binomial_layer = BinomialLayer(scope=Scope([0]), n=3, p=[0.8, 0.3], n_nodes=2)
         s1 = SumNode(children=[binomial_layer], weights=[0.3, 0.7])
 
         binomial_nodes = [
@@ -44,9 +42,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        binomial_layer = BinomialLayer(
-            scope=[Scope([0]), Scope([1])], n=[3, 5], p=[0.8, 0.3]
-        )
+        binomial_layer = BinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 5], p=[0.8, 0.3])
         p1 = ProductNode(children=[binomial_layer])
 
         binomial_nodes = [
@@ -68,9 +64,7 @@ class TestNode(unittest.TestCase):
 
     def test_sampling_3(self):
 
-        binomial_layer = BinomialLayer(
-            scope=Scope([0]), n=3, p=[0.8, 0.3], n_nodes=2
-        )
+        binomial_layer = BinomialLayer(scope=Scope([0]), n=3, p=[0.8, 0.3], n_nodes=2)
 
         # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails
         self.assertRaises(ValueError, sample, binomial_layer)

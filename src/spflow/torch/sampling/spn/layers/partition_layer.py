@@ -72,22 +72,16 @@ def sample(
     children = list(partition_layer.children())
 
     # sample accoding to sampling_context
-    for node_id, instances in sampling_ctx.group_output_ids(
-        partition_layer.n_out
-    ):
+    for node_id, instances in sampling_ctx.group_output_ids(partition_layer.n_out):
 
         # get input ids for this node
         input_ids = input_ids_per_node[node_id]
-        child_ids, output_ids = partition_layer.input_to_output_ids(
-            input_ids.tolist()
-        )
+        child_ids, output_ids = partition_layer.input_to_output_ids(input_ids.tolist())
 
         # group by child ids
         for child_id in np.unique(child_ids):
 
-            child_output_ids = np.array(output_ids)[
-                np.array(child_ids) == child_id
-            ].tolist()
+            child_output_ids = np.array(output_ids)[np.array(child_ids) == child_id].tolist()
 
             # sample from partition node
             sample(
@@ -95,9 +89,7 @@ def sample(
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
-                sampling_ctx=SamplingContext(
-                    instances, [child_output_ids for _ in instances]
-                ),
+                sampling_ctx=SamplingContext(instances, [child_output_ids for _ in instances]),
             )
 
     return data

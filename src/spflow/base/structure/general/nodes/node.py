@@ -29,9 +29,7 @@ class Node(Module, ABC):
             List of scopes representing the output scopes.
     """
 
-    def __init__(
-        self, children: Optional[List[Module]] = None, **kwargs
-    ) -> None:
+    def __init__(self, children: Optional[List[Module]] = None, **kwargs) -> None:
         r"""Initializes ``Node`` object.
 
         Initializes node by correctly setting its children.

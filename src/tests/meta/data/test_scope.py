@@ -59,9 +59,7 @@ class TestScope(unittest.TestCase):
         )
 
         # all pairwise disjoint
-        self.assertTrue(
-            Scope.all_pairwise_disjoint([Scope([i]) for i in range(5)])
-        )
+        self.assertTrue(Scope.all_pairwise_disjoint([Scope([i]) for i in range(5)]))
         self.assertFalse(Scope.all_pairwise_disjoint([Scope([0]), Scope([0])]))
 
         # all equal

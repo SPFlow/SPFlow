@@ -21,9 +21,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        exponential_layer = ExponentialLayer(
-            scope=Scope([0]), l=[0.8, 0.3], n_nodes=2
-        )
+        exponential_layer = ExponentialLayer(scope=Scope([0]), l=[0.8, 0.3], n_nodes=2)
         s1 = SumNode(children=[exponential_layer], weights=[0.3, 0.7])
 
         exponential_nodes = [
@@ -49,9 +47,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        exponential_layer = ExponentialLayer(
-            scope=[Scope([0]), Scope([1])], l=[0.8, 0.3]
-        )
+        exponential_layer = ExponentialLayer(scope=[Scope([0]), Scope([1])], l=[0.8, 0.3])
         p1 = ProductNode(children=[exponential_layer])
 
         exponential_nodes = [
@@ -73,9 +69,7 @@ class TestNode(unittest.TestCase):
 
     def test_sampling_3(self):
 
-        exponential_layer = ExponentialLayer(
-            scope=Scope([0]), l=[0.8, 0.3], n_nodes=2
-        )
+        exponential_layer = ExponentialLayer(scope=Scope([0]), l=[0.8, 0.3], n_nodes=2)
 
         # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails
         self.assertRaises(ValueError, sample, exponential_layer)

@@ -159,9 +159,7 @@ class AutoLeaf:
         leaf_type = AutoLeaf.infer(signatures)
 
         if leaf_type is None:
-            raise ValueError(
-                f"Could not infer leaf type from the following signatures: {signatures}."
-            )
+            raise ValueError(f"Could not infer leaf type from the following signatures: {signatures}.")
 
         return leaf_type.from_signatures(signatures)
 
@@ -240,11 +238,7 @@ class AutoLeaf:
                         if m == ref:
                             before_ids.append(k)
             # take minimum value as lower bound
-            before = (
-                min(before_ids)
-                if before_ids
-                else max(self.__leaf_map.keys()) + 2
-            )
+            before = min(before_ids) if before_ids else max(self.__leaf_map.keys()) + 2
 
         if priority < before:
             # use value preference

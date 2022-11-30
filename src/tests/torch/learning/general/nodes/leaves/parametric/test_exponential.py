@@ -37,13 +37,9 @@ class TestNode(unittest.TestCase):
         data = np.random.exponential(scale=1.0 / 0.3, size=(10000, 1))
 
         # perform MLE
-        maximum_likelihood_estimation(
-            leaf, torch.tensor(data), bias_correction=True
-        )
+        maximum_likelihood_estimation(leaf, torch.tensor(data), bias_correction=True)
 
-        self.assertTrue(
-            torch.isclose(leaf.l, torch.tensor(0.3), atol=1e-2, rtol=1e-3)
-        )
+        self.assertTrue(torch.isclose(leaf.l, torch.tensor(0.3), atol=1e-2, rtol=1e-3))
 
     def test_mle_2(self):
 
@@ -58,13 +54,9 @@ class TestNode(unittest.TestCase):
         data = np.random.exponential(scale=1.0 / 2.7, size=(50000, 1))
 
         # perform MLE
-        maximum_likelihood_estimation(
-            leaf, torch.tensor(data), bias_correction=True
-        )
+        maximum_likelihood_estimation(leaf, torch.tensor(data), bias_correction=True)
 
-        self.assertTrue(
-            torch.isclose(leaf.l, torch.tensor(2.7), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(torch.isclose(leaf.l, torch.tensor(2.7), atol=1e-2, rtol=1e-2))
 
     def test_mle_bias_correction(self):
 
@@ -92,9 +84,7 @@ class TestNode(unittest.TestCase):
         data = np.random.exponential(scale=1.0, size=(1, 1))
 
         # perform MLE (bias correction leads to zero result)
-        maximum_likelihood_estimation(
-            leaf, torch.tensor(data), bias_correction=True
-        )
+        maximum_likelihood_estimation(leaf, torch.tensor(data), bias_correction=True)
 
         self.assertFalse(torch.isnan(leaf.l))
         self.assertTrue(leaf.l > 0.0)
@@ -161,9 +151,7 @@ class TestNode(unittest.TestCase):
 
         leaf = Exponential(Scope([0]))
         # should not raise an issue
-        maximum_likelihood_estimation(
-            leaf, torch.tensor([[0.5], [1]]), nan_strategy=lambda x: x
-        )
+        maximum_likelihood_estimation(leaf, torch.tensor([[0.5], [1]]), nan_strategy=lambda x: x)
 
     def test_mle_nan_strategy_invalid(self):
 
@@ -199,9 +187,7 @@ class TestNode(unittest.TestCase):
 
         maximum_likelihood_estimation(leaf, data, weights)
 
-        self.assertTrue(
-            torch.isclose(leaf.l, torch.tensor(1.4), atol=1e-3, rtol=1e-2)
-        )
+        self.assertTrue(torch.isclose(leaf.l, torch.tensor(1.4), atol=1e-3, rtol=1e-2))
 
     def test_em_step(self):
 
@@ -222,9 +208,7 @@ class TestNode(unittest.TestCase):
         # perform an em step
         em(leaf, data, dispatch_ctx=dispatch_ctx)
 
-        self.assertTrue(
-            torch.isclose(leaf.l, torch.tensor(0.3), atol=1e-2, rtol=1e-3)
-        )
+        self.assertTrue(torch.isclose(leaf.l, torch.tensor(0.3), atol=1e-2, rtol=1e-3))
 
     def test_em_product_of_exponentials(self):
 
@@ -248,12 +232,8 @@ class TestNode(unittest.TestCase):
 
         expectation_maximization(prod_node, data, max_steps=10)
 
-        self.assertTrue(
-            torch.isclose(l1.l, torch.tensor(0.8), atol=1e-3, rtol=1e-2)
-        )
-        self.assertTrue(
-            torch.isclose(l2.l, torch.tensor(1.4), atol=1e-3, rtol=1e-2)
-        )
+        self.assertTrue(torch.isclose(l1.l, torch.tensor(0.8), atol=1e-3, rtol=1e-2))
+        self.assertTrue(torch.isclose(l2.l, torch.tensor(1.4), atol=1e-3, rtol=1e-2))
 
     def test_em_sum_of_exponentials(self):
 
@@ -277,12 +257,8 @@ class TestNode(unittest.TestCase):
 
         expectation_maximization(sum_node, data, max_steps=10)
 
-        self.assertTrue(
-            torch.isclose(l1.l, torch.tensor(0.8), atol=1e-2, rtol=1e-2)
-        )
-        self.assertTrue(
-            torch.isclose(l2.l, torch.tensor(1.4), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(torch.isclose(l1.l, torch.tensor(0.8), atol=1e-2, rtol=1e-2))
+        self.assertTrue(torch.isclose(l2.l, torch.tensor(1.4), atol=1e-2, rtol=1e-2))
 
 
 if __name__ == "__main__":

@@ -93,17 +93,13 @@ def maximum_likelihood_estimation(
 
     if check_support:
         if torch.any(~leaf.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'MultivariateGaussian'."
-            )
+            raise ValueError("Encountered values outside of the support for 'MultivariateGaussian'.")
 
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
 
     if torch.all(nan_mask):
-        raise ValueError(
-            "Cannot compute maximum-likelihood estimation on nan-only data."
-        )
+        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
 
     if nan_strategy is None and torch.any(nan_mask):
         raise ValueError(
@@ -114,9 +110,7 @@ def maximum_likelihood_estimation(
         if nan_strategy == "ignore":
             pass  # handle it during computation
         else:
-            raise ValueError(
-                "Unknown strategy for handling missing (NaN) values for 'MultivariateGaussian'."
-            )
+            raise ValueError("Unknown strategy for handling missing (NaN) values for 'MultivariateGaussian'.")
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
         # TODO: how to handle weights?
@@ -131,10 +125,7 @@ def maximum_likelihood_estimation(
     if nan_strategy == "ignore":
         n_total = (weights * ~nan_mask).sum(dim=0)
         # compute mean of available data
-        mean_est = (
-            torch.sum(weights * torch.nan_to_num(scope_data, nan=0.0), dim=0)
-            / n_total
-        )
+        mean_est = torch.sum(weights * torch.nan_to_num(scope_data, nan=0.0), dim=0) / n_total
         # compute covariance of full samples only!
         full_sample_mask = (~nan_mask).sum(dim=1) == scope_data.shape[1]
         cov_est = torch.cov(

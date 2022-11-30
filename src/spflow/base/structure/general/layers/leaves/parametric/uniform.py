@@ -67,9 +67,7 @@ class UniformLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(
-                    f"Number of nodes for 'UniformLayer' must be greater or equal to 1, but was {n_nodes}"
-                )
+                raise ValueError(f"Number of nodes for 'UniformLayer' must be greater or equal to 1, but was {n_nodes}")
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
@@ -125,9 +123,7 @@ class UniformLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "UniformLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "UniformLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -137,9 +133,7 @@ class UniformLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'UniformLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'UniformLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         start = []
         end = []
@@ -214,9 +208,7 @@ class UniformLayer(Module):
             )
 
         if isinstance(support_outside, bool):
-            support_outside = np.array(
-                [support_outside for _ in range(self.n_out)]
-            )
+            support_outside = np.array([support_outside for _ in range(self.n_out)])
         if isinstance(support_outside, list):
             support_outside = np.array(support_outside)
         if support_outside.ndim != 1:
@@ -228,9 +220,7 @@ class UniformLayer(Module):
                 f"Length of numpy array of 'support_outside' values for 'UniformLayer' must match number of output nodes {self.n_out}, but is {support_outside.shape[0]}"
             )
 
-        for node_start, node_end, node_support_outside, node in zip(
-            start, end, support_outside, self.nodes
-        ):
+        for node_start, node_end, node_support_outside, node in zip(start, end, support_outside, self.nodes):
             node.set_params(node_start, node_end, node_support_outside)
 
     def get_params(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -257,9 +247,7 @@ class UniformLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Uniform distributions, which are:
@@ -291,9 +279,7 @@ class UniformLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -343,7 +329,5 @@ def marginalize(
         new_node = Uniform(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = UniformLayer(
-            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
-        )
+        new_layer = UniformLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer

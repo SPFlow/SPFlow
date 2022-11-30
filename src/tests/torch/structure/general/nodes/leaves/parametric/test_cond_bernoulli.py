@@ -42,22 +42,12 @@ class TestBernoulli(unittest.TestCase):
 
         # p = 0
         bernoulli.set_cond_f(lambda data: {"p": 0.0})
-        self.assertTrue(
-            bernoulli.retrieve_params(np.array([[1.0]]), DispatchContext())
-            == 0.0
-        )
+        self.assertTrue(bernoulli.retrieve_params(np.array([[1.0]]), DispatchContext()) == 0.0)
         # p = 1
         bernoulli.set_cond_f(lambda data: {"p": 1.0})
-        self.assertTrue(
-            bernoulli.retrieve_params(np.array([[1.0]]), DispatchContext())
-            == 1.0
-        )
+        self.assertTrue(bernoulli.retrieve_params(np.array([[1.0]]), DispatchContext()) == 1.0)
         # p < 0 and p > 1
-        bernoulli.set_cond_f(
-            lambda data: {
-                "p": torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))
-            }
-        )
+        bernoulli.set_cond_f(lambda data: {"p": torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))})
         self.assertRaises(
             Exception,
             bernoulli.retrieve_params,
@@ -65,11 +55,7 @@ class TestBernoulli(unittest.TestCase):
             DispatchContext(),
         )
 
-        bernoulli.set_cond_f(
-            lambda data: {
-                "p": torch.nextafter(torch.tensor(0.0), -torch.tensor(1.0))
-            }
-        )
+        bernoulli.set_cond_f(lambda data: {"p": torch.nextafter(torch.tensor(0.0), -torch.tensor(1.0))})
         self.assertRaises(
             Exception,
             bernoulli.retrieve_params,
@@ -97,39 +83,19 @@ class TestBernoulli(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type
-        self.assertTrue(
-            CondBernoulli.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertTrue(CondBernoulli.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # Bernoulli feature type class
-        self.assertTrue(
-            CondBernoulli.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])]
-            )
-        )
+        self.assertTrue(CondBernoulli.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])]))
 
         # Bernoulli feature type instance
-        self.assertTrue(
-            CondBernoulli.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli(0.5)])]
-            )
-        )
+        self.assertTrue(CondBernoulli.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli(0.5)])]))
 
         # invalid feature type
-        self.assertFalse(
-            CondBernoulli.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondBernoulli.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # non-conditional scope
-        self.assertFalse(
-            CondBernoulli.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondBernoulli.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # multivariate signature
         self.assertFalse(
@@ -145,15 +111,9 @@ class TestBernoulli(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        CondBernoulli.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-        )
-        CondBernoulli.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])]
-        )
-        CondBernoulli.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli(p=0.75)])]
-        )
+        CondBernoulli.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])])
+        CondBernoulli.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])])
+        CondBernoulli.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli(p=0.75)])])
 
         # ----- invalid arguments -----
 
@@ -191,15 +151,11 @@ class TestBernoulli(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondBernoulli,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        bernoulli = AutoLeaf(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])]
-        )
+        bernoulli = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Bernoulli])])
         self.assertTrue(isinstance(bernoulli, CondBernoulli))
 
     def test_structural_marginalization(self):
@@ -218,17 +174,9 @@ class TestBernoulli(unittest.TestCase):
         node_bernoulli = BaseCondBernoulli(Scope([0], [1]), p)
 
         # check conversion from torch to python
-        self.assertTrue(
-            np.all(
-                torch_bernoulli.scopes_out == toBase(torch_bernoulli).scopes_out
-            )
-        )
+        self.assertTrue(np.all(torch_bernoulli.scopes_out == toBase(torch_bernoulli).scopes_out))
         # check conversion from python to torch
-        self.assertTrue(
-            np.all(
-                node_bernoulli.scopes_out == toTorch(node_bernoulli).scopes_out
-            )
-        )
+        self.assertTrue(np.all(node_bernoulli.scopes_out == toTorch(node_bernoulli).scopes_out))
 
 
 if __name__ == "__main__":

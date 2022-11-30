@@ -96,14 +96,8 @@ def sample(
         # group by child ids
         for child_id in torch.unique(torch.tensor(child_ids)):
 
-            child_instance_ids = torch.tensor(instances)[
-                torch.tensor(child_ids) == child_id
-            ].tolist()
-            child_output_ids = (
-                torch.tensor(output_ids)[torch.tensor(child_ids) == child_id]
-                .unsqueeze(1)
-                .tolist()
-            )
+            child_instance_ids = torch.tensor(instances)[torch.tensor(child_ids) == child_id].tolist()
+            child_output_ids = torch.tensor(output_ids)[torch.tensor(child_ids) == child_id].unsqueeze(1).tolist()
 
             # sample from partition node
             sample(
@@ -111,9 +105,7 @@ def sample(
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
-                sampling_ctx=SamplingContext(
-                    child_instance_ids, child_output_ids
-                ),
+                sampling_ctx=SamplingContext(child_instance_ids, child_output_ids),
             )
 
     return data

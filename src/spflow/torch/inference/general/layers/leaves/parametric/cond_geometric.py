@@ -74,9 +74,7 @@ def log_likelihood(
     for query_signature in np.unique(query_rvs, axis=0):
 
         # compute all nodes with this scope
-        node_ids = np.where((query_rvs == query_signature).all(axis=1))[
-            0
-        ].tolist()
+        node_ids = np.where((query_rvs == query_signature).all(axis=1))[0].tolist()
         node_ids_tensor = torch.tensor(node_ids)
 
         # get data for scope (since all "nodes" are univariate, order does not matter)
@@ -104,10 +102,8 @@ def log_likelihood(
 
         # compute probabilities for values inside distribution support
         # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch
-        log_prob[
-            torch.meshgrid(non_marg_ids, node_ids_tensor, indexing="ij")
-        ] = layer.dist(p=p, node_ids=node_ids).log_prob(
-            scope_data[non_marg_ids, :].type(torch.get_default_dtype()) - 1
-        )
+        log_prob[torch.meshgrid(non_marg_ids, node_ids_tensor, indexing="ij")] = layer.dist(
+            p=p, node_ids=node_ids
+        ).log_prob(scope_data[non_marg_ids, :].type(torch.get_default_dtype()) - 1)
 
     return log_prob

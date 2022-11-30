@@ -31,9 +31,7 @@ class DispatchContext:
         self.funcs = {}
         self.cache = {}
 
-    def cache_value(
-        self, f_name: str, key: MetaModule, value: Any, overwrite=True
-    ) -> None:
+    def cache_value(self, f_name: str, key: MetaModule, value: Any, overwrite=True) -> None:
         """Caches an object for a given function name and key.
 
         Args:
@@ -69,9 +67,7 @@ class DispatchContext:
         """
         return f_name in self.cache and key in self.cache[f_name]
 
-    def get_cached_value(
-        self, f_name: str, key: MetaModule
-    ) -> Union[Any, None]:
+    def get_cached_value(self, f_name: str, key: MetaModule) -> Union[Any, None]:
         """Tries to retrieve a cached object for a given function name and key.
 
         Args:
@@ -116,9 +112,7 @@ def default_dispatch_context() -> DispatchContext:
     return DispatchContext()
 
 
-def init_default_dispatch_context(
-    dispatch_ctx: Union[DispatchContext, None]
-) -> DispatchContext:
+def init_default_dispatch_context(dispatch_ctx: Union[DispatchContext, None]) -> DispatchContext:
     """Initializes dispatch context, if it is not already initialized.
 
     Args
@@ -128,6 +122,4 @@ def init_default_dispatch_context(
     Returns:
         Original dispatch context if not None or a new empty dispatch context.
     """
-    return (
-        dispatch_ctx if dispatch_ctx is not None else default_dispatch_context()
-    )
+    return dispatch_ctx if dispatch_ctx is not None else default_dispatch_context()

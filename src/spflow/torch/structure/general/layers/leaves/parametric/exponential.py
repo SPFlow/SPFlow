@@ -81,9 +81,7 @@ class ExponentialLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'ExponentialLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'ExponentialLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -91,9 +89,7 @@ class ExponentialLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) != 0:
-                raise ValueError(
-                    f"Evidence scope for 'ExponentialLayer' should be empty, but was {s.evidence}."
-                )
+                raise ValueError(f"Evidence scope for 'ExponentialLayer' should be empty, but was {s.evidence}.")
 
         super().__init__(children=[], **kwargs)
 
@@ -102,9 +98,7 @@ class ExponentialLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         # parse weights
         self.set_params(l)
@@ -129,9 +123,7 @@ class ExponentialLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "ExponentialLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "ExponentialLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -141,9 +133,7 @@ class ExponentialLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'ExponentialLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'ExponentialLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         l = []
         scopes = []
@@ -196,9 +186,7 @@ class ExponentialLayer(Module):
 
         return D.Exponential(rate=self.l[node_ids])
 
-    def set_params(
-        self, l: Union[int, float, List[float], np.ndarray, torch.Tensor]
-    ) -> None:
+    def set_params(self, l: Union[int, float, List[float], np.ndarray, torch.Tensor]) -> None:
         r"""Sets the parameters for the represented distributions.
 
         TODO: projection function
@@ -222,9 +210,7 @@ class ExponentialLayer(Module):
             )
 
         if torch.any(l <= 0) or not torch.any(torch.isfinite(l)):
-            raise ValueError(
-                f"Values for 'l' of 'ExponentialLayer' must to greater of equal to 0, but was: {l}"
-            )
+            raise ValueError(f"Values for 'l' of 'ExponentialLayer' must to greater of equal to 0, but was: {l}")
 
         self.l_aux.data = proj_bounded_to_real(l, lb=0.0)
 
@@ -277,9 +263,7 @@ class ExponentialLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(node_ids).support.check(scope_data)  # type: ignore
@@ -343,19 +327,13 @@ def marginalize(
         return None
     elif len(marginalized_node_ids) == 1 and prune:
         node_id = marginalized_node_ids.pop()
-        return Exponential(
-            scope=marginalized_scopes[0], l=layer.l[node_id].item()
-        )
+        return Exponential(scope=marginalized_scopes[0], l=layer.l[node_id].item())
     else:
-        return ExponentialLayer(
-            scope=marginalized_scopes, l=layer.l[marginalized_node_ids].detach()
-        )
+        return ExponentialLayer(scope=marginalized_scopes, l=layer.l[marginalized_node_ids].detach())
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    layer: BaseExponentialLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> ExponentialLayer:
+def toTorch(layer: BaseExponentialLayer, dispatch_ctx: Optional[DispatchContext] = None) -> ExponentialLayer:
     """Conversion for ``ExponentialLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -369,9 +347,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    layer: ExponentialLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseExponentialLayer:
+def toBase(layer: ExponentialLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BaseExponentialLayer:
     """Conversion for ``ExponentialLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -381,6 +357,4 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseExponentialLayer(
-        scope=layer.scopes_out, l=layer.l.detach().numpy()
-    )
+    return BaseExponentialLayer(scope=layer.scopes_out, l=layer.l.detach().numpy())

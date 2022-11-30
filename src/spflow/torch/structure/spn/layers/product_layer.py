@@ -44,16 +44,12 @@ class ProductLayer(Module):
             ValueError: Invalid arguments.
         """
         if n_nodes < 1:
-            raise ValueError(
-                "Number of nodes for 'ProductLayer' must be greater of equal to 1."
-            )
+            raise ValueError("Number of nodes for 'ProductLayer' must be greater of equal to 1.")
 
         self._n_out = n_nodes
 
         if not children:
-            raise ValueError(
-                "'ProductLayer' requires at least one child to be specified."
-            )
+            raise ValueError("'ProductLayer' requires at least one child to be specified.")
 
         super().__init__(children=children, **kwargs)
 
@@ -63,9 +59,7 @@ class ProductLayer(Module):
         for child in children:
             for s in child.scopes_out:
                 if not scope.isdisjoint(s):
-                    raise ValueError(
-                        f"'ProductNode' requires child scopes to be pair-wise disjoint."
-                    )
+                    raise ValueError(f"'ProductNode' requires child scopes to be pair-wise disjoint.")
 
                 scope = scope.join(s)
 
@@ -130,9 +124,7 @@ def marginalize(
 
         # marginalize child modules
         for child in layer.children():
-            marg_child = marginalize(
-                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
-            )
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
@@ -163,10 +155,7 @@ def toBase(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseProductLayer(
         n_nodes=product_layer.n_out,
-        children=[
-            toBase(child, dispatch_ctx=dispatch_ctx)
-            for child in product_layer.children()
-        ],
+        children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children()],
     )
 
 
@@ -186,8 +175,5 @@ def toTorch(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ProductLayer(
         n_nodes=product_layer.n_out,
-        children=[
-            toTorch(child, dispatch_ctx=dispatch_ctx)
-            for child in product_layer.children
-        ],
+        children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children],
     )

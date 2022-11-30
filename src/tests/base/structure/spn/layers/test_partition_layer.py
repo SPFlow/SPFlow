@@ -32,12 +32,7 @@ class TestLayer(unittest.TestCase):
             np.prod([len(partition) for partition in input_partitions]),
         )
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([0, 1, 2, 3]) for _ in range(len(l.nodes))]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([0, 1, 2, 3]) for _ in range(len(l.nodes))]))
         # make sure order of nodes is correct (important)
         for indices, node in zip(
             itertools.product(

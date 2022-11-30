@@ -36,9 +36,7 @@ class CondNegativeBinomial(LeafNode):
             a floating point value representing the success probability in :math:`(0,1]`.
     """
 
-    def __init__(
-        self, scope: Scope, n: float, cond_f: Optional[Callable] = None
-    ) -> None:
+    def __init__(self, scope: Scope, n: float, cond_f: Optional[Callable] = None) -> None:
         r"""Initializes ``CondBernoulli`` leaf node.
 
         Args:
@@ -52,13 +50,9 @@ class CondNegativeBinomial(LeafNode):
                 a floating point value representing the success probability in :math:`(0,1]`.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'CondNegativeBinomial' should be 1, but was: {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'CondNegativeBinomial' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) == 0:
-            raise ValueError(
-                f"Evidence scope for 'CondNegativeBinomial' should be empty."
-            )
+            raise ValueError(f"Evidence scope for 'CondNegativeBinomial' should be empty.")
 
         super().__init__(scope=scope)
 
@@ -86,11 +80,7 @@ class CondNegativeBinomial(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) == 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) == 0:
             return False
 
         # leaf is a discrete Negative Binomial distribution
@@ -101,9 +91,7 @@ class CondNegativeBinomial(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondNegativeBinomial":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondNegativeBinomial":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -162,9 +150,7 @@ class CondNegativeBinomial(LeafNode):
                 Integer representing the number of successes (greater or equal to 0).
         """
         if n < 0 or not np.isfinite(n):
-            raise ValueError(
-                f"Value of 'n' for 'CondNegativeBinomial' must to greater of equal to 0, but was: {n}"
-            )
+            raise ValueError(f"Value of 'n' for 'CondNegativeBinomial' must to greater of equal to 0, but was: {n}")
 
         if not (np.remainder(n, 1.0) == 0.0):
             raise ValueError(
@@ -173,9 +159,7 @@ class CondNegativeBinomial(LeafNode):
 
         self.n = n
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> Tuple[Union[np.ndarray, float]]:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[Union[np.ndarray, float]]:
         r"""Retrieves the conditional parameter of the leaf node.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -213,9 +197,7 @@ class CondNegativeBinomial(LeafNode):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError(
-                "'CondNegativeBinomial' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
-            )
+            raise ValueError("'CondNegativeBinomial' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
 
         # if 'p' was not already specified, retrieve it
         if p is None:
@@ -237,9 +219,7 @@ class CondNegativeBinomial(LeafNode):
         """
         return (self.n,)
 
-    def check_support(
-        self, data: np.ndarray, is_scope_data: bool = False
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, is_scope_data: bool = False) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Negative Binomial distribution, which is:
@@ -282,9 +262,7 @@ class CondNegativeBinomial(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= (
-            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
-        )
+        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
 
         # check if values are in valid range
         valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] >= 0

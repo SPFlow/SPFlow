@@ -16,9 +16,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
         # make sure parameter properties works correctly
         l_values = l.l
         for node, node_l in zip(l.nodes, l_values):
@@ -39,9 +37,7 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.l == node_l))
 
         # wrong number of values
-        self.assertRaises(
-            ValueError, ExponentialLayer, Scope([0]), l_values[:-1], n_nodes=3
-        )
+        self.assertRaises(ValueError, ExponentialLayer, Scope([0]), l_values[:-1], n_nodes=3)
         # wrong number of dimensions (nested list)
         self.assertRaises(
             ValueError,
@@ -80,14 +76,10 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, ExponentialLayer, Scope([0]), 1.5, n_nodes=0
-        )
+        self.assertRaises(ValueError, ExponentialLayer, Scope([0]), 1.5, n_nodes=0)
 
         # ----- invalid scope -----
-        self.assertRaises(
-            ValueError, ExponentialLayer, Scope([]), 1.5, n_nodes=3
-        )
+        self.assertRaises(ValueError, ExponentialLayer, Scope([]), 1.5, n_nodes=3)
         self.assertRaises(ValueError, ExponentialLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
@@ -139,11 +131,7 @@ class TestLayer(unittest.TestCase):
         )
 
         # conditional scope
-        self.assertFalse(
-            ExponentialLayer.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(ExponentialLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(

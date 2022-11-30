@@ -82,9 +82,7 @@ class CondGammaLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondGammaLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondGammaLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -123,9 +121,7 @@ class CondGammaLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondGammaLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondGammaLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -135,9 +131,7 @@ class CondGammaLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondGammaLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondGammaLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         scopes = []
 
@@ -146,11 +140,7 @@ class CondGammaLayer(Module):
             domain = feature_ctx.get_domains()[0]
 
             # read or initialize parameters
-            if (
-                domain == MetaType.Continuous
-                or domain == FeatureTypes.Gamma
-                or isinstance(domain, FeatureTypes.Gamma)
-            ):
+            if domain == MetaType.Continuous or domain == FeatureTypes.Gamma or isinstance(domain, FeatureTypes.Gamma):
                 pass
             else:
                 raise ValueError(
@@ -161,9 +151,7 @@ class CondGammaLayer(Module):
 
         return CondGammaLayer(scopes)
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -185,9 +173,7 @@ class CondGammaLayer(Module):
 
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[np.ndarray, np.ndarray]:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameters (``alpha``,``beta``) are passed as additional arguments in the dispatch context.
@@ -303,9 +289,7 @@ class CondGammaLayer(Module):
 
         return [self.nodes[i].dist(alpha[i], beta[i]) for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Gamma distributions, which are:
@@ -332,9 +316,7 @@ class CondGammaLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore

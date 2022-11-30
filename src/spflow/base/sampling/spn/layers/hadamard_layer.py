@@ -56,15 +56,9 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # sample accoding to sampling_context
-    for node_ids, indices in zip(
-        *sampling_ctx.unique_outputs_ids(return_indices=True)
-    ):
-        if len(node_ids) != 1 or (
-            len(node_ids) == 0 and hadamard_layer.n_out != 1
-        ):
-            raise ValueError(
-                "Too many output ids specified for outputs over same scope."
-            )
+    for node_ids, indices in zip(*sampling_ctx.unique_outputs_ids(return_indices=True)):
+        if len(node_ids) != 1 or (len(node_ids) == 0 and hadamard_layer.n_out != 1):
+            raise ValueError("Too many output ids specified for outputs over same scope.")
 
         node_id = node_ids[0]
         node_instance_ids = np.array(sampling_ctx.instance_ids)[indices]
@@ -74,9 +68,7 @@ def sample(
             data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
-            sampling_ctx=SamplingContext(
-                node_instance_ids, [[] for _ in node_instance_ids]
-            ),
+            sampling_ctx=SamplingContext(node_instance_ids, [[] for _ in node_instance_ids]),
         )
 
     return data

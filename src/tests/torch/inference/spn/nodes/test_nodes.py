@@ -69,9 +69,7 @@ class TestNode(unittest.TestCase):
         l_result = likelihood(dummy_spn, dummy_data)
         ll_result = log_likelihood(dummy_spn, dummy_data)
         self.assertTrue(torch.isclose(l_result[0][0], torch.tensor(0.023358)))
-        self.assertTrue(
-            torch.isclose(ll_result[0][0], torch.tensor(-3.7568156))
-        )
+        self.assertTrue(torch.isclose(ll_result[0][0], torch.tensor(-3.7568156)))
 
     def test_likelihood_marginalization(self):
         spn = create_example_spn()
@@ -80,20 +78,14 @@ class TestNode(unittest.TestCase):
         l_result = likelihood(spn, dummy_data)
         ll_result = log_likelihood(spn, dummy_data)
         self.assertTrue(torch.isclose(l_result[0][0], torch.tensor(0.09653235)))
-        self.assertTrue(
-            torch.isclose(ll_result[0][0], torch.tensor(-2.33787707))
-        )
+        self.assertTrue(torch.isclose(ll_result[0][0], torch.tensor(-2.33787707)))
 
     def test_dummy_node_likelihood_not_implemented(self):
         dummy_node = DummyNode()
         dummy_data = torch.tensor([[1.0]])
 
-        self.assertRaises(
-            NotImplementedError, log_likelihood, dummy_node, dummy_data
-        )
-        self.assertRaises(
-            NotImplementedError, likelihood, dummy_node, dummy_data
-        )
+        self.assertRaises(NotImplementedError, log_likelihood, dummy_node, dummy_data)
+        self.assertRaises(NotImplementedError, likelihood, dummy_node, dummy_data)
 
     def test_sum_node_gradient_optimization(self):
 
@@ -148,33 +140,21 @@ class TestNode(unittest.TestCase):
                 optimizer.step()
 
                 # verify that sum node weights are still valid after update
-                self.assertTrue(
-                    torch.isclose(sum_node.weights.sum(), torch.tensor(1.0))
-                )
+                self.assertTrue(torch.isclose(sum_node.weights.sum(), torch.tensor(1.0)))
             else:
                 # update parameters
                 optimizer.step()
 
-        self.assertTrue(
-            torch.allclose(
-                sum_node.weights, torch.tensor([0.7, 0.3]), atol=1e-3, rtol=1e-3
-            )
-        )
+        self.assertTrue(torch.allclose(sum_node.weights, torch.tensor([0.7, 0.3]), atol=1e-3, rtol=1e-3))
 
     def test_projection(self):
 
-        self.assertTrue(
-            torch.allclose(
-                proj_real_to_convex(torch.randn(5)).sum(), torch.tensor(1.0)
-            )
-        )
+        self.assertTrue(torch.allclose(proj_real_to_convex(torch.randn(5)).sum(), torch.tensor(1.0)))
 
         weights = torch.rand(5)
         weights /= weights.sum()
 
-        self.assertTrue(
-            torch.allclose(proj_convex_to_real(weights), torch.log(weights))
-        )
+        self.assertTrue(torch.allclose(proj_convex_to_real(weights), torch.log(weights)))
 
 
 if __name__ == "__main__":

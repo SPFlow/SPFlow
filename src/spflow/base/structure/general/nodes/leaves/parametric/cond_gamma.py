@@ -48,13 +48,9 @@ class CondGamma(LeafNode):
                 floating point values, greater than 0, representing the shape and rate parameters, respectively.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'CondGamma' should be 1, but was {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'CondGamma' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence) == 0:
-            raise ValueError(
-                f"Evidence scope for 'CondGamma' should not be empty."
-            )
+            raise ValueError(f"Evidence scope for 'CondGamma' should not be empty.")
 
         super().__init__(scope=scope)
 
@@ -79,11 +75,7 @@ class CondGamma(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) == 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) == 0:
             return False
 
         # leaf is a continuous Gamma distribution
@@ -107,20 +99,14 @@ class CondGamma(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondGamma' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondGamma' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
         domain = feature_ctx.get_domains()[0]
 
         # read or initialize parameters
-        if (
-            domain == MetaType.Continuous
-            or domain == FeatureTypes.Gamma
-            or isinstance(domain, FeatureTypes.Gamma)
-        ):
+        if domain == MetaType.Continuous or domain == FeatureTypes.Gamma or isinstance(domain, FeatureTypes.Gamma):
             pass
         else:
             raise ValueError(
@@ -194,13 +180,9 @@ class CondGamma(LeafNode):
 
         # check if values for 'alpha', 'beta' are valid
         if alpha <= 0.0 or not np.isfinite(alpha):
-            raise ValueError(
-                f"Value of 'alpha' for 'CondGamma' must be greater than 0, but was: {alpha}"
-            )
+            raise ValueError(f"Value of 'alpha' for 'CondGamma' must be greater than 0, but was: {alpha}")
         if beta <= 0.0 or not np.isfinite(beta):
-            raise ValueError(
-                f"Value of 'beta' for 'CondGamma' must be greater than 0, but was: {beta}"
-            )
+            raise ValueError(f"Value of 'beta' for 'CondGamma' must be greater than 0, but was: {beta}")
 
         return alpha, beta
 
@@ -218,9 +200,7 @@ class CondGamma(LeafNode):
         """
         return gamma(a=alpha, scale=1.0 / beta)
 
-    def check_support(
-        self, data: np.ndarray, is_scope_data: bool = False
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, is_scope_data: bool = False) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Gamma distribution, which is:

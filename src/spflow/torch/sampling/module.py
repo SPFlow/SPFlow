@@ -87,9 +87,7 @@ def sample(
         Two-dimensional PyTorch tensor containing the sampled values.
         Each row corresponds to a sample.
     """
-    combined_module_scope = reduce(
-        lambda s1, s2: s1.join(s2), module.scopes_out
-    )
+    combined_module_scope = reduce(lambda s1, s2: s1.join(s2), module.scopes_out)
 
     data = torch.full((n, max(combined_module_scope.query) + 1), float("nan"))
 

@@ -68,24 +68,16 @@ class TestNode(unittest.TestCase):
 
         data = np.vstack(
             [
-                np.random.multivariate_normal(
-                    np.array([-10.0, -5]), np.eye(2), (300,)
-                ),
-                np.random.multivariate_normal(
-                    np.array([0.0, 0.0]), np.eye(2), (300,)
-                ),
-                np.random.multivariate_normal(
-                    np.array([10.0, 5.0]), np.eye(2), (300,)
-                ),
+                np.random.multivariate_normal(np.array([-10.0, -5]), np.eye(2), (300,)),
+                np.random.multivariate_normal(np.array([0.0, 0.0]), np.eye(2), (300,)),
+                np.random.multivariate_normal(np.array([10.0, 5.0]), np.eye(2), (300,)),
             ]
         )
 
         starting_centroids = np.vstack([data[0], data[300], data[600]])
 
         # perform sklearn's k-means clustering
-        k_means = KMeans(
-            n_clusters=3, init=starting_centroids, n_init=1, random_state=0
-        )
+        k_means = KMeans(n_clusters=3, init=starting_centroids, n_init=1, random_state=0)
         np_labels = k_means.fit_predict(data)
         np_centroids = k_means.cluster_centers_
 

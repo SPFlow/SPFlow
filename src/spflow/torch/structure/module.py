@@ -49,9 +49,7 @@ class Module(MetaModule, nn.Module, ABC):
         for i, child in enumerate(children):
             self.add_module(f"child_{i + 1}", child)
 
-    def input_to_output_ids(
-        self, input_ids: Union[List[int], torch.Tensor]
-    ) -> Tuple[List[int], List[int]]:
+    def input_to_output_ids(self, input_ids: Union[List[int], torch.Tensor]) -> Tuple[List[int], List[int]]:
         """Translates input indices into corresponding child module indices and child module output indices.
 
         For a given sequence of input indices (taking the inputs of all child modules into account), computes
@@ -77,20 +75,13 @@ class Module(MetaModule, nn.Module, ABC):
         input_ids = input_ids.ravel()
 
         # infer number of inputs from children (and their numbers of outputs)
-        child_num_outputs = torch.tensor(
-            [child.n_out for child in self.children()]
-        )
+        child_num_outputs = torch.tensor([child.n_out for child in self.children()])
         child_cum_outputs = torch.cumsum(child_num_outputs, dim=-1)
 
         # get child module for corresponding input
-        child_ids = torch.sum(
-            child_cum_outputs <= input_ids.reshape(-1, 1), dim=1
-        )
+        child_ids = torch.sum(child_cum_outputs <= input_ids.reshape(-1, 1), dim=1)
         # get output id of child module for corresponding input
-        output_ids = input_ids - (
-            child_cum_outputs[child_ids.tolist()]
-            - child_num_outputs[child_ids.tolist()]
-        )
+        output_ids = input_ids - (child_cum_outputs[child_ids.tolist()] - child_num_outputs[child_ids.tolist()])
 
         # restore original shape
         child_ids = child_ids.reshape(shape)

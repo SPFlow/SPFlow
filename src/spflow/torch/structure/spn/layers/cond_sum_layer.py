@@ -71,14 +71,10 @@ class CondSumLayer(Module):
             ValueError: Invalid arguments.
         """
         if n_nodes < 1:
-            raise ValueError(
-                "Number of nodes for 'CondSumLayer' must be greater of equal to 1."
-            )
+            raise ValueError("Number of nodes for 'CondSumLayer' must be greater of equal to 1.")
 
         if not children:
-            raise ValueError(
-                "'CondSumLayer' requires at least one child to be specified."
-            )
+            raise ValueError("'CondSumLayer' requires at least one child to be specified.")
 
         super().__init__(children=children, **kwargs)
 
@@ -94,9 +90,7 @@ class CondSumLayer(Module):
                     scope = s
                 else:
                     if not scope.equal_query(s):
-                        raise ValueError(
-                            f"'CondSumLayer' requires child scopes to have the same query variables."
-                        )
+                        raise ValueError(f"'CondSumLayer' requires child scopes to have the same query variables.")
 
                 scope = scope.join(s)
 
@@ -114,9 +108,7 @@ class CondSumLayer(Module):
         """Returns the output scopes this layer represents."""
         return [self.scope for _ in range(self.n_out)]
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -140,9 +132,7 @@ class CondSumLayer(Module):
 
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: torch.Tensor, dispatch_ctx: DispatchContext
-    ) -> torch.Tensor:
+    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> torch.Tensor:
         r"""Retrieves the conditional parameters of the leaf node.
 
         First, checks if conditional parameter (``weights``) is passed as an additional argument in the dispatch context.
@@ -201,9 +191,7 @@ class CondSumLayer(Module):
         if not torch.all(weights > 0):
             raise ValueError("Weights for 'SumLayer' must be all positive.")
         if not torch.allclose(weights.sum(dim=-1), torch.tensor(1.0)):
-            raise ValueError(
-                "Weights for 'CondSumLayer' must sum up to one in last dimension."
-            )
+            raise ValueError("Weights for 'CondSumLayer' must sum up to one in last dimension.")
         if not (weights.shape[-1] == self.n_in):
             raise ValueError(
                 "Number of weights for 'CondSumLayer' in last dimension does not match total number of child outputs."
@@ -217,9 +205,7 @@ class CondSumLayer(Module):
             # same weights for all sum nodes
             if weights.shape[0] == 1:
                 # broadcast weights to all nodes
-                weights = torch.concat(
-                    [weights for _ in range(self.n_out)], dim=0
-                )
+                weights = torch.concat([weights for _ in range(self.n_out)], dim=0)
             # different weights for all sum nodes
             elif weights.shape[0] == self.n_out:
                 # already in correct output shape
@@ -279,9 +265,7 @@ def marginalize(
 
         # marginalize child modules
         for child in layer.children():
-            marg_child = marginalize(
-                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
-            )
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
@@ -293,9 +277,7 @@ def marginalize(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    sum_layer: CondSumLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseCondSumLayer:
+def toBase(sum_layer: CondSumLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BaseCondSumLayer:
     """Conversion for ``CondSumLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -307,10 +289,7 @@ def toBase(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondSumLayer(
         n_nodes=sum_layer.n_out,
-        children=[
-            toBase(child, dispatch_ctx=dispatch_ctx)
-            for child in sum_layer.children()
-        ],
+        children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()],
     )
 
 
@@ -330,8 +309,5 @@ def toTorch(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondSumLayer(
         n_nodes=sum_layer.n_out,
-        children=[
-            toTorch(child, dispatch_ctx=dispatch_ctx)
-            for child in sum_layer.children
-        ],
+        children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
     )

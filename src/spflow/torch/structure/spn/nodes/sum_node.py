@@ -60,9 +60,7 @@ class SumNode(Node):
         super().__init__(children=children)
 
         if not children:
-            raise ValueError(
-                "'SumNode' requires at least one child to be specified."
-            )
+            raise ValueError("'SumNode' requires at least one child to be specified.")
 
         scope = None
 
@@ -72,9 +70,7 @@ class SumNode(Node):
                     scope = s
                 else:
                     if not scope.equal_query(s):
-                        raise ValueError(
-                            f"'SumNode' requires child scopes to have the same query variables."
-                        )
+                        raise ValueError(f"'SumNode' requires child scopes to have the same query variables.")
 
                 scope = scope.join(s)
 
@@ -97,9 +93,7 @@ class SumNode(Node):
         return proj_real_to_convex(self.weights_aux)
 
     @weights.setter
-    def weights(
-        self, values: Union[np.ndarray, torch.Tensor, List[float]]
-    ) -> None:
+    def weights(self, values: Union[np.ndarray, torch.Tensor, List[float]]) -> None:
         """Sets the weights of the node to specified values.
 
         Args:
@@ -118,14 +112,10 @@ class SumNode(Node):
             )
         if not torch.all(values > 0):
             raise ValueError("Weights for 'SumNode' must be all positive.")
-        if not torch.isclose(
-            values.sum(), torch.tensor(1.0, dtype=values.dtype)
-        ):
+        if not torch.isclose(values.sum(), torch.tensor(1.0, dtype=values.dtype)):
             raise ValueError("Weights for 'SumNode' must sum up to one.")
         if not (len(values) == self.n_in):
-            raise ValueError(
-                "Number of weights for 'SumNode' does not match total number of child outputs."
-            )
+            raise ValueError("Number of weights for 'SumNode' does not match total number of child outputs.")
 
         self.weights_aux.data = proj_convex_to_real(values)
 
@@ -175,9 +165,7 @@ def marginalize(
 
         # marginalize child modules
         for child in sum_node.children():
-            marg_child = marginalize(
-                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
-            )
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
@@ -189,9 +177,7 @@ def marginalize(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    sum_node: SumNode, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseSumNode:
+def toBase(sum_node: SumNode, dispatch_ctx: Optional[DispatchContext] = None) -> BaseSumNode:
     """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -202,18 +188,13 @@ def toBase(
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseSumNode(
-        children=[
-            toBase(child, dispatch_ctx=dispatch_ctx)
-            for child in sum_node.children()
-        ],
+        children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children()],
         weights=sum_node.weights.detach().cpu().numpy(),
     )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    sum_node: BaseSumNode, dispatch_ctx: Optional[DispatchContext] = None
-) -> SumNode:
+def toTorch(sum_node: BaseSumNode, dispatch_ctx: Optional[DispatchContext] = None) -> SumNode:
     """Conversion for ``SumNode`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -224,9 +205,6 @@ def toTorch(
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return SumNode(
-        children=[
-            toTorch(child, dispatch_ctx=dispatch_ctx)
-            for child in sum_node.children
-        ],
+        children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
         weights=sum_node.weights,
     )

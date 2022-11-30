@@ -71,20 +71,10 @@ class TestSumNode(unittest.TestCase):
 
         # weights as list of floats
         sum_node.set_cond_f(lambda data: {"weights": [0.5, 0.5]})
-        self.assertTrue(
-            np.all(
-                sum_node.retrieve_params(np.array([[1.0]]), DispatchContext())
-                == np.array([0.5, 0.5])
-            )
-        )
+        self.assertTrue(np.all(sum_node.retrieve_params(np.array([[1.0]]), DispatchContext()) == np.array([0.5, 0.5])))
         # weights as numpy array
         sum_node.set_cond_f(lambda data: {"weights": np.array([0.5, 0.5])})
-        self.assertTrue(
-            np.all(
-                sum_node.retrieve_params(np.array([[1.0]]), DispatchContext())
-                == np.array([0.5, 0.5])
-            )
-        )
+        self.assertTrue(np.all(sum_node.retrieve_params(np.array([[1.0]]), DispatchContext()) == np.array([0.5, 0.5])))
 
     def test_marginalization_1(self):
 

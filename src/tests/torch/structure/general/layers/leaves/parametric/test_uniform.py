@@ -34,9 +34,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
         # make sure parameter properties works correctly
         for (
             start_layer_node,
@@ -53,12 +51,8 @@ class TestNode(unittest.TestCase):
             end_values,
             support_outside_values,
         ):
-            self.assertTrue(
-                torch.allclose(start_layer_node, torch.tensor(start_value))
-            )
-            self.assertTrue(
-                torch.allclose(end_layer_node, torch.tensor(end_value))
-            )
+            self.assertTrue(torch.allclose(start_layer_node, torch.tensor(start_value)))
+            self.assertTrue(torch.allclose(end_layer_node, torch.tensor(end_value)))
 
         # ----- float/int parameter values -----
         start_value = 0.73
@@ -72,15 +66,9 @@ class TestNode(unittest.TestCase):
             support_outside=support_outside_value,
         )
 
-        for start_layer_node, end_layer_node, support_outside_layer_node in zip(
-            l.start, l.end, l.support_outside
-        ):
-            self.assertTrue(
-                torch.allclose(start_layer_node, torch.tensor(start_value))
-            )
-            self.assertTrue(
-                torch.allclose(end_layer_node, torch.tensor(end_value))
-            )
+        for start_layer_node, end_layer_node, support_outside_layer_node in zip(l.start, l.end, l.support_outside):
+            self.assertTrue(torch.allclose(start_layer_node, torch.tensor(start_value)))
+            self.assertTrue(torch.allclose(end_layer_node, torch.tensor(end_value)))
             self.assertTrue(
                 torch.allclose(
                     support_outside_layer_node,
@@ -115,12 +103,8 @@ class TestNode(unittest.TestCase):
             end_values,
             support_outside_values,
         ):
-            self.assertTrue(
-                torch.allclose(start_layer_node, torch.tensor(start_value))
-            )
-            self.assertTrue(
-                torch.allclose(end_layer_node, torch.tensor(end_value))
-            )
+            self.assertTrue(torch.allclose(start_layer_node, torch.tensor(start_value)))
+            self.assertTrue(torch.allclose(end_layer_node, torch.tensor(end_value)))
             self.assertTrue(
                 torch.allclose(
                     support_outside_layer_node,
@@ -210,12 +194,8 @@ class TestNode(unittest.TestCase):
             end_values,
             support_outside_values,
         ):
-            self.assertTrue(
-                torch.allclose(start_layer_node, torch.tensor(start_value))
-            )
-            self.assertTrue(
-                torch.allclose(end_layer_node, torch.tensor(end_value))
-            )
+            self.assertTrue(torch.allclose(start_layer_node, torch.tensor(start_value)))
+            self.assertTrue(torch.allclose(end_layer_node, torch.tensor(end_value)))
             self.assertTrue(
                 torch.allclose(
                     support_outside_layer_node,
@@ -286,23 +266,15 @@ class TestNode(unittest.TestCase):
             self.assertEqual(layer_scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, UniformLayer, Scope([0]), n_nodes=0, start=0.0, end=1.0
-        )
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), n_nodes=0, start=0.0, end=1.0)
 
         # ----- invalid scope -----
-        self.assertRaises(
-            ValueError, UniformLayer, Scope([]), n_nodes=3, start=0.0, end=1.0
-        )
-        self.assertRaises(
-            ValueError, UniformLayer, [], n_nodes=3, start=0.0, end=1.0
-        )
+        self.assertRaises(ValueError, UniformLayer, Scope([]), n_nodes=3, start=0.0, end=1.0)
+        self.assertRaises(ValueError, UniformLayer, [], n_nodes=3, start=0.0, end=1.0)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
-        l = UniformLayer(
-            scope=[Scope([1]), Scope([0])], n_nodes=3, start=0.0, end=1.0
-        )
+        l = UniformLayer(scope=[Scope([1]), Scope([0])], n_nodes=3, start=0.0, end=1.0)
 
         for layer_scope, node_scope in zip(l.scopes_out, scopes):
             self.assertEqual(layer_scope, node_scope)
@@ -323,12 +295,8 @@ class TestNode(unittest.TestCase):
         self.assertTrue(
             UniformLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                    ),
-                    FeatureContext(
-                        Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
-                    ),
+                    FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]),
                 ]
             )
         )
@@ -338,9 +306,7 @@ class TestNode(unittest.TestCase):
             UniformLayer.accepts(
                 [
                     FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
-                    FeatureContext(
-                        Scope([1]), [FeatureTypes.Uniform(-1.0, 2.0)]
-                    ),
+                    FeatureContext(Scope([1]), [FeatureTypes.Uniform(-1.0, 2.0)]),
                 ]
             )
         )
@@ -376,17 +342,11 @@ class TestNode(unittest.TestCase):
 
         uniform = UniformLayer.from_signatures(
             [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                ),
-                FeatureContext(
-                    Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
-                ),
+                FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]),
             ]
         )
-        self.assertTrue(
-            torch.allclose(uniform.start, torch.tensor([-1.0, 1.0]))
-        )
+        self.assertTrue(torch.allclose(uniform.start, torch.tensor([-1.0, 1.0])))
         self.assertTrue(torch.allclose(uniform.end, torch.tensor([2.0, 3.0])))
         self.assertTrue(uniform.scopes_out == [Scope([0]), Scope([1])])
 
@@ -435,12 +395,8 @@ class TestNode(unittest.TestCase):
             UniformLayer,
             AutoLeaf.infer(
                 [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                    ),
-                    FeatureContext(
-                        Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
-                    ),
+                    FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]),
                 ]
             ),
         )
@@ -448,17 +404,11 @@ class TestNode(unittest.TestCase):
         # make sure AutoLeaf can return correctly instantiated object
         uniform = AutoLeaf(
             [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                ),
-                FeatureContext(
-                    Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
-                ),
+                FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]),
             ]
         )
-        self.assertTrue(
-            torch.allclose(uniform.start, torch.tensor([-1.0, 1.0]))
-        )
+        self.assertTrue(torch.allclose(uniform.start, torch.tensor([-1.0, 1.0])))
         self.assertTrue(torch.allclose(uniform.end, torch.tensor([2.0, 3.0])))
         self.assertTrue(uniform.scopes_out == [Scope([0]), Scope([1])])
 
@@ -483,9 +433,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
         self.assertTrue(torch.allclose(l.start, l_marg.start))
         self.assertTrue(torch.allclose(l.end, l_marg.end))
-        self.assertTrue(
-            torch.allclose(l.support_outside, l_marg.support_outside)
-        )
+        self.assertTrue(torch.allclose(l.support_outside, l_marg.support_outside))
 
         # ---------- different scopes -----------
 
@@ -505,18 +453,14 @@ class TestNode(unittest.TestCase):
         self.assertEqual(l_marg.scope, Scope([0]))
         self.assertTrue(torch.allclose(l_marg.start, torch.tensor(0.29)))
         self.assertTrue(torch.allclose(l_marg.end, torch.tensor(0.9)))
-        self.assertTrue(
-            torch.all(l_marg.support_outside == torch.tensor(False))
-        )
+        self.assertTrue(torch.all(l_marg.support_outside == torch.tensor(False)))
 
         l_marg = marginalize(l, [1], prune=False)
         self.assertTrue(isinstance(l_marg, UniformLayer))
         self.assertEqual(len(l_marg.scopes_out), 1)
         self.assertTrue(torch.allclose(l_marg.start, torch.tensor(0.29)))
         self.assertTrue(torch.allclose(l_marg.end, torch.tensor(0.9)))
-        self.assertTrue(
-            torch.all(l_marg.support_outside == torch.tensor(False))
-        )
+        self.assertTrue(torch.all(l_marg.support_outside == torch.tensor(False)))
 
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
@@ -524,9 +468,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
         self.assertTrue(torch.allclose(l.start, l_marg.start))
         self.assertTrue(torch.allclose(l.end, l_marg.end))
-        self.assertTrue(
-            torch.allclose(l.support_outside, l_marg.support_outside)
-        )
+        self.assertTrue(torch.allclose(l.support_outside, l_marg.support_outside))
 
     def test_layer_dist(self):
 
@@ -544,23 +486,15 @@ class TestNode(unittest.TestCase):
         # ----- full dist -----
         dist = l.dist()
 
-        for start_value, end_value, start_dist, end_dist in zip(
-            start_values, end_values, dist.low, dist.high
-        ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(start_value), start_dist)
-            )
+        for start_value, end_value, start_dist, end_dist in zip(start_values, end_values, dist.low, dist.high):
+            self.assertTrue(torch.allclose(torch.tensor(start_value), start_dist))
             self.assertTrue(torch.allclose(torch.tensor(end_value), end_dist))
 
         # ----- partial dist -----
         dist = l.dist([1, 2])
 
-        for start_value, end_value, start_dist, end_dist in zip(
-            start_values[1:], end_values[1:], dist.low, dist.high
-        ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(start_value), start_dist)
-            )
+        for start_value, end_value, start_dist, end_dist in zip(start_values[1:], end_values[1:], dist.low, dist.high):
+            self.assertTrue(torch.allclose(torch.tensor(start_value), start_dist))
             self.assertTrue(torch.allclose(torch.tensor(end_value), end_dist))
 
         dist = l.dist([1, 0])
@@ -571,9 +505,7 @@ class TestNode(unittest.TestCase):
             dist.low,
             dist.high,
         ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(start_value), start_dist)
-            )
+            self.assertTrue(torch.allclose(torch.tensor(start_value), start_dist))
             self.assertTrue(torch.allclose(torch.tensor(end_value), end_dist))
 
     def test_layer_backend_conversion_1(self):
@@ -587,15 +519,9 @@ class TestNode(unittest.TestCase):
         base_layer = toBase(torch_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(
-            np.allclose(base_layer.start, torch_layer.start.numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.start, torch_layer.start.numpy()))
         self.assertTrue(np.allclose(base_layer.end, torch_layer.end.numpy()))
-        self.assertTrue(
-            np.allclose(
-                base_layer.support_outside, torch_layer.support_outside.numpy()
-            )
-        )
+        self.assertTrue(np.allclose(base_layer.support_outside, torch_layer.support_outside.numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
     def test_layer_backend_conversion_2(self):
@@ -609,15 +535,9 @@ class TestNode(unittest.TestCase):
         torch_layer = toTorch(base_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(
-            np.allclose(base_layer.start, torch_layer.start.numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.start, torch_layer.start.numpy()))
         self.assertTrue(np.allclose(base_layer.end, torch_layer.end.numpy()))
-        self.assertTrue(
-            np.allclose(
-                base_layer.support_outside, torch_layer.support_outside.numpy()
-            )
-        )
+        self.assertTrue(np.allclose(base_layer.support_outside, torch_layer.support_outside.numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
 

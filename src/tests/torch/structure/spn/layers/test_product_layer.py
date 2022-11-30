@@ -62,19 +62,13 @@ class TestNode(unittest.TestCase):
 
         # ----- marginalize over partial scope -----
         l_marg = marginalize(l, [3])
-        self.assertTrue(
-            l_marg.scopes_out
-            == [Scope([0, 1, 2]), Scope([0, 1, 2]), Scope([0, 1, 2])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 1, 2]), Scope([0, 1, 2]), Scope([0, 1, 2])])
         # number of children should be reduced by one (i.e., marginalized over)
         self.assertTrue(len(list(l_marg.children())) == 2)
 
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [4])
-        self.assertTrue(
-            l_marg.scopes_out
-            == [Scope([0, 1, 2, 3]), Scope([0, 1, 2, 3]), Scope([0, 1, 2, 3])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 1, 2, 3]), Scope([0, 1, 2, 3]), Scope([0, 1, 2, 3])])
 
         # ----- pruning -----
         l = ProductLayer(n_nodes=3, children=input_nodes[:2])

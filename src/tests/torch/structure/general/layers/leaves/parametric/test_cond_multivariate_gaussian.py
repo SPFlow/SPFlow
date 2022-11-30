@@ -33,12 +33,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1, 0], [2]), Scope([1, 0], [2]), Scope([1, 0], [2])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1, 0], [2]), Scope([1, 0], [2]), Scope([1, 0], [2])]))
 
         # ---- different scopes -----
         l = CondMultivariateGaussianLayer(
@@ -57,12 +52,8 @@ class TestNode(unittest.TestCase):
         )
 
         # ----- invalid scope -----
-        self.assertRaises(
-            ValueError, CondMultivariateGaussianLayer, Scope([]), n_nodes=3
-        )
-        self.assertRaises(
-            ValueError, CondMultivariateGaussianLayer, [], n_nodes=3
-        )
+        self.assertRaises(ValueError, CondMultivariateGaussianLayer, Scope([]), n_nodes=3)
+        self.assertRaises(ValueError, CondMultivariateGaussianLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [
@@ -102,9 +93,7 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"mean": mean_value, "cov": cov_value},
         )
 
-        for mean_node, cov_node in zip(
-            *l.retrieve_params(torch.tensor([[1]]), DispatchContext())
-        ):
+        for mean_node, cov_node in zip(*l.retrieve_params(torch.tensor([[1]]), DispatchContext())):
             self.assertTrue(torch.all(mean_node == torch.tensor(mean_value)))
             self.assertTrue(torch.all(cov_node == torch.tensor(cov_value)))
 
@@ -118,9 +107,7 @@ class TestNode(unittest.TestCase):
         l.set_cond_f(lambda data: {"mean": mean_values, "cov": cov_values})
 
         for mean_actual, cov_actual, mean_node, cov_node in zip(
-            mean_values,
-            cov_values,
-            *l.retrieve_params(torch.tensor([[1]]), DispatchContext())
+            mean_values, cov_values, *l.retrieve_params(torch.tensor([[1]]), DispatchContext())
         ):
             self.assertTrue(torch.all(mean_node == torch.tensor(mean_actual)))
             self.assertTrue(torch.allclose(cov_node, torch.tensor(cov_actual)))
@@ -177,9 +164,7 @@ class TestNode(unittest.TestCase):
             }
         )
         for mean_actual, cov_actual, mean_node, cov_node in zip(
-            mean_values,
-            cov_values,
-            *l.retrieve_params(torch.tensor([[1.0]]), DispatchContext())
+            mean_values, cov_values, *l.retrieve_params(torch.tensor([[1.0]]), DispatchContext())
         ):
             self.assertTrue(torch.all(mean_node == torch.tensor(mean_actual)))
             self.assertTrue(torch.allclose(cov_node, torch.tensor(cov_actual)))
@@ -341,10 +326,7 @@ class TestNode(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out
-            == [Scope([0, 1], [3]), Scope([1, 2], [3])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
 
         multivariate_gaussian = CondMultivariateGaussianLayer.from_signatures(
             [
@@ -358,10 +340,7 @@ class TestNode(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out
-            == [Scope([0, 1], [3]), Scope([1, 2], [3])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
 
         multivariate_gaussian = CondMultivariateGaussianLayer.from_signatures(
             [
@@ -381,10 +360,7 @@ class TestNode(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out
-            == [Scope([0, 1], [3]), Scope([1, 2], [3])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
 
         # ----- invalid arguments -----
 
@@ -453,33 +429,24 @@ class TestNode(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out
-            == [Scope([0, 1], [3]), Scope([1, 2], [3])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
 
     def test_layer_structural_marginalization(self):
 
         # ---------- same scopes -----------
 
-        l = CondMultivariateGaussianLayer(
-            scope=[Scope([0, 1], [2]), Scope([0, 1], [2])]
-        )
+        l = CondMultivariateGaussianLayer(scope=[Scope([0, 1], [2]), Scope([0, 1], [2])])
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
 
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
 
-        self.assertTrue(
-            l_marg.scopes_out == [Scope([0, 1], [2]), Scope([0, 1], [2])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 1], [2]), Scope([0, 1], [2])])
 
         # ---------- different scopes -----------
 
-        l = CondMultivariateGaussianLayer(
-            scope=[Scope([0, 2], [4]), Scope([1, 3], [4])]
-        )
+        l = CondMultivariateGaussianLayer(scope=[Scope([0, 2], [4]), Scope([1, 3], [4])])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1, 2, 3]) == None)
@@ -501,15 +468,11 @@ class TestNode(unittest.TestCase):
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [4])
 
-        self.assertTrue(
-            l_marg.scopes_out == [Scope([0, 2], [4]), Scope([1, 3], [4])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 2], [4]), Scope([1, 3], [4])])
 
     def test_layer_dist(self):
 
-        mean_values = torch.tensor(
-            [[0.0, -1.0, 2.3], [1.0, 5.0, -3.0], [-7.1, 3.2, -0.9]]
-        )
+        mean_values = torch.tensor([[0.0, -1.0, 2.3], [1.0, 5.0, -3.0], [-7.1, 3.2, -0.9]])
         cov_values = torch.tensor(
             [
                 [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
@@ -517,33 +480,25 @@ class TestNode(unittest.TestCase):
                 [[3.1, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 0.3]],
             ]
         )
-        l = CondMultivariateGaussianLayer(
-            scope=Scope([0, 1, 2], [3]), n_nodes=3
-        )
+        l = CondMultivariateGaussianLayer(scope=Scope([0, 1, 2], [3]), n_nodes=3)
 
         # ----- full dist -----
         dist_list = l.dist(mean_values, cov_values)
 
-        for mean_value, cov_value, dist in zip(
-            mean_values, cov_values, dist_list
-        ):
+        for mean_value, cov_value, dist in zip(mean_values, cov_values, dist_list):
             self.assertTrue(torch.allclose(mean_value, dist.mean))
             self.assertTrue(torch.allclose(cov_value, dist.covariance_matrix))
 
         # ----- partial dist -----
         dist_list = l.dist(mean_values, cov_values, [1, 2])
 
-        for mean_value, cov_value, dist in zip(
-            mean_values[1:], cov_values[1:], dist_list
-        ):
+        for mean_value, cov_value, dist in zip(mean_values[1:], cov_values[1:], dist_list):
             self.assertTrue(torch.allclose(mean_value, dist.mean))
             self.assertTrue(torch.allclose(cov_value, dist.covariance_matrix))
 
         dist_list = l.dist(mean_values, cov_values, [1, 0])
 
-        for mean_value, cov_value, dist in zip(
-            reversed(mean_values[:-1]), reversed(cov_values[:-1]), dist_list
-        ):
+        for mean_value, cov_value, dist in zip(reversed(mean_values[:-1]), reversed(cov_values[:-1]), dist_list):
             self.assertTrue(torch.allclose(mean_value, dist.mean))
             self.assertTrue(torch.allclose(cov_value, dist.covariance_matrix))
 

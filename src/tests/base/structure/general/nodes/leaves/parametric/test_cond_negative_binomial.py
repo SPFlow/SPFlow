@@ -19,17 +19,13 @@ class TestNegativeBinomial(unittest.TestCase):
 
         negative_binomial = CondNegativeBinomial(Scope([0], [1]), n=2)
         self.assertTrue(negative_binomial.cond_f is None)
-        negative_binomial = CondNegativeBinomial(
-            Scope([0], [1]), n=2, cond_f=lambda x: {"p": 0.5}
-        )
+        negative_binomial = CondNegativeBinomial(Scope([0], [1]), n=2, cond_f=lambda x: {"p": 0.5})
         self.assertTrue(isinstance(negative_binomial.cond_f, Callable))
 
         # invalid scopes
         self.assertRaises(Exception, CondNegativeBinomial, Scope([]), n=2)
         self.assertRaises(Exception, CondNegativeBinomial, Scope([0]), n=2)
-        self.assertRaises(
-            Exception, CondNegativeBinomial, Scope([0, 1], [2]), n=2
-        )
+        self.assertRaises(Exception, CondNegativeBinomial, Scope([0, 1], [2]), n=2)
 
         # Valid parameters for Negative Binomial distribution: n in N U {0}
 
@@ -40,12 +36,8 @@ class TestNegativeBinomial(unittest.TestCase):
         # n float
         self.assertRaises(Exception, CondNegativeBinomial, Scope([0], [1]), 0.5)
         # n = inf and n = nan
-        self.assertRaises(
-            Exception, CondNegativeBinomial, Scope([0], [1]), np.inf
-        )
-        self.assertRaises(
-            Exception, CondNegativeBinomial, Scope([0], [1]), np.nan
-        )
+        self.assertRaises(Exception, CondNegativeBinomial, Scope([0], [1]), np.inf)
+        self.assertRaises(Exception, CondNegativeBinomial, Scope([0], [1]), np.nan)
 
     def test_retrieve_params(self):
 
@@ -55,12 +47,7 @@ class TestNegativeBinomial(unittest.TestCase):
 
         # p = 1
         negative_binomial.set_cond_f(lambda data: {"p": 1.0})
-        self.assertTrue(
-            negative_binomial.retrieve_params(
-                np.array([[1.0]]), DispatchContext()
-            )
-            == 1.0
-        )
+        self.assertTrue(negative_binomial.retrieve_params(np.array([[1.0]]), DispatchContext()) == 1.0)
         # p = 0
         negative_binomial.set_cond_f(lambda data: {"p": 0.0})
         self.assertRaises(
@@ -77,9 +64,7 @@ class TestNegativeBinomial(unittest.TestCase):
             np.array([[1.0]]),
             DispatchContext(),
         )
-        negative_binomial.set_cond_f(
-            lambda data: {"p": np.nextafter(0.0, -1.0)}
-        )
+        negative_binomial.set_cond_f(lambda data: {"p": np.nextafter(0.0, -1.0)})
         self.assertRaises(
             ValueError,
             negative_binomial.retrieve_params,
@@ -112,39 +97,19 @@ class TestNegativeBinomial(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(
-            CondNegativeBinomial.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondNegativeBinomial.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # Bernoulli feature type instance
         self.assertTrue(
-            CondNegativeBinomial.accepts(
-                [
-                    FeatureContext(
-                        Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)]
-                    )
-                ]
-            )
+            CondNegativeBinomial.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)])])
         )
 
         # invalid feature type
-        self.assertFalse(
-            CondNegativeBinomial.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondNegativeBinomial.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # non-conditional scope
         self.assertFalse(
-            CondNegativeBinomial.accepts(
-                [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.NegativeBinomial(n=3)]
-                    )
-                ]
-            )
+            CondNegativeBinomial.accepts([FeatureContext(Scope([0]), [FeatureTypes.NegativeBinomial(n=3)])])
         )
 
         # multivariate signature
@@ -164,13 +129,7 @@ class TestNegativeBinomial(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        CondNegativeBinomial.from_signatures(
-            [
-                FeatureContext(
-                    Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)]
-                )
-            ]
-        )
+        CondNegativeBinomial.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)])])
         CondNegativeBinomial.from_signatures(
             [
                 FeatureContext(
@@ -223,13 +182,7 @@ class TestNegativeBinomial(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondNegativeBinomial,
-            AutoLeaf.infer(
-                [
-                    FeatureContext(
-                        Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)]
-                    )
-                ]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object

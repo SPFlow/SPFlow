@@ -90,17 +90,13 @@ def maximum_likelihood_estimation(
 
     if check_support:
         if torch.any(~leaf.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'LogNormal'."
-            )
+            raise ValueError("Encountered values outside of the support for 'LogNormal'.")
 
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
 
     if torch.all(nan_mask):
-        raise ValueError(
-            "Cannot compute maximum-likelihood estimation on nan-only data."
-        )
+        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
 
     if nan_strategy is None and torch.any(nan_mask):
         raise ValueError(
@@ -113,9 +109,7 @@ def maximum_likelihood_estimation(
             scope_data = scope_data[~nan_mask.squeeze(1)]
             weights = weights[~nan_mask.squeeze(1)]
         else:
-            raise ValueError(
-                "Unknown strategy for handling missing (NaN) values for 'LogNormal'."
-            )
+            raise ValueError("Unknown strategy for handling missing (NaN) values for 'LogNormal'.")
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
         # TODO: how to handle weights?
@@ -134,15 +128,9 @@ def maximum_likelihood_estimation(
     mean_est = (weights * torch.log(scope_data)).sum() / n_total
 
     if bias_correction:
-        std_est = torch.sqrt(
-            (weights * torch.pow(torch.log(scope_data) - mean_est, 2)).sum()
-            / (n_total - 1)
-        )
+        std_est = torch.sqrt((weights * torch.pow(torch.log(scope_data) - mean_est, 2)).sum() / (n_total - 1))
     else:
-        std_est = torch.sqrt(
-            (weights * torch.pow(torch.log(scope_data) - mean_est, 2)).sum()
-            / n_total
-        )
+        std_est = torch.sqrt((weights * torch.pow(torch.log(scope_data) - mean_est, 2)).sum() / n_total)
 
     # edge case (if all values are the same, not enough samples or very close to each other)
     if torch.isclose(std_est, torch.tensor(0.0)) or torch.isnan(std_est):

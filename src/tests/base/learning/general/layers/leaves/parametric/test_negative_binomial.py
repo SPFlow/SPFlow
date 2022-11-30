@@ -28,9 +28,7 @@ class TestNode(unittest.TestCase):
         # perform MLE
         maximum_likelihood_estimation(layer, data)
 
-        self.assertTrue(
-            np.allclose(layer.p, np.array([0.3, 0.7]), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(np.allclose(layer.p, np.array([0.3, 0.7]), atol=1e-2, rtol=1e-2))
 
     def test_weighted_mle(self):
 
@@ -40,22 +38,14 @@ class TestNode(unittest.TestCase):
             [
                 np.vstack(
                     [
-                        np.random.negative_binomial(
-                            n=3, p=0.8, size=(10000, 1)
-                        ),
-                        np.random.negative_binomial(
-                            n=3, p=0.2, size=(10000, 1)
-                        ),
+                        np.random.negative_binomial(n=3, p=0.8, size=(10000, 1)),
+                        np.random.negative_binomial(n=3, p=0.2, size=(10000, 1)),
                     ]
                 ),
                 np.vstack(
                     [
-                        np.random.negative_binomial(
-                            n=5, p=0.3, size=(10000, 1)
-                        ),
-                        np.random.negative_binomial(
-                            n=5, p=0.7, size=(10000, 1)
-                        ),
+                        np.random.negative_binomial(n=5, p=0.3, size=(10000, 1)),
+                        np.random.negative_binomial(n=5, p=0.7, size=(10000, 1)),
                     ]
                 ),
             ]
@@ -66,9 +56,7 @@ class TestNode(unittest.TestCase):
         maximum_likelihood_estimation(leaf, data, weights)
 
         self.assertTrue(np.all(leaf.n == np.array([3, 5])))
-        self.assertTrue(
-            np.allclose(leaf.p, np.array([0.2, 0.7]), atol=1e-3, rtol=1e-2)
-        )
+        self.assertTrue(np.allclose(leaf.p, np.array([0.2, 0.7]), atol=1e-3, rtol=1e-2))
 
 
 if __name__ == "__main__":

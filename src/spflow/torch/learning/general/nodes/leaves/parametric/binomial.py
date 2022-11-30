@@ -85,17 +85,13 @@ def maximum_likelihood_estimation(
 
     if check_support:
         if torch.any(~leaf.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'Binomial'."
-            )
+            raise ValueError("Encountered values outside of the support for 'Binomial'.")
 
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
 
     if torch.all(nan_mask):
-        raise ValueError(
-            "Cannot compute maximum-likelihood estimation on nan-only data."
-        )
+        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
 
     if nan_strategy is None and torch.any(nan_mask):
         raise ValueError(
@@ -108,9 +104,7 @@ def maximum_likelihood_estimation(
             scope_data = scope_data[~nan_mask.squeeze(1)]
             weights = weights[~nan_mask.squeeze(1)]
         else:
-            raise ValueError(
-                "Unknown strategy for handling missing (NaN) values for 'Binomial'."
-            )
+            raise ValueError("Unknown strategy for handling missing (NaN) values for 'Binomial'.")
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
         # TODO: how to handle weights
