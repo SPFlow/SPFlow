@@ -44,7 +44,7 @@ class TestLayer(unittest.TestCase):
             ),
             l.nodes,
         ):
-            self.assertTrue(node.children[0].input_ids == indices)
+            self.assertTrue(node.chs[0].input_ids == indices)
 
         # ----- no child partitions -----
         self.assertRaises(ValueError, PartitionLayer, [])
