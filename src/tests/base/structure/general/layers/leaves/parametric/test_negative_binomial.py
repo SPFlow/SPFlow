@@ -1,12 +1,14 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+import unittest
+
+import numpy as np
+
+from spflow.base.structure import AutoLeaf
 from spflow.base.structure.spn import (
     NegativeBinomial,
     NegativeBinomialLayer,
     marginalize,
 )
-from spflow.base.structure import AutoLeaf
-import numpy as np
-import unittest
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestLayer(unittest.TestCase):

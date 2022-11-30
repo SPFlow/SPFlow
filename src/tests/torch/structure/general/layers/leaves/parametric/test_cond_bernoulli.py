@@ -1,14 +1,13 @@
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import CondBernoulli, CondBernoulliLayer
-from spflow.torch.structure import marginalize, toTorch, toBase
-from spflow.base.structure.spn import (
-    CondBernoulliLayer as BaseCondBernoulliLayer,
-)
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.meta.dispatch import DispatchContext
-import torch
-import numpy as np
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn import CondBernoulliLayer as BaseCondBernoulliLayer
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondBernoulli, CondBernoulliLayer
 
 
 class TestNode(unittest.TestCase):

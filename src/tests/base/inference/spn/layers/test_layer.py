@@ -1,17 +1,19 @@
-from spflow.meta.data import Scope
+import itertools
+import unittest
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import (
-    SumNode,
+    Gaussian,
+    HadamardLayer,
+    PartitionLayer,
+    ProductLayer,
     ProductNode,
     SumLayer,
-    ProductLayer,
-    PartitionLayer,
-    HadamardLayer,
-    Gaussian,
+    SumNode,
 )
-from spflow.base.inference import log_likelihood
-import numpy as np
-import unittest
-import itertools
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
