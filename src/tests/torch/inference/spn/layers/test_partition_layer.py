@@ -1,15 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.torch.structure.spn import (
-    SumNode,
-    ProductNode,
-    Gaussian,
-    PartitionLayer,
-)
-from spflow.torch.inference import log_likelihood
+import itertools
+import unittest
 
 import torch
-import unittest
-import itertools
+
+from spflow.meta.data import Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure.spn import Gaussian, PartitionLayer, ProductNode, SumNode
 
 
 class TestNode(unittest.TestCase):

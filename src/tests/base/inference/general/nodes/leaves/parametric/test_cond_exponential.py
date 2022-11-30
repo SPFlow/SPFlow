@@ -1,9 +1,11 @@
+import unittest
+
+import numpy as np
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import CondExponential
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.base.structure.spn import CondExponential
-from spflow.base.inference import log_likelihood, likelihood
-import numpy as np
-import unittest
 
 
 class TestCondExponential(unittest.TestCase):

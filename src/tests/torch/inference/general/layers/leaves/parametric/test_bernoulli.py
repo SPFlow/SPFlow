@@ -1,10 +1,12 @@
-from spflow.meta.data import Scope
-from spflow.torch.structure.spn import Bernoulli, BernoulliLayer
-from spflow.torch.inference import log_likelihood
-import torch
-import numpy as np
-import unittest
 import random
+import unittest
+
+import numpy as np
+import torch
+
+from spflow.meta.data import Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure.spn import Bernoulli, BernoulliLayer
 
 
 class TestNode(unittest.TestCase):

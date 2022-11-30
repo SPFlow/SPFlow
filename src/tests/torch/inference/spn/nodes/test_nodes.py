@@ -1,14 +1,14 @@
+import unittest
+
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure.spn import SumNode, ProductNode, Gaussian
-from spflow.torch.utils.projections import (
-    proj_convex_to_real,
-    proj_real_to_convex,
-)
-from spflow.torch.inference import log_likelihood, likelihood
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import Gaussian, ProductNode, SumNode
+from spflow.torch.utils.projections import proj_convex_to_real, proj_real_to_convex
+
 from ....structure.general.nodes.dummy_node import DummyNode
-import torch
-import unittest
 
 
 def create_example_spn():
