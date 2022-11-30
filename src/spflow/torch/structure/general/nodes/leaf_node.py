@@ -2,10 +2,10 @@
 
 All leaf nodes in the ``torch`` backend should inherit from ``LeafNode`` or a subclass of it.
 """
-from abc import ABC
-
 from spflow.meta.data.scope import Scope
 from spflow.torch.structure.general.nodes.node import Node
+
+from abc import ABC
 
 
 class LeafNode(Node, ABC):

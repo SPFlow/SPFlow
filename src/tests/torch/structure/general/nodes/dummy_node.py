@@ -1,15 +1,13 @@
-from copy import deepcopy
-from typing import Iterable, Optional, Union
-
-import torch
-
+from typing import Optional, Iterable, Union
+from spflow.torch.structure import LeafNode
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import (
-    DispatchContext,
     dispatch,
+    DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure import LeafNode
+import torch
+from copy import deepcopy
 
 
 class DummyNode(LeafNode):

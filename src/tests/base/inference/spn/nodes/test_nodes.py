@@ -1,12 +1,9 @@
-import unittest
-
-import numpy as np
-
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import Gaussian, ProductNode, SumNode
 from spflow.meta.data import Scope
-
+from spflow.base.structure.spn import SumNode, ProductNode, Gaussian
+from spflow.base.inference import likelihood, log_likelihood
 from ....structure.general.nodes.dummy_node import DummyNode
+import numpy as np
+import unittest
 
 
 def create_example_spn():

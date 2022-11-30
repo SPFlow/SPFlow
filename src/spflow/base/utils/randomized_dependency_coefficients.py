@@ -4,12 +4,10 @@ Typical usage example:
 
     coeffs = randomized_dependency_coefficients(data, k, s, phi)
 """
-from itertools import combinations
 from typing import Callable
-
 import numpy as np
+from itertools import combinations
 from sklearn.cross_decomposition import CCA
-
 from spflow.base.utils.empirical_cdf import empirical_cdf
 
 

@@ -1,11 +1,5 @@
 """Contains sampling methods for SPN-like sum nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional
-
-import numpy as np
-
-from spflow.base.inference.module import log_likelihood
-from spflow.base.structure.spn.nodes.sum_node import SumNode
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -15,6 +9,11 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
+from spflow.base.structure.spn.nodes.sum_node import SumNode
+from spflow.base.inference.module import log_likelihood
+
+from typing import Optional
+import numpy as np
 
 
 @dispatch  # type: ignore

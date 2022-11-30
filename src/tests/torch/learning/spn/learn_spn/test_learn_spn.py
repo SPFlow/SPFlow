@@ -1,22 +1,21 @@
-import random
-import unittest
-
-import numpy as np
-import torch
-
-from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 from spflow.torch.learning.spn.learn_spn import (
-    cluster_by_kmeans,
     learn_spn,
+    cluster_by_kmeans,
     partition_by_rdc,
 )
 from spflow.torch.structure.spn import (
-    CondGaussian,
+    SumNode,
+    ProductNode,
     CondSumNode,
     Gaussian,
-    ProductNode,
-    SumNode,
+    CondGaussian,
 )
+
+import numpy as np
+import torch
+import unittest
+import random
 
 
 # dummy clustering and partition methods

@@ -1,10 +1,9 @@
-import unittest
-
-import numpy as np
-
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 from spflow.base.structure import AutoLeaf
 from spflow.base.structure.spn import NegativeBinomial, marginalize
-from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+
+import numpy as np
+import unittest
 
 
 class TestNegativeBinomial(unittest.TestCase):

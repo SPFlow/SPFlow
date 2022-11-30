@@ -1,15 +1,14 @@
 """Contains inference methods for ``Module`` objects for SPFlow in the ``base`` backend.
 """
-from typing import Optional
-
-import numpy as np
-
-from spflow.base.structure.module import Module
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.base.structure.module import Module
+
+from typing import Optional
+import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore

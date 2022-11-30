@@ -1,12 +1,11 @@
-import random
-import unittest
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import SumNode, ProductNode, Gaussian
+from spflow.base.sampling import sample
+from spflow.base.inference import log_likelihood
 
 import numpy as np
-
-from spflow.base.inference import log_likelihood
-from spflow.base.sampling import sample
-from spflow.base.structure.spn import Gaussian, ProductNode, SumNode
-from spflow.meta.data import Scope
+import random
+import unittest
 
 
 class TestNode(unittest.TestCase):

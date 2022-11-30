@@ -1,11 +1,11 @@
-import unittest
-
-import numpy as np
-
-from spflow.base.structure.spn.layers.product_layer import ProductLayer, marginalize
+from spflow.base.structure.spn.layers.product_layer import (
+    ProductLayer,
+    marginalize,
+)
 from spflow.meta.data import Scope
-
 from ...general.nodes.dummy_node import DummyNode
+import numpy as np
+import unittest
 
 
 class TestLayer(unittest.TestCase):

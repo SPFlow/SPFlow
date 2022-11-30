@@ -1,11 +1,12 @@
-import unittest
-
+from spflow.meta.data import Scope
+from spflow.torch.structure.spn import (
+    MultivariateGaussian,
+    MultivariateGaussianLayer,
+)
+from spflow.torch.inference import log_likelihood
 import numpy as np
 import torch
-
-from spflow.meta.data import Scope
-from spflow.torch.inference import log_likelihood
-from spflow.torch.structure.spn import MultivariateGaussian, MultivariateGaussianLayer
+import unittest
 
 
 class TestNode(unittest.TestCase):

@@ -1,11 +1,9 @@
-import unittest
-
-import torch
-
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondSumNode, Gaussian, ProductNode
+from spflow.torch.structure.spn import CondSumNode, ProductNode, Gaussian
+from spflow.torch.inference import log_likelihood, likelihood
+import torch
+import unittest
 
 
 def create_example_spn():

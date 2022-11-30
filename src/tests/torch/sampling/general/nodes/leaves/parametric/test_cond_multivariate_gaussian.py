@@ -1,12 +1,11 @@
+from spflow.meta.data import Scope
+from spflow.torch.structure.spn import CondMultivariateGaussian
+from spflow.torch.sampling import sample
+
+import torch
+import numpy as np
 import random
 import unittest
-
-import numpy as np
-import torch
-
-from spflow.meta.data import Scope
-from spflow.torch.sampling import sample
-from spflow.torch.structure.spn import CondMultivariateGaussian
 
 
 class TestMultivariateGaussian(unittest.TestCase):

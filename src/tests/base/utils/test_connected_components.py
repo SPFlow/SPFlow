@@ -1,9 +1,8 @@
-import random
-import unittest
+from spflow.base.utils import connected_components
 
 import numpy as np
-
-from spflow.base.utils import connected_components
+import unittest
+import random
 
 
 class TestNode(unittest.TestCase):

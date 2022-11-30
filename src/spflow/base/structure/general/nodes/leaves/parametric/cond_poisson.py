@@ -1,16 +1,15 @@
 """Contains conditional Poisson leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Callable, List, Optional, Tuple, Union
-
+from typing import Tuple, Optional, Callable, Union, List
 import numpy as np
+from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.base.structure.general.nodes.leaf_node import LeafNode
+
 from scipy.stats import poisson  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
-
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes, MetaType
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
 
 
 class CondPoisson(LeafNode):

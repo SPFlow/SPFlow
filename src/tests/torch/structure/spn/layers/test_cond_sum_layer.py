@@ -1,16 +1,15 @@
-import unittest
-
-import numpy as np
-import torch
-
-from spflow.base.structure.spn import CondSumLayer as BaseCondSumLayer
-from spflow.base.structure.spn import Gaussian as BaseGaussian
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure.spn import Gaussian, CondSumLayer
 from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.structure.spn import CondSumLayer, Gaussian
-
+from spflow.base.structure.spn import (
+    CondSumLayer as BaseCondSumLayer,
+    Gaussian as BaseGaussian,
+)
+from spflow.meta.dispatch import DispatchContext
+from spflow.meta.data import Scope
 from ...general.nodes.dummy_node import DummyNode
+import torch
+import numpy as np
+import unittest
 
 
 class TestNode(unittest.TestCase):

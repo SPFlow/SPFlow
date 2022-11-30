@@ -1,15 +1,13 @@
 """Contains inference methods for SPN-like conditional layers for SPFlow in the ``torch`` backend.
 """
-from typing import Optional
-
-import numpy as np
 import torch
-
-from spflow.meta.dispatch.dispatch import dispatch
+import numpy as np
+from typing import Optional
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.meta.dispatch.dispatch import dispatch
 from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer
 
 

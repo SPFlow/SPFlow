@@ -1,12 +1,11 @@
 """Contains inference methods for ``NestedModule`` objects for SPFlow in the ``base`` backend.
 """
-from typing import Optional
-
-import numpy as np
-
-from spflow.base.structure.nested_module import NestedModule
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.base.structure.nested_module import NestedModule
+
+from typing import Optional
+import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -1,23 +1,22 @@
 """Contains Uniform leaf node for SPFlow in the ``torch`` backend.
 """
-from typing import List, Optional, Tuple
-
 import numpy as np
 import torch
 import torch.distributions as D
-
-from spflow.base.structure.general.nodes.leaves.parametric.uniform import (
-    Uniform as BaseUniform,
-)
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes
+from typing import Tuple, Optional, List
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
+from spflow.base.structure.general.nodes.leaves.parametric.uniform import (
+    Uniform as BaseUniform,
+)
 
 
 class Uniform(LeafNode):
