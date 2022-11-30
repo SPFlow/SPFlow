@@ -1,15 +1,12 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
-    CondGamma,
-    CondGammaLayer,
-)
-from spflow.base.inference import log_likelihood
-from spflow.base.sampling import sample
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import CondGamma, CondGammaLayer, ProductNode, SumNode
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -27,12 +24,8 @@ class TestNode(unittest.TestCase):
         s1 = SumNode(children=[gamma_layer], weights=[0.3, 0.7])
 
         gamma_nodes = [
-            CondGamma(
-                Scope([0], [1]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
-            ),
-            CondGamma(
-                Scope([0], [1]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
-            ),
+            CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}),
+            CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}),
         ]
         s2 = SumNode(children=gamma_nodes, weights=[0.3, 0.7])
 
@@ -60,12 +53,8 @@ class TestNode(unittest.TestCase):
         p1 = ProductNode(children=[gamma_layer])
 
         gamma_nodes = [
-            CondGamma(
-                Scope([0], [2]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
-            ),
-            CondGamma(
-                Scope([1], [2]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
-            ),
+            CondGamma(Scope([0], [2]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}),
+            CondGamma(Scope([1], [2]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}),
         ]
         p2 = ProductNode(children=gamma_nodes)
 

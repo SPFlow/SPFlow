@@ -1,30 +1,29 @@
 """Contains Multivariate Gaussian leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple
 from functools import reduce
+from typing import Iterable, List, Optional, Tuple, Union
+
 import numpy as np
 import torch
 import torch.distributions as D
 
+from spflow.base.structure.general.layers.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussianLayer as BaseMultivariateGaussianLayer,
+)
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.module import Module
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.torch.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import (
-    Gaussian,
-)
-from spflow.base.structure.general.layers.leaves.parametric.multivariate_gaussian import (
-    MultivariateGaussianLayer as BaseMultivariateGaussianLayer,
-)
+from spflow.torch.structure.module import Module
 
 
 class MultivariateGaussianLayer(Module):
@@ -59,9 +58,7 @@ class MultivariateGaussianLayer(Module):
     def __init__(
         self,
         scope: Union[Scope, List[Scope]],
-        mean: Optional[
-            Union[List[float], List[List[float]], np.ndarray, torch.Tensor]
-        ] = None,
+        mean: Optional[Union[List[float], List[List[float]], np.ndarray, torch.Tensor]] = None,
         cov: Optional[
             Union[
                 List[List[float]],
@@ -102,9 +99,7 @@ class MultivariateGaussianLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'MultivariateGaussianLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'MultivariateGaussianLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -116,15 +111,11 @@ class MultivariateGaussianLayer(Module):
             cov = [torch.eye(len(s.query)) for s in scope]
 
         # create leaf nodes
-        self.nodes = torch.nn.ModuleList(
-            [MultivariateGaussian(s) for s in scope]
-        )
+        self.nodes = torch.nn.ModuleList([MultivariateGaussian(s) for s in scope])
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         # parse weights
         self.set_params(mean, cov)
@@ -149,9 +140,7 @@ class MultivariateGaussianLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "MultivariateGaussianLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "MultivariateGaussianLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -171,9 +160,7 @@ class MultivariateGaussianLayer(Module):
 
         for feature_ctx in signatures:
 
-            mean, cov = np.zeros(len(feature_ctx.scope.query)), np.eye(
-                len(feature_ctx.scope.query)
-            )
+            mean, cov = np.zeros(len(feature_ctx.scope.query)), np.eye(len(feature_ctx.scope.query))
 
             for i, domain in enumerate(feature_ctx.get_domains()):
                 # read or initialize parameters
@@ -211,9 +198,7 @@ class MultivariateGaussianLayer(Module):
         """Returns the covariance matrices of the represented distributions."""
         return [node.cov for node in self.nodes]
 
-    def dist(
-        self, node_ids: Optional[List[int]] = None
-    ) -> List[D.Distribution]:
+    def dist(self, node_ids: Optional[List[int]] = None) -> List[D.Distribution]:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -269,10 +254,7 @@ class MultivariateGaussianLayer(Module):
                 mean = [np.array(mean) for _ in range(self.n_out)]
             # can also be a list of different means
             else:
-                mean = [
-                    m if isinstance(m, np.ndarray) else np.array(m)
-                    for m in mean
-                ]
+                mean = [m if isinstance(m, np.ndarray) else np.array(m) for m in mean]
         elif isinstance(mean, np.ndarray) or isinstance(mean, torch.Tensor):
             # can be a one-dimensional numpy array/torch tensor specifying single mean (broadcast to all nodes)
             if mean.ndim == 1:
@@ -281,24 +263,15 @@ class MultivariateGaussianLayer(Module):
             else:
                 mean = [m for m in mean]
         else:
-            raise ValueError(
-                f"Specified 'mean' for 'MultivariateGaussianLayer' is of unknown type {type(mean)}."
-            )
+            raise ValueError(f"Specified 'mean' for 'MultivariateGaussianLayer' is of unknown type {type(mean)}.")
 
         if isinstance(cov, list):
             # can be a list of lists of values specifying a single cov (broadcast to all nodes)
-            if all(
-                [
-                    all([isinstance(c, float) or isinstance(c, int) for c in l])
-                    for l in cov
-                ]
-            ):
+            if all([all([isinstance(c, float) or isinstance(c, int) for c in l]) for l in cov]):
                 cov = [np.array(cov) for _ in range(self.n_out)]
             # can also be a list of different covs
             else:
-                cov = [
-                    c if isinstance(c, np.ndarray) else np.array(c) for c in cov
-                ]
+                cov = [c if isinstance(c, np.ndarray) else np.array(c) for c in cov]
         elif isinstance(cov, np.ndarray) or isinstance(cov, torch.Tensor):
             # can be a two-dimensional numpy array/torch tensor specifying single cov (broadcast to all nodes)
             if cov.ndim == 2:
@@ -307,9 +280,7 @@ class MultivariateGaussianLayer(Module):
             else:
                 cov = [c for c in cov]
         else:
-            raise ValueError(
-                f"Specified 'cov' for 'MultivariateGaussianLayer' is of unknown type {type(cov)}."
-            )
+            raise ValueError(f"Specified 'cov' for 'MultivariateGaussianLayer' is of unknown type {type(cov)}.")
 
         if len(mean) != self.n_out:
             raise ValueError(
@@ -350,9 +321,7 @@ class MultivariateGaussianLayer(Module):
         """
         return (self.mean, self.cov)
 
-    def check_support(
-        self, data: torch.Tensor, node_ids: Optional[List[int]] = None
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]] = None) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Multivariate Gaussian distributions, which are:
@@ -379,9 +348,7 @@ class MultivariateGaussianLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return torch.concat(
-            [self.nodes[i].check_support(data) for i in node_ids], dim=1
-        )
+        return torch.concat([self.nodes[i].check_support(data) for i in node_ids], dim=1)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -432,9 +399,7 @@ def marginalize(
     elif len(marg_scopes) == 1 and prune:
         return marg_nodes.pop()
     else:
-        new_layer = MultivariateGaussianLayer(
-            marg_scopes, *[list(p) for p in zip(*marg_params)]
-        )
+        new_layer = MultivariateGaussianLayer(marg_scopes, *[list(p) for p in zip(*marg_params)])
         return new_layer
 
 
@@ -452,9 +417,7 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return MultivariateGaussianLayer(
-        scope=layer.scopes_out, mean=layer.mean, cov=layer.cov
-    )
+    return MultivariateGaussianLayer(scope=layer.scopes_out, mean=layer.mean, cov=layer.cov)
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -1,18 +1,14 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext
-from spflow.torch.structure.spn import (
-    SumNode,
-    ProductNode,
-    HadamardLayer,
-    Gaussian,
-)
-from spflow.torch.inference import log_likelihood
-from spflow.torch.sampling import sample
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
+from spflow.torch.inference import log_likelihood
+from spflow.torch.sampling import sample
+from spflow.torch.structure.spn import Gaussian, HadamardLayer, ProductNode, SumNode
 
 
 class TestNode(unittest.TestCase):
@@ -62,18 +58,12 @@ class TestNode(unittest.TestCase):
             weights=[0.3, 0.7],
         )
 
-        expected_mean = 0.3 * torch.tensor(
-            [3.0, 1.0, 10.0]
-        ) + 0.7 * torch.tensor([1.0, -5.0, 10.0])
+        expected_mean = 0.3 * torch.tensor([3.0, 1.0, 10.0]) + 0.7 * torch.tensor([1.0, -5.0, 10.0])
 
         layer_samples = sample(layer_spn, 10000)
         nodes_samples = sample(nodes_spn, 10000)
 
-        self.assertTrue(
-            torch.allclose(
-                nodes_samples.mean(axis=0), expected_mean, atol=0.01, rtol=0.1
-            )
-        )
+        self.assertTrue(torch.allclose(nodes_samples.mean(axis=0), expected_mean, atol=0.01, rtol=0.1))
         self.assertTrue(
             torch.allclose(
                 layer_samples.mean(axis=0),

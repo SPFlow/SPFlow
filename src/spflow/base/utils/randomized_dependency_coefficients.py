@@ -4,10 +4,12 @@ Typical usage example:
 
     coeffs = randomized_dependency_coefficients(data, k, s, phi)
 """
-from typing import Callable
-import numpy as np
 from itertools import combinations
+from typing import Callable
+
+import numpy as np
 from sklearn.cross_decomposition import CCA
+
 from spflow.base.utils.empirical_cdf import empirical_cdf
 
 
@@ -40,9 +42,7 @@ def randomized_dependency_coefficients(
     """
     # default arguments according to paper
     if np.any(np.isnan(data)):
-        raise ValueError(
-            "Randomized dependency coefficients cannot be computed for data with missing values."
-        )
+        raise ValueError("Randomized dependency coefficients cannot be computed for data with missing values.")
 
     # compute ecd values for data
     ecdf = empirical_cdf(data)
@@ -51,20 +51,11 @@ def randomized_dependency_coefficients(
     ecdf_features = np.stack([ecdf.T, np.ones(ecdf.T.shape)], axis=-1)
 
     # compute random weights (and biases) generated from normal distribution
-    rand_gaussians = np.random.randn(
-        data.shape[1], 2, k
-    )  # 2 for weight (of size 1) and bias
+    rand_gaussians = np.random.randn(data.shape[1], 2, k)  # 2 for weight (of size 1) and bias
 
     # compute linear combinations of ecdf feature using generated weights
-    features = np.stack(
-        [
-            np.dot(features, weights)
-            for features, weights in zip(ecdf_features, rand_gaussians)
-        ]
-    )
-    features *= np.sqrt(
-        s
-    )  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
+    features = np.stack([np.dot(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)])
+    features *= np.sqrt(s)  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
 
     # apply non-linearity phi
     features = phi(features)

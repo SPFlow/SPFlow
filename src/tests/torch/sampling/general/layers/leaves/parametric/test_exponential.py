@@ -1,13 +1,14 @@
-from spflow.meta.dispatch import SamplingContext
-from spflow.meta.data import Scope
-from spflow.torch.structure.spn import Exponential, ExponentialLayer
-from spflow.torch.inference import log_likelihood
-from spflow.torch.sampling import sample
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
+from spflow.torch.inference import log_likelihood
+from spflow.torch.sampling import sample
+from spflow.torch.structure.spn import Exponential, ExponentialLayer
 
 
 class TestNode(unittest.TestCase):
@@ -26,9 +27,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        layer = ExponentialLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 1.8, 0.2]
-        )
+        layer = ExponentialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 1.8, 0.2])
 
         nodes = [
             Exponential(Scope([0]), l=0.2),
@@ -60,26 +59,19 @@ class TestNode(unittest.TestCase):
             10000,
             sampling_ctx=SamplingContext(
                 list(range(10000)),
-                [[0, 1] for _ in range(5000)]
-                + [[2, 1] for _ in range(5000, 10000)],
+                [[0, 1] for _ in range(5000)] + [[2, 1] for _ in range(5000, 10000)],
             ),
         )
         nodes_samples = torch.concat(
             [
-                torch.cat(
-                    [sample(nodes[0], 5000), sample(nodes[2], 5000)], dim=0
-                ),
+                torch.cat([sample(nodes[0], 5000), sample(nodes[2], 5000)], dim=0),
                 sample(nodes[1], 10000)[:, [1]],
             ],
             dim=1,
         )
 
         expected_mean = torch.tensor([1.0 / 0.2, 1.0 / 1.8])
-        self.assertTrue(
-            torch.allclose(
-                nodes_samples.mean(dim=0), expected_mean, atol=0.01, rtol=0.1
-            )
-        )
+        self.assertTrue(torch.allclose(nodes_samples.mean(dim=0), expected_mean, atol=0.01, rtol=0.1))
         self.assertTrue(
             torch.allclose(
                 layer_samples.mean(dim=0),

@@ -1,43 +1,27 @@
 """Contains the SPFlow architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the ``torch`` backend.
 """
-from spflow.meta.data.scope import Scope
+from typing import Iterable, List, Optional, Union
+
+from spflow.base.structure.spn.rat.rat_spn import RatSPN as BaseRatSPN
+from spflow.base.structure.spn.rat.region_graph import Partition, Region, RegionGraph
 from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.base.structure.spn.rat.region_graph import (
-    RegionGraph,
-    Partition,
-    Region,
-)
 from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.torch.structure.spn.nodes.sum_node import SumNode, marginalize
-from spflow.torch.structure.spn.nodes.cond_sum_node import (
-    CondSumNode,
-    marginalize,
-)
-from spflow.torch.structure.spn.layers.sum_layer import (
-    SumLayer,
-    marginalize,
-)
+from spflow.torch.structure.module import Module
+from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer, marginalize
+from spflow.torch.structure.spn.layers.hadamard_layer import HadamardLayer, marginalize
 from spflow.torch.structure.spn.layers.partition_layer import (
     PartitionLayer,
     marginalize,
 )
-from spflow.torch.structure.spn.layers.hadamard_layer import (
-    HadamardLayer,
-    marginalize,
-)
-from spflow.torch.structure.spn.layers.cond_sum_layer import (
-    CondSumLayer,
-    marginalize,
-)
-from spflow.torch.structure.module import Module
-from spflow.base.structure.spn.rat.rat_spn import RatSPN as BaseRatSPN
-
-from typing import Union, Iterable, Optional, List
+from spflow.torch.structure.spn.layers.sum_layer import SumLayer, marginalize
+from spflow.torch.structure.spn.nodes.cond_sum_node import CondSumNode, marginalize
+from spflow.torch.structure.spn.nodes.sum_node import SumNode, marginalize
 
 
 class RatSPN(Module):
@@ -91,17 +75,11 @@ class RatSPN(Module):
         self.n_leaf_nodes = n_leaf_nodes
 
         if n_root_nodes < 1:
-            raise ValueError(
-                f"Specified value of 'n_root_nodes' must be at least 1, but is {n_root_nodes}."
-            )
+            raise ValueError(f"Specified value of 'n_root_nodes' must be at least 1, but is {n_root_nodes}.")
         if n_region_nodes < 1:
-            raise ValueError(
-                f"Specified value for 'n_region_nodes' must be at least 1, but is {n_region_nodes}."
-            )
+            raise ValueError(f"Specified value for 'n_region_nodes' must be at least 1, but is {n_region_nodes}.")
         if n_leaf_nodes < 1:
-            raise ValueError(
-                f"Specified value for 'n_leaf_nodes' must be at least 1, but is {n_leaf_nodes}."
-            )
+            raise ValueError(f"Specified value for 'n_leaf_nodes' must be at least 1, but is {n_leaf_nodes}.")
 
         # create RAT-SPN from region graph
         self.from_region_graph(region_graph, feature_ctx)
@@ -127,22 +105,14 @@ class RatSPN(Module):
         def convert_partition(partition: Partition) -> PartitionLayer:
 
             return PartitionLayer(
-                child_partitions=[
-                    [convert_region(region, n_nodes=self.n_region_nodes)]
-                    for region in partition.regions
-                ]
+                child_partitions=[[convert_region(region, n_nodes=self.n_region_nodes)] for region in partition.regions]
             )
 
-        def convert_region(
-            region: Region, n_nodes: int
-        ) -> Union[SumLayer, HadamardLayer, Module]:
+        def convert_region(region: Region, n_nodes: int) -> Union[SumLayer, HadamardLayer, Module]:
 
             # non-leaf region
             if region.partitions:
-                children = [
-                    convert_partition(partition)
-                    for partition in region.partitions
-                ]
+                children = [convert_partition(partition) for partition in region.partitions]
                 sum_layer = (
                     CondSumLayer(children=children, n_nodes=n_nodes)
                     if region.scope.is_conditional()
@@ -153,20 +123,12 @@ class RatSPN(Module):
             else:
                 # split leaf scope into univariate ones and combine them element-wise
                 if len(region.scope.query) > 1:
-                    partition_signatures = [
-                        [feature_ctx.select([rv])] * self.n_leaf_nodes
-                        for rv in region.scope.query
-                    ]
-                    child_partitions = [
-                        [AutoLeaf(signatures)]
-                        for signatures in partition_signatures
-                    ]
+                    partition_signatures = [[feature_ctx.select([rv])] * self.n_leaf_nodes for rv in region.scope.query]
+                    child_partitions = [[AutoLeaf(signatures)] for signatures in partition_signatures]
                     return HadamardLayer(child_partitions=child_partitions)
                 # create univariate leaf region
                 elif len(region.scope.query) == 1:
-                    signatures = [
-                        feature_ctx.select(region.scope.query)
-                    ] * self.n_leaf_nodes
+                    signatures = [feature_ctx.select(region.scope.query)] * self.n_leaf_nodes
                     return AutoLeaf(signatures)
                 else:
                     raise ValueError(
@@ -179,9 +141,7 @@ class RatSPN(Module):
             )
 
         if region_graph.root_region is not None:
-            self.root_region = convert_region(
-                region_graph.root_region, n_nodes=self.n_root_nodes
-            )
+            self.root_region = convert_region(region_graph.root_region, n_nodes=self.n_root_nodes)
             self.root_node = (
                 CondSumNode(children=[self.root_region])
                 if region_graph.scope.is_conditional()
@@ -228,9 +188,7 @@ def marginalize(
     # since root node and root region all have the same scope, both are them are either fully marginalized or neither
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    marg_root_node = marginalize(
-        rat_spn.root_node, marg_rvs, prune=False, dispatch_ctx=dispatch_ctx
-    )
+    marg_root_node = marginalize(rat_spn.root_node, marg_rvs, prune=False, dispatch_ctx=dispatch_ctx)
 
     if marg_root_node is None:
         return None
@@ -249,9 +207,7 @@ def marginalize(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    rat_spn: RatSPN, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseRatSPN:
+def toBase(rat_spn: RatSPN, dispatch_ctx: Optional[DispatchContext] = None) -> BaseRatSPN:
     r"""Conversion for ``RatSPN`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -272,9 +228,7 @@ def toBase(
     )
 
     # replace actual module graph
-    base_rat_spn.root_node = toBase(
-        rat_spn.root_node, dispatch_ctx=dispatch_ctx
-    )
+    base_rat_spn.root_node = toBase(rat_spn.root_node, dispatch_ctx=dispatch_ctx)
     # set root region
     base_rat_spn.root_region = base_rat_spn.root_node.children[0]
 
@@ -282,9 +236,7 @@ def toBase(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    rat_spn: BaseRatSPN, dispatch_ctx: Optional[DispatchContext] = None
-) -> RatSPN:
+def toTorch(rat_spn: BaseRatSPN, dispatch_ctx: Optional[DispatchContext] = None) -> RatSPN:
     r"""Conversion for ``RatSPN`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -305,9 +257,7 @@ def toTorch(
     )
 
     # replace actual module graph
-    torch_rat_spn.root_node = toTorch(
-        rat_spn.root_node, dispatch_ctx=dispatch_ctx
-    )
+    torch_rat_spn.root_node = toTorch(rat_spn.root_node, dispatch_ctx=dispatch_ctx)
     # set root region
     torch_rat_spn.root_region = next(torch_rat_spn.root_node.children())
 

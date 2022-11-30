@@ -1,12 +1,17 @@
 """Contains conditional Multivariate Normal leaf node for SPFlow in the ``torch`` backend.
 """
+from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
+
 import numpy as np
 import torch
 import torch.distributions as D
-from typing import Tuple, Union, Optional, Iterable, Callable, List, Type
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+
+from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussian as BaseCondMultivariateGaussian,
+)
 from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes, MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -15,9 +20,6 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
-)
-from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
-    CondMultivariateGaussian as BaseCondMultivariateGaussian,
 )
 
 
@@ -66,17 +68,11 @@ class CondMultivariateGaussian(LeafNode):
         """
         # check if scope contains duplicates
         if len(set(scope.query)) != len(scope.query):
-            raise ValueError(
-                "Query scope for 'CondMultivariateGaussian' contains duplicate variables."
-            )
+            raise ValueError("Query scope for 'CondMultivariateGaussian' contains duplicate variables.")
         if len(scope.evidence) == 0:
-            raise ValueError(
-                f"Evidence scope for 'CondMultivariateGaussian' should not be empty."
-            )
+            raise ValueError(f"Evidence scope for 'CondMultivariateGaussian' should not be empty.")
         if len(scope.query) < 1:
-            raise ValueError(
-                "Size of query scope for 'CondMultivariateGaussian' must be at least 1."
-            )
+            raise ValueError("Size of query scope for 'CondMultivariateGaussian' must be at least 1.")
 
         super().__init__(scope=scope)
 
@@ -103,11 +99,7 @@ class CondMultivariateGaussian(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional (possibly multivariate) node
-        if (
-            len(domains) < 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) == 0
-        ):
+        if len(domains) < 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) == 0:
             return False
 
         # leaf is a continuous (multivariate) Gaussian distribution
@@ -124,9 +116,7 @@ class CondMultivariateGaussian(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondMultivariateGaussian":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondMultivariateGaussian":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -251,9 +241,7 @@ class CondMultivariateGaussian(LeafNode):
             cond_f = self.cond_f
 
         # if neither 'mean' or 'cov'/'cov_tril' nor 'cond_f' is specified (via node or arguments)
-        if (
-            mean is None or (cov is None and cov_tril is None)
-        ) and cond_f is None:
+        if (mean is None or (cov is None and cov_tril is None)) and cond_f is None:
             raise ValueError(
                 "'CondMultivariateGaussian' requires either 'mean' and 'cov'/'cov_tril' or 'cond_f' to retrieve 'mean', 'cov'/'cov_tril' to be specified."
             )
@@ -269,9 +257,7 @@ class CondMultivariateGaussian(LeafNode):
                 cov_tril = params["cov_tril"]
 
             if cov is None and cov_tril is None:
-                raise ValueError(
-                    "CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified."
-                )
+                raise ValueError("CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified.")
             elif cov is not None and cov_tril is not None:
                 raise ValueError(
                     "CondMultivariateGaussian requries either 'cov' or 'cov_tril' to be specified, but not both."
@@ -300,13 +286,9 @@ class CondMultivariateGaussian(LeafNode):
 
             # check mean vector for nan or inf values
             if torch.any(torch.isinf(mean)):
-                raise ValueError(
-                    "Value of 'mean' for 'CondMultivariateGaussian' may not contain infinite values"
-                )
+                raise ValueError("Value of 'mean' for 'CondMultivariateGaussian' may not contain infinite values")
             if torch.any(torch.isnan(mean)):
-                raise ValueError(
-                    "Value of 'mean' for 'CondMultivariateGaussian' may not contain NaN values"
-                )
+                raise ValueError("Value of 'mean' for 'CondMultivariateGaussian' may not contain NaN values")
 
             # make sure that number of dimensions matches scope length
             if (
@@ -323,11 +305,7 @@ class CondMultivariateGaussian(LeafNode):
 
             # make sure that dimensions of covariance matrix are correct
             if cov.ndim != 2 or (
-                cov.ndim == 2
-                and (
-                    cov.shape[0] != len(self.scope.query)
-                    or cov.shape[1] != len(self.scope.query)
-                )
+                cov.ndim == 2 and (cov.shape[0] != len(self.scope.query) or cov.shape[1] != len(self.scope.query))
             ):
                 raise ValueError(
                     f"Value of 'cov' for 'CondMultivariateGaussian' expected to be of shape ({len(self.scope.query), len(self.scope.query)}), but was: {cov.shape}"
@@ -335,13 +313,9 @@ class CondMultivariateGaussian(LeafNode):
 
             # check covariance matrix for nan or inf values
             if torch.any(torch.isinf(cov)):
-                raise ValueError(
-                    "Value of 'cov for 'CondMultivariateGaussian' may not contain infinite values"
-                )
+                raise ValueError("Value of 'cov for 'CondMultivariateGaussian' may not contain infinite values")
             if torch.any(torch.isnan(cov)):
-                raise ValueError(
-                    "Value of 'cov' for 'CondMultivariateGaussian' may not contain NaN values"
-                )
+                raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' may not contain NaN values")
 
             if specified_tril:
                 # compute eigenvalues of cov variance matrix
@@ -360,9 +334,7 @@ class CondMultivariateGaussian(LeafNode):
         else:
             return mean, cov, None
 
-    def check_support(
-        self, data: torch.Tensor, is_scope_data: bool = False
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Multivariate Gaussian distribution, which is:
@@ -391,9 +363,7 @@ class CondMultivariateGaussian(LeafNode):
             # select relevant data for scope
             scope_data = data[:, self.scope.query]
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(
-            self.scopes_out[0].query
-        ):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scopes_out[0].query):
             raise ValueError(
                 f"Expected 'scope_data' to be of shape (n,{len(self.scopes_out[0].query)}), but was: {scope_data.shape}"
             )

@@ -1,10 +1,11 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.torch.structure.spn.rat import random_region_graph, RatSPN
-from spflow.torch.inference import log_likelihood
-
-import torch
-import numpy as np
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure.spn.rat import RatSPN, random_region_graph
 
 
 class TestModule(unittest.TestCase):
@@ -19,12 +20,8 @@ class TestModule(unittest.TestCase):
     def test_likelihood(self):
         # create region graph
         scope = Scope(list(range(128)))
-        region_graph = random_region_graph(
-            scope, depth=5, replicas=2, n_splits=2
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=5, replicas=2, n_splits=2)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         # create torch rat spn from region graph
         rat = RatSPN(

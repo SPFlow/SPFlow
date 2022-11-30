@@ -1,21 +1,22 @@
 """Contains conditional Poisson leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Callable, Type
+from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
+
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
+from spflow.base.structure.general.nodes.leaves.parametric.cond_poisson import (
+    CondPoisson,
+)
+from spflow.base.structure.module import Module
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
-)
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureType, FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.module import Module
-from spflow.base.structure.general.nodes.leaves.parametric.cond_poisson import (
-    CondPoisson,
 )
 
 
@@ -80,9 +81,7 @@ class CondPoissonLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondPoissonLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondPoissonLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -121,9 +120,7 @@ class CondPoissonLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondPoissonLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondPoissonLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -133,9 +130,7 @@ class CondPoissonLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondPoissonLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondPoissonLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         l = []
         scopes = []
@@ -160,9 +155,7 @@ class CondPoissonLayer(Module):
 
         return CondPoissonLayer(scopes)
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -184,9 +177,7 @@ class CondPoissonLayer(Module):
 
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> np.ndarray:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> np.ndarray:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameter (``l``) is passed as an additional argument in the dispatch context.
@@ -224,9 +215,7 @@ class CondPoissonLayer(Module):
 
         # if neither 'l' nor 'cond_f' is specified (via node or arguments)
         if l is None and cond_f is None:
-            raise ValueError(
-                "'CondPoissonLayer' requires either 'l' or 'cond_f' to retrieve 'l' to be specified."
-            )
+            raise ValueError("'CondPoissonLayer' requires either 'l' or 'cond_f' to retrieve 'l' to be specified.")
 
         # if 'l' was not already specified, retrieve it
         if l is None:
@@ -251,9 +240,7 @@ class CondPoissonLayer(Module):
 
         return l
 
-    def dist(
-        self, l: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> List[rv_frozen]:
+    def dist(self, l: np.ndarray, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
 
         Args:
@@ -271,9 +258,7 @@ class CondPoissonLayer(Module):
 
         return [self.nodes[i].dist(l[i]) for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Poisson distributions, which are:
@@ -300,9 +285,7 @@ class CondPoissonLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore

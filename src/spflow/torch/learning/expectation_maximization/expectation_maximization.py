@@ -1,14 +1,13 @@
 """Contains the expectation maximization optimization parameter learner for SPFlow in the ``torch`` backend.
 """
 from typing import List
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.module import Module
-from spflow.torch.inference.module import log_likelihood
-from spflow.torch.learning.general.nodes.leaves.parametric.bernoulli import (
-    em,
-)  # TODO
 
 import torch
+
+from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.torch.inference.module import log_likelihood
+from spflow.torch.learning.general.nodes.leaves.parametric.bernoulli import em  # TODO
+from spflow.torch.structure.module import Module
 
 
 def expectation_maximization(
@@ -44,9 +43,7 @@ def expectation_maximization(
         dispatch_ctx = DispatchContext()
 
         # compute log likelihoods and sum them together
-        acc_ll = log_likelihood(
-            module, data, check_support=check_support, dispatch_ctx=dispatch_ctx
-        ).sum()
+        acc_ll = log_likelihood(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx).sum()
 
         avg_ll = acc_ll.detach().clone() / data.shape[0]
         ll_history.append(avg_ll)

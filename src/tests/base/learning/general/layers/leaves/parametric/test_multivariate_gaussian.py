@@ -1,14 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    MultivariateGaussianLayer,
-)
-from spflow.base.learning import (
-    maximum_likelihood_estimation,
-)
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.learning import maximum_likelihood_estimation
+from spflow.base.structure.spn import MultivariateGaussianLayer
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -50,9 +47,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 layer.cov,
-                np.array(
-                    [[[1.0, 0.25], [0.25, 0.5]], [[1.3, -0.7], [-0.7, 1.0]]]
-                ),
+                np.array([[[1.0, 0.25], [0.25, 0.5]], [[1.3, -0.7], [-0.7, 1.0]]]),
                 atol=1e-2,
                 rtol=1e-2,
             )

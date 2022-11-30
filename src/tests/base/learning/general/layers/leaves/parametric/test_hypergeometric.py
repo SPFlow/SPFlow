@@ -1,14 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    HypergeometricLayer,
-)
-from spflow.base.learning import (
-    maximum_likelihood_estimation,
-)
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.learning import maximum_likelihood_estimation
+from spflow.base.structure.spn import HypergeometricLayer
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -18,19 +15,13 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        layer = HypergeometricLayer(
-            scope=[Scope([0]), Scope([1])], N=[10, 4], M=[7, 1], n=[5, 3]
-        )
+        layer = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=[10, 4], M=[7, 1], n=[5, 3])
 
         # simulate data
         data = np.hstack(
             [
-                np.random.hypergeometric(
-                    ngood=7, nbad=10 - 7, nsample=5, size=(10000, 1)
-                ),
-                np.random.hypergeometric(
-                    ngood=1, nbad=4 - 1, nsample=3, size=(10000, 1)
-                ),
+                np.random.hypergeometric(ngood=7, nbad=10 - 7, nsample=5, size=(10000, 1)),
+                np.random.hypergeometric(ngood=1, nbad=4 - 1, nsample=3, size=(10000, 1)),
             ]
         )
 

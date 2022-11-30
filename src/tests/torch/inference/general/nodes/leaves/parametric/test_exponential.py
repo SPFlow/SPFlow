@@ -1,15 +1,15 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import Exponential as BaseExponential
-from spflow.base.inference import log_likelihood, likelihood
-from spflow.torch.structure.spn import Exponential
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
-
 import random
 import unittest
+
+import numpy as np
+import torch
 from packaging import version
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import Exponential as BaseExponential
+from spflow.meta.data import Scope
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import Exponential
 
 
 class TestExponential(unittest.TestCase):
@@ -35,9 +35,7 @@ class TestExponential(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_exponential, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
@@ -72,9 +70,7 @@ class TestExponential(unittest.TestCase):
         )
 
         # verify that distribution parameters match parameters
-        self.assertTrue(
-            torch.allclose(torch_exponential.l, torch_exponential.dist.rate)
-        )
+        self.assertTrue(torch.allclose(torch_exponential.l, torch_exponential.dist.rate))
 
     def test_gradient_optimization(self):
 
@@ -102,11 +98,7 @@ class TestExponential(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(
-            torch.allclose(
-                torch_exponential.l, torch.tensor(1.5), atol=1e-3, rtol=0.3
-            )
-        )
+        self.assertTrue(torch.allclose(torch_exponential.l, torch.tensor(1.5), atol=1e-3, rtol=0.3))
 
     def test_likelihood_marginalization(self):
 
@@ -142,9 +134,7 @@ class TestExponential(unittest.TestCase):
         # check valid float values (within range)
         log_likelihood(
             exponential,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
         )
         log_likelihood(exponential, torch.tensor([[10.5]]))
 
@@ -153,16 +143,12 @@ class TestExponential(unittest.TestCase):
             ValueError,
             log_likelihood,
             exponential,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
         )
 
         if version.parse(torch.__version__) < version.parse("1.11.0"):
             # edge case 0 (part of the support in scipy, but NOT pytorch)
-            self.assertRaises(
-                ValueError, log_likelihood, exponential, torch.tensor([[0.0]])
-            )
+            self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[0.0]]))
         else:
             # edge case 0
             log_likelihood(exponential, torch.tensor([[0.0]]))

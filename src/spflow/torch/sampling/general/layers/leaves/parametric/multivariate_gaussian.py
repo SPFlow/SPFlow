@@ -1,8 +1,10 @@
 """Contains sampling methods for ``MultivariateGaussianLayer`` leaves for SPFlow in the ``torch`` backend.
 """
-import torch
-import numpy as np
 from typing import Optional
+
+import numpy as np
+import torch
+
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -13,13 +15,13 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.multivariate_gaussian import (
-    MultivariateGaussianLayer,
-)
 from spflow.torch.sampling.general.nodes.leaves.parametric.multivariate_gaussian import (
     sample,
 )
 from spflow.torch.sampling.module import sample
+from spflow.torch.structure.general.layers.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussianLayer,
+)
 
 
 @dispatch  # type: ignore
@@ -68,12 +70,8 @@ def sample(
         if len(output_ids) == 0:
             output_ids = list(range(layer.n_out))
 
-        if not Scope.all_pairwise_disjoint(
-            [layer_scopes[id] for id in output_ids]
-        ):
-            raise ValueError(
-                "Sampling from non-pairwise-disjoint scopes for instances is not allowed."
-            )
+        if not Scope.all_pairwise_disjoint([layer_scopes[id] for id in output_ids]):
+            raise ValueError("Sampling from non-pairwise-disjoint scopes for instances is not allowed.")
 
     # all product nodes are over (all) children
     for node_id, instances in sampling_ctx.group_output_ids(layer.n_out):

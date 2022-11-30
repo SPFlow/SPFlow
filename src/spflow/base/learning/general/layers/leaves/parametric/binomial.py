@@ -1,17 +1,19 @@
 """Contains learning methods for ``BinomialLayer`` leaves for SPFlow in the ``base`` backend.
 """
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import numpy as np
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import (
-    DispatchContext,
-    init_default_dispatch_context,
-)
+
 from spflow.base.learning.general.nodes.leaves.parametric.binomial import (
     maximum_likelihood_estimation,
 )
 from spflow.base.structure.general.layers.leaves.parametric.binomial import (
     BinomialLayer,
+)
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.dispatch.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
 )
 
 
@@ -79,13 +81,7 @@ def maximum_likelihood_estimation(
 
     if (
         (weights.ndim == 1 and weights.shape[0] != data.shape[0])
-        or (
-            weights.ndim == 2
-            and (
-                weights.shape[0] != data.shape[0]
-                or weights.shape[1] != layer.n_out
-            )
-        )
+        or (weights.ndim == 2 and (weights.shape[0] != data.shape[0] or weights.shape[1] != layer.n_out))
         or (weights.ndim not in [1, 2])
     ):
         raise ValueError(

@@ -1,21 +1,23 @@
 """Contains conditional Negative Binomial leaf node for SPFlow in the ``torch`` backend.
 """
+from typing import Callable, List, Optional, Tuple, Type, Union
+
 import numpy as np
 import torch
 import torch.distributions as D
-from typing import List, Tuple, Optional, Callable, Union, Type
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+
+from spflow.base.structure.general.nodes.leaves.parametric.cond_negative_binomial import (
+    CondNegativeBinomial as BaseCondNegativeBinomial,
+)
 from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes, MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
-from spflow.base.structure.general.nodes.leaves.parametric.cond_negative_binomial import (
-    CondNegativeBinomial as BaseCondNegativeBinomial,
-)
 
 
 class CondNegativeBinomial(LeafNode):
@@ -41,9 +43,7 @@ class CondNegativeBinomial(LeafNode):
             a floating point, scalar NumPy array or scalar PyTorch tensor representing the success probability in :math:`(0,1]`.
     """
 
-    def __init__(
-        self, scope: Scope, n: int, cond_f: Optional[Callable] = None
-    ) -> None:
+    def __init__(self, scope: Scope, n: int, cond_f: Optional[Callable] = None) -> None:
         r"""Initializes ``CondBernoulli`` leaf node.
 
         Args:
@@ -57,13 +57,9 @@ class CondNegativeBinomial(LeafNode):
                 a floating point, scalar NumPy array or scalar PyTorch tensor representing the success probability in :math:`(0,1]`.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'CondNegativeBinomial' should be 1, but was: {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'CondNegativeBinomial' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) == 0:
-            raise ValueError(
-                f"Evidence scope for 'CondNegativeBinomial' should not be empty."
-            )
+            raise ValueError(f"Evidence scope for 'CondNegativeBinomial' should not be empty.")
 
         super().__init__(scope=scope)
 
@@ -93,11 +89,7 @@ class CondNegativeBinomial(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) == 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) == 0:
             return False
 
         # leaf is a discrete Negative Binomial distribution
@@ -108,9 +100,7 @@ class CondNegativeBinomial(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondNegativeBinomial":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondNegativeBinomial":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -180,9 +170,7 @@ class CondNegativeBinomial(LeafNode):
 
         self.n.data = torch.tensor(int(n))  # type: ignore
 
-    def retrieve_params(
-        self, data: torch.Tensor, dispatch_ctx: DispatchContext
-    ) -> torch.Tensor:
+    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> torch.Tensor:
         r"""Retrieves the conditional parameter of the leaf node.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -220,9 +208,7 @@ class CondNegativeBinomial(LeafNode):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError(
-                "'CondBinomial' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
-            )
+            raise ValueError("'CondBinomial' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
 
         # if 'p' was not already specified, retrieve it
         if p is None:
@@ -247,9 +233,7 @@ class CondNegativeBinomial(LeafNode):
         """
         return (self.n.data.cpu().numpy(),)
 
-    def check_support(
-        self, data: torch.Tensor, is_scope_data: bool = False
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Negative Binomial distribution, which is:
@@ -290,17 +274,10 @@ class CondNegativeBinomial(LeafNode):
         valid[~nan_mask] = self.dist(torch.tensor(0.5)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check if all values are valid integers
-        valid[~nan_mask & valid] &= (
-            torch.remainder(
-                scope_data[~nan_mask & valid], torch.tensor(1)
-            ).squeeze(-1)
-            == 0
-        )
+        valid[~nan_mask & valid] &= torch.remainder(scope_data[~nan_mask & valid], torch.tensor(1)).squeeze(-1) == 0
 
         # check for infinite values
-        valid[~nan_mask & valid] &= (
-            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
-        )
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 
@@ -323,9 +300,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    node: CondNegativeBinomial, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseCondNegativeBinomial:
+def toBase(node: CondNegativeBinomial, dispatch_ctx: Optional[DispatchContext] = None) -> BaseCondNegativeBinomial:
     """Conversion for ``CondNegativeBinomial`` from ``torch`` backend to ``base`` backend.
 
     Args:

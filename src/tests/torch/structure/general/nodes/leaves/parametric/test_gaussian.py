@@ -1,16 +1,15 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import Gaussian
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.inference import log_likelihood
-from spflow.base.structure.spn import Gaussian as BaseGaussian
-from spflow.base.inference import log_likelihood
-
-import torch
-import numpy as np
-
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import Gaussian as BaseGaussian
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Gaussian
 
 
 class TestGaussian(unittest.TestCase):
@@ -27,9 +26,7 @@ class TestGaussian(unittest.TestCase):
 
         # std = 0 and std < 0
         self.assertRaises(Exception, Gaussian, Scope([0]), mean, 0.0)
-        self.assertRaises(
-            Exception, Gaussian, Scope([0]), mean, np.nextafter(0.0, -1.0)
-        )
+        self.assertRaises(Exception, Gaussian, Scope([0]), mean, np.nextafter(0.0, -1.0))
         # std = inf and std = nan
         self.assertRaises(Exception, Gaussian, Scope([0]), mean, np.inf)
         self.assertRaises(Exception, Gaussian, Scope([0]), mean, np.nan)
@@ -49,39 +46,19 @@ class TestGaussian(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            Gaussian.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertTrue(Gaussian.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # Gaussian feature type class
-        self.assertTrue(
-            Gaussian.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Gaussian])]
-            )
-        )
+        self.assertTrue(Gaussian.accepts([FeatureContext(Scope([0]), [FeatureTypes.Gaussian])]))
 
         # Gaussian feature type instance
-        self.assertTrue(
-            Gaussian.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Gaussian(0.0, 1.0)])]
-            )
-        )
+        self.assertTrue(Gaussian.accepts([FeatureContext(Scope([0]), [FeatureTypes.Gaussian(0.0, 1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            Gaussian.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(Gaussian.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # conditional scope
-        self.assertFalse(
-            Gaussian.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(Gaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -97,21 +74,15 @@ class TestGaussian(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        gaussian = Gaussian.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-        )
+        gaussian = Gaussian.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Continuous])])
         self.assertTrue(torch.isclose(gaussian.mean, torch.tensor(0.0)))
         self.assertTrue(torch.isclose(gaussian.std, torch.tensor(1.0)))
 
-        gaussian = Gaussian.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Gaussian])]
-        )
+        gaussian = Gaussian.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Gaussian])])
         self.assertTrue(torch.isclose(gaussian.mean, torch.tensor(0.0)))
         self.assertTrue(torch.isclose(gaussian.std, torch.tensor(1.0)))
 
-        gaussian = Gaussian.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Gaussian(-1.0, 1.5)])]
-        )
+        gaussian = Gaussian.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Gaussian(-1.0, 1.5)])])
         self.assertTrue(torch.isclose(gaussian.mean, torch.tensor(-1.0)))
         self.assertTrue(torch.isclose(gaussian.std, torch.tensor(1.5)))
 
@@ -151,19 +122,11 @@ class TestGaussian(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             Gaussian,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0]), [FeatureTypes.Gaussian])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Gaussian])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        gaussian = AutoLeaf(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Gaussian(mean=-1.0, std=0.5)]
-                )
-            ]
-        )
+        gaussian = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Gaussian(mean=-1.0, std=0.5)])])
         self.assertTrue(isinstance(gaussian, Gaussian))
         self.assertTrue(torch.isclose(gaussian.mean, torch.tensor(-1.0)))
         self.assertTrue(torch.isclose(gaussian.std, torch.tensor(0.5)))

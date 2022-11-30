@@ -1,10 +1,12 @@
+import random
+import unittest
+
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import CondGamma, CondGammaLayer
-from spflow.torch.inference import log_likelihood, likelihood
-import torch
-import unittest
-import random
 
 
 class TestNode(unittest.TestCase):
@@ -18,12 +20,8 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_alpha(self):
 
-        gamma = CondGammaLayer(
-            Scope([0], [1]), cond_f=lambda data: {"beta": [1.0, 1.0]}, n_nodes=2
-        )
-        self.assertRaises(
-            KeyError, log_likelihood, gamma, torch.tensor([[0], [1]])
-        )
+        gamma = CondGammaLayer(Scope([0], [1]), cond_f=lambda data: {"beta": [1.0, 1.0]}, n_nodes=2)
+        self.assertRaises(KeyError, log_likelihood, gamma, torch.tensor([[0], [1]]))
 
     def test_likelihood_no_beta(self):
 
@@ -32,16 +30,12 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"alpha": [1.0, 1.0]},
             n_nodes=2,
         )
-        self.assertRaises(
-            KeyError, log_likelihood, gamma, torch.tensor([[0], [1]])
-        )
+        self.assertRaises(KeyError, log_likelihood, gamma, torch.tensor([[0], [1]]))
 
     def test_likelihood_no_alpha_beta(self):
 
         gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
-        self.assertRaises(
-            ValueError, log_likelihood, gamma, torch.tensor([[0], [1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[0], [1]]))
 
     def test_likelihood_module_cond_f(self):
 
@@ -51,9 +45,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = torch.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
-        targets = torch.tensor(
-            [[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]]
-        )
+        targets = torch.tensor([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
 
         probs = likelihood(gamma, data)
         log_probs = log_likelihood(gamma, data)
@@ -70,9 +62,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = torch.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
-        targets = torch.tensor(
-            [[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]]
-        )
+        targets = torch.tensor([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
 
         probs = likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
@@ -91,9 +81,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = torch.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
-        targets = torch.tensor(
-            [[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]]
-        )
+        targets = torch.tensor([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
 
         probs = likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
@@ -112,12 +100,8 @@ class TestNode(unittest.TestCase):
         )
 
         nodes = [
-            CondGamma(
-                Scope([0], [2]), cond_f=lambda data: {"alpha": 0.2, "beta": 1.0}
-            ),
-            CondGamma(
-                Scope([1], [2]), cond_f=lambda data: {"alpha": 1.0, "beta": 0.3}
-            ),
+            CondGamma(Scope([0], [2]), cond_f=lambda data: {"alpha": 0.2, "beta": 1.0}),
+            CondGamma(Scope([1], [2]), cond_f=lambda data: {"alpha": 1.0, "beta": 0.3}),
             CondGamma(
                 Scope([0], [2]),
                 cond_f=lambda data: {"alpha": 2.3, "beta": 0.97},
@@ -127,9 +111,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 

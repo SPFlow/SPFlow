@@ -1,5 +1,9 @@
 """Contains sampling methods for ``CondGamma`` nodes for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,12 +13,7 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.cond_gamma import (
-    CondGamma,
-)
-
-import torch
-from typing import Optional
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma
 
 
 @dispatch  # type: ignore
@@ -56,9 +55,7 @@ def sample(
     # retrieve values for 'alpha','beta'
     alpha, beta = leaf.retrieve_params(data, dispatch_ctx)
 
-    marg_ids = (
-        torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)
-    ).squeeze(1)
+    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = torch.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
@@ -66,9 +63,7 @@ def sample(
     sampling_ids = marg_ids & instance_ids_mask.bool().to(alpha.device)
 
     data[sampling_ids, leaf.scope.query] = (
-        leaf.dist(alpha=alpha, beta=beta)
-        .sample((sampling_ids.sum(),))
-        .to(alpha.device)
+        leaf.dist(alpha=alpha, beta=beta).sample((sampling_ids.sum(),)).to(alpha.device)
     )
 
     return data

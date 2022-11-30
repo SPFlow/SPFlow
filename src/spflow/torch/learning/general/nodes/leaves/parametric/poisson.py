@@ -1,15 +1,15 @@
 """Contains learning methods for ``Poisson`` nodes for SPFlow in the ``torch`` backend.
 """
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.poisson import (
-    Poisson,
-)
+from spflow.torch.structure.general.nodes.leaves.parametric.poisson import Poisson
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -84,17 +84,13 @@ def maximum_likelihood_estimation(
 
     if check_support:
         if torch.any(~leaf.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'Poisson'."
-            )
+            raise ValueError("Encountered values outside of the support for 'Poisson'.")
 
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
 
     if torch.all(nan_mask):
-        raise ValueError(
-            "Cannot compute maximum-likelihood estimation on nan-only data."
-        )
+        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
 
     if nan_strategy is None and torch.any(nan_mask):
         raise ValueError(
@@ -107,9 +103,7 @@ def maximum_likelihood_estimation(
             scope_data = scope_data[~nan_mask]
             weights = weights[~nan_mask.squeeze(1)]
         else:
-            raise ValueError(
-                "Unknown strategy for handling missing (NaN) values for 'Poisson'."
-            )
+            raise ValueError("Unknown strategy for handling missing (NaN) values for 'Poisson'.")
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
         # TODO: how to handle missing data?
@@ -125,9 +119,7 @@ def maximum_likelihood_estimation(
     n_total = weights.sum(dtype=torch.get_default_dtype())
 
     # estimate rate parameter from data
-    l_est = (
-        weights * scope_data.type(torch.get_default_dtype())
-    ).sum() / n_total
+    l_est = (weights * scope_data.type(torch.get_default_dtype())).sum() / n_total
 
     # edge case: if rate 0, set to larger value (should not happen, but just in case)
     if torch.isclose(l_est, torch.tensor(0.0)):
