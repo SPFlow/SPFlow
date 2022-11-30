@@ -76,7 +76,7 @@ def sample(
         torch.hstack(id_tuple) for id_tuple in zip(*partition_indices)
     ]
 
-    children = list(hadamard_layer.children())
+    children = list(hadamard_layer.chs)
 
     # sample accoding to sampling_context
     for node_id, instances in sampling_ctx.group_output_ids(

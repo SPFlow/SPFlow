@@ -62,7 +62,7 @@ def sample(
         raise ValueError("'ProductLayer only allows single output sampling.")
 
     # all product nodes are over (all) children
-    for child in product_layer.children():
+    for child in product_layer.chs:
         sample(
             child,
             data,

@@ -211,7 +211,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(isinstance(spn, ProductNode))
         # children of product node should be leaves since scope is originally multivariate and no partitioning/clustering occurs
         self.assertTrue(
-            all([isinstance(child, Gaussian) for child in spn.children()])
+            all([isinstance(child, Gaussian) for child in spn.chs])
         )
 
     def test_learn_spn_2(self):
@@ -242,11 +242,11 @@ class TestNode(unittest.TestCase):
 
         # check resulting graph
         self.assertTrue(isinstance(spn, ProductNode))
-        partition_1, partition_2 = list(spn.children())
+        partition_1, partition_2 = list(spn.chs)
         # partition 1
         self.assertTrue(isinstance(partition_1, SumNode))
         partition_1_clustering_1, partition_1_clustering_2 = list(
-            partition_1.children()
+            partition_1.chs
         )
         # children of both clusterings should be product nodes since this partition is originally multivariate
         self.assertTrue(isinstance(partition_1_clustering_1, ProductNode))
@@ -254,7 +254,7 @@ class TestNode(unittest.TestCase):
             all(
                 [
                     isinstance(child, Gaussian)
-                    for child in partition_1_clustering_1.children()
+                    for child in partition_1_clustering_1.chs
                 ]
             )
         )
@@ -263,7 +263,7 @@ class TestNode(unittest.TestCase):
             all(
                 [
                     isinstance(child, Gaussian)
-                    for child in partition_1_clustering_2.children()
+                    for child in partition_1_clustering_2.chs
                 ]
             )
         )
@@ -297,14 +297,14 @@ class TestNode(unittest.TestCase):
 
         # check resulting graph
         self.assertTrue(isinstance(spn, ProductNode))
-        partition_1, partition_2 = list(spn.children())
+        partition_1, partition_2 = list(spn.chs)
         # partition 1
         self.assertTrue(isinstance(partition_1, ProductNode))
         self.assertTrue(
             all(
                 [
                     isinstance(child, Gaussian)
-                    for child in partition_1.children()
+                    for child in partition_1.chs
                 ]
             )
         )
@@ -338,20 +338,20 @@ class TestNode(unittest.TestCase):
 
         # check resulting graph
         self.assertTrue(isinstance(spn, ProductNode))
-        partition_1, partition_2 = list(spn.children())
+        partition_1, partition_2 = list(spn.chs)
         # partition 1
         self.assertTrue(isinstance(partition_1, CondSumNode))
         (
             partition_1_clustering_1,
             partition_1_clustering_2,
-        ) = partition_1.children()
+        ) = partition_1.chs
         # children of both clusterings should be product nodes since this partition is originally multivariate
         self.assertTrue(isinstance(partition_1_clustering_1, ProductNode))
         self.assertTrue(
             all(
                 [
                     isinstance(child, CondGaussian)
-                    for child in partition_1_clustering_1.children()
+                    for child in partition_1_clustering_1.chs
                 ]
             )
         )
@@ -360,7 +360,7 @@ class TestNode(unittest.TestCase):
             all(
                 [
                     isinstance(child, CondGaussian)
-                    for child in partition_1_clustering_2.children()
+                    for child in partition_1_clustering_2.chs
                 ]
             )
         )
