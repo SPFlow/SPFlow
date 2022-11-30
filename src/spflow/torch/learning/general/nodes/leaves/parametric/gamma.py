@@ -74,17 +74,13 @@ def maximum_likelihood_estimation(
 
     if check_support:
         if torch.any(~leaf.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'Gamma'."
-            )
+            raise ValueError("Encountered values outside of the support for 'Gamma'.")
 
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
 
     if torch.all(nan_mask):
-        raise ValueError(
-            "Cannot compute maximum-likelihood estimation on nan-only data."
-        )
+        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
 
     if nan_strategy is None and torch.any(nan_mask):
         raise ValueError(
@@ -97,9 +93,7 @@ def maximum_likelihood_estimation(
             scope_data = scope_data[~nan_mask]
             weights = weights[~nan_mask]
         else:
-            raise ValueError(
-                "Unknown strategy for handling missing (NaN) values for 'Gamma'."
-            )
+            raise ValueError("Unknown strategy for handling missing (NaN) values for 'Gamma'.")
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
     elif nan_strategy is not None:
@@ -128,16 +122,8 @@ def maximum_likelihood_estimation(
         alpha_prev = alpha_est
         alpha_est = 1.0 / (
             1.0 / alpha_prev
-            + (
-                mean_log
-                - log_mean
-                + alpha_prev.log()
-                - torch.digamma(alpha_prev)
-            )
-            / (
-                alpha_prev ** 2
-                * (1.0 / alpha_prev - torch.polygamma(n=1, input=alpha_prev))
-            )
+            + (mean_log - log_mean + alpha_prev.log() - torch.digamma(alpha_prev))
+            / (alpha_prev**2 * (1.0 / alpha_prev - torch.polygamma(n=1, input=alpha_prev)))
         )
 
     # compute beta estimate

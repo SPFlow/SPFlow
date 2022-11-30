@@ -15,9 +15,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        layer = UniformLayer(
-            scope=[Scope([0]), Scope([1])], start=[-3.0, 0.0], end=[-1.0, 1.0]
-        )
+        layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[-3.0, 0.0], end=[-1.0, 1.0])
 
         # simulate data
         data = np.hstack(

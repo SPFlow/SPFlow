@@ -39,39 +39,19 @@ class TestGeometric(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type
-        self.assertTrue(
-            Geometric.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertTrue(Geometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # Geometric feature type class
-        self.assertTrue(
-            Geometric.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Geometric])]
-            )
-        )
+        self.assertTrue(Geometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Geometric])]))
 
         # Geometric feature type instance
-        self.assertTrue(
-            Geometric.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Geometric(0.5)])]
-            )
-        )
+        self.assertTrue(Geometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Geometric(0.5)])]))
 
         # invalid feature type
-        self.assertFalse(
-            Geometric.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(Geometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # conditional scope
-        self.assertFalse(
-            Geometric.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(Geometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # multivariate signature
         self.assertFalse(
@@ -87,19 +67,13 @@ class TestGeometric(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        geometric = Geometric.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-        )
+        geometric = Geometric.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Discrete])])
         self.assertTrue(torch.isclose(geometric.p, torch.tensor(0.5)))
 
-        geometric = Geometric.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Geometric])]
-        )
+        geometric = Geometric.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Geometric])])
         self.assertTrue(torch.isclose(geometric.p, torch.tensor(0.5)))
 
-        geometric = Geometric.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Geometric(p=0.75)])]
-        )
+        geometric = Geometric.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Geometric(p=0.75)])])
         self.assertTrue(torch.isclose(geometric.p, torch.tensor(0.75)))
 
         # ----- invalid arguments -----
@@ -138,15 +112,11 @@ class TestGeometric(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             Geometric,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0]), [FeatureTypes.Geometric])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Geometric])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        geometric = AutoLeaf(
-            [FeatureContext(Scope([0]), [FeatureTypes.Geometric(p=0.75)])]
-        )
+        geometric = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Geometric(p=0.75)])])
         self.assertTrue(isinstance(geometric, Geometric))
         self.assertTrue(torch.isclose(geometric.p, torch.tensor(0.75)))
 

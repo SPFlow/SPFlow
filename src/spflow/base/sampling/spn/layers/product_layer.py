@@ -56,12 +56,8 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     for node_ids in sampling_ctx.unique_outputs_ids():
-        if len(node_ids) != 1 or (
-            len(node_ids) == 0 and product_layer.n_out != 1
-        ):
-            raise ValueError(
-                "Too many output ids specified for outputs over same scope."
-            )
+        if len(node_ids) != 1 or (len(node_ids) == 0 and product_layer.n_out != 1):
+            raise ValueError("Too many output ids specified for outputs over same scope.")
 
     # all product nodes are over (all) children
     for child in product_layer.children:

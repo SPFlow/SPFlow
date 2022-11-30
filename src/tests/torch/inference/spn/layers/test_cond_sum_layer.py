@@ -87,9 +87,7 @@ class TestNode(unittest.TestCase):
         torch.manual_seed(0)
 
         # generate random weights for a sum node with two children
-        weights = torch.tensor(
-            [[0.3, 0.7], [0.8, 0.2], [0.5, 0.5]], requires_grad=True
-        )
+        weights = torch.tensor([[0.3, 0.7], [0.8, 0.2], [0.5, 0.5]], requires_grad=True)
 
         data_1 = torch.randn((70000, 1))
         data_1 = (data_1 - data_1.mean()) / data_1.std() + 5.0

@@ -82,9 +82,7 @@ class TestNode(unittest.TestCase):
         gaussian_2.requires_grad = False
 
         # sum layer to be optimized
-        sum_layer = SumLayer(
-            n_nodes=3, children=[gaussian_1, gaussian_2], weights=weights
-        )
+        sum_layer = SumLayer(n_nodes=3, children=[gaussian_1, gaussian_2], weights=weights)
 
         # make sure that weights are correctly projected
         self.assertTrue(torch.allclose(weights, sum_layer.weights))

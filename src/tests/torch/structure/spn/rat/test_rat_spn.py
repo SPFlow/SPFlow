@@ -178,9 +178,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=2, replicas=1)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         self.assertRaises(
             ValueError,
@@ -223,9 +221,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=2, replicas=1)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -235,9 +231,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 4)
         self.assertEqual(n_product_nodes, 6)
         self.assertEqual(n_leaf_nodes, 7)
@@ -247,9 +241,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=3, replicas=1)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -259,9 +251,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 7)
         self.assertEqual(n_product_nodes, 6)
         self.assertEqual(n_leaf_nodes, 7)
@@ -271,9 +261,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=3, replicas=2)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -283,9 +271,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=2,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 23)
         self.assertEqual(n_product_nodes, 48)
         self.assertEqual(n_leaf_nodes, 28)
@@ -295,9 +281,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=3, replicas=3)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -307,9 +291,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=3,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 49)
         self.assertEqual(n_product_nodes, 162)
         self.assertEqual(n_leaf_nodes, 63)
@@ -318,12 +300,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=2, replicas=1, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=2, replicas=1, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -333,9 +311,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 3)
         self.assertEqual(n_product_nodes, 4)
         self.assertEqual(n_leaf_nodes, 7)
@@ -344,12 +320,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(9))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=3, replicas=1, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=3, replicas=1, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -359,9 +331,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 5)
         self.assertEqual(n_product_nodes, 4)
         self.assertEqual(n_leaf_nodes, 9)
@@ -370,12 +340,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=2, replicas=2, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=2, replicas=2, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -385,9 +351,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=2,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 7)
         self.assertEqual(n_product_nodes, 40)
         self.assertEqual(n_leaf_nodes, 28)
@@ -396,12 +360,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(20))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=3, replicas=3, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=3, replicas=3, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -411,9 +371,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=2,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 49)
         self.assertEqual(n_product_nodes, 267)
         self.assertEqual(n_leaf_nodes, 120)
@@ -423,9 +381,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables, [7])  # conditional scope
         region_graph = random_region_graph(scope, depth=2, replicas=1)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -442,12 +398,8 @@ class TestRatSpn(unittest.TestCase):
 
         # create region graph
         scope = Scope(list(range(128)))
-        region_graph = random_region_graph(
-            scope, depth=5, replicas=2, n_splits=2
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=5, replicas=2, n_splits=2)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         # create torch rat spn from region graph
         torch_rat = RatSPN(
@@ -486,15 +438,11 @@ class TestRatSpn(unittest.TestCase):
             if isinstance(torch_module, SumNode):
                 if not isinstance(base_module, BaseSumNode):
                     raise TypeError()
-                self.assertTrue(
-                    torch.allclose(torch_module.weights, torch_module.weights)
-                )
+                self.assertTrue(torch.allclose(torch_module.weights, torch_module.weights))
             if isinstance(torch_module, SumLayer):
                 if not isinstance(base_module, BaseSumLayer):
                     raise TypeError()
-                self.assertTrue(
-                    torch.allclose(torch_module.weights, torch_module.weights)
-                )
+                self.assertTrue(torch.allclose(torch_module.weights, torch_module.weights))
             if isinstance(torch_module, PartitionLayer):
                 if not isinstance(base_module, BasePartitionLayer):
                     raise TypeError()
@@ -504,12 +452,8 @@ class TestRatSpn(unittest.TestCase):
             if isinstance(torch_module, GaussianLayer):
                 if not isinstance(base_module, BaseGaussianLayer):
                     raise TypeError()
-                self.assertTrue(
-                    torch.allclose(torch_module.mean, torch_module.mean)
-                )
-                self.assertTrue(
-                    torch.allclose(torch_module.std, torch_module.std)
-                )
+                self.assertTrue(torch.allclose(torch_module.mean, torch_module.mean))
+                self.assertTrue(torch.allclose(torch_module.std, torch_module.std))
 
             modules += list(zip(torch_module.children(), base_module.children))
 
@@ -517,12 +461,8 @@ class TestRatSpn(unittest.TestCase):
 
         # create region graph
         scope = Scope(list(range(128)))
-        region_graph = random_region_graph(
-            scope, depth=5, replicas=2, n_splits=2
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=5, replicas=2, n_splits=2)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         # create torch rat spn from region graph
         base_rat = BaseRatSPN(
@@ -561,15 +501,11 @@ class TestRatSpn(unittest.TestCase):
             if isinstance(torch_module, SumNode):
                 if not isinstance(base_module, BaseSumNode):
                     raise TypeError()
-                self.assertTrue(
-                    torch.allclose(torch_module.weights, torch_module.weights)
-                )
+                self.assertTrue(torch.allclose(torch_module.weights, torch_module.weights))
             if isinstance(torch_module, SumLayer):
                 if not isinstance(base_module, BaseSumLayer):
                     raise TypeError()
-                self.assertTrue(
-                    torch.allclose(torch_module.weights, torch_module.weights)
-                )
+                self.assertTrue(torch.allclose(torch_module.weights, torch_module.weights))
             if isinstance(torch_module, PartitionLayer):
                 if not isinstance(base_module, BasePartitionLayer):
                     raise TypeError()
@@ -579,12 +515,8 @@ class TestRatSpn(unittest.TestCase):
             if isinstance(torch_module, GaussianLayer):
                 if not isinstance(base_module, BaseGaussianLayer):
                     raise TypeError()
-                self.assertTrue(
-                    torch.allclose(torch_module.mean, torch_module.mean)
-                )
-                self.assertTrue(
-                    torch.allclose(torch_module.std, torch_module.std)
-                )
+                self.assertTrue(torch.allclose(torch_module.mean, torch_module.mean))
+                self.assertTrue(torch.allclose(torch_module.std, torch_module.std))
 
             modules += list(zip(torch_module.children(), base_module.children))
 

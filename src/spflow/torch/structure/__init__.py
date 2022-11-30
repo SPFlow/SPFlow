@@ -1,5 +1,5 @@
 # ---- sub-packages -----
-from . import spn, general # isort: skip
+from . import spn, general  # isort: skip
 
 from .autoleaf import AutoLeaf
 from .general.layers.leaves.parametric.bernoulli import marginalize, toBase, toTorch

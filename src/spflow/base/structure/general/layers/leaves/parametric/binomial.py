@@ -79,9 +79,7 @@ class BinomialLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'BinomialLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'BinomialLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -131,9 +129,7 @@ class BinomialLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "BinomialLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "BinomialLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -143,9 +139,7 @@ class BinomialLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'BinomialLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'BinomialLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         n = []
         p = []
@@ -216,9 +210,7 @@ class BinomialLayer(Module):
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not np.all(n_values == n_values[0]):
-                raise ValueError(
-                    "All values of 'n' for 'BinomialLayer' over the same scope must be identical."
-                )
+                raise ValueError("All values of 'n' for 'BinomialLayer' over the same scope must be identical.")
 
         for node_n, node_p, node in zip(n, p, self.nodes):
             node.set_params(node_n, node_p)
@@ -247,9 +239,7 @@ class BinomialLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Binomial distributions, which are:
@@ -276,9 +266,7 @@ class BinomialLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -328,7 +316,5 @@ def marginalize(
         new_node = Binomial(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = BinomialLayer(
-            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
-        )
+        new_layer = BinomialLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer

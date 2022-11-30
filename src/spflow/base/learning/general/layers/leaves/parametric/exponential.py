@@ -84,13 +84,7 @@ def maximum_likelihood_estimation(
 
     if (
         (weights.ndim == 1 and weights.shape[0] != data.shape[0])
-        or (
-            weights.ndim == 2
-            and (
-                weights.shape[0] != data.shape[0]
-                or weights.shape[1] != layer.n_out
-            )
-        )
+        or (weights.ndim == 2 and (weights.shape[0] != data.shape[0] or weights.shape[1] != layer.n_out))
         or (weights.ndim not in [1, 2])
     ):
         raise ValueError(

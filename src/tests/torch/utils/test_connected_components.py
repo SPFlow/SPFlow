@@ -24,9 +24,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         # not symmetric adjacency matrix
-        self.assertRaises(
-            ValueError, connected_components, torch.tensor(np.tri(3))
-        )
+        self.assertRaises(ValueError, connected_components, torch.tensor(np.tri(3)))
         # symmetric adjacency matrix
         adj_mat = torch.randint(0, 2, (3, 3))
         connected_components((adj_mat + adj_mat.T) / 2)

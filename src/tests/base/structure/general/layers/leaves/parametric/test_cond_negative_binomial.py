@@ -21,12 +21,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]))
 
         # ----- n initialization -----
         l = CondNegativeBinomialLayer(
@@ -81,17 +76,11 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, CondNegativeBinomialLayer, Scope([0], [1]), 2, n_nodes=0
-        )
+        self.assertRaises(ValueError, CondNegativeBinomialLayer, Scope([0], [1]), 2, n_nodes=0)
 
         # ----- invalid scope -----
-        self.assertRaises(
-            ValueError, CondNegativeBinomialLayer, Scope([]), 2, n_nodes=3
-        )
-        self.assertRaises(
-            ValueError, CondNegativeBinomialLayer, [], 2, n_nodes=3
-        )
+        self.assertRaises(ValueError, CondNegativeBinomialLayer, Scope([]), 2, n_nodes=3)
+        self.assertRaises(ValueError, CondNegativeBinomialLayer, [], 2, n_nodes=3)
 
         # ----- invalid values for 'n' over same scope -----
         self.assertRaises(
@@ -104,9 +93,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1], [2]), Scope([0], [2])]
-        l = CondNegativeBinomialLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n=2, n_nodes=3
-        )
+        l = CondNegativeBinomialLayer(scope=[Scope([1], [2]), Scope([0], [2])], n=2, n_nodes=3)
 
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
@@ -164,44 +151,30 @@ class TestLayer(unittest.TestCase):
 
         # wrong number of values
         l.set_cond_f(lambda data: {"p": p_values[:-1]})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(lambda data: {"p": [p_values for _ in range(3)]})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # ----- numpy parameter values -----
         l.set_cond_f(lambda data: {"p": np.array(p_values)})
-        for p_node, p_actual in zip(
-            l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values
-        ):
+        for p_node, p_actual in zip(l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values):
             self.assertTrue(p_node == p_actual)
 
         # wrong number of values
         l.set_cond_f(lambda data: {"p": np.array(p_values[:-1])})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(lambda data: {"p": np.array([p_values for _ in range(3)])})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         l.set_cond_f(lambda data: {"p": np.expand_dims(np.array(p_values), 0)})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         l.set_cond_f(lambda data: {"p": np.expand_dims(np.array(p_values), 1)})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
     def test_accept(self):
 
@@ -219,12 +192,8 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(
             CondNegativeBinomialLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0], [2]), [FeatureTypes.NegativeBinomial(n=3)]
-                    ),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=3)]
-                    ),
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.NegativeBinomial(n=3)]),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=3)]),
                 ]
             )
         )
@@ -234,22 +203,14 @@ class TestLayer(unittest.TestCase):
             CondNegativeBinomialLayer.accepts(
                 [
                     FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=3)]
-                    ),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=3)]),
                 ]
             )
         )
 
         # non-conditional scope
         self.assertFalse(
-            CondNegativeBinomialLayer.accepts(
-                [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.NegativeBinomial(n=3)]
-                    )
-                ]
-            )
+            CondNegativeBinomialLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.NegativeBinomial(n=3)])])
         )
 
         # multivariate signature
@@ -271,17 +232,11 @@ class TestLayer(unittest.TestCase):
 
         negative_binomial = CondNegativeBinomialLayer.from_signatures(
             [
-                FeatureContext(
-                    Scope([0], [2]), [FeatureTypes.NegativeBinomial(n=3)]
-                ),
-                FeatureContext(
-                    Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=5)]
-                ),
+                FeatureContext(Scope([0], [2]), [FeatureTypes.NegativeBinomial(n=3)]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=5)]),
             ]
         )
-        self.assertTrue(
-            negative_binomial.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(negative_binomial.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         # ----- invalid arguments -----
 
@@ -331,12 +286,8 @@ class TestLayer(unittest.TestCase):
             CondNegativeBinomialLayer,
             AutoLeaf.infer(
                 [
-                    FeatureContext(
-                        Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)]
-                    ),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=5)]
-                    ),
+                    FeatureContext(Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)]),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.NegativeBinomial(n=5)]),
                 ]
             ),
         )
@@ -354,9 +305,7 @@ class TestLayer(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            negative_binomial.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(negative_binomial.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
     def test_layer_structural_marginalization(self):
 
@@ -375,9 +324,7 @@ class TestLayer(unittest.TestCase):
 
         # ---------- different scopes -----------
 
-        l = CondNegativeBinomialLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n=[2, 6]
-        )
+        l = CondNegativeBinomialLayer(scope=[Scope([1], [2]), Scope([0], [2])], n=[2, 6])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
@@ -401,9 +348,7 @@ class TestLayer(unittest.TestCase):
 
     def test_get_params(self):
 
-        l = CondNegativeBinomialLayer(
-            scope=Scope([1], [0]), n=[2, 2], n_nodes=2
-        )
+        l = CondNegativeBinomialLayer(scope=Scope([1], [0]), n=[2, 2], n_nodes=2)
 
         n, *others = l.get_params()
 

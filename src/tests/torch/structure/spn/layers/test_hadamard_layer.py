@@ -37,11 +37,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(l.n_out, 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out == [Scope([0, 1, 2, 3, 4]) for _ in range(l.n_out)]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([0, 1, 2, 3, 4]) for _ in range(l.n_out)]))
 
         # only one partition
         l = HadamardLayer(
@@ -56,9 +52,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(l.n_out, 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1, 3]) for _ in range(l.n_out)])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1, 3]) for _ in range(l.n_out)]))
 
         # ----- no child partitions -----
         self.assertRaises(ValueError, HadamardLayer, [])

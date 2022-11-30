@@ -112,17 +112,11 @@ class TestNegativeBinomial(unittest.TestCase):
         negative_binomial = NegativeBinomial(Scope([0]), n, p)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, negative_binomial, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, negative_binomial, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, negative_binomial, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, negative_binomial, np.array([[np.inf]]))
 
         # check valid integers, but outside of valid range
-        self.assertRaises(
-            ValueError, log_likelihood, negative_binomial, np.array([[-1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, negative_binomial, np.array([[-1]]))
 
         # check valid integers within valid range
         log_likelihood(negative_binomial, np.array([[0]]))
@@ -141,9 +135,7 @@ class TestNegativeBinomial(unittest.TestCase):
             negative_binomial,
             np.array([[np.nextafter(0.0, 1.0)]]),
         )
-        self.assertRaises(
-            ValueError, log_likelihood, negative_binomial, np.array([[10.1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, negative_binomial, np.array([[10.1]]))
 
 
 if __name__ == "__main__":

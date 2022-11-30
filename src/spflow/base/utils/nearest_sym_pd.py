@@ -55,7 +55,7 @@ def nearest_sym_pd(A: np.ndarray) -> np.ndarray:
         # compute smallest real part eigenvalue
         min_eigval = np.min(np.real(np.linalg.eigvalsh(A_hat)))
         # adjust matrix
-        A_hat += I * (-min_eigval * (k ** 2) + spacing)
+        A_hat += I * (-min_eigval * (k**2) + spacing)
         k += 1
 
     return A_hat

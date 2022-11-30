@@ -20,9 +20,7 @@ class TestBinomial(unittest.TestCase):
 
         samples = sample(binomial, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(np.isnan(samples) == np.array([[False], [True], [False]]))
-        )
+        self.assertTrue(all(np.isnan(samples) == np.array([[False], [True], [False]])))
         self.assertTrue(all(samples[~np.isnan(samples)] == 0.0))
 
     def test_sampling_2(self):
@@ -35,9 +33,7 @@ class TestBinomial(unittest.TestCase):
 
         samples = sample(binomial, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(np.isnan(samples) == np.array([[False], [True], [False]]))
-        )
+        self.assertTrue(all(np.isnan(samples) == np.array([[False], [True], [False]])))
         self.assertTrue(all(samples[~np.isnan(samples)] == 10))
 
     def test_sampling_3(self):

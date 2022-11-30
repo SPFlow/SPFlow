@@ -68,9 +68,7 @@ def log_likelihood(
     alpha, beta = layer.retrieve_params(data, dispatch_ctx)
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).to(
-        alpha.device
-    )
+    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).to(alpha.device)
 
     # query rvs of all node scopes
     query_rvs = [list(set(scope.query)) for scope in layer.scopes_out]
@@ -79,9 +77,7 @@ def log_likelihood(
     for query_signature in np.unique(query_rvs, axis=0):
 
         # compute all nodes with this scope
-        node_ids = np.where((query_rvs == query_signature).all(axis=1))[
-            0
-        ].tolist()
+        node_ids = np.where((query_rvs == query_signature).all(axis=1))[0].tolist()
         node_ids_tensor = torch.tensor(node_ids)
 
         # get data for scope (since all "nodes" are univariate, order does not matter)
@@ -103,15 +99,11 @@ def log_likelihood(
             valid_ids = layer.check_support(data[~marg_mask], node_ids=node_ids)
 
             if not all(valid_ids.sum(dim=1)):
-                raise ValueError(
-                    f"Encountered data instances that are not in the support of the Gamma distribution."
-                )
+                raise ValueError(f"Encountered data instances that are not in the support of the Gamma distribution.")
 
         # compute probabilities for values inside distribution support
-        log_prob[
-            torch.meshgrid(non_marg_ids, node_ids_tensor, indexing="ij")
-        ] = layer.dist(alpha=alpha, beta=beta, node_ids=node_ids).log_prob(
-            scope_data[non_marg_ids, :].type(torch.get_default_dtype())
-        )
+        log_prob[torch.meshgrid(non_marg_ids, node_ids_tensor, indexing="ij")] = layer.dist(
+            alpha=alpha, beta=beta, node_ids=node_ids
+        ).log_prob(scope_data[non_marg_ids, :].type(torch.get_default_dtype()))
 
     return log_prob

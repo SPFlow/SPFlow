@@ -44,11 +44,7 @@ class TestNode(unittest.TestCase):
         # perform MLE
         maximum_likelihood_estimation(layer, torch.tensor(data))
 
-        self.assertTrue(
-            torch.allclose(
-                layer.p, torch.tensor([0.3, 0.7]), atol=1e-2, rtol=1e-3
-            )
-        )
+        self.assertTrue(torch.allclose(layer.p, torch.tensor([0.3, 0.7]), atol=1e-2, rtol=1e-3))
 
     def test_mle_edge_0(self):
 
@@ -158,9 +154,7 @@ class TestNode(unittest.TestCase):
 
         layer = BernoulliLayer(Scope([0]))
         # should not raise an issue
-        maximum_likelihood_estimation(
-            layer, torch.tensor([[1], [0], [1]]), nan_strategy=lambda x: x
-        )
+        maximum_likelihood_estimation(layer, torch.tensor([[1], [0], [1]]), nan_strategy=lambda x: x)
 
     def test_mle_nan_strategy_invalid(self):
 
@@ -207,11 +201,7 @@ class TestNode(unittest.TestCase):
 
         maximum_likelihood_estimation(leaf, data, weights)
 
-        self.assertTrue(
-            torch.allclose(
-                leaf.p, torch.tensor([0.2, 0.7]), atol=1e-3, rtol=1e-2
-            )
-        )
+        self.assertTrue(torch.allclose(leaf.p, torch.tensor([0.2, 0.7]), atol=1e-3, rtol=1e-2))
 
     def test_em_step(self):
 
@@ -239,11 +229,7 @@ class TestNode(unittest.TestCase):
         # perform an em step
         em(layer, data, dispatch_ctx=dispatch_ctx)
 
-        self.assertTrue(
-            torch.allclose(
-                layer.p, torch.tensor([0.2, 0.7]), atol=1e-2, rtol=1e-3
-            )
-        )
+        self.assertTrue(torch.allclose(layer.p, torch.tensor([0.2, 0.7]), atol=1e-2, rtol=1e-3))
 
     def test_em_product_of_bernoullis(self):
 
@@ -266,11 +252,7 @@ class TestNode(unittest.TestCase):
 
         expectation_maximization(prod_node, data, max_steps=10)
 
-        self.assertTrue(
-            torch.allclose(
-                layer.p, torch.tensor([0.8, 0.2]), atol=1e-3, rtol=1e-2
-            )
-        )
+        self.assertTrue(torch.allclose(layer.p, torch.tensor([0.8, 0.2]), atol=1e-3, rtol=1e-2))
 
     def test_em_sum_of_bernoullis(self):
 

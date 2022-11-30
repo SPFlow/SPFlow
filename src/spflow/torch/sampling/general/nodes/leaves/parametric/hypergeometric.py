@@ -54,9 +54,7 @@ def sample(
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    marg_ids = (
-        torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)
-    ).squeeze(1)
+    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = torch.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
@@ -68,10 +66,6 @@ def sample(
     rand_perm = torch.argsort(torch.rand(sampling_ids.shape[0], leaf.N), dim=1)
 
     # assuming that first M indices are the M objects of interest, count how many of these indices were "drawn" in the first n draws (with replacement since all indices are unique per row)
-    data[sampling_ids, leaf.scope.query] = (
-        (rand_perm[:, : leaf.n] < leaf.M)
-        .sum(dim=1)
-        .type(torch.get_default_dtype())
-    )
+    data[sampling_ids, leaf.scope.query] = (rand_perm[:, : leaf.n] < leaf.M).sum(dim=1).type(torch.get_default_dtype())
 
     return data

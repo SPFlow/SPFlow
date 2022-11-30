@@ -31,26 +31,18 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        layer = HypergeometricLayer(
-            scope=[Scope([0]), Scope([1])], N=[10, 4], M=[7, 2], n=[3, 2]
-        )
+        layer = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=[10, 4], M=[7, 2], n=[3, 2])
 
         # simulate data
         data = np.hstack(
             [
-                np.random.hypergeometric(
-                    ngood=7, nbad=10 - 7, nsample=3, size=(1000, 1)
-                ),
-                np.random.hypergeometric(
-                    ngood=2, nbad=4 - 2, nsample=2, size=(1000, 1)
-                ),
+                np.random.hypergeometric(ngood=7, nbad=10 - 7, nsample=3, size=(1000, 1)),
+                np.random.hypergeometric(ngood=2, nbad=4 - 2, nsample=2, size=(1000, 1)),
             ]
         )
 
         # perform MLE (should not raise an exception)
-        maximum_likelihood_estimation(
-            layer, torch.tensor(data), bias_correction=True
-        )
+        maximum_likelihood_estimation(layer, torch.tensor(data), bias_correction=True)
 
         self.assertTrue(torch.all(layer.N == torch.tensor([10, 4])))
         self.assertTrue(torch.all(layer.M == torch.tensor([7, 2])))
@@ -90,18 +82,12 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        leaf = HypergeometricLayer(
-            [Scope([0]), Scope([1])], N=[10, 6], M=[3, 4], n=[5, 2]
-        )
+        leaf = HypergeometricLayer([Scope([0]), Scope([1])], N=[10, 6], M=[3, 4], n=[5, 2])
         data = torch.tensor(
             np.hstack(
                 [
-                    np.random.hypergeometric(
-                        ngood=3, nbad=7, nsample=3, size=(10000, 1)
-                    ),
-                    np.random.hypergeometric(
-                        ngood=4, nbad=2, nsample=2, size=(10000, 1)
-                    ),
+                    np.random.hypergeometric(ngood=3, nbad=7, nsample=3, size=(10000, 1)),
+                    np.random.hypergeometric(ngood=4, nbad=2, nsample=2, size=(10000, 1)),
                 ]
             )
         )
@@ -127,20 +113,14 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        layer = HypergeometricLayer(
-            [Scope([0]), Scope([1])], N=[10, 6], M=[3, 4], n=[5, 2]
-        )
+        layer = HypergeometricLayer([Scope([0]), Scope([1])], N=[10, 6], M=[3, 4], n=[5, 2])
         prod_node = ProductNode([layer])
 
         data = torch.tensor(
             np.hstack(
                 [
-                    np.random.hypergeometric(
-                        ngood=3, nbad=7, nsample=3, size=(15000, 1)
-                    ),
-                    np.random.hypergeometric(
-                        ngood=4, nbad=2, nsample=2, size=(15000, 1)
-                    ),
+                    np.random.hypergeometric(ngood=3, nbad=7, nsample=3, size=(15000, 1)),
+                    np.random.hypergeometric(ngood=4, nbad=2, nsample=2, size=(15000, 1)),
                 ]
             )
         )
@@ -161,11 +141,7 @@ class TestNode(unittest.TestCase):
         layer = HypergeometricLayer(Scope([0]), n_nodes=2, N=10, M=3, n=5)
         sum_node = SumNode([layer], weights=[0.5, 0.5])
 
-        data = torch.tensor(
-            np.random.hypergeometric(
-                ngood=3, nbad=7, nsample=3, size=(15000, 1)
-            )
-        )
+        data = torch.tensor(np.random.hypergeometric(ngood=3, nbad=7, nsample=3, size=(15000, 1)))
 
         expectation_maximization(sum_node, data, max_steps=10)
 

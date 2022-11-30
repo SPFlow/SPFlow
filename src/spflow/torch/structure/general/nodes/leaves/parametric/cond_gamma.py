@@ -54,13 +54,9 @@ class CondGamma(LeafNode):
                 a floating points, scalar NumPy arrays or scalar PyTorch tensors representing the shape and rate parameters, respectively.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for CondGamma should be 1, but was {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for CondGamma should be 1, but was {len(scope.query)}.")
         if len(scope.evidence) == 0:
-            raise ValueError(
-                f"Evidence scope for CondGamma should not be empty."
-            )
+            raise ValueError(f"Evidence scope for CondGamma should not be empty.")
 
         super().__init__(scope=scope)
 
@@ -84,11 +80,7 @@ class CondGamma(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) == 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) == 0:
             return False
 
         # leaf is a continuous Gamma distribution
@@ -112,20 +104,14 @@ class CondGamma(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondGamma' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondGamma' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
         domain = feature_ctx.get_domains()[0]
 
         # read or initialize parameters
-        if (
-            domain == MetaType.Continuous
-            or domain == FeatureTypes.Gamma
-            or isinstance(domain, FeatureTypes.Gamma)
-        ):
+        if domain == MetaType.Continuous or domain == FeatureTypes.Gamma or isinstance(domain, FeatureTypes.Gamma):
             pass
         else:
             raise ValueError(
@@ -159,9 +145,7 @@ class CondGamma(LeafNode):
         """
         return D.Gamma(concentration=alpha, rate=beta)
 
-    def retrieve_params(
-        self, data: torch.Tensor, dispatch_ctx: DispatchContext
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Retrieves the conditional parameter of the leaf node.
 
         First, checks if conditional parameters (``alpha``,``beta``) is passed as an additional argument in the dispatch context.
@@ -218,19 +202,13 @@ class CondGamma(LeafNode):
 
         # check if values for 'alpha', 'beta' are valid
         if alpha <= 0.0 or not torch.isfinite(alpha):
-            raise ValueError(
-                f"Value of 'alpha' for 'CondGamma' must be greater than 0, but was: {alpha}"
-            )
+            raise ValueError(f"Value of 'alpha' for 'CondGamma' must be greater than 0, but was: {alpha}")
         if beta <= 0.0 or not torch.isfinite(beta):
-            raise ValueError(
-                f"Value of 'beta' for 'CondGamma' must be greater than 0, but was: {beta}"
-            )
+            raise ValueError(f"Value of 'beta' for 'CondGamma' must be greater than 0, but was: {beta}")
 
         return alpha, beta
 
-    def check_support(
-        self, data: torch.Tensor, is_scope_data: bool = False
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Gamma distribution, which is:
@@ -271,17 +249,13 @@ class CondGamma(LeafNode):
         valid[~nan_mask] = self.dist(alpha=torch.tensor(1.0), beta=torch.tensor(1.0)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= (
-            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
-        )
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    node: BaseCondGamma, dispatch_ctx: Optional[DispatchContext] = None
-) -> CondGamma:
+def toTorch(node: BaseCondGamma, dispatch_ctx: Optional[DispatchContext] = None) -> CondGamma:
     """Conversion for ``CondGamma`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -295,9 +269,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    node: CondGamma, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseCondGamma:
+def toBase(node: CondGamma, dispatch_ctx: Optional[DispatchContext] = None) -> BaseCondGamma:
     """Conversion for ``CondGamma`` from ``torch`` backend to ``base`` backend.
 
     Args:

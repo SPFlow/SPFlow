@@ -82,9 +82,7 @@ class GammaLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(
-                    f"Number of nodes for 'GammaLayer' must be greater or equal to 1, but was {n_nodes}"
-                )
+                raise ValueError(f"Number of nodes for 'GammaLayer' must be greater or equal to 1, but was {n_nodes}")
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
@@ -98,9 +96,7 @@ class GammaLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) != 0:
-                raise ValueError(
-                    f"Evidence scope for 'GammaLayer' should be empty, but was {s.evidence}."
-                )
+                raise ValueError(f"Evidence scope for 'GammaLayer' should be empty, but was {s.evidence}.")
 
         super().__init__(children=[], **kwargs)
 
@@ -110,9 +106,7 @@ class GammaLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         # parse weights
         self.set_params(alpha, beta)
@@ -147,9 +141,7 @@ class GammaLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'GammaLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'GammaLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         alpha = []
         beta = []
@@ -210,9 +202,7 @@ class GammaLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return D.Gamma(
-            concentration=self.alpha[node_ids], rate=self.beta[node_ids]
-        )
+        return D.Gamma(concentration=self.alpha[node_ids], rate=self.beta[node_ids])
 
     def set_params(
         self,
@@ -243,9 +233,7 @@ class GammaLayer(Module):
             )
 
         if torch.any(alpha <= 0.0) or not torch.any(torch.isfinite(alpha)):
-            raise ValueError(
-                f"Values of 'alpha' for 'GammaLayer' must be greater than 0, but was: {alpha}"
-            )
+            raise ValueError(f"Values of 'alpha' for 'GammaLayer' must be greater than 0, but was: {alpha}")
 
         if isinstance(beta, int) or isinstance(beta, float):
             beta = torch.tensor([beta for _ in range(self.n_out)])
@@ -261,9 +249,7 @@ class GammaLayer(Module):
             )
 
         if torch.any(beta <= 0.0) or not torch.any(torch.isfinite(beta)):
-            raise ValueError(
-                f"Value of 'beta' for 'GammaLayer' must be greater than 0, but was: {beta}"
-            )
+            raise ValueError(f"Value of 'beta' for 'GammaLayer' must be greater than 0, but was: {beta}")
 
         self.alpha_aux.data = proj_bounded_to_real(alpha, lb=0.0)
         self.beta_aux.data = proj_bounded_to_real(beta, lb=0.0)
@@ -317,9 +303,7 @@ class GammaLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(node_ids).support.check(scope_data)  # type: ignore
@@ -397,9 +381,7 @@ def marginalize(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    layer: BaseGammaLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> GammaLayer:
+def toTorch(layer: BaseGammaLayer, dispatch_ctx: Optional[DispatchContext] = None) -> GammaLayer:
     """Conversion for ``GammaLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -409,15 +391,11 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GammaLayer(
-        scope=layer.scopes_out, alpha=layer.alpha, beta=layer.beta
-    )
+    return GammaLayer(scope=layer.scopes_out, alpha=layer.alpha, beta=layer.beta)
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    layer: GammaLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseGammaLayer:
+def toBase(layer: GammaLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BaseGammaLayer:
     """Conversion for ``GammaLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:

@@ -20,9 +20,7 @@ class TestNode(unittest.TestCase):
 
     def test_layer_likelihood(self):
 
-        layer = BernoulliLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.5, 0.9]
-        )
+        layer = BernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.5, 0.9])
 
         nodes = [
             Bernoulli(Scope([0]), p=0.2),
@@ -33,9 +31,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[1, 0], [0, 0], [1, 1]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -64,34 +60,24 @@ class TestNode(unittest.TestCase):
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(
-            torch.allclose(
-                p_aux_orig - torch_bernoulli.p_aux.grad, torch_bernoulli.p_aux
-            )
-        )
+        self.assertTrue(torch.allclose(p_aux_orig - torch_bernoulli.p_aux.grad, torch_bernoulli.p_aux))
 
         # verify that distribution parameters match parameters
-        self.assertTrue(
-            torch.allclose(torch_bernoulli.p, torch_bernoulli.dist().probs)
-        )
+        self.assertTrue(torch.allclose(torch_bernoulli.p, torch_bernoulli.dist().probs))
 
     def test_gradient_optimization(self):
 
         torch.manual_seed(0)
 
         # initialize distribution
-        torch_bernoulli = BernoulliLayer(
-            scope=[Scope([0]), Scope([1])], p=[0.3, 0.7]
-        )
+        torch_bernoulli = BernoulliLayer(scope=[Scope([0]), Scope([1])], p=[0.3, 0.7])
 
         # create dummy data
         p_target = torch.tensor([0.8, 0.2])
         data = torch.bernoulli(p_target.unsqueeze(0).repeat((100000, 1)))
 
         # initialize gradient optimizer
-        optimizer = torch.optim.SGD(
-            torch_bernoulli.parameters(), lr=0.5, momentum=0.5
-        )
+        optimizer = torch.optim.SGD(torch_bernoulli.parameters(), lr=0.5, momentum=0.5)
 
         # perform optimization (possibly overfitting)
         for i in range(50):
@@ -106,15 +92,11 @@ class TestNode(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(
-            torch.allclose(torch_bernoulli.p, p_target, atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(torch.allclose(torch_bernoulli.p, p_target, atol=1e-2, rtol=1e-2))
 
     def test_likelihood_marginalization(self):
 
-        bernoulli = BernoulliLayer(
-            scope=[Scope([0]), Scope([1])], p=random.random()
-        )
+        bernoulli = BernoulliLayer(scope=[Scope([0]), Scope([1])], p=random.random())
         data = torch.tensor([[float("nan"), float("nan")]])
 
         # should not raise and error and should return 1

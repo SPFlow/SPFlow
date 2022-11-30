@@ -23,12 +23,8 @@ class TestNode(unittest.TestCase):
         # perform MLE
         maximum_likelihood_estimation(leaf, data, bias_correction=True)
 
-        self.assertTrue(
-            np.isclose(leaf.mean, np.array(-1.7), atol=1e-2, rtol=1e-2)
-        )
-        self.assertTrue(
-            np.isclose(leaf.std, np.array(0.2), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(np.isclose(leaf.mean, np.array(-1.7), atol=1e-2, rtol=1e-2))
+        self.assertTrue(np.isclose(leaf.std, np.array(0.2), atol=1e-2, rtol=1e-2))
 
     def test_mle_2(self):
 
@@ -44,12 +40,8 @@ class TestNode(unittest.TestCase):
         # perform MLE
         maximum_likelihood_estimation(leaf, data, bias_correction=True)
 
-        self.assertTrue(
-            np.isclose(leaf.mean, np.array(0.5), atol=1e-2, rtol=1e-2)
-        )
-        self.assertTrue(
-            np.isclose(leaf.std, np.array(1.3), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(np.isclose(leaf.mean, np.array(0.5), atol=1e-2, rtol=1e-2))
+        self.assertTrue(np.isclose(leaf.std, np.array(1.3), atol=1e-2, rtol=1e-2))
 
     def test_mle_bias_correction(self):
 
@@ -158,13 +150,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(
             np.isclose(
                 leaf.std,
-                np.sqrt(
-                    1
-                    / 3
-                    * np.sum(
-                        (np.array([[0.1], [-1.8], [0.7]]) + 1.0 / 3.0) ** 2
-                    )
-                ),
+                np.sqrt(1 / 3 * np.sum((np.array([[0.1], [-1.8], [0.7]]) + 1.0 / 3.0) ** 2)),
             )
         )
 
@@ -172,9 +158,7 @@ class TestNode(unittest.TestCase):
 
         leaf = LogNormal(Scope([0]))
         # should not raise an issue
-        maximum_likelihood_estimation(
-            leaf, np.array([[0.5], [1]]), nan_strategy=lambda x: x
-        )
+        maximum_likelihood_estimation(leaf, np.array([[0.5], [1]]), nan_strategy=lambda x: x)
 
     def test_mle_nan_strategy_invalid(self):
 

@@ -76,9 +76,7 @@ def log_likelihood(
 
     if check_support:
         # create masked based on distribution's support
-        valid_ids = leaf.check_support(
-            scope_data[~marg_ids], is_scope_data=True
-        ).squeeze(1)
+        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
             raise ValueError(
@@ -86,8 +84,6 @@ def log_likelihood(
             )
 
     # compute probabilities for values inside distribution support
-    log_prob[~marg_ids] = leaf.dist(l=l).log_prob(
-        scope_data[~marg_ids].type(torch.get_default_dtype())
-    )
+    log_prob[~marg_ids] = leaf.dist(l=l).log_prob(scope_data[~marg_ids].type(torch.get_default_dtype()))
 
     return log_prob

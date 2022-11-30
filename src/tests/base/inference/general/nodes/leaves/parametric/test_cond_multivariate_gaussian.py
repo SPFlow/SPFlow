@@ -12,9 +12,7 @@ from spflow.meta.dispatch import DispatchContext
 class TestMultivariateGaussian(unittest.TestCase):
     def test_likelihood_no_mean(self):
 
-        multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1], [2]), cond_f=lambda data: {"cov": np.eye(2)}
-        )
+        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1], [2]), cond_f=lambda data: {"cov": np.eye(2)})
         self.assertRaises(
             KeyError,
             log_likelihood,
@@ -24,9 +22,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
     def test_likelihood_no_cov(self):
 
-        multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1], [2]), cond_f=lambda data: {"mean": np.zeros(2)}
-        )
+        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1], [2]), cond_f=lambda data: {"mean": np.zeros(2)})
         self.assertRaises(
             KeyError,
             log_likelihood,
@@ -48,9 +44,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         cond_f = lambda data: {"mean": np.zeros(2), "cov": np.eye(2)}
 
-        multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1], [2]), cond_f=cond_f
-        )
+        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1], [2]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
@@ -76,12 +70,8 @@ class TestMultivariateGaussian(unittest.TestCase):
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
         targets = np.array([[0.1591549], [0.0585498]])
 
-        probs = likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
-        log_probs = log_likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
+        probs = likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
+        log_probs = log_likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))
@@ -99,12 +89,8 @@ class TestMultivariateGaussian(unittest.TestCase):
         data = np.stack([np.zeros(2), np.ones(2)], axis=0)
         targets = np.array([[0.1591549], [0.0585498]])
 
-        probs = likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
-        log_probs = log_likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
+        probs = likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
+        log_probs = log_likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
 
         self.assertTrue(np.allclose(probs, np.exp(log_probs)))
         self.assertTrue(np.allclose(probs, targets))

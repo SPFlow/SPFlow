@@ -68,34 +68,23 @@ def sample(
         torch.cumsum(torch.tensor(hadamard_layer.partition_sizes), dim=0)[:-1],
     )
     # pad indices for partitions with total output size 1
-    partition_indices = [
-        indices.repeat(1 + hadamard_layer.n_out - len(indices))
-        for indices in partition_indices
-    ]
+    partition_indices = [indices.repeat(1 + hadamard_layer.n_out - len(indices)) for indices in partition_indices]
 
-    input_ids_per_node = [
-        torch.hstack(id_tuple) for id_tuple in zip(*partition_indices)
-    ]
+    input_ids_per_node = [torch.hstack(id_tuple) for id_tuple in zip(*partition_indices)]
 
     children = list(hadamard_layer.children())
 
     # sample accoding to sampling_context
-    for node_id, instances in sampling_ctx.group_output_ids(
-        hadamard_layer.n_out
-    ):
+    for node_id, instances in sampling_ctx.group_output_ids(hadamard_layer.n_out):
 
         # get input ids for this node
         input_ids = input_ids_per_node[node_id]
-        child_ids, output_ids = hadamard_layer.input_to_output_ids(
-            input_ids.tolist()
-        )
+        child_ids, output_ids = hadamard_layer.input_to_output_ids(input_ids.tolist())
 
         # group by child ids
         for child_id in np.unique(child_ids):
 
-            child_output_ids = np.array(output_ids)[
-                np.array(child_ids) == child_id
-            ].tolist()
+            child_output_ids = np.array(output_ids)[np.array(child_ids) == child_id].tolist()
 
             # sample from partition node
             sample(
@@ -103,9 +92,7 @@ def sample(
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
-                sampling_ctx=SamplingContext(
-                    instances, [child_output_ids for _ in instances]
-                ),
+                sampling_ctx=SamplingContext(instances, [child_output_ids for _ in instances]),
             )
 
     return data

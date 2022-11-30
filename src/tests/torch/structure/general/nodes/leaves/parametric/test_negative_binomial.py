@@ -70,39 +70,17 @@ class TestNegativeBinomial(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(
-            NegativeBinomial.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(NegativeBinomial.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # Bernoulli feature type instance
-        self.assertTrue(
-            NegativeBinomial.accepts(
-                [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.NegativeBinomial(n=3)]
-                    )
-                ]
-            )
-        )
+        self.assertTrue(NegativeBinomial.accepts([FeatureContext(Scope([0]), [FeatureTypes.NegativeBinomial(n=3)])]))
 
         # invalid feature type
-        self.assertFalse(
-            NegativeBinomial.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(NegativeBinomial.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # conditional scope
         self.assertFalse(
-            NegativeBinomial.accepts(
-                [
-                    FeatureContext(
-                        Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)]
-                    )
-                ]
-            )
+            NegativeBinomial.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.NegativeBinomial(n=3)])])
         )
 
         # multivariate signature
@@ -129,11 +107,7 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertTrue(torch.isclose(negative_binomial.p, torch.tensor(0.5)))
 
         negative_binomial = NegativeBinomial.from_signatures(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.NegativeBinomial(n=3, p=0.75)]
-                )
-            ]
+            [FeatureContext(Scope([0]), [FeatureTypes.NegativeBinomial(n=3, p=0.75)])]
         )
         self.assertTrue(torch.isclose(negative_binomial.n, torch.tensor(3)))
         self.assertTrue(torch.isclose(negative_binomial.p, torch.tensor(0.75)))
@@ -181,23 +155,11 @@ class TestNegativeBinomial(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             NegativeBinomial,
-            AutoLeaf.infer(
-                [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.NegativeBinomial(n=3)]
-                    )
-                ]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.NegativeBinomial(n=3)])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        negative_binomial = AutoLeaf(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.NegativeBinomial(n=3, p=0.75)]
-                )
-            ]
-        )
+        negative_binomial = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.NegativeBinomial(n=3, p=0.75)])])
         self.assertTrue(isinstance(negative_binomial, NegativeBinomial))
         self.assertTrue(torch.isclose(negative_binomial.n, torch.tensor(3)))
         self.assertTrue(torch.isclose(negative_binomial.p, torch.tensor(0.75)))

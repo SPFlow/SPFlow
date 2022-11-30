@@ -77,9 +77,7 @@ def sample(
     for branch in branches.unique():
 
         # group instances by sampled branch
-        branch_instance_ids = torch.tensor(sampling_ctx.instance_ids)[
-            branches == branch
-        ].tolist()
+        branch_instance_ids = torch.tensor(sampling_ctx.instance_ids)[branches == branch].tolist()
 
         # get corresponding child and output id for sampled branch
         child_ids, output_ids = node.input_to_output_ids([branch.item()])

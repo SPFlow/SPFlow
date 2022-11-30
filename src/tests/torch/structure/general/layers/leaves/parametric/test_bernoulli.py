@@ -26,9 +26,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
         # make sure parameter properties works correctly
         for p_layer_node, p_value in zip(l.p, p_values):
             self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
@@ -48,9 +46,7 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
 
         # wrong number of values
-        self.assertRaises(
-            ValueError, BernoulliLayer, Scope([0]), p_values[:-1], n_nodes=3
-        )
+        self.assertRaises(ValueError, BernoulliLayer, Scope([0]), p_values[:-1], n_nodes=3)
         # wrong number of dimensions (nested list)
         self.assertRaises(
             ValueError,
@@ -146,11 +142,7 @@ class TestNode(unittest.TestCase):
         )
 
         # conditional scope
-        self.assertFalse(
-            BernoulliLayer.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(BernoulliLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # multivariate signature
         self.assertFalse(
@@ -226,17 +218,11 @@ class TestNode(unittest.TestCase):
         # make sure leaf is registered
         self.assertTrue(AutoLeaf.is_registered(BernoulliLayer))
 
-        feature_ctx_1 = FeatureContext(
-            Scope([0]), [FeatureTypes.Bernoulli(p=0.75)]
-        )
-        feature_ctx_2 = FeatureContext(
-            Scope([1]), [FeatureTypes.Bernoulli(p=0.25)]
-        )
+        feature_ctx_1 = FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.75)])
+        feature_ctx_2 = FeatureContext(Scope([1]), [FeatureTypes.Bernoulli(p=0.25)])
 
         # make sure leaf is correctly inferred
-        self.assertEqual(
-            BernoulliLayer, AutoLeaf.infer([feature_ctx_1, feature_ctx_2])
-        )
+        self.assertEqual(BernoulliLayer, AutoLeaf.infer([feature_ctx_1, feature_ctx_2]))
 
         # make sure AutoLeaf can return correctly instantiated object
         bernoulli = AutoLeaf([feature_ctx_1, feature_ctx_2])
@@ -306,28 +292,20 @@ class TestNode(unittest.TestCase):
 
     def test_layer_backend_conversion_1(self):
 
-        torch_layer = BernoulliLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31]
-        )
+        torch_layer = BernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
         base_layer = toBase(torch_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(
-            np.allclose(base_layer.p, torch_layer.p.detach().numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.p, torch_layer.p.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
     def test_layer_backend_conversion_2(self):
 
-        base_layer = BaseBernoulliLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31]
-        )
+        base_layer = BaseBernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
         torch_layer = toTorch(base_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(
-            np.allclose(base_layer.p, torch_layer.p.detach().numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.p, torch_layer.p.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
 

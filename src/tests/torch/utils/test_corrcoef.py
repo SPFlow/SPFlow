@@ -24,9 +24,7 @@ class TestNode(unittest.TestCase):
 
         data = np.hstack(
             [
-                np.random.multivariate_normal(
-                    np.array([-1.0, 3.0]), np.eye(2), (100,)
-                ),
+                np.random.multivariate_normal(np.array([-1.0, 3.0]), np.eye(2), (100,)),
                 np.random.randn(100, 1),
             ]
         )

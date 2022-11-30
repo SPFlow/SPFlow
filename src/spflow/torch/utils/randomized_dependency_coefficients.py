@@ -45,9 +45,7 @@ def randomized_dependency_coefficients(
     """
     # default arguments according to paper
     if torch.any(torch.isnan(data)):
-        raise ValueError(
-            "Randomized dependency coefficients cannot be computed for data with missing values."
-        )
+        raise ValueError("Randomized dependency coefficients cannot be computed for data with missing values.")
 
     # compute ecd values for data
     ecdf = empirical_cdf(data)
@@ -56,20 +54,13 @@ def randomized_dependency_coefficients(
     ecdf_features = torch.stack([ecdf.T, torch.ones(ecdf.T.shape)], dim=-1)
 
     # compute random weights (and biases) generated from normal distribution
-    rand_gaussians = torch.randn(
-        (data.shape[1], 2, k)
-    )  # 2 for weight (of size 1) and bias
+    rand_gaussians = torch.randn((data.shape[1], 2, k))  # 2 for weight (of size 1) and bias
 
     # compute linear combinations of ecdf feature using generated weights
     features = torch.stack(
-        [
-            torch.matmul(features, weights)
-            for features, weights in zip(ecdf_features, rand_gaussians)
-        ]
+        [torch.matmul(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)]
     )
-    features *= torch.sqrt(
-        torch.tensor(s)
-    )  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
+    features *= torch.sqrt(torch.tensor(s))  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
 
     # apply non-linearity phi
     features = phi(features)
@@ -79,9 +70,7 @@ def randomized_dependency_coefficients(
 
     # compute rdcs for all pairs of features
     for i, j in combinations(range(data.shape[1]), 2):
-        _, _, _, _, i_cca, j_cca, _, _ = cca(
-            features[i], features[j], n_components=1, center=True, scale=True
-        )
+        _, _, _, _, i_cca, j_cca, _, _ = cca(features[i], features[j], n_components=1, center=True, scale=True)
 
         # compute weights for data
         # i_cca = torch.matmul(features[i], i_rotations)
@@ -90,8 +79,6 @@ def randomized_dependency_coefficients(
         if version.parse(torch.__version__) < version.parse("1.10.0"):
             rdcs[j][i] = rdcs[i][j] = corrcoef(i_cca.T, j_cca.T)[0, 1]
         else:
-            rdcs[j][i] = rdcs[i][j] = torch.corrcoef(
-                torch.hstack([i_cca, j_cca]).T
-            )[0, 1]
+            rdcs[j][i] = rdcs[i][j] = torch.corrcoef(torch.hstack([i_cca, j_cca]).T)[0, 1]
 
     return rdcs

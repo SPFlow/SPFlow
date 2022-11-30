@@ -17,9 +17,7 @@ class TestGamma(unittest.TestCase):
         # alpha = 0
         self.assertRaises(Exception, Gamma, Scope([0]), 0.0, 1.0)
         # alpha < 0
-        self.assertRaises(
-            Exception, Gamma, Scope([0]), np.nextafter(0.0, -1.0), 1.0
-        )
+        self.assertRaises(Exception, Gamma, Scope([0]), np.nextafter(0.0, -1.0), 1.0)
         # alpha = inf and alpha = nan
         self.assertRaises(Exception, Gamma, Scope([0]), np.inf, 1.0)
         self.assertRaises(Exception, Gamma, Scope([0]), np.nan, 1.0)
@@ -29,9 +27,7 @@ class TestGamma(unittest.TestCase):
         # beta = 0
         self.assertRaises(Exception, Gamma, Scope([0]), 1.0, 0.0)
         # beta < 0
-        self.assertRaises(
-            Exception, Gamma, Scope([0]), 1.0, np.nextafter(0.0, -1.0)
-        )
+        self.assertRaises(Exception, Gamma, Scope([0]), 1.0, np.nextafter(0.0, -1.0))
         # beta = inf and beta = nan
         self.assertRaises(Exception, Gamma, Scope([0]), 1.0, np.inf)
         self.assertRaises(Exception, Gamma, Scope([0]), 1.0, np.nan)
@@ -44,35 +40,19 @@ class TestGamma(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            Gamma.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertTrue(Gamma.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # Gamma feature type class
-        self.assertTrue(
-            Gamma.accepts([FeatureContext(Scope([0]), [FeatureTypes.Gamma])])
-        )
+        self.assertTrue(Gamma.accepts([FeatureContext(Scope([0]), [FeatureTypes.Gamma])]))
 
         # Gamma feature type instance
-        self.assertTrue(
-            Gamma.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Gamma(1.0, 1.0)])]
-            )
-        )
+        self.assertTrue(Gamma.accepts([FeatureContext(Scope([0]), [FeatureTypes.Gamma(1.0, 1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            Gamma.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])])
-        )
+        self.assertFalse(Gamma.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # conditional scope
-        self.assertFalse(
-            Gamma.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(Gamma.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -88,21 +68,15 @@ class TestGamma(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        gamma = Gamma.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-        )
+        gamma = Gamma.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Continuous])])
         self.assertEqual(gamma.alpha, 1.0)
         self.assertEqual(gamma.beta, 1.0)
 
-        gamma = Gamma.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Gamma])]
-        )
+        gamma = Gamma.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Gamma])])
         self.assertEqual(gamma.alpha, 1.0)
         self.assertEqual(gamma.beta, 1.0)
 
-        gamma = Gamma.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Gamma(1.5, 0.5)])]
-        )
+        gamma = Gamma.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Gamma(1.5, 0.5)])])
         self.assertEqual(gamma.alpha, 1.5)
         self.assertEqual(gamma.beta, 0.5)
 
@@ -146,13 +120,7 @@ class TestGamma(unittest.TestCase):
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        gamma = AutoLeaf(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)]
-                )
-            ]
-        )
+        gamma = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)])])
         self.assertTrue(isinstance(gamma, Gamma))
         self.assertEqual(gamma.alpha, 1.5)
         self.assertEqual(gamma.beta, 0.5)

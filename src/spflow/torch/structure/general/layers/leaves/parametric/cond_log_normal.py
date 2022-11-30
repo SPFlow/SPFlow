@@ -85,9 +85,7 @@ class CondLogNormalLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondLogNormalLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondLogNormalLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -95,17 +93,13 @@ class CondLogNormalLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) == 0:
-                raise ValueError(
-                    f"Evidence scope for 'CondLogNormalLayer' should not be empty."
-                )
+                raise ValueError(f"Evidence scope for 'CondLogNormalLayer' should not be empty.")
 
         super().__init__(children=[], **kwargs)
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
 
@@ -129,9 +123,7 @@ class CondLogNormalLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondLogNormalLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondLogNormalLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -172,9 +164,7 @@ class CondLogNormalLayer(Module):
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -221,9 +211,7 @@ class CondLogNormalLayer(Module):
 
         return D.LogNormal(loc=mean[node_ids], scale=std[node_ids])
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameters (``mean``,``std``) are passed as additional arguments in the dispatch context.
@@ -300,9 +288,7 @@ class CondLogNormalLayer(Module):
             )
 
         if not torch.any(torch.isfinite(mean)):
-            raise ValueError(
-                f"Values of 'mean' for 'CondLogNormalLayer' must be finite, but was: {mean}"
-            )
+            raise ValueError(f"Values of 'mean' for 'CondLogNormalLayer' must be finite, but was: {mean}")
 
         if isinstance(std, int) or isinstance(std, float):
             std = torch.tensor([std for _ in range(self.n_out)])
@@ -318,9 +304,7 @@ class CondLogNormalLayer(Module):
             )
 
         if torch.any(std <= 0.0) or not torch.any(torch.isfinite(std)):
-            raise ValueError(
-                f"Value of 'std' for 'CondLogNormalLayer' must be greater than 0, but was: {std}"
-            )
+            raise ValueError(f"Value of 'std' for 'CondLogNormalLayer' must be greater than 0, but was: {std}")
 
         return mean, std
 
@@ -364,9 +348,7 @@ class CondLogNormalLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(torch.zeros(self.n_out), torch.ones(self.n_out), node_ids).support.check(scope_data)  # type: ignore

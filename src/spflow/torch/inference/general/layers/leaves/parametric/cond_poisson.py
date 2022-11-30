@@ -74,9 +74,7 @@ def log_likelihood(
     for query_signature in np.unique(query_rvs, axis=0):
 
         # compute all nodes with this scope
-        node_ids = np.where((query_rvs == query_signature).all(axis=1))[
-            0
-        ].tolist()
+        node_ids = np.where((query_rvs == query_signature).all(axis=1))[0].tolist()
         node_ids_tensor = torch.tensor(node_ids)
 
         # get data for scope (since all "nodes" are univariate, order does not matter)
@@ -98,15 +96,11 @@ def log_likelihood(
             valid_ids = layer.check_support(data[~marg_mask], node_ids=node_ids)
 
             if not all(valid_ids.sum(dim=1)):
-                raise ValueError(
-                    f"Encountered data instances that are not in the support of the Poisson distribution."
-                )
+                raise ValueError(f"Encountered data instances that are not in the support of the Poisson distribution.")
 
         # compute probabilities for values inside distribution support
-        log_prob[
-            torch.meshgrid(non_marg_ids, node_ids_tensor, indexing="ij")
-        ] = layer.dist(l=l, node_ids=node_ids).log_prob(
-            scope_data[non_marg_ids, :].type(torch.get_default_dtype())
-        )
+        log_prob[torch.meshgrid(non_marg_ids, node_ids_tensor, indexing="ij")] = layer.dist(
+            l=l, node_ids=node_ids
+        ).log_prob(scope_data[non_marg_ids, :].type(torch.get_default_dtype()))
 
     return log_prob

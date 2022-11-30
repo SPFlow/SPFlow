@@ -74,12 +74,8 @@ class TestNode(unittest.TestCase):
         dummy_node = DummyNode()
         dummy_data = np.array([[1.0]])
 
-        self.assertRaises(
-            NotImplementedError, log_likelihood, dummy_node, dummy_data
-        )
-        self.assertRaises(
-            NotImplementedError, likelihood, dummy_node, dummy_data
-        )
+        self.assertRaises(NotImplementedError, log_likelihood, dummy_node, dummy_data)
+        self.assertRaises(NotImplementedError, likelihood, dummy_node, dummy_data)
 
 
 if __name__ == "__main__":

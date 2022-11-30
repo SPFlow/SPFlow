@@ -35,9 +35,7 @@ def memoize(f) -> Callable:
         key = args[0]
 
         if not isinstance(key, MetaModule):
-            raise ValueError(
-                f"First argument is expected to be of type {MetaModule}, but was of type {type(key)}."
-            )
+            raise ValueError(f"First argument is expected to be of type {MetaModule}, but was of type {type(key)}.")
 
         # ----- retrieve DispatchContext -----
 

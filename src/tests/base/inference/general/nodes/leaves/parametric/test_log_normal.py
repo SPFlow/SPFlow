@@ -105,17 +105,11 @@ class TestLogNormal(unittest.TestCase):
         log_normal = LogNormal(Scope([0]), 0.0, 1.0)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, log_normal, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, log_normal, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, log_normal, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, log_normal, np.array([[np.inf]]))
 
         # invalid float values
-        self.assertRaises(
-            ValueError, log_likelihood, log_normal, np.array([[0]])
-        )
+        self.assertRaises(ValueError, log_likelihood, log_normal, np.array([[0]]))
 
         # valid float values
         log_likelihood(log_normal, np.array([[np.nextafter(0.0, 1.0)]]))

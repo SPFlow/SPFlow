@@ -87,9 +87,7 @@ class CondBernoulliLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondBernoulliLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondBernoulliLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -97,17 +95,13 @@ class CondBernoulliLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) == 0:
-                raise ValueError(
-                    f"Evidence scope for 'CondBernoulliLayer' should not be empty."
-                )
+                raise ValueError(f"Evidence scope for 'CondBernoulliLayer' should not be empty.")
 
         super().__init__(children=[], **kwargs)
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
 
@@ -131,9 +125,7 @@ class CondBernoulliLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondBernoulliLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondBernoulliLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -174,9 +166,7 @@ class CondBernoulliLayer(Module):
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -198,9 +188,7 @@ class CondBernoulliLayer(Module):
 
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> torch.Tensor:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> torch.Tensor:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -238,9 +226,7 @@ class CondBernoulliLayer(Module):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError(
-                "'CondBernoulliLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
-            )
+            raise ValueError("'CondBernoulliLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
 
         # if 'p' was not already specified, retrieve it
         if p is None:
@@ -264,20 +250,14 @@ class CondBernoulliLayer(Module):
             raise ValueError(
                 f"Length of numpy array of 'p' values for 'CondBernoulliLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
             )
-        if (
-            torch.any(p < 0.0)
-            or torch.any(p > 1.0)
-            or not all(torch.isfinite(p))
-        ):
+        if torch.any(p < 0.0) or torch.any(p > 1.0) or not all(torch.isfinite(p)):
             raise ValueError(
                 f"Values of 'p' for 'CondBernoulliLayer' distribution must to be between 0.0 and 1.0, but are: {p}"
             )
 
         return p
 
-    def dist(
-        self, p: torch.Tensor, node_ids: Optional[List[int]] = None
-    ) -> D.Distribution:
+    def dist(self, p: torch.Tensor, node_ids: Optional[List[int]] = None) -> D.Distribution:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -335,9 +315,7 @@ class CondBernoulliLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(torch.zeros(self.n_out), node_ids).support.check(scope_data)  # type: ignore

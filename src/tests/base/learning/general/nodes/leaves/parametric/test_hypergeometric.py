@@ -18,9 +18,7 @@ class TestNode(unittest.TestCase):
         leaf = Hypergeometric(Scope([0]), N=10, M=7, n=3)
 
         # simulate data
-        data = np.random.hypergeometric(
-            ngood=7, nbad=10 - 7, nsample=3, size=(10000, 1)
-        )
+        data = np.random.hypergeometric(ngood=7, nbad=10 - 7, nsample=3, size=(10000, 1))
 
         # perform MLE (should not raise an exception)
         maximum_likelihood_estimation(leaf, data, bias_correction=True)

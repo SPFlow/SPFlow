@@ -19,9 +19,7 @@ class TestNode(unittest.TestCase):
 
     def test_layer_likelihood(self):
 
-        layer = GeometricLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 1.0, 0.3]
-        )
+        layer = GeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 1.0, 0.3])
 
         nodes = [
             Geometric(Scope([0]), p=0.2),
@@ -32,9 +30,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[4, 1], [3, 7], [1, 1]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -63,34 +59,24 @@ class TestNode(unittest.TestCase):
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(
-            torch.allclose(
-                p_aux_orig - torch_geometric.p_aux.grad, torch_geometric.p_aux
-            )
-        )
+        self.assertTrue(torch.allclose(p_aux_orig - torch_geometric.p_aux.grad, torch_geometric.p_aux))
 
         # verify that distribution parameters match parameters
-        self.assertTrue(
-            torch.allclose(torch_geometric.p, torch_geometric.dist().probs)
-        )
+        self.assertTrue(torch.allclose(torch_geometric.p, torch_geometric.dist().probs))
 
     def test_gradient_optimization(self):
 
         torch.manual_seed(0)
 
         # initialize distribution
-        torch_geometric = GeometricLayer(
-            scope=[Scope([0]), Scope([1])], p=[0.3, 0.4]
-        )
+        torch_geometric = GeometricLayer(scope=[Scope([0]), Scope([1])], p=[0.3, 0.4])
 
         # create dummy data
         p_target = 0.8
         data = torch.distributions.Geometric(p_target).sample((100000, 2)) + 1
 
         # initialize gradient optimizer
-        optimizer = torch.optim.SGD(
-            torch_geometric.parameters(), lr=0.9, momentum=0.6
-        )
+        optimizer = torch.optim.SGD(torch_geometric.parameters(), lr=0.9, momentum=0.6)
 
         # perform optimization (possibly overfitting)
         for i in range(40):
@@ -105,17 +91,11 @@ class TestNode(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(
-            torch.allclose(
-                torch_geometric.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3
-            )
-        )
+        self.assertTrue(torch.allclose(torch_geometric.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
 
     def test_likelihood_marginalization(self):
 
-        geometric = GeometricLayer(
-            scope=[Scope([0]), Scope([1])], p=random.random() + 1e-7
-        )
+        geometric = GeometricLayer(scope=[Scope([0]), Scope([1])], p=random.random() + 1e-7)
         data = torch.tensor([[float("nan"), float("nan")]])
 
         # should not raise and error and should return 1

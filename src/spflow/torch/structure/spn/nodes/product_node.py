@@ -43,18 +43,14 @@ class ProductNode(Node):
         super().__init__(children=children)
 
         if not children:
-            raise ValueError(
-                "'ProductNode' requires at least one child to be specified."
-            )
+            raise ValueError("'ProductNode' requires at least one child to be specified.")
 
         scope = Scope()
 
         for child in children:
             for s in child.scopes_out:
                 if not scope.isdisjoint(s):
-                    raise ValueError(
-                        f"'ProductNode' requires child scopes to be pair-wise disjoint."
-                    )
+                    raise ValueError(f"'ProductNode' requires child scopes to be pair-wise disjoint.")
 
                 scope = scope.join(s)
 
@@ -108,9 +104,7 @@ def marginalize(
 
         # marginalize child modules
         for child in product_node.children():
-            marg_child = marginalize(
-                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
-            )
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
@@ -126,9 +120,7 @@ def marginalize(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    product_node: ProductNode, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseProductNode:
+def toBase(product_node: ProductNode, dispatch_ctx: Optional[DispatchContext] = None) -> BaseProductNode:
     """Conversion for ``ProductNode`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -138,12 +130,7 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseProductNode(
-        children=[
-            toBase(child, dispatch_ctx=dispatch_ctx)
-            for child in product_node.children()
-        ]
-    )
+    return BaseProductNode(children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in product_node.children()])
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -160,9 +147,4 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return ProductNode(
-        children=[
-            toTorch(child, dispatch_ctx=dispatch_ctx)
-            for child in product_node.children
-        ]
-    )
+    return ProductNode(children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_node.children])

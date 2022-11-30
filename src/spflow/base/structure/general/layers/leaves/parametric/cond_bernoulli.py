@@ -84,9 +84,7 @@ class CondBernoulliLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondBernoulliLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondBernoulliLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -125,9 +123,7 @@ class CondBernoulliLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondBernoulliLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondBernoulliLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -163,9 +159,7 @@ class CondBernoulliLayer(Module):
 
         return CondBernoulliLayer(scopes)
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -187,9 +181,7 @@ class CondBernoulliLayer(Module):
 
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> np.ndarray:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> np.ndarray:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -227,9 +219,7 @@ class CondBernoulliLayer(Module):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError(
-                "'CondBinomialLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
-            )
+            raise ValueError("'CondBinomialLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
 
         # if 'p' was not already specified, retrieve it
         if p is None:
@@ -254,9 +244,7 @@ class CondBernoulliLayer(Module):
 
         return p
 
-    def dist(
-        self, p: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> List[rv_frozen]:
+    def dist(self, p: np.ndarray, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
 
         Args:
@@ -274,9 +262,7 @@ class CondBernoulliLayer(Module):
 
         return [self.nodes[i].dist(p[i]) for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or not instances are part of the supports of the Bernoulli distributions, which are:
@@ -303,9 +289,7 @@ class CondBernoulliLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore

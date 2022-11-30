@@ -76,14 +76,10 @@ def log_likelihood(
 
     if check_support:
         # create masked based on distribution's support
-        valid_ids = leaf.check_support(
-            scope_data[~marg_ids], is_scope_data=True
-        ).squeeze(1)
+        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
-            raise ValueError(
-                f"Encountered data instances that are not in the support of the CondGamma distribution."
-            )
+            raise ValueError(f"Encountered data instances that are not in the support of the CondGamma distribution.")
 
     # compute probabilities for values inside distribution support
     log_prob[~marg_ids] = leaf.dist(alpha=alpha, beta=beta).log_prob(

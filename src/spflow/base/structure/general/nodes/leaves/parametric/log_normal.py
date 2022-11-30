@@ -35,9 +35,7 @@ class LogNormal(LeafNode):
             Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
     """
 
-    def __init__(
-        self, scope: Scope, mean: float = 0.0, std: float = 1.0
-    ) -> None:
+    def __init__(self, scope: Scope, mean: float = 0.0, std: float = 1.0) -> None:
         r"""Initializes ``LogNormal`` leaf node.
 
         Args:
@@ -51,13 +49,9 @@ class LogNormal(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'LogNormal' should be 1, but was: {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'LogNormal' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'LogNormal' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'LogNormal' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
         self.set_params(mean, std)
@@ -80,11 +74,7 @@ class LogNormal(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a continuous Log-Normal distribution
@@ -108,9 +98,7 @@ class LogNormal(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'LogNormal' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'LogNormal' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -151,13 +139,9 @@ class LogNormal(LeafNode):
                 Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
         """
         if not (np.isfinite(mean) and np.isfinite(std)):
-            raise ValueError(
-                f"Values for 'mean' and 'std' for 'LogNormal' must be finite, but were: {mean}, {std}"
-            )
+            raise ValueError(f"Values for 'mean' and 'std' for 'LogNormal' must be finite, but were: {mean}, {std}")
         if std <= 0.0:
-            raise ValueError(
-                f"Value for 'std' for 'LogNormal' must be greater than 0.0, but was: {std}"
-            )
+            raise ValueError(f"Value for 'std' for 'LogNormal' must be greater than 0.0, but was: {std}")
 
         self.mean = mean
         self.std = std
@@ -170,9 +154,7 @@ class LogNormal(LeafNode):
         """
         return self.mean, self.std
 
-    def check_support(
-        self, data: np.ndarray, is_scope_data: bool = False
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, is_scope_data: bool = False) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Log-Normal distribution, which is:
