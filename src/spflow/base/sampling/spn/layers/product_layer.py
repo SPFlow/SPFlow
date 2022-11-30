@@ -60,7 +60,7 @@ def sample(
             raise ValueError("Too many output ids specified for outputs over same scope.")
 
     # all product nodes are over (all) children
-    for child in product_layer.children:
+    for child in product_layer.chs:
         sample(
             child,
             data,

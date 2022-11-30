@@ -189,7 +189,7 @@ def marginalize(
         marg_children = []
 
         # marginalize child modules
-        for child in sum_node.children:
+        for child in sum_node.chs:
             marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None

@@ -53,7 +53,7 @@ class ProductLayer(NestedModule):
         super().__init__(children=children, **kwargs)
 
         # create input placeholder
-        ph = self.create_placeholder(list(range(sum(child.n_out for child in self.children))))
+        ph = self.create_placeholder(list(range(sum(child.n_out for child in self.chs))))
         # create prodcut nodes
         self.nodes = [ProductNode(children=[ph]) for _ in range(n_nodes)]
 
@@ -117,7 +117,7 @@ def marginalize(
         marg_children = []
 
         # marginalize child modules
-        for child in layer.children:
+        for child in layer.chs:
             marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None

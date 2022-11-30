@@ -455,7 +455,7 @@ class TestRatSpn(unittest.TestCase):
                 self.assertTrue(torch.allclose(torch_module.mean, torch_module.mean))
                 self.assertTrue(torch.allclose(torch_module.std, torch_module.std))
 
-            modules += list(zip(torch_module.chs, base_module.children))
+            modules += list(zip(torch_module.chs, base_module.chs))
 
     def test_rat_spn_backend_conversion_2(self):
 
@@ -488,7 +488,7 @@ class TestRatSpn(unittest.TestCase):
                     std=np.random.rand(*module.std.shape) + 1e-8,
                 )
 
-            modules += module.children
+            modules += module.chs
 
         torch_rat = toTorch(base_rat)
 
@@ -518,7 +518,7 @@ class TestRatSpn(unittest.TestCase):
                 self.assertTrue(torch.allclose(torch_module.mean, torch_module.mean))
                 self.assertTrue(torch.allclose(torch_module.std, torch_module.std))
 
-            modules += list(zip(torch_module.chs, base_module.children))
+            modules += list(zip(torch_module.chs, base_module.chs))
 
 
 if __name__ == "__main__":

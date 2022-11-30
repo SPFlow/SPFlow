@@ -230,7 +230,7 @@ def toBase(rat_spn: RatSPN, dispatch_ctx: Optional[DispatchContext] = None) -> B
     # replace actual module graph
     base_rat_spn.root_node = toBase(rat_spn.root_node, dispatch_ctx=dispatch_ctx)
     # set root region
-    base_rat_spn.root_region = base_rat_spn.root_node.children[0]
+    base_rat_spn.root_region = base_rat_spn.root_node.chs[0]
 
     return base_rat_spn
 

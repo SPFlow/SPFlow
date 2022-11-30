@@ -175,5 +175,5 @@ def toTorch(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ProductLayer(
         n_nodes=product_layer.n_out,
-        children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children],
+        children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_layer.chs],
     )

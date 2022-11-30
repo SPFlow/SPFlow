@@ -258,6 +258,6 @@ def toTorch(sum_layer: BaseSumLayer, dispatch_ctx: Optional[DispatchContext] = N
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return SumLayer(
         n_nodes=sum_layer.n_out,
-        children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+        children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.chs],
         weights=sum_layer.weights,
     )
