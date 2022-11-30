@@ -1,9 +1,10 @@
-from spflow.torch.utils import connected_components
-
-import torch
-import numpy as np
-import unittest
 import random
+import unittest
+
+import numpy as np
+import torch
+
+from spflow.torch.utils import connected_components
 
 
 class TestNode(unittest.TestCase):

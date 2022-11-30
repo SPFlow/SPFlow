@@ -1,20 +1,21 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
+import math
+import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import (
     CondMultivariateGaussian as BaseCondMultivariateGaussian,
 )
-from spflow.base.inference import log_likelihood
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import (
-    ProductNode,
     CondGaussian,
     CondMultivariateGaussian,
+    ProductNode,
 )
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
-import unittest
-import math
 
 
 class TestMultivariateGaussian(unittest.TestCase):

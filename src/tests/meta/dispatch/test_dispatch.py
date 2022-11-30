@@ -1,12 +1,13 @@
+import unittest
+from typing import Optional
+
 from spflow.meta.dispatch import (
-    dispatch,
     DispatchContext,
-    init_default_dispatch_context,
     default_dispatch_context,
+    dispatch,
+    init_default_dispatch_context,
 )
 from spflow.meta.structure.module import MetaModule
-from typing import Optional
-import unittest
 
 
 # dispatching requires an instance of abstract class 'MetaModule' as first argument (e.g., for caching etc.)
