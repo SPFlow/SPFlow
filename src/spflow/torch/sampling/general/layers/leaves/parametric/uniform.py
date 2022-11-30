@@ -1,5 +1,11 @@
 """Contains sampling methods for ``UniformLayer`` leaves for SPFlow in the ``torch`` backend.
 """
+import itertools
+from typing import Optional
+
+import numpy as np
+import torch
+
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -10,16 +16,9 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.uniform import (
-    UniformLayer,
-)
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
-
-import torch
-import numpy as np
-from typing import Optional
-import itertools
+from spflow.torch.structure.general.layers.leaves.parametric.uniform import UniformLayer
 
 
 @dispatch  # type: ignore

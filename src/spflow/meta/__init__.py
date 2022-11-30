@@ -1,4 +1,2 @@
 # ----- sub-packages -----
-from . import data
-from . import dispatch
-from . import structure
+from . import data, dispatch, structure

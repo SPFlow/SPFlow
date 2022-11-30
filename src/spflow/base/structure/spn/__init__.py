@@ -1,9 +1,7 @@
 # ---- sub-packages -----
-from . import nodes
-from . import layers
-from . import rat
+from . import layers, nodes, rat
+from .layers import *
 
 # ---- specific imports ----
 from .nodes import *
-from .layers import *
-from .rat import random_region_graph, RatSPN
+from .rat import RatSPN, random_region_graph

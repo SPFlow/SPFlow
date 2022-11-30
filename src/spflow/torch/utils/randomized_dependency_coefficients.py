@@ -4,14 +4,16 @@ Typical usage example:
 
     coeffs = randomized_dependency_coefficients(data, k, s, phi)
 """
-from typing import Callable, Tuple
-import torch
 from itertools import combinations
+from typing import Callable, Tuple
+
+import numpy as np
+import torch
+from packaging import version
+
 from spflow.torch.utils.cca import cca
 from spflow.torch.utils.corrcoef import corrcoef
 from spflow.torch.utils.empirical_cdf import empirical_cdf
-from packaging import version
-import numpy as np
 
 
 def randomized_dependency_coefficients(

@@ -1,22 +1,20 @@
 """Contains conditional SPN-like sum node for SPFlow in the ``torch`` backend.
 """
-from typing import List, Optional, Iterable, Callable
 from copy import deepcopy
+from typing import Callable, Iterable, List, Optional
 
-import torch
 import numpy as np
+import torch
 
+from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode as BaseCondSumNode
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.spn.nodes.cond_sum_node import (
-    CondSumNode as BaseCondSumNode,
-)
-from spflow.torch.structure.spn.nodes.sum_node import Node
 from spflow.torch.structure.module import Module
+from spflow.torch.structure.spn.nodes.sum_node import Node
 
 
 class CondSumNode(Node):

@@ -1,18 +1,18 @@
 """Contains SPN-like product layer for SPFlow in the ``torch`` backend.
 """
+from copy import deepcopy
+from typing import Iterable, List, Optional, Union
+
+from spflow.base.structure.spn.layers.product_layer import (
+    ProductLayer as BaseProductLayer,
+)
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.base.structure.spn.layers.product_layer import (
-    ProductLayer as BaseProductLayer,
-)
 from spflow.torch.structure.module import Module
-
-from typing import Optional, Iterable, Union, List
-from copy import deepcopy
 
 
 class ProductLayer(Module):
