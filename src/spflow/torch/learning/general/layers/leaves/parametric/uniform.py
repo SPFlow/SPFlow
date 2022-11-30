@@ -1,16 +1,16 @@
 """Contains learning methods for ``UniformLayer`` leaves for SPFlow in the ``torch`` backend.
 """
-from typing import Optional, Union, Callable
-import torch
+from typing import Callable, Optional, Union
+
 import numpy as np
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.uniform import (
-    UniformLayer,
-)
+from spflow.torch.structure.general.layers.leaves.parametric.uniform import UniformLayer
 
 
 @dispatch(memoize=True)  # type: ignore

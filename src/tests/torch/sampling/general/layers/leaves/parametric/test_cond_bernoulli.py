@@ -1,13 +1,14 @@
-from spflow.meta.dispatch import SamplingContext
-from spflow.meta.data import Scope
-from spflow.torch.structure.spn import CondBernoulli, CondBernoulliLayer
-from spflow.torch.inference import log_likelihood
-from spflow.torch.sampling import sample
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
+from spflow.torch.inference import log_likelihood
+from spflow.torch.sampling import sample
+from spflow.torch.structure.spn import CondBernoulli, CondBernoulliLayer
 
 
 class TestNode(unittest.TestCase):

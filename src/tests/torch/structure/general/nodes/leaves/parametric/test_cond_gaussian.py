@@ -1,24 +1,24 @@
-from spflow.meta.data import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.meta.dispatch.dispatch_context import DispatchContext
+import random
+import unittest
+from typing import Callable
+
+import numpy as np
+import torch
+
 from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian as BaseCondGaussian,
 )
+from spflow.meta.data import Scope
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
     toBase,
     toTorch,
 )
 from spflow.torch.structure.spn.nodes.sum_node import marginalize
-from typing import Callable
-
-import torch
-import numpy as np
-
-import random
-import unittest
 
 
 class TestGaussian(unittest.TestCase):

@@ -1,21 +1,22 @@
 """Contains conditional Bernoulli leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Callable, Type
+from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
+
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
+from spflow.base.structure.general.nodes.leaves.parametric.cond_bernoulli import (
+    CondBernoulli,
+)
+from spflow.base.structure.module import Module
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
-)
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureType, FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.module import Module
-from spflow.base.structure.general.nodes.leaves.parametric.cond_bernoulli import (
-    CondBernoulli,
 )
 
 

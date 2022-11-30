@@ -1,19 +1,19 @@
 """Contains conditional SPN-like sum node for SPFlow in the ``base`` backend.
 """
 from abc import ABC
-from typing import List, Union, Optional, Iterable, Callable
 from copy import deepcopy
+from typing import Callable, Iterable, List, Optional, Union
 
 import numpy as np
 
+from spflow.base.structure.module import Module
+from spflow.base.structure.spn.nodes.product_node import Node
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.module import Module
-from spflow.base.structure.spn.nodes.product_node import Node
 
 
 class CondSumNode(Node):

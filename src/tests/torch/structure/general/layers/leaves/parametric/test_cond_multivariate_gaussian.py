@@ -1,18 +1,19 @@
-from spflow.torch.structure import AutoLeaf
+import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn import (
+    CondMultivariateGaussianLayer as BaseCondMultivariateGaussianLayer,
+)
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
 from spflow.torch.structure.spn import (
     CondGaussian,
     CondMultivariateGaussian,
     CondMultivariateGaussianLayer,
 )
-from spflow.torch.structure import marginalize, toTorch, toBase
-from spflow.base.structure.spn import (
-    CondMultivariateGaussianLayer as BaseCondMultivariateGaussianLayer,
-)
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.meta.dispatch import DispatchContext
-import torch
-import numpy as np
-import unittest
 
 
 class TestNode(unittest.TestCase):

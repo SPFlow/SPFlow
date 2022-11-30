@@ -1,11 +1,12 @@
 """Contains the abstract ``NestedModule`` class for SPFlow modules in the ``torch`` backend.
 """
+from abc import ABC
+from typing import List, Optional, Tuple, Union
+
+import torch
+
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.torch.structure.module import Module
-
-from typing import List, Tuple, Optional, Union
-from abc import ABC
-import torch
 
 
 class NestedModule(Module, ABC):

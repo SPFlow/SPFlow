@@ -1,20 +1,21 @@
 """Contains SPN-like partition layer for SPFlow in the ``torch`` backend.
 """
+from copy import deepcopy
+from typing import Iterable, List, Optional, Union
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn.layers.partition_layer import (
+    PartitionLayer as BasePartitionLayer,
+)
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.base.structure.spn.layers.partition_layer import (
-    PartitionLayer as BasePartitionLayer,
-)
 from spflow.torch.structure.module import Module
-
-from typing import Optional, Union, Iterable, List
-from copy import deepcopy
-import numpy as np
-import torch
 
 
 class PartitionLayer(Module):

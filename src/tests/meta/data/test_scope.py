@@ -1,5 +1,6 @@
-from spflow.meta.data import Scope
 import unittest
+
+from spflow.meta.data import Scope
 
 
 class TestScope(unittest.TestCase):

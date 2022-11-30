@@ -5,6 +5,7 @@ Typical usage example:
     x_proj, y_proj, x_weights, y_weights, x_scores, y_scores, x_loadings, y_loadings = cca(x, y, n_components)
 """
 from typing import Tuple
+
 import torch
 
 

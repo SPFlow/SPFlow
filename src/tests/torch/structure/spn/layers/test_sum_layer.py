@@ -1,14 +1,15 @@
-from spflow.torch.structure.spn import SumLayer, Gaussian
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.base.structure.spn import (
-    SumLayer as BaseSumLayer,
-    Gaussian as BaseGaussian,
-)
-from spflow.meta.data import Scope
-from ...general.nodes.dummy_node import DummyNode
-import torch
-import numpy as np
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn import Gaussian as BaseGaussian
+from spflow.base.structure.spn import SumLayer as BaseSumLayer
+from spflow.meta.data import Scope
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Gaussian, SumLayer
+
+from ...general.nodes.dummy_node import DummyNode
 
 
 class TestNode(unittest.TestCase):

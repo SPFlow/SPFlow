@@ -1,10 +1,11 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.base.structure import AutoLeaf
-from spflow.base.structure.spn import Gaussian, marginalize
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.structure import AutoLeaf
+from spflow.base.structure.spn import Gaussian, marginalize
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestGaussian(unittest.TestCase):

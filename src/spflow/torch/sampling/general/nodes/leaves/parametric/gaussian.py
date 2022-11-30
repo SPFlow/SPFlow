@@ -1,5 +1,9 @@
 """Contains sampling methods for ``Gaussian`` nodes for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,12 +13,7 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import (
-    Gaussian,
-)
-
-import torch
-from typing import Optional
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian
 
 
 @dispatch  # type: ignore

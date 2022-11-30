@@ -1,16 +1,15 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import LogNormal
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.inference import log_likelihood
-from spflow.base.structure.spn import LogNormal as BaseLogNormal
-from spflow.base.inference import log_likelihood
-
-import torch
-import numpy as np
-
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import LogNormal as BaseLogNormal
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import LogNormal
 
 
 class TestLogNormal(unittest.TestCase):
