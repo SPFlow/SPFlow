@@ -308,7 +308,7 @@ def toTorch(
     torch_rat_spn.root_node = toTorch(
         rat_spn.root_node, dispatch_ctx=dispatch_ctx
     )
-    # set root region
-    torch_rat_spn.root_region = next(torch_rat_spn.root_node.chs)
+    # set root region (root node only has a single region, therefore index root_node.chs[0])
+    torch_rat_spn.root_region = torch_rat_spn.root_node.chs[0]
 
     return torch_rat_spn
