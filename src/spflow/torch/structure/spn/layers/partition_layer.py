@@ -177,7 +177,7 @@ def marginalize(
     elif mutual_rvs:
         marg_partitions = []
 
-        children = list(layer.children())
+        children = list(layer.chs)
         partitions = np.split(
             children, np.cumsum(layer.modules_per_partition[:-1])
         )
@@ -235,7 +235,7 @@ def toBase(
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    children = list(partition_layer.children())
+    children = list(partition_layer.chs)
     partitions = np.split(
         children, np.cumsum(partition_layer.modules_per_partition[:-1])
     )

@@ -120,7 +120,7 @@ class NestedModule(Module, ABC):
 
             # get child scopes
             child_scopes = sum(
-                [child.scopes_out for child in host.children()], []
+                [child.scopes_out for child in host.chs], []
             )
 
             # compute scope for placeholder

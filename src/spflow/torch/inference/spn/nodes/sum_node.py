@@ -48,7 +48,7 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in node.children()
+            for child in node.chs
         ]
     )
 

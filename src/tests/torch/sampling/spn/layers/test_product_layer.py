@@ -75,7 +75,7 @@ class TestNode(unittest.TestCase):
         self.assertRaises(
             ValueError,
             sample,
-            list(layer_spn.children())[0],
+            list(layer_spn.chs)[0],
             1,
             sampling_ctx=SamplingContext([0], [[0, 1]]),
         )

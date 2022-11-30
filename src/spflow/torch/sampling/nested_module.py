@@ -52,7 +52,7 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # dictionary to hold the
-    sampling_ids_per_child = [([], []) for _ in placeholder.host.children()]
+    sampling_ids_per_child = [([], []) for _ in placeholder.host.chs]
 
     for instance_id, output_ids in zip(
         sampling_ctx.instance_ids, sampling_ctx.output_ids

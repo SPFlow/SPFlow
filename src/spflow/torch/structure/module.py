@@ -44,9 +44,8 @@ class Module(MetaModule, nn.Module, ABC):
         if any(not isinstance(child, Module) for child in children):
             raise ValueError("Children must all be of type 'Module'.")
 
-        # register children
-        for i, child in enumerate(children):
-            self.add_module(f"child_{i + 1}", child)
+        # register children as module list
+        self.chs = nn.ModuleList(children)
 
     def input_to_output_ids(
         self, input_ids: Union[List[int], torch.Tensor]
@@ -77,7 +76,7 @@ class Module(MetaModule, nn.Module, ABC):
 
         # infer number of inputs from children (and their numbers of outputs)
         child_num_outputs = torch.tensor(
-            [child.n_out for child in self.children()]
+            [child.n_out for child in self.chs]
         )
         child_cum_outputs = torch.cumsum(child_num_outputs, dim=-1)
 

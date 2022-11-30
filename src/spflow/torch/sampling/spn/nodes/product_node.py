@@ -53,7 +53,7 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # sample from all child outputs
-    for child in node.children():
+    for child in node.chs:
         sample(
             child,
             data,
