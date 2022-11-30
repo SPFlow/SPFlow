@@ -70,7 +70,7 @@ def sample(
         if len(instance_ids) == 0:
             continue
         sample(
-            placeholder.host.children[child_id],
+            placeholder.host.chs[child_id],
             data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
