@@ -1,17 +1,15 @@
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import (
-    CondNegativeBinomial,
-    CondNegativeBinomialLayer,
-)
-from spflow.torch.structure import marginalize, toTorch, toBase
+import unittest
+
+import numpy as np
+import torch
+
 from spflow.base.structure.spn import (
     CondNegativeBinomialLayer as BaseCondNegativeBinomialLayer,
 )
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
-import torch
-import numpy as np
-import unittest
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondNegativeBinomial, CondNegativeBinomialLayer
 
 
 class TestNode(unittest.TestCase):

@@ -1,9 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.torch.structure.spn import Binomial, BinomialLayer
-from spflow.torch.inference import log_likelihood
-import torch
-import unittest
 import random
+import unittest
+
+import torch
+
+from spflow.meta.data import Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure.spn import Binomial, BinomialLayer
 
 
 class TestNode(unittest.TestCase):

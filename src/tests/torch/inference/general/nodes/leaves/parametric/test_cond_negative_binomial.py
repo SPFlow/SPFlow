@@ -1,16 +1,15 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
-from spflow.base.structure.spn import (
-    CondNegativeBinomial as BaseCondNegativeBinomial,
-)
-from spflow.base.inference import log_likelihood
-from spflow.torch.structure.spn import CondNegativeBinomial
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import CondNegativeBinomial as BaseCondNegativeBinomial
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import CondNegativeBinomial
 
 
 class TestNegativeBinomial(unittest.TestCase):

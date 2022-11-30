@@ -1,11 +1,10 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import Uniform
-from spflow.base.learning import (
-    maximum_likelihood_estimation,
-)
+import unittest
 
 import numpy as np
-import unittest
+
+from spflow.base.learning import maximum_likelihood_estimation
+from spflow.base.structure.spn import Uniform
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):

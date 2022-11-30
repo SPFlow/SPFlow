@@ -1,9 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import SumNode, CondSumLayer, Gaussian
-from spflow.base.inference.spn.layers.cond_sum_layer import log_likelihood
-from spflow.base.inference import log_likelihood
-import numpy as np
 import unittest
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
+from spflow.base.inference.spn.layers.cond_sum_layer import log_likelihood
+from spflow.base.structure.spn import CondSumLayer, Gaussian, SumNode
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
