@@ -1,8 +1,11 @@
+import unittest
+
+import numpy as np
+
 from spflow.base.structure.spn import SumLayer, marginalize
 from spflow.meta.data import Scope
+
 from ...general.nodes.dummy_node import DummyNode
-import numpy as np
-import unittest
 
 
 class TestLayer(unittest.TestCase):
@@ -21,11 +24,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out == [Scope([0, 1]), Scope([0, 1]), Scope([0, 1])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([0, 1]), Scope([0, 1]), Scope([0, 1])]))
         # make sure weight property works correctly
         weights = l.weights
         for node, node_weights in zip(l.nodes, weights):
@@ -41,9 +40,7 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.weights == weights))
 
         # one dimensional weight array
-        l = SumLayer(
-            n_nodes=3, children=input_nodes, weights=weights.squeeze(0)
-        )
+        l = SumLayer(n_nodes=3, children=input_nodes, weights=weights.squeeze(0))
 
         for node in l.nodes:
             self.assertTrue(np.all(node.weights == weights))
@@ -61,12 +58,8 @@ class TestLayer(unittest.TestCase):
 
         self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights)
         self.assertRaises(ValueError, SumLayer, 3, input_nodes, weights.T)
-        self.assertRaises(
-            ValueError, SumLayer, 3, input_nodes, np.expand_dims(weights, 0)
-        )
-        self.assertRaises(
-            ValueError, SumLayer, 3, input_nodes, np.expand_dims(weights, -1)
-        )
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, np.expand_dims(weights, 0))
+        self.assertRaises(ValueError, SumLayer, 3, input_nodes, np.expand_dims(weights, -1))
 
         # ----- incorrect number of weights -----
         weights = np.array([[0.3, 0.3, 0.3, 0.1], [0.5, 0.2, 0.2, 0.1]])
@@ -115,17 +108,13 @@ class TestLayer(unittest.TestCase):
             l,
             [0],
         )
-        self.assertTrue(
-            l_marg.scopes_out == [Scope([1]), Scope([1]), Scope([1])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
         self.assertTrue(np.all(l.weights == l_marg.weights))
 
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
 
-        self.assertTrue(
-            l_marg.scopes_out == [Scope([0, 1]), Scope([0, 1]), Scope([0, 1])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 1]), Scope([0, 1]), Scope([0, 1])])
         self.assertTrue(np.all(l.weights == l_marg.weights))
 
 

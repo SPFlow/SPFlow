@@ -1,7 +1,13 @@
 """Contains sampling methods for ``CondGaussianLayer`` leaves for SPFlow in the ``base`` backend.
 """
-import numpy as np
 from typing import Optional
+
+import numpy as np
+
+from spflow.base.sampling.module import sample
+from spflow.base.structure.general.layers.leaves.parametric.cond_gaussian import (
+    CondGaussianLayer,
+)
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -12,10 +18,6 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.general.layers.leaves.parametric.cond_gaussian import (
-    CondGaussianLayer,
-)
-from spflow.base.sampling.module import sample
 
 
 @dispatch  # type: ignore
@@ -70,12 +72,8 @@ def sample(
         if len(output_ids) == 0:
             output_ids = list(range(layer.n_out))
 
-        if not Scope.all_pairwise_disjoint(
-            [layer_scopes[id] for id in output_ids]
-        ):
-            raise ValueError(
-                "Sampling from non-pairwise-disjoint scopes for instances is not allowed."
-            )
+        if not Scope.all_pairwise_disjoint([layer_scopes[id] for id in output_ids]):
+            raise ValueError("Sampling from non-pairwise-disjoint scopes for instances is not allowed.")
 
     # all product nodes are over (all) children
     for node_id, instances in sampling_ctx.group_output_ids(layer.n_out):

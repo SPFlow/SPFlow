@@ -1,14 +1,14 @@
 """Contains learning methods for ``LogNormal`` nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import numpy as np
+
+from spflow.base.structure.general.nodes.leaves.parametric.log_normal import LogNormal
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
-)
-from spflow.base.structure.general.nodes.leaves.parametric.log_normal import (
-    LogNormal,
 )
 
 
@@ -90,17 +90,13 @@ def maximum_likelihood_estimation(
 
     if check_support:
         if np.any(~leaf.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'LogNormal'."
-            )
+            raise ValueError("Encountered values outside of the support for 'LogNormal'.")
 
     # NaN entries (no information)
     nan_mask = np.isnan(scope_data)
 
     if np.all(nan_mask):
-        raise ValueError(
-            "Cannot compute maximum-likelihood estimation on nan-only data."
-        )
+        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
 
     if nan_strategy is None and np.any(nan_mask):
         raise ValueError(
@@ -113,9 +109,7 @@ def maximum_likelihood_estimation(
             scope_data = scope_data[~nan_mask.squeeze(1)]
             weights = weights[~nan_mask.squeeze(1)]
         else:
-            raise ValueError(
-                "Unknown strategy for handling missing (NaN) values for 'LogNormal'."
-            )
+            raise ValueError("Unknown strategy for handling missing (NaN) values for 'LogNormal'.")
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
         # TODO: how to handle weights?
@@ -134,15 +128,9 @@ def maximum_likelihood_estimation(
     mean_est = (weights * np.log(scope_data)).sum() / n_total
 
     if bias_correction:
-        std_est = np.sqrt(
-            (weights * np.power((np.log(scope_data) - mean_est), 2)).sum()
-            / (n_total - 1)
-        )
+        std_est = np.sqrt((weights * np.power((np.log(scope_data) - mean_est), 2)).sum() / (n_total - 1))
     else:
-        std_est = np.sqrt(
-            (weights * np.power((np.log(scope_data) - mean_est), 2)).sum()
-            / n_total
-        )
+        std_est = np.sqrt((weights * np.power((np.log(scope_data) - mean_est), 2)).sum() / n_total)
 
     # edge case (if all values are the same, not enough samples or very close to each other)
     if np.isclose(std_est, 0.0) or np.isnan(std_est):

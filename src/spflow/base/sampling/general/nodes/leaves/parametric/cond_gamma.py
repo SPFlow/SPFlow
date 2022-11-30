@@ -1,5 +1,10 @@
 """Contains sampling methods for ``CondGamma`` nodes for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,12 +14,6 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.general.nodes.leaves.parametric.cond_gamma import (
-    CondGamma,
-)
-
-import numpy as np
-from typing import Optional
 
 
 @dispatch  # type: ignore
@@ -56,17 +55,13 @@ def sample(
     # retrieve value for 'alpha','beta'
     alpha, beta = leaf.retrieve_params(data, dispatch_ctx)
 
-    marg_ids = (
-        np.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)
-    ).squeeze(1)
+    marg_ids = (np.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = np.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
 
     sampling_ids = marg_ids & instance_ids_mask.astype(bool)
 
-    data[sampling_ids, leaf.scope.query] = leaf.dist(
-        alpha=alpha, beta=beta
-    ).rvs(size=sampling_ids.sum())
+    data[sampling_ids, leaf.scope.query] = leaf.dist(alpha=alpha, beta=beta).rvs(size=sampling_ids.sum())
 
     return data

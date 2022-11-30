@@ -1,5 +1,9 @@
 """Contains sampling methods for ``Geometric`` nodes for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,12 +13,7 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.geometric import (
-    Geometric,
-)
-
-import torch
-from typing import Optional
+from spflow.torch.structure.general.nodes.leaves.parametric.geometric import Geometric
 
 
 @dispatch  # type: ignore
@@ -53,9 +52,7 @@ def sample(
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    marg_ids = (
-        torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)
-    ).squeeze(1)
+    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = torch.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
@@ -63,8 +60,6 @@ def sample(
     sampling_ids = marg_ids & instance_ids_mask.bool().to(leaf.p_aux.device)
 
     # data needs to be offset by +1 due to the different definitions between SciPy and PyTorch
-    data[sampling_ids, leaf.scope.query] = (
-        leaf.dist.sample((sampling_ids.sum(),)).to(leaf.p_aux.device) + 1
-    )
+    data[sampling_ids, leaf.scope.query] = leaf.dist.sample((sampling_ids.sum(),)).to(leaf.p_aux.device) + 1
 
     return data

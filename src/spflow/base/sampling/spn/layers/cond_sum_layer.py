@@ -1,5 +1,13 @@
 """Contains sampling methods for conditional SPN-like sum layers for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.inference.module import log_likelihood
+from spflow.base.sampling.module import sample
+from spflow.base.sampling.spn.nodes.cond_sum_node import sample
+from spflow.base.structure.spn.layers.cond_sum_layer import CondSumLayer
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,13 +17,6 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.spn.layers.cond_sum_layer import CondSumLayer
-from spflow.base.inference.module import log_likelihood
-from spflow.base.sampling.spn.nodes.cond_sum_node import sample
-from spflow.base.sampling.module import sample
-
-import numpy as np
-from typing import Optional
 
 
 @dispatch  # type: ignore
@@ -58,9 +59,7 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # compute log-likelihoods of this module (needed to initialize log-likelihood cache for placeholder)
-    log_likelihood(
-        sum_layer, data, check_support=check_support, dispatch_ctx=dispatch_ctx
-    )
+    log_likelihood(sum_layer, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
     # retrieve value for 'weights'
     weights = sum_layer.retrieve_params(data, dispatch_ctx)
@@ -69,13 +68,9 @@ def sample(
         dispatch_ctx.update_args(node, {"weights": w})
 
     # sample accoding to sampling_context
-    for node_ids, indices in zip(
-        *sampling_ctx.unique_outputs_ids(return_indices=True)
-    ):
+    for node_ids, indices in zip(*sampling_ctx.unique_outputs_ids(return_indices=True)):
         if len(node_ids) != 1 or (len(node_ids) == 0 and sum_layer.n_out != 1):
-            raise ValueError(
-                "Too many output ids specified for outputs over same scope."
-            )
+            raise ValueError("Too many output ids specified for outputs over same scope.")
 
         # single node id
         node_id = node_ids[0]
@@ -86,9 +81,7 @@ def sample(
             data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
-            sampling_ctx=SamplingContext(
-                node_instance_ids, [[] for i in node_instance_ids]
-            ),
+            sampling_ctx=SamplingContext(node_instance_ids, [[] for i in node_instance_ids]),
         )
 
     return data

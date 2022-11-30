@@ -1,8 +1,10 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import Exponential
-from spflow.base.inference import log_likelihood, likelihood
-import numpy as np
 import unittest
+
+import numpy as np
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import Exponential
+from spflow.meta.data import Scope
 
 
 class TestExponential(unittest.TestCase):
@@ -91,12 +93,8 @@ class TestExponential(unittest.TestCase):
         exponential = Exponential(Scope([0]), l)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, exponential, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, exponential, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, exponential, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, exponential, np.array([[np.inf]]))
 
         # check valid float values (within range)
         log_likelihood(exponential, np.array([[np.nextafter(0.0, 1.0)]]))

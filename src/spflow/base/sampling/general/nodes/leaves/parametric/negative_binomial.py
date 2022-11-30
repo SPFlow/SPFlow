@@ -1,5 +1,12 @@
 """Contains sampling methods for ``NegativeBinomial`` nodes for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.structure.general.nodes.leaves.parametric.negative_binomial import (
+    NegativeBinomial,
+)
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,12 +16,6 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.general.nodes.leaves.parametric.negative_binomial import (
-    NegativeBinomial,
-)
-
-import numpy as np
-from typing import Optional
 
 
 @dispatch  # type: ignore
@@ -53,17 +54,13 @@ def sample(
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    marg_ids = (
-        np.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)
-    ).squeeze(1)
+    marg_ids = (np.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = np.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
 
     sampling_ids = marg_ids & instance_ids_mask.astype(bool)
 
-    data[sampling_ids, leaf.scope.query] = leaf.dist.rvs(
-        size=sampling_ids.sum()
-    )
+    data[sampling_ids, leaf.scope.query] = leaf.dist.rvs(size=sampling_ids.sum())
 
     return data

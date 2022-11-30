@@ -1,16 +1,18 @@
 """Contains learning methods for ``MultivariateGaussian`` nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import numpy as np
 import numpy.ma as ma
+
+from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussian,
+)
+from spflow.base.utils.nearest_sym_pd import nearest_sym_pd
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
-)
-from spflow.base.utils.nearest_sym_pd import nearest_sym_pd
-from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
-    MultivariateGaussian,
 )
 
 
@@ -92,17 +94,13 @@ def maximum_likelihood_estimation(
 
     if check_support:
         if np.any(~leaf.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'MultivariateGaussian'."
-            )
+            raise ValueError("Encountered values outside of the support for 'MultivariateGaussian'.")
 
     # NaN entries (no information)
     nan_mask = np.isnan(scope_data)
 
     if np.all(nan_mask):
-        raise ValueError(
-            "Cannot compute maximum-likelihood estimation on nan-only data."
-        )
+        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
 
     if nan_strategy is None and np.any(nan_mask):
         raise ValueError(
@@ -113,9 +111,7 @@ def maximum_likelihood_estimation(
         if nan_strategy == "ignore":
             pass  # handle it during computation
         else:
-            raise ValueError(
-                "Unknown strategy for handling missing (NaN) values for 'MultivariateGaussian'."
-            )
+            raise ValueError("Unknown strategy for handling missing (NaN) values for 'MultivariateGaussian'.")
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
         # TODO: how to handle weights?
@@ -130,10 +126,7 @@ def maximum_likelihood_estimation(
     if nan_strategy == "ignore":
         n_total = (weights * ~nan_mask).sum(axis=0)
         # compute mean of available data
-        mean_est = (
-            np.sum(weights * np.nan_to_num(scope_data, nan=0.0), axis=0)
-            / n_total
-        )
+        mean_est = np.sum(weights * np.nan_to_num(scope_data, nan=0.0), axis=0) / n_total
         # compute covariance of full samples only!
         full_sample_mask = (~nan_mask).sum(axis=1) == scope_data.shape[1]
         cov_est = np.cov(

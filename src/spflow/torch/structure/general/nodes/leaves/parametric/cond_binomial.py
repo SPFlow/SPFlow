@@ -1,20 +1,22 @@
 """Contains conditional Binomial leaf node for SPFlow in the ``torch`` backend.
 """
+from typing import Callable, List, Optional, Tuple, Type, Union
+
 import torch
 import torch.distributions as D
-from typing import Tuple, Optional, Callable, List, Union, Type
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+
+from spflow.base.structure.general.nodes.leaves.parametric.cond_binomial import (
+    CondBinomial as BaseCondBinomial,
+)
 from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes, MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
-from spflow.base.structure.general.nodes.leaves.parametric.cond_binomial import (
-    CondBinomial as BaseCondBinomial,
-)
 
 
 class CondBinomial(LeafNode):
@@ -42,9 +44,7 @@ class CondBinomial(LeafNode):
             a floating point, scalar NumPy array or scalar PyTorch tensor representing the success probability in :math:`[0,1]`.
     """
 
-    def __init__(
-        self, scope: Scope, n: int, cond_f: Optional[Callable] = None
-    ) -> None:
+    def __init__(self, scope: Scope, n: int, cond_f: Optional[Callable] = None) -> None:
         r"""Initializes ``ConditionalBernoulli`` leaf node.
 
         Args:
@@ -58,13 +58,9 @@ class CondBinomial(LeafNode):
                 a floating point, scalar NumPy array or scalar PyTorch tensor representing the success probability in :math:`[0,1]`.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'CondBinomial' should be 1, but was {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'CondBinomial' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence) == 0:
-            raise ValueError(
-                f"Evidence scope for 'CondBinomial' should not be empty."
-            )
+            raise ValueError(f"Evidence scope for 'CondBinomial' should not be empty.")
 
         super().__init__(scope=scope)
 
@@ -94,11 +90,7 @@ class CondBinomial(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) == 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) == 0:
             return False
 
         # leaf is a discrete Binomial distribution
@@ -109,9 +101,7 @@ class CondBinomial(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondBinomial":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondBinomial":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -121,9 +111,7 @@ class CondBinomial(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondBinomial' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondBinomial' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -150,9 +138,7 @@ class CondBinomial(LeafNode):
         """
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: torch.Tensor, dispatch_ctx: DispatchContext
-    ) -> Tuple[torch.Tensor]:
+    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor]:
         r"""Retrieves the conditional parameter of the leaf node.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -190,9 +176,7 @@ class CondBinomial(LeafNode):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError(
-                "'CondBernoulli' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
-            )
+            raise ValueError("'CondBernoulli' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
 
         # if 'p' was not already specified, retrieve it
         if p is None:
@@ -203,9 +187,7 @@ class CondBinomial(LeafNode):
 
         # check if value for 'p' is valid
         if p < 0.0 or p > 1.0 or not torch.isfinite(p):
-            raise ValueError(
-                f"Value of p for CondBinomial distribution must to be between 0.0 and 1.0, but was: {p}"
-            )
+            raise ValueError(f"Value of p for CondBinomial distribution must to be between 0.0 and 1.0, but was: {p}")
 
         return p
 
@@ -245,15 +227,11 @@ class CondBinomial(LeafNode):
         elif isinstance(n, int):
             n = torch.tensor(n)
         if n < 0 or not torch.isfinite(n):
-            raise ValueError(
-                f"Value of n for CondBinomial distribution must to greater of equal to 0, but was: {n}"
-            )
+            raise ValueError(f"Value of n for CondBinomial distribution must to greater of equal to 0, but was: {n}")
 
         self.n.data = torch.tensor(int(n))  # type: ignore
 
-    def check_support(
-        self, data: torch.Tensor, is_scope_data: bool = False
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Binomial distribution, which is:
@@ -294,17 +272,13 @@ class CondBinomial(LeafNode):
         valid[~nan_mask] = self.dist(p=torch.tensor(0.0)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= (
-            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
-        )
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    node: BaseCondBinomial, dispatch_ctx: Optional[DispatchContext] = None
-) -> CondBinomial:
+def toTorch(node: BaseCondBinomial, dispatch_ctx: Optional[DispatchContext] = None) -> CondBinomial:
     """Conversion for ``CondBinomial`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -318,9 +292,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    node: CondBinomial, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseCondBinomial:
+def toBase(node: CondBinomial, dispatch_ctx: Optional[DispatchContext] = None) -> BaseCondBinomial:
     """Conversion for ``CondBinomial`` from ``torch`` backend to ``base`` backend.
 
     Args:

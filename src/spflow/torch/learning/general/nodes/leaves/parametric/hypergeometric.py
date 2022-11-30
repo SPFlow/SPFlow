@@ -1,7 +1,9 @@
 """Contains learning methods for ``Hypergeometric`` nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -56,12 +58,8 @@ def maximum_likelihood_estimation(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     if check_support:
-        if torch.any(
-            ~leaf.check_support(data[:, leaf.scope.query], is_scope_data=True)
-        ):
-            raise ValueError(
-                "Encountered values outside of the support for 'Hypergeometric'."
-            )
+        if torch.any(~leaf.check_support(data[:, leaf.scope.query], is_scope_data=True)):
+            raise ValueError("Encountered values outside of the support for 'Hypergeometric'.")
 
     # do nothing since there are no learnable parameters
     pass

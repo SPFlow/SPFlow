@@ -1,18 +1,18 @@
+import unittest
+
+import numpy as np
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import CondExponential
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.base.structure.spn import CondExponential
-from spflow.base.inference import log_likelihood, likelihood
-import numpy as np
-import unittest
 
 
 class TestCondExponential(unittest.TestCase):
     def test_likelihood_no_l(self):
 
         exponential = CondExponential(Scope([0], [1]))
-        self.assertRaises(
-            ValueError, log_likelihood, exponential, np.array([[0], [1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, exponential, np.array([[0], [1]]))
 
     def test_likelihood_module_cond_f(self):
 
@@ -69,9 +69,7 @@ class TestCondExponential(unittest.TestCase):
     def test_likelihood_1(self):
 
         # ----- configuration 1 -----
-        exponential = CondExponential(
-            Scope([0], [1]), cond_f=lambda data: {"l": 0.5}
-        )
+        exponential = CondExponential(Scope([0], [1]), cond_f=lambda data: {"l": 0.5})
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
@@ -86,9 +84,7 @@ class TestCondExponential(unittest.TestCase):
     def test_likelihood_2(self):
 
         # ----- configuration 2 -----
-        exponential = CondExponential(
-            Scope([0], [1]), cond_f=lambda data: {"l": 1.0}
-        )
+        exponential = CondExponential(Scope([0], [1]), cond_f=lambda data: {"l": 1.0})
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
@@ -103,9 +99,7 @@ class TestCondExponential(unittest.TestCase):
     def test_likelihood_3(self):
 
         # ----- configuration 3 -----
-        exponential = CondExponential(
-            Scope([0], [1]), cond_f=lambda data: {"l": 1.5}
-        )
+        exponential = CondExponential(Scope([0], [1]), cond_f=lambda data: {"l": 1.5})
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
@@ -119,9 +113,7 @@ class TestCondExponential(unittest.TestCase):
 
     def test_likelihood_l_none(self):
 
-        exponential = CondExponential(
-            Scope([0], [1]), cond_f=lambda data: {"l": None}
-        )
+        exponential = CondExponential(Scope([0], [1]), cond_f=lambda data: {"l": None})
 
         data = np.array([[0], [2], [5]])
 
@@ -131,9 +123,7 @@ class TestCondExponential(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        exponential = CondExponential(
-            Scope([0], [1]), cond_f=lambda data: {"l": 1.0}
-        )
+        exponential = CondExponential(Scope([0], [1]), cond_f=lambda data: {"l": 1.0})
         data = np.array([[np.nan]])
 
         # should not raise and error and should return 1 (0 in log-space)
@@ -151,17 +141,11 @@ class TestCondExponential(unittest.TestCase):
         #   likelihood:     None
         #   log-likelihood: None
 
-        exponential = CondExponential(
-            Scope([0], [1]), cond_f=lambda data: {"l": 1.5}
-        )
+        exponential = CondExponential(Scope([0], [1]), cond_f=lambda data: {"l": 1.5})
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, exponential, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, exponential, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, exponential, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, exponential, np.array([[np.inf]]))
 
         # check valid float values (within range)
         log_likelihood(exponential, np.array([[np.nextafter(0.0, 1.0)]]))

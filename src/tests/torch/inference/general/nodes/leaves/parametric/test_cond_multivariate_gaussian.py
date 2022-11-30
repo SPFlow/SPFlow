@@ -1,20 +1,21 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
+import math
+import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import (
     CondMultivariateGaussian as BaseCondMultivariateGaussian,
 )
-from spflow.base.inference import log_likelihood
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import (
-    ProductNode,
     CondGaussian,
     CondMultivariateGaussian,
+    ProductNode,
 )
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
-import unittest
-import math
 
 
 class TestMultivariateGaussian(unittest.TestCase):
@@ -30,9 +31,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         cond_f = lambda data: {"mean": torch.zeros(2), "cov": torch.eye(2)}
 
-        multivariate_gaussian = CondMultivariateGaussian(
-            Scope([0, 1], [2]), cond_f=cond_f
-        )
+        multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1], [2]), cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor(np.stack([np.zeros(2), np.ones(2)], axis=0))
@@ -58,12 +57,8 @@ class TestMultivariateGaussian(unittest.TestCase):
         data = torch.tensor(np.stack([np.zeros(2), np.ones(2)], axis=0))
         targets = torch.tensor([[0.1591549], [0.0585498]])
 
-        probs = likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
-        log_probs = log_likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
+        probs = likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
+        log_probs = log_likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
@@ -81,12 +76,8 @@ class TestMultivariateGaussian(unittest.TestCase):
         data = torch.tensor(np.stack([np.zeros(2), np.ones(2)], axis=0))
         targets = torch.tensor([[0.1591549], [0.0585498]])
 
-        probs = likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
-        log_probs = log_likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
+        probs = likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
+        log_probs = log_likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
@@ -109,20 +100,14 @@ class TestMultivariateGaussian(unittest.TestCase):
         data = np.random.rand(3, 3)
 
         log_probs = log_likelihood(node_multivariate_gaussian, data)
-        log_probs_torch = log_likelihood(
-            torch_multivariate_gaussian, torch.tensor(data)
-        )
+        log_probs_torch = log_likelihood(torch_multivariate_gaussian, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
-        mean = torch.tensor(
-            np.arange(3), dtype=torch.get_default_dtype(), requires_grad=True
-        )
+        mean = torch.tensor(np.arange(3), dtype=torch.get_default_dtype(), requires_grad=True)
         cov = torch.tensor(
             [[2.0, 2.0, 1.0], [2.0, 3.0, 2.0], [1.0, 2.0, 3.0]],
             requires_grad=True,
@@ -136,9 +121,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 3)
 
-        log_probs_torch = log_likelihood(
-            torch_multivariate_gaussian, torch.tensor(data)
-        )
+        log_probs_torch = log_likelihood(torch_multivariate_gaussian, torch.tensor(data))
 
         # create dummy targets
         targets_torch = torch.ones(3, 1)
@@ -220,9 +203,7 @@ class TestMultivariateGaussian(unittest.TestCase):
                 [float("nan")] * 4,
             ]
         )
-        targets = torch.tensor(
-            [[0.02004004], [0.10194075], [0.06612934], [1.0]]
-        )
+        targets = torch.tensor([[0.02004004], [0.10194075], [0.06612934], [1.0]])
 
         # inference using multivariate gaussian and partial marginalization
         mv_probs = likelihood(multivariate_gaussian, data)

@@ -1,12 +1,11 @@
-from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
-    marginalize,
-)
-from spflow.meta.data import Scope
-from ...general.nodes.dummy_node import DummyNode
-import numpy as np
 import unittest
+
+import numpy as np
+
+from spflow.base.structure.spn import ProductNode, SumNode, marginalize
+from spflow.meta.data import Scope
+
+from ...general.nodes.dummy_node import DummyNode
 
 
 class TestSumNode(unittest.TestCase):
@@ -15,9 +14,7 @@ class TestSumNode(unittest.TestCase):
         # empty children
         self.assertRaises(ValueError, SumNode, [], [])
         # non-Module children
-        self.assertRaises(
-            ValueError, SumNode, [DummyNode(Scope([0])), 0], [0.5, 0.5]
-        )
+        self.assertRaises(ValueError, SumNode, [DummyNode(Scope([0])), 0], [0.5, 0.5])
         # children with different scopes
         self.assertRaises(
             ValueError,
@@ -47,9 +44,7 @@ class TestSumNode(unittest.TestCase):
         # weights as list of floats
         SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], [0.5, 0.5])
         # weights as numpy array
-        SumNode(
-            [DummyNode(Scope([0])), DummyNode(Scope([0]))], np.array([0.5, 0.5])
-        )
+        SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], np.array([0.5, 0.5]))
         # no weights
         SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
 

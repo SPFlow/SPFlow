@@ -1,16 +1,17 @@
-from spflow.meta.data import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.spn.nodes.product_node import marginalize
-from spflow.base.structure.general.nodes.leaves.parametric.cond_binomial import (
-    CondBinomial,
-)
+import unittest
 from typing import Callable
 
 import numpy as np
-import unittest
+
+from spflow.base.structure.autoleaf import AutoLeaf
+from spflow.base.structure.general.nodes.leaves.parametric.cond_binomial import (
+    CondBinomial,
+)
+from spflow.base.structure.spn.nodes.product_node import marginalize
+from spflow.meta.data import Scope
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.dispatch.dispatch_context import DispatchContext
 
 
 class TestCondBinomial(unittest.TestCase):
@@ -18,9 +19,7 @@ class TestCondBinomial(unittest.TestCase):
 
         binomial = CondBinomial(Scope([0], [1]), n=2)
         self.assertTrue(binomial.cond_f is None)
-        binomial = CondBinomial(
-            Scope([0], [1]), n=2, cond_f=lambda x: {"p": 0.5}
-        )
+        binomial = CondBinomial(Scope([0], [1]), n=2, cond_f=lambda x: {"p": 0.5})
         self.assertTrue(isinstance(binomial.cond_f, Callable))
 
         # invalid scopes
@@ -48,16 +47,10 @@ class TestCondBinomial(unittest.TestCase):
 
         # p = 0
         binomial.set_cond_f(lambda data: {"p": 0.0})
-        self.assertTrue(
-            binomial.retrieve_params(np.array([[1.0]]), DispatchContext())
-            == 0.0
-        )
+        self.assertTrue(binomial.retrieve_params(np.array([[1.0]]), DispatchContext()) == 0.0)
         # p = 1
         binomial.set_cond_f(lambda data: {"p": 1.0})
-        self.assertTrue(
-            binomial.retrieve_params(np.array([[1.0]]), DispatchContext())
-            == 1.0
-        )
+        self.assertTrue(binomial.retrieve_params(np.array([[1.0]]), DispatchContext()) == 1.0)
         # p < 0 and p > 1
         binomial.set_cond_f(lambda data: {"p": np.nextafter(1.0, 2.0)})
         self.assertRaises(
@@ -92,32 +85,16 @@ class TestCondBinomial(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(
-            CondBinomial.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondBinomial.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # feature type instance
-        self.assertTrue(
-            CondBinomial.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
-            )
-        )
+        self.assertTrue(CondBinomial.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]))
 
         # invalid feature type
-        self.assertFalse(
-            CondBinomial.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondBinomial.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # non-conditional scope
-        self.assertFalse(
-            CondBinomial.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]
-            )
-        )
+        self.assertFalse(CondBinomial.accepts([FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]))
 
         # multivariate signature
         self.assertFalse(
@@ -136,16 +113,8 @@ class TestCondBinomial(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        CondBinomial.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
-        )
-        CondBinomial.from_signatures(
-            [
-                FeatureContext(
-                    Scope([0], [1]), [FeatureTypes.Binomial(n=3, p=0.75)]
-                )
-            ]
-        )
+        CondBinomial.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])])
+        CondBinomial.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3, p=0.75)])])
 
         # ----- invalid arguments -----
 
@@ -190,15 +159,11 @@ class TestCondBinomial(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondBinomial,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        binomial = AutoLeaf(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
-        )
+        binomial = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])])
         self.assertTrue(isinstance(binomial, CondBinomial))
         self.assertEqual(binomial.n, 3)
 

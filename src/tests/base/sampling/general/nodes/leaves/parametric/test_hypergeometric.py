@@ -1,11 +1,12 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext
-from spflow.base.structure.spn import Hypergeometric
-from spflow.base.sampling import sample
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import Hypergeometric
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
 
 
 class TestHypergeometric(unittest.TestCase):
@@ -24,11 +25,7 @@ class TestHypergeometric(unittest.TestCase):
 
         samples = sample(hypergeometric, 100000)
 
-        self.assertTrue(
-            np.isclose(
-                samples.mean(axis=0), np.array(n * M) / N, atol=0.01, rtol=0.1
-            )
-        )
+        self.assertTrue(np.isclose(samples.mean(axis=0), np.array(n * M) / N, atol=0.01, rtol=0.1))
 
     def test_sampling_2(self):
 
@@ -45,11 +42,7 @@ class TestHypergeometric(unittest.TestCase):
 
         samples = sample(hypergeometric, 100000)
 
-        self.assertTrue(
-            np.isclose(
-                samples.mean(axis=0), np.array(n * M) / N, atol=0.01, rtol=0.1
-            )
-        )
+        self.assertTrue(np.isclose(samples.mean(axis=0), np.array(n * M) / N, atol=0.01, rtol=0.1))
 
     def test_sampling_5(self):
 

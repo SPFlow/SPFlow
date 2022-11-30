@@ -1,13 +1,15 @@
+import random
+import unittest
+
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import (
     CondMultivariateGaussian,
     CondMultivariateGaussianLayer,
 )
-from spflow.torch.inference import log_likelihood, likelihood
-import torch
-import unittest
-import random
 
 
 class TestNode(unittest.TestCase):
@@ -23,9 +25,7 @@ class TestNode(unittest.TestCase):
 
         multivariate_gaussian = CondMultivariateGaussianLayer(
             Scope([0, 1], [2]),
-            cond_f=lambda data: {
-                "cov": [[[1.0, 0.0], [0.0, 1.0]], [[1.0, 0.0], [0.0, 1.0]]]
-            },
+            cond_f=lambda data: {"cov": [[[1.0, 0.0], [0.0, 1.0]], [[1.0, 0.0], [0.0, 1.0]]]},
             n_nodes=2,
         )
         self.assertRaises(
@@ -51,9 +51,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_mean_cov(self):
 
-        multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0], [1]), n_nodes=2
-        )
+        multivariate_gaussian = CondMultivariateGaussianLayer(Scope([0], [1]), n_nodes=2)
         self.assertRaises(
             ValueError,
             log_likelihood,
@@ -68,9 +66,7 @@ class TestNode(unittest.TestCase):
             "cov": [[[1.0, 0.0], [0.0, 1.0]], [[1.0, 0.0], [0.0, 1.0]]],
         }
 
-        multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1], [2]), n_nodes=2, cond_f=cond_f
-        )
+        multivariate_gaussian = CondMultivariateGaussianLayer(Scope([0, 1], [2]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.stack([torch.zeros(2), torch.ones(2)], axis=0)
@@ -84,9 +80,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args(self):
 
-        multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1], [2]), n_nodes=2
-        )
+        multivariate_gaussian = CondMultivariateGaussianLayer(Scope([0, 1], [2]), n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[multivariate_gaussian] = {
@@ -98,21 +92,15 @@ class TestNode(unittest.TestCase):
         data = torch.stack([torch.zeros(2), torch.ones(2)], axis=0)
         targets = torch.tensor([[0.1591549, 0.1591549], [0.0585498, 0.0585498]])
 
-        probs = likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
-        log_probs = log_likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
+        probs = likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
+        log_probs = log_likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
 
     def test_likelihood_args_cond_f(self):
 
-        multivariate_gaussian = CondMultivariateGaussianLayer(
-            Scope([0, 1], [2]), n_nodes=2
-        )
+        multivariate_gaussian = CondMultivariateGaussianLayer(Scope([0, 1], [2]), n_nodes=2)
 
         cond_f = lambda data: {
             "mean": [[0.0, 0.0], [0.0, 0.0]],
@@ -126,12 +114,8 @@ class TestNode(unittest.TestCase):
         data = torch.stack([torch.zeros(2), torch.ones(2)], axis=0)
         targets = torch.tensor([[0.1591549, 0.1591549], [0.0585498, 0.0585498]])
 
-        probs = likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
-        log_probs = log_likelihood(
-            multivariate_gaussian, data, dispatch_ctx=dispatch_ctx
-        )
+        probs = likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
+        log_probs = log_likelihood(multivariate_gaussian, data, dispatch_ctx=dispatch_ctx)
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
@@ -179,9 +163,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.vstack([torch.zeros(5), torch.ones(5)])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -189,9 +171,7 @@ class TestNode(unittest.TestCase):
 
         mean = [
             torch.zeros(2, dtype=torch.get_default_dtype(), requires_grad=True),
-            torch.arange(
-                3, dtype=torch.get_default_dtype(), requires_grad=True
-            ),
+            torch.arange(3, dtype=torch.get_default_dtype(), requires_grad=True),
         ]
         cov = [
             torch.eye(2, requires_grad=True),

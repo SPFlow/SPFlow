@@ -75,7 +75,7 @@ def nearest_sym_pd(A: torch.Tensor) -> torch.Tensor:
         min_eigval = torch.min(eigvals)
 
         # adjust matrix
-        A_hat += I * (-min_eigval * (k ** 2) + spacing)
+        A_hat += I * (-min_eigval * (k**2) + spacing)
         k += 1
 
     return A_hat

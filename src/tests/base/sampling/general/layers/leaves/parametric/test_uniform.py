@@ -1,15 +1,12 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
-    Uniform,
-    UniformLayer,
-)
-from spflow.base.inference import log_likelihood
-from spflow.base.sampling import sample
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import ProductNode, SumNode, Uniform, UniformLayer
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -19,9 +16,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        uniform_layer = UniformLayer(
-            scope=Scope([0]), start=[0.4, 0.3], end=[1.3, 0.8], n_nodes=2
-        )
+        uniform_layer = UniformLayer(scope=Scope([0]), start=[0.4, 0.3], end=[1.3, 0.8], n_nodes=2)
         s1 = SumNode(children=[uniform_layer], weights=[0.3, 0.7])
 
         uniform_nodes = [
@@ -47,9 +42,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        uniform_layer = UniformLayer(
-            scope=[Scope([0]), Scope([1])], start=[0.4, 0.3], end=[1.3, 0.8]
-        )
+        uniform_layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.4, 0.3], end=[1.3, 0.8])
         p1 = ProductNode(children=[uniform_layer])
 
         uniform_nodes = [
@@ -71,9 +64,7 @@ class TestNode(unittest.TestCase):
 
     def test_sampling_3(self):
 
-        uniform_layer = UniformLayer(
-            scope=Scope([0]), start=[0.4, 0.3], end=[1.3, 0.8], n_nodes=2
-        )
+        uniform_layer = UniformLayer(scope=Scope([0]), start=[0.4, 0.3], end=[1.3, 0.8], n_nodes=2)
 
         # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails
         self.assertRaises(ValueError, sample, uniform_layer)

@@ -1,15 +1,15 @@
 """Contains inference methods for ``Uniform`` nodes for SPFlow in the ``torch`` backend.
 """
-import torch
 from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.uniform import (
-    Uniform,
-)
+from spflow.torch.structure.general.nodes.leaves.parametric.uniform import Uniform
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -73,9 +73,7 @@ def log_likelihood(
 
     if check_support:
         # create masked based on distribution's support
-        valid_ids = leaf.check_support(
-            scope_data[~marg_ids], is_scope_data=True
-        ).squeeze(1)
+        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
             raise ValueError(
@@ -84,23 +82,17 @@ def log_likelihood(
 
     if leaf.support_outside:
         torch_valid_ids = torch.zeros(len(marg_ids), dtype=torch.bool)
-        torch_valid_ids[~marg_ids] |= leaf.dist.support.check(
-            scope_data[~marg_ids]
-        ).squeeze(1)
+        torch_valid_ids[~marg_ids] |= leaf.dist.support.check(scope_data[~marg_ids]).squeeze(1)
 
         # TODO: torch_valid_ids does not necessarily have the same dimension as marg_ids
         log_prob[~marg_ids & ~torch_valid_ids] = -float("inf")
 
         # compute probabilities for values inside distribution support
         log_prob[~marg_ids & torch_valid_ids] = leaf.dist.log_prob(
-            scope_data[~marg_ids & torch_valid_ids].type(
-                torch.get_default_dtype()
-            )
+            scope_data[~marg_ids & torch_valid_ids].type(torch.get_default_dtype())
         )
     else:
         # compute probabilities for values inside distribution support
-        log_prob[~marg_ids] = leaf.dist.log_prob(
-            scope_data[~marg_ids].type(torch.get_default_dtype())
-        )
+        log_prob[~marg_ids] = leaf.dist.log_prob(scope_data[~marg_ids].type(torch.get_default_dtype()))
 
     return log_prob

@@ -1,15 +1,17 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
-    MultivariateGaussian,
-    MultivariateGaussianLayer,
-)
-from spflow.base.inference import log_likelihood
-from spflow.base.sampling import sample
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import (
+    MultivariateGaussian,
+    MultivariateGaussianLayer,
+    ProductNode,
+    SumNode,
+)
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -31,9 +33,7 @@ class TestNode(unittest.TestCase):
         s1 = SumNode(children=[multivariate_gaussian_layer], weights=[0.3, 0.7])
 
         multivariate_gaussian_nodes = [
-            MultivariateGaussian(
-                Scope([0, 1]), mean=[0.8, 0.3], cov=[[0.13, 0.08], [0.08, 0.05]]
-            ),
+            MultivariateGaussian(Scope([0, 1]), mean=[0.8, 0.3], cov=[[0.13, 0.08], [0.08, 0.05]]),
             MultivariateGaussian(
                 Scope([0, 1]),
                 mean=[0.2, -0.1],
@@ -70,9 +70,7 @@ class TestNode(unittest.TestCase):
         p1 = ProductNode(children=[multivariate_gaussian_layer])
 
         multivariate_gaussian_nodes = [
-            MultivariateGaussian(
-                Scope([0, 1]), mean=[0.8, 0.3], cov=[[0.13, 0.08], [0.08, 0.05]]
-            ),
+            MultivariateGaussian(Scope([0, 1]), mean=[0.8, 0.3], cov=[[0.13, 0.08], [0.08, 0.05]]),
             MultivariateGaussian(
                 Scope([2, 3]),
                 mean=[0.2, -0.1],

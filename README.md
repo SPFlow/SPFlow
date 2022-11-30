@@ -1,5 +1,9 @@
 # SPFlow: An Easy and Extensible Library for Probabilistic Circuits
 
+[![Python version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/github/license/SPFlow/SPFlow.svg)](https://github.com/SPFlow/SPFlow/blob/master/LICENSE.md)
+[![Code style: black & isort](https://img.shields.io/badge/code%20style-black%20%26%20isort-000000.svg)](https://black.readthedocs.io/en/stable/)
+
 #### Development branch for SPFlow 1.0.0
 
 —
