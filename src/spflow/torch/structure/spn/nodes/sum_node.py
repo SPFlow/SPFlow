@@ -205,6 +205,6 @@ def toTorch(sum_node: BaseSumNode, dispatch_ctx: Optional[DispatchContext] = Non
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return SumNode(
-        children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
+        children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_node.chs],
         weights=sum_node.weights,
     )

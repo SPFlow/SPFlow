@@ -228,4 +228,4 @@ def toTorch(sum_node: BaseCondSumNode, dispatch_ctx: Optional[DispatchContext] =
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return CondSumNode(children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children])
+    return CondSumNode(children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_node.chs])

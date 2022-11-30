@@ -66,7 +66,7 @@ class TestLayer(unittest.TestCase):
         l_marg = marginalize(l, [3])
         self.assertTrue(l_marg.scopes_out == [Scope([0, 1, 2]), Scope([0, 1, 2]), Scope([0, 1, 2])])
         # number of children should be reduced by one (i.e., marginalized over)
-        self.assertTrue(len(l_marg.children) == 2)
+        self.assertTrue(len(l_marg.chs) == 2)
 
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [4])

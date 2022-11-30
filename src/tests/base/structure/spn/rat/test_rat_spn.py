@@ -138,7 +138,7 @@ def get_rat_spn_properties(rat_spn: RatSPN):
         else:
             raise TypeError(f"Encountered unknown layer of type {type(layer)}.")
 
-        layers += layer.children
+        layers += layer.chs
 
     return n_sum_nodes, n_product_nodes, n_leaf_nodes
 
