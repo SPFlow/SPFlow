@@ -1,14 +1,14 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import Bernoulli as BaseBernoulli
-from spflow.base.inference import log_likelihood, likelihood
-from spflow.torch.structure.spn import Bernoulli
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
-
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import Bernoulli as BaseBernoulli
+from spflow.meta.data import Scope
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import Bernoulli
 
 
 class TestBernoulli(unittest.TestCase):

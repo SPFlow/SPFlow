@@ -1,19 +1,20 @@
-from spflow.meta.data import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.dispatch.dispatch_context import DispatchContext
+import unittest
+from typing import Callable
+
+import numpy as np
+
 from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.spn.nodes.product_node import marginalize
 from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )
 from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
 )
-from typing import Callable
-
-import numpy as np
-import unittest
+from spflow.base.structure.spn.nodes.product_node import marginalize
+from spflow.meta.data import Scope
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.dispatch.dispatch_context import DispatchContext
 
 
 class TestMultivariateGaussian(unittest.TestCase):

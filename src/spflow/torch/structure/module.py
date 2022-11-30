@@ -2,12 +2,13 @@
 
 All valid SPFlow modules in the ``torch`` backend should inherit from this class or a subclass of it.
 """
-from spflow.meta.structure.module import MetaModule
-
-from typing import List, Tuple, Optional, Union
 from abc import ABC
+from typing import List, Optional, Tuple, Union
+
 import torch
 import torch.nn as nn
+
+from spflow.meta.structure.module import MetaModule
 
 
 class Module(MetaModule, nn.Module, ABC):

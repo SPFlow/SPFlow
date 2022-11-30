@@ -1,9 +1,10 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.base.structure import AutoLeaf
-from spflow.base.structure.spn import Exponential, marginalize
+import unittest
 
 import numpy as np
-import unittest
+
+from spflow.base.structure import AutoLeaf
+from spflow.base.structure.spn import Exponential, marginalize
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestExponential(unittest.TestCase):

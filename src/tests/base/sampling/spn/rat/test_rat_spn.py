@@ -1,11 +1,12 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.base.structure.spn import RatSPN, random_region_graph
+import random
+import unittest
+
+import numpy as np
+
 from spflow.base.inference import log_likelihood
 from spflow.base.sampling import sample
-
-import unittest
-import numpy as np
-import random
+from spflow.base.structure.spn import RatSPN, random_region_graph
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestModule(unittest.TestCase):

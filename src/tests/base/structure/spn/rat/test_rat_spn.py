@@ -1,77 +1,62 @@
 import unittest
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes
+
 from spflow.base.structure.autoleaf import (
     AutoLeaf,
     Bernoulli,
-    Binomial,
-    Exponential,
-    Gamma,
-    Gaussian,
-    Geometric,
-    Hypergeometric,
-    LogNormal,
-    MultivariateGaussian,
-    NegativeBinomial,
-    Poisson,
-    Uniform,
-    CondBernoulli,
-    CondBinomial,
-    CondExponential,
-    CondGamma,
-    CondGaussian,
-    CondGeometric,
-    CondLogNormal,
-    CondMultivariateGaussian,
-    CondNegativeBinomial,
-    CondPoisson,
     BernoulliLayer,
+    Binomial,
     BinomialLayer,
-    ExponentialLayer,
-    GammaLayer,
-    GaussianLayer,
-    GeometricLayer,
-    HypergeometricLayer,
-    LogNormalLayer,
-    MultivariateGaussianLayer,
-    NegativeBinomialLayer,
-    PoissonLayer,
-    UniformLayer,
+    CondBernoulli,
     CondBernoulliLayer,
+    CondBinomial,
     CondBinomialLayer,
+    CondExponential,
     CondExponentialLayer,
+    CondGamma,
     CondGammaLayer,
+    CondGaussian,
     CondGaussianLayer,
+    CondGeometric,
     CondGeometricLayer,
+    CondLogNormal,
     CondLogNormalLayer,
+    CondMultivariateGaussian,
     CondMultivariateGaussianLayer,
+    CondNegativeBinomial,
     CondNegativeBinomialLayer,
+    CondPoisson,
     CondPoissonLayer,
+    Exponential,
+    ExponentialLayer,
+    Gamma,
+    GammaLayer,
+    Gaussian,
+    GaussianLayer,
+    Geometric,
+    GeometricLayer,
+    Hypergeometric,
+    HypergeometricLayer,
+    LogNormal,
+    LogNormalLayer,
+    MultivariateGaussian,
+    MultivariateGaussianLayer,
+    NegativeBinomial,
+    NegativeBinomialLayer,
+    Poisson,
+    PoissonLayer,
+    Uniform,
+    UniformLayer,
 )
+from spflow.base.structure.spn.layers.cond_sum_layer import CondSumLayer, marginalize
+from spflow.base.structure.spn.layers.hadamard_layer import HadamardLayer, marginalize
+from spflow.base.structure.spn.layers.partition_layer import PartitionLayer, marginalize
+from spflow.base.structure.spn.layers.sum_layer import SumLayer, marginalize
+from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode, marginalize
 from spflow.base.structure.spn.nodes.sum_node import SumNode, marginalize
-from spflow.base.structure.spn.nodes.cond_sum_node import (
-    CondSumNode,
-    marginalize,
-)
-from spflow.base.structure.spn.layers.cond_sum_layer import (
-    CondSumLayer,
-    marginalize,
-)
-from spflow.base.structure.spn.layers.sum_layer import (
-    SumLayer,
-    marginalize,
-)
-from spflow.base.structure.spn.layers.partition_layer import (
-    PartitionLayer,
-    marginalize,
-)
-from spflow.base.structure.spn.layers.hadamard_layer import (
-    HadamardLayer,
-    marginalize,
-)
 from spflow.base.structure.spn.rat.rat_spn import RatSPN, marginalize
 from spflow.base.structure.spn.rat.region_graph import random_region_graph
-
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.meta.data.feature_types import FeatureTypes
 
 leaf_node_classes = (
     Bernoulli,
