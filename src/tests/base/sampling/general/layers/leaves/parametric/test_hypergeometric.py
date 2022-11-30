@@ -1,17 +1,15 @@
-import random
-import unittest
-
-import numpy as np
-
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    HypergeometricLayer,
+    Hypergeometric,
+)
 from spflow.base.inference import log_likelihood
 from spflow.base.sampling import sample
-from spflow.base.structure.spn import (
-    Hypergeometric,
-    HypergeometricLayer,
-    ProductNode,
-    SumNode,
-)
-from spflow.meta.data import Scope
+import numpy as np
+import random
+import unittest
 
 
 class TestNode(unittest.TestCase):

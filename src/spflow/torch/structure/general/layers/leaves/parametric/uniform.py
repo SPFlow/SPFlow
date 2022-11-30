@@ -1,25 +1,26 @@
 """Contains conditional Uniform leaf node for SPFlow in the ``torch`` backend.
 """
+from typing import List, Union, Optional, Iterable, Tuple
 from functools import reduce
-from typing import Iterable, List, Optional, Tuple, Union
-
 import numpy as np
 import torch
 import torch.distributions as D
 
-from spflow.base.structure.general.layers.leaves.parametric.uniform import (
-    UniformLayer as BaseUniformLayer,
-)
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.uniform import Uniform
+from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.module import Module
+from spflow.torch.structure.general.nodes.leaves.parametric.uniform import (
+    Uniform,
+)
+from spflow.base.structure.general.layers.leaves.parametric.uniform import (
+    UniformLayer as BaseUniformLayer,
+)
 
 
 class UniformLayer(Module):

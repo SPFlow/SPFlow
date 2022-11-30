@@ -1,11 +1,12 @@
-import unittest
-
-import numpy as np
-
-from spflow.base.structure.spn import ProductNode, SumNode, marginalize
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    marginalize,
+)
 from spflow.meta.data import Scope
-
 from ...general.nodes.dummy_node import DummyNode
+import numpy as np
+import unittest
 
 
 class TestSumNode(unittest.TestCase):

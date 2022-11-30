@@ -1,14 +1,18 @@
-import random
-import unittest
-
-import numpy as np
-import torch
-
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
+from spflow.torch.structure.spn import (
+    SumNode,
+    ProductNode,
+    HadamardLayer,
+    Gaussian,
+)
 from spflow.torch.inference import log_likelihood
 from spflow.torch.sampling import sample
-from spflow.torch.structure.spn import Gaussian, HadamardLayer, ProductNode, SumNode
+
+import torch
+import numpy as np
+import random
+import unittest
 
 
 class TestNode(unittest.TestCase):

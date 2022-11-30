@@ -1,1 +1,1 @@
-from .learn_spn import cluster_by_kmeans, learn_spn, partition_by_rdc
+from .learn_spn import learn_spn, partition_by_rdc, cluster_by_kmeans

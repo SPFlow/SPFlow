@@ -1,10 +1,5 @@
 """Contains sampling methods for ``CondGamma`` nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional
-
-import numpy as np
-
-from spflow.base.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -14,6 +9,12 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
+from spflow.base.structure.general.nodes.leaves.parametric.cond_gamma import (
+    CondGamma,
+)
+
+import numpy as np
+from typing import Optional
 
 
 @dispatch  # type: ignore

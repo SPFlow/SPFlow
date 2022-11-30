@@ -1,11 +1,7 @@
 """Contains sampling methods for ``GammaLayer`` leaves for SPFlow in the ``base`` backend.
 """
-from typing import Optional
-
 import numpy as np
-
-from spflow.base.sampling.module import sample
-from spflow.base.structure.general.layers.leaves.parametric.gamma import GammaLayer
+from typing import Optional
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -16,6 +12,10 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
+from spflow.base.structure.general.layers.leaves.parametric.gamma import (
+    GammaLayer,
+)
+from spflow.base.sampling.module import sample
 
 
 @dispatch  # type: ignore

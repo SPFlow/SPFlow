@@ -1,7 +1,7 @@
-from typing import List, Optional
-
-from spflow.meta.data import Scope
+from typing import Optional
 from spflow.torch.structure import Module, NestedModule
+from spflow.meta.data import Scope
+from typing import List
 
 
 class DummyModule(Module):

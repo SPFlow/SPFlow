@@ -1,17 +1,19 @@
 """Contains ``ProductNode`` for SPFlow in the ``torch`` backend.
 """
-from copy import deepcopy
-from typing import Iterable, List, Optional, Union
-
-from spflow.base.structure.spn.nodes.product_node import ProductNode as BaseProductNode
-from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.nodes.node import Node
+from spflow.meta.data.scope import Scope
+from spflow.base.structure.spn.nodes.product_node import (
+    ProductNode as BaseProductNode,
+)
 from spflow.torch.structure.module import Module
+from spflow.torch.structure.general.nodes.node import Node
+
+from typing import List, Union, Optional, Iterable
+from copy import deepcopy
 
 
 class ProductNode(Node):

@@ -1,15 +1,20 @@
-import math
-import unittest
-
-import numpy as np
-import torch
-
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import MultivariateGaussian as BaseMultivariateGaussian
 from spflow.meta.data import Scope
-from spflow.torch.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import (
+    MultivariateGaussian as BaseMultivariateGaussian,
+)
+from spflow.base.inference import log_likelihood, likelihood
+from spflow.torch.structure.spn import (
+    ProductNode,
+    Gaussian,
+    MultivariateGaussian,
+)
 from spflow.torch.structure import marginalize
-from spflow.torch.structure.spn import Gaussian, MultivariateGaussian, ProductNode
+from spflow.torch.inference import log_likelihood, likelihood
+
+import torch
+import numpy as np
+import unittest
+import math
 
 
 class TestMultivariateGaussian(unittest.TestCase):

@@ -4,7 +4,7 @@ Typical usage example:
 
     sampling_ctx = SamplingDispatch(instance_ids, output_ids)
 """
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union, Tuple
 
 
 class SamplingContext:

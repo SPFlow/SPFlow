@@ -1,10 +1,5 @@
 """Contains sampling methods for ``NestedModule`` for SPFlow in the ``base`` backend.
 """
-from typing import Optional
-
-import numpy as np
-
-from spflow.base.structure.nested_module import NestedModule
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -14,6 +9,10 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
+from spflow.base.structure.nested_module import NestedModule
+
+from typing import Optional
+import numpy as np
 
 
 @dispatch  # type: ignore

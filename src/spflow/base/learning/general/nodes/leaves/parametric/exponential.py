@@ -1,16 +1,14 @@
 """Contains learning methods for ``Exponential`` nodes for SPFlow in the ``base`` backend.
 """
-from typing import Callable, Optional, Union
-
+from typing import Optional, Union, Callable
 import numpy as np
-
-from spflow.base.structure.general.nodes.leaves.parametric.exponential import (
-    Exponential,
-)
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
+)
+from spflow.base.structure.general.nodes.leaves.parametric.exponential import (
+    Exponential,
 )
 
 

@@ -1,15 +1,13 @@
 """Contains inference methods for RAT-SPNs for SPFlow in the ``base`` backend.
 """
-from typing import Optional
-
 import numpy as np
-
-from spflow.base.structure.spn.rat.rat_spn import RatSPN
+from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.base.structure.spn.rat.rat_spn import RatSPN
 
 
 @dispatch(memoize=True)  # type: ignore

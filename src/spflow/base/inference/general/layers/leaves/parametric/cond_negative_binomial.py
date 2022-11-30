@@ -1,16 +1,14 @@
 """Contains inference methods for ``CondNegativeBinomialLayer`` leaves for SPFlow in the ``base`` backend.
 """
-from typing import Optional
-
 import numpy as np
-
-from spflow.base.structure.general.layers.leaves.parametric.cond_negative_binomial import (
-    CondNegativeBinomialLayer,
-)
+from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
+)
+from spflow.base.structure.general.layers.leaves.parametric.cond_negative_binomial import (
+    CondNegativeBinomialLayer,
 )
 
 

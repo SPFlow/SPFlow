@@ -1,14 +1,12 @@
 """Contains inference methods for SPN-like product nodes for SPFlow in the ``torch`` backend.
 """
-from typing import Optional
-
 import torch
-
-from spflow.meta.dispatch.dispatch import dispatch
+from typing import Optional
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.meta.dispatch.dispatch import dispatch
 from spflow.torch.structure.spn.nodes.product_node import ProductNode
 
 

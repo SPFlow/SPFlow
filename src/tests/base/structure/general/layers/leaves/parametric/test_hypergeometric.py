@@ -1,10 +1,12 @@
-import unittest
-
-import numpy as np
-
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.base.structure.spn import (
+    Hypergeometric,
+    HypergeometricLayer,
+    marginalize,
+)
 from spflow.base.structure import AutoLeaf
-from spflow.base.structure.spn import Hypergeometric, HypergeometricLayer, marginalize
-from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+import numpy as np
+import unittest
 
 
 class TestLayer(unittest.TestCase):

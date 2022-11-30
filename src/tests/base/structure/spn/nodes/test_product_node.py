@@ -1,9 +1,10 @@
-import unittest
-
-from spflow.base.structure.spn import ProductNode, marginalize
+from spflow.base.structure.spn import (
+    ProductNode,
+    marginalize,
+)
 from spflow.meta.data import Scope
-
 from ...general.nodes.dummy_node import DummyNode
+import unittest
 
 
 class TestProductNode(unittest.TestCase):

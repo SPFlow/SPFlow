@@ -1,12 +1,11 @@
-import unittest
-
-import numpy as np
-import torch
-
-from spflow.base.structure.spn import BernoulliLayer as BaseBernoulliLayer
-from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure import AutoLeaf
 from spflow.torch.structure.spn import Bernoulli, BernoulliLayer
+from spflow.torch.structure import marginalize, toTorch, toBase
+from spflow.base.structure.spn import BernoulliLayer as BaseBernoulliLayer
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+import torch
+import numpy as np
+import unittest
 
 
 class TestNode(unittest.TestCase):

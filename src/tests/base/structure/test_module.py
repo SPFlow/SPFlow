@@ -1,10 +1,8 @@
-import unittest
-
-from spflow.base.structure.spn import SumNode
 from spflow.meta.data import Scope
-
-from .dummy_module import DummyModule, DummyNestedModule
+from spflow.base.structure.spn import SumNode
 from .general.nodes.dummy_node import DummyNode
+from .dummy_module import DummyModule, DummyNestedModule
+import unittest
 
 
 class TestNode(unittest.TestCase):

@@ -1,11 +1,12 @@
-import random
-import unittest
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import Poisson
+from spflow.base.learning import (
+    maximum_likelihood_estimation,
+)
 
 import numpy as np
-
-from spflow.base.learning import maximum_likelihood_estimation
-from spflow.base.structure.spn import Poisson
-from spflow.meta.data import Scope
+import unittest
+import random
 
 
 class TestNode(unittest.TestCase):

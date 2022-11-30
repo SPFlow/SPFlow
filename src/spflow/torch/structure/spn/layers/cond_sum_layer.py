@@ -1,21 +1,20 @@
 """Contains conditional SPN-like sum layer for SPFlow in the ``torch`` backend.
 """
-from copy import deepcopy
-from typing import Callable, Iterable, List, Optional, Union
-
-import numpy as np
-import torch
-
-from spflow.base.structure.spn.layers.cond_sum_layer import (
-    CondSumLayer as BaseCondSumLayer,
-)
-from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.meta.data.scope import Scope
 from spflow.torch.structure.module import Module
+from spflow.base.structure.spn.layers.cond_sum_layer import (
+    CondSumLayer as BaseCondSumLayer,
+)
+
+from typing import List, Union, Optional, Iterable, Callable
+from copy import deepcopy
+import numpy as np
+import torch
 
 
 class CondSumLayer(Module):

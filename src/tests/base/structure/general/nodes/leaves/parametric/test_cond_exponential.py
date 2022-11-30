@@ -1,17 +1,16 @@
-import unittest
-from typing import Callable
-
-import numpy as np
-
+from spflow.meta.data import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.autoleaf import AutoLeaf
+from spflow.base.structure.spn.nodes.product_node import marginalize
 from spflow.base.structure.general.nodes.leaves.parametric.cond_exponential import (
     CondExponential,
 )
-from spflow.base.structure.spn.nodes.product_node import marginalize
-from spflow.meta.data import Scope
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.dispatch.dispatch_context import DispatchContext
+from typing import Callable
+
+import numpy as np
+import unittest
 
 
 class TestCondExponential(unittest.TestCase):

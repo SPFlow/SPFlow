@@ -1,10 +1,8 @@
 """Contains classes and functions to create Region Graphs.
 """
 import random
-from typing import List, Optional, Set
-
 import numpy as np
-
+from typing import Optional, Set, List
 from spflow.meta.data.scope import Scope
 
 

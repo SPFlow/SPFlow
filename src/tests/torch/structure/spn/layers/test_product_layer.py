@@ -1,14 +1,13 @@
-import unittest
-
-import numpy as np
-
-from spflow.base.structure.spn import Gaussian as BaseGaussian
-from spflow.base.structure.spn import ProductLayer as BaseProductLayer
-from spflow.meta.data import Scope
+from spflow.torch.structure.spn import ProductLayer, Gaussian
 from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Gaussian, ProductLayer
-
+from spflow.base.structure.spn import (
+    ProductLayer as BaseProductLayer,
+    Gaussian as BaseGaussian,
+)
+from spflow.meta.data import Scope
 from ...general.nodes.dummy_node import DummyNode
+import numpy as np
+import unittest
 
 
 class TestNode(unittest.TestCase):

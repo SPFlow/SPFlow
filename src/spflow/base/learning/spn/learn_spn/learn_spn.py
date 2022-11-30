@@ -1,25 +1,23 @@
 """Contains the LearnSPN structure and parameter learner for SPFlow in the ``base`` backend.
 """
-from functools import partial
-from typing import Any, Callable, Dict, Optional, Union
-
 import numpy as np
-from sklearn.cluster import KMeans
-
-from spflow.base.learning.general.nodes.leaves.parametric.gaussian import (
-    maximum_likelihood_estimation,
-)
-from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.module import Module
-from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode
-from spflow.base.structure.spn.nodes.product_node import ProductNode
-from spflow.base.structure.spn.nodes.sum_node import SumNode
-from spflow.base.utils.connected_components import connected_components
+from functools import partial
+from typing import Callable, Union, Optional, Dict, Any
+from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.base.utils.randomized_dependency_coefficients import (
     randomized_dependency_coefficients,
 )
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.scope import Scope
+from spflow.base.learning.general.nodes.leaves.parametric.gaussian import (
+    maximum_likelihood_estimation,
+)
+from spflow.base.utils.connected_components import connected_components
+from spflow.base.structure.autoleaf import AutoLeaf
+from spflow.base.structure.spn.nodes.sum_node import SumNode
+from spflow.base.structure.spn.nodes.product_node import ProductNode
+from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode
+from spflow.base.structure.module import Module
+from sklearn.cluster import KMeans
 
 
 def partition_by_rdc(

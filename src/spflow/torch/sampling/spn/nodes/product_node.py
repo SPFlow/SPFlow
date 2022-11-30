@@ -1,9 +1,5 @@
 """Contains sampling methods for SPN-like product nodes for SPFlow in the ``torch`` backend.
 """
-from typing import Optional
-
-import torch
-
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -13,9 +9,12 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
+from spflow.torch.structure.spn.nodes.product_node import ProductNode
 from spflow.torch.inference.spn.nodes.product_node import log_likelihood
 from spflow.torch.sampling.module import sample
-from spflow.torch.structure.spn.nodes.product_node import ProductNode
+
+import torch
+from typing import Optional
 
 
 @dispatch  # type: ignore

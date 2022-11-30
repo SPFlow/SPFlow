@@ -1,10 +1,13 @@
+from spflow.torch.utils.projections import (
+    proj_bounded_to_real,
+    proj_real_to_bounded,
+)
+
+import torch
+import numpy as np
+
 import random
 import unittest
-
-import numpy as np
-import torch
-
-from spflow.torch.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
 class TestTorchParametric(unittest.TestCase):

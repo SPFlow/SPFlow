@@ -1,12 +1,5 @@
 """Contains sampling methods for ``CondMultivariateGaussian`` nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional
-
-import numpy as np
-
-from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
-    CondMultivariateGaussian,
-)
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -16,6 +9,12 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
+from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussian,
+)
+
+import numpy as np
+from typing import Optional
 
 
 @dispatch  # type: ignore

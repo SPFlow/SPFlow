@@ -1,14 +1,13 @@
-import random
-import unittest
-
-import numpy as np
-import torch
-
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import Poisson as BasePoisson
 from spflow.meta.data import Scope
-from spflow.torch.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import Poisson as BasePoisson
+from spflow.base.inference import log_likelihood, likelihood
 from spflow.torch.structure.spn import Poisson
+from spflow.torch.inference import log_likelihood, likelihood
+
+import torch
+import numpy as np
+import unittest
+import random
 
 
 class TestPoisson(unittest.TestCase):
