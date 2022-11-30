@@ -40,7 +40,7 @@ class Module(MetaModule, ABC):
         if any(not isinstance(child, Module) for child in children):
             raise ValueError("Children must all be of type 'Module'.")
 
-        self.children = children
+        self.chs = children
 
     def input_to_output_ids(self, input_ids: Union[List[int], np.ndarray]) -> Tuple[List[int], List[int]]:
         """Translates input indices into corresponding child module indices and child module output indices.
@@ -68,7 +68,7 @@ class Module(MetaModule, ABC):
         input_ids = input_ids.ravel()
 
         # infer number of inputs from children (and their numbers of outputs)
-        child_num_outputs = np.array([child.n_out for child in self.children])
+        child_num_outputs = np.array([child.n_out for child in self.chs])
         child_cum_outputs = np.cumsum(child_num_outputs)
 
         # get child module for corresponding input

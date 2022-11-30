@@ -53,7 +53,7 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in sum_node.children
+            for child in sum_node.chs
         ],
         axis=1,
     )

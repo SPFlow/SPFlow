@@ -147,4 +147,4 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return ProductNode(children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_node.children])
+    return ProductNode(children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_node.chs])

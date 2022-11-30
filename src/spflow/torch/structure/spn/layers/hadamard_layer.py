@@ -249,7 +249,7 @@ def toTorch(
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    children = list(hadamard_layer.children)
+    children = list(hadamard_layer.chs)
     partitions = np.split(children, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
 
     return HadamardLayer(

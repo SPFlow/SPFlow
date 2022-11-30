@@ -187,7 +187,7 @@ def marginalize(
     elif mutual_rvs:
         marg_partitions = []
 
-        children = layer.children
+        children = layer.chs
         partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
 
         for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
