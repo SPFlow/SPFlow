@@ -49,7 +49,7 @@ jobs:
         run: black --check --diff src/
 
   tests:
-    name: ${{ matrix.python-version }}
+    name: Python ${{ matrix.python-version }} + PyTorch ${{ matrix.pytorch-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false  # Don't fail fast to explore which configurations fail
