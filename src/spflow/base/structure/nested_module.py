@@ -1,11 +1,12 @@
 """Contains the abstract ``NestedModule`` class for SPFlow modules in the ``base`` backend.
 """
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.module import Module
-
-from typing import List, Tuple, Optional, Union
 from abc import ABC
+from typing import List, Optional, Tuple, Union
+
 import numpy as np
+
+from spflow.base.structure.module import Module
+from spflow.meta.dispatch.dispatch_context import DispatchContext
 
 
 class NestedModule(Module, ABC):
@@ -20,9 +21,7 @@ class NestedModule(Module, ABC):
             List of scopes representing the output scopes.
     """
 
-    def __init__(
-        self, children: Optional[List[Module]] = None, **kwargs
-    ) -> None:
+    def __init__(self, children: Optional[List[Module]] = None, **kwargs) -> None:
         """Initializes ``NestedModule`` object.
 
         Initializes module by correctly setting its children.
@@ -76,9 +75,7 @@ class NestedModule(Module, ABC):
         """
         for ph in self.placeholders:
             # fill placeholder cache with specified input values
-            dispatch_ctx.cache_value(
-                f_name, ph, inputs[:, ph.input_ids], overwrite=overwrite
-            )
+            dispatch_ctx.cache_value(f_name, ph, inputs[:, ph.input_ids], overwrite=overwrite)
 
     class Placeholder(Module):
         """Placeholder module as an intermediary module between nested non-terminal modules and actual child modules in the ``base`` backend.
@@ -117,16 +114,12 @@ class NestedModule(Module, ABC):
             ) = self.input_to_output_ids(list(range(len(input_ids))))
 
             # get child scopes
-            child_scopes = sum(
-                [child.scopes_out for child in host.children], []
-            )
+            child_scopes = sum([child.scopes_out for child in host.children], [])
 
             # compute scope for placeholder
             self.scopes_out = [child_scopes[i] for i in input_ids]
 
-        def input_to_output_ids(
-            self, input_ids: Union[List[int], np.ndarray]
-        ) -> Tuple[List[int], List[int]]:
+        def input_to_output_ids(self, input_ids: Union[List[int], np.ndarray]) -> Tuple[List[int], List[int]]:
             """Translates input indices to the host module into corresponding child module indices and child module output indices.
 
             For a given sequence of input indices to the host module (taking the inputs of all child modules into account), computes
@@ -143,9 +136,7 @@ class NestedModule(Module, ABC):
             if len(input_ids) == 0:
                 input_ids = list(range(len(self.input_ids)))
 
-            return self.host.input_to_output_ids(
-                [self.input_ids[i] for i in input_ids]
-            )
+            return self.host.input_to_output_ids([self.input_ids[i] for i in input_ids])
 
         @property
         def n_out(self) -> int:

@@ -1,27 +1,28 @@
 """Contains conditional Gaussian leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Callable
 from functools import reduce
+from typing import Callable, Iterable, List, Optional, Tuple, Union
+
 import numpy as np
 import torch
 import torch.distributions as D
 
+from spflow.base.structure.general.layers.leaves.parametric.cond_gaussian import (
+    CondGaussianLayer as BaseCondGaussianLayer,
+)
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.module import Module
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )
-from spflow.base.structure.general.layers.leaves.parametric.cond_gaussian import (
-    CondGaussianLayer as BaseCondGaussianLayer,
-)
+from spflow.torch.structure.module import Module
 
 
 class CondGaussianLayer(Module):
@@ -84,9 +85,7 @@ class CondGaussianLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondGaussianLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondGaussianLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -94,17 +93,13 @@ class CondGaussianLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) == 0:
-                raise ValueError(
-                    f"Evidence scope for 'CondGaussianLayer' should not be empty."
-                )
+                raise ValueError(f"Evidence scope for 'CondGaussianLayer' should not be empty.")
 
         super().__init__(children=[], **kwargs)
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
 
@@ -128,9 +123,7 @@ class CondGaussianLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondGaussianLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondGaussianLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -140,9 +133,7 @@ class CondGaussianLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondGaussianLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondGaussianLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         scopes = []
 
@@ -171,9 +162,7 @@ class CondGaussianLayer(Module):
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -220,9 +209,7 @@ class CondGaussianLayer(Module):
 
         return D.Normal(loc=mean[node_ids], scale=std[node_ids])
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameters (``mean``,``std``) are passed as additional arguments in the dispatch context.
@@ -299,9 +286,7 @@ class CondGaussianLayer(Module):
             )
 
         if not torch.any(torch.isfinite(mean)):
-            raise ValueError(
-                f"Values of 'mean' for 'CondGaussianLayer' must be finite, but was: {mean}"
-            )
+            raise ValueError(f"Values of 'mean' for 'CondGaussianLayer' must be finite, but was: {mean}")
 
         if isinstance(std, int) or isinstance(std, float):
             std = torch.tensor([std for _ in range(self.n_out)])
@@ -317,9 +302,7 @@ class CondGaussianLayer(Module):
             )
 
         if torch.any(std <= 0.0) or not torch.any(torch.isfinite(std)):
-            raise ValueError(
-                f"Value of 'std' for 'CondGaussianLayer' must be greater than 0, but was: {std}"
-            )
+            raise ValueError(f"Value of 'std' for 'CondGaussianLayer' must be greater than 0, but was: {std}")
 
         return mean, std
 
@@ -363,9 +346,7 @@ class CondGaussianLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(torch.zeros(self.n_out), torch.ones(self.n_out), node_ids).support.check(scope_data)  # type: ignore
@@ -434,9 +415,7 @@ def marginalize(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    layer: BaseCondGaussianLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> CondGaussianLayer:
+def toTorch(layer: BaseCondGaussianLayer, dispatch_ctx: Optional[DispatchContext] = None) -> CondGaussianLayer:
     """Conversion for ``CondGaussianLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:

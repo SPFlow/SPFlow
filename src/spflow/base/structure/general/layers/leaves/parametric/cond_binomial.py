@@ -1,21 +1,22 @@
 """Contains conditional Binomial leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Callable, Type
+from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
+
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
+from spflow.base.structure.general.nodes.leaves.parametric.cond_binomial import (
+    CondBinomial,
+)
+from spflow.base.structure.module import Module
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
-)
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureType, FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.module import Module
-from spflow.base.structure.general.nodes.leaves.parametric.cond_binomial import (
-    CondBinomial,
 )
 
 
@@ -91,9 +92,7 @@ class CondBinomialLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondBinomialLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondBinomialLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -140,9 +139,7 @@ class CondBinomialLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondBinomialLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondBinomialLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -152,9 +149,7 @@ class CondBinomialLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondBinomialLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondBinomialLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         n = []
         scopes = []
@@ -175,9 +170,7 @@ class CondBinomialLayer(Module):
 
         return CondBinomialLayer(scopes, n=n)
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -199,9 +192,7 @@ class CondBinomialLayer(Module):
 
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> np.ndarray:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> np.ndarray:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -239,9 +230,7 @@ class CondBinomialLayer(Module):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError(
-                "'CondBinomialLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
-            )
+            raise ValueError("'CondBinomialLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
 
         # if 'p' was not already specified, retrieve it
         if p is None:
@@ -293,9 +282,7 @@ class CondBinomialLayer(Module):
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not np.all(n_values == n_values[0]):
-                raise ValueError(
-                    "All values of 'n' for 'CondBinomialLayer' over the same scope must be identical."
-                )
+                raise ValueError("All values of 'n' for 'CondBinomialLayer' over the same scope must be identical.")
 
         for node_n, node in zip(n, self.nodes):
             node.set_params(node_n)
@@ -308,9 +295,7 @@ class CondBinomialLayer(Module):
         """
         return (self.n,)
 
-    def dist(
-        self, p: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> List[rv_frozen]:
+    def dist(self, p: np.ndarray, node_ids: Optional[List[int]] = None) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.
 
         Args:
@@ -328,9 +313,7 @@ class CondBinomialLayer(Module):
 
         return [self.nodes[i].dist(p[i]) for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Binomial distributions, which are:
@@ -357,9 +340,7 @@ class CondBinomialLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -409,7 +390,5 @@ def marginalize(
         new_node = CondBinomial(marg_scopes[0], np.array(marg_params[0]))
         return new_node
     else:
-        new_layer = CondBinomialLayer(
-            marg_scopes, np.array(sum(marg_params, tuple()))
-        )
+        new_layer = CondBinomialLayer(marg_scopes, np.array(sum(marg_params, tuple())))
         return new_layer

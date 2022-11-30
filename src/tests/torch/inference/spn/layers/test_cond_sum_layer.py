@@ -1,18 +1,18 @@
+import unittest
+
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer
-from spflow.torch.inference.spn.layers.cond_sum_layer import log_likelihood
-from spflow.torch.structure.spn.nodes.cond_sum_node import CondSumNode
-from spflow.torch.inference.spn.nodes.cond_sum_node import log_likelihood
-from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import (
-    Gaussian,
-)
 from spflow.torch.inference.general.nodes.leaves.parametric.gaussian import (
     log_likelihood,
 )
 from spflow.torch.inference.module import log_likelihood
-import torch
-import unittest
+from spflow.torch.inference.spn.layers.cond_sum_layer import log_likelihood
+from spflow.torch.inference.spn.nodes.cond_sum_node import log_likelihood
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer
+from spflow.torch.structure.spn.nodes.cond_sum_node import CondSumNode
 
 
 class TestNode(unittest.TestCase):
@@ -87,9 +87,7 @@ class TestNode(unittest.TestCase):
         torch.manual_seed(0)
 
         # generate random weights for a sum node with two children
-        weights = torch.tensor(
-            [[0.3, 0.7], [0.8, 0.2], [0.5, 0.5]], requires_grad=True
-        )
+        weights = torch.tensor([[0.3, 0.7], [0.8, 0.2], [0.5, 0.5]], requires_grad=True)
 
         data_1 = torch.randn((70000, 1))
         data_1 = (data_1 - data_1.mean()) / data_1.std() + 5.0

@@ -1,13 +1,14 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import NegativeBinomial as BaseNegativeBinomial
-from spflow.base.inference import log_likelihood, likelihood
-from spflow.torch.structure.spn import NegativeBinomial
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
-import unittest
 import random
+import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import NegativeBinomial as BaseNegativeBinomial
+from spflow.meta.data import Scope
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import NegativeBinomial
 
 
 class TestNegativeBinomial(unittest.TestCase):
@@ -31,14 +32,10 @@ class TestNegativeBinomial(unittest.TestCase):
         data = np.random.randint(1, n, (3, 1))
 
         log_probs = log_likelihood(node_negative_binomial, data)
-        log_probs_torch = log_likelihood(
-            torch_negative_binomial, torch.tensor(data)
-        )
+        log_probs_torch = log_likelihood(torch_negative_binomial, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
@@ -50,9 +47,7 @@ class TestNegativeBinomial(unittest.TestCase):
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, n, (3, 1))
 
-        log_probs_torch = log_likelihood(
-            torch_negative_binomial, torch.tensor(data)
-        )
+        log_probs_torch = log_likelihood(torch_negative_binomial, torch.tensor(data))
 
         # create dummy targets
         targets_torch = torch.ones(3, 1)
@@ -87,14 +82,10 @@ class TestNegativeBinomial(unittest.TestCase):
 
         # create dummy data
         p_target = 0.8
-        data = torch.distributions.NegativeBinomial(5, 1 - p_target).sample(
-            (100000, 1)
-        )
+        data = torch.distributions.NegativeBinomial(5, 1 - p_target).sample((100000, 1))
 
         # initialize gradient optimizer
-        optimizer = torch.optim.SGD(
-            torch_negative_binomial.parameters(), lr=0.5
-        )
+        optimizer = torch.optim.SGD(torch_negative_binomial.parameters(), lr=0.5)
 
         # perform optimization (possibly overfitting)
         for i in range(40):
@@ -171,9 +162,7 @@ class TestNegativeBinomial(unittest.TestCase):
         )
 
         # check valid integers, but outside of valid range
-        self.assertRaises(
-            ValueError, log_likelihood, negative_binomial, torch.tensor([[-1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, negative_binomial, torch.tensor([[-1]]))
 
         # check valid integers within valid range
         log_likelihood(negative_binomial, torch.tensor([[0]]))
@@ -184,17 +173,13 @@ class TestNegativeBinomial(unittest.TestCase):
             ValueError,
             log_likelihood,
             negative_binomial,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             negative_binomial,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
         )
         self.assertRaises(
             ValueError,

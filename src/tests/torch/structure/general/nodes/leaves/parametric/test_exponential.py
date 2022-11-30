@@ -1,16 +1,15 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import Exponential
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.inference import log_likelihood
-from spflow.base.structure.spn import Exponential as BaseExponential
-from spflow.base.inference import log_likelihood
-
-import torch
-import numpy as np
-
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import Exponential as BaseExponential
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Exponential
 
 
 class TestExponential(unittest.TestCase):
@@ -19,9 +18,7 @@ class TestExponential(unittest.TestCase):
         # Valid parameters for Exponential distribution: l>0
 
         # l > 0
-        Exponential(
-            Scope([0]), torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))
-        )
+        Exponential(Scope([0]), torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
         # l = 0 and l < 0
         self.assertRaises(Exception, Exponential, Scope([0]), 0.0)
         self.assertRaises(
@@ -49,39 +46,19 @@ class TestExponential(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            Exponential.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertTrue(Exponential.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # Exponential feature type class
-        self.assertTrue(
-            Exponential.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Exponential])]
-            )
-        )
+        self.assertTrue(Exponential.accepts([FeatureContext(Scope([0]), [FeatureTypes.Exponential])]))
 
         # Exponential feature type instance
-        self.assertTrue(
-            Exponential.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Exponential(1.0)])]
-            )
-        )
+        self.assertTrue(Exponential.accepts([FeatureContext(Scope([0]), [FeatureTypes.Exponential(1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            Exponential.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(Exponential.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # conditional scope
-        self.assertFalse(
-            Exponential.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(Exponential.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -97,19 +74,13 @@ class TestExponential(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        exponential = Exponential.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-        )
+        exponential = Exponential.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Continuous])])
         self.assertTrue(torch.isclose(exponential.l, torch.tensor(1.0)))
 
-        exponential = Exponential.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Exponential])]
-        )
+        exponential = Exponential.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Exponential])])
         self.assertTrue(torch.isclose(exponential.l, torch.tensor(1.0)))
 
-        exponential = Exponential.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Exponential(l=1.5)])]
-        )
+        exponential = Exponential.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Exponential(l=1.5)])])
         self.assertTrue(torch.isclose(exponential.l, torch.tensor(1.5)))
 
         # ----- invalid arguments -----
@@ -148,15 +119,11 @@ class TestExponential(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             Exponential,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0]), [FeatureTypes.Exponential])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Exponential])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        exponential = AutoLeaf(
-            [FeatureContext(Scope([0]), [FeatureTypes.Exponential(l=1.5)])]
-        )
+        exponential = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Exponential(l=1.5)])])
         self.assertTrue(isinstance(exponential, Exponential))
         self.assertTrue(torch.isclose(exponential.l, torch.tensor(1.5)))
 

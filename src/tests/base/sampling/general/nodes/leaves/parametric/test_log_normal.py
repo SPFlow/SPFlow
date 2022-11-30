@@ -1,11 +1,12 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext
-from spflow.base.structure.spn import LogNormal
-from spflow.base.sampling import sample
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import LogNormal
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
 
 
 class TestLogNormal(unittest.TestCase):
@@ -23,14 +24,10 @@ class TestLogNormal(unittest.TestCase):
 
         samples = sample(log_normal, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(np.isnan(samples) == np.array([[False], [True], [False]]))
-        )
+        self.assertTrue(all(np.isnan(samples) == np.array([[False], [True], [False]])))
 
         samples = sample(log_normal, 1000)
-        self.assertTrue(
-            np.isclose(samples.mean(), np.exp(0.0 + (1.0 ** 2 / 2.0)), rtol=0.1)
-        )
+        self.assertTrue(np.isclose(samples.mean(), np.exp(0.0 + (1.0**2 / 2.0)), rtol=0.1))
 
     def test_sampling_2(self):
 
@@ -43,9 +40,7 @@ class TestLogNormal(unittest.TestCase):
         log_normal = LogNormal(Scope([0]), 1.0, 0.5)
 
         samples = sample(log_normal, 1000)
-        self.assertTrue(
-            np.isclose(samples.mean(), np.exp(1.0 + (0.5 ** 2 / 2.0)), rtol=0.1)
-        )
+        self.assertTrue(np.isclose(samples.mean(), np.exp(1.0 + (0.5**2 / 2.0)), rtol=0.1))
 
     def test_sampling_5(self):
 

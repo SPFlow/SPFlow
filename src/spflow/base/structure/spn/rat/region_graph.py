@@ -1,8 +1,10 @@
 """Contains classes and functions to create Region Graphs.
 """
 import random
+from typing import List, Optional, Set
+
 import numpy as np
-from typing import Optional, Set, List
+
 from spflow.meta.data.scope import Scope
 
 
@@ -18,9 +20,7 @@ class Region:
             List of ``Partition`` objects belonging to the region.
     """
 
-    def __init__(
-        self, scope: Scope, partitions: List["Partition"] = None
-    ) -> None:
+    def __init__(self, scope: Scope, partitions: List["Partition"] = None) -> None:
         r"""Initializes 'Region' object.
 
         Args:
@@ -108,9 +108,7 @@ class RegionGraph:
         self.scope = root_region.scope if root_region is not None else Scope([])
 
 
-def random_region_graph(
-    scope: Scope, depth: int, replicas: int, n_splits: int = 2
-) -> RegionGraph:
+def random_region_graph(scope: Scope, depth: int, replicas: int, n_splits: int = 2) -> RegionGraph:
     r"""Creates a random instance of a region graph.
 
     For details see "Algorithm 1" in (Peharz et al., 2020): "Random Sum-Product Networks: A Simple and Effective Approach to Probabilistic Deep Learning".
@@ -135,9 +133,7 @@ def random_region_graph(
         ValueError: If any argument is invalid.
     """
     if len(scope.query) < n_splits:
-        raise ValueError(
-            "Need at least 'n_splits' query RVs to build region graph."
-        )
+        raise ValueError("Need at least 'n_splits' query RVs to build region graph.")
     if depth < 0:
         raise ValueError("Depth must not be negative.")
     if replicas < 1:
@@ -178,14 +174,10 @@ def split(scope: Scope, depth: int, n_splits: int = 2) -> Partition:
         ValueError: If any argument is invalid.
     """
     if n_splits < 2:
-        raise ValueError(
-            f"Number of splits 'n_splits' must be at least 2, but is {n_splits}."
-        )
+        raise ValueError(f"Number of splits 'n_splits' must be at least 2, but is {n_splits}.")
 
     if depth < 1:
-        raise ValueError(
-            f"Depth for splitting scope 'depth' is expected to be at least 1, but is {depth}."
-        )
+        raise ValueError(f"Depth for splitting scope 'depth' is expected to be at least 1, but is {depth}.")
 
     shuffled_rvs = scope.query.copy()
     random.shuffle(shuffled_rvs)

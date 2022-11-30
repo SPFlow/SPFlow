@@ -1,15 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.torch.structure.spn import (
-    SumNode,
-    ProductNode,
-    Gaussian,
-    PartitionLayer,
-)
-from spflow.torch.inference import log_likelihood
+import itertools
+import unittest
 
 import torch
-import unittest
-import itertools
+
+from spflow.meta.data import Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure.spn import Gaussian, PartitionLayer, ProductNode, SumNode
 
 
 class TestNode(unittest.TestCase):
@@ -48,9 +44,7 @@ class TestNode(unittest.TestCase):
             weights=[0.2, 0.1, 0.2, 0.2, 0.2, 0.1],
         )
 
-        dummy_data = torch.tensor(
-            [[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]]
-        )
+        dummy_data = torch.tensor([[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]])
 
         layer_ll = log_likelihood(layer_spn, dummy_data)
         nodes_ll = log_likelihood(nodes_spn, dummy_data)

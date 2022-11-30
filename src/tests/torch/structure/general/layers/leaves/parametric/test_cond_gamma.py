@@ -1,12 +1,13 @@
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import CondGamma, CondGammaLayer
-from spflow.torch.structure import marginalize, toTorch, toBase
-from spflow.base.structure.spn import CondGammaLayer as BaseCondGammaLayer
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.meta.dispatch import DispatchContext
-import torch
-import numpy as np
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn import CondGammaLayer as BaseCondGammaLayer
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondGamma, CondGammaLayer
 
 
 class TestNode(unittest.TestCase):
@@ -25,12 +26,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]))
 
         # ---- different scopes -----
         l = CondGammaLayer(scope=Scope([1], [0]), n_nodes=3)
@@ -38,9 +34,7 @@ class TestNode(unittest.TestCase):
             self.assertEqual(layer_scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, CondGammaLayer, Scope([0], [1]), n_nodes=0
-        )
+        self.assertRaises(ValueError, CondGammaLayer, Scope([0], [1]), n_nodes=0)
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondGammaLayer, Scope([]), n_nodes=3)
@@ -96,9 +90,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(
             CondGammaLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0], [2]), [FeatureTypes.Gamma(1.0, 1.0)]
-                    ),
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Gamma(1.0, 1.0)]),
                     FeatureContext(Scope([1], [2]), [FeatureTypes.Continuous]),
                 ]
             )
@@ -115,11 +107,7 @@ class TestNode(unittest.TestCase):
         )
 
         # non-conditional scope
-        self.assertFalse(
-            CondGammaLayer.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondGammaLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -206,12 +194,8 @@ class TestNode(unittest.TestCase):
         # make sure AutoLeaf can return correctly instantiated object
         gamma = AutoLeaf(
             [
-                FeatureContext(
-                    Scope([0], [2]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)]
-                ),
-                FeatureContext(
-                    Scope([1], [2]), [FeatureTypes.Gamma(alpha=0.5, beta=1.5)]
-                ),
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Gamma(alpha=0.5, beta=1.5)]),
             ]
         )
         self.assertTrue(gamma.scopes_out == [Scope([0], [2]), Scope([1], [2])])
@@ -227,15 +211,9 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"alpha": alpha_value, "beta": beta_value},
         )
 
-        for alpha_layer_node, beta_layer_node in zip(
-            *l.retrieve_params(torch.tensor([[1.0]]), DispatchContext())
-        ):
-            self.assertTrue(
-                torch.allclose(alpha_layer_node, torch.tensor(alpha_value))
-            )
-            self.assertTrue(
-                torch.allclose(beta_layer_node, torch.tensor(beta_value))
-            )
+        for alpha_layer_node, beta_layer_node in zip(*l.retrieve_params(torch.tensor([[1.0]]), DispatchContext())):
+            self.assertTrue(torch.allclose(alpha_layer_node, torch.tensor(alpha_value)))
+            self.assertTrue(torch.allclose(beta_layer_node, torch.tensor(beta_value)))
 
         # ----- list parameter values -----
         alpha_values = [0.17, 0.8, 0.53]
@@ -247,30 +225,20 @@ class TestNode(unittest.TestCase):
         )
 
         for alpha_value, beta_value, alpha_layer_node, beta_layer_node in zip(
-            alpha_values,
-            beta_values,
-            *l.retrieve_params(torch.tensor([[1.0]]), DispatchContext())
+            alpha_values, beta_values, *l.retrieve_params(torch.tensor([[1.0]]), DispatchContext())
         ):
-            self.assertTrue(
-                torch.allclose(alpha_layer_node, torch.tensor(alpha_value))
-            )
-            self.assertTrue(
-                torch.allclose(beta_layer_node, torch.tensor(beta_value))
-            )
+            self.assertTrue(torch.allclose(alpha_layer_node, torch.tensor(alpha_value)))
+            self.assertTrue(torch.allclose(beta_layer_node, torch.tensor(beta_value)))
 
         # wrong number of values
-        l.set_cond_f(
-            lambda data: {"alpha": alpha_values[:-1], "beta": beta_values}
-        )
+        l.set_cond_f(lambda data: {"alpha": alpha_values[:-1], "beta": beta_values})
         self.assertRaises(
             ValueError,
             l.retrieve_params,
             torch.tensor([[1]]),
             DispatchContext(),
         )
-        l.set_cond_f(
-            lambda data: {"alpha": alpha_values, "beta": beta_values[:-1]}
-        )
+        l.set_cond_f(lambda data: {"alpha": alpha_values, "beta": beta_values[:-1]})
         self.assertRaises(
             ValueError,
             l.retrieve_params,
@@ -312,9 +280,7 @@ class TestNode(unittest.TestCase):
             }
         )
         for alpha_actual, beta_actual, alpha_node, beta_node in zip(
-            alpha_values,
-            beta_values,
-            *l.retrieve_params(torch.tensor([[1.0]]), DispatchContext())
+            alpha_values, beta_values, *l.retrieve_params(torch.tensor([[1.0]]), DispatchContext())
         ):
             self.assertTrue(alpha_node == alpha_actual)
             self.assertTrue(beta_node == beta_actual)
@@ -443,9 +409,7 @@ class TestNode(unittest.TestCase):
 
     def test_layer_backend_conversion_1(self):
 
-        torch_layer = CondGammaLayer(
-            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])]
-        )
+        torch_layer = CondGammaLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
         base_layer = toBase(torch_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
@@ -453,9 +417,7 @@ class TestNode(unittest.TestCase):
 
     def test_layer_backend_conversion_2(self):
 
-        base_layer = BaseCondGammaLayer(
-            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])]
-        )
+        base_layer = BaseCondGammaLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
         torch_layer = toTorch(base_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))

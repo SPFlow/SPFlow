@@ -1,7 +1,9 @@
 """Contains inference methods for ``Hypergeometric`` nodes for SPFlow in the ``torch`` backend.
 """
-import torch
 from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -76,9 +78,7 @@ def log_likelihood(
 
     if check_support:
         # create masked based on distribution's support
-        valid_ids = leaf.check_support(
-            scope_data[~marg_ids], is_scope_data=True
-        ).squeeze(1)
+        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
             raise ValueError(

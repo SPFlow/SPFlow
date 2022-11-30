@@ -1,16 +1,15 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import Hypergeometric
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.inference import log_likelihood
-from spflow.base.structure.spn import Hypergeometric as BaseHypergeometric
-from spflow.base.inference import log_likelihood
-
-import torch
-import numpy as np
-
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import Hypergeometric as BaseHypergeometric
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Hypergeometric
 
 
 class TestHypergeometric(unittest.TestCase):
@@ -67,29 +66,15 @@ class TestHypergeometric(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(
-            Hypergeometric.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(Hypergeometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # Bernoulli feature type instance
         self.assertTrue(
-            Hypergeometric.accepts(
-                [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                    )
-                ]
-            )
+            Hypergeometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)])])
         )
 
         # invalid feature type
-        self.assertFalse(
-            Hypergeometric.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(Hypergeometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # conditional scope
         self.assertFalse(
@@ -121,11 +106,7 @@ class TestHypergeometric(unittest.TestCase):
     def test_initialization_from_signatures(self):
 
         hypergeometric = Hypergeometric.from_signatures(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                )
-            ]
+            [FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)])]
         )
         self.assertTrue(torch.isclose(hypergeometric.N, torch.tensor(4)))
         self.assertTrue(torch.isclose(hypergeometric.M, torch.tensor(2)))
@@ -174,23 +155,11 @@ class TestHypergeometric(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             Hypergeometric,
-            AutoLeaf.infer(
-                [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                    )
-                ]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        hypergeometric = AutoLeaf(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                )
-            ]
-        )
+        hypergeometric = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)])])
         self.assertTrue(isinstance(hypergeometric, Hypergeometric))
         self.assertTrue(torch.isclose(hypergeometric.N, torch.tensor(4)))
         self.assertTrue(torch.isclose(hypergeometric.M, torch.tensor(2)))

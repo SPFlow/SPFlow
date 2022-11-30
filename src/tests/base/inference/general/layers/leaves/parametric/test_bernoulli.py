@@ -1,21 +1,16 @@
-from spflow.meta.data import Scope
-from spflow.base.inference import log_likelihood
-from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
-    Bernoulli,
-    BernoulliLayer,
-)
-import numpy as np
 import unittest
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import Bernoulli, BernoulliLayer, ProductNode, SumNode
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
     def test_layer_likelihood_1(self):
 
-        bernoulli_layer = BernoulliLayer(
-            scope=Scope([0]), p=[0.8, 0.3], n_nodes=2
-        )
+        bernoulli_layer = BernoulliLayer(scope=Scope([0]), p=[0.8, 0.3], n_nodes=2)
         s1 = SumNode(children=[bernoulli_layer], weights=[0.3, 0.7])
 
         bernoulli_nodes = [
@@ -26,15 +21,11 @@ class TestNode(unittest.TestCase):
 
         data = np.array([[0], [1], [0]])
 
-        self.assertTrue(
-            np.all(log_likelihood(s1, data) == log_likelihood(s2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(s1, data) == log_likelihood(s2, data)))
 
     def test_layer_likelihood_2(self):
 
-        bernoulli_layer = BernoulliLayer(
-            scope=[Scope([0]), Scope([1])], p=[0.8, 0.3]
-        )
+        bernoulli_layer = BernoulliLayer(scope=[Scope([0]), Scope([1])], p=[0.8, 0.3])
         p1 = ProductNode(children=[bernoulli_layer])
 
         bernoulli_nodes = [
@@ -45,9 +36,7 @@ class TestNode(unittest.TestCase):
 
         data = np.array([[0, 1], [1, 1], [0, 0]])
 
-        self.assertTrue(
-            np.all(log_likelihood(p1, data) == log_likelihood(p2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(p1, data) == log_likelihood(p2, data)))
 
 
 if __name__ == "__main__":

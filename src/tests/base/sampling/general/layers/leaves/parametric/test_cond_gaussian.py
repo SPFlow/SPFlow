@@ -1,15 +1,17 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
-    CondGaussian,
-    CondGaussianLayer,
-)
-from spflow.base.inference import log_likelihood
-from spflow.base.sampling import sample
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import (
+    CondGaussian,
+    CondGaussianLayer,
+    ProductNode,
+    SumNode,
+)
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -27,12 +29,8 @@ class TestNode(unittest.TestCase):
         s1 = SumNode(children=[gaussian_layer], weights=[0.3, 0.7])
 
         gaussian_nodes = [
-            CondGaussian(
-                Scope([0], [1]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}
-            ),
-            CondGaussian(
-                Scope([0], [1]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
-            ),
+            CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}),
+            CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}),
         ]
         s2 = SumNode(children=gaussian_nodes, weights=[0.3, 0.7])
 
@@ -60,12 +58,8 @@ class TestNode(unittest.TestCase):
         p1 = ProductNode(children=[gaussian_layer])
 
         gaussian_nodes = [
-            CondGaussian(
-                Scope([0], [2]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}
-            ),
-            CondGaussian(
-                Scope([1], [2]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
-            ),
+            CondGaussian(Scope([0], [2]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}),
+            CondGaussian(Scope([1], [2]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}),
         ]
         p2 = ProductNode(children=gaussian_nodes)
 

@@ -1,14 +1,15 @@
-from spflow.torch.structure.spn import HadamardLayer, Gaussian
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.base.structure.spn import (
-    HadamardLayer as BaseHadamardLayer,
-    Gaussian as BaseGaussian,
-)
-from spflow.meta.data import Scope
-from ...general.nodes.dummy_node import DummyNode
-import torch
-import numpy as np
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn import Gaussian as BaseGaussian
+from spflow.base.structure.spn import HadamardLayer as BaseHadamardLayer
+from spflow.meta.data import Scope
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Gaussian, HadamardLayer
+
+from ...general.nodes.dummy_node import DummyNode
 
 
 class TestNode(unittest.TestCase):
@@ -36,11 +37,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(l.n_out, 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out == [Scope([0, 1, 2, 3, 4]) for _ in range(l.n_out)]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([0, 1, 2, 3, 4]) for _ in range(l.n_out)]))
 
         # only one partition
         l = HadamardLayer(
@@ -55,9 +52,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(l.n_out, 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1, 3]) for _ in range(l.n_out)])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1, 3]) for _ in range(l.n_out)]))
 
         # ----- no child partitions -----
         self.assertRaises(ValueError, HadamardLayer, [])

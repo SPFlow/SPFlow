@@ -1,10 +1,11 @@
-from spflow.torch.utils import cca
+import random
+import unittest
+
+import numpy as np
+import torch
 from sklearn.cross_decomposition import CCA
 
-import torch
-import numpy as np
-import unittest
-import random
+from spflow.torch.utils import cca
 
 
 class TestNode(unittest.TestCase):
@@ -111,9 +112,7 @@ class TestNode(unittest.TestCase):
         for i, (e_sklearn, e_torch) in enumerate(zip(res_sklearn, res_torch)):
             self.assertTrue(
                 np.allclose(e_sklearn, e_torch.numpy(), atol=1e-1, rtol=1e-1)
-                or np.allclose(
-                    e_sklearn, -e_torch.numpy(), atol=1e-1, rtol=1e-1
-                )
+                or np.allclose(e_sklearn, -e_torch.numpy(), atol=1e-1, rtol=1e-1)
             )
 
 

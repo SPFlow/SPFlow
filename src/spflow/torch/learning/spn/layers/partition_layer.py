@@ -1,7 +1,9 @@
 """Contains learning methods for SPN-like partition layers for SPFlow in the ``torch`` backend.
 """
 from typing import Optional
+
 import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

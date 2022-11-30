@@ -1,5 +1,10 @@
 """Contains sampling methods for SPN-like sum layers for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import numpy as np
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,13 +14,9 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.spn.layers.sum_layer import SumLayer
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
-
-import torch
-import numpy as np
-from typing import Optional
+from spflow.torch.structure.spn.layers.sum_layer import SumLayer
 
 
 @dispatch  # type: ignore
@@ -95,14 +96,8 @@ def sample(
         # group by child ids
         for child_id in torch.unique(torch.tensor(child_ids)):
 
-            child_instance_ids = torch.tensor(instances)[
-                torch.tensor(child_ids) == child_id
-            ].tolist()
-            child_output_ids = (
-                torch.tensor(output_ids)[torch.tensor(child_ids) == child_id]
-                .unsqueeze(1)
-                .tolist()
-            )
+            child_instance_ids = torch.tensor(instances)[torch.tensor(child_ids) == child_id].tolist()
+            child_output_ids = torch.tensor(output_ids)[torch.tensor(child_ids) == child_id].unsqueeze(1).tolist()
 
             # sample from partition node
             sample(
@@ -110,9 +105,7 @@ def sample(
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
-                sampling_ctx=SamplingContext(
-                    child_instance_ids, child_output_ids
-                ),
+                sampling_ctx=SamplingContext(child_instance_ids, child_output_ids),
             )
 
     return data

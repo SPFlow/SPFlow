@@ -1,16 +1,17 @@
-from spflow.meta.data import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.spn.nodes.product_node import marginalize
-from spflow.base.structure.general.nodes.leaves.parametric.cond_geometric import (
-    CondGeometric,
-)
+import unittest
 from typing import Callable
 
 import numpy as np
-import unittest
+
+from spflow.base.structure.autoleaf import AutoLeaf
+from spflow.base.structure.general.nodes.leaves.parametric.cond_geometric import (
+    CondGeometric,
+)
+from spflow.base.structure.spn.nodes.product_node import marginalize
+from spflow.meta.data import Scope
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.dispatch.dispatch_context import DispatchContext
 
 
 class TestGeometric(unittest.TestCase):
@@ -66,39 +67,19 @@ class TestGeometric(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type
-        self.assertTrue(
-            CondGeometric.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertTrue(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # Geometric feature type class
-        self.assertTrue(
-            CondGeometric.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]
-            )
-        )
+        self.assertTrue(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]))
 
         # Geometric feature type instance
-        self.assertTrue(
-            CondGeometric.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric(0.5)])]
-            )
-        )
+        self.assertTrue(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric(0.5)])]))
 
         # invalid feature type
-        self.assertFalse(
-            CondGeometric.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # non-conditional scope
-        self.assertFalse(
-            CondGeometric.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondGeometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # multivariate signature
         self.assertFalse(
@@ -114,15 +95,9 @@ class TestGeometric(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        CondGeometric.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-        )
-        CondGeometric.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]
-        )
-        CondGeometric.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric(p=0.75)])]
-        )
+        CondGeometric.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])])
+        CondGeometric.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])])
+        CondGeometric.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric(p=0.75)])])
 
         # ----- invalid arguments -----
 
@@ -160,15 +135,11 @@ class TestGeometric(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondGeometric,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        geometric = AutoLeaf(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]
-        )
+        geometric = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])])
         self.assertTrue(isinstance(geometric, CondGeometric))
 
     def test_structural_marginalization(self):

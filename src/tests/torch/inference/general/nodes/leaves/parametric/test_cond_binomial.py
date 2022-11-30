@@ -1,14 +1,15 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
-from spflow.base.structure.spn import CondBinomial as BaseCondBinomial
-from spflow.base.inference import log_likelihood
-from spflow.torch.structure.spn import CondBinomial
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import CondBinomial as BaseCondBinomial
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import CondBinomial
 
 
 class TestBinomial(unittest.TestCase):
@@ -80,12 +81,8 @@ class TestBinomial(unittest.TestCase):
         n = random.randint(2, 10)
         p = random.random()
 
-        torch_binomial = CondBinomial(
-            Scope([0], [1]), n, cond_f=lambda data: {"p": p}
-        )
-        node_binomial = BaseCondBinomial(
-            Scope([0], [1]), n, cond_f=lambda data: {"p": p}
-        )
+        torch_binomial = CondBinomial(Scope([0], [1]), n, cond_f=lambda data: {"p": p})
+        node_binomial = BaseCondBinomial(Scope([0], [1]), n, cond_f=lambda data: {"p": p})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, n, (3, 1))
@@ -94,18 +91,14 @@ class TestBinomial(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_binomial, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
         n = random.randint(2, 10)
         p = torch.tensor(random.random(), requires_grad=True)
 
-        torch_binomial = CondBinomial(
-            Scope([0], [1]), n, cond_f=lambda data: {"p": p}
-        )
+        torch_binomial = CondBinomial(Scope([0], [1]), n, cond_f=lambda data: {"p": p})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, n, (3, 1))
@@ -124,9 +117,7 @@ class TestBinomial(unittest.TestCase):
     def test_likelihood_p_0(self):
 
         # p = 0
-        binomial = CondBinomial(
-            Scope([0], [1]), 1, cond_f=lambda data: {"p": 0.0}
-        )
+        binomial = CondBinomial(Scope([0], [1]), 1, cond_f=lambda data: {"p": 0.0})
 
         data = torch.tensor([[0.0], [1.0]])
         targets = torch.tensor([[1.0], [0.0]])
@@ -140,9 +131,7 @@ class TestBinomial(unittest.TestCase):
     def test_likelihood_p_1(self):
 
         # p = 1
-        binomial = CondBinomial(
-            Scope([0], [1]), 1, cond_f=lambda data: {"p": 1.0}
-        )
+        binomial = CondBinomial(Scope([0], [1]), 1, cond_f=lambda data: {"p": 1.0})
 
         data = torch.tensor([[0.0], [1.0]])
         targets = torch.tensor([[0.0], [1.0]])
@@ -156,9 +145,7 @@ class TestBinomial(unittest.TestCase):
     def test_likelihood_n_0(self):
 
         # n = 0
-        binomial = CondBinomial(
-            Scope([0], [1]), 0, cond_f=lambda data: {"p": 0.5}
-        )
+        binomial = CondBinomial(Scope([0], [1]), 0, cond_f=lambda data: {"p": 0.5})
 
         data = torch.tensor([[0.0]])
         targets = torch.tensor([[1.0]])
@@ -171,9 +158,7 @@ class TestBinomial(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        binomial = CondBinomial(
-            Scope([0], [1]), 5, cond_f=lambda data: {"p": 0.5}
-        )
+        binomial = CondBinomial(Scope([0], [1]), 5, cond_f=lambda data: {"p": 0.5})
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1 (0 in log-space)
@@ -185,17 +170,11 @@ class TestBinomial(unittest.TestCase):
 
         # Support for Binomial distribution: integers {0,...,n}
 
-        binomial = CondBinomial(
-            Scope([0], [1]), 2, cond_f=lambda data: {"p": 0.5}
-        )
+        binomial = CondBinomial(Scope([0], [1]), 2, cond_f=lambda data: {"p": 0.5})
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, torch.tensor([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, torch.tensor([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[np.inf]]))
 
         # check valid integers inside valid range
         log_likelihood(
@@ -204,9 +183,7 @@ class TestBinomial(unittest.TestCase):
         )
 
         # check valid integers, but outside of valid range
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, torch.tensor([[-1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[-1]]))
         self.assertRaises(
             ValueError,
             log_likelihood,
@@ -219,17 +196,13 @@ class TestBinomial(unittest.TestCase):
             ValueError,
             log_likelihood,
             binomial,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             binomial,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
         )
         self.assertRaises(
             ValueError,
@@ -250,22 +223,10 @@ class TestBinomial(unittest.TestCase):
             ValueError,
             log_likelihood,
             binomial,
-            torch.tensor(
-                [
-                    [
-                        torch.nextafter(
-                            torch.tensor(float(binomial.n)), torch.tensor(0.0)
-                        )
-                    ]
-                ]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(float(binomial.n)), torch.tensor(0.0))]]),
         )
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, torch.tensor([[0.5]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, torch.tensor([[3.5]])
-        )
+        self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[0.5]]))
+        self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[3.5]]))
 
 
 if __name__ == "__main__":

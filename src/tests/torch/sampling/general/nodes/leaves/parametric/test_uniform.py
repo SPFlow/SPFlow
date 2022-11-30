@@ -1,12 +1,13 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext
-from spflow.torch.structure.spn import Uniform
-from spflow.torch.sampling import sample
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
+from spflow.torch.sampling import sample
+from spflow.torch.structure.spn import Uniform
 
 
 class TestUniform(unittest.TestCase):
@@ -32,9 +33,7 @@ class TestUniform(unittest.TestCase):
 
         samples = sample(uniform, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
 
         samples = sample(uniform, 1000)
         self.assertTrue(all((samples >= -1.0) & (samples <= 2.5)))

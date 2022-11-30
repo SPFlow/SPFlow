@@ -1,8 +1,10 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.base.structure.spn import Bernoulli, BernoulliLayer, marginalize
-from spflow.base.structure import AutoLeaf
-import numpy as np
 import unittest
+
+import numpy as np
+
+from spflow.base.structure import AutoLeaf
+from spflow.base.structure.spn import Bernoulli, BernoulliLayer, marginalize
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestLayer(unittest.TestCase):
@@ -14,9 +16,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
         # make sure parameter properties works correctly
         p_values = l.p
         for node, node_p in zip(l.nodes, p_values):
@@ -37,9 +37,7 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.p == node_p))
 
         # wrong number of values
-        self.assertRaises(
-            ValueError, BernoulliLayer, Scope([0]), p_values[:-1], n_nodes=3
-        )
+        self.assertRaises(ValueError, BernoulliLayer, Scope([0]), p_values[:-1], n_nodes=3)
         # wrong number of dimensions (nested list)
         self.assertRaises(
             ValueError,
@@ -133,11 +131,7 @@ class TestLayer(unittest.TestCase):
         )
 
         # conditional scope
-        self.assertFalse(
-            BernoulliLayer.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(BernoulliLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # multivariate signature
         self.assertFalse(
@@ -213,17 +207,11 @@ class TestLayer(unittest.TestCase):
         # make sure leaf is registered
         self.assertTrue(AutoLeaf.is_registered(BernoulliLayer))
 
-        feature_ctx_1 = FeatureContext(
-            Scope([0]), [FeatureTypes.Bernoulli(p=0.75)]
-        )
-        feature_ctx_2 = FeatureContext(
-            Scope([1]), [FeatureTypes.Bernoulli(p=0.25)]
-        )
+        feature_ctx_1 = FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.75)])
+        feature_ctx_2 = FeatureContext(Scope([1]), [FeatureTypes.Bernoulli(p=0.25)])
 
         # make sure leaf is correctly inferred
-        self.assertEqual(
-            BernoulliLayer, AutoLeaf.infer([feature_ctx_1, feature_ctx_2])
-        )
+        self.assertEqual(BernoulliLayer, AutoLeaf.infer([feature_ctx_1, feature_ctx_2]))
 
         # make sure AutoLeaf can return correctly instantiated object
         bernoulli = AutoLeaf([feature_ctx_1, feature_ctx_2])
