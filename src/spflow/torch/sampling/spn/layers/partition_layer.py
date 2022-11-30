@@ -68,7 +68,7 @@ def sample(
     )
     input_ids_per_node = torch.cartesian_prod(*partition_indices)
 
-    children = list(partition_layer.children())
+    children = list(partition_layer.chs)
 
     # sample accoding to sampling_context
     for node_id, instances in sampling_ctx.group_output_ids(
