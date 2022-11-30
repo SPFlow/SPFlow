@@ -10,3 +10,16 @@ testpaths = [
     # for the actual tests:
     "src/tests"
 ]
+
+[tool.black]
+line-length = 120
+target-version = [
+    "py37",
+    "py38",
+    "py39",
+    "py310",
+    "py311"
+]
+
+[tool.isort]
+profile = "black"
