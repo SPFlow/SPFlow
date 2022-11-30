@@ -1,14 +1,15 @@
 """Contains inference methods for SPN-like Hadamard layer for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.structure.spn.layers.hadamard_layer import HadamardLayer
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.base.structure.spn.layers.hadamard_layer import HadamardLayer
-
-from typing import Optional
-import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -57,9 +58,7 @@ def log_likelihood(
     )
 
     # set placeholder values
-    hadamard_layer.set_placeholders(
-        "log_likelihood", child_lls, dispatch_ctx, overwrite=False
-    )
+    hadamard_layer.set_placeholders("log_likelihood", child_lls, dispatch_ctx, overwrite=False)
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
     return np.concatenate(

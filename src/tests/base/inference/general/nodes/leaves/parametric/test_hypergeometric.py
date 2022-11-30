@@ -1,9 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import Hypergeometric
-from spflow.base.inference import log_likelihood, likelihood
-import numpy as np
-import unittest
 import random
+import unittest
+
+import numpy as np
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import Hypergeometric
+from spflow.meta.data import Scope
 
 
 class TestHypergeometric(unittest.TestCase):
@@ -103,12 +105,8 @@ class TestHypergeometric(unittest.TestCase):
         hypergeometric = Hypergeometric(Scope([0]), N, M, n)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, hypergeometric, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, hypergeometric, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[np.inf]]))
 
         # check valid integers inside valid range
         data = np.array([[max(0, n + M - N)], [min(n, M)]])
@@ -146,9 +144,7 @@ class TestHypergeometric(unittest.TestCase):
             hypergeometric,
             np.array([[np.nextafter(max(n, M), -1.0)]]),
         )
-        self.assertRaises(
-            ValueError, log_likelihood, hypergeometric, np.array([[5.5]])
-        )
+        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[5.5]]))
 
         # case n+M-N
         N = 25
@@ -191,9 +187,7 @@ class TestHypergeometric(unittest.TestCase):
             hypergeometric,
             np.array([[np.nextafter(max(n, M), -1.0)]]),
         )
-        self.assertRaises(
-            ValueError, log_likelihood, hypergeometric, np.array([[5.5]])
-        )
+        self.assertRaises(ValueError, log_likelihood, hypergeometric, np.array([[5.5]]))
 
 
 if __name__ == "__main__":

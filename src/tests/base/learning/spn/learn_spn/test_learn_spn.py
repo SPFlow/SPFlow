@@ -1,20 +1,21 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.base.learning.spn.learn_spn import (
-    cluster_by_kmeans,
-    partition_by_rdc,
-    learn_spn,
-)
-from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
-    CondSumNode,
-    Gaussian,
-    CondGaussian,
-)
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.learning.spn.learn_spn import (
+    cluster_by_kmeans,
+    learn_spn,
+    partition_by_rdc,
+)
+from spflow.base.structure.spn import (
+    CondGaussian,
+    CondSumNode,
+    Gaussian,
+    ProductNode,
+    SumNode,
+)
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 # dummy clustering and partition methods
@@ -49,9 +50,7 @@ class TestNode(unittest.TestCase):
         cluster_2 = np.random.randn(100, 1) + 5.0
 
         # compute clusters using k-means
-        cluster_mask = cluster_by_kmeans(
-            np.vstack([cluster_1, cluster_2]), n_clusters=2
-        )
+        cluster_mask = cluster_by_kmeans(np.vstack([cluster_1, cluster_2]), n_clusters=2)
 
         # cluster id can either be 0 or 1
         cluster_id = cluster_mask[0]
@@ -74,9 +73,7 @@ class TestNode(unittest.TestCase):
         cluster_3 = np.random.randn(100, 1)
 
         # compute clusters using k-means
-        cluster_mask = cluster_by_kmeans(
-            np.vstack([cluster_1, cluster_2, cluster_3]), n_clusters=3
-        )
+        cluster_mask = cluster_by_kmeans(np.vstack([cluster_1, cluster_2, cluster_3]), n_clusters=3)
 
         cluster_ids = [0, 1, 2]
 
@@ -112,9 +109,7 @@ class TestNode(unittest.TestCase):
         data_partition_2 = np.random.randn(100, 1) - 10.0
 
         # compute clusters using k-means
-        partition_mask = partition_by_rdc(
-            np.hstack([data_partition_1, data_partition_2]), threshold=0.5
-        )
+        partition_mask = partition_by_rdc(np.hstack([data_partition_1, data_partition_2]), threshold=0.5)
 
         # should be two partitions
         self.assertTrue(len(np.unique(partition_mask)) == 2)
@@ -126,24 +121,18 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         # simulate partition data
-        data_partition_1 = np.random.multivariate_normal(
-            np.zeros(2), np.array([[1, 0.5], [0.5, 1]]), size=(100,)
-        )
+        data_partition_1 = np.random.multivariate_normal(np.zeros(2), np.array([[1, 0.5], [0.5, 1]]), size=(100,))
         data_partition_2 = np.random.randn(100, 1) + 10.0
 
         # compute clusters using k-means
-        partition_mask = partition_by_rdc(
-            np.hstack([data_partition_1, data_partition_2]), threshold=0.5
-        )
+        partition_mask = partition_by_rdc(np.hstack([data_partition_1, data_partition_2]), threshold=0.5)
 
         # should be two partitions
         self.assertTrue(len(np.unique(partition_mask)) == 2)
 
         # check if partitions are correct (order is irrelevant)
         partition_1 = np.where(partition_mask == 0)[0]
-        self.assertTrue(
-            np.all(partition_1 == [0, 1]) or np.all(partition_1 == [2])
-        )
+        self.assertTrue(np.all(partition_1 == [0, 1]) or np.all(partition_1 == [2]))
 
     def test_rdc_partitioning_nan(self):
 
@@ -172,9 +161,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         data = np.random.randn(100, 3)
-        feature_ctx = FeatureContext(
-            Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)}
-        )
+        feature_ctx = FeatureContext(Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)})
 
         # ----- min_features_slice > scope size (no splitting or clustering) -----
 
@@ -193,9 +180,7 @@ class TestNode(unittest.TestCase):
         # check resulting graph
         self.assertTrue(isinstance(spn, ProductNode))
         # children of product node should be leaves since scope is originally multivariate and no partitioning/clustering occurs
-        self.assertTrue(
-            all([isinstance(child, Gaussian) for child in spn.children])
-        )
+        self.assertTrue(all([isinstance(child, Gaussian) for child in spn.children]))
 
     def test_learn_spn_2(self):
 
@@ -204,9 +189,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         data = np.random.randn(100, 3)
-        feature_ctx = FeatureContext(
-            Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)}
-        )
+        feature_ctx = FeatureContext(Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)})
 
         # ----- min_instances_slice_100, alternate partitioning -----
 
@@ -233,23 +216,9 @@ class TestNode(unittest.TestCase):
         ) = partition_1.children
         # children of both clusterings should be product nodes since this partition is originally multivariate
         self.assertTrue(isinstance(partition_1_clustering_1, ProductNode))
-        self.assertTrue(
-            all(
-                [
-                    isinstance(child, Gaussian)
-                    for child in partition_1_clustering_1.children
-                ]
-            )
-        )
+        self.assertTrue(all([isinstance(child, Gaussian) for child in partition_1_clustering_1.children]))
         self.assertTrue(isinstance(partition_1_clustering_1, ProductNode))
-        self.assertTrue(
-            all(
-                [
-                    isinstance(child, Gaussian)
-                    for child in partition_1_clustering_2.children
-                ]
-            )
-        )
+        self.assertTrue(all([isinstance(child, Gaussian) for child in partition_1_clustering_2.children]))
         # partition 2
         self.assertTrue(isinstance(partition_2, Gaussian))
 
@@ -260,9 +229,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         data = np.random.randn(100, 3)
-        feature_ctx = FeatureContext(
-            Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)}
-        )
+        feature_ctx = FeatureContext(Scope([0, 1, 2]), {k: FeatureTypes.Gaussian for k in range(3)})
 
         # ----- successive partitioning -----
 
@@ -282,9 +249,7 @@ class TestNode(unittest.TestCase):
         partition_1, partition_2 = spn.children
         # partition 1
         self.assertTrue(isinstance(partition_1, ProductNode))
-        self.assertTrue(
-            all([isinstance(child, Gaussian) for child in partition_1.children])
-        )
+        self.assertTrue(all([isinstance(child, Gaussian) for child in partition_1.children]))
         # partition 2
         self.assertTrue(isinstance(partition_2, Gaussian))
 
@@ -295,9 +260,7 @@ class TestNode(unittest.TestCase):
         random.seed(0)
 
         data = np.random.randn(100, 3)
-        feature_ctx = FeatureContext(
-            Scope([0, 1, 2], [3]), {k: FeatureTypes.Gaussian for k in range(3)}
-        )
+        feature_ctx = FeatureContext(Scope([0, 1, 2], [3]), {k: FeatureTypes.Gaussian for k in range(3)})
 
         # ----- min_instances_slice_100, alternate partitioning -----
 
@@ -324,23 +287,9 @@ class TestNode(unittest.TestCase):
         ) = partition_1.children
         # children of both clusterings should be product nodes since this partition is originally multivariate
         self.assertTrue(isinstance(partition_1_clustering_1, ProductNode))
-        self.assertTrue(
-            all(
-                [
-                    isinstance(child, CondGaussian)
-                    for child in partition_1_clustering_1.children
-                ]
-            )
-        )
+        self.assertTrue(all([isinstance(child, CondGaussian) for child in partition_1_clustering_1.children]))
         self.assertTrue(isinstance(partition_1_clustering_1, ProductNode))
-        self.assertTrue(
-            all(
-                [
-                    isinstance(child, CondGaussian)
-                    for child in partition_1_clustering_2.children
-                ]
-            )
-        )
+        self.assertTrue(all([isinstance(child, CondGaussian) for child in partition_1_clustering_2.children]))
         # partition 2
         self.assertTrue(isinstance(partition_2, CondGaussian))
 
@@ -351,9 +300,7 @@ class TestNode(unittest.TestCase):
             ValueError,
             learn_spn,
             np.random.randn(1, 3),
-            FeatureContext(
-                Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)}
-            ),
+            FeatureContext(Scope([0, 1]), {k: FeatureTypes.Gaussian for k in range(2)}),
         )
         # invalid clustering method
         self.assertRaises(

@@ -1,15 +1,16 @@
 """Contains inference methods for SPN-like sum nodes for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+from scipy.special import logsumexp  # type: ignore
+
+from spflow.base.structure.spn.nodes.sum_node import SumNode
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.base.structure.spn.nodes.sum_node import SumNode
-
-from scipy.special import logsumexp  # type: ignore
-from typing import Optional
-import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore

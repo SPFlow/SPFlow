@@ -1,11 +1,12 @@
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import Gaussian, GaussianLayer
-from spflow.torch.structure import marginalize, toTorch, toBase
-from spflow.base.structure.spn import GaussianLayer as BaseGaussianLayer
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-import torch
-import numpy as np
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn import GaussianLayer as BaseGaussianLayer
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Gaussian, GaussianLayer
 
 
 class TestNode(unittest.TestCase):
@@ -22,57 +23,33 @@ class TestNode(unittest.TestCase):
         # ----- check attributes after correct initialization -----
         mean_values = [0.5, -2.3, 1.0]
         std_values = [1.3, 1.0, 0.2]
-        l = GaussianLayer(
-            scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values
-        )
+        l = GaussianLayer(scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
         # make sure parameter properties works correctly
-        for mean_layer_node, std_layer_node, mean_value, std_value in zip(
-            l.mean, l.std, mean_values, std_values
-        ):
-            self.assertTrue(
-                torch.allclose(mean_layer_node, torch.tensor(mean_value))
-            )
-            self.assertTrue(
-                torch.allclose(std_layer_node, torch.tensor(std_value))
-            )
+        for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
+            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
+            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
 
         # ----- float/int parameter values -----
         mean_value = 0.73
         std_value = 1.9
-        l = GaussianLayer(
-            scope=Scope([1]), n_nodes=3, mean=mean_value, std=std_value
-        )
+        l = GaussianLayer(scope=Scope([1]), n_nodes=3, mean=mean_value, std=std_value)
 
         for mean_layer_node, std_layer_node in zip(l.mean, l.std):
-            self.assertTrue(
-                torch.allclose(mean_layer_node, torch.tensor(mean_value))
-            )
-            self.assertTrue(
-                torch.allclose(std_layer_node, torch.tensor(std_value))
-            )
+            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
+            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
 
         # ----- list parameter values -----
         mean_values = [0.17, -0.8, 0.53]
         std_values = [0.9, 1.34, 0.98]
-        l = GaussianLayer(
-            scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values
-        )
+        l = GaussianLayer(scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values)
 
-        for mean_layer_node, std_layer_node, mean_value, std_value in zip(
-            l.mean, l.std, mean_values, std_values
-        ):
-            self.assertTrue(
-                torch.allclose(mean_layer_node, torch.tensor(mean_value))
-            )
-            self.assertTrue(
-                torch.allclose(std_layer_node, torch.tensor(std_value))
-            )
+        for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
+            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
+            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
 
         # wrong number of values
         self.assertRaises(
@@ -118,15 +95,9 @@ class TestNode(unittest.TestCase):
             std=np.array(std_values),
         )
 
-        for mean_layer_node, std_layer_node, mean_value, std_value in zip(
-            l.mean, l.std, mean_values, std_values
-        ):
-            self.assertTrue(
-                torch.allclose(mean_layer_node, torch.tensor(mean_value))
-            )
-            self.assertTrue(
-                torch.allclose(std_layer_node, torch.tensor(std_value))
-            )
+        for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
+            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
+            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
 
         # wrong number of values
         self.assertRaises(
@@ -208,9 +179,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(
             GaussianLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Gaussian(0.0, 1.0)]
-                    ),
+                    FeatureContext(Scope([0]), [FeatureTypes.Gaussian(0.0, 1.0)]),
                     FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
                 ]
             )
@@ -227,11 +196,7 @@ class TestNode(unittest.TestCase):
         )
 
         # conditional scope
-        self.assertFalse(
-            GaussianLayer.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(GaussianLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -318,12 +283,8 @@ class TestNode(unittest.TestCase):
         # make sure AutoLeaf can return correctly instantiated object
         gaussian = AutoLeaf(
             [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Gaussian(mean=-1.0, std=1.5)]
-                ),
-                FeatureContext(
-                    Scope([1]), [FeatureTypes.Gaussian(mean=1.0, std=0.5)]
-                ),
+                FeatureContext(Scope([0]), [FeatureTypes.Gaussian(mean=-1.0, std=1.5)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Gaussian(mean=1.0, std=0.5)]),
             ]
         )
         self.assertTrue(isinstance(gaussian, GaussianLayer))
@@ -333,9 +294,7 @@ class TestNode(unittest.TestCase):
 
         # ---------- same scopes -----------
 
-        l = GaussianLayer(
-            scope=Scope([1]), mean=[0.73, -0.29], std=[0.41, 1.9], n_nodes=2
-        )
+        l = GaussianLayer(scope=Scope([1]), mean=[0.73, -0.29], std=[0.41, 1.9], n_nodes=2)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [1]) == None)
@@ -349,9 +308,7 @@ class TestNode(unittest.TestCase):
 
         # ---------- different scopes -----------
 
-        l = GaussianLayer(
-            scope=[Scope([1]), Scope([0])], mean=[0.73, -0.29], std=[0.41, 1.9]
-        )
+        l = GaussianLayer(scope=[Scope([1]), Scope([0])], mean=[0.73, -0.29], std=[0.41, 1.9])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
@@ -380,25 +337,19 @@ class TestNode(unittest.TestCase):
 
         mean_values = [0.73, -0.29, 0.5]
         std_values = [0.9, 1.34, 0.98]
-        l = GaussianLayer(
-            scope=Scope([1]), mean=mean_values, std=std_values, n_nodes=3
-        )
+        l = GaussianLayer(scope=Scope([1]), mean=mean_values, std=std_values, n_nodes=3)
 
         # ----- full dist -----
         dist = l.dist()
 
-        for mean_value, std_value, mean_dist, std_dist in zip(
-            mean_values, std_values, dist.loc, dist.scale
-        ):
+        for mean_value, std_value, mean_dist, std_dist in zip(mean_values, std_values, dist.loc, dist.scale):
             self.assertTrue(torch.allclose(torch.tensor(mean_value), mean_dist))
             self.assertTrue(torch.allclose(torch.tensor(std_value), std_dist))
 
         # ----- partial dist -----
         dist = l.dist([1, 2])
 
-        for mean_value, std_value, mean_dist, std_dist in zip(
-            mean_values[1:], std_values[1:], dist.loc, dist.scale
-        ):
+        for mean_value, std_value, mean_dist, std_dist in zip(mean_values[1:], std_values[1:], dist.loc, dist.scale):
             self.assertTrue(torch.allclose(torch.tensor(mean_value), mean_dist))
             self.assertTrue(torch.allclose(torch.tensor(std_value), std_dist))
 
@@ -423,12 +374,8 @@ class TestNode(unittest.TestCase):
         base_layer = toBase(torch_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(
-            np.allclose(base_layer.mean, torch_layer.mean.detach().numpy())
-        )
-        self.assertTrue(
-            np.allclose(base_layer.std, torch_layer.std.detach().numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.mean, torch_layer.mean.detach().numpy()))
+        self.assertTrue(np.allclose(base_layer.std, torch_layer.std.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
     def test_layer_backend_conversion_2(self):
@@ -441,12 +388,8 @@ class TestNode(unittest.TestCase):
         torch_layer = toTorch(base_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(
-            np.allclose(base_layer.mean, torch_layer.mean.detach().numpy())
-        )
-        self.assertTrue(
-            np.allclose(base_layer.std, torch_layer.std.detach().numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.mean, torch_layer.mean.detach().numpy()))
+        self.assertTrue(np.allclose(base_layer.std, torch_layer.std.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
 

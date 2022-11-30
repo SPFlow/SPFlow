@@ -1,9 +1,11 @@
+import unittest
+
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure.spn import CondSumNode, ProductNode, Gaussian
-from spflow.torch.inference import log_likelihood, likelihood
-import torch
-import unittest
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import CondSumNode, Gaussian, ProductNode
 
 
 def create_example_spn():
@@ -27,9 +29,7 @@ def create_example_spn():
                                 ]
                             ),
                         ],
-                        cond_f=lambda data: {
-                            "weights": torch.tensor([0.3, 0.7])
-                        },
+                        cond_f=lambda data: {"weights": torch.tensor([0.3, 0.7])},
                     ),
                 ],
             ),
@@ -66,9 +66,7 @@ class TestNode(unittest.TestCase):
         l_result = likelihood(dummy_spn, dummy_data)
         ll_result = log_likelihood(dummy_spn, dummy_data)
         self.assertTrue(torch.isclose(l_result[0][0], torch.tensor(0.023358)))
-        self.assertTrue(
-            torch.isclose(ll_result[0][0], torch.tensor(-3.7568156))
-        )
+        self.assertTrue(torch.isclose(ll_result[0][0], torch.tensor(-3.7568156)))
 
     def test_likelihood_marginalization(self):
         spn = create_example_spn()
@@ -86,9 +84,7 @@ class TestNode(unittest.TestCase):
         l_result = likelihood(spn, dummy_data)
         ll_result = log_likelihood(spn, dummy_data)
         self.assertTrue(torch.isclose(l_result[0][0], torch.tensor(0.09653235)))
-        self.assertTrue(
-            torch.isclose(ll_result[0][0], torch.tensor(-2.33787707))
-        )
+        self.assertTrue(torch.isclose(ll_result[0][0], torch.tensor(-2.33787707)))
 
     def test_sum_node_gradient_computation(self):
 

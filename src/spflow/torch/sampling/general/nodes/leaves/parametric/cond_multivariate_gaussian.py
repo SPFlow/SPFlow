@@ -1,5 +1,9 @@
 """Contains sampling methods for ``CondMultivariateGaussian`` nodes for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -12,9 +16,6 @@ from spflow.meta.dispatch.sampling_context import (
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
 )
-
-import torch
-from typing import Optional
 
 
 @dispatch  # type: ignore
@@ -90,20 +91,12 @@ def sample(
             ]
 
             if cov_tril is not None:
-                data[
-                    torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")
-                ] = (
-                    leaf.dist(mean=mean, cov_tril=cov_tril)
-                    .sample((sampling_ids.shape[0],))
-                    .squeeze(1)
+                data[torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")] = (
+                    leaf.dist(mean=mean, cov_tril=cov_tril).sample((sampling_ids.shape[0],)).squeeze(1)
                 )
             else:
-                data[
-                    torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")
-                ] = (
-                    leaf.dist(mean=mean, cov=cov)
-                    .sample((sampling_ids.shape[0],))
-                    .squeeze(1)
+                data[torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")] = (
+                    leaf.dist(mean=mean, cov=cov).sample((sampling_ids.shape[0],)).squeeze(1)
                 )
         # sample from conditioned distribution
         else:
@@ -114,31 +107,18 @@ def sample(
 
             # sample from full distribution
             if cov_tril is not None:
-                joint_samples = leaf.dist(mean=mean, cov_tril=cov_tril).sample(
-                    (sampling_ids.shape[0],)
-                )
+                joint_samples = leaf.dist(mean=mean, cov_tril=cov_tril).sample((sampling_ids.shape[0],))
             else:
-                joint_samples = leaf.dist(mean=mean, cov=cov).sample(
-                    (sampling_ids.shape[0],)
-                )
+                joint_samples = leaf.dist(mean=mean, cov=cov).sample((sampling_ids.shape[0],))
 
             # compute inverse of marginal covariance matrix of conditioning RVs
-            marg_cov_inv = torch.linalg.inv(
-                cov[torch.meshgrid(cond_rvs, cond_rvs, indexing="ij")]
-            )
+            marg_cov_inv = torch.linalg.inv(cov[torch.meshgrid(cond_rvs, cond_rvs, indexing="ij")])
 
             # get conditional covariance matrix
-            cond_cov = cov[
-                torch.meshgrid(cond_rvs, non_cond_rvs, indexing="ij")
-            ]
+            cond_cov = cov[torch.meshgrid(cond_rvs, non_cond_rvs, indexing="ij")]
 
-            data[
-                torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")
-            ] = joint_samples[:, nan_mask] + (
-                (
-                    data[torch.meshgrid(sampling_ids, cond_rvs, indexing="ij")]
-                    - joint_samples[:, ~nan_mask]
-                )
+            data[torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")] = joint_samples[:, nan_mask] + (
+                (data[torch.meshgrid(sampling_ids, cond_rvs, indexing="ij")] - joint_samples[:, ~nan_mask])
                 @ (marg_cov_inv @ cond_cov)
             )
 

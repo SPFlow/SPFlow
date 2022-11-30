@@ -1,12 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import Bernoulli
-from spflow.base.learning import (
-    maximum_likelihood_estimation,
-)
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.learning import maximum_likelihood_estimation
+from spflow.base.structure.spn import Bernoulli
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -135,18 +134,14 @@ class TestNode(unittest.TestCase):
     def test_mle_nan_strategy_ignore(self):
 
         leaf = Bernoulli(Scope([0]))
-        maximum_likelihood_estimation(
-            leaf, np.array([[np.nan], [1], [0], [1]]), nan_strategy="ignore"
-        )
+        maximum_likelihood_estimation(leaf, np.array([[np.nan], [1], [0], [1]]), nan_strategy="ignore")
         self.assertTrue(np.isclose(leaf.p, 2.0 / 3.0))
 
     def test_mle_nan_strategy_callable(self):
 
         leaf = Bernoulli(Scope([0]))
         # should not raise an issue
-        maximum_likelihood_estimation(
-            leaf, np.array([[1], [0], [1]]), nan_strategy=lambda x: x
-        )
+        maximum_likelihood_estimation(leaf, np.array([[1], [0], [1]]), nan_strategy=lambda x: x)
 
     def test_mle_nan_strategy_invalid(self):
 

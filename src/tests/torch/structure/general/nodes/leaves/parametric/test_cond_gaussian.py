@@ -1,24 +1,24 @@
-from spflow.meta.data import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.meta.dispatch.dispatch_context import DispatchContext
+import random
+import unittest
+from typing import Callable
+
+import numpy as np
+import torch
+
 from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian as BaseCondGaussian,
 )
+from spflow.meta.data import Scope
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
     toBase,
     toTorch,
 )
 from spflow.torch.structure.spn.nodes.sum_node import marginalize
-from typing import Callable
-
-import torch
-import numpy as np
-
-import random
-import unittest
 
 
 class TestGaussian(unittest.TestCase):
@@ -26,9 +26,7 @@ class TestGaussian(unittest.TestCase):
 
         gaussian = CondGaussian(Scope([0], [1]))
         self.assertTrue(gaussian.cond_f is None)
-        gaussian = CondGaussian(
-            Scope([0], [1]), lambda x: {"mean": 0.0, "std": 1.0}
-        )
+        gaussian = CondGaussian(Scope([0], [1]), lambda x: {"mean": 0.0, "std": 1.0})
         self.assertTrue(isinstance(gaussian.cond_f, Callable))
 
         # invalid scopes
@@ -81,9 +79,7 @@ class TestGaussian(unittest.TestCase):
         )
 
         # std = 0 and std < 0
-        gaussian.set_cond_f(
-            lambda data: {"mean": torch.tensor(0.0), "std": torch.tensor(0.0)}
-        )
+        gaussian.set_cond_f(lambda data: {"mean": torch.tensor(0.0), "std": torch.tensor(0.0)})
         self.assertRaises(
             Exception,
             gaussian.retrieve_params,
@@ -132,43 +128,19 @@ class TestGaussian(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            CondGaussian.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertTrue(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # Gaussian feature type class
-        self.assertTrue(
-            CondGaussian.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])]
-            )
-        )
+        self.assertTrue(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])]))
 
         # Gaussian feature type instance
-        self.assertTrue(
-            CondGaussian.accepts(
-                [
-                    FeatureContext(
-                        Scope([0], [1]), [FeatureTypes.Gaussian(0.0, 1.0)]
-                    )
-                ]
-            )
-        )
+        self.assertTrue(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian(0.0, 1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            CondGaussian.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # non-conditional scope
-        self.assertFalse(
-            CondGaussian.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondGaussian.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -184,19 +156,9 @@ class TestGaussian(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        CondGaussian.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-        )
-        CondGaussian.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])]
-        )
-        CondGaussian.from_signatures(
-            [
-                FeatureContext(
-                    Scope([0], [1]), [FeatureTypes.Gaussian(-1.0, 1.5)]
-                )
-            ]
-        )
+        CondGaussian.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])])
+        CondGaussian.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])])
+        CondGaussian.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian(-1.0, 1.5)])])
 
         # ----- invalid arguments -----
 
@@ -234,15 +196,11 @@ class TestGaussian(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondGaussian,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        gaussian = AutoLeaf(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])]
-        )
+        gaussian = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])])
         self.assertTrue(isinstance(gaussian, CondGaussian))
 
     def test_structural_marginalization(self):
@@ -261,17 +219,9 @@ class TestGaussian(unittest.TestCase):
         node_gaussian = BaseCondGaussian(Scope([0], [1]))
 
         # check conversion from torch to python
-        self.assertTrue(
-            np.all(
-                torch_gaussian.scopes_out == toBase(torch_gaussian).scopes_out
-            )
-        )
+        self.assertTrue(np.all(torch_gaussian.scopes_out == toBase(torch_gaussian).scopes_out))
         # check conversion from python to torch
-        self.assertTrue(
-            np.all(
-                node_gaussian.scopes_out == toTorch(node_gaussian).scopes_out
-            )
-        )
+        self.assertTrue(np.all(node_gaussian.scopes_out == toTorch(node_gaussian).scopes_out))
 
 
 if __name__ == "__main__":

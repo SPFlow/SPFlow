@@ -1,14 +1,15 @@
 """Contains Hypergeometric leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple, List
-import numpy as np
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from typing import List, Tuple
 
+import numpy as np
 from scipy.stats import hypergeom  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
+
+from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.scope import Scope
 
 
 class Hypergeometric(LeafNode):
@@ -50,13 +51,9 @@ class Hypergeometric(LeafNode):
                 Integer specifying the number of draws, greater of equal to zero and less than or equal to N.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'Hypergeometric' should be 1, but was: {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'Hypergeometric' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
         self.set_params(N, M, n)
@@ -79,11 +76,7 @@ class Hypergeometric(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a discrete Hypergeometric distribution
@@ -94,9 +87,7 @@ class Hypergeometric(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "Hypergeometric":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "Hypergeometric":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -106,9 +97,7 @@ class Hypergeometric(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Hypergeometric' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'Hypergeometric' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -145,31 +134,23 @@ class Hypergeometric(LeafNode):
                 Integer specifying the number of draws, greater of equal to zero and less than or equal to N.
         """
         if N < 0 or not np.isfinite(N):
-            raise ValueError(
-                f"Value of 'N' for 'Hypergeometric' must be greater of equal to 0, but was: {N}"
-            )
+            raise ValueError(f"Value of 'N' for 'Hypergeometric' must be greater of equal to 0, but was: {N}")
         if not (np.remainder(N, 1.0) == 0.0):
-            raise ValueError(
-                f"Value of 'N' for 'Hypergeometric' must be (equal to) an integer value, but was: {N}"
-            )
+            raise ValueError(f"Value of 'N' for 'Hypergeometric' must be (equal to) an integer value, but was: {N}")
 
         if M < 0 or M > N or not np.isfinite(M):
             raise ValueError(
                 f"Value of 'M' for 'Hypergeometric' must be greater of equal to 0 and less or equal to N, but was: {M}"
             )
         if not (np.remainder(M, 1.0) == 0.0):
-            raise ValueError(
-                f"Value of 'M' for 'Hypergeometric' must be (equal to) an integer value, but was: {M}"
-            )
+            raise ValueError(f"Value of 'M' for 'Hypergeometric' must be (equal to) an integer value, but was: {M}")
 
         if n < 0 or n > N or not np.isfinite(n):
             raise ValueError(
                 f"Value of 'n' for 'Hypergeometric' must be greater of equal to 0 and less or equal to N, but was: {n}"
             )
         if not (np.remainder(n, 1.0) == 0.0):
-            raise ValueError(
-                f"Value of 'n' for 'Hypergeometric' must be (equal to) an integer value, but was: {n}"
-            )
+            raise ValueError(f"Value of 'n' for 'Hypergeometric' must be (equal to) an integer value, but was: {n}")
 
         self.N = N
         self.M = M
@@ -183,9 +164,7 @@ class Hypergeometric(LeafNode):
         """
         return self.N, self.M, self.n
 
-    def check_support(
-        self, data: np.ndarray, is_scope_data: bool = False
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, is_scope_data: bool = False) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Hypergeometric distribution, which is:
@@ -233,13 +212,11 @@ class Hypergeometric(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= (
-            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
-        )
+        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
 
         # check if values are in valid range
-        valid[valid & ~nan_mask] &= (
-            scope_data[valid & ~nan_mask] >= max(0, self.n + self.M - self.N)
-        ) & (scope_data[valid & ~nan_mask] <= min(self.n, self.M))
+        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= max(0, self.n + self.M - self.N)) & (
+            scope_data[valid & ~nan_mask] <= min(self.n, self.M)
+        )
 
         return valid

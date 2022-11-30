@@ -1,24 +1,23 @@
 """Contains Multivariate Gaussian leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Type
+from typing import Iterable, List, Optional, Tuple, Type, Union
+
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
+from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussian,
+)
+from spflow.base.structure.module import Module
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
-)
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureType, FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.module import Module
-from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
-    MultivariateGaussian,
-)
-from spflow.base.structure.general.nodes.leaves.parametric.gaussian import (
-    Gaussian,
 )
 
 
@@ -54,12 +53,8 @@ class MultivariateGaussianLayer(Module):
     def __init__(
         self,
         scope: Union[Scope, List[Scope]],
-        mean: Optional[
-            Union[List[float], List[List[float]], List[np.ndarray]]
-        ] = None,
-        cov: Optional[
-            Union[List[List[float]], List[List[List[float]]], List[np.ndarray]]
-        ] = None,
+        mean: Optional[Union[List[float], List[List[float]], List[np.ndarray]]] = None,
+        cov: Optional[Union[List[List[float]], List[List[List[float]]], List[np.ndarray]]] = None,
         n_nodes: int = 1,
         **kwargs,
     ) -> None:
@@ -92,9 +87,7 @@ class MultivariateGaussianLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'MultivariateGaussianLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'MultivariateGaussianLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -149,9 +142,7 @@ class MultivariateGaussianLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "MultivariateGaussianLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "MultivariateGaussianLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -171,9 +162,7 @@ class MultivariateGaussianLayer(Module):
 
         for feature_ctx in signatures:
 
-            mean, cov = np.zeros(len(feature_ctx.scope.query)), np.eye(
-                len(feature_ctx.scope.query)
-            )
+            mean, cov = np.zeros(len(feature_ctx.scope.query)), np.eye(len(feature_ctx.scope.query))
 
             for i, domain in enumerate(feature_ctx.get_domains()):
                 # read or initialize parameters
@@ -198,9 +187,7 @@ class MultivariateGaussianLayer(Module):
 
     def set_params(
         self,
-        mean: Optional[
-            Union[List[float], np.ndarray, List[List[float]], List[np.ndarray]]
-        ] = None,
+        mean: Optional[Union[List[float], np.ndarray, List[List[float]], List[np.ndarray]]] = None,
         cov: Optional[
             Union[
                 List[List[float]],
@@ -229,10 +216,7 @@ class MultivariateGaussianLayer(Module):
                 mean = [np.array(mean) for _ in range(self.n_out)]
             # can also be a list of different means
             else:
-                mean = [
-                    m if isinstance(m, np.ndarray) else np.array(m)
-                    for m in mean
-                ]
+                mean = [m if isinstance(m, np.ndarray) else np.array(m) for m in mean]
         elif isinstance(mean, np.ndarray):
             # can be a one-dimensional numpy array specifying single mean (broadcast to all nodes)
             if mean.ndim == 1:
@@ -241,24 +225,15 @@ class MultivariateGaussianLayer(Module):
             else:
                 mean = [m for m in mean]
         else:
-            raise ValueError(
-                f"Specified 'mean' for 'MultivariateGaussianLayer' is of unknown type {type(mean)}."
-            )
+            raise ValueError(f"Specified 'mean' for 'MultivariateGaussianLayer' is of unknown type {type(mean)}.")
 
         if isinstance(cov, list):
             # can be a list of lists of values specifying a single cov (broadcast to all nodes)
-            if all(
-                [
-                    all([isinstance(c, float) or isinstance(c, int) for c in l])
-                    for l in cov
-                ]
-            ):
+            if all([all([isinstance(c, float) or isinstance(c, int) for c in l]) for l in cov]):
                 cov = [np.array(cov) for _ in range(self.n_out)]
             # can also be a list of different covs
             else:
-                cov = [
-                    c if isinstance(c, np.ndarray) else np.array(c) for c in cov
-                ]
+                cov = [c if isinstance(c, np.ndarray) else np.array(c) for c in cov]
         elif isinstance(cov, np.ndarray):
             # can be a two-dimensional numpy array specifying single cov (broadcast to all nodes)
             if cov.ndim == 2:
@@ -267,9 +242,7 @@ class MultivariateGaussianLayer(Module):
             else:
                 cov = [c for c in cov]
         else:
-            raise ValueError(
-                f"Specified 'cov' for 'MultivariateGaussianLayer' is of unknown type {type(cov)}."
-            )
+            raise ValueError(f"Specified 'cov' for 'MultivariateGaussianLayer' is of unknown type {type(cov)}.")
 
         if len(mean) != self.n_out:
             raise ValueError(
@@ -326,9 +299,7 @@ class MultivariateGaussianLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Multivariate Gaussian distributions, which are:
@@ -355,9 +326,7 @@ class MultivariateGaussianLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -408,7 +377,5 @@ def marginalize(
     elif len(marg_scopes) == 1 and prune:
         return marg_nodes.pop()
     else:
-        new_layer = MultivariateGaussianLayer(
-            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
-        )
+        new_layer = MultivariateGaussianLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer

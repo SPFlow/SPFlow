@@ -1,32 +1,28 @@
 """Contains Poisson leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple
 from functools import reduce
+from typing import Iterable, List, Optional, Tuple, Union
+
 import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
 
+from spflow.base.structure.general.layers.leaves.parametric.poisson import (
+    PoissonLayer as BasePoissonLayer,
+)
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.utils.projections import (
-    proj_bounded_to_real,
-    proj_real_to_bounded,
-)
+from spflow.torch.structure.general.nodes.leaves.parametric.poisson import Poisson
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.general.nodes.leaves.parametric.poisson import (
-    Poisson,
-)
-from spflow.base.structure.general.layers.leaves.parametric.poisson import (
-    PoissonLayer as BasePoissonLayer,
-)
+from spflow.torch.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
 class PoissonLayer(Module):
@@ -74,9 +70,7 @@ class PoissonLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(
-                    f"Number of nodes for 'PoissonLayer' must be greater or equal to 1, but was {n_nodes}"
-                )
+                raise ValueError(f"Number of nodes for 'PoissonLayer' must be greater or equal to 1, but was {n_nodes}")
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
@@ -90,9 +84,7 @@ class PoissonLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) != 0:
-                raise ValueError(
-                    f"Evidence scope for 'PoissonLayer' should be empty, but was {s.evidence}."
-                )
+                raise ValueError(f"Evidence scope for 'PoissonLayer' should be empty, but was {s.evidence}.")
 
         super().__init__(children=[], **kwargs)
 
@@ -101,9 +93,7 @@ class PoissonLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         # parse weights
         self.set_params(l)
@@ -128,9 +118,7 @@ class PoissonLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "PoissonLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "PoissonLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -140,9 +128,7 @@ class PoissonLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'PoissonLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'PoissonLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         l = []
         scopes = []
@@ -195,9 +181,7 @@ class PoissonLayer(Module):
 
         return D.Poisson(rate=self.l[node_ids])
 
-    def set_params(
-        self, l: Union[int, float, List[float], np.ndarray, torch.Tensor]
-    ) -> None:
+    def set_params(self, l: Union[int, float, List[float], np.ndarray, torch.Tensor]) -> None:
         """Sets the parameters for the represented distributions in the ``base`` backend.
 
         Args:
@@ -226,9 +210,7 @@ class PoissonLayer(Module):
             )
 
         if torch.any(l < 0) or not torch.any(torch.isfinite(l)):
-            raise ValueError(
-                f"Values for 'l' of 'PoissonLayer' must to greater of equal to 0, but was: {l}"
-            )
+            raise ValueError(f"Values for 'l' of 'PoissonLayer' must to greater of equal to 0, but was: {l}")
 
         self.l_aux.data = proj_bounded_to_real(l, lb=0.0)
 
@@ -281,9 +263,7 @@ class PoissonLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(node_ids).support.check(scope_data)  # type: ignore
@@ -349,15 +329,11 @@ def marginalize(
         node_id = marginalized_node_ids.pop()
         return Poisson(scope=marginalized_scopes[0], l=layer.l[node_id].item())
     else:
-        return PoissonLayer(
-            scope=marginalized_scopes, l=layer.l[marginalized_node_ids].detach()
-        )
+        return PoissonLayer(scope=marginalized_scopes, l=layer.l[marginalized_node_ids].detach())
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    layer: BasePoissonLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> PoissonLayer:
+def toTorch(layer: BasePoissonLayer, dispatch_ctx: Optional[DispatchContext] = None) -> PoissonLayer:
     """Conversion for ``PoissonLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -371,9 +347,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    layer: PoissonLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BasePoissonLayer:
+def toBase(layer: PoissonLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BasePoissonLayer:
     """Conversion for ``PoissonLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:

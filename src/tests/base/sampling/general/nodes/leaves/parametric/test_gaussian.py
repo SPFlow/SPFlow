@@ -1,11 +1,12 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext
-from spflow.base.structure.spn import Gaussian
-from spflow.base.sampling import sample
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import Gaussian
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
 
 
 class TestGaussian(unittest.TestCase):
@@ -21,9 +22,7 @@ class TestGaussian(unittest.TestCase):
 
         samples = sample(gaussian, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(np.isnan(samples) == np.array([[False], [True], [False]]))
-        )
+        self.assertTrue(all(np.isnan(samples) == np.array([[False], [True], [False]])))
 
         # ----- verify samples -----
         samples = sample(gaussian, 1000)

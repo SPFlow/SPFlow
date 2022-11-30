@@ -1,13 +1,10 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.base.structure import AutoLeaf
-from spflow.base.structure.spn import (
-    Gaussian,
-    MultivariateGaussian,
-    marginalize,
-)
+import unittest
 
 import numpy as np
-import unittest
+
+from spflow.base.structure import AutoLeaf
+from spflow.base.structure.spn import Gaussian, MultivariateGaussian, marginalize
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestMultivariateGaussian(unittest.TestCase):
@@ -56,12 +53,8 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         # covariance matrix of wrong shape
         M = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-        self.assertRaises(
-            Exception, MultivariateGaussian, Scope([0, 1]), np.zeros(2), M
-        )
-        self.assertRaises(
-            Exception, MultivariateGaussian, Scope([0, 1]), np.zeros(2), M.T
-        )
+        self.assertRaises(Exception, MultivariateGaussian, Scope([0, 1]), np.zeros(2), M)
+        self.assertRaises(Exception, MultivariateGaussian, Scope([0, 1]), np.zeros(2), M.T)
         self.assertRaises(
             Exception,
             MultivariateGaussian,
@@ -240,14 +233,8 @@ class TestMultivariateGaussian(unittest.TestCase):
                 )
             ]
         )
-        self.assertTrue(
-            np.all(multivariate_gaussian.mean == np.array([-1.0, 1.0]))
-        )
-        self.assertTrue(
-            np.all(
-                multivariate_gaussian.cov == np.array([[1.5, 0.0], [0.0, 0.5]])
-            )
-        )
+        self.assertTrue(np.all(multivariate_gaussian.mean == np.array([-1.0, 1.0])))
+        self.assertTrue(np.all(multivariate_gaussian.cov == np.array([[1.5, 0.0], [0.0, 0.5]])))
 
         # ----- invalid arguments -----
 
@@ -306,29 +293,15 @@ class TestMultivariateGaussian(unittest.TestCase):
             ]
         )
         self.assertTrue(isinstance(multivariate_gaussian, MultivariateGaussian))
-        self.assertTrue(
-            np.all(multivariate_gaussian.mean == np.array([-1.0, 1.0]))
-        )
-        self.assertTrue(
-            np.all(
-                multivariate_gaussian.cov == np.array([[1.5, 0.0], [0.0, 0.5]])
-            )
-        )
+        self.assertTrue(np.all(multivariate_gaussian.mean == np.array([-1.0, 1.0])))
+        self.assertTrue(np.all(multivariate_gaussian.cov == np.array([[1.5, 0.0], [0.0, 0.5]])))
 
     def test_structural_marginalization(self):
 
-        multivariate_gaussian = MultivariateGaussian(
-            Scope([0, 1]), [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]]
-        )
+        multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
 
-        self.assertTrue(
-            isinstance(
-                marginalize(multivariate_gaussian, [2]), MultivariateGaussian
-            )
-        )
-        self.assertTrue(
-            isinstance(marginalize(multivariate_gaussian, [1]), Gaussian)
-        )
+        self.assertTrue(isinstance(marginalize(multivariate_gaussian, [2]), MultivariateGaussian))
+        self.assertTrue(isinstance(marginalize(multivariate_gaussian, [1]), Gaussian))
         self.assertTrue(marginalize(multivariate_gaussian, [0, 1]) is None)
 
 

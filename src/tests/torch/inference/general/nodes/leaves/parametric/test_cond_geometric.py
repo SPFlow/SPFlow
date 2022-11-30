@@ -1,14 +1,15 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
-from spflow.base.structure.spn import CondGeometric as BaseCondGeometric
-from spflow.base.inference import log_likelihood
-from spflow.torch.structure.spn import CondGeometric
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import CondGeometric as BaseCondGeometric
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import CondGeometric
 
 
 class TestGeometric(unittest.TestCase):
@@ -77,12 +78,8 @@ class TestGeometric(unittest.TestCase):
 
         p = random.random()
 
-        torch_geometric = CondGeometric(
-            Scope([0], [1]), cond_f=lambda data: {"p": p}
-        )
-        node_geometric = BaseCondGeometric(
-            Scope([0], [1]), cond_f=lambda data: {"p": p}
-        )
+        torch_geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": p})
+        node_geometric = BaseCondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": p})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, 10, (3, 1))
@@ -91,17 +88,13 @@ class TestGeometric(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_geometric, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
         p = torch.tensor(random.random(), requires_grad=True)
 
-        torch_geometric = CondGeometric(
-            Scope([0], [1]), cond_f=lambda data: {"p": p}
-        )
+        torch_geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": p})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(1, 10, (3, 1))
@@ -118,9 +111,7 @@ class TestGeometric(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        geometric = CondGeometric(
-            Scope([0], [1]), cond_f=lambda data: {"p": 0.5}
-        )
+        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1
@@ -132,9 +123,7 @@ class TestGeometric(unittest.TestCase):
 
         # Support for Geometric distribution: integers N\{0}
 
-        geometric = CondGeometric(
-            Scope([0], [1]), cond_f=lambda data: {"p": 0.5}
-        )
+        geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 0.5})
 
         # check infinite values
         self.assertRaises(
@@ -151,9 +140,7 @@ class TestGeometric(unittest.TestCase):
         )
 
         # valid integers, but outside valid range
-        self.assertRaises(
-            ValueError, log_likelihood, geometric, torch.tensor([[0.0]])
-        )
+        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[0.0]]))
 
         # valid integers within valid range
         data = torch.tensor([[1], [10]])
@@ -169,21 +156,15 @@ class TestGeometric(unittest.TestCase):
             ValueError,
             log_likelihood,
             geometric,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             geometric,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]),
         )
-        self.assertRaises(
-            ValueError, log_likelihood, geometric, torch.tensor([[1.5]])
-        )
+        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[1.5]]))
 
 
 if __name__ == "__main__":
