@@ -25,9 +25,28 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[dev]
       - name: Lint with flake8
+        run: flake8 src/
+
+  format-check:
+    name: "format-check"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip' # caching pip dependencies
+          cache-dependency-path: |
+            **/setup.cfg
+      - name: Install library and dependencies
         run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 src/
+          python -m pip install --upgrade pip
+          pip install .[dev]
+      - name: Checking imports with isort
+        run: isort --check-only --color --diff src/
+      - name: Checking formatting with black
+        run: black --check --diff src/
 
   tests:
     name: ${{ matrix.python-version }}
