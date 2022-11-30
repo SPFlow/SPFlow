@@ -17,12 +17,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]))
 
         # ---- different scopes -----
         l = CondGammaLayer(scope=Scope([1], [0]), n_nodes=3)
@@ -30,9 +25,7 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, CondGammaLayer, Scope([0], [1]), n_nodes=0
-        )
+        self.assertRaises(ValueError, CondGammaLayer, Scope([0], [1]), n_nodes=0)
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondGammaLayer, Scope([]), n_nodes=3)
@@ -72,9 +65,7 @@ class TestLayer(unittest.TestCase):
             cond_f=lambda data: {"alpha": alpha_value, "beta": beta_value},
         )
 
-        for alpha_node, beta_node in zip(
-            *l.retrieve_params(np.array([[1.0]]), DispatchContext())
-        ):
+        for alpha_node, beta_node in zip(*l.retrieve_params(np.array([[1.0]]), DispatchContext())):
             self.assertTrue(alpha_node == alpha_value)
             self.assertTrue(beta_node == beta_value)
 
@@ -84,26 +75,16 @@ class TestLayer(unittest.TestCase):
         l.set_cond_f(lambda data: {"alpha": alpha_values, "beta": beta_values})
 
         for alpha_actual, beta_actual, alpha_node, beta_node in zip(
-            alpha_values,
-            beta_values,
-            *l.retrieve_params(np.array([[1.0]]), DispatchContext())
+            alpha_values, beta_values, *l.retrieve_params(np.array([[1.0]]), DispatchContext())
         ):
             self.assertTrue(alpha_actual == alpha_node)
             self.assertTrue(beta_actual == beta_node)
 
         # wrong number of values
-        l.set_cond_f(
-            lambda data: {"alpha": alpha_values[:-1], "beta": beta_values}
-        )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
-        l.set_cond_f(
-            lambda data: {"alpha": alpha_values, "beta": beta_values[:-1]}
-        )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        l.set_cond_f(lambda data: {"alpha": alpha_values[:-1], "beta": beta_values})
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
+        l.set_cond_f(lambda data: {"alpha": alpha_values, "beta": beta_values[:-1]})
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(
@@ -112,18 +93,14 @@ class TestLayer(unittest.TestCase):
                 "beta": beta_values,
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
         l.set_cond_f(
             lambda data: {
                 "alpha": alpha_values,
                 "beta": [beta_values for _ in range(3)],
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # ----- numpy parameter values -----
         l.set_cond_f(
@@ -133,9 +110,7 @@ class TestLayer(unittest.TestCase):
             }
         )
         for alpha_actual, beta_actual, alpha_node, beta_node in zip(
-            alpha_values,
-            beta_values,
-            *l.retrieve_params(np.array([[1.0]]), DispatchContext())
+            alpha_values, beta_values, *l.retrieve_params(np.array([[1.0]]), DispatchContext())
         ):
             self.assertTrue(alpha_node == alpha_actual)
             self.assertTrue(beta_node == beta_actual)
@@ -147,18 +122,14 @@ class TestLayer(unittest.TestCase):
                 "beta": np.array(beta_values),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
         l.set_cond_f(
             lambda data: {
                 "alpha": np.array(alpha_values),
                 "beta": np.array(beta_values[:-1]),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(
@@ -167,18 +138,14 @@ class TestLayer(unittest.TestCase):
                 "beta": np.array(beta_values),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
         l.set_cond_f(
             lambda data: {
                 "alpha": np.array(alpha_values),
                 "beta": np.array([beta_values for _ in range(3)]),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
     def test_accept(self):
 
@@ -206,9 +173,7 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(
             CondGammaLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0], [2]), [FeatureTypes.Gamma(1.0, 1.0)]
-                    ),
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Gamma(1.0, 1.0)]),
                     FeatureContext(Scope([1], [2]), [FeatureTypes.Continuous]),
                 ]
             )
@@ -225,11 +190,7 @@ class TestLayer(unittest.TestCase):
         )
 
         # non-conditional scope
-        self.assertFalse(
-            CondGammaLayer.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondGammaLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -316,12 +277,8 @@ class TestLayer(unittest.TestCase):
         # make sure AutoLeaf can return correctly instantiated object
         gamma = AutoLeaf(
             [
-                FeatureContext(
-                    Scope([0], [2]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)]
-                ),
-                FeatureContext(
-                    Scope([1], [2]), [FeatureTypes.Gamma(alpha=0.5, beta=1.5)]
-                ),
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Gamma(alpha=0.5, beta=1.5)]),
             ]
         )
         self.assertTrue(gamma.scopes_out == [Scope([0], [2]), Scope([1], [2])])

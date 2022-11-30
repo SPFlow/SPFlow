@@ -58,9 +58,7 @@ def log_likelihood(
     )
 
     # set placeholder values
-    partition_layer.set_placeholders(
-        "log_likelihood", child_lls, dispatch_ctx, overwrite=False
-    )
+    partition_layer.set_placeholders("log_likelihood", child_lls, dispatch_ctx, overwrite=False)
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
     return np.concatenate(

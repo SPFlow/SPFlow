@@ -93,17 +93,11 @@ class TestGeometric(unittest.TestCase):
         geometric = Geometric(Scope([0]), 0.5)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, geometric, np.array([[np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, geometric, np.array([[-np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, geometric, np.array([[np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, geometric, np.array([[-np.inf]]))
 
         # valid integers, but outside valid range
-        self.assertRaises(
-            ValueError, log_likelihood, geometric, np.array([[0.0]])
-        )
+        self.assertRaises(ValueError, log_likelihood, geometric, np.array([[0.0]]))
 
         # valid integers within valid range
         data = np.array([[1], [10]])
@@ -127,9 +121,7 @@ class TestGeometric(unittest.TestCase):
             geometric,
             np.array([[np.nextafter(1.0, 2.0)]]),
         )
-        self.assertRaises(
-            ValueError, log_likelihood, geometric, np.array([[1.5]])
-        )
+        self.assertRaises(ValueError, log_likelihood, geometric, np.array([[1.5]]))
 
 
 if __name__ == "__main__":

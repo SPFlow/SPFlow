@@ -39,27 +39,21 @@ class TestMultivariateGaussian(unittest.TestCase):
         multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1], [2]))
 
         # mean contains inf and mean contains nan
-        multivariate_gaussian.set_cond_f(
-            lambda data: {"mean": np.array([0.0, np.inf]), "cov": np.eye(2)}
-        )
+        multivariate_gaussian.set_cond_f(lambda data: {"mean": np.array([0.0, np.inf]), "cov": np.eye(2)})
         self.assertRaises(
             ValueError,
             multivariate_gaussian.retrieve_params,
             np.array([[1.0, 1.0]]),
             DispatchContext(),
         )
-        multivariate_gaussian.set_cond_f(
-            lambda data: {"mean": np.array([-np.inf, 0.0]), "cov": np.eye(2)}
-        )
+        multivariate_gaussian.set_cond_f(lambda data: {"mean": np.array([-np.inf, 0.0]), "cov": np.eye(2)})
         self.assertRaises(
             ValueError,
             multivariate_gaussian.retrieve_params,
             np.array([[1.0, 1.0]]),
             DispatchContext(),
         )
-        multivariate_gaussian.set_cond_f(
-            lambda data: {"mean": np.array([0.0, np.nan]), "cov": np.eye(2)}
-        )
+        multivariate_gaussian.set_cond_f(lambda data: {"mean": np.array([0.0, np.nan]), "cov": np.eye(2)})
         self.assertRaises(
             ValueError,
             multivariate_gaussian.retrieve_params,
@@ -68,27 +62,21 @@ class TestMultivariateGaussian(unittest.TestCase):
         )
 
         # mean vector of wrong shape
-        multivariate_gaussian.set_cond_f(
-            lambda data: {"mean": np.zeros(3), "cov": np.eye(2)}
-        )
+        multivariate_gaussian.set_cond_f(lambda data: {"mean": np.zeros(3), "cov": np.eye(2)})
         self.assertRaises(
             ValueError,
             multivariate_gaussian.retrieve_params,
             np.array([[1.0, 1.0]]),
             DispatchContext(),
         )
-        multivariate_gaussian.set_cond_f(
-            lambda data: {"mean": np.zeros((1, 1, 2)), "cov": np.eye(2)}
-        )
+        multivariate_gaussian.set_cond_f(lambda data: {"mean": np.zeros((1, 1, 2)), "cov": np.eye(2)})
         self.assertRaises(
             ValueError,
             multivariate_gaussian.retrieve_params,
             np.array([[1.0, 1.0]]),
             DispatchContext(),
         )
-        multivariate_gaussian.set_cond_f(
-            lambda data: {"mean": np.array([0.0, np.nan]), "cov": np.eye(2)}
-        )
+        multivariate_gaussian.set_cond_f(lambda data: {"mean": np.array([0.0, np.nan]), "cov": np.eye(2)})
         self.assertRaises(
             ValueError,
             multivariate_gaussian.retrieve_params,
@@ -97,27 +85,21 @@ class TestMultivariateGaussian(unittest.TestCase):
         )
         # covariance matrix of wrong shape
         M = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-        multivariate_gaussian.set_cond_f(
-            lambda data: {"mean": np.zeros(2), "cov": M}
-        )
+        multivariate_gaussian.set_cond_f(lambda data: {"mean": np.zeros(2), "cov": M})
         self.assertRaises(
             ValueError,
             multivariate_gaussian.retrieve_params,
             np.array([[1.0, 1.0]]),
             DispatchContext(),
         )
-        multivariate_gaussian.set_cond_f(
-            lambda data: {"mean": np.zeros(2), "cov": M.T}
-        )
+        multivariate_gaussian.set_cond_f(lambda data: {"mean": np.zeros(2), "cov": M.T})
         self.assertRaises(
             ValueError,
             multivariate_gaussian.retrieve_params,
             np.array([[1.0, 1.0]]),
             DispatchContext(),
         )
-        multivariate_gaussian.set_cond_f(
-            lambda data: {"mean": np.zeros(2), "cov": np.eye(3)}
-        )
+        multivariate_gaussian.set_cond_f(lambda data: {"mean": np.zeros(2), "cov": np.eye(3)})
         self.assertRaises(
             ValueError,
             multivariate_gaussian.retrieve_params,
@@ -125,9 +107,7 @@ class TestMultivariateGaussian(unittest.TestCase):
             DispatchContext(),
         )
         # covariance matrix not symmetric positive semi-definite
-        multivariate_gaussian.set_cond_f(
-            lambda data: {"mean": np.zeros(2), "cov": -np.eye(2)}
-        )
+        multivariate_gaussian.set_cond_f(lambda data: {"mean": np.zeros(2), "cov": -np.eye(2)})
         self.assertRaises(
             ValueError,
             multivariate_gaussian.retrieve_params,
@@ -335,9 +315,7 @@ class TestMultivariateGaussian(unittest.TestCase):
                 )
             ]
         )
-        self.assertTrue(
-            isinstance(multivariate_gaussian, CondMultivariateGaussian)
-        )
+        self.assertTrue(isinstance(multivariate_gaussian, CondMultivariateGaussian))
 
     def test_structural_marginalization(self):
 
@@ -349,9 +327,7 @@ class TestMultivariateGaussian(unittest.TestCase):
                 CondMultivariateGaussian,
             )
         )
-        self.assertTrue(
-            isinstance(marginalize(multivariate_gaussian, [1]), CondGaussian)
-        )
+        self.assertTrue(isinstance(marginalize(multivariate_gaussian, [1]), CondGaussian))
         self.assertTrue(marginalize(multivariate_gaussian, [0, 1]) is None)
 
 

@@ -76,19 +76,11 @@ class TestGamma(unittest.TestCase):
 
     def test_inference(self):
 
-        alpha = torch.tensor(
-            random.randint(1, 5), dtype=torch.get_default_dtype()
-        )
-        beta = torch.tensor(
-            random.randint(1, 5), dtype=torch.get_default_dtype()
-        )
+        alpha = torch.tensor(random.randint(1, 5), dtype=torch.get_default_dtype())
+        beta = torch.tensor(random.randint(1, 5), dtype=torch.get_default_dtype())
 
-        torch_gamma = CondGamma(
-            Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta}
-        )
-        node_gamma = BaseCondGamma(
-            Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta}
-        )
+        torch_gamma = CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta})
+        node_gamma = BaseCondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta})
 
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)
@@ -97,9 +89,7 @@ class TestGamma(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_gamma, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
@@ -114,9 +104,7 @@ class TestGamma(unittest.TestCase):
             requires_grad=True,
         )
 
-        torch_gamma = CondGamma(
-            Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta}
-        )
+        torch_gamma = CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta})
 
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)
@@ -134,9 +122,7 @@ class TestGamma(unittest.TestCase):
 
     def test_marginalization(self):
 
-        gamma = CondGamma(
-            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
-        )
+        gamma = CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0})
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1
@@ -152,32 +138,22 @@ class TestGamma(unittest.TestCase):
         #   likelihood:     x=0 -> POS_EPS (?)
         #   log-likelihood: x=0 -> POS_EPS (?)
 
-        gamma = CondGamma(
-            Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0}
-        )
+        gamma = CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": 1.0, "beta": 1.0})
 
         # TODO: 0
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, gamma, torch.tensor([[-float("inf")]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, gamma, torch.tensor([[float("inf")]])
-        )
+        self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[-float("inf")]]))
+        self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[float("inf")]]))
 
         # check finite values > 0
         log_likelihood(
             gamma,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
         )
         log_likelihood(gamma, torch.tensor([[10.5]]))
 
-        data = torch.tensor(
-            [[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
-        )
+        data = torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]])
 
         probs = likelihood(gamma, data)
         log_probs = log_likelihood(gamma, data)
@@ -188,9 +164,7 @@ class TestGamma(unittest.TestCase):
         # check invalid float values (outside range)
         if version.parse(torch.__version__) < version.parse("1.12.0"):
             # edge case 0
-            self.assertRaises(
-                ValueError, log_likelihood, gamma, torch.tensor([[0.0]])
-            )
+            self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[0.0]]))
         else:
             # edge case 0
             log_likelihood(gamma, torch.tensor([[0.0]]))
@@ -199,9 +173,7 @@ class TestGamma(unittest.TestCase):
             ValueError,
             log_likelihood,
             gamma,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
         )
 
 

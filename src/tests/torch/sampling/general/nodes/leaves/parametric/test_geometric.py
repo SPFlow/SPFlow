@@ -34,9 +34,7 @@ class TestGeometric(unittest.TestCase):
 
         samples = sample(geometric, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
         self.assertTrue(all(samples[~samples.isnan()] == 1.0))
 
     def test_sampling_2(self):
@@ -51,9 +49,7 @@ class TestGeometric(unittest.TestCase):
         geometric = Geometric(Scope([0]), 0.5)
 
         samples = sample(geometric, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(1.0 / 0.5), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0 / 0.5), rtol=0.1))
 
     def test_sampling_3(self):
 
@@ -67,9 +63,7 @@ class TestGeometric(unittest.TestCase):
         geometric = Geometric(Scope([0]), 0.8)
 
         samples = sample(geometric, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(1.0 / 0.8), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0 / 0.8), rtol=0.1))
 
 
 if __name__ == "__main__":

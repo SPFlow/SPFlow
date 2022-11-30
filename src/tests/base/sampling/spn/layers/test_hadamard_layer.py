@@ -48,18 +48,12 @@ class TestNode(unittest.TestCase):
             weights=[0.3, 0.7],
         )
 
-        expected_mean = 0.3 * np.array([3.0, 1.0, 10.0]) + 0.7 * np.array(
-            [1.0, -5.0, 10.0]
-        )
+        expected_mean = 0.3 * np.array([3.0, 1.0, 10.0]) + 0.7 * np.array([1.0, -5.0, 10.0])
 
         layer_samples = sample(layer_spn, 10000)
         nodes_samples = sample(nodes_spn, 10000)
 
-        self.assertTrue(
-            np.allclose(
-                nodes_samples.mean(axis=0), expected_mean, atol=0.01, rtol=0.1
-            )
-        )
+        self.assertTrue(np.allclose(nodes_samples.mean(axis=0), expected_mean, atol=0.01, rtol=0.1))
         self.assertTrue(
             np.allclose(
                 layer_samples.mean(axis=0),

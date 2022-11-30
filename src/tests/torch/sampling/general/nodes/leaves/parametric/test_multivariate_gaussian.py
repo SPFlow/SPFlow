@@ -90,27 +90,18 @@ class TestMultivariateGaussian(unittest.TestCase):
             cov_est = torch.cov(data[i * 10000 : (i + 1) * 10000, ~cond_mask].T)
 
             # compute analytical mean and covariance matrix for conditioned distribution
-            marg_cov_inv = torch.linalg.inv(
-                cov[torch.meshgrid(cond_rvs, cond_rvs, indexing="ij")]
-            )
-            cond_cov = cov[
-                torch.meshgrid(cond_rvs, non_cond_rvs, indexing="ij")
-            ]
+            marg_cov_inv = torch.linalg.inv(cov[torch.meshgrid(cond_rvs, cond_rvs, indexing="ij")])
+            cond_cov = cov[torch.meshgrid(cond_rvs, non_cond_rvs, indexing="ij")]
 
             mean_exact = mean[0, ~cond_mask] + (
-                (data[i * 10000, cond_mask] - mean[:, cond_mask])
-                @ (marg_cov_inv @ cond_cov)
+                (data[i * 10000, cond_mask] - mean[:, cond_mask]) @ (marg_cov_inv @ cond_cov)
             )
-            cov_exact = cov[
-                torch.meshgrid(non_cond_rvs, non_cond_rvs, indexing="ij")
-            ] - (cond_cov.T @ marg_cov_inv @ cond_cov)
+            cov_exact = cov[torch.meshgrid(non_cond_rvs, non_cond_rvs, indexing="ij")] - (
+                cond_cov.T @ marg_cov_inv @ cond_cov
+            )
 
-            self.assertTrue(
-                torch.allclose(mean_exact, mean_est, atol=0.01, rtol=0.1)
-            )
-            self.assertTrue(
-                torch.allclose(cov_exact, cov_est, atol=0.01, rtol=0.1)
-            )
+            self.assertTrue(torch.allclose(mean_exact, mean_est, atol=0.01, rtol=0.1))
+            self.assertTrue(torch.allclose(cov_exact, cov_est, atol=0.01, rtol=0.1))
 
 
 if __name__ == "__main__":

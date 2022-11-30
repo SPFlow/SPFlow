@@ -65,13 +65,9 @@ def cca(
         y = y.reshape(-1, 1)
 
     if x.ndim != 2:
-        raise ValueError(
-            f"Observations for 'x' must be either one- or two-dimensional, but was {x.ndim}-dimensional."
-        )
+        raise ValueError(f"Observations for 'x' must be either one- or two-dimensional, but was {x.ndim}-dimensional.")
     if y.ndim != 2:
-        raise ValueError(
-            f"Observations for 'y' must be either one- or two-dimensional, but was {y.ndim}-dimensional."
-        )
+        raise ValueError(f"Observations for 'y' must be either one- or two-dimensional, but was {y.ndim}-dimensional.")
 
     if x.shape[0] != y.shape[0]:
         raise ValueError(
@@ -90,9 +86,7 @@ def cca(
     rank_upper_bound = min(n_samples, n_features_x, n_features_y)
 
     if n_components < 1 or n_components > rank_upper_bound:
-        raise ValueError(
-            f"Invalid number of components {n_components} for 'cca'."
-        )
+        raise ValueError(f"Invalid number of components {n_components} for 'cca'.")
 
     # standardize data
     if center:
@@ -150,12 +144,8 @@ def cca(
         y -= torch.outer(y_s, y_l)
 
     # compute transformation matrices
-    x_rotations = torch.matmul(
-        x_weights, torch.matmul(x_loadings.T, x_weights).pinverse()
-    )
-    y_rotations = torch.matmul(
-        y_weights, torch.matmul(y_loadings.T, y_weights).pinverse()
-    )
+    x_rotations = torch.matmul(x_weights, torch.matmul(x_loadings.T, x_weights).pinverse())
+    y_rotations = torch.matmul(y_weights, torch.matmul(y_loadings.T, y_weights).pinverse())
 
     return (
         x_rotations,

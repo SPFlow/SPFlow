@@ -23,12 +23,8 @@ class TestNode(unittest.TestCase):
         # perform MLE
         maximum_likelihood_estimation(leaf, data, bias_correction=True)
 
-        self.assertTrue(
-            np.isclose(leaf.alpha, np.array(0.3), atol=1e-3, rtol=1e-2)
-        )
-        self.assertTrue(
-            np.isclose(leaf.beta, np.array(1.7), atol=1e-3, rtol=1e-2)
-        )
+        self.assertTrue(np.isclose(leaf.alpha, np.array(0.3), atol=1e-3, rtol=1e-2))
+        self.assertTrue(np.isclose(leaf.beta, np.array(1.7), atol=1e-3, rtol=1e-2))
 
     def test_mle_2(self):
 
@@ -44,12 +40,8 @@ class TestNode(unittest.TestCase):
         # perform MLE
         maximum_likelihood_estimation(leaf, data, bias_correction=True)
 
-        self.assertTrue(
-            np.isclose(leaf.alpha, np.array(1.9), atol=1e-2, rtol=1e-2)
-        )
-        self.assertTrue(
-            np.isclose(leaf.beta, np.array(0.7), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(np.isclose(leaf.alpha, np.array(1.9), atol=1e-2, rtol=1e-2))
+        self.assertTrue(np.isclose(leaf.beta, np.array(0.7), atol=1e-2, rtol=1e-2))
 
     def test_mle_only_nans(self):
 
@@ -125,9 +117,7 @@ class TestNode(unittest.TestCase):
 
         leaf = Gamma(Scope([0]))
         # should not raise an issue
-        maximum_likelihood_estimation(
-            leaf, np.array([[0.5], [1]]), nan_strategy=lambda x: x
-        )
+        maximum_likelihood_estimation(leaf, np.array([[0.5], [1]]), nan_strategy=lambda x: x)
 
     def test_mle_nan_strategy_invalid(self):
 

@@ -19,9 +19,7 @@ class TestLogNormal(unittest.TestCase):
 
         log_normal = CondLogNormal(Scope([0], [1]))
         self.assertTrue(log_normal.cond_f is None)
-        log_normal = CondLogNormal(
-            Scope([0], [1]), cond_f=lambda x: {"mean": 0.0, "std": 1.0}
-        )
+        log_normal = CondLogNormal(Scope([0], [1]), cond_f=lambda x: {"mean": 0.0, "std": 1.0})
         self.assertTrue(isinstance(log_normal.cond_f, Callable))
 
         # invalid scopes
@@ -66,9 +64,7 @@ class TestLogNormal(unittest.TestCase):
             np.array([[1.0]]),
             DispatchContext(),
         )
-        log_normal.set_cond_f(
-            lambda data: {"mean": 0.0, "std": np.nextafter(0.0, -1.0)}
-        )
+        log_normal.set_cond_f(lambda data: {"mean": 0.0, "std": np.nextafter(0.0, -1.0)})
         self.assertRaises(
             ValueError,
             log_normal.retrieve_params,
@@ -102,43 +98,19 @@ class TestLogNormal(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            CondLogNormal.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertTrue(CondLogNormal.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # LogNormal feature type class
-        self.assertTrue(
-            CondLogNormal.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])]
-            )
-        )
+        self.assertTrue(CondLogNormal.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])]))
 
         # LogNormal feature type instance
-        self.assertTrue(
-            CondLogNormal.accepts(
-                [
-                    FeatureContext(
-                        Scope([0], [1]), [FeatureTypes.LogNormal(0.0, 1.0)]
-                    )
-                ]
-            )
-        )
+        self.assertTrue(CondLogNormal.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal(0.0, 1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            CondLogNormal.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondLogNormal.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # non-conditional scope
-        self.assertFalse(
-            CondLogNormal.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondLogNormal.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -154,19 +126,9 @@ class TestLogNormal(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        CondLogNormal.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-        )
-        CondLogNormal.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])]
-        )
-        CondLogNormal.from_signatures(
-            [
-                FeatureContext(
-                    Scope([0], [1]), [FeatureTypes.LogNormal(-1.0, 1.5)]
-                )
-            ]
-        )
+        CondLogNormal.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])])
+        CondLogNormal.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])])
+        CondLogNormal.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal(-1.0, 1.5)])])
 
         # ----- invalid arguments -----
 
@@ -204,15 +166,11 @@ class TestLogNormal(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondLogNormal,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        log_normal = AutoLeaf(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])]
-        )
+        log_normal = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])])
         self.assertTrue(isinstance(log_normal, CondLogNormal))
 
     def test_structural_marginalization(self):

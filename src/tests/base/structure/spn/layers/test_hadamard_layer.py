@@ -33,16 +33,9 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([0, 1, 2, 3, 4]) for _ in range(len(l.nodes))]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([0, 1, 2, 3, 4]) for _ in range(len(l.nodes))]))
         # make sure order of nodes is correct (important)
-        for indices, node in zip(
-            [[0, 1, 4, 5], [0, 2, 4, 6], [0, 3, 4, 7]], l.nodes
-        ):
+        for indices, node in zip([[0, 1, 4, 5], [0, 2, 4, 6], [0, 3, 4, 7]], l.nodes):
             self.assertTrue(node.children[0].input_ids == indices)
 
         # only one partition
@@ -58,9 +51,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1, 3]) for _ in range(len(l.nodes))])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1, 3]) for _ in range(len(l.nodes))]))
         # make sure order of nodes is correct (important)
         for indices, node in zip([[0], [1], [2]], l.nodes):
             self.assertTrue(node.children[0].input_ids == indices)

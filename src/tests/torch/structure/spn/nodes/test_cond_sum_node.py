@@ -111,9 +111,7 @@ class TestTorchNode(unittest.TestCase):
 
     def test_backend_conversion_2(self):
 
-        s_base = BaseCondSumNode(
-            [BaseGaussian(Scope([0])), BaseGaussian(Scope([0]))]
-        )
+        s_base = BaseCondSumNode([BaseGaussian(Scope([0])), BaseGaussian(Scope([0]))])
         s_torch = toTorch(s_base)
 
         self.assertTrue(np.all(s_torch.scopes_out == s_base.scopes_out))

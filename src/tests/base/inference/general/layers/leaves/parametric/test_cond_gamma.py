@@ -11,9 +11,7 @@ from spflow.meta.dispatch import DispatchContext
 class TestNode(unittest.TestCase):
     def test_likelihood_no_alpha(self):
 
-        gamma = CondGammaLayer(
-            Scope([0], [1]), cond_f=lambda data: {"beta": [1.0, 1.0]}, n_nodes=2
-        )
+        gamma = CondGammaLayer(Scope([0], [1]), cond_f=lambda data: {"beta": [1.0, 1.0]}, n_nodes=2)
         self.assertRaises(KeyError, log_likelihood, gamma, np.array([[0], [1]]))
 
     def test_likelihood_no_beta(self):
@@ -28,9 +26,7 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_alpha_beta(self):
 
         gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
-        self.assertRaises(
-            ValueError, log_likelihood, gamma, np.array([[0], [1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, gamma, np.array([[0], [1]]))
 
     def test_likelihood_module_cond_f(self):
 
@@ -40,9 +36,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = np.array([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
-        targets = np.array(
-            [[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]]
-        )
+        targets = np.array([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
 
         probs = likelihood(gamma, data)
         log_probs = log_likelihood(gamma, data)
@@ -59,9 +53,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = np.array([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
-        targets = np.array(
-            [[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]]
-        )
+        targets = np.array([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
 
         probs = likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
@@ -80,9 +72,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = np.array([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
-        targets = np.array(
-            [[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]]
-        )
+        targets = np.array([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
 
         probs = likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
@@ -100,20 +90,14 @@ class TestNode(unittest.TestCase):
         s1 = SumNode(children=[gamma_layer], weights=[0.3, 0.7])
 
         gamma_nodes = [
-            CondGamma(
-                Scope([0], [1]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
-            ),
-            CondGamma(
-                Scope([0], [1]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
-            ),
+            CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}),
+            CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}),
         ]
         s2 = SumNode(children=gamma_nodes, weights=[0.3, 0.7])
 
         data = np.array([[0.5], [1.5], [0.3]])
 
-        self.assertTrue(
-            np.all(log_likelihood(s1, data) == log_likelihood(s2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(s1, data) == log_likelihood(s2, data)))
 
     def test_layer_likelihood_2(self):
 
@@ -124,20 +108,14 @@ class TestNode(unittest.TestCase):
         p1 = ProductNode(children=[gamma_layer])
 
         gamma_nodes = [
-            CondGamma(
-                Scope([0], [2]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}
-            ),
-            CondGamma(
-                Scope([1], [2]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}
-            ),
+            CondGamma(Scope([0], [2]), cond_f=lambda data: {"alpha": 0.8, "beta": 1.3}),
+            CondGamma(Scope([1], [2]), cond_f=lambda data: {"alpha": 0.3, "beta": 0.4}),
         ]
         p2 = ProductNode(children=gamma_nodes)
 
         data = np.array([[0.5, 1.6], [0.1, 0.3], [0.47, 0.7]])
 
-        self.assertTrue(
-            np.all(log_likelihood(p1, data) == log_likelihood(p2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(p1, data) == log_likelihood(p2, data)))
 
 
 if __name__ == "__main__":

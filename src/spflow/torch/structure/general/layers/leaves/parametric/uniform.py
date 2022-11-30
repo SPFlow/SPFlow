@@ -52,9 +52,7 @@ class UniformLayer(Module):
         scope: Union[Scope, List[Scope]],
         start: Union[int, float, List[float], np.ndarray, torch.Tensor],
         end: Union[int, float, List[float], np.ndarray, torch.Tensor],
-        support_outside: Union[
-            bool, List[bool], np.ndarray, torch.Tensor
-        ] = True,
+        support_outside: Union[bool, List[bool], np.ndarray, torch.Tensor] = True,
         n_nodes: int = 1,
         **kwargs,
     ) -> None:
@@ -76,9 +74,7 @@ class UniformLayer(Module):
         """
         if isinstance(scope, Scope):
             if n_nodes < 1:
-                raise ValueError(
-                    f"Number of nodes for 'UniformLayer' must be greater or equal to 1, but was {n_nodes}"
-                )
+                raise ValueError(f"Number of nodes for 'UniformLayer' must be greater or equal to 1, but was {n_nodes}")
 
             scope = [scope for _ in range(n_nodes)]
             self._n_out = n_nodes
@@ -92,9 +88,7 @@ class UniformLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) != 0:
-                raise ValueError(
-                    f"Evidence scope for 'UniformLayer' should be empty, but was {s.evidence}."
-                )
+                raise ValueError(f"Evidence scope for 'UniformLayer' should be empty, but was {s.evidence}.")
 
         super().__init__(children=[], **kwargs)
 
@@ -106,9 +100,7 @@ class UniformLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         # parse weights
         self.set_params(start, end, support_outside)
@@ -133,9 +125,7 @@ class UniformLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "UniformLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "UniformLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -145,9 +135,7 @@ class UniformLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'UniformLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'UniformLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         start = []
         end = []
@@ -213,9 +201,7 @@ class UniformLayer(Module):
             )
 
         if not torch.any(torch.isfinite(start)):
-            raise ValueError(
-                f"Values of 'start' for 'UniformLayer' must be finite, but was: {start}"
-            )
+            raise ValueError(f"Values of 'start' for 'UniformLayer' must be finite, but was: {start}")
 
         if isinstance(end, int) or isinstance(end, float):
             end = torch.tensor([end for _ in range(self.n_out)])
@@ -231,9 +217,7 @@ class UniformLayer(Module):
             )
 
         if not torch.any(torch.isfinite(end)):
-            raise ValueError(
-                f"Value of 'end' for 'UniformLayer' must be finite, but was: {end}"
-            )
+            raise ValueError(f"Value of 'end' for 'UniformLayer' must be finite, but was: {end}")
 
         if not torch.all(start < end):
             raise ValueError(
@@ -241,12 +225,8 @@ class UniformLayer(Module):
             )
 
         if isinstance(support_outside, bool):
-            support_outside = torch.tensor(
-                [support_outside for _ in range(self.n_out)]
-            )
-        elif isinstance(support_outside, list) or isinstance(
-            support_outside, np.ndarray
-        ):
+            support_outside = torch.tensor([support_outside for _ in range(self.n_out)])
+        elif isinstance(support_outside, list) or isinstance(support_outside, np.ndarray):
             support_outside = torch.tensor(support_outside)
         if support_outside.ndim != 1:
             raise ValueError(
@@ -324,9 +304,7 @@ class UniformLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # torch distribution support is an interval, despite representing a distribution over a half-open interval
         # end is adjusted to the next largest number to make sure that desired end is part of the distribution interval
@@ -334,9 +312,7 @@ class UniformLayer(Module):
         valid = torch.ones(scope_data.shape, dtype=torch.bool)
 
         # check if values are within valid range
-        valid &= (scope_data >= self.start[torch.tensor(node_ids)]) & (
-            scope_data < self.end[torch.tensor(node_ids)]
-        )
+        valid &= (scope_data >= self.start[torch.tensor(node_ids)]) & (scope_data < self.end[torch.tensor(node_ids)])
         valid |= self.support_outside[torch.tensor(node_ids)]
 
         # nan entries (regarded as valid)
@@ -407,16 +383,12 @@ def marginalize(
             scope=marginalized_scopes,
             start=layer.start[marginalized_node_ids].detach(),
             end=layer.end[marginalized_node_ids].detach(),
-            support_outside=layer.support_outside[
-                marginalized_node_ids
-            ].detach(),
+            support_outside=layer.support_outside[marginalized_node_ids].detach(),
         )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    layer: BaseUniformLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> UniformLayer:
+def toTorch(layer: BaseUniformLayer, dispatch_ctx: Optional[DispatchContext] = None) -> UniformLayer:
     """Conversion for ``UniformLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -435,9 +407,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    layer: UniformLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseUniformLayer:
+def toBase(layer: UniformLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BaseUniformLayer:
     """Conversion for ``UniformLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:

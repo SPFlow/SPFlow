@@ -148,12 +148,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            Scope(random_variables), depth=2, replicas=1
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(Scope(random_variables), depth=2, replicas=1)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         self.assertRaises(
             ValueError,
@@ -196,9 +192,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=2, replicas=1)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -208,9 +202,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 4)
         self.assertEqual(n_product_nodes, 6)
         self.assertEqual(n_leaf_nodes, 7)
@@ -220,9 +212,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=3, replicas=1)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -232,9 +222,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 7)
         self.assertEqual(n_product_nodes, 6)
         self.assertEqual(n_leaf_nodes, 7)
@@ -244,9 +232,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=3, replicas=2)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -256,9 +242,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=2,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 23)
         self.assertEqual(n_product_nodes, 48)
         self.assertEqual(n_leaf_nodes, 28)
@@ -268,9 +252,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=3, replicas=3)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -280,9 +262,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=3,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 49)
         self.assertEqual(n_product_nodes, 162)
         self.assertEqual(n_leaf_nodes, 63)
@@ -291,12 +271,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=2, replicas=1, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=2, replicas=1, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -306,9 +282,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 3)
         self.assertEqual(n_product_nodes, 4)
         self.assertEqual(n_leaf_nodes, 7)
@@ -317,12 +291,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(9))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=3, replicas=1, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=3, replicas=1, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -332,9 +302,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 5)
         self.assertEqual(n_product_nodes, 4)
         self.assertEqual(n_leaf_nodes, 9)
@@ -343,12 +311,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=2, replicas=2, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=2, replicas=2, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -358,9 +322,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=2,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 7)
         self.assertEqual(n_product_nodes, 40)
         self.assertEqual(n_leaf_nodes, 28)
@@ -369,12 +331,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(20))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=3, replicas=3, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=3, replicas=3, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -384,9 +342,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=2,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 49)
         self.assertEqual(n_product_nodes, 267)
         self.assertEqual(n_leaf_nodes, 120)
@@ -396,9 +352,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables, [7])  # conditional scope
         region_graph = random_region_graph(scope, depth=2, replicas=1)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,

@@ -33,9 +33,7 @@ class TestNode(unittest.TestCase):
         s1 = SumNode(children=[multivariate_gaussian_layer], weights=[0.3, 0.7])
 
         multivariate_gaussian_nodes = [
-            MultivariateGaussian(
-                Scope([0, 1]), mean=[0.8, 0.3], cov=[[0.13, 0.08], [0.08, 0.05]]
-            ),
+            MultivariateGaussian(Scope([0, 1]), mean=[0.8, 0.3], cov=[[0.13, 0.08], [0.08, 0.05]]),
             MultivariateGaussian(
                 Scope([0, 1]),
                 mean=[0.2, -0.1],
@@ -72,9 +70,7 @@ class TestNode(unittest.TestCase):
         p1 = ProductNode(children=[multivariate_gaussian_layer])
 
         multivariate_gaussian_nodes = [
-            MultivariateGaussian(
-                Scope([0, 1]), mean=[0.8, 0.3], cov=[[0.13, 0.08], [0.08, 0.05]]
-            ),
+            MultivariateGaussian(Scope([0, 1]), mean=[0.8, 0.3], cov=[[0.13, 0.08], [0.08, 0.05]]),
             MultivariateGaussian(
                 Scope([2, 3]),
                 mean=[0.2, -0.1],

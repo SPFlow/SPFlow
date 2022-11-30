@@ -43,23 +43,17 @@ class ProductLayer(NestedModule):
             ValueError: Invalid arguments.
         """
         if n_nodes < 1:
-            raise ValueError(
-                "Number of nodes for 'ProductLayer' must be greater of equal to 1."
-            )
+            raise ValueError("Number of nodes for 'ProductLayer' must be greater of equal to 1.")
 
         self._n_out = n_nodes
 
         if len(children) == 0:
-            raise ValueError(
-                "'ProductLayer' requires at least one child to be specified."
-            )
+            raise ValueError("'ProductLayer' requires at least one child to be specified.")
 
         super().__init__(children=children, **kwargs)
 
         # create input placeholder
-        ph = self.create_placeholder(
-            list(range(sum(child.n_out for child in self.children)))
-        )
+        ph = self.create_placeholder(list(range(sum(child.n_out for child in self.children))))
         # create prodcut nodes
         self.nodes = [ProductNode(children=[ph]) for _ in range(n_nodes)]
 
@@ -124,9 +118,7 @@ def marginalize(
 
         # marginalize child modules
         for child in layer.children:
-            marg_child = marginalize(
-                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
-            )
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:

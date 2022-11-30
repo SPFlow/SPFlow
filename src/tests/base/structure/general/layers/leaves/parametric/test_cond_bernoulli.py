@@ -17,12 +17,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]))
 
         # ---- different scopes -----
         l = CondBernoulliLayer(scope=Scope([1], [0]), n_nodes=3)
@@ -30,9 +25,7 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, CondBernoulliLayer, Scope([0], [1]), n_nodes=0
-        )
+        self.assertRaises(ValueError, CondBernoulliLayer, Scope([0], [1]), n_nodes=0)
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondBernoulliLayer, Scope([]), n_nodes=3)
@@ -40,9 +33,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
-        l = CondBernoulliLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3
-        )
+        l = CondBernoulliLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
 
@@ -64,9 +55,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- float/int parameter values -----
         p_value = 0.13
-        l = CondBernoulliLayer(
-            scope=Scope([1], [2]), n_nodes=3, cond_f=lambda data: {"p": p_value}
-        )
+        l = CondBernoulliLayer(scope=Scope([1], [2]), n_nodes=3, cond_f=lambda data: {"p": p_value})
 
         for p in l.retrieve_params(np.array([[1.0]]), DispatchContext()):
             self.assertTrue(p == p_value)
@@ -75,41 +64,29 @@ class TestLayer(unittest.TestCase):
         p_values = [0.17, 0.8, 0.53]
         l.set_cond_f(lambda data: {"p": p_values})
 
-        for p_node, p_actual in zip(
-            l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values
-        ):
+        for p_node, p_actual in zip(l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values):
             self.assertTrue(p_node == p_actual)
 
         # wrong number of values
         l.set_cond_f(lambda data: {"p": p_values[:-1]})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(lambda data: {"p": [p_values for _ in range(3)]})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # ----- numpy parameter values -----
         l.set_cond_f(lambda data: {"p": np.array(p_values)})
-        for p_node, p_actual in zip(
-            l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values
-        ):
+        for p_node, p_actual in zip(l.retrieve_params(np.array([[1.0]]), DispatchContext()), p_values):
             self.assertTrue(p_node == p_actual)
 
         # wrong number of values
         l.set_cond_f(lambda data: {"p": np.array(p_values[:-1])})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(lambda data: {"p": np.array([p_values for _ in range(3)])})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
     def test_accept(self):
 
@@ -137,12 +114,8 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(
             CondBernoulliLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0], [2]), [FeatureTypes.Bernoulli(0.5)]
-                    ),
-                    FeatureContext(
-                        Scope([1], [3]), [FeatureTypes.Bernoulli(0.5)]
-                    ),
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Bernoulli(0.5)]),
+                    FeatureContext(Scope([1], [3]), [FeatureTypes.Bernoulli(0.5)]),
                 ]
             )
         )
@@ -158,11 +131,7 @@ class TestLayer(unittest.TestCase):
         )
 
         # non-conditional scope
-        self.assertFalse(
-            CondBernoulliLayer.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondBernoulliLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # multivariate signature
         self.assertFalse(
@@ -184,9 +153,7 @@ class TestLayer(unittest.TestCase):
                 FeatureContext(Scope([1], [3]), [FeatureTypes.Discrete]),
             ]
         )
-        self.assertTrue(
-            bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])]
-        )
+        self.assertTrue(bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])])
 
         bernoulli = CondBernoulliLayer.from_signatures(
             [
@@ -194,23 +161,15 @@ class TestLayer(unittest.TestCase):
                 FeatureContext(Scope([1], [3]), [FeatureTypes.Bernoulli]),
             ]
         )
-        self.assertTrue(
-            bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])]
-        )
+        self.assertTrue(bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])])
 
         bernoulli = CondBernoulliLayer.from_signatures(
             [
-                FeatureContext(
-                    Scope([0], [2]), [FeatureTypes.Bernoulli(p=0.75)]
-                ),
-                FeatureContext(
-                    Scope([1], [3]), [FeatureTypes.Bernoulli(p=0.25)]
-                ),
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Bernoulli(p=0.75)]),
+                FeatureContext(Scope([1], [3]), [FeatureTypes.Bernoulli(p=0.25)]),
             ]
         )
-        self.assertTrue(
-            bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])]
-        )
+        self.assertTrue(bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])])
 
         # ----- invalid arguments -----
 
@@ -259,17 +218,11 @@ class TestLayer(unittest.TestCase):
         # make sure AutoLeaf can return correctly instantiated object
         bernoulli = AutoLeaf(
             [
-                FeatureContext(
-                    Scope([0], [2]), [FeatureTypes.Bernoulli(p=0.75)]
-                ),
-                FeatureContext(
-                    Scope([1], [3]), [FeatureTypes.Bernoulli(p=0.25)]
-                ),
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Bernoulli(p=0.75)]),
+                FeatureContext(Scope([1], [3]), [FeatureTypes.Bernoulli(p=0.25)]),
             ]
         )
-        self.assertTrue(
-            bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])]
-        )
+        self.assertTrue(bernoulli.scopes_out == [Scope([0], [2]), Scope([1], [3])])
 
     def test_layer_structural_marginalization(self):
 

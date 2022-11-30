@@ -96,15 +96,11 @@ class CondMultivariateGaussianLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondMultivariateGaussianLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondMultivariateGaussianLayer' was empty.")
 
             self._n_out = len(scope)
 
-        super().__init__(
-            children=[], **kwargs
-        )
+        super().__init__(children=[], **kwargs)
 
         # create leaf nodes
         self.nodes = [CondMultivariateGaussian(s) for s in scope]
@@ -139,9 +135,7 @@ class CondMultivariateGaussianLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondMultivariateGaussianLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondMultivariateGaussianLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -176,9 +170,7 @@ class CondMultivariateGaussianLayer(Module):
 
         return CondMultivariateGaussianLayer(scopes)
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -276,10 +268,7 @@ class CondMultivariateGaussianLayer(Module):
                 mean = [np.array(mean) for _ in range(self.n_out)]
             # can also be a list of different means
             else:
-                mean = [
-                    m if isinstance(m, np.ndarray) else np.array(m)
-                    for m in mean
-                ]
+                mean = [m if isinstance(m, np.ndarray) else np.array(m) for m in mean]
         elif isinstance(mean, np.ndarray):
             # can be a one-dimensional numpy array specifying single mean (broadcast to all nodes)
             if mean.ndim == 1:
@@ -288,24 +277,15 @@ class CondMultivariateGaussianLayer(Module):
             else:
                 mean = [m for m in mean]
         else:
-            raise ValueError(
-                f"Specified 'mean' for 'CondMultivariateGaussianLayer' is of unknown type {type(mean)}."
-            )
+            raise ValueError(f"Specified 'mean' for 'CondMultivariateGaussianLayer' is of unknown type {type(mean)}.")
 
         if isinstance(cov, list):
             # can be a list of lists of values specifying a single cov (broadcast to all nodes)
-            if all(
-                [
-                    all([isinstance(c, float) or isinstance(c, int) for c in l])
-                    for l in cov
-                ]
-            ):
+            if all([all([isinstance(c, float) or isinstance(c, int) for c in l]) for l in cov]):
                 cov = [np.array(cov) for _ in range(self.n_out)]
             # can also be a list of different covs
             else:
-                cov = [
-                    c if isinstance(c, np.ndarray) else np.array(c) for c in cov
-                ]
+                cov = [c if isinstance(c, np.ndarray) else np.array(c) for c in cov]
         elif isinstance(cov, np.ndarray):
             # can be a two-dimensional numpy array specifying single cov (broadcast to all nodes)
             if cov.ndim == 2:
@@ -314,9 +294,7 @@ class CondMultivariateGaussianLayer(Module):
             else:
                 cov = [c for c in cov]
         else:
-            raise ValueError(
-                f"Specified 'cov' for 'CondMultivariateGaussianLayer' is of unknown type {type(cov)}."
-            )
+            raise ValueError(f"Specified 'cov' for 'CondMultivariateGaussianLayer' is of unknown type {type(cov)}.")
 
         if len(mean) != self.n_out:
             raise ValueError(
@@ -373,9 +351,7 @@ class CondMultivariateGaussianLayer(Module):
 
         return [self.nodes[i].dist(mean[i], cov[i]) for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Multivariate Gaussian distributions, which are:
@@ -402,9 +378,7 @@ class CondMultivariateGaussianLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -413,9 +387,7 @@ def marginalize(
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[
-    CondMultivariateGaussianLayer, CondMultivariateGaussian, CondGaussian, None
-]:
+) -> Union[CondMultivariateGaussianLayer, CondMultivariateGaussian, CondGaussian, None]:
     r"""Structural marginalization for ``CondMultivariateGaussianLayer`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.

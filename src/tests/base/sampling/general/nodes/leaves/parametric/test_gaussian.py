@@ -22,9 +22,7 @@ class TestGaussian(unittest.TestCase):
 
         samples = sample(gaussian, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(np.isnan(samples) == np.array([[False], [True], [False]]))
-        )
+        self.assertTrue(all(np.isnan(samples) == np.array([[False], [True], [False]])))
 
         # ----- verify samples -----
         samples = sample(gaussian, 1000)

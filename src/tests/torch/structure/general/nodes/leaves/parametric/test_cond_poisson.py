@@ -42,16 +42,9 @@ class TestPoisson(unittest.TestCase):
 
         # l = 0
         poisson.set_cond_f(lambda data: {"l": torch.tensor(0.0)})
-        self.assertTrue(
-            poisson.retrieve_params(np.array([[1.0]]), DispatchContext())
-            == torch.tensor(0.0)
-        )
+        self.assertTrue(poisson.retrieve_params(np.array([[1.0]]), DispatchContext()) == torch.tensor(0.0))
         # l > 0
-        poisson.set_cond_f(
-            lambda data: {
-                "l": torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))
-            }
-        )
+        poisson.set_cond_f(lambda data: {"l": torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))})
         self.assertTrue(
             poisson.retrieve_params(np.array([[1.0]]), DispatchContext())
             == torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))
@@ -84,39 +77,19 @@ class TestPoisson(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            CondPoisson.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertTrue(CondPoisson.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # Poisson feature type class
-        self.assertTrue(
-            CondPoisson.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])]
-            )
-        )
+        self.assertTrue(CondPoisson.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])]))
 
         # Poisson feature type instance
-        self.assertTrue(
-            CondPoisson.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(1.0)])]
-            )
-        )
+        self.assertTrue(CondPoisson.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            CondPoisson.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondPoisson.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # non-conditional scope
-        self.assertFalse(
-            CondPoisson.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondPoisson.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # multivariate signature
         self.assertFalse(
@@ -132,15 +105,9 @@ class TestPoisson(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        poisson = CondPoisson.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-        )
-        poisson = CondPoisson.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])]
-        )
-        poisson = CondPoisson.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(l=1.5)])]
-        )
+        poisson = CondPoisson.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])])
+        poisson = CondPoisson.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])])
+        poisson = CondPoisson.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(l=1.5)])])
 
         # ----- invalid arguments -----
 
@@ -178,15 +145,11 @@ class TestPoisson(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondPoisson,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        poisson = AutoLeaf(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(l=1.5)])]
-        )
+        poisson = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(l=1.5)])])
         self.assertTrue(isinstance(poisson, CondPoisson))
 
     def test_structural_marginalization(self):
@@ -202,13 +165,9 @@ class TestPoisson(unittest.TestCase):
         node_poisson = BaseCondPoisson(Scope([0], [1]))
 
         # check conversion from torch to python
-        self.assertTrue(
-            np.all(torch_poisson.scopes_out == toBase(torch_poisson).scopes_out)
-        )
+        self.assertTrue(np.all(torch_poisson.scopes_out == toBase(torch_poisson).scopes_out))
         # check conversion from python to torch
-        self.assertTrue(
-            np.all(node_poisson.scopes_out == toTorch(node_poisson).scopes_out)
-        )
+        self.assertTrue(np.all(node_poisson.scopes_out == toTorch(node_poisson).scopes_out))
 
 
 if __name__ == "__main__":

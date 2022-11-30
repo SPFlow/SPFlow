@@ -17,23 +17,17 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_p(self):
 
         geometric = CondGeometricLayer(Scope([0], [1]), n_nodes=2)
-        self.assertRaises(
-            ValueError, log_likelihood, geometric, np.array([[0], [1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, geometric, np.array([[0], [1]]))
 
     def test_likelihood_module_cond_f(self):
 
         cond_f = lambda data: {"p": [0.2, 0.5]}
 
-        geometric = CondGeometricLayer(
-            Scope([0], [1]), n_nodes=2, cond_f=cond_f
-        )
+        geometric = CondGeometricLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.array([[1], [5], [10]])
-        targets = np.array(
-            [[0.2, 0.5], [0.08192, 0.03125], [0.0268435, 0.000976563]]
-        )
+        targets = np.array([[0.2, 0.5], [0.08192, 0.03125], [0.0268435, 0.000976563]])
 
         probs = likelihood(geometric, data)
         log_probs = log_likelihood(geometric, data)
@@ -50,9 +44,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = np.array([[1], [5], [10]])
-        targets = np.array(
-            [[0.2, 0.5], [0.08192, 0.03125], [0.0268435, 0.000976563]]
-        )
+        targets = np.array([[0.2, 0.5], [0.08192, 0.03125], [0.0268435, 0.000976563]])
 
         probs = likelihood(geometric, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(geometric, data, dispatch_ctx=dispatch_ctx)
@@ -71,9 +63,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = np.array([[1], [5], [10]])
-        targets = np.array(
-            [[0.2, 0.5], [0.08192, 0.03125], [0.0268435, 0.000976563]]
-        )
+        targets = np.array([[0.2, 0.5], [0.08192, 0.03125], [0.0268435, 0.000976563]])
 
         probs = likelihood(geometric, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(geometric, data, dispatch_ctx=dispatch_ctx)
@@ -98,9 +88,7 @@ class TestNode(unittest.TestCase):
 
         data = np.array([[3], [1], [5]])
 
-        self.assertTrue(
-            np.all(log_likelihood(s1, data) == log_likelihood(s2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(s1, data) == log_likelihood(s2, data)))
 
     def test_layer_likelihood_2(self):
 
@@ -118,9 +106,7 @@ class TestNode(unittest.TestCase):
 
         data = np.array([[3, 1], [2, 7], [5, 4]])
 
-        self.assertTrue(
-            np.all(log_likelihood(p1, data) == log_likelihood(p2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(p1, data) == log_likelihood(p2, data)))
 
 
 if __name__ == "__main__":

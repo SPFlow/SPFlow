@@ -23,9 +23,7 @@ class TestModule(unittest.TestCase):
             dummy_module.placeholders[0],
             dummy_data,
         )
-        self.assertRaises(
-            LookupError, likelihood, dummy_module.placeholders[0], dummy_data
-        )
+        self.assertRaises(LookupError, likelihood, dummy_module.placeholders[0], dummy_data)
 
 
 if __name__ == "__main__":

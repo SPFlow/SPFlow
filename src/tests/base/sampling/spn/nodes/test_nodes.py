@@ -57,13 +57,11 @@ class TestNode(unittest.TestCase):
         )
 
         samples = sample(s, 1000)
-        expected_mean = 0.7 * (
-            0.2 * np.array([-7, 7]) + 0.8 * np.array([-5, 5])
-        ) + 0.3 * (0.6 * np.array([-3, 3]) + 0.4 * np.array([-1, 1]))
-
-        self.assertTrue(
-            np.allclose(samples.mean(axis=0), expected_mean, rtol=0.1)
+        expected_mean = 0.7 * (0.2 * np.array([-7, 7]) + 0.8 * np.array([-5, 5])) + 0.3 * (
+            0.6 * np.array([-3, 3]) + 0.4 * np.array([-1, 1])
         )
+
+        self.assertTrue(np.allclose(samples.mean(axis=0), expected_mean, rtol=0.1))
 
     def test_sum_node_sampling(self):
 

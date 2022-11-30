@@ -17,12 +17,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]))
 
         # ---- different scopes -----
         l = CondLogNormalLayer(scope=Scope([1], [0]), n_nodes=3)
@@ -30,9 +25,7 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, CondLogNormalLayer, Scope([0], [1]), n_nodes=0
-        )
+        self.assertRaises(ValueError, CondLogNormalLayer, Scope([0], [1]), n_nodes=0)
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondLogNormalLayer, Scope([]), n_nodes=3)
@@ -40,9 +33,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
-        l = CondLogNormalLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3
-        )
+        l = CondLogNormalLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
 
@@ -74,9 +65,7 @@ class TestLayer(unittest.TestCase):
             cond_f=lambda data: {"mean": mean_value, "std": std_value},
         )
 
-        for mean_node, std_node in zip(
-            *l.retrieve_params(np.array([[1.0]]), DispatchContext())
-        ):
+        for mean_node, std_node in zip(*l.retrieve_params(np.array([[1.0]]), DispatchContext())):
             self.assertTrue(mean_node == mean_value)
             self.assertTrue(std_node == std_value)
 
@@ -86,22 +75,16 @@ class TestLayer(unittest.TestCase):
         l.set_cond_f(lambda data: {"mean": mean_values, "std": std_values})
 
         for mean_actual, std_actual, mean_node, std_node in zip(
-            mean_values,
-            std_values,
-            *l.retrieve_params(np.array([[1.0]]), DispatchContext())
+            mean_values, std_values, *l.retrieve_params(np.array([[1.0]]), DispatchContext())
         ):
             self.assertTrue(mean_actual == mean_node)
             self.assertTrue(std_actual == std_node)
 
         # wrong number of values
         l.set_cond_f(lambda data: {"mean": mean_values[:-1], "std": std_values})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
         l.set_cond_f(lambda data: {"mean": mean_values, "std": std_values[:-1]})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(
@@ -110,18 +93,14 @@ class TestLayer(unittest.TestCase):
                 "std": std_values,
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
         l.set_cond_f(
             lambda data: {
                 "mean": mean_values,
                 "std": [std_values for _ in range(3)],
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # ----- numpy parameter values -----
         l.set_cond_f(
@@ -131,9 +110,7 @@ class TestLayer(unittest.TestCase):
             }
         )
         for mean_actual, std_actual, mean_node, std_node in zip(
-            mean_values,
-            std_values,
-            *l.retrieve_params(np.array([[1.0]]), DispatchContext())
+            mean_values, std_values, *l.retrieve_params(np.array([[1.0]]), DispatchContext())
         ):
             self.assertTrue(mean_node == mean_actual)
             self.assertTrue(std_node == std_actual)
@@ -145,18 +122,14 @@ class TestLayer(unittest.TestCase):
                 "std": np.array(std_values),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
         l.set_cond_f(
             lambda data: {
                 "mean": np.array(mean_values),
                 "std": np.array(std_values[:-1]),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(
@@ -165,18 +138,14 @@ class TestLayer(unittest.TestCase):
                 "std": np.array(std_values),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
         l.set_cond_f(
             lambda data: {
                 "mean": np.array(mean_values),
                 "std": np.array([std_values for _ in range(3)]),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
     def test_accept(self):
 
@@ -204,9 +173,7 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(
             CondLogNormalLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0], [2]), [FeatureTypes.LogNormal(0.0, 1.0)]
-                    ),
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.LogNormal(0.0, 1.0)]),
                     FeatureContext(Scope([1], [2]), [FeatureTypes.Continuous]),
                 ]
             )
@@ -223,11 +190,7 @@ class TestLayer(unittest.TestCase):
         )
 
         # non-conditional scope
-        self.assertFalse(
-            CondLogNormalLayer.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondLogNormalLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -249,9 +212,7 @@ class TestLayer(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Continuous]),
             ]
         )
-        self.assertTrue(
-            log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         log_normal = CondLogNormalLayer.from_signatures(
             [
@@ -259,23 +220,15 @@ class TestLayer(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.LogNormal]),
             ]
         )
-        self.assertTrue(
-            log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         log_normal = CondLogNormalLayer.from_signatures(
             [
-                FeatureContext(
-                    Scope([0], [2]), [FeatureTypes.LogNormal(0.0, 1.0)]
-                ),
-                FeatureContext(
-                    Scope([1], [2]), [FeatureTypes.LogNormal(0.0, 1.0)]
-                ),
+                FeatureContext(Scope([0], [2]), [FeatureTypes.LogNormal(0.0, 1.0)]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.LogNormal(0.0, 1.0)]),
             ]
         )
-        self.assertTrue(
-            log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])])
         # ----- invalid arguments -----
 
         # invalid feature type
@@ -327,14 +280,10 @@ class TestLayer(unittest.TestCase):
                     Scope([0], [2]),
                     [FeatureTypes.LogNormal(mean=-1.0, std=1.5)],
                 ),
-                FeatureContext(
-                    Scope([1], [2]), [FeatureTypes.LogNormal(mean=1.0, std=0.5)]
-                ),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.LogNormal(mean=1.0, std=0.5)]),
             ]
         )
-        self.assertTrue(
-            log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(log_normal.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
     def test_layer_structural_marginalization(self):
 

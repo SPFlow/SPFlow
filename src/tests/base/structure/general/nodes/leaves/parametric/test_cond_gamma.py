@@ -17,9 +17,7 @@ class TestGamma(unittest.TestCase):
 
         gamma = CondGamma(Scope([0], [1]))
         self.assertTrue(gamma.cond_f is None)
-        gamma = CondGamma(
-            Scope([0], [1]), cond_f=lambda x: {"alpha": 1.0, "beta": 1.0}
-        )
+        gamma = CondGamma(Scope([0], [1]), cond_f=lambda x: {"alpha": 1.0, "beta": 1.0})
         self.assertTrue(isinstance(gamma.cond_f, Callable))
 
         # invalid scopes
@@ -34,12 +32,8 @@ class TestGamma(unittest.TestCase):
         gamma = CondGamma(Scope([0], [1]))
 
         # alpha > 0
-        gamma.set_cond_f(
-            lambda data: {"alpha": np.nextafter(0.0, 1.0), "beta": 1.0}
-        )
-        alpha, beta = gamma.retrieve_params(
-            np.array([[1.0]]), DispatchContext()
-        )
+        gamma.set_cond_f(lambda data: {"alpha": np.nextafter(0.0, 1.0), "beta": 1.0})
+        alpha, beta = gamma.retrieve_params(np.array([[1.0]]), DispatchContext())
         self.assertTrue(alpha == np.nextafter(0.0, 1.0))
         self.assertTrue(beta == 1.0)
         # alpha = 0
@@ -51,9 +45,7 @@ class TestGamma(unittest.TestCase):
             DispatchContext(),
         )
         # alpha < 0
-        gamma.set_cond_f(
-            lambda data: {"alpha": np.nextafter(0.0, -1.0), "beta": 1.0}
-        )
+        gamma.set_cond_f(lambda data: {"alpha": np.nextafter(0.0, -1.0), "beta": 1.0})
         self.assertRaises(
             ValueError,
             gamma.retrieve_params,
@@ -77,12 +69,8 @@ class TestGamma(unittest.TestCase):
         )
 
         # beta > 0
-        gamma.set_cond_f(
-            lambda data: {"alpha": 1.0, "beta": np.nextafter(0.0, 1.0)}
-        )
-        alpha, beta = gamma.retrieve_params(
-            np.array([[1.0]]), DispatchContext()
-        )
+        gamma.set_cond_f(lambda data: {"alpha": 1.0, "beta": np.nextafter(0.0, 1.0)})
+        alpha, beta = gamma.retrieve_params(np.array([[1.0]]), DispatchContext())
         self.assertTrue(alpha == 1.0)
         self.assertTrue(beta == np.nextafter(0.0, 1.0))
         # beta = 0
@@ -94,9 +82,7 @@ class TestGamma(unittest.TestCase):
             DispatchContext(),
         )
         # beta < 0
-        gamma.set_cond_f(
-            lambda data: {"alpha": 1.0, "beta": np.nextafter(0.0, -1.0)}
-        )
+        gamma.set_cond_f(lambda data: {"alpha": 1.0, "beta": np.nextafter(0.0, -1.0)})
         self.assertRaises(
             ValueError,
             gamma.retrieve_params,
@@ -122,43 +108,19 @@ class TestGamma(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            CondGamma.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertTrue(CondGamma.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # Gamma feature type class
-        self.assertTrue(
-            CondGamma.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma])]
-            )
-        )
+        self.assertTrue(CondGamma.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma])]))
 
         # Gamma feature type instance
-        self.assertTrue(
-            CondGamma.accepts(
-                [
-                    FeatureContext(
-                        Scope([0], [1]), [FeatureTypes.Gamma(1.0, 1.0)]
-                    )
-                ]
-            )
-        )
+        self.assertTrue(CondGamma.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma(1.0, 1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            CondGamma.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondGamma.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # non-conditional scope
-        self.assertFalse(
-            CondGamma.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondGamma.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -174,15 +136,9 @@ class TestGamma(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        CondGamma.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-        )
-        CondGamma.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma])]
-        )
-        CondGamma.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma(1.5, 0.5)])]
-        )
+        CondGamma.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])])
+        CondGamma.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma])])
+        CondGamma.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma(1.5, 0.5)])])
 
         # ----- invalid arguments -----
 
@@ -220,15 +176,11 @@ class TestGamma(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondGamma,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        gamma = AutoLeaf(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma])]
-        )
+        gamma = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma])])
         self.assertTrue(isinstance(gamma, CondGamma))
 
     def test_structural_marginalization(self):

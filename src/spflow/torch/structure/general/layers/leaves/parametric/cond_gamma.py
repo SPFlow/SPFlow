@@ -85,9 +85,7 @@ class CondGammaLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondGammaLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondGammaLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -95,17 +93,13 @@ class CondGammaLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) == 0:
-                raise ValueError(
-                    f"Evidence scope for 'CondGammaLayer' should not be empty."
-                )
+                raise ValueError(f"Evidence scope for 'CondGammaLayer' should not be empty.")
 
         super().__init__(children=[], **kwargs)
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
 
@@ -129,9 +123,7 @@ class CondGammaLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondGammaLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondGammaLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -141,9 +133,7 @@ class CondGammaLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondGammaLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondGammaLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         scopes = []
 
@@ -152,11 +142,7 @@ class CondGammaLayer(Module):
             domain = feature_ctx.get_domains()[0]
 
             # read or initialize parameters
-            if (
-                domain == MetaType.Continuous
-                or domain == FeatureTypes.Gamma
-                or isinstance(domain, FeatureTypes.Gamma)
-            ):
+            if domain == MetaType.Continuous or domain == FeatureTypes.Gamma or isinstance(domain, FeatureTypes.Gamma):
                 pass
             else:
                 raise ValueError(
@@ -172,9 +158,7 @@ class CondGammaLayer(Module):
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -221,9 +205,7 @@ class CondGammaLayer(Module):
 
         return D.Gamma(concentration=alpha[node_ids], rate=beta[node_ids])
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameters (``alpha``,``beta``) are passed as additional arguments in the dispatch context.
@@ -300,9 +282,7 @@ class CondGammaLayer(Module):
             )
 
         if torch.any(alpha <= 0.0) or not torch.any(torch.isfinite(alpha)):
-            raise ValueError(
-                f"Values of 'alpha' for 'CondGammaLayer' must be greater than 0, but was: {alpha}"
-            )
+            raise ValueError(f"Values of 'alpha' for 'CondGammaLayer' must be greater than 0, but was: {alpha}")
 
         if isinstance(beta, int) or isinstance(beta, float):
             beta = torch.tensor([beta for _ in range(self.n_out)])
@@ -318,9 +298,7 @@ class CondGammaLayer(Module):
             )
 
         if torch.any(beta <= 0.0) or not torch.any(torch.isfinite(beta)):
-            raise ValueError(
-                f"Value of 'beta' for 'CondGammaLayer' must be greater than 0, but was: {beta}"
-            )
+            raise ValueError(f"Value of 'beta' for 'CondGammaLayer' must be greater than 0, but was: {beta}")
 
         return alpha, beta
 
@@ -364,9 +342,7 @@ class CondGammaLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(torch.ones(self.n_out), torch.ones(self.n_out), node_ids).support.check(scope_data)  # type: ignore
@@ -435,9 +411,7 @@ def marginalize(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    layer: BaseCondGammaLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> CondGammaLayer:
+def toTorch(layer: BaseCondGammaLayer, dispatch_ctx: Optional[DispatchContext] = None) -> CondGammaLayer:
     """Conversion for ``CondGammaLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -451,9 +425,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    torch_layer: CondGammaLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseCondGammaLayer:
+def toBase(torch_layer: CondGammaLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BaseCondGammaLayer:
     """Conversion for ``CondGammaLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:

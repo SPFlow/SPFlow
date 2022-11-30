@@ -87,9 +87,7 @@ class HypergeometricLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'HypergeometricLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'HypergeometricLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -144,9 +142,7 @@ class HypergeometricLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "HypergeometricLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "HypergeometricLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -247,21 +243,15 @@ class HypergeometricLayer(Module):
             # at least one such element exists
             N_values = N[node_scopes == node_scope]
             if not np.all(N_values == N_values[0]):
-                raise ValueError(
-                    "All values of 'N' for 'HypergeometricLayer' over the same scope must be identical."
-                )
+                raise ValueError("All values of 'N' for 'HypergeometricLayer' over the same scope must be identical.")
             # at least one such element exists
             M_values = M[node_scopes == node_scope]
             if not np.all(M_values == M_values[0]):
-                raise ValueError(
-                    "All values of 'M' for 'HypergeometricLayer' over the same scope must be identical."
-                )
+                raise ValueError("All values of 'M' for 'HypergeometricLayer' over the same scope must be identical.")
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not np.all(n_values == n_values[0]):
-                raise ValueError(
-                    "All values of 'n' for 'HypergeometricLayer' over the same scope must be identical."
-                )
+                raise ValueError("All values of 'n' for 'HypergeometricLayer' over the same scope must be identical.")
 
         for node_N, node_M, node_n, node in zip(N, M, n, self.nodes):
             node.set_params(node_N, node_M, node_n)
@@ -290,9 +280,7 @@ class HypergeometricLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Hypergeometric distributions, which are:
@@ -324,9 +312,7 @@ class HypergeometricLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -376,7 +362,5 @@ def marginalize(
         new_node = Hypergeometric(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = HypergeometricLayer(
-            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
-        )
+        new_layer = HypergeometricLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer

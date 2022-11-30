@@ -39,9 +39,7 @@ class SumLayer(NestedModule):
         self,
         n_nodes: int,
         children: List[Module],
-        weights: Optional[
-            Union[np.ndarray, List[List[float]], List[float]]
-        ] = None,
+        weights: Optional[Union[np.ndarray, List[List[float]], List[float]]] = None,
         **kwargs,
     ) -> None:
         r"""Initializes ``SumLayer`` object.
@@ -63,14 +61,10 @@ class SumLayer(NestedModule):
             ValueError: Invalid arguments.
         """
         if n_nodes < 1:
-            raise ValueError(
-                "Number of nodes for 'SumLayer' must be greater of equal to 1."
-            )
+            raise ValueError("Number of nodes for 'SumLayer' must be greater of equal to 1.")
 
         if len(children) == 0:
-            raise ValueError(
-                "'SumLayer' requires at least one child to be specified."
-            )
+            raise ValueError("'SumLayer' requires at least one child to be specified.")
 
         super().__init__(children=children, **kwargs)
 
@@ -106,9 +100,7 @@ class SumLayer(NestedModule):
         return np.vstack([node.weights for node in self.nodes])
 
     @weights.setter
-    def weights(
-        self, values: Union[np.ndarray, List[List[float]], List[float]]
-    ) -> None:
+    def weights(self, values: Union[np.ndarray, List[List[float]], List[float]]) -> None:
         """Sets the weights of all nodes to specified values.
 
         Args:
@@ -131,9 +123,7 @@ class SumLayer(NestedModule):
         if not np.all(values > 0):
             raise ValueError("Weights for 'SumLayer' must be all positive.")
         if not np.allclose(values.sum(axis=-1), 1.0):
-            raise ValueError(
-                "Weights for 'SumLayer' must sum up to one in last dimension."
-            )
+            raise ValueError("Weights for 'SumLayer' must sum up to one in last dimension.")
         if not (values.shape[-1] == self.n_in):
             raise ValueError(
                 "Number of weights for 'SumLayer' in last dimension does not match total number of child outputs."
@@ -205,16 +195,12 @@ def marginalize(
 
         # marginalize child modules
         for child in layer.children:
-            marg_child = marginalize(
-                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
-            )
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
                 marg_children.append(marg_child)
 
-        return SumLayer(
-            n_nodes=layer.n_out, children=marg_children, weights=layer.weights
-        )
+        return SumLayer(n_nodes=layer.n_out, children=marg_children, weights=layer.weights)
     else:
         return deepcopy(layer)

@@ -16,9 +16,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        gamma_layer = GammaLayer(
-            scope=Scope([0]), alpha=[0.8, 0.3], beta=[1.3, 0.4], n_nodes=2
-        )
+        gamma_layer = GammaLayer(scope=Scope([0]), alpha=[0.8, 0.3], beta=[1.3, 0.4], n_nodes=2)
         s1 = SumNode(children=[gamma_layer], weights=[0.3, 0.7])
 
         gamma_nodes = [
@@ -44,9 +42,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        gamma_layer = GammaLayer(
-            scope=[Scope([0]), Scope([1])], alpha=[0.8, 0.3], beta=[1.3, 0.4]
-        )
+        gamma_layer = GammaLayer(scope=[Scope([0]), Scope([1])], alpha=[0.8, 0.3], beta=[1.3, 0.4])
         p1 = ProductNode(children=[gamma_layer])
 
         gamma_nodes = [
@@ -68,9 +64,7 @@ class TestNode(unittest.TestCase):
 
     def test_sampling_3(self):
 
-        gamma_layer = GammaLayer(
-            scope=Scope([0]), alpha=[0.8, 0.3], beta=[1.3, 0.4], n_nodes=2
-        )
+        gamma_layer = GammaLayer(scope=Scope([0]), alpha=[0.8, 0.3], beta=[1.3, 0.4], n_nodes=2)
 
         # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails
         self.assertRaises(ValueError, sample, gamma_layer)

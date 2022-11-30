@@ -31,13 +31,9 @@ class TestNegativeBinomial(unittest.TestCase):
         negative_binomial = NegativeBinomial(Scope([0]), 1, 1.0)
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
-        samples = sample(
-            negative_binomial, data, sampling_ctx=SamplingContext([0, 2])
-        )
+        samples = sample(negative_binomial, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
         self.assertTrue(all(samples[~samples.isnan()] == 0.0))
 
     def test_sampling_2(self):
@@ -52,11 +48,7 @@ class TestNegativeBinomial(unittest.TestCase):
         negative_binomial = NegativeBinomial(Scope([0]), 10, 0.3)
 
         samples = sample(negative_binomial, 1000)
-        self.assertTrue(
-            torch.isclose(
-                samples.mean(), torch.tensor(10 * (1 - 0.3) / 0.3), rtol=0.1
-            )
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(10 * (1 - 0.3) / 0.3), rtol=0.1))
 
     def test_sampling_3(self):
 
@@ -70,11 +62,7 @@ class TestNegativeBinomial(unittest.TestCase):
         negative_binomial = NegativeBinomial(Scope([0]), 5, 0.8)
 
         samples = sample(negative_binomial, 1000)
-        self.assertTrue(
-            torch.isclose(
-                samples.mean(), torch.tensor(5 * (1 - 0.8) / 0.8), rtol=0.1
-            )
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(5 * (1 - 0.8) / 0.8), rtol=0.1))
 
 
 if __name__ == "__main__":

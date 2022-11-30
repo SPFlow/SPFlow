@@ -29,9 +29,7 @@ class FeatureContext:
         self.scope = scope
 
         # initialize map
-        self.domain_map = {
-            feature_id: MetaType.Unknown for feature_id in scope.query
-        }
+        self.domain_map = {feature_id: MetaType.Unknown for feature_id in scope.query}
 
         # parse and add type contexts
         self.set_domains(domains)
@@ -59,24 +57,16 @@ class FeatureContext:
                     "Length of list of domain types for 'FeatureContext' does not match number of scope query RVs."
                 )
 
-            domains = {
-                feature_id: feature_type
-                for feature_id, feature_type in zip(self.scope.query, domains)
-            }
+            domains = {feature_id: feature_type for feature_id, feature_type in zip(self.scope.query, domains)}
 
         for feature_id, feature_type in domains.items():
             # convert to instance if necessary
             feature_type = self.parse_type(feature_type)
 
             if feature_id not in self.scope.query:
-                raise ValueError(
-                    f"Feature index {feature_id} is not part of the query scope."
-                )
+                raise ValueError(f"Feature index {feature_id} is not part of the query scope.")
 
-            if (
-                self.domain_map[feature_id] != MetaType.Unknown
-                and not overwrite
-            ):
+            if self.domain_map[feature_id] != MetaType.Unknown and not overwrite:
                 raise ValueError(
                     f"Domain for feature index {feature_id} is already specified (i.e., not 'MetaType.Unknown'). If domain should be overwritten, enable 'overwrite'."
                 )
@@ -85,10 +75,7 @@ class FeatureContext:
 
     def get_domains(
         self, feature_ids: Union[int, List[int]] = None
-    ) -> Union[
-        Union[MetaType, FeatureType, Type[FeatureType]],
-        List[Union[MetaType, FeatureType, Type[FeatureType]]],
-    ]:
+    ) -> Union[Union[MetaType, FeatureType, Type[FeatureType]], List[Union[MetaType, FeatureType, Type[FeatureType]]],]:
         """TODO"""
         if feature_ids is None:
             feature_ids = self.scope.query
@@ -103,9 +90,6 @@ class FeatureContext:
             feature_ids = [feature_ids]
 
         scope = Scope(feature_ids, self.scope.evidence)
-        domains = {
-            feature_id: self.domain_map[feature_id]
-            for feature_id in feature_ids
-        }
+        domains = {feature_id: self.domain_map[feature_id] for feature_id in feature_ids}
 
         return FeatureContext(scope, domains)

@@ -21,17 +21,13 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_p(self):
 
         binomial = CondBinomialLayer(Scope([0], [1]), n=2, n_nodes=2)
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, torch.tensor([[0], [1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[0], [1]]))
 
     def test_likelihood_module_cond_f(self):
 
         cond_f = lambda data: {"p": [0.8, 0.5]}
 
-        binomial = CondBinomialLayer(
-            Scope([0], [1]), n=1, n_nodes=2, cond_f=cond_f
-        )
+        binomial = CondBinomialLayer(Scope([0], [1]), n=1, n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0], [1]])
@@ -96,9 +92,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[3, 1], [1, 2], [0, 0]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 

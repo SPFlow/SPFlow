@@ -71,8 +71,4 @@ def likelihood(
         Each row corresponds to an input sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return torch.exp(
-        log_likelihood(
-            module, data, check_support=check_support, dispatch_ctx=dispatch_ctx
-        )
-    )
+    return torch.exp(log_likelihood(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx))

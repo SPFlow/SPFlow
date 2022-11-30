@@ -35,9 +35,7 @@ def substitutable(f) -> Callable:
         key = args[0]
 
         if not isinstance(key, MetaModule):
-            raise ValueError(
-                f"First argument is expected to be of type {MetaModule}, but was {type(key)}."
-            )
+            raise ValueError(f"First argument is expected to be of type {MetaModule}, but was {type(key)}.")
 
         # ----- retrieve DispatchContext -----
 

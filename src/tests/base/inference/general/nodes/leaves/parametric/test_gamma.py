@@ -105,12 +105,8 @@ class TestGamma(unittest.TestCase):
         gamma = Gamma(Scope([0]), 1.0, 1.0)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, gamma, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, gamma, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, gamma, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, gamma, np.array([[np.inf]]))
 
         # check finite values > 0
         log_likelihood(gamma, np.array([[np.nextafter(0.0, 1.0)]]))

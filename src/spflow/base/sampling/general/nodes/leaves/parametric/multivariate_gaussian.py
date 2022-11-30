@@ -55,9 +55,7 @@ def sample(
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    nan_data = np.isnan(
-        data[np.ix_(sampling_ctx.instance_ids, leaf.scope.query)]
-    )
+    nan_data = np.isnan(data[np.ix_(sampling_ctx.instance_ids, leaf.scope.query)])
 
     # group by scope rvs to sample
     for nan_mask in np.unique(nan_data, axis=0):
@@ -69,19 +67,13 @@ def sample(
             continue
         # sample from full distribution
         elif np.sum(nan_mask) == len(leaf.scope.query):
-            sampling_ids = np.array(sampling_ctx.instance_ids)[
-                (nan_data == nan_mask).sum(axis=1) == nan_mask.shape[0]
-            ]
+            sampling_ids = np.array(sampling_ctx.instance_ids)[(nan_data == nan_mask).sum(axis=1) == nan_mask.shape[0]]
 
-            data[np.ix_(sampling_ids, leaf.scope.query)] = leaf.dist.rvs(
-                size=sampling_ids.shape[0]
-            )
+            data[np.ix_(sampling_ids, leaf.scope.query)] = leaf.dist.rvs(size=sampling_ids.shape[0])
         # sample from conditioned distribution
         else:
             # NOTE: the conditional sampling implemented here is based on the algorithm described in Arnaud Doucet (2010): "A Note on Efficient Conditional Simulation of Gaussian Distributions" (https://www.stats.ox.ac.uk/~doucet/doucet_simulationconditionalgaussian.pdf)
-            sampling_ids = np.array(sampling_ctx.instance_ids)[
-                (nan_data == nan_mask).sum(axis=1) == nan_mask.shape[0]
-            ]
+            sampling_ids = np.array(sampling_ctx.instance_ids)[(nan_data == nan_mask).sum(axis=1) == nan_mask.shape[0]]
 
             # sample from full distribution
             joint_samples = leaf.dist.rvs(size=sampling_ids.shape[0])
@@ -92,14 +84,8 @@ def sample(
             # get conditional covariance matrix
             cond_cov = leaf.cov[np.ix_(cond_mask, ~cond_mask)]
 
-            data[np.ix_(sampling_ids, ~cond_mask)] = joint_samples[
-                :, ~cond_mask
-            ] + (
-                (
-                    data[np.ix_(sampling_ids, cond_mask)]
-                    - joint_samples[:, cond_mask]
-                )
-                @ (marg_cov_inv @ cond_cov)
+            data[np.ix_(sampling_ids, ~cond_mask)] = joint_samples[:, ~cond_mask] + (
+                (data[np.ix_(sampling_ids, cond_mask)] - joint_samples[:, cond_mask]) @ (marg_cov_inv @ cond_cov)
             )
 
     return data

@@ -34,9 +34,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[2, 1], [0, 2], [1, 1]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -46,9 +44,7 @@ class TestNode(unittest.TestCase):
         M = 10
         n = 10
 
-        torch_hypergeometric = HypergeometricLayer(
-            scope=[Scope([0]), Scope([1])], N=N, M=M, n=n
-        )
+        torch_hypergeometric = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=N, M=M, n=n)
 
         # create dummy input data (batch size x random variables)
         data = torch.tensor([[5, 6], [10, 5]])
@@ -71,9 +67,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        hypergeometric = HypergeometricLayer(
-            scope=[Scope([0]), Scope([1])], N=5, M=3, n=4
-        )
+        hypergeometric = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=5, M=3, n=4)
         data = torch.tensor([[float("nan"), float("nan")]])
 
         # should not raise and error and should return 1

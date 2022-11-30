@@ -18,12 +18,8 @@ class TestModule(unittest.TestCase):
 
         # create region graph
         scope = Scope(list(range(128)))
-        region_graph = random_region_graph(
-            scope, depth=5, replicas=2, n_splits=2
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=5, replicas=2, n_splits=2)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         # create torch rat spn from region graph
         rat = RatSPN(

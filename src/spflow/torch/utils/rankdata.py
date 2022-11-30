@@ -44,9 +44,7 @@ def rankdata(data: torch.Tensor, method: str = "average") -> torch.Tensor:
     inv_sort_ids = torch.argsort(sort_ids, dim=0)
 
     # sort observations (avoid recomputation)
-    sorted_obs = torch.vstack(
-        [feature[order] for feature, order in zip(data.T, sort_ids.T)]
-    ).T
+    sorted_obs = torch.vstack([feature[order] for feature, order in zip(data.T, sort_ids.T)]).T
 
     # check if any element is identical to the element before it (for tie-breaking)
     first_occurrence_mask = torch.vstack(
@@ -58,12 +56,7 @@ def rankdata(data: torch.Tensor, method: str = "average") -> torch.Tensor:
 
     # assign each observation its unique id in sorted order
     dense = torch.vstack(
-        [
-            s[order]
-            for (s, order) in zip(
-                torch.cumsum(first_occurrence_mask, dim=0).T, inv_sort_ids.T
-            )
-        ]
+        [s[order] for (s, order) in zip(torch.cumsum(first_occurrence_mask, dim=0).T, inv_sort_ids.T)]
     ).T
 
     if method == "dense":
@@ -72,10 +65,7 @@ def rankdata(data: torch.Tensor, method: str = "average") -> torch.Tensor:
     # for the empirical cdf we are looking for number of values <= a point, that means all observations that have the same ids count each other, too
     # for each observation id get its id of first occurrence in order (tells us how many observations came before that)
     counts = [
-        torch.concat(
-            [torch.nonzero(mask).squeeze(-1), torch.tensor([len(mask)])]
-        )
-        for mask in first_occurrence_mask.T
+        torch.concat([torch.nonzero(mask).squeeze(-1), torch.tensor([len(mask)])]) for mask in first_occurrence_mask.T
     ]
 
     if method == "max":
@@ -87,7 +77,4 @@ def rankdata(data: torch.Tensor, method: str = "average") -> torch.Tensor:
         return torch.vstack([c[d - 1] + 1 for c, d in zip(counts, dense.T)]).T
 
     # else use 'average' method
-    return (
-        torch.vstack([c[d] + c[d - 1] + 1 for c, d in zip(counts, dense.T)]).T
-        / 2.0
-    )
+    return torch.vstack([c[d] + c[d - 1] + 1 for c, d in zip(counts, dense.T)]).T / 2.0

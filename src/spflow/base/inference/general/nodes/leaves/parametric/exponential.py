@@ -70,14 +70,10 @@ def log_likelihood(
 
     if check_support:
         # create masked based on distribution's support
-        valid_ids = node.check_support(
-            data[~marg_ids], is_scope_data=True
-        ).squeeze(1)
+        valid_ids = node.check_support(data[~marg_ids], is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
-            raise ValueError(
-                f"Encountered data instances that are not in the support of the Exponential distribution."
-            )
+            raise ValueError(f"Encountered data instances that are not in the support of the Exponential distribution.")
 
     # compute probabilities for all non-marginalized instances
     probs[~marg_ids] = node.dist.logpdf(x=data[~marg_ids])

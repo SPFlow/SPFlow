@@ -22,9 +22,7 @@ class TestGaussian(unittest.TestCase):
 
         # stdev = 0 and stdev < 0
         self.assertRaises(Exception, Gaussian, Scope([0]), mean, 0.0)
-        self.assertRaises(
-            Exception, Gaussian, Scope([0]), mean, np.nextafter(0.0, -1.0)
-        )
+        self.assertRaises(Exception, Gaussian, Scope([0]), mean, np.nextafter(0.0, -1.0))
         # stdev = inf and stdev = nan
         self.assertRaises(Exception, Gaussian, Scope([0]), mean, np.inf)
         self.assertRaises(Exception, Gaussian, Scope([0]), mean, np.nan)
@@ -37,39 +35,19 @@ class TestGaussian(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            Gaussian.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertTrue(Gaussian.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # Gaussian feature type class
-        self.assertTrue(
-            Gaussian.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Gaussian])]
-            )
-        )
+        self.assertTrue(Gaussian.accepts([FeatureContext(Scope([0]), [FeatureTypes.Gaussian])]))
 
         # Gaussian feature type instance
-        self.assertTrue(
-            Gaussian.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Gaussian(0.0, 1.0)])]
-            )
-        )
+        self.assertTrue(Gaussian.accepts([FeatureContext(Scope([0]), [FeatureTypes.Gaussian(0.0, 1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            Gaussian.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(Gaussian.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # conditional scope
-        self.assertFalse(
-            Gaussian.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(Gaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -85,21 +63,15 @@ class TestGaussian(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        gaussian = Gaussian.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-        )
+        gaussian = Gaussian.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Continuous])])
         self.assertEqual(gaussian.mean, 0.0)
         self.assertEqual(gaussian.std, 1.0)
 
-        gaussian = Gaussian.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Gaussian])]
-        )
+        gaussian = Gaussian.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Gaussian])])
         self.assertEqual(gaussian.mean, 0.0)
         self.assertEqual(gaussian.std, 1.0)
 
-        gaussian = Gaussian.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Gaussian(-1.0, 1.5)])]
-        )
+        gaussian = Gaussian.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Gaussian(-1.0, 1.5)])])
         self.assertEqual(gaussian.mean, -1.0)
         self.assertEqual(gaussian.std, 1.5)
 
@@ -139,19 +111,11 @@ class TestGaussian(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             Gaussian,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0]), [FeatureTypes.Gaussian])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Gaussian])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        gaussian = AutoLeaf(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Gaussian(mean=-1.0, std=0.5)]
-                )
-            ]
-        )
+        gaussian = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Gaussian(mean=-1.0, std=0.5)])])
         self.assertTrue(isinstance(gaussian, Gaussian))
         self.assertEqual(gaussian.mean, -1.0)
         self.assertEqual(gaussian.std, 0.5)

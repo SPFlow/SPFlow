@@ -62,11 +62,7 @@ class TestNode(unittest.TestCase):
         layer_samples = sample(layer_spn, 10000)
         nodes_samples = sample(nodes_spn, 10000)
 
-        self.assertTrue(
-            np.allclose(
-                nodes_samples.mean(axis=0), expected_mean, atol=0.01, rtol=0.1
-            )
-        )
+        self.assertTrue(np.allclose(nodes_samples.mean(axis=0), expected_mean, atol=0.01, rtol=0.1))
         self.assertTrue(
             np.allclose(
                 layer_samples.mean(axis=0),

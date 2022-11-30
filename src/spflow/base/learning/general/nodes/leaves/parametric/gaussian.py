@@ -90,17 +90,13 @@ def maximum_likelihood_estimation(
 
     if check_support:
         if np.any(~leaf.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'Gaussian'."
-            )
+            raise ValueError("Encountered values outside of the support for 'Gaussian'.")
 
     # NaN entries (no information)
     nan_mask = np.isnan(scope_data)
 
     if np.all(nan_mask):
-        raise ValueError(
-            "Cannot compute maximum-likelihood estimation on nan-only data."
-        )
+        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
 
     if nan_strategy is None and np.any(nan_mask):
         raise ValueError(
@@ -113,9 +109,7 @@ def maximum_likelihood_estimation(
             scope_data = scope_data[~nan_mask.squeeze(1)]
             weights = weights[~nan_mask.squeeze(1)]
         else:
-            raise ValueError(
-                "Unknown strategy for handling missing (NaN) values for 'Gaussian'."
-            )
+            raise ValueError("Unknown strategy for handling missing (NaN) values for 'Gaussian'.")
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
         # TODO: how to handle weights?
@@ -135,14 +129,9 @@ def maximum_likelihood_estimation(
     std_est = (weights * (scope_data - mean_est) ** 2).sum()
 
     if bias_correction:
-        std_est = np.sqrt(
-            (weights * np.power((scope_data - mean_est), 2)).sum()
-            / (n_total - 1)
-        )
+        std_est = np.sqrt((weights * np.power((scope_data - mean_est), 2)).sum() / (n_total - 1))
     else:
-        std_est = np.sqrt(
-            (weights * np.power((scope_data - mean_est), 2)).sum() / n_total
-        )
+        std_est = np.sqrt((weights * np.power((scope_data - mean_est), 2)).sum() / n_total)
 
     # edge case (if all values are the same, not enough samples or very close to each other)
     if np.isclose(std_est, 0.0) or np.isnan(std_est):

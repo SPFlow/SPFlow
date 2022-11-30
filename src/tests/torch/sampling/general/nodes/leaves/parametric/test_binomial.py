@@ -34,9 +34,7 @@ class TestBinomial(unittest.TestCase):
 
         samples = sample(binomial, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
         self.assertTrue(all(samples[~samples.isnan()] == 0.0))
 
     def test_sampling_2(self):
@@ -54,9 +52,7 @@ class TestBinomial(unittest.TestCase):
 
         samples = sample(binomial, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
         self.assertTrue(all(samples[~samples.isnan()] == 10))
 
     def test_sampling_3(self):
@@ -71,9 +67,7 @@ class TestBinomial(unittest.TestCase):
         binomial = Binomial(Scope([0]), 10, 0.5)
 
         samples = sample(binomial, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(5.0), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(5.0), rtol=0.1))
 
 
 if __name__ == "__main__":

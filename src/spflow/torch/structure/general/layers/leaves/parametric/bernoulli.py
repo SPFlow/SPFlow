@@ -79,9 +79,7 @@ class BernoulliLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'BernoulliLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'BernoulliLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -89,9 +87,7 @@ class BernoulliLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) != 0:
-                raise ValueError(
-                    f"Evidence scope for 'BernoulliLayer' should be empty, but was {s.evidence}."
-                )
+                raise ValueError(f"Evidence scope for 'BernoulliLayer' should be empty, but was {s.evidence}.")
 
         super().__init__(children=[], **kwargs)
 
@@ -100,9 +96,7 @@ class BernoulliLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         # parse weights
         self.set_params(p)
@@ -127,9 +121,7 @@ class BernoulliLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "BernoulliLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "BernoulliLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -139,9 +131,7 @@ class BernoulliLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'BernoulliLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'BernoulliLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         p = []
         scopes = []
@@ -179,9 +169,7 @@ class BernoulliLayer(Module):
         return proj_real_to_bounded(self.p_aux, lb=0.0, ub=1.0)  # type: ignore
 
     @p.setter
-    def p(
-        self, p: Union[int, float, List[float], np.ndarray, torch.Tensor]
-    ) -> None:
+    def p(self, p: Union[int, float, List[float], np.ndarray, torch.Tensor]) -> None:
         r"""Sets the success probability.
 
         Args:
@@ -206,11 +194,7 @@ class BernoulliLayer(Module):
             raise ValueError(
                 f"Length of numpy array of 'p' values for 'BernoulliLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
             )
-        if (
-            torch.any(p < 0.0)
-            or torch.any(p > 1.0)
-            or not all(torch.isfinite(p))
-        ):
+        if torch.any(p < 0.0) or torch.any(p > 1.0) or not all(torch.isfinite(p)):
             raise ValueError(
                 f"Values of 'p' for 'BernoulliLayer' distribution must to be between 0.0 and 1.0, but are: {p}"
             )
@@ -233,9 +217,7 @@ class BernoulliLayer(Module):
 
         return D.Bernoulli(probs=self.p[node_ids])
 
-    def set_params(
-        self, p: Union[int, float, List[float], np.ndarray, torch.Tensor] = 0.5
-    ) -> None:
+    def set_params(self, p: Union[int, float, List[float], np.ndarray, torch.Tensor] = 0.5) -> None:
         """Sets the parameters for the represented distributions.
 
         Bounded parameter ``p`` is projected onto the unbounded parameter ``p_aux``.
@@ -299,9 +281,7 @@ class BernoulliLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(node_ids).support.check(scope_data)  # type: ignore
@@ -365,19 +345,13 @@ def marginalize(
         return None
     elif len(marginalized_node_ids) == 1 and prune:
         node_id = marginalized_node_ids.pop()
-        return Bernoulli(
-            scope=marginalized_scopes[0], p=layer.p[node_id].item()
-        )
+        return Bernoulli(scope=marginalized_scopes[0], p=layer.p[node_id].item())
     else:
-        return BernoulliLayer(
-            scope=marginalized_scopes, p=layer.p[marginalized_node_ids].detach()
-        )
+        return BernoulliLayer(scope=marginalized_scopes, p=layer.p[marginalized_node_ids].detach())
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    layer: BaseBernoulliLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BernoulliLayer:
+def toTorch(layer: BaseBernoulliLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BernoulliLayer:
     """Conversion for ``BernoulliLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -391,9 +365,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    layer: BernoulliLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseBernoulliLayer:
+def toBase(layer: BernoulliLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BaseBernoulliLayer:
     """Conversion for ``BernoulliLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -403,6 +375,4 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseBernoulliLayer(
-        scope=layer.scopes_out, p=layer.p.detach().numpy()
-    )
+    return BaseBernoulliLayer(scope=layer.scopes_out, p=layer.p.detach().numpy())

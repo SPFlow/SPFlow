@@ -24,20 +24,14 @@ class TestNode(unittest.TestCase):
         s1 = SumNode(children=[multivariate_gaussian_layer], weights=[0.3, 0.7])
 
         multivariate_gaussian_nodes = [
-            MultivariateGaussian(
-                Scope([0, 1]), mean=[0.8, 0.3], cov=[[1.3, 0.4], [0.4, 0.5]]
-            ),
-            MultivariateGaussian(
-                Scope([0, 1]), mean=[0.2, -0.1], cov=[[0.5, 0.1], [0.1, 1.4]]
-            ),
+            MultivariateGaussian(Scope([0, 1]), mean=[0.8, 0.3], cov=[[1.3, 0.4], [0.4, 0.5]]),
+            MultivariateGaussian(Scope([0, 1]), mean=[0.2, -0.1], cov=[[0.5, 0.1], [0.1, 1.4]]),
         ]
         s2 = SumNode(children=multivariate_gaussian_nodes, weights=[0.3, 0.7])
 
         data = np.array([[0.5, 0.3], [1.5, -0.3], [0.3, 0.0]])
 
-        self.assertTrue(
-            np.all(log_likelihood(s1, data) == log_likelihood(s2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(s1, data) == log_likelihood(s2, data)))
 
     def test_layer_likelihood_2(self):
 
@@ -49,12 +43,8 @@ class TestNode(unittest.TestCase):
         p1 = ProductNode(children=[multivariate_gaussian_layer])
 
         multivariate_gaussian_nodes = [
-            MultivariateGaussian(
-                Scope([0, 1]), mean=[0.8, 0.3], cov=[[1.3, 0.4], [0.4, 0.5]]
-            ),
-            MultivariateGaussian(
-                Scope([2, 3]), mean=[0.2, -0.1], cov=[[0.5, 0.1], [0.1, 1.4]]
-            ),
+            MultivariateGaussian(Scope([0, 1]), mean=[0.8, 0.3], cov=[[1.3, 0.4], [0.4, 0.5]]),
+            MultivariateGaussian(Scope([2, 3]), mean=[0.2, -0.1], cov=[[0.5, 0.1], [0.1, 1.4]]),
         ]
         p2 = ProductNode(children=multivariate_gaussian_nodes)
 
@@ -66,9 +56,7 @@ class TestNode(unittest.TestCase):
             ]
         )
 
-        self.assertTrue(
-            np.all(log_likelihood(p1, data) == log_likelihood(p2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(p1, data) == log_likelihood(p2, data)))
 
 
 if __name__ == "__main__":

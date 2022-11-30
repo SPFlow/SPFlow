@@ -74,15 +74,11 @@ def log_likelihood(
 
     # in case of partially marginalized instances
     if any((n_marg > 0) & (n_marg < len(node.scope.query))):
-        raise ValueError(
-            f"Partial marginalization not yet supported for MultivariateGaussian."
-        )
+        raise ValueError(f"Partial marginalization not yet supported for MultivariateGaussian.")
 
     if check_support:
         # create masked based on distribution's support
-        valid_ids = node.check_support(
-            data[~n_marg.astype(bool)], is_scope_data=True
-        )
+        valid_ids = node.check_support(data[~n_marg.astype(bool)], is_scope_data=True)
 
         if not valid_ids.all():
             raise ValueError(
@@ -90,17 +86,11 @@ def log_likelihood(
             )
 
     if mean is None:
-        raise ValueError(
-            "Encountered 'None' value for MultivariateGaussian mean vector during inference."
-        )
+        raise ValueError("Encountered 'None' value for MultivariateGaussian mean vector during inference.")
     if cov is None:
-        raise ValueError(
-            "Encountered 'None' value for MultivariateGaussian covariance matrix during inference."
-        )
+        raise ValueError("Encountered 'None' value for MultivariateGaussian covariance matrix during inference.")
 
     # compute probabilities for all non-marginalized instances
-    probs[~n_marg.astype(bool), 0] = node.dist(mean=mean, cov=cov).logpdf(
-        x=data[~n_marg.astype(bool)]
-    )
+    probs[~n_marg.astype(bool), 0] = node.dist(mean=mean, cov=cov).logpdf(x=data[~n_marg.astype(bool)])
 
     return probs

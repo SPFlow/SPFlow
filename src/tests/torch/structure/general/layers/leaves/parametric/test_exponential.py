@@ -26,9 +26,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
         # make sure parameter properties works correctly
         for l_layer_node, l_value in zip(l.l, l_values):
             self.assertTrue(torch.allclose(l_layer_node, torch.tensor(l_value)))
@@ -48,9 +46,7 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(l_layer_node, torch.tensor(l_value)))
 
         # wrong number of values
-        self.assertRaises(
-            ValueError, ExponentialLayer, Scope([0]), l_values[:-1], n_nodes=3
-        )
+        self.assertRaises(ValueError, ExponentialLayer, Scope([0]), l_values[:-1], n_nodes=3)
         # wrong number of dimensions (nested list)
         self.assertRaises(
             ValueError,
@@ -146,11 +142,7 @@ class TestNode(unittest.TestCase):
         )
 
         # conditional scope
-        self.assertFalse(
-            ExponentialLayer.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(ExponentialLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -295,49 +287,35 @@ class TestNode(unittest.TestCase):
         dist = l.dist()
 
         for l_value, l_dist in zip(l_values, dist.rate):
-            self.assertTrue(
-                torch.allclose(torch.tensor(l_value).double(), l_dist)
-            )
+            self.assertTrue(torch.allclose(torch.tensor(l_value).double(), l_dist))
 
         # ----- partial dist -----
         dist = l.dist([1, 2])
 
         for l_value, l_dist in zip(l_values[1:], dist.rate):
-            self.assertTrue(
-                torch.allclose(torch.tensor(l_value).double(), l_dist)
-            )
+            self.assertTrue(torch.allclose(torch.tensor(l_value).double(), l_dist))
 
         dist = l.dist([1, 0])
 
         for l_value, l_dist in zip(reversed(l_values[:-1]), dist.rate):
-            self.assertTrue(
-                torch.allclose(torch.tensor(l_value).double(), l_dist)
-            )
+            self.assertTrue(torch.allclose(torch.tensor(l_value).double(), l_dist))
 
     def test_layer_backend_conversion_1(self):
 
-        torch_layer = ExponentialLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31]
-        )
+        torch_layer = ExponentialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
         base_layer = toBase(torch_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(
-            np.allclose(base_layer.l, torch_layer.l.detach().numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.l, torch_layer.l.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
     def test_layer_backend_conversion_2(self):
 
-        base_layer = BaseExponentialLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31]
-        )
+        base_layer = BaseExponentialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
         torch_layer = toTorch(base_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(
-            np.allclose(base_layer.l, torch_layer.l.detach().numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.l, torch_layer.l.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
 

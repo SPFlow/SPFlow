@@ -147,25 +147,15 @@ class TestBinomial(unittest.TestCase):
         binomial = Binomial(Scope([0]), 5, 0.5)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[np.inf]]))
 
         # check valid integers inside valid range
-        log_likelihood(
-            binomial, np.expand_dims(np.array(list(range(binomial.n + 1))), 1)
-        )
+        log_likelihood(binomial, np.expand_dims(np.array(list(range(binomial.n + 1))), 1))
 
         # check valid integers, but outside of valid range
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, np.array([[-1]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, np.array([[binomial.n + 1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[-1]]))
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[binomial.n + 1]]))
 
         # check invalid float values
         self.assertRaises(
@@ -192,12 +182,8 @@ class TestBinomial(unittest.TestCase):
             binomial,
             np.array([[np.nextafter(binomial.n, 0.0)]]),
         )
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, np.array([[0.5]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, binomial, np.array([[3.5]])
-        )
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[0.5]]))
+        self.assertRaises(ValueError, log_likelihood, binomial, np.array([[3.5]]))
 
 
 if __name__ == "__main__":

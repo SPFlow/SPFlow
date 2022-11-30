@@ -34,15 +34,13 @@ class TestLogNormal(unittest.TestCase):
 
         samples = sample(log_normal, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
 
         samples = sample(log_normal, 1000)
         self.assertTrue(
             torch.isclose(
                 samples.mean(),
-                torch.exp(torch.tensor(0.0 + (1.0 ** 2 / 2.0))),
+                torch.exp(torch.tensor(0.0 + (1.0**2 / 2.0))),
                 rtol=0.1,
             )
         )
@@ -62,7 +60,7 @@ class TestLogNormal(unittest.TestCase):
         self.assertTrue(
             torch.isclose(
                 samples.mean(),
-                torch.exp(torch.tensor(1.0 + (0.5 ** 2 / 2.0))),
+                torch.exp(torch.tensor(1.0 + (0.5**2 / 2.0))),
                 rtol=0.1,
             )
         )

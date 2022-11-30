@@ -16,9 +16,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        gaussian_layer = GaussianLayer(
-            scope=Scope([0]), mean=[0.8, 0.3], std=[1.3, 0.4], n_nodes=2
-        )
+        gaussian_layer = GaussianLayer(scope=Scope([0]), mean=[0.8, 0.3], std=[1.3, 0.4], n_nodes=2)
         s1 = SumNode(children=[gaussian_layer], weights=[0.3, 0.7])
 
         gaussian_nodes = [
@@ -44,9 +42,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        gaussian_layer = GaussianLayer(
-            scope=[Scope([0]), Scope([1])], mean=[0.8, 0.3], std=[1.3, 0.4]
-        )
+        gaussian_layer = GaussianLayer(scope=[Scope([0]), Scope([1])], mean=[0.8, 0.3], std=[1.3, 0.4])
         p1 = ProductNode(children=[gaussian_layer])
 
         gaussian_nodes = [
@@ -68,9 +64,7 @@ class TestNode(unittest.TestCase):
 
     def test_sampling_3(self):
 
-        gaussian_layer = GaussianLayer(
-            scope=Scope([0]), mean=[0.8, 0.3], std=[1.3, 0.4], n_nodes=2
-        )
+        gaussian_layer = GaussianLayer(scope=Scope([0]), mean=[0.8, 0.3], std=[1.3, 0.4], n_nodes=2)
 
         # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails
         self.assertRaises(ValueError, sample, gaussian_layer)

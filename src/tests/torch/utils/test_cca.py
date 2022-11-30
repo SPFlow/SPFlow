@@ -112,9 +112,7 @@ class TestNode(unittest.TestCase):
         for i, (e_sklearn, e_torch) in enumerate(zip(res_sklearn, res_torch)):
             self.assertTrue(
                 np.allclose(e_sklearn, e_torch.numpy(), atol=1e-1, rtol=1e-1)
-                or np.allclose(
-                    e_sklearn, -e_torch.numpy(), atol=1e-1, rtol=1e-1
-                )
+                or np.allclose(e_sklearn, -e_torch.numpy(), atol=1e-1, rtol=1e-1)
             )
 
 

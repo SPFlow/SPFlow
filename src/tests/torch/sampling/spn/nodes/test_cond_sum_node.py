@@ -67,13 +67,11 @@ class TestNode(unittest.TestCase):
         )
 
         samples = sample(s, 1000)
-        expected_mean = 0.7 * (
-            0.2 * torch.tensor([-7, 7]) + 0.8 * torch.tensor([-5, 5])
-        ) + 0.3 * (0.6 * torch.tensor([-3, 3]) + 0.4 * torch.tensor([-1, 1]))
-
-        self.assertTrue(
-            torch.allclose(samples.mean(dim=0), expected_mean, rtol=0.1)
+        expected_mean = 0.7 * (0.2 * torch.tensor([-7, 7]) + 0.8 * torch.tensor([-5, 5])) + 0.3 * (
+            0.6 * torch.tensor([-3, 3]) + 0.4 * torch.tensor([-1, 1])
         )
+
+        self.assertTrue(torch.allclose(samples.mean(dim=0), expected_mean, rtol=0.1))
 
     def test_sum_node_sampling(self):
 
@@ -87,34 +85,24 @@ class TestNode(unittest.TestCase):
 
         # ----- weights 0, 1 -----
 
-        s = CondSumNode(
-            [l1, l2], cond_f=lambda data: {"weights": [0.001, 0.999]}
-        )
+        s = CondSumNode([l1, l2], cond_f=lambda data: {"weights": [0.001, 0.999]})
 
         samples = sample(s, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(5.0), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(5.0), rtol=0.1))
 
         # ----- weights 1, 0 -----
 
-        s = CondSumNode(
-            [l1, l2], cond_f=lambda data: {"weights": [0.999, 0.001]}
-        )
+        s = CondSumNode([l1, l2], cond_f=lambda data: {"weights": [0.999, 0.001]})
 
         samples = sample(s, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(-5.0), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(-5.0), rtol=0.1))
 
         # ----- weights 0.2, 0.8 -----
 
         s = CondSumNode([l1, l2], cond_f=lambda data: {"weights": [0.2, 0.8]})
 
         samples = sample(s, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(3.0), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(3.0), rtol=0.1))
 
 
 if __name__ == "__main__":

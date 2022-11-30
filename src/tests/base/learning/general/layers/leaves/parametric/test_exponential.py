@@ -28,9 +28,7 @@ class TestNode(unittest.TestCase):
         # perform MLE
         maximum_likelihood_estimation(layer, data)
 
-        self.assertTrue(
-            np.allclose(layer.l, np.array([0.3, 2.7]), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(np.allclose(layer.l, np.array([0.3, 2.7]), atol=1e-2, rtol=1e-2))
 
     def test_weighted_mle(self):
 
@@ -55,9 +53,7 @@ class TestNode(unittest.TestCase):
         weights = np.concatenate([np.zeros(10000), np.ones(10000)])
 
         maximum_likelihood_estimation(leaf, data, weights)
-        self.assertTrue(
-            np.allclose(leaf.l, np.array([0.2, 1.7]), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(np.allclose(leaf.l, np.array([0.2, 1.7]), atol=1e-2, rtol=1e-2))
 
 
 if __name__ == "__main__":

@@ -77,9 +77,7 @@ def log_likelihood(
 
     if check_support:
         # check support
-        valid_ids = leaf.check_support(_scope_data, is_scope_data=True).squeeze(
-            1
-        )
+        valid_ids = leaf.check_support(_scope_data, is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
             raise ValueError(
@@ -96,9 +94,7 @@ def log_likelihood(
     for marg_mask in marg.unique(dim=0):
 
         # get all instances with the same (marginalized) scope
-        marg_ids = torch.where(
-            (marg == marg_mask).sum(dim=-1) == len(leaf.scope.query)
-        )[0]
+        marg_ids = torch.where((marg == marg_mask).sum(dim=-1) == len(leaf.scope.query))[0]
         marg_data = scope_data[marg_ids]
 
         # all random variables are marginalized over
@@ -114,21 +110,17 @@ def log_likelihood(
             marg_cov = cov[~marg_mask][:, ~marg_mask]  # TODO: better way?
 
             # create marginalized torch distribution
-            marg_dist = D.MultivariateNormal(
-                loc=marg_mean, covariance_matrix=marg_cov
-            )
+            marg_dist = D.MultivariateNormal(loc=marg_mean, covariance_matrix=marg_cov)
 
             # compute probabilities for values inside distribution support
-            log_prob[marg_ids, 0] = marg_dist.log_prob(
-                marg_data.type(torch.get_default_dtype())
-            )
+            log_prob[marg_ids, 0] = marg_dist.log_prob(marg_data.type(torch.get_default_dtype()))
         # no random variables are marginalized over
         else:
             if cov_tril is not None:
                 # compute probabilities for values inside distribution support
-                log_prob[marg_ids, 0] = leaf.dist(
-                    mean=mean, cov_tril=cov_tril
-                ).log_prob(marg_data.type(torch.get_default_dtype()))
+                log_prob[marg_ids, 0] = leaf.dist(mean=mean, cov_tril=cov_tril).log_prob(
+                    marg_data.type(torch.get_default_dtype())
+                )
             else:
                 # compute probabilities for values inside distribution support
                 log_prob[marg_ids, 0] = leaf.dist(mean=mean, cov=cov).log_prob(

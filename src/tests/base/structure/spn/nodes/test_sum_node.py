@@ -14,9 +14,7 @@ class TestSumNode(unittest.TestCase):
         # empty children
         self.assertRaises(ValueError, SumNode, [], [])
         # non-Module children
-        self.assertRaises(
-            ValueError, SumNode, [DummyNode(Scope([0])), 0], [0.5, 0.5]
-        )
+        self.assertRaises(ValueError, SumNode, [DummyNode(Scope([0])), 0], [0.5, 0.5])
         # children with different scopes
         self.assertRaises(
             ValueError,
@@ -46,9 +44,7 @@ class TestSumNode(unittest.TestCase):
         # weights as list of floats
         SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], [0.5, 0.5])
         # weights as numpy array
-        SumNode(
-            [DummyNode(Scope([0])), DummyNode(Scope([0]))], np.array([0.5, 0.5])
-        )
+        SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], np.array([0.5, 0.5]))
         # no weights
         SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
 

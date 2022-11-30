@@ -29,12 +29,8 @@ class TestNode(unittest.TestCase):
         s1 = SumNode(children=[log_normal_layer], weights=[0.3, 0.7])
 
         log_normal_nodes = [
-            CondLogNormal(
-                Scope([0], [1]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}
-            ),
-            CondLogNormal(
-                Scope([0], [1]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
-            ),
+            CondLogNormal(Scope([0], [1]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}),
+            CondLogNormal(Scope([0], [1]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}),
         ]
         s2 = SumNode(children=log_normal_nodes, weights=[0.3, 0.7])
 
@@ -62,12 +58,8 @@ class TestNode(unittest.TestCase):
         p1 = ProductNode(children=[log_normal_layer])
 
         log_normal_nodes = [
-            CondLogNormal(
-                Scope([0], [2]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}
-            ),
-            CondLogNormal(
-                Scope([1], [2]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
-            ),
+            CondLogNormal(Scope([0], [2]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}),
+            CondLogNormal(Scope([1], [2]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}),
         ]
         p2 = ProductNode(children=log_normal_nodes)
 

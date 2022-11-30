@@ -33,9 +33,7 @@ class TestUniform(unittest.TestCase):
 
         samples = sample(uniform, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
 
         samples = sample(uniform, 1000)
         self.assertTrue(all((samples >= -1.0) & (samples <= 2.5)))
