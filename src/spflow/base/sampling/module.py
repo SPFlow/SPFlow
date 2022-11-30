@@ -1,5 +1,11 @@
 """Contains sampling methods for ``Module`` for SPFlow in the ``base`` backend.
 """
+from functools import reduce
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.structure.module import Module
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,11 +15,6 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.module import Module
-
-import numpy as np
-from typing import Optional
-from functools import reduce
 
 
 @dispatch  # type: ignore

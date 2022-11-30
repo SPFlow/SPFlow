@@ -4,8 +4,9 @@ Typical usage example:
 
     cc_list = connected_components(adjacency_matrix)
 """
-import torch
 from typing import List, Set
+
+import torch
 
 
 def connected_components(adjacency_matrix: torch.Tensor) -> List[Set[int]]:

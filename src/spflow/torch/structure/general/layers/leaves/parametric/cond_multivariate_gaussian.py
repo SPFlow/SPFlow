@@ -1,32 +1,33 @@
 """Contains conditional Multivariate Gaussian leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Callable
 from functools import reduce
+from typing import Callable, Iterable, List, Optional, Tuple, Union
+
 import numpy as np
 import torch
 import torch.distributions as D
 
+from spflow.base.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussianLayer as BaseCondMultivariateGaussianLayer,
+)
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.module import Module
-from spflow.torch.structure.spn.nodes.sum_node import marginalize
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
+    CondGaussian,
+)
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
     marginalize,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
-    CondGaussian,
-)
-from spflow.base.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import (
-    CondMultivariateGaussianLayer as BaseCondMultivariateGaussianLayer,
-)
+from spflow.torch.structure.module import Module
+from spflow.torch.structure.spn.nodes.sum_node import marginalize
 
 
 class CondMultivariateGaussianLayer(Module):

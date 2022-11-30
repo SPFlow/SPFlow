@@ -6,13 +6,14 @@ Typical usage example:
     def foo():
         pass
 """
-from typing import Callable, Any
 from functools import wraps
-from spflow.meta.structure.module import MetaModule
+from typing import Any, Callable
+
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     default_dispatch_context,
 )
+from spflow.meta.structure.module import MetaModule
 
 
 def substitutable(f) -> Callable:

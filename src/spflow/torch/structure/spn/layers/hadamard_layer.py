@@ -1,19 +1,20 @@
 """Contains SPN-like hadamard layer for SPFlow in the ``torch`` backend.
 """
+from copy import deepcopy
+from typing import Iterable, List, Optional, Union
+
+import numpy as np
+
+from spflow.base.structure.spn.layers.hadamard_layer import (
+    HadamardLayer as BaseHadamardLayer,
+)
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.base.structure.spn.layers.hadamard_layer import (
-    HadamardLayer as BaseHadamardLayer,
-)
 from spflow.torch.structure.module import Module
-
-from typing import Optional, Union, Iterable, List
-from copy import deepcopy
-import numpy as np
 
 
 class HadamardLayer(Module):

@@ -1,5 +1,9 @@
 """Contains sampling methods for SPN-like nodes for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,12 +13,9 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.spn.nodes.sum_node import SumNode
 from spflow.torch.inference.spn.nodes.sum_node import log_likelihood
 from spflow.torch.sampling.module import sample
-
-import torch
-from typing import Optional
+from spflow.torch.structure.spn.nodes.sum_node import SumNode
 
 
 @dispatch  # type: ignore
