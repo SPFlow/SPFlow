@@ -1,16 +1,16 @@
 """Contains learning methods for ``UniformLayer`` leaves for SPFlow in the ``torch`` backend.
 """
-from typing import Optional, Union, Callable
-import torch
+from typing import Callable, Optional, Union
+
 import numpy as np
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.uniform import (
-    UniformLayer,
-)
+from spflow.torch.structure.general.layers.leaves.parametric.uniform import UniformLayer
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -61,15 +61,11 @@ def maximum_likelihood_estimation(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # select relevant data for scope
-    scope_data = torch.hstack(
-        [data[:, scope.query] for scope in layer.scopes_out]
-    )
+    scope_data = torch.hstack([data[:, scope.query] for scope in layer.scopes_out])
 
     if check_support:
         if torch.any(~layer.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'UniformLayer'."
-            )
+            raise ValueError("Encountered values outside of the support for 'UniformLayer'.")
 
     # do nothing since there are no learnable parameters
     pass

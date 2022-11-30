@@ -1,12 +1,13 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext
-from spflow.torch.structure.spn import Exponential
-from spflow.torch.sampling import sample
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
+from spflow.torch.sampling import sample
+from spflow.torch.structure.spn import Exponential
 
 
 class TestExponential(unittest.TestCase):
@@ -31,18 +32,12 @@ class TestExponential(unittest.TestCase):
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
-        samples = sample(
-            exponential, data, sampling_ctx=SamplingContext([0, 2])
-        )
+        samples = sample(exponential, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
 
         samples = sample(exponential, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(1.0), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0), rtol=0.1))
 
     def test_sampling_2(self):
 
@@ -55,9 +50,7 @@ class TestExponential(unittest.TestCase):
 
         exponential = Exponential(Scope([0]), 0.5)
         samples = sample(exponential, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(1.0 / 0.5), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0 / 0.5), rtol=0.1))
 
     def test_sampling_3(self):
 
@@ -70,9 +63,7 @@ class TestExponential(unittest.TestCase):
 
         exponential = Exponential(Scope([0]), 2.5)
         samples = sample(exponential, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(1.0 / 2.5), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0 / 2.5), rtol=0.1))
 
 
 if __name__ == "__main__":

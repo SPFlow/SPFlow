@@ -1,17 +1,17 @@
 """Contains inference methods for ``UniformLayer`` leaves for SPFlow in the ``torch`` backend.
 """
-import torch
-import numpy as np
 from typing import Optional
+
+import numpy as np
+import torch
+
 from spflow.meta.data.scope import Scope
+from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.torch.structure.general.layers.leaves.parametric.uniform import (
-    UniformLayer,
-)
+from spflow.torch.structure.general.layers.leaves.parametric.uniform import UniformLayer
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -60,9 +60,7 @@ def log_likelihood(
     batch_size: int = data.shape[0]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).to(
-        layer.start.device
-    )
+    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).to(layer.start.device)
 
     for node_id in range(layer.n_out):
 
@@ -82,9 +80,7 @@ def log_likelihood(
 
         if check_support:
             # create masked based on distribution's support
-            valid_ids = layer.check_support(
-                data[~marg_mask], node_ids=[node_id]
-            )
+            valid_ids = layer.check_support(data[~marg_mask], node_ids=[node_id])
 
             if not all(valid_ids):
                 raise ValueError(
@@ -94,31 +90,19 @@ def log_likelihood(
         if layer.support_outside[node_id]:
             torch_valid_mask = torch.zeros(len(marg_mask), dtype=torch.bool)
             torch_valid_mask[~marg_mask] |= (
-                layer.dist(node_ids=[node_id])
-                .support.check(scope_data[~marg_mask])
-                .squeeze(1)
+                layer.dist(node_ids=[node_id]).support.check(scope_data[~marg_mask]).squeeze(1)
             )
 
-            outside_interval_ids = torch.where(~marg_mask & ~torch_valid_mask)[
-                0
-            ]
+            outside_interval_ids = torch.where(~marg_mask & ~torch_valid_mask)[0]
             inside_interval_ids = torch.where(~marg_mask & torch_valid_mask)[0]
 
             # TODO: torch_valid_ids does not necessarily have the same dimension as marg_ids
-            log_prob[
-                torch.meshgrid(
-                    outside_interval_ids, node_ids_tensor, indexing="ij"
-                )
-            ] = -float("inf")
+            log_prob[torch.meshgrid(outside_interval_ids, node_ids_tensor, indexing="ij")] = -float("inf")
 
             # compute probabilities for values inside distribution support
-            log_prob[
-                torch.meshgrid(
-                    inside_interval_ids, node_ids_tensor, indexing="ij"
-                )
-            ] = layer.dist(node_ids=[node_id]).log_prob(
-                scope_data[inside_interval_ids].type(torch.get_default_dtype())
-            )
+            log_prob[torch.meshgrid(inside_interval_ids, node_ids_tensor, indexing="ij")] = layer.dist(
+                node_ids=[node_id]
+            ).log_prob(scope_data[inside_interval_ids].type(torch.get_default_dtype()))
         else:
             # compute probabilities for values inside distribution support
             log_prob[~marg_mask] = layer.dist(node_ids=[node_id]).log_prob(

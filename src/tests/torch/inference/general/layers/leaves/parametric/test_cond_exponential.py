@@ -1,10 +1,12 @@
+import random
+import unittest
+
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import CondExponential, CondExponentialLayer
-from spflow.torch.inference import log_likelihood, likelihood
-import torch
-import unittest
-import random
 
 
 class TestNode(unittest.TestCase):
@@ -19,17 +21,13 @@ class TestNode(unittest.TestCase):
     def test_likelihood_no_l(self):
 
         exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2)
-        self.assertRaises(
-            ValueError, log_likelihood, exponential, torch.tensor([[0], [1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[0], [1]]))
 
     def test_likelihood_module_cond_f(self):
 
         cond_f = lambda data: {"l": [0.5, 1.0]}
 
-        exponential = CondExponentialLayer(
-            Scope([0], [1]), n_nodes=2, cond_f=cond_f
-        )
+        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[2], [5]])
@@ -93,9 +91,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 

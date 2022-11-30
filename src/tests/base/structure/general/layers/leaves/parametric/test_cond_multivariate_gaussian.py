@@ -1,14 +1,16 @@
-from spflow.meta.dispatch import DispatchContext
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+import unittest
+
+import numpy as np
+
+from spflow.base.structure import AutoLeaf
 from spflow.base.structure.spn import (
     CondGaussian,
     CondMultivariateGaussian,
     CondMultivariateGaussianLayer,
     marginalize,
 )
-from spflow.base.structure import AutoLeaf
-import numpy as np
-import unittest
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.meta.dispatch import DispatchContext
 
 
 class TestLayer(unittest.TestCase):
@@ -20,17 +22,10 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1, 0], [2]), Scope([1, 0], [2]), Scope([1, 0], [2])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1, 0], [2]), Scope([1, 0], [2]), Scope([1, 0], [2])]))
 
         # ---- different scopes -----
-        l = CondMultivariateGaussianLayer(
-            scope=Scope([0, 1, 2], [3]), n_nodes=3
-        )
+        l = CondMultivariateGaussianLayer(scope=Scope([0, 1, 2], [3]), n_nodes=3)
         for node, node_scope in zip(l.nodes, l.scopes_out):
             self.assertEqual(node.scope, node_scope)
 
@@ -43,12 +38,8 @@ class TestLayer(unittest.TestCase):
         )
 
         # ----- invalid scope -----
-        self.assertRaises(
-            ValueError, CondMultivariateGaussianLayer, Scope([]), n_nodes=3
-        )
-        self.assertRaises(
-            ValueError, CondMultivariateGaussianLayer, [], n_nodes=3
-        )
+        self.assertRaises(ValueError, CondMultivariateGaussianLayer, Scope([]), n_nodes=3)
+        self.assertRaises(ValueError, CondMultivariateGaussianLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [
@@ -88,9 +79,7 @@ class TestLayer(unittest.TestCase):
             cond_f=lambda data: {"mean": mean_value, "cov": cov_value},
         )
 
-        for mean_node, cov_node in zip(
-            *l.retrieve_params(np.array([[1.0]]), DispatchContext())
-        ):
+        for mean_node, cov_node in zip(*l.retrieve_params(np.array([[1.0]]), DispatchContext())):
             self.assertTrue(np.all(mean_node == np.array(mean_value)))
             self.assertTrue(np.all(mean_node == np.array(mean_value)))
 
@@ -104,23 +93,17 @@ class TestLayer(unittest.TestCase):
         l.set_cond_f(lambda data: {"mean": mean_values, "cov": cov_values})
 
         for mean_actual, cov_actual, mean_node, cov_node in zip(
-            mean_values,
-            cov_values,
-            *l.retrieve_params(np.array([[1.0]]), DispatchContext())
+            mean_values, cov_values, *l.retrieve_params(np.array([[1.0]]), DispatchContext())
         ):
             self.assertTrue(np.all(mean_node == np.array(mean_actual)))
             self.assertTrue(np.all(cov_node == np.array(cov_actual)))
 
         # wrong number of values
         l.set_cond_f(lambda data: {"mean": mean_values[:-1], "cov": cov_values})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         l.set_cond_f(lambda data: {"mean": mean_values, "cov": cov_values[:-1]})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(
@@ -129,9 +112,7 @@ class TestLayer(unittest.TestCase):
                 "cov": cov_values,
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         l.set_cond_f(
             lambda data: {
@@ -139,9 +120,7 @@ class TestLayer(unittest.TestCase):
                 "cov": [cov_values for _ in range(3)],
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # ----- numpy parameter values -----
         l.set_cond_f(
@@ -151,9 +130,7 @@ class TestLayer(unittest.TestCase):
             }
         )
         for mean_actual, cov_actual, mean_node, cov_node in zip(
-            mean_values,
-            cov_values,
-            *l.retrieve_params(np.array([[1.0]]), DispatchContext())
+            mean_values, cov_values, *l.retrieve_params(np.array([[1.0]]), DispatchContext())
         ):
             self.assertTrue(np.all(mean_node == np.array(mean_actual)))
             self.assertTrue(np.all(cov_node == np.array(cov_actual)))
@@ -165,9 +142,7 @@ class TestLayer(unittest.TestCase):
                 "cov": np.array(cov_values),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         l.set_cond_f(
             lambda data: {
@@ -175,9 +150,7 @@ class TestLayer(unittest.TestCase):
                 "cov": np.array(cov_values[:-1]),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(
@@ -186,9 +159,7 @@ class TestLayer(unittest.TestCase):
                 "cov": np.array(cov_value),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         l.set_cond_f(
             lambda data: {
@@ -196,9 +167,7 @@ class TestLayer(unittest.TestCase):
                 "cov": np.array([cov_values for _ in range(3)]),
             }
         )
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
     def test_accept(self):
 
@@ -303,10 +272,7 @@ class TestLayer(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out
-            == [Scope([0, 1], [3]), Scope([1, 2], [3])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
 
         multivariate_gaussian = CondMultivariateGaussianLayer.from_signatures(
             [
@@ -320,10 +286,7 @@ class TestLayer(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out
-            == [Scope([0, 1], [3]), Scope([1, 2], [3])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
 
         multivariate_gaussian = CondMultivariateGaussianLayer.from_signatures(
             [
@@ -343,10 +306,7 @@ class TestLayer(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out
-            == [Scope([0, 1], [3]), Scope([1, 2], [3])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
 
         # ----- invalid arguments -----
 
@@ -415,18 +375,13 @@ class TestLayer(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out
-            == [Scope([0, 1], [3]), Scope([1, 2], [3])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1], [3]), Scope([1, 2], [3])])
 
     def test_layer_structural_marginalization(self):
 
         # ---------- same scopes -----------
 
-        l = CondMultivariateGaussianLayer(
-            scope=[Scope([0, 1], [2]), Scope([0, 1], [2])]
-        )
+        l = CondMultivariateGaussianLayer(scope=[Scope([0, 1], [2]), Scope([0, 1], [2])])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
@@ -434,15 +389,11 @@ class TestLayer(unittest.TestCase):
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
 
-        self.assertTrue(
-            l_marg.scopes_out == [Scope([0, 1], [2]), Scope([0, 1], [2])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 1], [2]), Scope([0, 1], [2])])
 
         # ---------- different scopes -----------
 
-        l = CondMultivariateGaussianLayer(
-            scope=[Scope([0, 2], [4]), Scope([1, 3], [4])]
-        )
+        l = CondMultivariateGaussianLayer(scope=[Scope([0, 2], [4]), Scope([1, 3], [4])])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1, 2, 3]) == None)
@@ -464,9 +415,7 @@ class TestLayer(unittest.TestCase):
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [4])
 
-        self.assertTrue(
-            l_marg.scopes_out == [Scope([0, 2], [4]), Scope([1, 3], [4])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 2], [4]), Scope([1, 3], [4])])
 
 
 if __name__ == "__main__":

@@ -1,18 +1,19 @@
 """Contains conditional SPN-like sum layer for SPFlow in the ``base`` backend.
 """
+from copy import deepcopy
+from typing import Callable, Iterable, List, Optional, Union
+
+import numpy as np
+
+from spflow.base.structure.module import Module
+from spflow.base.structure.nested_module import NestedModule
+from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.module import Module
-from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode
-
-from typing import List, Union, Optional, Iterable, Callable
-from copy import deepcopy
-import numpy as np
 
 
 class CondSumLayer(NestedModule):
@@ -66,14 +67,10 @@ class CondSumLayer(NestedModule):
             ValueError: Invalid arguments.
         """
         if n_nodes < 1:
-            raise ValueError(
-                "Number of nodes for 'CondSumLayer' must be greater of equal to 1."
-            )
+            raise ValueError("Number of nodes for 'CondSumLayer' must be greater of equal to 1.")
 
         if len(children) == 0:
-            raise ValueError(
-                "'CondSumLayer' requires at least one child to be specified."
-            )
+            raise ValueError("'CondSumLayer' requires at least one child to be specified.")
 
         super().__init__(children=children, **kwargs)
 
@@ -101,9 +98,7 @@ class CondSumLayer(NestedModule):
         """Returns the output scopes this layer represents."""
         return [self.scope for _ in range(self.n_out)]
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -127,9 +122,7 @@ class CondSumLayer(NestedModule):
 
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> np.ndarray:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> np.ndarray:
         r"""Retrieves the conditional parameters of the leaf node.
 
         First, checks if conditional parameter (``weights``) is passed as an additional argument in the dispatch context.
@@ -188,9 +181,7 @@ class CondSumLayer(NestedModule):
         if not np.all(weights > 0):
             raise ValueError("Weights for 'CondSumLayer' must be all positive.")
         if not np.allclose(weights.sum(axis=-1), 1.0):
-            raise ValueError(
-                "Weights for 'CondSumLayer' must sum up to one in last dimension."
-            )
+            raise ValueError("Weights for 'CondSumLayer' must sum up to one in last dimension.")
         if not (weights.shape[-1] == self.n_in):
             raise ValueError(
                 "Number of weights for 'CondSumLayer' in last dimension does not match total number of child outputs."
@@ -204,9 +195,7 @@ class CondSumLayer(NestedModule):
             # same weights for all sum nodes
             if weights.shape[0] == 1:
                 # broadcast weights to all nodes
-                weights = np.concatenate(
-                    [weights for _ in range(self.n_out)], axis=0
-                )
+                weights = np.concatenate([weights for _ in range(self.n_out)], axis=0)
             # different weights for all sum nodes
             elif weights.shape[0] == self.n_out:
                 # already in correct output shape
@@ -266,9 +255,7 @@ def marginalize(
 
         # marginalize child modules
         for child in layer.children:
-            marg_child = marginalize(
-                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
-            )
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:

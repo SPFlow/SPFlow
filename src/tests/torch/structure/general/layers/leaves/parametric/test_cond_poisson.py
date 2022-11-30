@@ -1,12 +1,13 @@
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import CondPoisson, CondPoissonLayer
-from spflow.torch.structure import marginalize, toTorch, toBase
-from spflow.base.structure.spn import CondPoissonLayer as BaseCondPoissonLayer
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.meta.dispatch import DispatchContext
-import torch
-import numpy as np
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn import CondPoissonLayer as BaseCondPoissonLayer
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondPoisson, CondPoissonLayer
 
 
 class TestNode(unittest.TestCase):
@@ -25,12 +26,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]))
 
         # ---- different scopes -----
         l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3)
@@ -38,9 +34,7 @@ class TestNode(unittest.TestCase):
             self.assertEqual(layer_scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, CondPoissonLayer, Scope([0], [1]), n_nodes=0
-        )
+        self.assertRaises(ValueError, CondPoissonLayer, Scope([0], [1]), n_nodes=0)
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondPoissonLayer, Scope([]), n_nodes=3)
@@ -48,9 +42,7 @@ class TestNode(unittest.TestCase):
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
-        l = CondPoissonLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3
-        )
+        l = CondPoissonLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3)
 
         for layer_scope, node_scope in zip(l.scopes_out, scopes):
             self.assertEqual(layer_scope, node_scope)
@@ -73,13 +65,9 @@ class TestNode(unittest.TestCase):
 
         # ----- float/int parameter values -----
         l_value = 0.73
-        l = CondPoissonLayer(
-            scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"l": l_value}
-        )
+        l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"l": l_value})
 
-        for l_layer_node in l.retrieve_params(
-            torch.tensor([[1]]), DispatchContext()
-        ):
+        for l_layer_node in l.retrieve_params(torch.tensor([[1]]), DispatchContext()):
             self.assertTrue(torch.allclose(l_layer_node, torch.tensor(l_value)))
 
         # ----- list parameter values -----
@@ -90,9 +78,7 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"l": l_values},
         )
 
-        for l_layer_node, l_value in zip(
-            l.retrieve_params(torch.tensor([[1]]), DispatchContext()), l_values
-        ):
+        for l_layer_node, l_value in zip(l.retrieve_params(torch.tensor([[1]]), DispatchContext()), l_values):
             self.assertTrue(torch.allclose(l_layer_node, torch.tensor(l_value)))
 
         # wrong number of values
@@ -165,12 +151,8 @@ class TestNode(unittest.TestCase):
         self.assertTrue(
             CondPoissonLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0], [2]), [FeatureTypes.Poisson(1.0)]
-                    ),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.Poisson(1.0)]
-                    ),
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson(1.0)]),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(1.0)]),
                 ]
             )
         )
@@ -180,19 +162,13 @@ class TestNode(unittest.TestCase):
             CondPoissonLayer.accepts(
                 [
                     FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.Poisson(1.0)]
-                    ),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(1.0)]),
                 ]
             )
         )
 
         # non-conditional scope
-        self.assertFalse(
-            CondPoissonLayer.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondPoissonLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # multivariate signature
         self.assertFalse(
@@ -214,9 +190,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Discrete]),
             ]
         )
-        self.assertTrue(
-            poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         poisson = CondPoissonLayer.from_signatures(
             [
@@ -224,9 +198,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson]),
             ]
         )
-        self.assertTrue(
-            poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         poisson = CondPoissonLayer.from_signatures(
             [
@@ -234,9 +206,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(l=2.0)]),
             ]
         )
-        self.assertTrue(
-            poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         # ----- invalid arguments -----
 
@@ -290,9 +260,7 @@ class TestNode(unittest.TestCase):
             ]
         )
         self.assertTrue(isinstance(poisson, CondPoissonLayer))
-        self.assertTrue(
-            poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
     def test_layer_structural_marginalization(self):
 
@@ -353,9 +321,7 @@ class TestNode(unittest.TestCase):
 
     def test_layer_backend_conversion_1(self):
 
-        torch_layer = CondPoissonLayer(
-            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])]
-        )
+        torch_layer = CondPoissonLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
         base_layer = toBase(torch_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
@@ -363,9 +329,7 @@ class TestNode(unittest.TestCase):
 
     def test_layer_backend_conversion_2(self):
 
-        base_layer = BaseCondPoissonLayer(
-            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])]
-        )
+        base_layer = BaseCondPoissonLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
         torch_layer = toTorch(base_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))

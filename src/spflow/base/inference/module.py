@@ -1,14 +1,15 @@
 """Contains inference methods for ``Module`` objects for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.structure.module import Module
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.base.structure.module import Module
-
-from typing import Optional
-import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -70,8 +71,4 @@ def likelihood(
         Each row corresponds to an input sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return np.exp(
-        log_likelihood(
-            module, data, check_support=check_support, dispatch_ctx=dispatch_ctx
-        )
-    )
+    return np.exp(log_likelihood(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx))

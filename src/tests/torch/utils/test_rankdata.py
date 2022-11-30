@@ -1,10 +1,11 @@
-from spflow.torch.utils import rankdata
+import random
+import unittest
+
+import numpy as np
+import torch
 from scipy.stats import rankdata as scipy_rankdata
 
-import torch
-import numpy as np
-import unittest
-import random
+from spflow.torch.utils import rankdata
 
 
 class TestNode(unittest.TestCase):

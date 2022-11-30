@@ -1,5 +1,9 @@
 """Contains sampling methods for conditional SPN-like nodes for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,12 +13,9 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.torch.inference.spn.nodes.cond_sum_node import log_likelihood
 from spflow.torch.sampling.module import sample
-
-import torch
-from typing import Optional
+from spflow.torch.structure.spn.nodes.cond_sum_node import CondSumNode
 
 
 @dispatch  # type: ignore
@@ -79,9 +80,7 @@ def sample(
     for branch in branches.unique():
 
         # group instances by sampled branch
-        branch_instance_ids = torch.tensor(sampling_ctx.instance_ids)[
-            branches == branch
-        ].tolist()
+        branch_instance_ids = torch.tensor(sampling_ctx.instance_ids)[branches == branch].tolist()
 
         # get corresponding child and output id for sampled branch
         child_ids, output_ids = node.input_to_output_ids([branch.item()])

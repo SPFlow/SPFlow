@@ -1,5 +1,9 @@
 """Contains sampling methods for ``CondGeometric`` nodes for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -12,9 +16,6 @@ from spflow.meta.dispatch.sampling_context import (
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_geometric import (
     CondGeometric,
 )
-
-import torch
-from typing import Optional
 
 
 @dispatch  # type: ignore
@@ -56,9 +57,7 @@ def sample(
     # retrieve value for 'p'
     p = leaf.retrieve_params(data, dispatch_ctx)
 
-    marg_ids = (
-        torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)
-    ).squeeze(1)
+    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = torch.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
@@ -66,8 +65,6 @@ def sample(
     sampling_ids = marg_ids & instance_ids_mask.bool().to(p.device)
 
     # data needs to be offset by +1 due to the different definitions between SciPy and PyTorch
-    data[sampling_ids, leaf.scope.query] = (
-        leaf.dist(p=p).sample((sampling_ids.sum(),)).to(p.device) + 1
-    )
+    data[sampling_ids, leaf.scope.query] = leaf.dist(p=p).sample((sampling_ids.sum(),)).to(p.device) + 1
 
     return data

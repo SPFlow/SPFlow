@@ -4,7 +4,7 @@ Typical usage example:
 
     sampling_ctx = SamplingDispatch(instance_ids, output_ids)
 """
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Tuple, Union
 
 
 class SamplingContext:
@@ -52,9 +52,7 @@ class SamplingContext:
         self.instance_ids = instance_ids
         self.output_ids = output_ids
 
-    def group_output_ids(
-        self, n_total: int
-    ) -> List[Tuple[Union[int, None], List[int]]]:
+    def group_output_ids(self, n_total: int) -> List[Tuple[Union[int, None], List[int]]]:
         """Groups instances in the sampling context by their output indices.
 
         Args:
@@ -67,9 +65,7 @@ class SamplingContext:
         """
         output_id_dict = {}
 
-        for instance_id, instance_output_ids in zip(
-            self.instance_ids, self.output_ids
-        ):
+        for instance_id, instance_output_ids in zip(self.instance_ids, self.output_ids):
             if instance_output_ids == []:
                 instance_output_ids = list(range(n_total))
             for output_id in instance_output_ids:
@@ -124,9 +120,7 @@ def default_sampling_context(n: int) -> SamplingContext:
     return SamplingContext(list(range(n)), [[] for _ in range(n)])
 
 
-def init_default_sampling_context(
-    sampling_ctx: Union[SamplingContext, None], n: int
-) -> SamplingContext:
+def init_default_sampling_context(sampling_ctx: Union[SamplingContext, None], n: int) -> SamplingContext:
     """Initializes sampling context, if it is not already initialized.
 
     Args
@@ -138,8 +132,4 @@ def init_default_sampling_context(
     Returns:
         Original sampling context if not None or a new initialized sampling context.
     """
-    return (
-        sampling_ctx
-        if sampling_ctx is not None
-        else default_sampling_context(n=n)
-    )
+    return sampling_ctx if sampling_ctx is not None else default_sampling_context(n=n)

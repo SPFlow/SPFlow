@@ -1,15 +1,15 @@
 """Contains learning methods for ``Uniform`` nodes for SPFlow in the ``torch`` backend.
 """
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.uniform import (
-    Uniform,
-)
+from spflow.torch.structure.general.nodes.leaves.parametric.uniform import Uniform
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -59,12 +59,8 @@ def maximum_likelihood_estimation(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     if check_support:
-        if torch.any(
-            ~leaf.check_support(data[:, leaf.scope.query], is_scope_data=True)
-        ):
-            raise ValueError(
-                "Encountered values outside of the support for 'Uniform'."
-            )
+        if torch.any(~leaf.check_support(data[:, leaf.scope.query], is_scope_data=True)):
+            raise ValueError("Encountered values outside of the support for 'Uniform'.")
 
     # do nothing since there are no learnable parameters
     pass

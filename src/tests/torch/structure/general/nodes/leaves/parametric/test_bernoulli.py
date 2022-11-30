@@ -1,16 +1,15 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import Bernoulli
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.inference import log_likelihood
-from spflow.base.structure.spn import Bernoulli as BaseBernoulli
-from spflow.base.inference import log_likelihood
-
-import torch
-import numpy as np
-
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import Bernoulli as BaseBernoulli
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Bernoulli
 
 
 class TestBernoulli(unittest.TestCase):
@@ -47,39 +46,19 @@ class TestBernoulli(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type
-        self.assertTrue(
-            Bernoulli.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertTrue(Bernoulli.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # Bernoulli feature type class
-        self.assertTrue(
-            Bernoulli.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Bernoulli])]
-            )
-        )
+        self.assertTrue(Bernoulli.accepts([FeatureContext(Scope([0]), [FeatureTypes.Bernoulli])]))
 
         # Bernoulli feature type instance
-        self.assertTrue(
-            Bernoulli.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.5)])]
-            )
-        )
+        self.assertTrue(Bernoulli.accepts([FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.5)])]))
 
         # invalid feature type
-        self.assertFalse(
-            Bernoulli.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(Bernoulli.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # conditional scope
-        self.assertFalse(
-            Bernoulli.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(Bernoulli.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # multivariate signature
         self.assertFalse(
@@ -95,19 +74,13 @@ class TestBernoulli(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        bernoulli = Bernoulli.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-        )
+        bernoulli = Bernoulli.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Discrete])])
         self.assertTrue(torch.isclose(bernoulli.p, torch.tensor(0.5)))
 
-        bernoulli = Bernoulli.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Bernoulli])]
-        )
+        bernoulli = Bernoulli.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Bernoulli])])
         self.assertTrue(torch.isclose(bernoulli.p, torch.tensor(0.5)))
 
-        bernoulli = Bernoulli.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.75)])]
-        )
+        bernoulli = Bernoulli.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.75)])])
         self.assertTrue(torch.isclose(bernoulli.p, torch.tensor(0.75)))
 
         # ----- invalid arguments -----
@@ -146,15 +119,11 @@ class TestBernoulli(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             Bernoulli,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0]), [FeatureTypes.Bernoulli])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Bernoulli])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        bernoulli = AutoLeaf(
-            [FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.75)])]
-        )
+        bernoulli = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.75)])])
         self.assertTrue(isinstance(bernoulli, Bernoulli))
         self.assertTrue(torch.isclose(bernoulli.p, torch.tensor(0.75)))
 

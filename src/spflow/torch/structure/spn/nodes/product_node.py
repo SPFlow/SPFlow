@@ -1,19 +1,17 @@
 """Contains ``ProductNode`` for SPFlow in the ``torch`` backend.
 """
+from copy import deepcopy
+from typing import Iterable, List, Optional, Union
+
+from spflow.base.structure.spn.nodes.product_node import ProductNode as BaseProductNode
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.spn.nodes.product_node import (
-    ProductNode as BaseProductNode,
-)
-from spflow.torch.structure.module import Module
 from spflow.torch.structure.general.nodes.node import Node
-
-from typing import List, Union, Optional, Iterable
-from copy import deepcopy
+from spflow.torch.structure.module import Module
 
 
 class ProductNode(Node):
@@ -45,18 +43,14 @@ class ProductNode(Node):
         super().__init__(children=children)
 
         if not children:
-            raise ValueError(
-                "'ProductNode' requires at least one child to be specified."
-            )
+            raise ValueError("'ProductNode' requires at least one child to be specified.")
 
         scope = Scope()
 
         for child in children:
             for s in child.scopes_out:
                 if not scope.isdisjoint(s):
-                    raise ValueError(
-                        f"'ProductNode' requires child scopes to be pair-wise disjoint."
-                    )
+                    raise ValueError(f"'ProductNode' requires child scopes to be pair-wise disjoint.")
 
                 scope = scope.join(s)
 
@@ -110,9 +104,7 @@ def marginalize(
 
         # marginalize child modules
         for child in product_node.chs:
-            marg_child = marginalize(
-                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
-            )
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
@@ -128,9 +120,7 @@ def marginalize(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    product_node: ProductNode, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseProductNode:
+def toBase(product_node: ProductNode, dispatch_ctx: Optional[DispatchContext] = None) -> BaseProductNode:
     """Conversion for ``ProductNode`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -140,12 +130,7 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseProductNode(
-        children=[
-            toBase(child, dispatch_ctx=dispatch_ctx)
-            for child in product_node.chs
-        ]
-    )
+    return BaseProductNode(children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in product_node.chs])
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -162,9 +147,4 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return ProductNode(
-        children=[
-            toTorch(child, dispatch_ctx=dispatch_ctx)
-            for child in product_node.children
-        ]
-    )
+    return ProductNode(children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in product_node.children])

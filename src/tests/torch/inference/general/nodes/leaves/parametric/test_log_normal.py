@@ -1,13 +1,14 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import LogNormal as BaseLogNormal
-from spflow.base.inference import log_likelihood, likelihood
-from spflow.torch.structure.spn import LogNormal
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
-import unittest
 import random
+import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import LogNormal as BaseLogNormal
+from spflow.meta.data import Scope
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import LogNormal
 
 
 class TestLogNormal(unittest.TestCase):
@@ -34,9 +35,7 @@ class TestLogNormal(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_log_normal, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
@@ -66,11 +65,7 @@ class TestLogNormal(unittest.TestCase):
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(
-            torch.allclose(
-                mean_orig - torch_log_normal.mean.grad, torch_log_normal.mean
-            )
-        )
+        self.assertTrue(torch.allclose(mean_orig - torch_log_normal.mean.grad, torch_log_normal.mean))
         self.assertTrue(
             torch.allclose(
                 std_aux_orig - torch_log_normal.std_aux.grad,
@@ -79,12 +74,8 @@ class TestLogNormal(unittest.TestCase):
         )
 
         # verify that distribution parameters match parameters
-        self.assertTrue(
-            torch.allclose(torch_log_normal.mean, torch_log_normal.dist.loc)
-        )
-        self.assertTrue(
-            torch.allclose(torch_log_normal.std, torch_log_normal.dist.scale)
-        )
+        self.assertTrue(torch.allclose(torch_log_normal.mean, torch_log_normal.dist.loc))
+        self.assertTrue(torch.allclose(torch_log_normal.std, torch_log_normal.dist.scale))
 
     def test_gradient_optimization(self):
 
@@ -97,9 +88,7 @@ class TestLogNormal(unittest.TestCase):
         data = torch.distributions.LogNormal(0.0, 1.0).sample((100000, 1))
 
         # initialize gradient optimizer
-        optimizer = torch.optim.SGD(
-            torch_log_normal.parameters(), lr=0.5, momentum=0.5
-        )
+        optimizer = torch.optim.SGD(torch_log_normal.parameters(), lr=0.5, momentum=0.5)
 
         # perform optimization (possibly overfitting)
         for i in range(20):
@@ -114,16 +103,8 @@ class TestLogNormal(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(
-            torch.allclose(
-                torch_log_normal.mean, torch.tensor(0.0), atol=1e-3, rtol=0.3
-            )
-        )
-        self.assertTrue(
-            torch.allclose(
-                torch_log_normal.std, torch.tensor(1.0), atol=1e-3, rtol=0.3
-            )
-        )
+        self.assertTrue(torch.allclose(torch_log_normal.mean, torch.tensor(0.0), atol=1e-3, rtol=0.3))
+        self.assertTrue(torch.allclose(torch_log_normal.std, torch.tensor(1.0), atol=1e-3, rtol=0.3))
 
     def test_likelihood_marginalization(self):
 
@@ -156,16 +137,12 @@ class TestLogNormal(unittest.TestCase):
         )
 
         # invalid float values
-        self.assertRaises(
-            ValueError, log_likelihood, log_normal, torch.tensor([[0]])
-        )
+        self.assertRaises(ValueError, log_likelihood, log_normal, torch.tensor([[0]]))
 
         # valid float values
         log_likelihood(
             log_normal,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
         )
         log_likelihood(log_normal, torch.tensor([[4.3]]))
 

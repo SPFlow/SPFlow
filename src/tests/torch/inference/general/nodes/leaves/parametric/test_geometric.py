@@ -1,14 +1,14 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import Geometric as BaseGeometric
-from spflow.base.inference import log_likelihood, likelihood
-from spflow.torch.structure.spn import Geometric
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
-
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import Geometric as BaseGeometric
+from spflow.meta.data import Scope
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import Geometric
 
 
 class TestGeometric(unittest.TestCase):
@@ -34,9 +34,7 @@ class TestGeometric(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_geometric, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
@@ -63,16 +61,10 @@ class TestGeometric(unittest.TestCase):
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(
-            torch.allclose(
-                p_aux_orig - torch_geometric.p_aux.grad, torch_geometric.p_aux
-            )
-        )
+        self.assertTrue(torch.allclose(p_aux_orig - torch_geometric.p_aux.grad, torch_geometric.p_aux))
 
         # verify that distribution parameters match parameters
-        self.assertTrue(
-            torch.allclose(torch_geometric.p, torch_geometric.dist.probs)
-        )
+        self.assertTrue(torch.allclose(torch_geometric.p, torch_geometric.dist.probs))
 
     def test_gradient_optimization(self):
 
@@ -86,9 +78,7 @@ class TestGeometric(unittest.TestCase):
         data = torch.distributions.Geometric(p_target).sample((100000, 1)) + 1
 
         # initialize gradient optimizer
-        optimizer = torch.optim.SGD(
-            torch_geometric.parameters(), lr=0.9, momentum=0.6
-        )
+        optimizer = torch.optim.SGD(torch_geometric.parameters(), lr=0.9, momentum=0.6)
 
         # perform optimization (possibly overfitting)
         for i in range(40):
@@ -103,11 +93,7 @@ class TestGeometric(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(
-            torch.allclose(
-                torch_geometric.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3
-            )
-        )
+        self.assertTrue(torch.allclose(torch_geometric.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
 
     def test_likelihood_marginalization(self):
 
@@ -140,9 +126,7 @@ class TestGeometric(unittest.TestCase):
         )
 
         # valid integers, but outside valid range
-        self.assertRaises(
-            ValueError, log_likelihood, geometric, torch.tensor([[0.0]])
-        )
+        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[0.0]]))
 
         # valid integers within valid range
         data = torch.tensor([[1], [10]])
@@ -158,21 +142,15 @@ class TestGeometric(unittest.TestCase):
             ValueError,
             log_likelihood,
             geometric,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             geometric,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]),
         )
-        self.assertRaises(
-            ValueError, log_likelihood, geometric, torch.tensor([[1.5]])
-        )
+        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[1.5]]))
 
 
 if __name__ == "__main__":

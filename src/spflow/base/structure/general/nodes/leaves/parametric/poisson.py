@@ -1,14 +1,15 @@
 """Contains Poisson leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple, List
-import numpy as np
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from typing import List, Tuple
 
+import numpy as np
 from scipy.stats import poisson  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
+
+from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes, MetaType
+from spflow.meta.data.scope import Scope
 
 
 class Poisson(LeafNode):
@@ -40,13 +41,9 @@ class Poisson(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'Poisson' should be 1, but was: {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'Poisson' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'Poisson' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
         self.set_params(l)
@@ -69,11 +66,7 @@ class Poisson(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a discrete Poisson distribution
@@ -97,9 +90,7 @@ class Poisson(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Poisson' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'Poisson' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -137,14 +128,10 @@ class Poisson(LeafNode):
                 Floating point value representing the rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0).
         """
         if not np.isfinite(l):
-            raise ValueError(
-                f"Value of 'l' for 'Poisson' must be finite, but was: {l}"
-            )
+            raise ValueError(f"Value of 'l' for 'Poisson' must be finite, but was: {l}")
 
         if l < 0:
-            raise ValueError(
-                f"Value of 'l' for 'Poisson' must be non-negative, but was: {l}"
-            )
+            raise ValueError(f"Value of 'l' for 'Poisson' must be non-negative, but was: {l}")
 
         self.l = float(l)
 
@@ -156,9 +143,7 @@ class Poisson(LeafNode):
         """
         return (self.l,)
 
-    def check_support(
-        self, data: np.ndarray, is_scope_data: bool = False
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, is_scope_data: bool = False) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Poisson distribution, which is:
@@ -187,9 +172,7 @@ class Poisson(LeafNode):
             # select relevant data for scope
             scope_data = data[:, self.scope.query]
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(
-            self.scopes_out[0].query
-        ):
+        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scopes_out[0].query):
             raise ValueError(
                 f"Expected 'scope_data' to be of shape (n,{len(self.scopes_out[0].query)}), but was: {scope_data.shape}"
             )
@@ -203,9 +186,7 @@ class Poisson(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= (
-            np.remainder(scope_data[valid & ~nan_mask], 1) == 0
-        )
+        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
 
         # check if values are in valid range
         valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] >= 0

@@ -1,5 +1,11 @@
 """Contains sampling methods for SPN-like sum nodes for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.inference.module import log_likelihood
+from spflow.base.structure.spn.nodes.sum_node import SumNode
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,11 +15,6 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.spn.nodes.sum_node import SumNode
-from spflow.base.inference.module import log_likelihood
-
-from typing import Optional
-import numpy as np
 
 
 @dispatch  # type: ignore
@@ -77,9 +78,7 @@ def sample(
     # group sampled branches
     for branch in np.unique(branches):
         # group instances by sampled branch
-        branch_instance_ids = np.array(sampling_ctx.instance_ids)[
-            branches == branch
-        ].tolist()
+        branch_instance_ids = np.array(sampling_ctx.instance_ids)[branches == branch].tolist()
 
         # get corresponding child and output id for sampled branch
         child_ids, output_ids = node.input_to_output_ids([branch])

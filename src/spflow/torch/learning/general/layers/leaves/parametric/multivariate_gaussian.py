@@ -1,7 +1,9 @@
 """Contains learning methods for ``MultivariateGaussianLayer`` leaves for SPFlow in the ``torch`` backend.
 """
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -83,13 +85,7 @@ def maximum_likelihood_estimation(
 
     if (
         (weights.ndim == 1 and weights.shape[0] != data.shape[0])
-        or (
-            weights.ndim == 2
-            and (
-                weights.shape[0] != data.shape[0]
-                or weights.shape[1] != layer.n_out
-            )
-        )
+        or (weights.ndim == 2 and (weights.shape[0] != data.shape[0] or weights.shape[1] != layer.n_out))
         or (weights.ndim not in [1, 2])
     ):
         raise ValueError(

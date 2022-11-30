@@ -1,14 +1,15 @@
 """Contains Exponential leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple, List
-import numpy as np
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from typing import List, Tuple
 
+import numpy as np
 from scipy.stats import expon  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
+
+from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes, MetaType
+from spflow.meta.data.scope import Scope
 
 
 class Exponential(LeafNode):
@@ -41,13 +42,9 @@ class Exponential(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'Exponential' should be 1, but was {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'Exponential' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'Exponential' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'Exponential' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
         self.set_params(l)
@@ -70,11 +67,7 @@ class Exponential(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a discrete Exponential distribution
@@ -88,9 +81,7 @@ class Exponential(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "Exponential":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "Exponential":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -100,9 +91,7 @@ class Exponential(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Exponential' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'Exponential' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -140,9 +129,7 @@ class Exponential(LeafNode):
                 Floating point value representing the rate parameter (:math:`\lambda`) of the Exponential distribution (must be greater than 0).
         """
         if l <= 0.0 or not np.isfinite(l):
-            raise ValueError(
-                f"Value of 'l' for 'Exponential' must be greater than 0, but was: {l}"
-            )
+            raise ValueError(f"Value of 'l' for 'Exponential' must be greater than 0, but was: {l}")
 
         self.l = l
 
@@ -154,9 +141,7 @@ class Exponential(LeafNode):
         """
         return (self.l,)
 
-    def check_support(
-        self, data: np.ndarray, is_scope_data: bool = False
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, is_scope_data: bool = False) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Exponential distribution, which is:
