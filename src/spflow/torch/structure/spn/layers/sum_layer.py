@@ -1,24 +1,23 @@
 """Contains SPN-like sum layer for SPFlow in the ``torch`` backend.
 """
+from copy import deepcopy
+from typing import Iterable, List, Optional, Union
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn.layers.sum_layer import SumLayer as BaseSumLayer
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
 from spflow.torch.structure.module import Module
 from spflow.torch.structure.spn.nodes.sum_node import (
-    proj_real_to_convex,
     proj_convex_to_real,
+    proj_real_to_convex,
 )
-from spflow.base.structure.spn.layers.sum_layer import (
-    SumLayer as BaseSumLayer,
-)
-
-from typing import List, Union, Optional, Iterable
-from copy import deepcopy
-import numpy as np
-import torch
 
 
 class SumLayer(Module):
@@ -48,9 +47,7 @@ class SumLayer(Module):
         self,
         n_nodes: int,
         children: List[Module],
-        weights: Optional[
-            Union[np.ndarray, torch.Tensor, List[List[float]], List[float]]
-        ] = None,
+        weights: Optional[Union[np.ndarray, torch.Tensor, List[List[float]], List[float]]] = None,
         **kwargs,
     ) -> None:
         r"""Initializes ``SumLayer`` object.
@@ -72,14 +69,10 @@ class SumLayer(Module):
             ValueError: Invalid arguments.
         """
         if n_nodes < 1:
-            raise ValueError(
-                "Number of nodes for 'SumLayer' must be greater of equal to 1."
-            )
+            raise ValueError("Number of nodes for 'SumLayer' must be greater of equal to 1.")
 
         if not children:
-            raise ValueError(
-                "'SumLayer' requires at least one child to be specified."
-            )
+            raise ValueError("'SumLayer' requires at least one child to be specified.")
 
         super().__init__(children=children, **kwargs)
 
@@ -105,9 +98,7 @@ class SumLayer(Module):
                     scope = s
                 else:
                     if not scope.equal_query(s):
-                        raise ValueError(
-                            f"'SumLayer' requires child scopes to have the same query variables."
-                        )
+                        raise ValueError(f"'SumLayer' requires child scopes to have the same query variables.")
 
                 scope = scope.join(s)
 
@@ -156,9 +147,7 @@ class SumLayer(Module):
         if not torch.all(values > 0):
             raise ValueError("Weights for 'SumLayer' must be all positive.")
         if not torch.allclose(values.sum(dim=-1), torch.tensor(1.0)):
-            raise ValueError(
-                "Weights for 'SumLayer' must sum up to one in last dimension."
-            )
+            raise ValueError("Weights for 'SumLayer' must sum up to one in last dimension.")
         if not (values.shape[-1] == self.n_in):
             raise ValueError(
                 "Number of weights for 'SumLayer' in last dimension does not match total number of child outputs."
@@ -166,15 +155,11 @@ class SumLayer(Module):
 
         # same weights for all sum nodes
         if values.ndim == 1:
-            self.weights_aux.data = proj_convex_to_real(
-                values.repeat((self.n_out, 1)).clone()
-            )
+            self.weights_aux.data = proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
         if values.ndim == 2:
             # same weights for all sum nodes
             if values.shape[0] == 1:
-                self.weights_aux.data = proj_convex_to_real(
-                    values.repeat((self.n_out, 1)).clone()
-                )
+                self.weights_aux.data = proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
             # different weights for all sum nodes
             elif values.shape[0] == self.n_out:
                 self.weights_aux.data = proj_convex_to_real(values.clone())
@@ -231,25 +216,19 @@ def marginalize(
 
         # marginalize child modules
         for child in layer.children():
-            marg_child = marginalize(
-                child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx
-            )
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
                 marg_children.append(marg_child)
 
-        return SumLayer(
-            n_nodes=layer.n_out, children=marg_children, weights=layer.weights
-        )
+        return SumLayer(n_nodes=layer.n_out, children=marg_children, weights=layer.weights)
     else:
         return deepcopy(layer)
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseSumLayer:
+def toBase(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BaseSumLayer:
     """Conversion for ``SumLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -261,18 +240,13 @@ def toBase(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseSumLayer(
         n_nodes=sum_layer.n_out,
-        children=[
-            toBase(child, dispatch_ctx=dispatch_ctx)
-            for child in sum_layer.children()
-        ],
+        children=[toBase(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children()],
         weights=sum_layer.weights.detach().cpu().numpy(),
     )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    sum_layer: BaseSumLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> SumLayer:
+def toTorch(sum_layer: BaseSumLayer, dispatch_ctx: Optional[DispatchContext] = None) -> SumLayer:
     """Conversion for ``SumLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -284,9 +258,6 @@ def toTorch(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return SumLayer(
         n_nodes=sum_layer.n_out,
-        children=[
-            toTorch(child, dispatch_ctx=dispatch_ctx)
-            for child in sum_layer.children
-        ],
+        children=[toTorch(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
         weights=sum_layer.weights,
     )

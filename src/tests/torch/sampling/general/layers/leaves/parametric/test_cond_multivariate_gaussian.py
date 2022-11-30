@@ -1,16 +1,17 @@
-from spflow.meta.dispatch import SamplingContext
+import random
+import unittest
+
+import numpy as np
+import torch
+
 from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
+from spflow.torch.inference import log_likelihood
+from spflow.torch.sampling import sample
 from spflow.torch.structure.spn import (
     CondMultivariateGaussian,
     CondMultivariateGaussianLayer,
 )
-from spflow.torch.inference import log_likelihood
-from spflow.torch.sampling import sample
-
-import torch
-import numpy as np
-import random
-import unittest
 
 
 class TestNode(unittest.TestCase):
@@ -89,25 +90,18 @@ class TestNode(unittest.TestCase):
             10000,
             sampling_ctx=SamplingContext(
                 list(range(10000)),
-                [[0, 1] for _ in range(5000)]
-                + [[2, 1] for _ in range(5000, 10000)],
+                [[0, 1] for _ in range(5000)] + [[2, 1] for _ in range(5000, 10000)],
             ),
         )
         nodes_samples = torch.hstack(
             [
-                torch.cat(
-                    [sample(nodes[0], 5000), sample(nodes[2], 5000)], dim=0
-                ),
+                torch.cat([sample(nodes[0], 5000), sample(nodes[2], 5000)], dim=0),
                 sample(nodes[1], 10000)[:, [2, 3]],
             ]
         )
 
         expected_mean = torch.tensor([0.8, 0.3, 0.2, -0.1])
-        self.assertTrue(
-            torch.allclose(
-                nodes_samples.mean(dim=0), expected_mean, atol=0.01, rtol=0.1
-            )
-        )
+        self.assertTrue(torch.allclose(nodes_samples.mean(dim=0), expected_mean, atol=0.01, rtol=0.1))
         self.assertTrue(
             torch.allclose(
                 layer_samples.mean(dim=0),

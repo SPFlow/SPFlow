@@ -1,11 +1,11 @@
-from spflow.base.structure.spn.layers.product_layer import (
-    ProductLayer,
-    marginalize,
-)
-from spflow.meta.data import Scope
-from ...general.nodes.dummy_node import DummyNode
-import numpy as np
 import unittest
+
+import numpy as np
+
+from spflow.base.structure.spn.layers.product_layer import ProductLayer, marginalize
+from spflow.meta.data import Scope
+
+from ...general.nodes.dummy_node import DummyNode
 
 
 class TestLayer(unittest.TestCase):
@@ -64,19 +64,13 @@ class TestLayer(unittest.TestCase):
 
         # ----- marginalize over partial scope -----
         l_marg = marginalize(l, [3])
-        self.assertTrue(
-            l_marg.scopes_out
-            == [Scope([0, 1, 2]), Scope([0, 1, 2]), Scope([0, 1, 2])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 1, 2]), Scope([0, 1, 2]), Scope([0, 1, 2])])
         # number of children should be reduced by one (i.e., marginalized over)
         self.assertTrue(len(l_marg.children) == 2)
 
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [4])
-        self.assertTrue(
-            l_marg.scopes_out
-            == [Scope([0, 1, 2, 3]), Scope([0, 1, 2, 3]), Scope([0, 1, 2, 3])]
-        )
+        self.assertTrue(l_marg.scopes_out == [Scope([0, 1, 2, 3]), Scope([0, 1, 2, 3]), Scope([0, 1, 2, 3])])
 
         # ----- pruning -----
         l = ProductLayer(n_nodes=3, children=input_nodes[:2])

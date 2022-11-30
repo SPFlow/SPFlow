@@ -1,20 +1,22 @@
 """Contains Hypergeometric leaf node for SPFlow in the ``torch`` backend.
 """
+from typing import List, Optional, Tuple
+
 import numpy as np
 import torch
-from typing import List, Tuple, Optional
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
+
+from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import (
+    Hypergeometric as BaseHypergeometric,
+)
 from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
-from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import (
-    Hypergeometric as BaseHypergeometric,
-)
 
 
 class Hypergeometric(LeafNode):
@@ -56,13 +58,9 @@ class Hypergeometric(LeafNode):
                 Integer specifying the number of draws, greater of equal to zero and less than or equal to N.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'Hypergeometric' should be 1, but was: {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'Hypergeometric' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'Hypergeometric' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
 
@@ -92,11 +90,7 @@ class Hypergeometric(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a discrete Hypergeometric distribution
@@ -107,9 +101,7 @@ class Hypergeometric(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "Hypergeometric":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "Hypergeometric":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -119,9 +111,7 @@ class Hypergeometric(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Hypergeometric' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'Hypergeometric' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -204,31 +194,23 @@ class Hypergeometric(LeafNode):
                 Integer specifying the number of draws, greater of equal to zero and less than or equal to N.
         """
         if N < 0 or not np.isfinite(N):
-            raise ValueError(
-                f"Value of 'N' for 'Hypergeometric' must be greater of equal to 0, but was: {N}"
-            )
+            raise ValueError(f"Value of 'N' for 'Hypergeometric' must be greater of equal to 0, but was: {N}")
         if not (torch.remainder(torch.tensor(N), 1.0) == torch.tensor(0.0)):
-            raise ValueError(
-                f"Value of 'N' for 'Hypergeometric' must be (equal to) an integer value, but was: {N}"
-            )
+            raise ValueError(f"Value of 'N' for 'Hypergeometric' must be (equal to) an integer value, but was: {N}")
 
         if M < 0 or M > N or not np.isfinite(M):
             raise ValueError(
                 f"Value of 'M' for 'Hypergeometric' must be greater of equal to 0 and less or equal to N, but was: {M}"
             )
         if not (torch.remainder(torch.tensor(M), 1.0) == torch.tensor(0.0)):
-            raise ValueError(
-                f"Value of 'M' for 'Hypergeometric' must be (equal to) an integer value, but was: {M}"
-            )
+            raise ValueError(f"Value of 'M' for 'Hypergeometric' must be (equal to) an integer value, but was: {M}")
 
         if n < 0 or n > N or not np.isfinite(n):
             raise ValueError(
                 f"Value of 'n' for 'Hypergeometric' must be greater of equal to 0 and less or equal to N, but was: {n}"
             )
         if not (torch.remainder(torch.tensor(n), 1.0) == torch.tensor(0.0)):
-            raise ValueError(
-                f"Value of 'n' for 'Hypergeometric' must be (equal to) an integer value, but was: {n}"
-            )
+            raise ValueError(f"Value of 'n' for 'Hypergeometric' must be (equal to) an integer value, but was: {n}")
 
         self.M.data = torch.tensor(int(M))
         self.N.data = torch.tensor(int(N))
@@ -242,9 +224,7 @@ class Hypergeometric(LeafNode):
         """
         return self.N.data.cpu().numpy(), self.M.data.cpu().numpy(), self.n.data.cpu().numpy()  # type: ignore
 
-    def check_support(
-        self, data: torch.Tensor, is_scope_data: bool = False
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Hypergeometric distribution, which is:
@@ -292,9 +272,7 @@ class Hypergeometric(LeafNode):
         valid[~nan_mask] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         # check if all values are valid integers
-        valid[~nan_mask & valid] &= (
-            torch.remainder(scope_data[~nan_mask & valid], 1).squeeze(-1) == 0
-        )
+        valid[~nan_mask & valid] &= torch.remainder(scope_data[~nan_mask & valid], 1).squeeze(-1) == 0
 
         # check if values are in valid range
         valid[~nan_mask & valid] &= (scope_data[~nan_mask & valid] >= max(0, self.n + self.M - self.N)) & (  # type: ignore
@@ -307,9 +285,7 @@ class Hypergeometric(LeafNode):
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    node: BaseHypergeometric, dispatch_ctx: Optional[DispatchContext] = None
-) -> Hypergeometric:
+def toTorch(node: BaseHypergeometric, dispatch_ctx: Optional[DispatchContext] = None) -> Hypergeometric:
     """Conversion for ``Hypergeometric`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -323,9 +299,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    node: Hypergeometric, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseHypergeometric:
+def toBase(node: Hypergeometric, dispatch_ctx: Optional[DispatchContext] = None) -> BaseHypergeometric:
     """Conversion for ``Hypergeometric`` from ``torch`` backend to ``base`` backend.
 
     Args:

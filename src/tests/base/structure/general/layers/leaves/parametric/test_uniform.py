@@ -1,8 +1,10 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.base.structure.spn import Uniform, UniformLayer, marginalize
-from spflow.base.structure import AutoLeaf
-import numpy as np
 import unittest
+
+import numpy as np
+
+from spflow.base.structure import AutoLeaf
+from spflow.base.structure.spn import Uniform, UniformLayer, marginalize
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestLayer(unittest.TestCase):
@@ -14,9 +16,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
         # make sure parameter properties works correctly
         start = l.start
         for node, node_start in zip(l.nodes, start):
@@ -46,12 +46,8 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(np.all(node.end == node_end))
 
         # wrong number of values
-        self.assertRaises(
-            ValueError, UniformLayer, Scope([0]), start, end[:-1], n_nodes=3
-        )
-        self.assertRaises(
-            ValueError, UniformLayer, Scope([0]), start[:-1], end, n_nodes=3
-        )
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), start, end[:-1], n_nodes=3)
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), start[:-1], end, n_nodes=3)
         # wrong number of dimensions (nested list)
         self.assertRaises(
             ValueError,
@@ -124,21 +120,15 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, UniformLayer, Scope([0]), 0.0, 1.0, n_nodes=0
-        )
+        self.assertRaises(ValueError, UniformLayer, Scope([0]), 0.0, 1.0, n_nodes=0)
 
         # ----- invalid scope -----
-        self.assertRaises(
-            ValueError, UniformLayer, Scope([]), 0.0, 1.0, n_nodes=3
-        )
+        self.assertRaises(ValueError, UniformLayer, Scope([]), 0.0, 1.0, n_nodes=3)
         self.assertRaises(ValueError, UniformLayer, [], 0.0, 1.0, n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
-        l = UniformLayer(
-            scope=[Scope([1]), Scope([0])], start=0.0, end=1.0, n_nodes=3
-        )
+        l = UniformLayer(scope=[Scope([1]), Scope([0])], start=0.0, end=1.0, n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
 
@@ -158,12 +148,8 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(
             UniformLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                    ),
-                    FeatureContext(
-                        Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
-                    ),
+                    FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]),
                 ]
             )
         )
@@ -173,9 +159,7 @@ class TestLayer(unittest.TestCase):
             UniformLayer.accepts(
                 [
                     FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
-                    FeatureContext(
-                        Scope([1]), [FeatureTypes.Uniform(-1.0, 2.0)]
-                    ),
+                    FeatureContext(Scope([1]), [FeatureTypes.Uniform(-1.0, 2.0)]),
                 ]
             )
         )
@@ -211,12 +195,8 @@ class TestLayer(unittest.TestCase):
 
         uniform = UniformLayer.from_signatures(
             [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                ),
-                FeatureContext(
-                    Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
-                ),
+                FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]),
             ]
         )
         self.assertTrue(np.all(uniform.start == np.array([-1.0, 1.0])))
@@ -268,12 +248,8 @@ class TestLayer(unittest.TestCase):
             UniformLayer,
             AutoLeaf.infer(
                 [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                    ),
-                    FeatureContext(
-                        Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
-                    ),
+                    FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]),
                 ]
             ),
         )
@@ -281,12 +257,8 @@ class TestLayer(unittest.TestCase):
         # make sure AutoLeaf can return correctly instantiated object
         uniform = AutoLeaf(
             [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                ),
-                FeatureContext(
-                    Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]
-                ),
+                FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Uniform(start=1.0, end=3.0)]),
             ]
         )
         self.assertTrue(np.all(uniform.start == np.array([-1.0, 1.0])))
@@ -297,9 +269,7 @@ class TestLayer(unittest.TestCase):
 
         # ---------- same scopes -----------
 
-        l = UniformLayer(
-            scope=Scope([1]), start=[-1.0, 2.0], end=[1.0, 2.5], n_nodes=2
-        )
+        l = UniformLayer(scope=Scope([1]), start=[-1.0, 2.0], end=[1.0, 2.5], n_nodes=2)
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [1]) == None)
@@ -313,9 +283,7 @@ class TestLayer(unittest.TestCase):
 
         # ---------- different scopes -----------
 
-        l = UniformLayer(
-            scope=[Scope([1]), Scope([0])], start=[-1.0, 2.0], end=[1.0, 2.5]
-        )
+        l = UniformLayer(scope=[Scope([1]), Scope([0])], start=[-1.0, 2.0], end=[1.0, 2.5])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)

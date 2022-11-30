@@ -1,7 +1,9 @@
 """Contains learning methods for SPN-like sum nodes for SPFlow in the ``torch`` backend.
 """
 from typing import Optional
+
 import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -36,12 +38,7 @@ def em(
 
     with torch.no_grad():
         # ----- expectation step -----
-        child_lls = torch.hstack(
-            [
-                dispatch_ctx.cache["log_likelihood"][child]
-                for child in node.children()
-            ]
-        )
+        child_lls = torch.hstack([dispatch_ctx.cache["log_likelihood"][child] for child in node.children()])
 
         # get cached log-likelihood gradients w.r.t. module log-likelihoods
         expectations = node.weights.data * (

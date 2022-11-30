@@ -1,7 +1,9 @@
 """Contains learning methods for ``LogNormalLayer`` leaves for SPFlow in the ``torch`` backend.
 """
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -76,22 +78,14 @@ def maximum_likelihood_estimation(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # select relevant data for scope
-    scope_data = torch.hstack(
-        [data[:, scope.query] for scope in layer.scopes_out]
-    )
+    scope_data = torch.hstack([data[:, scope.query] for scope in layer.scopes_out])
 
     if weights is None:
         weights = torch.ones(data.shape[0], layer.n_out)
 
     if (
         (weights.ndim == 1 and weights.shape[0] != data.shape[0])
-        or (
-            weights.ndim == 2
-            and (
-                weights.shape[0] != data.shape[0]
-                or weights.shape[1] != layer.n_out
-            )
-        )
+        or (weights.ndim == 2 and (weights.shape[0] != data.shape[0] or weights.shape[1] != layer.n_out))
         or (weights.ndim not in [1, 2])
     ):
         raise ValueError(
@@ -104,18 +98,14 @@ def maximum_likelihood_estimation(
 
     if check_support:
         if torch.any(~layer.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'LogNormalLayer'."
-            )
+            raise ValueError("Encountered values outside of the support for 'LogNormalLayer'.")
 
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
 
     # check if any columns (i.e., data for a output scope) contain only NaN values
     if torch.any(nan_mask.sum(dim=0) == scope_data.shape[0]):
-        raise ValueError(
-            "Cannot compute maximum-likelihood estimation on nan-only data for a specified scope."
-        )
+        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data for a specified scope.")
 
     if nan_strategy is None and torch.any(nan_mask):
         raise ValueError(
@@ -132,26 +122,16 @@ def maximum_likelihood_estimation(
             weights /= weights.sum(dim=0) / scope_data.shape[0]
 
             n_total = weights.sum(dim=0)
-            mean_est = (
-                weights * torch.nan_to_num(scope_data, nan=1.0).log()
-            ).sum(dim=0) / n_total
+            mean_est = (weights * torch.nan_to_num(scope_data, nan=1.0).log()).sum(dim=0) / n_total
 
             if bias_correction:
                 n_total -= 1
 
             std_est = torch.sqrt(
-                (
-                    weights
-                    * torch.nan_to_num(
-                        scope_data.log() - mean_est, nan=0.0
-                    ).pow(2)
-                ).sum(dim=0)
-                / n_total
+                (weights * torch.nan_to_num(scope_data.log() - mean_est, nan=0.0).pow(2)).sum(dim=0) / n_total
             )
         else:
-            raise ValueError(
-                "Unknown strategy for handling missing (NaN) values for 'LogNormalLayer'."
-            )
+            raise ValueError("Unknown strategy for handling missing (NaN) values for 'LogNormalLayer'.")
     elif isinstance(nan_strategy, Callable) or nan_strategy is None:
         if isinstance(nan_strategy, Callable):
             scope_data = nan_strategy(scope_data)
@@ -164,10 +144,7 @@ def maximum_likelihood_estimation(
         if bias_correction:
             n_total -= 1
 
-        std_est = torch.sqrt(
-            (weights * torch.pow(scope_data.log() - mean_est, 2)).sum(dim=0)
-            / n_total
-        )
+        std_est = torch.sqrt((weights * torch.pow(scope_data.log() - mean_est, 2)).sum(dim=0) / n_total)
     else:
         raise ValueError(
             f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}."

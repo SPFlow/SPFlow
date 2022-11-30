@@ -1,5 +1,10 @@
 """Contains sampling methods for SPN-like product layers for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.structure.spn.layers.product_layer import ProductLayer
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,10 +14,6 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.base.structure.spn.layers.product_layer import ProductLayer
-
-from typing import Optional
-import numpy as np
 
 
 @dispatch  # type: ignore
@@ -55,12 +56,8 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     for node_ids in sampling_ctx.unique_outputs_ids():
-        if len(node_ids) != 1 or (
-            len(node_ids) == 0 and product_layer.n_out != 1
-        ):
-            raise ValueError(
-                "Too many output ids specified for outputs over same scope."
-            )
+        if len(node_ids) != 1 or (len(node_ids) == 0 and product_layer.n_out != 1):
+            raise ValueError("Too many output ids specified for outputs over same scope.")
 
     # all product nodes are over (all) children
     for child in product_layer.children:

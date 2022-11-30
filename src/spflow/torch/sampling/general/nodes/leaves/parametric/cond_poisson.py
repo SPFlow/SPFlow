@@ -1,5 +1,9 @@
 """Contains sampling methods for ``CondPoisson`` nodes for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -12,9 +16,6 @@ from spflow.meta.dispatch.sampling_context import (
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_poisson import (
     CondPoisson,
 )
-
-import torch
-from typing import Optional
 
 
 @dispatch  # type: ignore
@@ -56,17 +57,13 @@ def sample(
     # retrieve value for 'l'
     l = leaf.retrieve_params(data, dispatch_ctx)
 
-    marg_ids = (
-        torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)
-    ).squeeze(1)
+    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = torch.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
 
     sampling_ids = marg_ids & instance_ids_mask.bool().to(l.device)
 
-    data[sampling_ids, leaf.scope.query] = (
-        leaf.dist(l=l).sample((sampling_ids.sum(),)).to(l.device)
-    )
+    data[sampling_ids, leaf.scope.query] = leaf.dist(l=l).sample((sampling_ids.sum(),)).to(l.device)
 
     return data

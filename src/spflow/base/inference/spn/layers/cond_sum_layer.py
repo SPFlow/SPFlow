@@ -1,15 +1,16 @@
 """Contains inference methods for SPN-like conditional sum layers for SPFlow in the ``base`` backend.
 """
+from typing import Optional
+
+import numpy as np
+
+from spflow.base.inference.spn.nodes.cond_sum_node import log_likelihood
+from spflow.base.structure.spn.layers.cond_sum_layer import CondSumLayer
+from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.base.structure.spn.layers.cond_sum_layer import CondSumLayer
-from spflow.base.inference.spn.nodes.cond_sum_node import log_likelihood
-
-from typing import Optional
-import numpy as np
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -64,9 +65,7 @@ def log_likelihood(
     )
 
     # set placeholder values
-    sum_layer.set_placeholders(
-        "log_likelihood", child_lls, dispatch_ctx, overwrite=False
-    )
+    sum_layer.set_placeholders("log_likelihood", child_lls, dispatch_ctx, overwrite=False)
 
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
     return np.concatenate(

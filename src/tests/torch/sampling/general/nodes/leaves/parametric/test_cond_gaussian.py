@@ -1,12 +1,13 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext
-from spflow.torch.structure.spn import CondGaussian
-from spflow.torch.sampling import sample
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
+from spflow.torch.sampling import sample
+from spflow.torch.structure.spn import CondGaussian
 
 
 class TestGaussian(unittest.TestCase):
@@ -25,23 +26,17 @@ class TestGaussian(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        gaussian = CondGaussian(
-            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 0.0005}
-        )
+        gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 0.0005})
 
         data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
 
         samples = sample(gaussian, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
 
         # ----- verify samples -----
         samples = sample(gaussian, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.Tensor([0.0]), atol=0.01)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.Tensor([0.0]), atol=0.01))
 
 
 if __name__ == "__main__":

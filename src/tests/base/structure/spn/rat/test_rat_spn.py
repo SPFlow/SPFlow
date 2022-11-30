@@ -1,77 +1,62 @@
 import unittest
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes
+
 from spflow.base.structure.autoleaf import (
     AutoLeaf,
     Bernoulli,
-    Binomial,
-    Exponential,
-    Gamma,
-    Gaussian,
-    Geometric,
-    Hypergeometric,
-    LogNormal,
-    MultivariateGaussian,
-    NegativeBinomial,
-    Poisson,
-    Uniform,
-    CondBernoulli,
-    CondBinomial,
-    CondExponential,
-    CondGamma,
-    CondGaussian,
-    CondGeometric,
-    CondLogNormal,
-    CondMultivariateGaussian,
-    CondNegativeBinomial,
-    CondPoisson,
     BernoulliLayer,
+    Binomial,
     BinomialLayer,
-    ExponentialLayer,
-    GammaLayer,
-    GaussianLayer,
-    GeometricLayer,
-    HypergeometricLayer,
-    LogNormalLayer,
-    MultivariateGaussianLayer,
-    NegativeBinomialLayer,
-    PoissonLayer,
-    UniformLayer,
+    CondBernoulli,
     CondBernoulliLayer,
+    CondBinomial,
     CondBinomialLayer,
+    CondExponential,
     CondExponentialLayer,
+    CondGamma,
     CondGammaLayer,
+    CondGaussian,
     CondGaussianLayer,
+    CondGeometric,
     CondGeometricLayer,
+    CondLogNormal,
     CondLogNormalLayer,
+    CondMultivariateGaussian,
     CondMultivariateGaussianLayer,
+    CondNegativeBinomial,
     CondNegativeBinomialLayer,
+    CondPoisson,
     CondPoissonLayer,
+    Exponential,
+    ExponentialLayer,
+    Gamma,
+    GammaLayer,
+    Gaussian,
+    GaussianLayer,
+    Geometric,
+    GeometricLayer,
+    Hypergeometric,
+    HypergeometricLayer,
+    LogNormal,
+    LogNormalLayer,
+    MultivariateGaussian,
+    MultivariateGaussianLayer,
+    NegativeBinomial,
+    NegativeBinomialLayer,
+    Poisson,
+    PoissonLayer,
+    Uniform,
+    UniformLayer,
 )
+from spflow.base.structure.spn.layers.cond_sum_layer import CondSumLayer, marginalize
+from spflow.base.structure.spn.layers.hadamard_layer import HadamardLayer, marginalize
+from spflow.base.structure.spn.layers.partition_layer import PartitionLayer, marginalize
+from spflow.base.structure.spn.layers.sum_layer import SumLayer, marginalize
+from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode, marginalize
 from spflow.base.structure.spn.nodes.sum_node import SumNode, marginalize
-from spflow.base.structure.spn.nodes.cond_sum_node import (
-    CondSumNode,
-    marginalize,
-)
-from spflow.base.structure.spn.layers.cond_sum_layer import (
-    CondSumLayer,
-    marginalize,
-)
-from spflow.base.structure.spn.layers.sum_layer import (
-    SumLayer,
-    marginalize,
-)
-from spflow.base.structure.spn.layers.partition_layer import (
-    PartitionLayer,
-    marginalize,
-)
-from spflow.base.structure.spn.layers.hadamard_layer import (
-    HadamardLayer,
-    marginalize,
-)
 from spflow.base.structure.spn.rat.rat_spn import RatSPN, marginalize
 from spflow.base.structure.spn.rat.region_graph import random_region_graph
-
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.meta.data.feature_types import FeatureTypes
 
 leaf_node_classes = (
     Bernoulli,
@@ -163,12 +148,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            Scope(random_variables), depth=2, replicas=1
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(Scope(random_variables), depth=2, replicas=1)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         self.assertRaises(
             ValueError,
@@ -211,9 +192,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=2, replicas=1)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -223,9 +202,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 4)
         self.assertEqual(n_product_nodes, 6)
         self.assertEqual(n_leaf_nodes, 7)
@@ -235,9 +212,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=3, replicas=1)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -247,9 +222,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 7)
         self.assertEqual(n_product_nodes, 6)
         self.assertEqual(n_leaf_nodes, 7)
@@ -259,9 +232,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=3, replicas=2)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -271,9 +242,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=2,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 23)
         self.assertEqual(n_product_nodes, 48)
         self.assertEqual(n_leaf_nodes, 28)
@@ -283,9 +252,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables)
         region_graph = random_region_graph(scope, depth=3, replicas=3)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -295,9 +262,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=3,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 49)
         self.assertEqual(n_product_nodes, 162)
         self.assertEqual(n_leaf_nodes, 63)
@@ -306,12 +271,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=2, replicas=1, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=2, replicas=1, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -321,9 +282,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 3)
         self.assertEqual(n_product_nodes, 4)
         self.assertEqual(n_leaf_nodes, 7)
@@ -332,12 +291,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(9))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=3, replicas=1, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=3, replicas=1, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -347,9 +302,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=1,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 5)
         self.assertEqual(n_product_nodes, 4)
         self.assertEqual(n_leaf_nodes, 9)
@@ -358,12 +311,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(7))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=2, replicas=2, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=2, replicas=2, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -373,9 +322,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=2,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 7)
         self.assertEqual(n_product_nodes, 40)
         self.assertEqual(n_leaf_nodes, 28)
@@ -384,12 +331,8 @@ class TestRatSpn(unittest.TestCase):
 
         random_variables = list(range(20))
         scope = Scope(random_variables)
-        region_graph = random_region_graph(
-            scope, depth=3, replicas=3, n_splits=3
-        )
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        region_graph = random_region_graph(scope, depth=3, replicas=3, n_splits=3)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,
@@ -399,9 +342,7 @@ class TestRatSpn(unittest.TestCase):
             n_leaf_nodes=2,
         )
 
-        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(
-            rat_spn
-        )
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
         self.assertEqual(n_sum_nodes, 49)
         self.assertEqual(n_product_nodes, 267)
         self.assertEqual(n_leaf_nodes, 120)
@@ -411,9 +352,7 @@ class TestRatSpn(unittest.TestCase):
         random_variables = list(range(7))
         scope = Scope(random_variables, [7])  # conditional scope
         region_graph = random_region_graph(scope, depth=2, replicas=1)
-        feature_ctx = FeatureContext(
-            scope, {rv: FeatureTypes.Gaussian for rv in scope.query}
-        )
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
 
         rat_spn = RatSPN(
             region_graph,

@@ -1,7 +1,9 @@
 """Contains learning methods for ``HypergeometricLayer`` leaves for SPFlow in the ``torch`` backend.
 """
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -60,15 +62,11 @@ def maximum_likelihood_estimation(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # select relevant data for scope
-    scope_data = torch.hstack(
-        [data[:, scope.query] for scope in layer.scopes_out]
-    )
+    scope_data = torch.hstack([data[:, scope.query] for scope in layer.scopes_out])
 
     if check_support:
         if torch.any(~layer.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'HypergeometricLayer'."
-            )
+            raise ValueError("Encountered values outside of the support for 'HypergeometricLayer'.")
 
     # do nothing since there are no learnable parameters
     pass

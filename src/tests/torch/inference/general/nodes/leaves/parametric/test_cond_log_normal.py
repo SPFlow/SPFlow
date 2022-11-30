@@ -1,14 +1,15 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
-from spflow.base.structure.spn import CondLogNormal as BaseCondLogNormal
-from spflow.base.inference import log_likelihood
-from spflow.torch.structure.spn import CondLogNormal
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import CondLogNormal as BaseCondLogNormal
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import CondLogNormal
 
 
 class TestLogNormal(unittest.TestCase):
@@ -77,12 +78,8 @@ class TestLogNormal(unittest.TestCase):
         mean = random.random()
         std = random.random() + 1e-7  # offset by small number to avoid zero
 
-        torch_log_normal = CondLogNormal(
-            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
-        )
-        node_log_normal = BaseCondLogNormal(
-            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
-        )
+        torch_log_normal = CondLogNormal(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
+        node_log_normal = BaseCondLogNormal(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
 
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)
@@ -91,20 +88,14 @@ class TestLogNormal(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_log_normal, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
         mean = torch.tensor(random.random(), requires_grad=True)
-        std = torch.tensor(
-            random.random() + 1e-7, requires_grad=True
-        )  # offset by small number to avoid zero
+        std = torch.tensor(random.random() + 1e-7, requires_grad=True)  # offset by small number to avoid zero
 
-        torch_log_normal = CondLogNormal(
-            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
-        )
+        torch_log_normal = CondLogNormal(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
 
         # create dummy input data (batch size x random variables)
         data = np.random.rand(3, 1)

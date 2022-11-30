@@ -1,14 +1,14 @@
 """Contains learning methods for ``Binomial`` nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import numpy as np
+
+from spflow.base.structure.general.nodes.leaves.parametric.binomial import Binomial
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
-)
-from spflow.base.structure.general.nodes.leaves.parametric.binomial import (
-    Binomial,
 )
 
 
@@ -85,17 +85,13 @@ def maximum_likelihood_estimation(
 
     if check_support:
         if np.any(~leaf.check_support(scope_data, is_scope_data=True)):
-            raise ValueError(
-                "Encountered values outside of the support for 'Binomial'."
-            )
+            raise ValueError("Encountered values outside of the support for 'Binomial'.")
 
     # NaN entries (no information)
     nan_mask = np.isnan(scope_data)
 
     if np.all(nan_mask):
-        raise ValueError(
-            "Cannot compute maximum-likelihood estimation on nan-only data."
-        )
+        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
 
     if nan_strategy is None and np.any(nan_mask):
         raise ValueError(
@@ -108,9 +104,7 @@ def maximum_likelihood_estimation(
             scope_data = scope_data[~nan_mask.squeeze(1)]
             weights = weights[~nan_mask.squeeze(1)]
         else:
-            raise ValueError(
-                "Unknown strategy for handling missing (NaN) values for 'Binomial'."
-            )
+            raise ValueError("Unknown strategy for handling missing (NaN) values for 'Binomial'.")
     elif isinstance(nan_strategy, Callable):
         scope_data = nan_strategy(scope_data)
         # TODO: how to handle weights

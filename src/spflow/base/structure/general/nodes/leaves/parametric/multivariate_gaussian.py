@@ -1,22 +1,21 @@
 """Contains Multivariate Normal leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple, List, Union, Optional, Iterable
+from typing import Iterable, List, Optional, Tuple, Union
+
 import numpy as np
+from scipy.stats import multivariate_normal  # type: ignore
+from scipy.stats.distributions import rv_frozen  # type: ignore
+
+from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes, MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
-from spflow.base.structure.general.nodes.leaves.parametric.gaussian import (
-    Gaussian,
-)
-
-from scipy.stats import multivariate_normal  # type: ignore
-from scipy.stats.distributions import rv_frozen  # type: ignore
 
 
 class MultivariateGaussian(LeafNode):
@@ -63,17 +62,11 @@ class MultivariateGaussian(LeafNode):
         """
         # check if scope contains duplicates
         if len(set(scope.query)) != len(scope.query):
-            raise ValueError(
-                "Query scope for 'MultivariateGaussian' contains duplicate variables."
-            )
+            raise ValueError("Query scope for 'MultivariateGaussian' contains duplicate variables.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'MultivariateGaussian' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'MultivariateGaussian' should be empty, but was {scope.evidence}.")
         if len(scope.query) < 1:
-            raise ValueError(
-                "Size of query scope for 'MultivariateGaussian' must be at least 1."
-            )
+            raise ValueError("Size of query scope for 'MultivariateGaussian' must be at least 1.")
 
         super().__init__(scope=scope)
 
@@ -102,11 +95,7 @@ class MultivariateGaussian(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional (possibly multivariate) node
-        if (
-            len(domains) < 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) < 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a continuous (multivariate) Gaussian distribution
@@ -123,9 +112,7 @@ class MultivariateGaussian(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "MultivariateGaussian":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "MultivariateGaussian":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -142,9 +129,7 @@ class MultivariateGaussian(LeafNode):
         # get single output signature
         feature_ctx = signatures[0]
 
-        mean, cov = np.zeros(len(feature_ctx.scope.query)), np.eye(
-            len(feature_ctx.scope.query)
-        )
+        mean, cov = np.zeros(len(feature_ctx.scope.query)), np.eye(len(feature_ctx.scope.query))
 
         for i, domain in enumerate(feature_ctx.get_domains()):
             # read or initialize parameters
@@ -210,21 +195,13 @@ class MultivariateGaussian(LeafNode):
 
         # check mean vector for nan or inf values
         if np.any(np.isinf(mean)):
-            raise ValueError(
-                "Value of 'mean' for 'MultivariateGaussian' may not contain infinite values."
-            )
+            raise ValueError("Value of 'mean' for 'MultivariateGaussian' may not contain infinite values.")
         if np.any(np.isnan(mean)):
-            raise ValueError(
-                "Value of 'mean' for 'MultivariateGaussian' may not contain NaN values."
-            )
+            raise ValueError("Value of 'mean' for 'MultivariateGaussian' may not contain NaN values.")
 
         # test whether or not matrix has correct shape
         if cov.ndim != 2 or (
-            cov.ndim == 2
-            and (
-                cov.shape[0] != len(self.scope.query)
-                or cov.shape[1] != len(self.scope.query)
-            )
+            cov.ndim == 2 and (cov.shape[0] != len(self.scope.query) or cov.shape[1] != len(self.scope.query))
         ):
             raise ValueError(
                 f"Value of 'cov' for 'MultivariateGaussian' expected to be of shape ({len(self.scope.query), len(self.scope.query)}), but was: {cov.shape}."
@@ -232,26 +209,18 @@ class MultivariateGaussian(LeafNode):
 
         # check covariance matrix for nan or inf values
         if np.any(np.isinf(cov)):
-            raise ValueError(
-                "Value of 'cov' for 'MultivariateGaussian' may not contain infinite values."
-            )
+            raise ValueError("Value of 'cov' for 'MultivariateGaussian' may not contain infinite values.")
         if np.any(np.isnan(cov)):
-            raise ValueError(
-                "Value of 'cov' for 'MultivariateGaussian' may not contain NaN values."
-            )
+            raise ValueError("Value of 'cov' for 'MultivariateGaussian' may not contain NaN values.")
 
         # test covariance matrix for symmetry
         if not np.all(cov == cov.T):
-            raise ValueError(
-                "Value of 'cov' for 'MultivariateGaussian' must be symmetric."
-            )
+            raise ValueError("Value of 'cov' for 'MultivariateGaussian' must be symmetric.")
 
         # test covariance matrix for positive semi-definiteness
         # NOTE: since we established in the test right before that matrix is symmetric we can use numpy's eigvalsh instead of eigvals
         if np.any(np.linalg.eigvalsh(cov) < 0):
-            raise ValueError(
-                "Value of 'cov' for 'MultivariateGaussian' must be positive semi-definite."
-            )
+            raise ValueError("Value of 'cov' for 'MultivariateGaussian' must be positive semi-definite.")
 
         self.mean = mean
         self.cov = cov
@@ -266,9 +235,7 @@ class MultivariateGaussian(LeafNode):
         """
         return self.mean, self.cov
 
-    def check_support(
-        self, data: np.ndarray, is_scope_data: bool = False
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, is_scope_data: bool = False) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Multivariate Gaussian distribution, which is:

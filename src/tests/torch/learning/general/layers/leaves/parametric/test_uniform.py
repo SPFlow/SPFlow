@@ -1,17 +1,18 @@
+import random
+import unittest
+
+import numpy as np
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure.spn import SumNode, ProductNode, UniformLayer
 from spflow.torch.inference import log_likelihood
 from spflow.torch.learning import (
     em,
-    maximum_likelihood_estimation,
     expectation_maximization,
+    maximum_likelihood_estimation,
 )
-
-import torch
-import numpy as np
-import unittest
-import random
+from spflow.torch.structure.spn import ProductNode, SumNode, UniformLayer
 
 
 class TestNode(unittest.TestCase):
@@ -25,9 +26,7 @@ class TestNode(unittest.TestCase):
 
     def test_mle(self):
 
-        layer = UniformLayer(
-            scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0]
-        )
+        layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
 
         # simulate data
         data = torch.tensor([[0.5, -3.0]])
@@ -40,9 +39,7 @@ class TestNode(unittest.TestCase):
 
     def test_mle_invalid_support(self):
 
-        layer = UniformLayer(
-            Scope([0]), start=1.0, end=3.0, support_outside=False
-        )
+        layer = UniformLayer(Scope([0]), start=1.0, end=3.0, support_outside=False)
 
         # perform MLE (should raise exceptions)
         self.assertRaises(
@@ -65,9 +62,7 @@ class TestNode(unittest.TestCase):
         # set seed
         torch.manual_seed(0)
 
-        leaf = UniformLayer(
-            [Scope([0]), Scope([1])], start=[-1.0, 2.0], end=[3.0, 5.0]
-        )
+        leaf = UniformLayer([Scope([0]), Scope([1])], start=[-1.0, 2.0], end=[3.0, 5.0])
         data = torch.tensor(
             np.hstack(
                 [
@@ -97,9 +92,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        layer = UniformLayer(
-            [Scope([0]), Scope([1])], start=[-1.0, 2.0], end=[3.0, 5.0]
-        )
+        layer = UniformLayer([Scope([0]), Scope([1])], start=[-1.0, 2.0], end=[3.0, 5.0])
         prod_node = ProductNode([layer])
 
         data = torch.tensor(

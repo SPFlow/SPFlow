@@ -1,24 +1,24 @@
-from spflow.meta.data import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.meta.dispatch.dispatch_context import DispatchContext
+import random
+import unittest
+from typing import Callable
+
+import numpy as np
+import torch
+
 from spflow.base.structure.general.nodes.leaves.parametric.cond_binomial import (
     CondBinomial as BaseCondBinomial,
 )
+from spflow.meta.data import Scope
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_binomial import (
     CondBinomial,
     toBase,
     toTorch,
 )
 from spflow.torch.structure.spn.nodes.sum_node import marginalize
-from typing import Callable
-
-import torch
-import numpy as np
-
-import random
-import unittest
 
 
 class TestBinomial(unittest.TestCase):
@@ -26,9 +26,7 @@ class TestBinomial(unittest.TestCase):
 
         binomial = CondBinomial(Scope([0], [1]), n=1)
         self.assertTrue(binomial.cond_f is None)
-        binomial = CondBinomial(
-            Scope([0], [1]), n=1, cond_f=lambda x: {"p": 0.5}
-        )
+        binomial = CondBinomial(Scope([0], [1]), n=1, cond_f=lambda x: {"p": 0.5})
         self.assertTrue(isinstance(binomial.cond_f, Callable))
 
         # n = 0
@@ -54,22 +52,12 @@ class TestBinomial(unittest.TestCase):
 
         # p = 0
         binomial.set_cond_f(lambda data: {"p": 0.0})
-        self.assertTrue(
-            binomial.retrieve_params(np.array([[1.0]]), DispatchContext())
-            == 0.0
-        )
+        self.assertTrue(binomial.retrieve_params(np.array([[1.0]]), DispatchContext()) == 0.0)
         # p = 1
         binomial.set_cond_f(lambda data: {"p": 1.0})
-        self.assertTrue(
-            binomial.retrieve_params(np.array([[1.0]]), DispatchContext())
-            == 1.0
-        )
+        self.assertTrue(binomial.retrieve_params(np.array([[1.0]]), DispatchContext()) == 1.0)
         # p < 0 and p > 1
-        binomial.set_cond_f(
-            lambda data: {
-                "p": torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))
-            }
-        )
+        binomial.set_cond_f(lambda data: {"p": torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))})
         self.assertRaises(
             Exception,
             binomial.retrieve_params,
@@ -77,11 +65,7 @@ class TestBinomial(unittest.TestCase):
             DispatchContext(),
         )
 
-        binomial.set_cond_f(
-            lambda data: {
-                "p": torch.nextafter(torch.tensor(0.0), -torch.tensor(1.0))
-            }
-        )
+        binomial.set_cond_f(lambda data: {"p": torch.nextafter(torch.tensor(0.0), -torch.tensor(1.0))})
         self.assertRaises(
             Exception,
             binomial.retrieve_params,
@@ -109,32 +93,16 @@ class TestBinomial(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(
-            CondBinomial.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondBinomial.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # feature type instance
-        self.assertTrue(
-            CondBinomial.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
-            )
-        )
+        self.assertTrue(CondBinomial.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]))
 
         # invalid feature type
-        self.assertFalse(
-            CondBinomial.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondBinomial.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # non-conditional scope
-        self.assertFalse(
-            CondBinomial.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]
-            )
-        )
+        self.assertFalse(CondBinomial.accepts([FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]))
 
         # multivariate signature
         self.assertFalse(
@@ -153,16 +121,8 @@ class TestBinomial(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        CondBinomial.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
-        )
-        CondBinomial.from_signatures(
-            [
-                FeatureContext(
-                    Scope([0], [1]), [FeatureTypes.Binomial(n=3, p=0.75)]
-                )
-            ]
-        )
+        CondBinomial.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])])
+        CondBinomial.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3, p=0.75)])])
 
         # ----- invalid arguments -----
 
@@ -207,15 +167,11 @@ class TestBinomial(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondBinomial,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        binomial = AutoLeaf(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
-        )
+        binomial = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])])
         self.assertTrue(isinstance(binomial, CondBinomial))
         self.assertEqual(binomial.n, 3)
 
@@ -235,17 +191,9 @@ class TestBinomial(unittest.TestCase):
         node_binomial = BaseCondBinomial(Scope([0], [1]), n)
 
         # check conversion from torch to python
-        self.assertTrue(
-            np.all(
-                torch_binomial.scopes_out == toBase(torch_binomial).scopes_out
-            )
-        )
+        self.assertTrue(np.all(torch_binomial.scopes_out == toBase(torch_binomial).scopes_out))
         # check conversion from python to torch
-        self.assertTrue(
-            np.all(
-                node_binomial.scopes_out == toTorch(node_binomial).scopes_out
-            )
-        )
+        self.assertTrue(np.all(node_binomial.scopes_out == toTorch(node_binomial).scopes_out))
 
 
 if __name__ == "__main__":

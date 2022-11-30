@@ -1,19 +1,20 @@
 """Contains SPN-like hadamard layer for SPFlow in the ``torch`` backend.
 """
+from copy import deepcopy
+from typing import Iterable, List, Optional, Union
+
+import numpy as np
+
+from spflow.base.structure.spn.layers.hadamard_layer import (
+    HadamardLayer as BaseHadamardLayer,
+)
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.base.structure.spn.layers.hadamard_layer import (
-    HadamardLayer as BaseHadamardLayer,
-)
 from spflow.torch.structure.module import Module
-
-from typing import Optional, Union, Iterable, List
-from copy import deepcopy
-import numpy as np
 
 
 class HadamardLayer(Module):
@@ -74,9 +75,7 @@ class HadamardLayer(Module):
         for partition in child_partitions:
             # check if partition is empty
             if len(partition) == 0:
-                raise ValueError(
-                    "All partitions for 'PartitionLayer' must be non-empty"
-                )
+                raise ValueError("All partitions for 'PartitionLayer' must be non-empty")
 
             self.modules_per_partition.append(len(partition))
             partition_scope = Scope()
@@ -90,15 +89,10 @@ class HadamardLayer(Module):
                 # for each output scope
                 for s in child.scopes_out:
                     # check if query scope is the same
-                    if (
-                        partition_scope.equal_query(s)
-                        or partition_scope.isempty()
-                    ):
+                    if partition_scope.equal_query(s) or partition_scope.isempty():
                         partition_scope = partition_scope.join(s)
                     else:
-                        raise ValueError(
-                            "Scopes of modules inside a partition must have same query scope."
-                        )
+                        raise ValueError("Scopes of modules inside a partition must have same query scope.")
 
             # add partition size to list
             if size == 1 or size == max_size or max_size == 1:
@@ -116,13 +110,9 @@ class HadamardLayer(Module):
             if partition_scope.isdisjoint(scope):
                 scope = scope.join(partition_scope)
             else:
-                raise ValueError(
-                    "Scopes of partitions must be pair-wise disjoint."
-                )
+                raise ValueError("Scopes of partitions must be pair-wise disjoint.")
 
-        super().__init__(
-            children=sum(child_partitions, []), **kwargs
-        )
+        super().__init__(children=sum(child_partitions, []), **kwargs)
 
         self.n_in = sum(self.partition_sizes)
         self._n_out = max_size
@@ -185,17 +175,11 @@ def marginalize(
         marg_partitions = []
 
         children = list(layer.children())
-        partitions = np.split(
-            children, np.cumsum(layer.modules_per_partition[:-1])
-        )
+        partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
 
-        for partition_scope, partition_children in zip(
-            layer.partition_scopes, partitions
-        ):
+        for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
             partition_children = partition_children.tolist()
-            partition_mutual_rvs = set(partition_scope.query).intersection(
-                set(marg_rvs)
-            )
+            partition_mutual_rvs = set(partition_scope.query).intersection(set(marg_rvs))
 
             # partition scope is being fully marginalized over
             if len(partition_mutual_rvs) == len(partition_scope.query):
@@ -243,15 +227,10 @@ def toBase(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     children = list(hadamard_layer.children())
-    partitions = np.split(
-        children, np.cumsum(hadamard_layer.modules_per_partition[:-1])
-    )
+    partitions = np.split(children, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
 
     return BaseHadamardLayer(
-        child_partitions=[
-            [toBase(child, dispatch_ctx=dispatch_ctx) for child in partition]
-            for partition in partitions
-        ]
+        child_partitions=[[toBase(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions]
     )
 
 
@@ -271,13 +250,10 @@ def toTorch(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     children = list(hadamard_layer.children)
-    partitions = np.split(
-        children, np.cumsum(hadamard_layer.modules_per_partition[:-1])
-    )
+    partitions = np.split(children, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
 
     return HadamardLayer(
         child_partitions=[
-            [toTorch(child, dispatch_ctx=dispatch_ctx) for child in partition]
-            for partition in partitions
+            [toTorch(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions
         ]
     )

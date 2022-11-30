@@ -1,9 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import Uniform
-from spflow.base.inference import log_likelihood, likelihood
-import numpy as np
-import unittest
 import random
+import unittest
+
+import numpy as np
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import Uniform
+from spflow.meta.data import Scope
 
 
 class TestUniform(unittest.TestCase):
@@ -84,12 +86,8 @@ class TestUniform(unittest.TestCase):
         uniform = Uniform(Scope([0]), 1.0, 2.0, support_outside=True)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, uniform, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, uniform, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, uniform, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, uniform, np.array([[np.inf]]))
 
         # check valid floats in [start, end]
         log_likelihood(uniform, np.array([[1.0]]))
@@ -104,12 +102,8 @@ class TestUniform(unittest.TestCase):
         uniform = Uniform(Scope([0]), 1.0, 2.0, support_outside=False)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, uniform, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, uniform, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, uniform, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, uniform, np.array([[np.inf]]))
 
         # check valid floats in [start, end]
         log_likelihood(uniform, np.array([[1.0]]))

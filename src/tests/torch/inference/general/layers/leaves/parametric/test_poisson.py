@@ -1,9 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.torch.structure.spn import Poisson, PoissonLayer
-from spflow.torch.inference import log_likelihood
-import torch
-import unittest
 import random
+import unittest
+
+import torch
+
+from spflow.meta.data import Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure.spn import Poisson, PoissonLayer
 
 
 class TestNode(unittest.TestCase):
@@ -17,9 +19,7 @@ class TestNode(unittest.TestCase):
 
     def test_layer_likelihood(self):
 
-        layer = PoissonLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 1.0, 2.3]
-        )
+        layer = PoissonLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 1.0, 2.3])
 
         nodes = [
             Poisson(Scope([0]), l=0.2),
@@ -30,9 +30,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[1, 3], [3, 7], [2, 1]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -43,9 +41,7 @@ class TestNode(unittest.TestCase):
         torch_poisson = PoissonLayer(scope=[Scope([0]), Scope([1])], l=l)
 
         # create dummy input data (batch size x random variables)
-        data = torch.cat(
-            [torch.randint(0, 10, (3, 1)), torch.randint(0, 10, (3, 1))], dim=1
-        )
+        data = torch.cat([torch.randint(0, 10, (3, 1)), torch.randint(0, 10, (3, 1))], dim=1)
 
         log_probs_torch = log_likelihood(torch_poisson, data)
 
@@ -63,16 +59,10 @@ class TestNode(unittest.TestCase):
         optimizer.step()
 
         # make sure that parameters are correctly updated
-        self.assertTrue(
-            torch.allclose(
-                l_aux_orig - torch_poisson.l_aux.grad, torch_poisson.l_aux
-            )
-        )
+        self.assertTrue(torch.allclose(l_aux_orig - torch_poisson.l_aux.grad, torch_poisson.l_aux))
 
         # verify that distribution parameters match parameters
-        self.assertTrue(
-            torch.allclose(torch_poisson.l, torch_poisson.dist().rate)
-        )
+        self.assertTrue(torch.allclose(torch_poisson.l, torch_poisson.dist().rate))
 
     def test_gradient_optimization(self):
 
@@ -100,17 +90,11 @@ class TestNode(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(
-            torch.allclose(
-                torch_poisson.l, torch.tensor([4.0, 4.0]), atol=1e-3, rtol=0.3
-            )
-        )
+        self.assertTrue(torch.allclose(torch_poisson.l, torch.tensor([4.0, 4.0]), atol=1e-3, rtol=0.3))
 
     def test_likelihood_marginalization(self):
 
-        poisson = PoissonLayer(
-            scope=[Scope([0]), Scope([1])], l=random.random() + 1e-7
-        )
+        poisson = PoissonLayer(scope=[Scope([0]), Scope([1])], l=random.random() + 1e-7)
         data = torch.tensor([[float("nan"), float("nan")]])
 
         # should not raise and error and should return 1

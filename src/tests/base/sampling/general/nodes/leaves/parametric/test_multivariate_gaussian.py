@@ -1,11 +1,12 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext
-from spflow.base.structure.spn import MultivariateGaussian
-from spflow.base.sampling import sample
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import MultivariateGaussian
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
 
 
 class TestMultivariateGaussian(unittest.TestCase):
@@ -75,9 +76,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         for i in range(10):
 
             # estimate mean and covariance matrix for conditioned distribution from data
-            mean_est = data[i * 10000 : (i + 1) * 10000, ~cond_mask].mean(
-                axis=0
-            )
+            mean_est = data[i * 10000 : (i + 1) * 10000, ~cond_mask].mean(axis=0)
             cov_est = np.cov(data[i * 10000 : (i + 1) * 10000, ~cond_mask].T)
 
             # compute analytical mean and covariance matrix for conditioned distribution
@@ -85,19 +84,12 @@ class TestMultivariateGaussian(unittest.TestCase):
             cond_cov = cov[np.ix_(cond_mask, ~cond_mask)]
 
             mean_exact = mean[0, ~cond_mask] + (
-                (data[i * 10000, cond_mask] - mean[:, cond_mask])
-                @ (marg_cov_inv @ cond_cov)
+                (data[i * 10000, cond_mask] - mean[:, cond_mask]) @ (marg_cov_inv @ cond_cov)
             )
-            cov_exact = cov[np.ix_(~cond_mask, ~cond_mask)] - (
-                cond_cov.T @ marg_cov_inv @ cond_cov
-            )
+            cov_exact = cov[np.ix_(~cond_mask, ~cond_mask)] - (cond_cov.T @ marg_cov_inv @ cond_cov)
 
-            self.assertTrue(
-                np.allclose(mean_exact, mean_est, atol=0.01, rtol=0.1)
-            )
-            self.assertTrue(
-                np.allclose(cov_exact, cov_est, atol=0.01, rtol=0.1)
-            )
+            self.assertTrue(np.allclose(mean_exact, mean_est, atol=0.01, rtol=0.1))
+            self.assertTrue(np.allclose(cov_exact, cov_est, atol=0.01, rtol=0.1))
 
     def test_sampling(self):
 

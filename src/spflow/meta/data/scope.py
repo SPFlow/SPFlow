@@ -4,9 +4,10 @@ Typical usage example:
 
     scope = Scope(query_rvs, evidence_rvs)
 """
-from spflow.meta.data.meta_type import MetaType
+from typing import Iterable, List, Optional, Type, Union
+
 from spflow.meta.data.feature_types import FeatureType
-from typing import List, Optional, Iterable, Union, Type
+from spflow.meta.data.meta_type import MetaType
 
 
 class Scope:
@@ -47,9 +48,7 @@ class Scope:
             evidence = []
 
         if len(query) == 0 and len(evidence) != 0:
-            raise ValueError(
-                "List of query variables for 'Scope' is empty, but list of evidence variables is not."
-            )
+            raise ValueError("List of query variables for 'Scope' is empty, but list of evidence variables is not.")
 
         if any(rv < 0 for rv in query):
             raise ValueError("Query variables must all be non-negative.")
@@ -58,19 +57,13 @@ class Scope:
             raise ValueError("Evidence variables must all be non-negative.")
 
         if len(query) != len(set(query)):
-            raise ValueError(
-                "List of query variables for 'Scope' contains duplicates."
-            )
+            raise ValueError("List of query variables for 'Scope' contains duplicates.")
 
         if len(evidence) != len(set(evidence)):
-            raise ValueError(
-                "List of evidence variables for 'Scope' contains duplicates."
-            )
+            raise ValueError("List of evidence variables for 'Scope' contains duplicates.")
 
         if not set(query).isdisjoint(evidence):
-            raise ValueError(
-                "Specified query and evidence variables for 'Scope' are not disjoint."
-            )
+            raise ValueError("Specified query and evidence variables for 'Scope' are not disjoint.")
 
         self.query = query
         self.evidence = evidence

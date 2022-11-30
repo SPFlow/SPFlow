@@ -1,9 +1,12 @@
+import unittest
+
+import numpy as np
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.meta.data import Scope
+
 from ..structure.dummy_module import DummyNestedModule
 from ..structure.general.nodes.dummy_node import DummyNode
-from spflow.meta.data import Scope
-from spflow.base.inference import likelihood, log_likelihood
-import numpy as np
-import unittest
 
 
 class TestModule(unittest.TestCase):
@@ -20,9 +23,7 @@ class TestModule(unittest.TestCase):
             dummy_module.placeholders[0],
             dummy_data,
         )
-        self.assertRaises(
-            LookupError, likelihood, dummy_module.placeholders[0], dummy_data
-        )
+        self.assertRaises(LookupError, likelihood, dummy_module.placeholders[0], dummy_data)
 
 
 if __name__ == "__main__":

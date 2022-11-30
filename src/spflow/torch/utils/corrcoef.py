@@ -5,6 +5,7 @@ Typical usage example:
     coeffs = corrcoef(data)
 """
 from typing import Optional
+
 import torch
 
 
@@ -28,9 +29,7 @@ def corrcoef(data: torch.Tensor) -> torch.Tensor:
         ValueError: invalid arguments.
     """
     if torch.is_complex(data):
-        raise ValueError(
-            "Computing correlation coefficients for complex data is not supported."
-        )
+        raise ValueError("Computing correlation coefficients for complex data is not supported.")
 
     # compute covariance matrix
     cov = torch.cov(data.T, correction=1)
@@ -41,9 +40,7 @@ def corrcoef(data: torch.Tensor) -> torch.Tensor:
             "Encountered non-finite values in covariance matrix during computation of correlation coefficients."
         )
     if torch.any(cov == 0):
-        raise ValueError(
-            "Encountered zero values in covariance matrix during computation of correlation coefficients."
-        )
+        raise ValueError("Encountered zero values in covariance matrix during computation of correlation coefficients.")
 
     # extract standard deviations per feature
     # TODO: test if there are any underflows resulting in invalid entries

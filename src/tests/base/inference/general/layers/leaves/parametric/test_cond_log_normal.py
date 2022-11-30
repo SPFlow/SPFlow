@@ -1,14 +1,16 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
-from spflow.base.inference import log_likelihood, likelihood
+import unittest
+
+import numpy as np
+
+from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
     CondLogNormal,
     CondLogNormalLayer,
+    ProductNode,
+    SumNode,
 )
-import numpy as np
-import unittest
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
 
 
 class TestNode(unittest.TestCase):
@@ -19,33 +21,23 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"std": [0.25, 0.25]},
             n_nodes=2,
         )
-        self.assertRaises(
-            KeyError, log_likelihood, log_normal, np.array([[0], [1]])
-        )
+        self.assertRaises(KeyError, log_likelihood, log_normal, np.array([[0], [1]]))
 
     def test_likelihood_no_std(self):
 
-        log_normal = CondLogNormalLayer(
-            Scope([0], [1]), cond_f=lambda data: {"mean": [0.0, 0.0]}, n_nodes=2
-        )
-        self.assertRaises(
-            KeyError, log_likelihood, log_normal, np.array([[0], [1]])
-        )
+        log_normal = CondLogNormalLayer(Scope([0], [1]), cond_f=lambda data: {"mean": [0.0, 0.0]}, n_nodes=2)
+        self.assertRaises(KeyError, log_likelihood, log_normal, np.array([[0], [1]]))
 
     def test_likelihood_no_mean_std(self):
 
         log_normal = CondLogNormalLayer(Scope([0], [1]), n_nodes=2)
-        self.assertRaises(
-            ValueError, log_likelihood, log_normal, np.array([[0], [1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, log_normal, np.array([[0], [1]]))
 
     def test_likelihood_module_cond_f(self):
 
         cond_f = lambda data: {"mean": [0.0, 0.0], "std": [0.25, 0.25]}
 
-        log_normal = CondLogNormalLayer(
-            Scope([0], [1]), n_nodes=2, cond_f=cond_f
-        )
+        log_normal = CondLogNormalLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = np.array([[0.5], [1.0], [1.5]])
@@ -106,20 +98,14 @@ class TestNode(unittest.TestCase):
         s1 = SumNode(children=[log_normal_layer], weights=[0.3, 0.7])
 
         log_normal_nodes = [
-            CondLogNormal(
-                Scope([0], [1]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}
-            ),
-            CondLogNormal(
-                Scope([0], [1]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
-            ),
+            CondLogNormal(Scope([0], [1]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}),
+            CondLogNormal(Scope([0], [1]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}),
         ]
         s2 = SumNode(children=log_normal_nodes, weights=[0.3, 0.7])
 
         data = np.array([[0.5], [1.5], [0.3]])
 
-        self.assertTrue(
-            np.all(log_likelihood(s1, data) == log_likelihood(s2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(s1, data) == log_likelihood(s2, data)))
 
     def test_layer_likelihood_2(self):
 
@@ -130,20 +116,14 @@ class TestNode(unittest.TestCase):
         p1 = ProductNode(children=[log_normal_layer])
 
         log_normal_nodes = [
-            CondLogNormal(
-                Scope([0], [2]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}
-            ),
-            CondLogNormal(
-                Scope([1], [2]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}
-            ),
+            CondLogNormal(Scope([0], [2]), cond_f=lambda data: {"mean": 0.8, "std": 1.3}),
+            CondLogNormal(Scope([1], [2]), cond_f=lambda data: {"mean": 0.3, "std": 0.4}),
         ]
         p2 = ProductNode(children=log_normal_nodes)
 
         data = np.array([[0.5, 1.6], [0.1, 0.3], [0.47, 0.7]])
 
-        self.assertTrue(
-            np.all(log_likelihood(p1, data) == log_likelihood(p2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(p1, data) == log_likelihood(p2, data)))
 
 
 if __name__ == "__main__":
