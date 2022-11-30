@@ -1,16 +1,15 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import Binomial
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.inference import log_likelihood
-from spflow.base.structure.spn import Binomial as BaseBinomial
-from spflow.base.inference import log_likelihood
-
-import torch
-import numpy as np
-
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import Binomial as BaseBinomial
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Binomial
 
 
 class TestBinomial(unittest.TestCase):
@@ -59,32 +58,16 @@ class TestBinomial(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(
-            Binomial.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(Binomial.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # Bernoulli feature type instance
-        self.assertTrue(
-            Binomial.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]
-            )
-        )
+        self.assertTrue(Binomial.accepts([FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]))
 
         # invalid feature type
-        self.assertFalse(
-            Binomial.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(Binomial.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # conditional scope
-        self.assertFalse(
-            Binomial.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
-            )
-        )
+        self.assertFalse(Binomial.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]))
 
         # multivariate signature
         self.assertFalse(
@@ -103,15 +86,11 @@ class TestBinomial(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        binomial = Binomial.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]
-        )
+        binomial = Binomial.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])])
         self.assertTrue(torch.isclose(binomial.n, torch.tensor(3)))
         self.assertTrue(torch.isclose(binomial.p, torch.tensor(0.5)))
 
-        binomial = Binomial.from_signatures(
-            [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)])]
-        )
+        binomial = Binomial.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)])])
         self.assertTrue(torch.isclose(binomial.n, torch.tensor(3)))
         self.assertTrue(torch.isclose(binomial.p, torch.tensor(0.75)))
 
@@ -158,15 +137,11 @@ class TestBinomial(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             Binomial,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        binomial = AutoLeaf(
-            [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)])]
-        )
+        binomial = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)])])
         self.assertTrue(isinstance(binomial, Binomial))
         self.assertTrue(torch.isclose(binomial.n, torch.tensor(3)))
         self.assertTrue(torch.isclose(binomial.p, torch.tensor(0.75)))

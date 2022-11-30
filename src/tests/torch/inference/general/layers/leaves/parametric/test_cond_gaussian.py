@@ -1,10 +1,12 @@
+import random
+import unittest
+
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import CondGaussian, CondGaussianLayer
-from spflow.torch.inference import log_likelihood, likelihood
-import torch
-import unittest
-import random
 
 
 class TestNode(unittest.TestCase):
@@ -18,28 +20,18 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_mean(self):
 
-        gaussian = CondGaussianLayer(
-            Scope([0], [1]), cond_f=lambda data: {"std": [1.0, 1.0]}, n_nodes=2
-        )
-        self.assertRaises(
-            KeyError, log_likelihood, gaussian, torch.tensor([[0], [1]])
-        )
+        gaussian = CondGaussianLayer(Scope([0], [1]), cond_f=lambda data: {"std": [1.0, 1.0]}, n_nodes=2)
+        self.assertRaises(KeyError, log_likelihood, gaussian, torch.tensor([[0], [1]]))
 
     def test_likelihood_no_std(self):
 
-        gaussian = CondGaussianLayer(
-            Scope([0], [1]), cond_f=lambda data: {"mean": [0.0, 0.0]}, n_nodes=2
-        )
-        self.assertRaises(
-            KeyError, log_likelihood, gaussian, torch.tensor([[0], [1]])
-        )
+        gaussian = CondGaussianLayer(Scope([0], [1]), cond_f=lambda data: {"mean": [0.0, 0.0]}, n_nodes=2)
+        self.assertRaises(KeyError, log_likelihood, gaussian, torch.tensor([[0], [1]]))
 
     def test_likelihood_no_mean_std(self):
 
         gaussian = CondGaussianLayer(Scope([0], [1]), n_nodes=2)
-        self.assertRaises(
-            ValueError, log_likelihood, gaussian, torch.tensor([[0], [1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, gaussian, torch.tensor([[0], [1]]))
 
     def test_likelihood_module_cond_f(self):
 
@@ -104,31 +96,21 @@ class TestNode(unittest.TestCase):
         )
 
         nodes = [
-            CondGaussian(
-                Scope([0], [2]), cond_f=lambda data: {"mean": 0.2, "std": 1.0}
-            ),
-            CondGaussian(
-                Scope([1], [2]), cond_f=lambda data: {"mean": 1.0, "std": 0.3}
-            ),
-            CondGaussian(
-                Scope([0], [2]), cond_f=lambda data: {"mean": 2.3, "std": 0.97}
-            ),
+            CondGaussian(Scope([0], [2]), cond_f=lambda data: {"mean": 0.2, "std": 1.0}),
+            CondGaussian(Scope([1], [2]), cond_f=lambda data: {"mean": 1.0, "std": 0.3}),
+            CondGaussian(Scope([0], [2]), cond_f=lambda data: {"mean": 2.3, "std": 0.97}),
         ]
 
         dummy_data = torch.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
     def test_gradient_computation(self):
 
-        mean = torch.tensor(
-            [random.random(), random.random()], requires_grad=True
-        )
+        mean = torch.tensor([random.random(), random.random()], requires_grad=True)
         std = torch.tensor(
             [random.random() + 1e-8, random.random() + 1e-8], requires_grad=True
         )  # offset by small number to avoid zero

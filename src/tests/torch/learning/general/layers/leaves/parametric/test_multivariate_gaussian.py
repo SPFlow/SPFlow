@@ -1,21 +1,18 @@
+import random
+import unittest
+
+import numpy as np
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure.spn import (
-    SumNode,
-    ProductNode,
-    MultivariateGaussianLayer,
-)
 from spflow.torch.inference import log_likelihood
 from spflow.torch.learning import (
     em,
-    maximum_likelihood_estimation,
     expectation_maximization,
+    maximum_likelihood_estimation,
 )
-
-import torch
-import numpy as np
-import unittest
-import random
+from spflow.torch.structure.spn import MultivariateGaussianLayer, ProductNode, SumNode
 
 
 class TestNode(unittest.TestCase):
@@ -125,16 +122,8 @@ class TestNode(unittest.TestCase):
         # perform an em step
         em(layer, data, dispatch_ctx=dispatch_ctx)
 
-        self.assertTrue(
-            torch.allclose(
-                layer.mean[0], torch.tensor([-0.5, 0.5]), atol=1e-2, rtol=1e-1
-            )
-        )
-        self.assertTrue(
-            torch.allclose(
-                layer.mean[1], torch.tensor([0.5, -0.5]), atol=1e-2, rtol=1e-1
-            )
-        )
+        self.assertTrue(torch.allclose(layer.mean[0], torch.tensor([-0.5, 0.5]), atol=1e-2, rtol=1e-1))
+        self.assertTrue(torch.allclose(layer.mean[1], torch.tensor([0.5, -0.5]), atol=1e-2, rtol=1e-1))
         self.assertTrue(
             torch.allclose(
                 layer.cov[0],

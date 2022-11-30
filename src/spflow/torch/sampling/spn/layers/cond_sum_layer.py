@@ -1,5 +1,9 @@
 """Contains sampling methods for conditional SPN-like layers for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,12 +13,9 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
-
-import torch
-from typing import Optional
+from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer
 
 
 @dispatch  # type: ignore
@@ -86,9 +87,7 @@ def sample(
     for node_id, instances in sampling_ctx.group_output_ids(sum_layer.n_out):
 
         # sample branches
-        input_ids = torch.multinomial(
-            weights[node_id] * partition_ll[instances].exp(), num_samples=1
-        ).flatten()
+        input_ids = torch.multinomial(weights[node_id] * partition_ll[instances].exp(), num_samples=1).flatten()
 
         # get correct child id and corresponding output id
         child_ids, output_ids = sum_layer.input_to_output_ids(input_ids)
@@ -96,14 +95,8 @@ def sample(
         # group by child ids
         for child_id in torch.unique(torch.tensor(child_ids)):
 
-            child_instance_ids = torch.tensor(instances)[
-                torch.tensor(child_ids) == child_id
-            ].tolist()
-            child_output_ids = (
-                torch.tensor(output_ids)[torch.tensor(child_ids) == child_id]
-                .unsqueeze(1)
-                .tolist()
-            )
+            child_instance_ids = torch.tensor(instances)[torch.tensor(child_ids) == child_id].tolist()
+            child_output_ids = torch.tensor(output_ids)[torch.tensor(child_ids) == child_id].unsqueeze(1).tolist()
 
             # sample from partition node
             sample(
@@ -111,9 +104,7 @@ def sample(
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
-                sampling_ctx=SamplingContext(
-                    child_instance_ids, child_output_ids
-                ),
+                sampling_ctx=SamplingContext(child_instance_ids, child_output_ids),
             )
 
     return data

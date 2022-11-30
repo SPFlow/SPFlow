@@ -4,7 +4,8 @@ Typical usage example:
 
     labels = kmeans(data, n_clusters)
 """
-from typing import Union, Tuple
+from typing import Tuple, Union
+
 import torch
 
 
@@ -43,9 +44,7 @@ def kmeans(
         ValueError: Invalid argument values.
     """
     if n_clusters < 1:
-        raise ValueError(
-            f"k-Means clustering requires at least one target cluster, but {n_clusters} were specified."
-        )
+        raise ValueError(f"k-Means clustering requires at least one target cluster, but {n_clusters} were specified.")
 
     if n_clusters > data.shape[0]:
         raise ValueError(
@@ -69,9 +68,7 @@ def kmeans(
             # pick random data points as starting centroids
             centroids = data[torch.randperm(len(data))[:n_clusters]]
         else:
-            raise ValueError(
-                f"Unknown initialization strategy {centroids} for k-Means clustering."
-            )
+            raise ValueError(f"Unknown initialization strategy {centroids} for k-Means clustering.")
 
     if centroids.ndim == 1:
         # make sure centroids tensor is 2-dimensional (n_centroids, n_features)
@@ -116,9 +113,7 @@ def kmeans(
 
     for cluster_id in range(n_clusters):
         points_per_cluster[cluster_id] = (assigned_labels == cluster_id).sum()
-        cluster_sums[cluster_id] = data[assigned_labels == cluster_id].sum(
-            dim=0
-        )
+        cluster_sums[cluster_id] = data[assigned_labels == cluster_id].sum(dim=0)
 
     # ----- iterations -----
 
@@ -130,18 +125,14 @@ def kmeans(
         # closest euclidean distance from one cluster to another
         cc = torch.sort(torch.cdist(centroids, centroids, p=2)).values[:, 1]
 
-        m = torch.max(
-            torch.vstack([cc[assigned_labels] / 2.0, lower_bounds]), dim=0
-        ).values
+        m = torch.max(torch.vstack([cc[assigned_labels] / 2.0, lower_bounds]), dim=0).values
 
         # select points for which upper bound is larger than m
         bound_mask = upper_bounds > m
 
         # update upper bounds (set to euclidean distance to assigned cluster)
         upper_bounds[bound_mask] = torch.sqrt(
-            torch.pow(
-                data[bound_mask] - centroids[assigned_labels[bound_mask]], 2
-            ).sum(dim=1)
+            torch.pow(data[bound_mask] - centroids[assigned_labels[bound_mask]], 2).sum(dim=1)
         )
 
         # select points for which upper bound is still larger than m
@@ -157,13 +148,9 @@ def kmeans(
         assigned_labels[bound_mask] = d_sorted_ids[:, 0]
 
         # update upper bounds
-        upper_bounds[bound_mask] = d.gather(
-            1, assigned_labels[bound_mask].unsqueeze(1)
-        ).squeeze(1)
+        upper_bounds[bound_mask] = d.gather(1, assigned_labels[bound_mask].unsqueeze(1)).squeeze(1)
         # update lower bounds
-        lower_bounds[bound_mask] = d.gather(
-            1, d_sorted_ids[:, 1].unsqueeze(1)
-        ).squeeze(1)
+        lower_bounds[bound_mask] = d.gather(1, d_sorted_ids[:, 1].unsqueeze(1)).squeeze(1)
 
         # select points for which assigned cluster changed
         bound_mask &= prev_assigned_labels != assigned_labels
@@ -178,9 +165,7 @@ def kmeans(
             points_per_cluster[cluster_id] += included.sum() - excluded.sum()
 
             # update sum of cluster points
-            cluster_sums[cluster_id] += data[included, :].sum(dim=0) - data[
-                excluded, :
-            ].sum(dim=0)
+            cluster_sums[cluster_id] += data[included, :].sum(dim=0) - data[excluded, :].sum(dim=0)
 
         # update centroids
         centroids_prev = torch.clone(centroids)
@@ -189,9 +174,7 @@ def kmeans(
         centroids = cluster_sums / points_per_cluster.unsqueeze(1)
 
         # compute eucliden change for each cluster
-        update_sizes = torch.sqrt(
-            torch.pow(centroids_prev - centroids, 2).sum(dim=1)
-        )
+        update_sizes = torch.sqrt(torch.pow(centroids_prev - centroids, 2).sum(dim=1))
 
         # update bounds
         ordered_cluster_changes = torch.argsort(update_sizes, descending=True)

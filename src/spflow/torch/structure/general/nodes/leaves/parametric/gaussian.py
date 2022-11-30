@@ -1,26 +1,25 @@
 """Contains Gaussian leaf node for SPFlow in the ``torch`` backend.
 """
+from typing import List, Optional, Tuple
+
 import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-from typing import Tuple, Optional, List
-from spflow.torch.utils.projections import (
-    proj_bounded_to_real,
-    proj_real_to_bounded,
+
+from spflow.base.structure.general.nodes.leaves.parametric.gaussian import (
+    Gaussian as BaseGaussian,
 )
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureTypes
 from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes, MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
-from spflow.base.structure.general.nodes.leaves.parametric.gaussian import (
-    Gaussian as BaseGaussian,
-)
+from spflow.torch.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
 class Gaussian(LeafNode):
@@ -48,9 +47,7 @@ class Gaussian(LeafNode):
             Scalar PyTorch tensor representing the standard deviation (:math:`\sigma`) of the Gaussian distribution, greater than 0 (projected from ``std_aux``).
     """
 
-    def __init__(
-        self, scope: Scope, mean: float = 0.0, std: float = 1.0
-    ) -> None:
+    def __init__(self, scope: Scope, mean: float = 0.0, std: float = 1.0) -> None:
         r"""Initializes ``Gaussian`` leaf node.
 
         Args:
@@ -64,13 +61,9 @@ class Gaussian(LeafNode):
                 Defaults to 1.0.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'Gaussian' should be 1, but was: {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'Gaussian' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'Gaussian' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'Gaussian' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
 
@@ -106,11 +99,7 @@ class Gaussian(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a continuous Gaussian distribution
@@ -134,9 +123,7 @@ class Gaussian(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Gaussian' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'Gaussian' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -177,18 +164,12 @@ class Gaussian(LeafNode):
                 Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
         """
         if not (np.isfinite(mean) and np.isfinite(std)):
-            raise ValueError(
-                f"Values for 'mean' and 'std' for 'Gaussian' must be finite, but were: {mean}, {std}"
-            )
+            raise ValueError(f"Values for 'mean' and 'std' for 'Gaussian' must be finite, but were: {mean}, {std}")
         if std <= 0.0:
-            raise ValueError(
-                f"Value for 'std' for 'Gaussian' must be greater than 0.0, but was: {std}"
-            )
+            raise ValueError(f"Value for 'std' for 'Gaussian' must be greater than 0.0, but was: {std}")
 
         self.mean.data = torch.tensor(float(mean))
-        self.std_aux.data = proj_bounded_to_real(
-            torch.tensor(float(std)), lb=0.0
-        )
+        self.std_aux.data = proj_bounded_to_real(torch.tensor(float(std)), lb=0.0)
 
     def get_params(self) -> Tuple[float, float]:
         """Returns the parameters of the represented distribution.
@@ -198,9 +179,7 @@ class Gaussian(LeafNode):
         """
         return self.mean.data.cpu().numpy(), self.std.data.cpu().numpy()  # type: ignore
 
-    def check_support(
-        self, data: torch.Tensor, is_scope_data: bool = False
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Gaussian distribution, which is:
@@ -241,17 +220,13 @@ class Gaussian(LeafNode):
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= (
-            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
-        )
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    node: BaseGaussian, dispatch_ctx: Optional[DispatchContext] = None
-) -> Gaussian:
+def toTorch(node: BaseGaussian, dispatch_ctx: Optional[DispatchContext] = None) -> Gaussian:
     """Conversion for ``Gaussian`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -265,9 +240,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    node: Gaussian, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseGaussian:
+def toBase(node: Gaussian, dispatch_ctx: Optional[DispatchContext] = None) -> BaseGaussian:
     """Conversion for ``Gaussian`` from ``torch`` backend to ``base`` backend.
 
     Args:

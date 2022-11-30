@@ -1,5 +1,10 @@
 """Contains sampling methods for SPN-like partition layers for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import numpy as np
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -9,13 +14,9 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.spn.layers.partition_layer import PartitionLayer
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
-
-import torch
-import numpy as np
-from typing import Optional
+from spflow.torch.structure.spn.layers.partition_layer import PartitionLayer
 
 
 @dispatch  # type: ignore
@@ -71,22 +72,16 @@ def sample(
     children = list(partition_layer.children())
 
     # sample accoding to sampling_context
-    for node_id, instances in sampling_ctx.group_output_ids(
-        partition_layer.n_out
-    ):
+    for node_id, instances in sampling_ctx.group_output_ids(partition_layer.n_out):
 
         # get input ids for this node
         input_ids = input_ids_per_node[node_id]
-        child_ids, output_ids = partition_layer.input_to_output_ids(
-            input_ids.tolist()
-        )
+        child_ids, output_ids = partition_layer.input_to_output_ids(input_ids.tolist())
 
         # group by child ids
         for child_id in np.unique(child_ids):
 
-            child_output_ids = np.array(output_ids)[
-                np.array(child_ids) == child_id
-            ].tolist()
+            child_output_ids = np.array(output_ids)[np.array(child_ids) == child_id].tolist()
 
             # sample from partition node
             sample(
@@ -94,9 +89,7 @@ def sample(
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
-                sampling_ctx=SamplingContext(
-                    instances, [child_output_ids for _ in instances]
-                ),
+                sampling_ctx=SamplingContext(instances, [child_output_ids for _ in instances]),
             )
 
     return data

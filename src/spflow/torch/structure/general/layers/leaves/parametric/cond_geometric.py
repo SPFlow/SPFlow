@@ -1,27 +1,28 @@
 """Contains conditional Geometric leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Callable
 from functools import reduce
+from typing import Callable, Iterable, List, Optional, Union
+
 import numpy as np
 import torch
 import torch.distributions as D
 
+from spflow.base.structure.general.layers.leaves.parametric.cond_geometric import (
+    CondGeometricLayer as BaseCondGeometricLayer,
+)
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.module import Module
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_geometric import (
     CondGeometric,
 )
-from spflow.base.structure.general.layers.leaves.parametric.cond_geometric import (
-    CondGeometricLayer as BaseCondGeometricLayer,
-)
+from spflow.torch.structure.module import Module
 
 
 class CondGeometricLayer(Module):
@@ -83,9 +84,7 @@ class CondGeometricLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondGeometricLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondGeometricLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -93,17 +92,13 @@ class CondGeometricLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) == 0:
-                raise ValueError(
-                    f"Evidence scope for 'CondGeometricLayer' should not be empty."
-                )
+                raise ValueError(f"Evidence scope for 'CondGeometricLayer' should not be empty.")
 
         super().__init__(children=[], **kwargs)
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
 
@@ -127,9 +122,7 @@ class CondGeometricLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondGeometricLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondGeometricLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -170,9 +163,7 @@ class CondGeometricLayer(Module):
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -194,9 +185,7 @@ class CondGeometricLayer(Module):
 
         self.cond_f = cond_f
 
-    def dist(
-        self, p: torch.Tensor, node_ids: Optional[List[int]] = None
-    ) -> D.Distribution:
+    def dist(self, p: torch.Tensor, node_ids: Optional[List[int]] = None) -> D.Distribution:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -214,9 +203,7 @@ class CondGeometricLayer(Module):
 
         return D.Geometric(probs=p[node_ids])
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> torch.Tensor:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> torch.Tensor:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameter (``p``) is passed as an additional argument in the dispatch context.
@@ -254,9 +241,7 @@ class CondGeometricLayer(Module):
 
         # if neither 'p' nor 'cond_f' is specified (via node or arguments)
         if p is None and cond_f is None:
-            raise ValueError(
-                "'CondGeometricLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified."
-            )
+            raise ValueError("'CondGeometricLayer' requires either 'p' or 'cond_f' to retrieve 'p' to be specified.")
 
         # if 'p' was not already specified, retrieve it
         if p is None:
@@ -280,9 +265,7 @@ class CondGeometricLayer(Module):
             )
 
         if torch.any(p <= 0) or not torch.any(torch.isfinite(p)):
-            raise ValueError(
-                f"Values for 'p' of 'CondGeometricLayer' must to greater of equal to 0, but was: {p}"
-            )
+            raise ValueError(f"Values for 'p' of 'CondGeometricLayer' must to greater of equal to 0, but was: {p}")
 
         return p
 
@@ -326,9 +309,7 @@ class CondGeometricLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch

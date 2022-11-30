@@ -1,17 +1,19 @@
-from spflow.meta.data import Scope
+import itertools
+import unittest
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import (
-    SumNode,
+    Gaussian,
+    HadamardLayer,
+    PartitionLayer,
+    ProductLayer,
     ProductNode,
     SumLayer,
-    ProductLayer,
-    PartitionLayer,
-    HadamardLayer,
-    Gaussian,
+    SumNode,
 )
-from spflow.base.inference import log_likelihood
-import numpy as np
-import unittest
-import itertools
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -80,9 +82,7 @@ class TestNode(unittest.TestCase):
             weights=[0.3, 0.4, 0.3],
         )
 
-        dummy_data = np.array(
-            [[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]]
-        )
+        dummy_data = np.array([[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]])
 
         layer_ll = log_likelihood(layer_spn, dummy_data)
         nodes_ll = log_likelihood(nodes_spn, dummy_data)
@@ -116,9 +116,7 @@ class TestNode(unittest.TestCase):
             weights=[0.2, 0.1, 0.2, 0.2, 0.2, 0.1],
         )
 
-        dummy_data = np.array(
-            [[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]]
-        )
+        dummy_data = np.array([[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]])
 
         layer_ll = log_likelihood(layer_spn, dummy_data)
         nodes_ll = log_likelihood(nodes_spn, dummy_data)

@@ -7,12 +7,12 @@ Typical usage example:
         pass
 """
 import warnings
-from typing import Callable, Any
+from typing import Any, Callable
+
 from plum import dispatch as plum_dispatch  # type: ignore
+
 from spflow.meta.dispatch.memoize import memoize as memoize_decorator
-from spflow.meta.dispatch.substitutable import (
-    substitutable as substitutable_decorator,
-)
+from spflow.meta.dispatch.substitutable import substitutable as substitutable_decorator
 
 
 def dispatch(*args, memoize=False, substitutable=True) -> Callable:
@@ -51,10 +51,7 @@ def dispatch(*args, memoize=False, substitutable=True) -> Callable:
             warnings.warn(
                 f"Function '{f.__name__}' was dispatched without memoization, but is recommended to save redundant computations and to correctly compute gradients in certain backends. Ignore this message if this is intended."
             )
-        elif (
-            f.__name__ in ["em", "maximum_likelihood_estimation"]
-            and not memoize
-        ):
+        elif f.__name__ in ["em", "maximum_likelihood_estimation"] and not memoize:
             warnings.warn(
                 f"Function '{f.__name__}' was dispatched without memoization, but is recommended to not optimize the same module twice in one pass. Ignore this message if this is intended."
             )
@@ -69,8 +66,6 @@ def dispatch(*args, memoize=False, substitutable=True) -> Callable:
         f = args[0]
         return dispatch_decorator(f)
     elif len(args) > 0:
-        raise ValueError(
-            "'dispatch' Decorator received unknown positional arguments. Try keyword arguments instead."
-        )
+        raise ValueError("'dispatch' Decorator received unknown positional arguments. Try keyword arguments instead.")
     else:
         return dispatch_decorator

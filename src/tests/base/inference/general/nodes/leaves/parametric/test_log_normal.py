@@ -1,8 +1,10 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import LogNormal
-from spflow.base.inference import log_likelihood, likelihood
-import numpy as np
 import unittest
+
+import numpy as np
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import LogNormal
+from spflow.meta.data import Scope
 
 
 class TestLogNormal(unittest.TestCase):
@@ -103,17 +105,11 @@ class TestLogNormal(unittest.TestCase):
         log_normal = LogNormal(Scope([0]), 0.0, 1.0)
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, log_normal, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, log_normal, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, log_normal, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, log_normal, np.array([[np.inf]]))
 
         # invalid float values
-        self.assertRaises(
-            ValueError, log_likelihood, log_normal, np.array([[0]])
-        )
+        self.assertRaises(ValueError, log_likelihood, log_normal, np.array([[0]]))
 
         # valid float values
         log_likelihood(log_normal, np.array([[np.nextafter(0.0, 1.0)]]))

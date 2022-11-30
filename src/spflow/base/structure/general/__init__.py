@@ -1,3 +1,2 @@
 # ---- sub-packages -----
-from . import nodes
-from . import layers
+from . import layers, nodes

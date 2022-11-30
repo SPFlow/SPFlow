@@ -1,5 +1,6 @@
-from spflow.meta.data import Scope
 import unittest
+
+from spflow.meta.data import Scope
 
 
 class TestScope(unittest.TestCase):
@@ -58,9 +59,7 @@ class TestScope(unittest.TestCase):
         )
 
         # all pairwise disjoint
-        self.assertTrue(
-            Scope.all_pairwise_disjoint([Scope([i]) for i in range(5)])
-        )
+        self.assertTrue(Scope.all_pairwise_disjoint([Scope([i]) for i in range(5)]))
         self.assertFalse(Scope.all_pairwise_disjoint([Scope([0]), Scope([0])]))
 
         # all equal

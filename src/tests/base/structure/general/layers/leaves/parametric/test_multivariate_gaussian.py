@@ -1,13 +1,15 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+import unittest
+
+import numpy as np
+
+from spflow.base.structure import AutoLeaf
 from spflow.base.structure.spn import (
     Gaussian,
     MultivariateGaussian,
     MultivariateGaussianLayer,
     marginalize,
 )
-from spflow.base.structure import AutoLeaf
-import numpy as np
-import unittest
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestLayer(unittest.TestCase):
@@ -19,11 +21,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out == [Scope([1, 0]), Scope([1, 0]), Scope([1, 0])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1, 0]), Scope([1, 0]), Scope([1, 0])]))
         # make sure parameter properties works correctly
         mean_values = l.mean
         cov_values = l.cov
@@ -34,9 +32,7 @@ class TestLayer(unittest.TestCase):
         # ----- single mean/cov list parameter values -----
         mean_value = [0.0, -1.0, 2.3]
         cov_value = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
-        l = MultivariateGaussianLayer(
-            scope=Scope([1, 0, 2]), n_nodes=3, mean=mean_value, cov=cov_value
-        )
+        l = MultivariateGaussianLayer(scope=Scope([1, 0, 2]), n_nodes=3, mean=mean_value, cov=cov_value)
 
         for node in l.nodes:
             self.assertTrue(np.all(node.mean == mean_value))
@@ -49,9 +45,7 @@ class TestLayer(unittest.TestCase):
             [[0.5, 0.0, 0.0], [0.0, 1.3, 0.0], [0.0, 0.0, 0.7]],
             [[3.1, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 0.3]],
         ]
-        l = MultivariateGaussianLayer(
-            scope=Scope([0, 1, 2]), n_nodes=3, mean=mean_values, cov=cov_values
-        )
+        l = MultivariateGaussianLayer(scope=Scope([0, 1, 2]), n_nodes=3, mean=mean_values, cov=cov_values)
 
         for node, node_mean, node_cov in zip(l.nodes, mean_values, cov_values):
             self.assertTrue(np.all(node.mean == node_mean))
@@ -141,21 +135,15 @@ class TestLayer(unittest.TestCase):
         )
 
         # ---- different scopes -----
-        l = MultivariateGaussianLayer(
-            scope=[Scope([0, 1, 2]), Scope([1, 3]), Scope([2])], n_nodes=3
-        )
+        l = MultivariateGaussianLayer(scope=[Scope([0, 1, 2]), Scope([1, 3]), Scope([2])], n_nodes=3)
         for node, node_scope in zip(l.nodes, l.scopes_out):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, MultivariateGaussianLayer, Scope([0, 1, 2]), n_nodes=0
-        )
+        self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([0, 1, 2]), n_nodes=0)
 
         # ----- invalid scope -----
-        self.assertRaises(
-            ValueError, MultivariateGaussianLayer, Scope([]), n_nodes=3
-        )
+        self.assertRaises(ValueError, MultivariateGaussianLayer, Scope([]), n_nodes=3)
         self.assertRaises(ValueError, MultivariateGaussianLayer, [], n_nodes=3)
 
         # ----- individual scopes and parameters -----
@@ -267,9 +255,7 @@ class TestLayer(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])])
 
         multivariate_gaussian = MultivariateGaussianLayer.from_signatures(
             [
@@ -283,9 +269,7 @@ class TestLayer(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])])
 
         multivariate_gaussian = MultivariateGaussianLayer.from_signatures(
             [
@@ -305,9 +289,7 @@ class TestLayer(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])])
 
         # ----- invalid arguments -----
 
@@ -376,9 +358,7 @@ class TestLayer(unittest.TestCase):
                 ),
             ]
         )
-        self.assertTrue(
-            multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])]
-        )
+        self.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])])
 
     def test_layer_structural_marginalization(self):
 
@@ -397,12 +377,8 @@ class TestLayer(unittest.TestCase):
         l_marg = marginalize(l, [2])
 
         self.assertTrue(l_marg.scopes_out == [Scope([0, 1]), Scope([0, 1])])
-        self.assertTrue(
-            all([np.all(m1 == m2) for m1, m2 in zip(l.mean, l_marg.mean)])
-        )
-        self.assertTrue(
-            all([np.all(c1 == c2) for c1, c2 in zip(l.cov, l_marg.cov)])
-        )
+        self.assertTrue(all([np.all(m1 == m2) for m1, m2 in zip(l.mean, l_marg.mean)]))
+        self.assertTrue(all([np.all(c1 == c2) for c1, c2 in zip(l.cov, l_marg.cov)]))
 
         # ---------- different scopes -----------
 
@@ -420,9 +396,7 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(isinstance(l_marg, MultivariateGaussian))
         self.assertEqual(l_marg.scope, Scope([1, 3]))
         self.assertTrue(np.all(l_marg.mean == np.array([3.7, -0.9])))
-        self.assertTrue(
-            np.all(l_marg.cov == np.array([[0.5, 0.0], [0.0, 0.7]]))
-        )
+        self.assertTrue(np.all(l_marg.cov == np.array([[0.5, 0.0], [0.0, 0.7]])))
 
         l_marg = marginalize(l, [0, 1, 2], prune=True)
         self.assertTrue(isinstance(l_marg, Gaussian))
@@ -435,20 +409,14 @@ class TestLayer(unittest.TestCase):
         self.assertEqual(l_marg.scopes_out, [Scope([1, 3])])
         self.assertEqual(len(l_marg.nodes), 1)
         self.assertTrue(np.all(l_marg.mean == np.array([3.7, -0.9])))
-        self.assertTrue(
-            np.all(l_marg.cov == np.array([[0.5, 0.0], [0.0, 0.7]]))
-        )
+        self.assertTrue(np.all(l_marg.cov == np.array([[0.5, 0.0], [0.0, 0.7]])))
 
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [4])
 
         self.assertTrue(l_marg.scopes_out == [Scope([0, 2]), Scope([1, 3])])
-        self.assertTrue(
-            all([np.all(m1 == m2) for m1, m2 in zip(l.mean, l_marg.mean)])
-        )
-        self.assertTrue(
-            all([np.all(c1 == c2) for c1, c2 in zip(l.cov, l_marg.cov)])
-        )
+        self.assertTrue(all([np.all(m1 == m2) for m1, m2 in zip(l.mean, l_marg.mean)]))
+        self.assertTrue(all([np.all(c1 == c2) for c1, c2 in zip(l.cov, l_marg.cov)]))
 
     def test_get_params(self):
 
@@ -462,15 +430,11 @@ class TestLayer(unittest.TestCase):
         mean, cov, *others = layer.get_params()
 
         self.assertTrue(len(others) == 0)
-        self.assertTrue(
-            np.allclose(mean, np.array([[-0.73, 0.29], [0.36, -1.4]]))
-        )
+        self.assertTrue(np.allclose(mean, np.array([[-0.73, 0.29], [0.36, -1.4]])))
         self.assertTrue(
             np.allclose(
                 cov,
-                np.array(
-                    [[[1.0, 0.92], [0.92, 1.2]], [[1.0, 0.3], [0.3, 1.4]]]
-                ),
+                np.array([[[1.0, 0.92], [0.92, 1.2]], [[1.0, 0.3], [0.3, 1.4]]]),
             )
         )
 

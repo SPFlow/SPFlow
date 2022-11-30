@@ -1,18 +1,14 @@
-from spflow.meta.dispatch import SamplingContext
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
-    PartitionLayer,
-    Gaussian,
-)
-from spflow.base.inference import log_likelihood
-from spflow.base.sampling import sample
-
-import numpy as np
+import itertools
 import random
 import unittest
-import itertools
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import Gaussian, PartitionLayer, ProductNode, SumNode
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
 
 
 class TestNode(unittest.TestCase):
@@ -66,11 +62,7 @@ class TestNode(unittest.TestCase):
         layer_samples = sample(layer_spn, 10000)
         nodes_samples = sample(nodes_spn, 10000)
 
-        self.assertTrue(
-            np.allclose(
-                nodes_samples.mean(axis=0), expected_mean, atol=0.01, rtol=0.1
-            )
-        )
+        self.assertTrue(np.allclose(nodes_samples.mean(axis=0), expected_mean, atol=0.01, rtol=0.1))
         self.assertTrue(
             np.allclose(
                 layer_samples.mean(axis=0),

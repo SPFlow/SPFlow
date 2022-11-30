@@ -1,27 +1,28 @@
 """Contains conditional Poisson leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Callable
 from functools import reduce
+from typing import Callable, Iterable, List, Optional, Union
+
 import numpy as np
 import torch
 import torch.distributions as D
 
+from spflow.base.structure.general.layers.leaves.parametric.cond_poisson import (
+    CondPoissonLayer as BaseCondPoissonLayer,
+)
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.module import Module
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_poisson import (
     CondPoisson,
 )
-from spflow.base.structure.general.layers.leaves.parametric.cond_poisson import (
-    CondPoissonLayer as BaseCondPoissonLayer,
-)
+from spflow.torch.structure.module import Module
 
 
 class CondPoissonLayer(Module):
@@ -83,9 +84,7 @@ class CondPoissonLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'CondPoissonLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'CondPoissonLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -93,17 +92,13 @@ class CondPoissonLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) == 0:
-                raise ValueError(
-                    f"Evidence scope for 'CondPoissonLayer' should not be empty."
-                )
+                raise ValueError(f"Evidence scope for 'CondPoissonLayer' should not be empty.")
 
         super().__init__(children=[], **kwargs)
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
 
@@ -127,9 +122,7 @@ class CondPoissonLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondPoissonLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondPoissonLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -139,9 +132,7 @@ class CondPoissonLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondPoissonLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondPoissonLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         l = []
         scopes = []
@@ -171,9 +162,7 @@ class CondPoissonLayer(Module):
         """Returns the number of outputs for this module. Equal to the number of nodes represented by the layer."""
         return self._n_out
 
-    def set_cond_f(
-        self, cond_f: Optional[Union[List[Callable], Callable]] = None
-    ) -> None:
+    def set_cond_f(self, cond_f: Optional[Union[List[Callable], Callable]] = None) -> None:
         r"""Sets the ``cond_f`` property.
 
         Args:
@@ -195,9 +184,7 @@ class CondPoissonLayer(Module):
 
         self.cond_f = cond_f
 
-    def dist(
-        self, l: torch.Tensor, node_ids: Optional[List[int]] = None
-    ) -> D.Distribution:
+    def dist(self, l: torch.Tensor, node_ids: Optional[List[int]] = None) -> D.Distribution:
         r"""Returns the PyTorch distributions represented by the leaf layer.
 
         Args:
@@ -215,9 +202,7 @@ class CondPoissonLayer(Module):
 
         return D.Poisson(rate=l[node_ids])
 
-    def retrieve_params(
-        self, data: np.ndarray, dispatch_ctx: DispatchContext
-    ) -> torch.Tensor:
+    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> torch.Tensor:
         r"""Retrieves the conditional parameters of the leaf layer.
 
         First, checks if conditional parameter (``l``) is passed as an additional argument in the dispatch context.
@@ -255,9 +240,7 @@ class CondPoissonLayer(Module):
 
         # if neither 'l' nor 'cond_f' is specified (via node or arguments)
         if l is None and cond_f is None:
-            raise ValueError(
-                "'CondPoissonLayer' requires either 'l' or 'cond_f' to retrieve 'l' to be specified."
-            )
+            raise ValueError("'CondPoissonLayer' requires either 'l' or 'cond_f' to retrieve 'l' to be specified.")
 
         # if 'l' was not already specified, retrieve it
         if l is None:
@@ -281,9 +264,7 @@ class CondPoissonLayer(Module):
             )
 
         if torch.any(l < 0) or not torch.any(torch.isfinite(l)):
-            raise ValueError(
-                f"Values for 'l' of 'PoissonLayer' must to greater of equal to 0, but was: {l}"
-            )
+            raise ValueError(f"Values for 'l' of 'PoissonLayer' must to greater of equal to 0, but was: {l}")
 
         return l
 
@@ -327,9 +308,7 @@ class CondPoissonLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(torch.ones(self.n_out), node_ids).support.check(scope_data)  # type: ignore
@@ -379,9 +358,7 @@ def marginalize(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    layer: BaseCondPoissonLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> CondPoissonLayer:
+def toTorch(layer: BaseCondPoissonLayer, dispatch_ctx: Optional[DispatchContext] = None) -> CondPoissonLayer:
     """Conversion for ``CondPoissonLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:

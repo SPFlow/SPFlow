@@ -1,12 +1,13 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext
-from spflow.torch.structure.spn import Poisson
-from spflow.torch.sampling import sample
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import SamplingContext
+from spflow.torch.sampling import sample
+from spflow.torch.structure.spn import Poisson
 
 
 class TestPoisson(unittest.TestCase):
@@ -32,14 +33,10 @@ class TestPoisson(unittest.TestCase):
 
         samples = sample(poisson, data, sampling_ctx=SamplingContext([0, 2]))
 
-        self.assertTrue(
-            all(samples.isnan() == torch.tensor([[False], [True], [False]]))
-        )
+        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
 
         samples = sample(poisson, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(1.0), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0), rtol=0.1))
 
     def test_sampling_2(self):
 
@@ -53,9 +50,7 @@ class TestPoisson(unittest.TestCase):
         poisson = Poisson(Scope([0]), 0.5)
 
         samples = sample(poisson, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(0.5), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(0.5), rtol=0.1))
 
     def test_sampling_3(self):
 
@@ -69,9 +64,7 @@ class TestPoisson(unittest.TestCase):
         poisson = Poisson(Scope([0]), 2.5)
 
         samples = sample(poisson, 1000)
-        self.assertTrue(
-            torch.isclose(samples.mean(), torch.tensor(2.5), rtol=0.1)
-        )
+        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(2.5), rtol=0.1))
 
 
 if __name__ == "__main__":

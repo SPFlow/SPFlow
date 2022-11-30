@@ -1,5 +1,11 @@
 """Contains sampling methods for ``Module`` for SPFlow in the ``torch`` backend.
 """
+from functools import reduce
+from typing import Optional
+
+import numpy as np
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -10,11 +16,6 @@ from spflow.meta.dispatch.sampling_context import (
     init_default_sampling_context,
 )
 from spflow.torch.structure.module import Module
-
-import torch
-import numpy as np
-from typing import Optional
-from functools import reduce
 
 
 @dispatch  # type: ignore
@@ -86,9 +87,7 @@ def sample(
         Two-dimensional PyTorch tensor containing the sampled values.
         Each row corresponds to a sample.
     """
-    combined_module_scope = reduce(
-        lambda s1, s2: s1.join(s2), module.scopes_out
-    )
+    combined_module_scope = reduce(lambda s1, s2: s1.join(s2), module.scopes_out)
 
     data = torch.full((n, max(combined_module_scope.query) + 1), float("nan"))
 

@@ -2,6 +2,10 @@
 
 All nodes in the ``torch`` backend should inherit from ``Node`` or a subclass of it.
 """
+from abc import ABC
+from copy import deepcopy
+from typing import Iterable, List, Optional, Union
+
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -9,10 +13,6 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.torch.structure.module import Module
-
-from typing import Optional, Union, Iterable, List
-from copy import deepcopy
-from abc import ABC
 
 
 class Node(Module, ABC):
@@ -31,9 +31,7 @@ class Node(Module, ABC):
             List of scopes representing the output scopes.
     """
 
-    def __init__(
-        self, children: Optional[List[Module]] = None, **kwargs
-    ) -> None:
+    def __init__(self, children: Optional[List[Module]] = None, **kwargs) -> None:
         r"""Initializes ``Node`` object.
 
         Initializes node by correctly setting its children.

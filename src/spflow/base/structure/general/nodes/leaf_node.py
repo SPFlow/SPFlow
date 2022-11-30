@@ -2,10 +2,10 @@
 
 All leaf nodes in the ``base`` backend should inherit from ``LeafNode`` or a subclass of it.
 """
-from spflow.meta.data.scope import Scope
-from spflow.base.structure.general.nodes.node import Node
-
 from abc import ABC
+
+from spflow.base.structure.general.nodes.node import Node
+from spflow.meta.data.scope import Scope
 
 
 class LeafNode(Node, ABC):

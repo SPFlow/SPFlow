@@ -1,14 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    Hypergeometric,
-)
-from spflow.base.learning import (
-    maximum_likelihood_estimation,
-)
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.learning import maximum_likelihood_estimation
+from spflow.base.structure.spn import Hypergeometric
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -21,9 +18,7 @@ class TestNode(unittest.TestCase):
         leaf = Hypergeometric(Scope([0]), N=10, M=7, n=3)
 
         # simulate data
-        data = np.random.hypergeometric(
-            ngood=7, nbad=10 - 7, nsample=3, size=(10000, 1)
-        )
+        data = np.random.hypergeometric(ngood=7, nbad=10 - 7, nsample=3, size=(10000, 1))
 
         # perform MLE (should not raise an exception)
         maximum_likelihood_estimation(leaf, data, bias_correction=True)

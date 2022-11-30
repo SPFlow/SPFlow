@@ -1,5 +1,9 @@
 """Contains sampling methods for ``NegativeBinomial`` nodes for SPFlow in the ``torch`` backend.
 """
+from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -12,9 +16,6 @@ from spflow.meta.dispatch.sampling_context import (
 from spflow.torch.structure.general.nodes.leaves.parametric.negative_binomial import (
     NegativeBinomial,
 )
-
-import torch
-from typing import Optional
 
 
 @dispatch  # type: ignore
@@ -53,19 +54,13 @@ def sample(
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    marg_ids = (
-        torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)
-    ).squeeze(1)
+    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = torch.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
 
     sampling_ids = marg_ids & instance_ids_mask.bool().to(leaf.p_aux.device)
 
-    data[sampling_ids, leaf.scope.query] = (
-        leaf.dist.sample((sampling_ids.sum(),))
-        .squeeze(-1)
-        .to(leaf.p_aux.device)
-    )
+    data[sampling_ids, leaf.scope.query] = leaf.dist.sample((sampling_ids.sum(),)).squeeze(-1).to(leaf.p_aux.device)
 
     return data

@@ -1,20 +1,22 @@
 """Contains conditional Gaussian leaf node for SPFlow in the ``torch`` backend.
 """
+from typing import Callable, List, Optional, Tuple, Type, Union
+
 import torch
 import torch.distributions as D
-from typing import Tuple, Optional, Callable, List, Union, Type
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import MetaType, FeatureType, FeatureTypes
+
+from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import (
+    CondGaussian as BaseCondGaussian,
+)
 from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes, MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
-from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import (
-    CondGaussian as BaseCondGaussian,
-)
 
 
 class CondGaussian(LeafNode):
@@ -50,13 +52,9 @@ class CondGaussian(LeafNode):
                 floats, scalar NumPy arrays or scalar PyTorch tensors, where the value for ``std`` should be greater than 0.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'CondGaussian' should be 1, but was: {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'CondGaussian' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) == 0:
-            raise ValueError(
-                f"Evidence scope for 'CondGaussian' should not be empty."
-            )
+            raise ValueError(f"Evidence scope for 'CondGaussian' should not be empty.")
 
         super().__init__(scope=scope)
 
@@ -80,11 +78,7 @@ class CondGaussian(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) == 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) == 0:
             return False
 
         # leaf is a continuous Gaussian distribution
@@ -98,9 +92,7 @@ class CondGaussian(LeafNode):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "CondGaussian":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "CondGaussian":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -110,9 +102,7 @@ class CondGaussian(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'CondGaussian' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'CondGaussian' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -143,9 +133,7 @@ class CondGaussian(LeafNode):
         """
         self.cond_f = cond_f
 
-    def retrieve_params(
-        self, data: torch.Tensor, dispatch_ctx: DispatchContext
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Retrieves the conditional parameter of the leaf node.
 
         First, checks if conditional parameters (``mean``,``std``) is passed as an additional argument in the dispatch context.
@@ -202,13 +190,9 @@ class CondGaussian(LeafNode):
 
         # check if values for 'mean', 'std' are valid
         if not (torch.isfinite(mean) and torch.isfinite(std)):
-            raise ValueError(
-                f"Values for 'mean' and 'std' for 'CondGaussian' must be finite, but were: {mean}, {std}"
-            )
+            raise ValueError(f"Values for 'mean' and 'std' for 'CondGaussian' must be finite, but were: {mean}, {std}")
         if std <= 0.0:
-            raise ValueError(
-                f"Value for 'std' for 'CondGaussian' must be greater than 0.0, but was: {std}"
-            )
+            raise ValueError(f"Value for 'std' for 'CondGaussian' must be greater than 0.0, but was: {std}")
 
         return mean, std
 
@@ -226,9 +210,7 @@ class CondGaussian(LeafNode):
         """
         return D.Normal(loc=mean, scale=std)
 
-    def check_support(
-        self, data: torch.Tensor, is_scope_data: bool = False
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Gaussian distribution, which is:
@@ -269,17 +251,13 @@ class CondGaussian(LeafNode):
         valid[~nan_mask] = self.dist(torch.tensor(0.0), torch.tensor(1.0)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= (
-            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
-        )
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    node: BaseCondGaussian, dispatch_ctx: Optional[DispatchContext] = None
-) -> CondGaussian:
+def toTorch(node: BaseCondGaussian, dispatch_ctx: Optional[DispatchContext] = None) -> CondGaussian:
     """Conversion for ``CondGaussian`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -293,9 +271,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    node: CondGaussian, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseCondGaussian:
+def toBase(node: CondGaussian, dispatch_ctx: Optional[DispatchContext] = None) -> BaseCondGaussian:
     """Conversion for ``CondGaussian`` from ``torch`` backend to ``base`` backend.
 
     Args:

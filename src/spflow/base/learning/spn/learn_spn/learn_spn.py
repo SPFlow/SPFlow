@@ -1,23 +1,25 @@
 """Contains the LearnSPN structure and parameter learner for SPFlow in the ``base`` backend.
 """
-import numpy as np
 from functools import partial
-from typing import Callable, Union, Optional, Dict, Any
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.utils.randomized_dependency_coefficients import (
-    randomized_dependency_coefficients,
-)
+from typing import Any, Callable, Dict, Optional, Union
+
+import numpy as np
+from sklearn.cluster import KMeans
+
 from spflow.base.learning.general.nodes.leaves.parametric.gaussian import (
     maximum_likelihood_estimation,
 )
-from spflow.base.utils.connected_components import connected_components
 from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.spn.nodes.sum_node import SumNode
-from spflow.base.structure.spn.nodes.product_node import ProductNode
-from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.base.structure.module import Module
-from sklearn.cluster import KMeans
+from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode
+from spflow.base.structure.spn.nodes.product_node import ProductNode
+from spflow.base.structure.spn.nodes.sum_node import SumNode
+from spflow.base.utils.connected_components import connected_components
+from spflow.base.utils.randomized_dependency_coefficients import (
+    randomized_dependency_coefficients,
+)
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.scope import Scope
 
 
 def partition_by_rdc(
@@ -161,13 +163,9 @@ def learn_spn(
     scope = feature_ctx.scope
 
     if len(scope.query) != data.shape[1]:
-        raise ValueError(
-            f"Number of query variables in 'scope' does not match number of features in data."
-        )
+        raise ValueError(f"Number of query variables in 'scope' does not match number of features in data.")
     if scope.is_conditional() and fit_params:
-        raise ValueError(
-            "Option 'fit_params' is set to True, but is incompatible with a conditional scope."
-        )
+        raise ValueError("Option 'fit_params' is set to True, but is incompatible with a conditional scope.")
 
     # available off-the-shelf clustering methods provided by SPFlow
     if isinstance(clustering_method, str):
@@ -175,9 +173,7 @@ def learn_spn(
         if clustering_method == "kmeans":
             clustering_method = cluster_by_kmeans
         else:
-            raise ValueError(
-                f"Value '{clustering_method}' for partitioning method is invalid."
-            )
+            raise ValueError(f"Value '{clustering_method}' for partitioning method is invalid.")
 
     # available off-the-shelf partitioning methods provided by SPFlow
     if isinstance(partitioning_method, str):
@@ -185,9 +181,7 @@ def learn_spn(
         if partitioning_method == "rdc":
             partitioning_method = partition_by_rdc
         else:
-            raise ValueError(
-                f"Value '{partitioning_method}' for partitioning method is invalid."
-            )
+            raise ValueError(f"Value '{partitioning_method}' for partitioning method is invalid.")
 
     # for convenience, directly bind additional keyword arguments to the methods
     if clustering_args is not None:
@@ -208,17 +202,11 @@ def learn_spn(
     def fit_leaf(leaf: Module, data: np.ndarray, scope: Scope):
 
         # create empty data set with data at correct leaf scope indices
-        leaf_data = np.empty(
-            (data.shape[0], max(scope.query) + 1), dtype=np.float
-        )
-        leaf_data[:, scope.query] = data[
-            :, [scope.query.index(rv) for rv in scope.query]
-        ]
+        leaf_data = np.empty((data.shape[0], max(scope.query) + 1), dtype=np.float)
+        leaf_data[:, scope.query] = data[:, [scope.query.index(rv) for rv in scope.query]]
 
         # estimate leaf node parameters from data
-        maximum_likelihood_estimation(
-            leaf, leaf_data, check_support=check_support
-        )
+        maximum_likelihood_estimation(leaf, leaf_data, check_support=check_support)
 
     def create_uv_leaf(scope: Scope, data: np.ndarray, fit_params: bool = True):
         # create leaf node
@@ -230,9 +218,7 @@ def learn_spn(
 
         return leaf
 
-    def create_partitioned_mv_leaf(
-        scope: Scope, data: np.ndarray, fit_params: bool = True
-    ):
+    def create_partitioned_mv_leaf(scope: Scope, data: np.ndarray, fit_params: bool = True):
         # combine univariate leafs via product node
         leaves = []
 
@@ -273,9 +259,7 @@ def learn_spn(
                     # compute child trees recursively
                     learn_spn(
                         data[:, partition],
-                        feature_ctx=feature_ctx.select(
-                            [scope.query[rv] for rv in partition]
-                        ),
+                        feature_ctx=feature_ctx.select([scope.query[rv] for rv in partition]),
                         clustering_method=clustering_method,
                         partitioning_method=partitioning_method,
                         fit_params=fit_params,
@@ -296,10 +280,7 @@ def learn_spn(
                 # non-conditional clusters
                 if not scope.is_conditional():
                     weights = (
-                        [
-                            (labels == cluster_id).sum() / data.shape[0]
-                            for cluster_id in np.unique(labels)
-                        ]
+                        [(labels == cluster_id).sum() / data.shape[0] for cluster_id in np.unique(labels)]
                         if fit_params
                         else None
                     )

@@ -1,15 +1,17 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
-    NegativeBinomial,
-    NegativeBinomialLayer,
-)
-from spflow.base.inference import log_likelihood
-from spflow.base.sampling import sample
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import (
+    NegativeBinomial,
+    NegativeBinomialLayer,
+    ProductNode,
+    SumNode,
+)
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -19,9 +21,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        negative_binomial_layer = NegativeBinomialLayer(
-            scope=Scope([0]), n=3, p=[0.8, 0.3], n_nodes=2
-        )
+        negative_binomial_layer = NegativeBinomialLayer(scope=Scope([0]), n=3, p=[0.8, 0.3], n_nodes=2)
         s1 = SumNode(children=[negative_binomial_layer], weights=[0.3, 0.7])
 
         negative_binomial_nodes = [
@@ -47,9 +47,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        negative_binomial_layer = NegativeBinomialLayer(
-            scope=[Scope([0]), Scope([1])], n=[3, 5], p=[0.8, 0.3]
-        )
+        negative_binomial_layer = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 5], p=[0.8, 0.3])
         p1 = ProductNode(children=[negative_binomial_layer])
 
         negative_binomial_nodes = [
@@ -71,9 +69,7 @@ class TestNode(unittest.TestCase):
 
     def test_sampling_3(self):
 
-        negative_binomial_layer = NegativeBinomialLayer(
-            scope=Scope([0]), n=3, p=[0.8, 0.3], n_nodes=2
-        )
+        negative_binomial_layer = NegativeBinomialLayer(scope=Scope([0]), n=3, p=[0.8, 0.3], n_nodes=2)
 
         # check if empty output ids (i.e., []) works AND sampling from non-disjoint scopes fails
         self.assertRaises(ValueError, sample, negative_binomial_layer)

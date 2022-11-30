@@ -1,22 +1,23 @@
 """Contains Uniform leaf node for SPFlow in the ``torch`` backend.
 """
+from typing import List, Optional, Tuple
+
 import numpy as np
 import torch
 import torch.distributions as D
-from typing import Tuple, Optional, List
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
 
+from spflow.base.structure.general.nodes.leaves.parametric.uniform import (
+    Uniform as BaseUniform,
+)
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
-from spflow.base.structure.general.nodes.leaves.parametric.uniform import (
-    Uniform as BaseUniform,
-)
 
 
 class Uniform(LeafNode):
@@ -67,13 +68,9 @@ class Uniform(LeafNode):
                 Defaults to True.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'Uniform' should be 1, but was: {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'Uniform' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'Uniform' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'Uniform' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
 
@@ -103,11 +100,7 @@ class Uniform(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a continuous Uniform distribution
@@ -128,9 +121,7 @@ class Uniform(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Uniform' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'Uniform' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -146,9 +137,7 @@ class Uniform(LeafNode):
 
         return Uniform(feature_ctx.scope, start=start, end=end)
 
-    def set_params(
-        self, start: float, end: float, support_outside: bool = True
-    ) -> None:
+    def set_params(self, start: float, end: float, support_outside: bool = True) -> None:
         r"""Sets the parameters for the represented distribution.
 
         Args:
@@ -165,9 +154,7 @@ class Uniform(LeafNode):
                 f"Value of 'start' for 'Uniform' must be less than value of 'end', but were: {start}, {end}"
             )
         if not (np.isfinite(start) and np.isfinite(end)):
-            raise ValueError(
-                f"Values of 'start' and 'end' for 'Uniform' must be finite, but were: {start}, {end}"
-            )
+            raise ValueError(f"Values of 'start' and 'end' for 'Uniform' must be finite, but were: {start}, {end}")
 
         # since torch Uniform distribution excludes the upper bound, compute next largest number
         end_next = torch.nextafter(torch.tensor(end), torch.tensor(float("Inf")))  # type: ignore
@@ -188,9 +175,7 @@ class Uniform(LeafNode):
         """
         return self.start.cpu().numpy(), self.end.cpu().numpy(), self.support_outside  # type: ignore
 
-    def check_support(
-        self, data: torch.Tensor, is_scope_data: bool = False
-    ) -> torch.Tensor:
+    def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Uniform distribution, which is:
@@ -238,24 +223,19 @@ class Uniform(LeafNode):
         valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
 
         # check for infinite values
-        valid[~nan_mask & valid] &= (
-            ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
-        )
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         # check if values are within valid range
         if not self.support_outside:
             valid[~nan_mask & valid] &= (
-                (scope_data[~nan_mask & valid] >= self.start)
-                & (scope_data[~nan_mask & valid] < self.end_next)
+                (scope_data[~nan_mask & valid] >= self.start) & (scope_data[~nan_mask & valid] < self.end_next)
             ).squeeze(-1)
 
         return valid
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    node: BaseUniform, dispatch_ctx: Optional[DispatchContext] = None
-) -> Uniform:
+def toTorch(node: BaseUniform, dispatch_ctx: Optional[DispatchContext] = None) -> Uniform:
     """Conversion for ``Uniform`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -269,9 +249,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    node: Uniform, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseUniform:
+def toBase(node: Uniform, dispatch_ctx: Optional[DispatchContext] = None) -> BaseUniform:
     """Conversion for ``Uniform`` from ``torch`` backend to ``base`` backend.
 
     Args:
@@ -281,6 +259,4 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseUniform(
-        node.scope, node.start.cpu().numpy(), node.end.cpu().numpy()
-    )
+    return BaseUniform(node.scope, node.start.cpu().numpy(), node.end.cpu().numpy())

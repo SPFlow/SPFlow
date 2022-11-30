@@ -1,16 +1,15 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import Uniform
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.inference import log_likelihood
-from spflow.base.structure.spn import Uniform as BaseUniform
-from spflow.base.inference import log_likelihood
-
-import torch
-import numpy as np
-
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import Uniform as BaseUniform
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Uniform
 
 
 class TestUniform(unittest.TestCase):
@@ -53,29 +52,13 @@ class TestUniform(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(
-            Uniform.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(Uniform.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # feature type instance
-        self.assertTrue(
-            Uniform.accepts(
-                [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                    )
-                ]
-            )
-        )
+        self.assertTrue(Uniform.accepts([FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            Uniform.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(Uniform.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # conditional scope
         self.assertFalse(
@@ -106,13 +89,7 @@ class TestUniform(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        uniform = Uniform.from_signatures(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                )
-            ]
-        )
+        uniform = Uniform.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)])])
         self.assertTrue(torch.isclose(uniform.start, torch.tensor(-1.0)))
         self.assertTrue(torch.isclose(uniform.end, torch.tensor(2.0)))
 
@@ -159,23 +136,11 @@ class TestUniform(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             Uniform,
-            AutoLeaf.infer(
-                [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                    )
-                ]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        uniform = AutoLeaf(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)]
-                )
-            ]
-        )
+        uniform = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Uniform(start=-1.0, end=2.0)])])
         self.assertTrue(isinstance(uniform, Uniform))
         self.assertTrue(torch.isclose(uniform.start, torch.tensor(-1.0)))
         self.assertTrue(torch.isclose(uniform.end, torch.tensor(2.0)))

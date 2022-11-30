@@ -1,15 +1,16 @@
-from spflow.torch.structure.spn import CondSumNode, ProductNode, Gaussian
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.base.structure.spn import (
-    CondSumNode as BaseCondSumNode,
-    Gaussian as BaseGaussian,
-)
-from spflow.meta.dispatch import DispatchContext
-from spflow.meta.data import Scope
-from ...general.nodes.dummy_node import DummyNode
+import unittest
+
 import numpy as np
 import torch
-import unittest
+
+from spflow.base.structure.spn import CondSumNode as BaseCondSumNode
+from spflow.base.structure.spn import Gaussian as BaseGaussian
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondSumNode, Gaussian, ProductNode
+
+from ...general.nodes.dummy_node import DummyNode
 
 
 class TestTorchNode(unittest.TestCase):
@@ -110,9 +111,7 @@ class TestTorchNode(unittest.TestCase):
 
     def test_backend_conversion_2(self):
 
-        s_base = BaseCondSumNode(
-            [BaseGaussian(Scope([0])), BaseGaussian(Scope([0]))]
-        )
+        s_base = BaseCondSumNode([BaseGaussian(Scope([0])), BaseGaussian(Scope([0]))])
         s_torch = toTorch(s_base)
 
         self.assertTrue(np.all(s_torch.scopes_out == s_base.scopes_out))

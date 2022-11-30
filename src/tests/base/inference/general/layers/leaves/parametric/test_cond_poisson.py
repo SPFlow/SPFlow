@@ -1,23 +1,23 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
-from spflow.base.inference import log_likelihood, likelihood
+import unittest
+
+import numpy as np
+
+from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import (
-    SumNode,
-    ProductNode,
     CondPoisson,
     CondPoissonLayer,
+    ProductNode,
+    SumNode,
 )
-import numpy as np
-import unittest
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
 
 
 class TestNode(unittest.TestCase):
     def test_likelihood_no_l(self):
 
         poisson = CondPoissonLayer(Scope([0], [1]), n_nodes=2)
-        self.assertRaises(
-            ValueError, log_likelihood, poisson, np.array([[0], [1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[0], [1]]))
 
     def test_likelihood_module_cond_f(self):
 
@@ -27,9 +27,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
-        targets = np.array(
-            [[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]]
-        )
+        targets = np.array([[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]])
 
         probs = likelihood(poisson, data)
         log_probs = log_likelihood(poisson, data)
@@ -46,9 +44,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
-        targets = np.array(
-            [[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]]
-        )
+        targets = np.array([[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]])
 
         probs = likelihood(poisson, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(poisson, data, dispatch_ctx=dispatch_ctx)
@@ -67,9 +63,7 @@ class TestNode(unittest.TestCase):
 
         # create test inputs/outputs
         data = np.array([[0], [2], [5]])
-        targets = np.array(
-            [[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]]
-        )
+        targets = np.array([[0.367879, 0.367879], [0.18394, 0.18394], [0.00306566, 0.00306566]])
 
         probs = likelihood(poisson, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(poisson, data, dispatch_ctx=dispatch_ctx)
@@ -94,9 +88,7 @@ class TestNode(unittest.TestCase):
 
         data = np.array([[1], [5], [3]])
 
-        self.assertTrue(
-            np.all(log_likelihood(s1, data) == log_likelihood(s2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(s1, data) == log_likelihood(s2, data)))
 
     def test_layer_likelihood_2(self):
 
@@ -114,9 +106,7 @@ class TestNode(unittest.TestCase):
 
         data = np.array([[1, 6], [5, 3], [3, 7]])
 
-        self.assertTrue(
-            np.all(log_likelihood(p1, data) == log_likelihood(p2, data))
-        )
+        self.assertTrue(np.all(log_likelihood(p1, data) == log_likelihood(p2, data)))
 
 
 if __name__ == "__main__":

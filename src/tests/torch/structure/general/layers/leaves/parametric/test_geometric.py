@@ -1,11 +1,12 @@
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import Geometric, GeometricLayer
-from spflow.torch.structure import marginalize, toTorch, toBase
-from spflow.base.structure.spn import GeometricLayer as BaseGeometricLayer
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-import torch
-import numpy as np
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn import GeometricLayer as BaseGeometricLayer
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Geometric, GeometricLayer
 
 
 class TestNode(unittest.TestCase):
@@ -25,9 +26,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
         # make sure parameter properties works correctly
         for p_layer_node, p_value in zip(l.p, p_values):
             self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
@@ -47,9 +46,7 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
 
         # wrong number of values
-        self.assertRaises(
-            ValueError, GeometricLayer, Scope([0]), p_values[:-1], n_nodes=3
-        )
+        self.assertRaises(ValueError, GeometricLayer, Scope([0]), p_values[:-1], n_nodes=3)
         # wrong number of dimensions (nested list)
         self.assertRaises(
             ValueError,
@@ -135,11 +132,7 @@ class TestNode(unittest.TestCase):
         )
 
         # conditional scope
-        self.assertFalse(
-            GeometricLayer.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]
-            )
-        )
+        self.assertFalse(GeometricLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]))
 
         # multivariate signature
         self.assertFalse(
@@ -280,49 +273,35 @@ class TestNode(unittest.TestCase):
         dist = l.dist()
 
         for p_value, p_dist in zip(p_values, dist.probs):
-            self.assertTrue(
-                torch.allclose(torch.tensor(p_value).double(), p_dist)
-            )
+            self.assertTrue(torch.allclose(torch.tensor(p_value).double(), p_dist))
 
         # ----- partial dist -----
         dist = l.dist([1, 2])
 
         for p_value, p_dist in zip(p_values[1:], dist.probs):
-            self.assertTrue(
-                torch.allclose(torch.tensor(p_value).double(), p_dist)
-            )
+            self.assertTrue(torch.allclose(torch.tensor(p_value).double(), p_dist))
 
         dist = l.dist([1, 0])
 
         for p_value, p_dist in zip(reversed(p_values[:-1]), dist.probs):
-            self.assertTrue(
-                torch.allclose(torch.tensor(p_value).double(), p_dist)
-            )
+            self.assertTrue(torch.allclose(torch.tensor(p_value).double(), p_dist))
 
     def test_layer_backend_conversion_1(self):
 
-        torch_layer = GeometricLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31]
-        )
+        torch_layer = GeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
         base_layer = toBase(torch_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(
-            np.allclose(base_layer.p, torch_layer.p.detach().numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.p, torch_layer.p.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
     def test_layer_backend_conversion_2(self):
 
-        base_layer = BaseGeometricLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31]
-        )
+        base_layer = BaseGeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
         torch_layer = toTorch(base_layer)
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(
-            np.allclose(base_layer.p, torch_layer.p.detach().numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.p, torch_layer.p.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
 

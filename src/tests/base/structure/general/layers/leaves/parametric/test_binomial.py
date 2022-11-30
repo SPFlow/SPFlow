@@ -1,8 +1,10 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.base.structure.spn import Binomial, BinomialLayer, marginalize
-from spflow.base.structure import AutoLeaf
-import numpy as np
 import unittest
+
+import numpy as np
+
+from spflow.base.structure import AutoLeaf
+from spflow.base.structure.spn import Binomial, BinomialLayer, marginalize
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestLayer(unittest.TestCase):
@@ -14,9 +16,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
         # make sure parameter properties works correctly
         n_values = l.n
         p_values = l.p
@@ -36,9 +36,7 @@ class TestLayer(unittest.TestCase):
         # ----- list parameter values -----
         n_values = [1, 5, 4]
         p_values = [0.25, 0.5, 0.3]
-        l = BinomialLayer(
-            scope=[Scope([1]), Scope([0]), Scope([2])], n=n_values, p=p_values
-        )
+        l = BinomialLayer(scope=[Scope([1]), Scope([0]), Scope([2])], n=n_values, p=p_values)
 
         for node, node_n, node_p in zip(l.nodes, n_values, p_values):
             self.assertTrue(np.all(node.n == node_n))
@@ -164,9 +162,7 @@ class TestLayer(unittest.TestCase):
         self.assertRaises(ValueError, BinomialLayer, [], n=2, n_nodes=3)
 
         # ----- invalid values for 'n' over same scope -----
-        self.assertRaises(
-            ValueError, BinomialLayer, Scope([0]), n=[2, 5], n_nodes=2
-        )
+        self.assertRaises(ValueError, BinomialLayer, Scope([0]), n=[2, 5], n_nodes=2)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
@@ -207,11 +203,7 @@ class TestLayer(unittest.TestCase):
         )
 
         # conditional scope
-        self.assertFalse(
-            BinomialLayer.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
-            )
-        )
+        self.assertFalse(BinomialLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]))
 
         # multivariate signature
         self.assertFalse(
@@ -242,12 +234,8 @@ class TestLayer(unittest.TestCase):
 
         binomial = BinomialLayer.from_signatures(
             [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)]
-                ),
-                FeatureContext(
-                    Scope([1]), [FeatureTypes.Binomial(n=5, p=0.25)]
-                ),
+                FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Binomial(n=5, p=0.25)]),
             ]
         )
         self.assertTrue(np.all(binomial.n == np.array([3, 5])))
@@ -311,12 +299,8 @@ class TestLayer(unittest.TestCase):
         # make sure AutoLeaf can return correctly instantiated object
         binomial = AutoLeaf(
             [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)]
-                ),
-                FeatureContext(
-                    Scope([1]), [FeatureTypes.Binomial(n=5, p=0.25)]
-                ),
+                FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Binomial(n=5, p=0.25)]),
             ]
         )
         self.assertTrue(isinstance(binomial, BinomialLayer))
@@ -342,9 +326,7 @@ class TestLayer(unittest.TestCase):
 
         # ---------- different scopes -----------
 
-        l = BinomialLayer(
-            scope=[Scope([1]), Scope([0])], n=[2, 6], p=[0.5, 0.3]
-        )
+        l = BinomialLayer(scope=[Scope([1]), Scope([0])], n=[2, 6], p=[0.5, 0.3])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)

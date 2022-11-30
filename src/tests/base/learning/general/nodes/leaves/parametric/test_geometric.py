@@ -1,12 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import Geometric
-from spflow.base.learning import (
-    maximum_likelihood_estimation,
-)
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.learning import maximum_likelihood_estimation
+from spflow.base.structure.spn import Geometric
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -133,9 +132,7 @@ class TestNode(unittest.TestCase):
 
         leaf = Geometric(Scope([0]))
         # should not raise an issue
-        maximum_likelihood_estimation(
-            leaf, np.array([[2], [1]]), nan_strategy=lambda x: x
-        )
+        maximum_likelihood_estimation(leaf, np.array([[2], [1]]), nan_strategy=lambda x: x)
 
     def test_mle_nan_strategy_invalid(self):
 
