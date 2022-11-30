@@ -1,9 +1,5 @@
 """Contains sampling methods for conditional SPN-like layers for SPFlow in the ``torch`` backend.
 """
-from typing import Optional
-
-import torch
-
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -13,9 +9,12 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
+from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.sampling.module import sample
-from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer
+
+import torch
+from typing import Optional
 
 
 @dispatch  # type: ignore

@@ -1,11 +1,11 @@
 """TODO
 """
-from inspect import isclass
-from typing import Dict, List, Optional, Type, Union
-
-from spflow.meta.data.feature_types import FeatureType
-from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureType
+
+from typing import Optional, Union, List, Dict, Type
+from inspect import isclass
 
 
 class FeatureContext:

@@ -1,10 +1,13 @@
-import unittest
-
-import numpy as np
-
-from spflow.base.inference import log_likelihood
-from spflow.base.structure.spn import Bernoulli, BernoulliLayer, ProductNode, SumNode
 from spflow.meta.data import Scope
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    Bernoulli,
+    BernoulliLayer,
+)
+import numpy as np
+import unittest
 
 
 class TestNode(unittest.TestCase):

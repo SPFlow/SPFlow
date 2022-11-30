@@ -4,9 +4,8 @@ Typical usage example:
 
     ecdf_values = empirical_cdf(data)
 """
-import torch
-
 from spflow.torch.utils.rankdata import rankdata
+import torch
 
 
 def empirical_cdf(data: torch.Tensor) -> torch.Tensor:

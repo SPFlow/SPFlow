@@ -1,83 +1,71 @@
 import unittest
-
-import numpy as np
 import torch
-
-from spflow.base.structure.general.layers.leaves.parametric.gaussian import (
-    GaussianLayer as BaseGaussianLayer,
-)
-from spflow.base.structure.spn.layers.hadamard_layer import (
-    HadamardLayer as BaseHadamardLayer,
-)
-from spflow.base.structure.spn.layers.partition_layer import (
-    PartitionLayer as BasePartitionLayer,
-)
-from spflow.base.structure.spn.layers.sum_layer import SumLayer as BaseSumLayer
-from spflow.base.structure.spn.nodes.sum_node import SumNode as BaseSumNode
-from spflow.base.structure.spn.rat.rat_spn import RatSPN as BaseRatSPN
-from spflow.base.structure.spn.rat.region_graph import random_region_graph
+import numpy as np
 from spflow.meta.data import Scope
-from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.torch.structure.autoleaf import (
     AutoLeaf,
     Bernoulli,
-    BernoulliLayer,
     Binomial,
-    BinomialLayer,
-    CondBernoulli,
-    CondBernoulliLayer,
-    CondBinomial,
-    CondBinomialLayer,
-    CondExponential,
-    CondExponentialLayer,
-    CondGamma,
-    CondGammaLayer,
-    CondGaussian,
-    CondGaussianLayer,
-    CondGeometric,
-    CondGeometricLayer,
-    CondLogNormal,
-    CondLogNormalLayer,
-    CondMultivariateGaussian,
-    CondMultivariateGaussianLayer,
-    CondNegativeBinomial,
-    CondNegativeBinomialLayer,
-    CondPoisson,
-    CondPoissonLayer,
     Exponential,
-    ExponentialLayer,
     Gamma,
-    GammaLayer,
     Gaussian,
-    GaussianLayer,
     Geometric,
-    GeometricLayer,
     Hypergeometric,
-    HypergeometricLayer,
     LogNormal,
-    LogNormalLayer,
     MultivariateGaussian,
-    MultivariateGaussianLayer,
     NegativeBinomial,
-    NegativeBinomialLayer,
     Poisson,
-    PoissonLayer,
     Uniform,
+    CondBernoulli,
+    CondBinomial,
+    CondExponential,
+    CondGamma,
+    CondGaussian,
+    CondGeometric,
+    CondLogNormal,
+    CondMultivariateGaussian,
+    CondNegativeBinomial,
+    CondPoisson,
+    BernoulliLayer,
+    BinomialLayer,
+    ExponentialLayer,
+    GammaLayer,
+    GaussianLayer,
+    GeometricLayer,
+    HypergeometricLayer,
+    LogNormalLayer,
+    MultivariateGaussianLayer,
+    NegativeBinomialLayer,
+    PoissonLayer,
     UniformLayer,
+    CondBernoulliLayer,
+    CondBinomialLayer,
+    CondExponentialLayer,
+    CondGammaLayer,
+    CondGaussianLayer,
+    CondGeometricLayer,
+    CondLogNormalLayer,
+    CondMultivariateGaussianLayer,
+    CondNegativeBinomialLayer,
+    CondPoissonLayer,
 )
-from spflow.torch.structure.spn.layers.cond_sum_layer import CondSumLayer, marginalize
-from spflow.torch.structure.spn.layers.hadamard_layer import HadamardLayer, marginalize
+from spflow.torch.structure.spn.layers.sum_layer import (
+    SumLayer,
+    marginalize,
+)
 from spflow.torch.structure.spn.layers.partition_layer import (
     PartitionLayer,
     marginalize,
 )
-from spflow.torch.structure.spn.layers.sum_layer import SumLayer, marginalize
-from spflow.torch.structure.spn.nodes.cond_sum_node import (
-    CondSumNode,
+from spflow.torch.structure.spn.layers.hadamard_layer import (
+    HadamardLayer,
     marginalize,
-    toBase,
-    toTorch,
+)
+from spflow.torch.structure.spn.layers.cond_sum_layer import (
+    CondSumLayer,
+    marginalize,
 )
 from spflow.torch.structure.spn.nodes.sum_node import (
     SumNode,
@@ -85,7 +73,36 @@ from spflow.torch.structure.spn.nodes.sum_node import (
     toBase,
     toTorch,
 )
-from spflow.torch.structure.spn.rat.rat_spn import RatSPN, marginalize, toBase, toTorch
+from spflow.torch.structure.spn.nodes.cond_sum_node import (
+    CondSumNode,
+    marginalize,
+    toBase,
+    toTorch,
+)
+from spflow.torch.structure.spn.rat.rat_spn import (
+    RatSPN,
+    marginalize,
+    toBase,
+    toTorch,
+)
+from spflow.base.structure.spn.rat.region_graph import random_region_graph
+from spflow.base.structure.spn.rat.rat_spn import RatSPN as BaseRatSPN
+from spflow.base.structure.spn.nodes.sum_node import (
+    SumNode as BaseSumNode,
+)
+from spflow.base.structure.spn.layers.sum_layer import (
+    SumLayer as BaseSumLayer,
+)
+from spflow.base.structure.spn.layers.partition_layer import (
+    PartitionLayer as BasePartitionLayer,
+)
+from spflow.base.structure.spn.layers.hadamard_layer import (
+    HadamardLayer as BaseHadamardLayer,
+)
+from spflow.base.structure.general.layers.leaves.parametric.gaussian import (
+    GaussianLayer as BaseGaussianLayer,
+)
+
 
 leaf_node_classes = (
     Bernoulli,

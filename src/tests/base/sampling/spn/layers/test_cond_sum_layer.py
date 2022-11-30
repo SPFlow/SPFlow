@@ -1,13 +1,12 @@
-import random
-import unittest
-
-import numpy as np
-
+from spflow.meta.dispatch import SamplingContext
+from spflow.meta.data import Scope
+from spflow.base.structure.spn import SumNode, CondSumLayer, Gaussian
 from spflow.base.inference import log_likelihood
 from spflow.base.sampling import sample
-from spflow.base.structure.spn import CondSumLayer, Gaussian, SumNode
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext
+
+import numpy as np
+import random
+import unittest
 
 
 class TestNode(unittest.TestCase):

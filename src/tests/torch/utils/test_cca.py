@@ -1,11 +1,10 @@
-import random
-import unittest
-
-import numpy as np
-import torch
+from spflow.torch.utils import cca
 from sklearn.cross_decomposition import CCA
 
-from spflow.torch.utils import cca
+import torch
+import numpy as np
+import unittest
+import random
 
 
 class TestNode(unittest.TestCase):

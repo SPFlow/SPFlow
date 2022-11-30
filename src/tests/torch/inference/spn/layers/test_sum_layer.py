@@ -1,10 +1,9 @@
-import unittest
+from spflow.meta.data import Scope
+from spflow.torch.structure.spn import SumNode, Gaussian, SumLayer
+from spflow.torch.inference import log_likelihood
 
 import torch
-
-from spflow.meta.data import Scope
-from spflow.torch.inference import log_likelihood
-from spflow.torch.structure.spn import Gaussian, SumLayer, SumNode
+import unittest
 
 
 class TestNode(unittest.TestCase):

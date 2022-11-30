@@ -1,18 +1,16 @@
 """Contains learning methods for ``MultivariateGaussian`` nodes for SPFlow in the ``torch`` backend.
 """
-from typing import Callable, Optional, Union
-
+from typing import Optional, Union, Callable
 import torch
-
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.torch.utils.nearest_sym_pd import nearest_sym_pd
 from spflow.torch.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
 )
-from spflow.torch.utils.nearest_sym_pd import nearest_sym_pd
 
 
 @dispatch(memoize=True)  # type: ignore

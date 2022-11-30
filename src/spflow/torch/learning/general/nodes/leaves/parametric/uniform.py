@@ -1,15 +1,15 @@
 """Contains learning methods for ``Uniform`` nodes for SPFlow in the ``torch`` backend.
 """
-from typing import Callable, Optional, Union
-
+from typing import Optional, Union, Callable
 import torch
-
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.uniform import Uniform
+from spflow.torch.structure.general.nodes.leaves.parametric.uniform import (
+    Uniform,
+)
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -1,16 +1,14 @@
-import unittest
-
-import numpy as np
-
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import (
-    CondNegativeBinomial,
-    CondNegativeBinomialLayer,
-    ProductNode,
-    SumNode,
-)
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
+from spflow.base.inference import log_likelihood, likelihood
+from spflow.base.structure.spn import (
+    SumNode,
+    ProductNode,
+    CondNegativeBinomial,
+    CondNegativeBinomialLayer,
+)
+import numpy as np
+import unittest
 
 
 class TestNode(unittest.TestCase):

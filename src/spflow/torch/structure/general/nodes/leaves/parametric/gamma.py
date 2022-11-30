@@ -1,25 +1,26 @@
 """Contains Gamma leaf node for SPFlow in the ``torch`` backend.
 """
-from typing import List, Optional, Tuple
-
 import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
-
-from spflow.base.structure.general.nodes.leaves.parametric.gamma import (
-    Gamma as BaseGamma,
+from typing import Tuple, Optional, List
+from spflow.torch.utils.projections import (
+    proj_bounded_to_real,
+    proj_real_to_bounded,
 )
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
+from spflow.meta.data.feature_types import MetaType, FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
-from spflow.torch.utils.projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.base.structure.general.nodes.leaves.parametric.gamma import (
+    Gamma as BaseGamma,
+)
 
 
 class Gamma(LeafNode):

@@ -1,8 +1,7 @@
-import unittest
+from spflow.torch.utils import empirical_cdf
 
 import torch
-
-from spflow.torch.utils import empirical_cdf
+import unittest
 
 
 class TestNode(unittest.TestCase):

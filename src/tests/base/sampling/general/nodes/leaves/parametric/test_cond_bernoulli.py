@@ -1,11 +1,10 @@
-import unittest
-
-import numpy as np
-
-from spflow.base.sampling import sample
-from spflow.base.structure.spn import CondBernoulli
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
+from spflow.base.structure.spn import CondBernoulli
+from spflow.base.sampling import sample
+
+import numpy as np
+import unittest
 
 
 class TestCondBernoulli(unittest.TestCase):

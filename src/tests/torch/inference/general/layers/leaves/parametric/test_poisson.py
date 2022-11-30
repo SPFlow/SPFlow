@@ -1,11 +1,9 @@
-import random
-import unittest
-
-import torch
-
 from spflow.meta.data import Scope
-from spflow.torch.inference import log_likelihood
 from spflow.torch.structure.spn import Poisson, PoissonLayer
+from spflow.torch.inference import log_likelihood
+import torch
+import unittest
+import random
 
 
 class TestNode(unittest.TestCase):

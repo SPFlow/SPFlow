@@ -1,21 +1,20 @@
-import random
-import unittest
-
-import numpy as np
-
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
 from spflow.base.learning.spn.learn_spn import (
     cluster_by_kmeans,
-    learn_spn,
     partition_by_rdc,
+    learn_spn,
 )
 from spflow.base.structure.spn import (
-    CondGaussian,
+    SumNode,
+    ProductNode,
     CondSumNode,
     Gaussian,
-    ProductNode,
-    SumNode,
+    CondGaussian,
 )
-from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+
+import numpy as np
+import unittest
+import random
 
 
 # dummy clustering and partition methods

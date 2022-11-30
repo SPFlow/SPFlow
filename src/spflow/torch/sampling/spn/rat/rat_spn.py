@@ -1,9 +1,5 @@
 """Contains sampling methods for RAT-SPNs for SPFlow in the ``torch`` backend.
 """
-from typing import Optional
-
-import torch
-
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -14,6 +10,9 @@ from spflow.meta.dispatch.sampling_context import (
     init_default_sampling_context,
 )
 from spflow.torch.structure.spn.rat.rat_spn import RatSPN
+
+import torch
+from typing import Optional
 
 
 @dispatch  # type: ignore

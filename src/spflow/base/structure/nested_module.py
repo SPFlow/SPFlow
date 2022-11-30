@@ -1,12 +1,11 @@
 """Contains the abstract ``NestedModule`` class for SPFlow modules in the ``base`` backend.
 """
-from abc import ABC
-from typing import List, Optional, Tuple, Union
-
-import numpy as np
-
-from spflow.base.structure.module import Module
 from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.base.structure.module import Module
+
+from typing import List, Tuple, Optional, Union
+from abc import ABC
+import numpy as np
 
 
 class NestedModule(Module, ABC):

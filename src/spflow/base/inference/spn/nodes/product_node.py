@@ -1,15 +1,13 @@
 """Contains inference methods for SPN-like product nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional
-
 import numpy as np
-
-from spflow.base.structure.spn.nodes.product_node import ProductNode
-from spflow.meta.dispatch.dispatch import dispatch
+from typing import Optional
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.base.structure.spn.nodes.product_node import ProductNode
 
 
 @dispatch(memoize=True)  # type: ignore

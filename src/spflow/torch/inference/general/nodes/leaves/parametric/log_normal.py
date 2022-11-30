@@ -1,15 +1,15 @@
 """Contains inference methods for ``LogNormal`` nodes for SPFlow in the ``torch`` backend.
 """
-from typing import Optional
-
 import torch
-
+from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import LogNormal
+from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import (
+    LogNormal,
+)
 
 
 @dispatch(memoize=True)  # type: ignore

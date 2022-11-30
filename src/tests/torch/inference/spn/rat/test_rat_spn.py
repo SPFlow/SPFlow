@@ -1,11 +1,10 @@
-import unittest
-
-import numpy as np
-import torch
-
-from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.meta.data import Scope, FeatureTypes, FeatureContext
+from spflow.torch.structure.spn.rat import random_region_graph, RatSPN
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure.spn.rat import RatSPN, random_region_graph
+
+import torch
+import numpy as np
+import unittest
 
 
 class TestModule(unittest.TestCase):

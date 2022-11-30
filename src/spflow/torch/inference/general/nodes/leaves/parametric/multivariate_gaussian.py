@@ -1,10 +1,8 @@
 """Contains inference methods for ``MultivariateGaussian`` nodes for SPFlow in the ``torch`` backend.
 """
-from typing import Optional
-
 import torch
 import torch.distributions as D
-
+from typing import Optional
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

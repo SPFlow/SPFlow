@@ -1,27 +1,27 @@
-import unittest
-from typing import Callable
-
-import numpy as np
-import torch
-
+from spflow.meta.data import Scope
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian as BaseCondMultivariateGaussian,
 )
-from spflow.meta.data import Scope
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn.nodes.product_node import ProductNode
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
+    CondMultivariateGaussian,
+    toBase,
+    toTorch,
+    marginalize,
+)
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
-    CondMultivariateGaussian,
-    marginalize,
-    toBase,
-    toTorch,
-)
-from spflow.torch.structure.spn.nodes.product_node import ProductNode
+from typing import Callable
+
+import torch
+import numpy as np
+
+import unittest
 
 
 class TestMultivariateGaussian(unittest.TestCase):
