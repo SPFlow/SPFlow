@@ -452,7 +452,7 @@ Remember, that all (official) modules in the `base` backend must always explicit
 
 #### Notes on `torch` Backend
 
-`spflow.torch.structure.Module` additionally inherits from `torch.nn.Module`, making all subclasses proper PyTorch modules. Children are set using `torch.nn.Module.add_module()` and are iterated over using the `torch.nn.Module.children()` method (instead of a list of modules as in the `base` backend). This will make the children part of the module and their parameters available in `torch.nn.Module.parameters()`. For the same reason, any internally used modules (that are not children) should be tracked in a `torch.nn.ModuleList`. Learnable parameters can be declared using `torch.nn.Module.register_parameter()` and non-learnable parameters using `torch.nn.Module.register_buffer()`. To avoid invalid values for bounded parameters (e.g., when using gradient-based optimization), it may help to use unbounded parameters instead and project them into the valid range for inference, etc. `spflow.torch.utils.projections` contains some projection functions used in SPFlow.
+`spflow.torch.structure.Module` additionally inherits from `torch.nn.Module`, making all subclasses proper PyTorch modules. Children and their parameters are available in `torch.nn.Module.parameters()`. To avoid invalid values for bounded parameters (e.g., when using gradient-based optimization), it may help to use unbounded parameters instead and project them into the valid range for inference, etc. `spflow.torch.utils.projections` contains some projection functions used in SPFlow.
 
 ### Structural Marginalization
 
