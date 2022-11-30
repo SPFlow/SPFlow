@@ -413,7 +413,7 @@ from spflow.<backend>.structure import Module
 
 class MyModule(Module):
     def __init__(self, children: List[Module]) -> None:
-        super(MyNestedModule, self).__init__(children=children)
+        super().__init__(children=children)
 
         ...
 ```
