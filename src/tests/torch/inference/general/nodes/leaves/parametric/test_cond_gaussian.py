@@ -1,14 +1,15 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
-from spflow.base.structure.spn import CondGaussian as BaseCondGaussian
-from spflow.base.inference import log_likelihood
-from spflow.torch.structure.spn import CondGaussian
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import CondGaussian as BaseCondGaussian
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import CondGaussian
 
 
 class TestGaussian(unittest.TestCase):
@@ -77,12 +78,8 @@ class TestGaussian(unittest.TestCase):
         mean = random.random()
         std = random.random() + 1e-7  # offset by small number to avoid zero
 
-        torch_gaussian = CondGaussian(
-            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
-        )
-        node_gaussian = BaseCondGaussian(
-            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
-        )
+        torch_gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
+        node_gaussian = BaseCondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randn(3, 1)
@@ -91,20 +88,14 @@ class TestGaussian(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_gaussian, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
         mean = torch.tensor(random.random(), requires_grad=True)
-        std = torch.tensor(
-            random.random() + 1e-7, requires_grad=True
-        )  # offset by small number to avoid zero
+        std = torch.tensor(random.random() + 1e-7, requires_grad=True)  # offset by small number to avoid zero
 
-        torch_gaussian = CondGaussian(
-            Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std}
-        )
+        torch_gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randn(3, 1)
@@ -122,9 +113,7 @@ class TestGaussian(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        gaussian = CondGaussian(
-            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
-        )
+        gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0})
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1
@@ -136,14 +125,10 @@ class TestGaussian(unittest.TestCase):
 
         # Support for Gaussian distribution: floats (-inf, inf)
 
-        gaussian = CondGaussian(
-            Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0}
-        )
+        gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0})
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, gaussian, torch.tensor([[float("inf")]])
-        )
+        self.assertRaises(ValueError, log_likelihood, gaussian, torch.tensor([[float("inf")]]))
         self.assertRaises(
             ValueError,
             log_likelihood,

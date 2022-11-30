@@ -1,12 +1,13 @@
-from typing import Optional, Iterable, Union
+from copy import deepcopy
+from typing import Iterable, Optional, Union
+
 from spflow.base.structure import LeafNode
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import (
-    dispatch,
     DispatchContext,
+    dispatch,
     init_default_dispatch_context,
 )
-from copy import deepcopy
 
 
 class DummyNode(LeafNode):

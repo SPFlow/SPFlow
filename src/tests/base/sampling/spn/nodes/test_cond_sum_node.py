@@ -1,11 +1,12 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import ProductNode, CondSumNode, Gaussian
-from spflow.base.inference import log_likelihood
-from spflow.base.sampling import sample
-
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+
+from spflow.base.inference import log_likelihood
+from spflow.base.sampling import sample
+from spflow.base.structure.spn import CondSumNode, Gaussian, ProductNode
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -56,13 +57,11 @@ class TestNode(unittest.TestCase):
         )
 
         samples = sample(s, 1000)
-        expected_mean = 0.7 * (
-            0.2 * np.array([-7, 7]) + 0.8 * np.array([-5, 5])
-        ) + 0.3 * (0.6 * np.array([-3, 3]) + 0.4 * np.array([-1, 1]))
-
-        self.assertTrue(
-            np.allclose(samples.mean(axis=0), expected_mean, rtol=0.1)
+        expected_mean = 0.7 * (0.2 * np.array([-7, 7]) + 0.8 * np.array([-5, 5])) + 0.3 * (
+            0.6 * np.array([-3, 3]) + 0.4 * np.array([-1, 1])
         )
+
+        self.assertTrue(np.allclose(samples.mean(axis=0), expected_mean, rtol=0.1))
 
     def test_sum_node_sampling(self):
 
@@ -75,18 +74,14 @@ class TestNode(unittest.TestCase):
 
         # ----- weights 0, 1 -----
 
-        s = CondSumNode(
-            [l1, l2], cond_f=lambda data: {"weights": [0.001, 0.999]}
-        )
+        s = CondSumNode([l1, l2], cond_f=lambda data: {"weights": [0.001, 0.999]})
 
         samples = sample(s, 1000)
         self.assertTrue(np.isclose(samples.mean(), np.array(5.0), rtol=0.1))
 
         # ----- weights 1, 0 -----
 
-        s = CondSumNode(
-            [l1, l2], cond_f=lambda data: {"weights": [0.999, 0.001]}
-        )
+        s = CondSumNode([l1, l2], cond_f=lambda data: {"weights": [0.999, 0.001]})
 
         samples = sample(s, 1000)
         self.assertTrue(np.isclose(samples.mean(), np.array(-5.0), rtol=0.1))

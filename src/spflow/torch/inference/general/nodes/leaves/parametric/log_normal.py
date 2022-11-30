@@ -1,15 +1,15 @@
 """Contains inference methods for ``LogNormal`` nodes for SPFlow in the ``torch`` backend.
 """
-import torch
 from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import (
-    LogNormal,
-)
+from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import LogNormal
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -74,18 +74,12 @@ def log_likelihood(
 
     if check_support:
         # create masked based on distribution's support
-        valid_ids = leaf.check_support(
-            scope_data[~marg_ids], is_scope_data=True
-        ).squeeze(1)
+        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
-            raise ValueError(
-                f"Encountered data instances that are not in the support of the LogNormal distribution."
-            )
+            raise ValueError(f"Encountered data instances that are not in the support of the LogNormal distribution.")
 
     # compute probabilities for values inside distribution support
-    log_prob[~marg_ids] = leaf.dist.log_prob(
-        scope_data[~marg_ids].type(torch.get_default_dtype())
-    )
+    log_prob[~marg_ids] = leaf.dist.log_prob(scope_data[~marg_ids].type(torch.get_default_dtype()))
 
     return log_prob

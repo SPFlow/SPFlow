@@ -1,21 +1,20 @@
 """Contains Bernoulli leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple
+from typing import Iterable, List, Optional, Tuple, Union
+
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
+from spflow.base.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
+from spflow.base.structure.module import Module
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
-)
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.module import Module
-from spflow.base.structure.general.nodes.leaves.parametric.bernoulli import (
-    Bernoulli,
 )
 
 
@@ -73,9 +72,7 @@ class BernoulliLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'BernoulliLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'BernoulliLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -120,9 +117,7 @@ class BernoulliLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "BernoulliLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "BernoulliLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -132,9 +127,7 @@ class BernoulliLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'BernoulliLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'BernoulliLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         p = []
         scopes = []
@@ -160,9 +153,7 @@ class BernoulliLayer(Module):
 
         return BernoulliLayer(scopes, p=p)
 
-    def set_params(
-        self, p: Union[int, float, List[float], np.ndarray] = 0.5
-    ) -> None:
+    def set_params(self, p: Union[int, float, List[float], np.ndarray] = 0.5) -> None:
         """Sets the parameters for the represented distributions.
 
         Args:
@@ -210,9 +201,7 @@ class BernoulliLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or not instances are part of the supports of the Bernoulli distributions, which are:
@@ -239,9 +228,7 @@ class BernoulliLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -291,7 +278,5 @@ def marginalize(
         new_node = Bernoulli(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = BernoulliLayer(
-            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
-        )
+        new_layer = BernoulliLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer

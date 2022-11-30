@@ -1,11 +1,12 @@
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import Binomial, BinomialLayer
-from spflow.torch.structure import marginalize, toTorch, toBase
-from spflow.base.structure.spn import BinomialLayer as BaseBinomialLayer
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-import torch
-import numpy as np
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn import BinomialLayer as BaseBinomialLayer
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Binomial, BinomialLayer
 
 
 class TestNode(unittest.TestCase):
@@ -22,19 +23,13 @@ class TestNode(unittest.TestCase):
         # ----- check attributes after correct initialization -----
         n_values = [3, 2, 7]
         p_values = [0.3, 0.7, 0.5]
-        l = BinomialLayer(
-            scope=[Scope([1]), Scope([0]), Scope([2])], n=n_values, p=p_values
-        )
+        l = BinomialLayer(scope=[Scope([1]), Scope([0]), Scope([2])], n=n_values, p=p_values)
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([0]), Scope([2])])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([0]), Scope([2])]))
         # make sure parameter properties works correctly
-        for n_layer_node, p_layer_node, n_value, p_value in zip(
-            l.n, l.p, n_values, p_values
-        ):
+        for n_layer_node, p_layer_node, n_value, p_value in zip(l.n, l.p, n_values, p_values):
             self.assertTrue(torch.allclose(n_layer_node, torch.tensor(n_value)))
             self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
 
@@ -50,13 +45,9 @@ class TestNode(unittest.TestCase):
         # ----- list parameter values -----
         n_values = [3, 2, 7]
         p_values = [0.17, 0.8, 0.53]
-        l = BinomialLayer(
-            scope=[Scope([0]), Scope([1]), Scope([2])], n=n_values, p=p_values
-        )
+        l = BinomialLayer(scope=[Scope([0]), Scope([1]), Scope([2])], n=n_values, p=p_values)
 
-        for n_layer_node, p_layer_node, n_value, p_value in zip(
-            l.n, l.p, n_values, p_values
-        ):
+        for n_layer_node, p_layer_node, n_value, p_value in zip(l.n, l.p, n_values, p_values):
             self.assertTrue(torch.allclose(n_layer_node, torch.tensor(n_value)))
             self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
 
@@ -103,9 +94,7 @@ class TestNode(unittest.TestCase):
             p=np.array(p_values),
         )
 
-        for n_layer_node, p_layer_node, n_value, p_value in zip(
-            l.n, l.p, n_values, p_values
-        ):
+        for n_layer_node, p_layer_node, n_value, p_value in zip(l.n, l.p, n_values, p_values):
             self.assertTrue(torch.allclose(n_layer_node, torch.tensor(n_value)))
             self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
 
@@ -192,11 +181,7 @@ class TestNode(unittest.TestCase):
         )
 
         # conditional scope
-        self.assertFalse(
-            BinomialLayer.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]
-            )
-        )
+        self.assertFalse(BinomialLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])]))
 
         # multivariate signature
         self.assertFalse(
@@ -227,12 +212,8 @@ class TestNode(unittest.TestCase):
 
         binomial = BinomialLayer.from_signatures(
             [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)]
-                ),
-                FeatureContext(
-                    Scope([1]), [FeatureTypes.Binomial(n=5, p=0.25)]
-                ),
+                FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Binomial(n=5, p=0.25)]),
             ]
         )
         self.assertTrue(torch.all(binomial.n == torch.tensor([3, 5])))
@@ -296,12 +277,8 @@ class TestNode(unittest.TestCase):
         # make sure AutoLeaf can return correctly instantiated object
         binomial = AutoLeaf(
             [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)]
-                ),
-                FeatureContext(
-                    Scope([1]), [FeatureTypes.Binomial(n=5, p=0.25)]
-                ),
+                FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Binomial(n=5, p=0.25)]),
             ]
         )
         self.assertTrue(isinstance(binomial, BinomialLayer))
@@ -326,9 +303,7 @@ class TestNode(unittest.TestCase):
 
         # ---------- different scopes -----------
 
-        l = BinomialLayer(
-            scope=[Scope([1]), Scope([0])], n=[3, 2], p=[0.73, 0.29]
-        )
+        l = BinomialLayer(scope=[Scope([1]), Scope([0])], n=[3, 2], p=[0.73, 0.29])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
@@ -367,28 +342,16 @@ class TestNode(unittest.TestCase):
         # ----- full dist -----
         dist = l.dist()
 
-        for n_value, p_value, n_dist, p_dist in zip(
-            n_values, p_values, dist.total_count, dist.probs
-        ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(n_value).double(), n_dist)
-            )
-            self.assertTrue(
-                torch.allclose(torch.tensor(p_value).double(), p_dist)
-            )
+        for n_value, p_value, n_dist, p_dist in zip(n_values, p_values, dist.total_count, dist.probs):
+            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
+            self.assertTrue(torch.allclose(torch.tensor(p_value).double(), p_dist))
 
         # ----- partial dist -----
         dist = l.dist([1, 2])
 
-        for n_value, p_value, n_dist, p_dist in zip(
-            n_values[1:], p_values[1:], dist.total_count, dist.probs
-        ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(n_value).double(), n_dist)
-            )
-            self.assertTrue(
-                torch.allclose(torch.tensor(p_value).double(), p_dist)
-            )
+        for n_value, p_value, n_dist, p_dist in zip(n_values[1:], p_values[1:], dist.total_count, dist.probs):
+            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
+            self.assertTrue(torch.allclose(torch.tensor(p_value).double(), p_dist))
 
         dist = l.dist([1, 0])
 
@@ -398,12 +361,8 @@ class TestNode(unittest.TestCase):
             dist.total_count,
             dist.probs,
         ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(n_value).double(), n_dist)
-            )
-            self.assertTrue(
-                torch.allclose(torch.tensor(p_value).double(), p_dist)
-            )
+            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
+            self.assertTrue(torch.allclose(torch.tensor(p_value).double(), p_dist))
 
     def test_layer_backend_conversion_1(self):
 
@@ -416,9 +375,7 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertTrue(np.allclose(base_layer.n, torch_layer.n.numpy()))
-        self.assertTrue(
-            np.allclose(base_layer.p, torch_layer.p.detach().numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.p, torch_layer.p.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
     def test_layer_backend_conversion_2(self):
@@ -432,9 +389,7 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertTrue(np.allclose(base_layer.n, torch_layer.n.numpy()))
-        self.assertTrue(
-            np.allclose(base_layer.p, torch_layer.p.detach().numpy())
-        )
+        self.assertTrue(np.allclose(base_layer.p, torch_layer.p.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
 

@@ -1,10 +1,10 @@
 from .feature_context import FeatureContext
 from .feature_types import (
-    FeatureType,
-    FeatureTypes,
     BernoulliType,
     BinomialType,
     ExponentialType,
+    FeatureType,
+    FeatureTypes,
     GammaType,
     GaussianType,
     GeometricType,

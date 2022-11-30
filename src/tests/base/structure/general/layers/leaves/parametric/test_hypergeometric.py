@@ -1,12 +1,10 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.base.structure.spn import (
-    Hypergeometric,
-    HypergeometricLayer,
-    marginalize,
-)
-from spflow.base.structure import AutoLeaf
-import numpy as np
 import unittest
+
+import numpy as np
+
+from spflow.base.structure import AutoLeaf
+from spflow.base.structure.spn import Hypergeometric, HypergeometricLayer, marginalize
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestLayer(unittest.TestCase):
@@ -18,16 +16,12 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
         # make sure parameter properties works correctly
         N_values = l.N
         M_values = l.M
         n_values = l.n
-        for node, node_N, node_M, node_n in zip(
-            l.nodes, N_values, M_values, n_values
-        ):
+        for node, node_N, node_M, node_n in zip(l.nodes, N_values, M_values, n_values):
             self.assertTrue(np.all(node.N == node_N))
             self.assertTrue(np.all(node.M == node_M))
             self.assertTrue(np.all(node.n == node_n))
@@ -36,9 +30,7 @@ class TestLayer(unittest.TestCase):
         N_value = 5
         M_value = 3
         n_value = 2
-        l = HypergeometricLayer(
-            scope=Scope([1]), n_nodes=3, N=N_value, M=M_value, n=n_value
-        )
+        l = HypergeometricLayer(scope=Scope([1]), n_nodes=3, N=N_value, M=M_value, n=n_value)
 
         for node in l.nodes:
             self.assertTrue(np.all(node.N == N_value))
@@ -57,9 +49,7 @@ class TestLayer(unittest.TestCase):
             n=n_values,
         )
 
-        for node, node_N, node_M, node_n in zip(
-            l.nodes, N_values, M_values, n_values
-        ):
+        for node, node_N, node_M, node_n in zip(l.nodes, N_values, M_values, n_values):
             self.assertTrue(np.all(node.N == node_N))
             self.assertTrue(np.all(node.M == node_M))
             self.assertTrue(np.all(node.n == node_n))
@@ -130,9 +120,7 @@ class TestLayer(unittest.TestCase):
             n=np.array(n_values),
         )
 
-        for node, node_N, node_M, node_n in zip(
-            l.nodes, N_values, M_values, n_values
-        ):
+        for node, node_N, node_M, node_n in zip(l.nodes, N_values, M_values, n_values):
             self.assertTrue(np.all(node.N == node_N))
             self.assertTrue(np.all(node.M == node_M))
             self.assertTrue(np.all(node.n == node_n))
@@ -211,18 +199,12 @@ class TestLayer(unittest.TestCase):
         )
 
         # ----- invalid scope -----
-        self.assertRaises(
-            ValueError, HypergeometricLayer, Scope([]), N=1, M=1, n=1, n_nodes=3
-        )
-        self.assertRaises(
-            ValueError, HypergeometricLayer, [], N=1, M=1, n=1, n_nodes=3
-        )
+        self.assertRaises(ValueError, HypergeometricLayer, Scope([]), N=1, M=1, n=1, n_nodes=3)
+        self.assertRaises(ValueError, HypergeometricLayer, [], N=1, M=1, n=1, n_nodes=3)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1]), Scope([0]), Scope([0])]
-        l = HypergeometricLayer(
-            scope=[Scope([1]), Scope([0])], N=1, M=1, n=1, n_nodes=3
-        )
+        l = HypergeometricLayer(scope=[Scope([1]), Scope([0])], N=1, M=1, n=1, n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
 
@@ -242,12 +224,8 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(
             HypergeometricLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                    ),
-                    FeatureContext(
-                        Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]
-                    ),
+                    FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
                 ]
             )
         )
@@ -257,9 +235,7 @@ class TestLayer(unittest.TestCase):
             HypergeometricLayer.accepts(
                 [
                     FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
-                    FeatureContext(
-                        Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]
-                    ),
+                    FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
                 ]
             )
         )
@@ -295,12 +271,8 @@ class TestLayer(unittest.TestCase):
 
         hypergeometric = HypergeometricLayer.from_signatures(
             [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                ),
-                FeatureContext(
-                    Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]
-                ),
+                FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
             ]
         )
         self.assertTrue(np.all(hypergeometric.N == np.array([4, 6])))
@@ -353,12 +325,8 @@ class TestLayer(unittest.TestCase):
             HypergeometricLayer,
             AutoLeaf.infer(
                 [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                    ),
-                    FeatureContext(
-                        Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]
-                    ),
+                    FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]),
+                    FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
                 ]
             ),
         )
@@ -366,12 +334,8 @@ class TestLayer(unittest.TestCase):
         # make sure AutoLeaf can return correctly instantiated object
         hypergeometric = AutoLeaf(
             [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                ),
-                FeatureContext(
-                    Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]
-                ),
+                FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
             ]
         )
         self.assertTrue(isinstance(hypergeometric, HypergeometricLayer))
@@ -399,9 +363,7 @@ class TestLayer(unittest.TestCase):
 
         # ---------- different scopes -----------
 
-        l = HypergeometricLayer(
-            scope=[Scope([1]), Scope([0])], N=[2, 6], M=[2, 4], n=[2, 5]
-        )
+        l = HypergeometricLayer(scope=[Scope([1]), Scope([0])], N=[2, 6], M=[2, 4], n=[2, 5])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)

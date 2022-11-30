@@ -1,15 +1,16 @@
-from spflow.torch.structure.spn import SumNode, ProductNode, Gaussian
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.base.structure.spn import (
-    SumNode as BaseSumNode,
-    ProductNode as BaseProductNode,
-    Gaussian as BaseGaussian,
-)
-from spflow.meta.data import Scope
-from ...general.nodes.dummy_node import DummyNode
+import unittest
+
 import numpy as np
 import torch
-import unittest
+
+from spflow.base.structure.spn import Gaussian as BaseGaussian
+from spflow.base.structure.spn import ProductNode as BaseProductNode
+from spflow.base.structure.spn import SumNode as BaseSumNode
+from spflow.meta.data import Scope
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Gaussian, ProductNode, SumNode
+
+from ...general.nodes.dummy_node import DummyNode
 
 
 class TestTorchNode(unittest.TestCase):
@@ -18,9 +19,7 @@ class TestTorchNode(unittest.TestCase):
         # empty children
         self.assertRaises(ValueError, SumNode, [], [])
         # non-Module children
-        self.assertRaises(
-            ValueError, SumNode, [DummyNode(Scope([0])), 0], [0.5, 0.5]
-        )
+        self.assertRaises(ValueError, SumNode, [DummyNode(Scope([0])), 0], [0.5, 0.5])
         # children with different scopes
         self.assertRaises(
             ValueError,
@@ -50,9 +49,7 @@ class TestTorchNode(unittest.TestCase):
         # weights as list of floats
         SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], [0.5, 0.5])
         # weights as numpy array
-        SumNode(
-            [DummyNode(Scope([0])), DummyNode(Scope([0]))], np.array([0.5, 0.5])
-        )
+        SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], np.array([0.5, 0.5]))
         # weights as torch tensor
         SumNode(
             [DummyNode(Scope([0])), DummyNode(Scope([0]))],
@@ -163,34 +160,26 @@ class TestTorchNode(unittest.TestCase):
         # check first gaussian
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.chs)[0].chs)[0]
-                .mean.detach()
-                .numpy(),
+                list(list(graph_torch.chs)[0].chs)[0].mean.detach().numpy(),
                 graph.children[0].children[0].mean,
             )
         )
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.chs)[0].chs)[0]
-                .std.detach()
-                .numpy(),
+                list(list(graph_torch.chs)[0].chs)[0].std.detach().numpy(),
                 graph.children[0].children[0].std,
             )
         )
         # check second gaussian
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.chs)[0].chs)[0]
-                .mean.detach()
-                .numpy(),
+                list(list(graph_torch.chs)[0].chs)[0].mean.detach().numpy(),
                 graph.children[0].children[0].mean,
             )
         )
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.chs)[0].chs)[1]
-                .std.detach()
-                .numpy(),
+                list(list(graph_torch.chs)[0].chs)[1].std.detach().numpy(),
                 graph.children[0].children[1].std,
             )
         )
@@ -204,17 +193,13 @@ class TestTorchNode(unittest.TestCase):
         # check third gaussian
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.chs)[1].chs)[0]
-                .mean.detach()
-                .numpy(),
+                list(list(graph_torch.chs)[1].chs)[0].mean.detach().numpy(),
                 graph.children[1].children[0].mean,
             )
         )
         self.assertTrue(
             np.allclose(
-                list(list(graph_torch.chs)[1].chs)[0]
-                .std.detach()
-                .numpy(),
+                list(list(graph_torch.chs)[1].chs)[0].std.detach().numpy(),
                 graph.children[1].children[0].std,
             )
         )
@@ -223,11 +208,7 @@ class TestTorchNode(unittest.TestCase):
         graph_nodes = toBase(graph_torch)
 
         # check first sum node
-        self.assertTrue(
-            np.allclose(
-                graph_nodes.children[0].weights, graph.children[0].weights
-            )
-        )
+        self.assertTrue(np.allclose(graph_nodes.children[0].weights, graph.children[0].weights))
         # check first gaussian
         self.assertTrue(
             np.allclose(
@@ -255,11 +236,7 @@ class TestTorchNode(unittest.TestCase):
             )
         )
         # check second sum node
-        self.assertTrue(
-            np.allclose(
-                graph_nodes.children[1].weights, graph.children[1].weights
-            )
-        )
+        self.assertTrue(np.allclose(graph_nodes.children[1].weights, graph.children[1].weights))
         # check third gaussian
         self.assertTrue(
             np.allclose(

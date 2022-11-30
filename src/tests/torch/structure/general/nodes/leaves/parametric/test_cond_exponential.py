@@ -1,24 +1,24 @@
-from spflow.meta.data import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.structure.autoleaf import AutoLeaf
-from spflow.meta.dispatch.dispatch_context import DispatchContext
+import random
+import unittest
+from typing import Callable
+
+import numpy as np
+import torch
+
 from spflow.base.structure.general.nodes.leaves.parametric.cond_exponential import (
     CondExponential as BaseCondExponential,
 )
+from spflow.meta.data import Scope
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.torch.structure.autoleaf import AutoLeaf
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_exponential import (
     CondExponential,
     toBase,
     toTorch,
 )
 from spflow.torch.structure.spn.nodes.sum_node import marginalize
-from typing import Callable
-
-import torch
-import numpy as np
-
-import random
-import unittest
 
 
 class TestExponential(unittest.TestCase):
@@ -41,11 +41,7 @@ class TestExponential(unittest.TestCase):
         exponential = CondExponential(Scope([0], [1]))
 
         # l > 0
-        exponential.set_cond_f(
-            lambda data: {
-                "l": torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))
-            }
-        )
+        exponential.set_cond_f(lambda data: {"l": torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))})
         self.assertTrue(
             exponential.retrieve_params(np.array([[1.0]]), DispatchContext())
             == torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))
@@ -60,11 +56,7 @@ class TestExponential(unittest.TestCase):
             DispatchContext(),
         )
 
-        exponential.set_cond_f(
-            lambda data: {
-                "l": torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))
-            }
-        )
+        exponential.set_cond_f(lambda data: {"l": torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))})
         self.assertRaises(
             Exception,
             exponential.retrieve_params,
@@ -91,43 +83,19 @@ class TestExponential(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            CondExponential.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertTrue(CondExponential.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # Exponential feature type class
-        self.assertTrue(
-            CondExponential.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
-            )
-        )
+        self.assertTrue(CondExponential.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]))
 
         # Exponential feature type instance
-        self.assertTrue(
-            CondExponential.accepts(
-                [
-                    FeatureContext(
-                        Scope([0], [1]), [FeatureTypes.Exponential(1.0)]
-                    )
-                ]
-            )
-        )
+        self.assertTrue(CondExponential.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential(1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            CondExponential.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondExponential.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # non-conditional scope
-        self.assertFalse(
-            CondExponential.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondExponential.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # multivariate signature
         self.assertFalse(
@@ -143,15 +111,9 @@ class TestExponential(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        CondExponential.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-        )
-        CondExponential.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
-        )
-        CondExponential.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential(l=1.5)])]
-        )
+        CondExponential.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])])
+        CondExponential.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])])
+        CondExponential.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential(l=1.5)])])
 
         # ----- invalid arguments -----
 
@@ -189,15 +151,11 @@ class TestExponential(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondExponential,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        exponential = AutoLeaf(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])]
-        )
+        exponential = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])])
         self.assertTrue(isinstance(exponential, CondExponential))
 
     def test_structural_marginalization(self):
@@ -215,19 +173,9 @@ class TestExponential(unittest.TestCase):
         node_exponential = BaseCondExponential(Scope([0], [1]))
 
         # check conversion from torch to python
-        self.assertTrue(
-            np.all(
-                torch_exponential.scopes_out
-                == toBase(torch_exponential).scopes_out
-            )
-        )
+        self.assertTrue(np.all(torch_exponential.scopes_out == toBase(torch_exponential).scopes_out))
         # check conversion from python to torch
-        self.assertTrue(
-            np.all(
-                node_exponential.scopes_out
-                == toTorch(node_exponential).scopes_out
-            )
-        )
+        self.assertTrue(np.all(node_exponential.scopes_out == toTorch(node_exponential).scopes_out))
 
 
 if __name__ == "__main__":

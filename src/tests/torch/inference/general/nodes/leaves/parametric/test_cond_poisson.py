@@ -1,14 +1,15 @@
-from spflow.meta.data import Scope
-from spflow.meta.dispatch import DispatchContext
-from spflow.base.structure.spn import CondPoisson as BaseCondPoisson
-from spflow.base.inference import log_likelihood
-from spflow.torch.structure.spn import CondPoisson
-from spflow.torch.inference import log_likelihood, likelihood
-
-import torch
-import numpy as np
 import random
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.inference import log_likelihood
+from spflow.base.structure.spn import CondPoisson as BaseCondPoisson
+from spflow.meta.data import Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import CondPoisson
 
 
 class TestPoisson(unittest.TestCase):
@@ -76,12 +77,8 @@ class TestPoisson(unittest.TestCase):
 
         l = random.randint(1, 10)
 
-        torch_poisson = CondPoisson(
-            Scope([0], [1]), cond_f=lambda data: {"l": l}
-        )
-        node_poisson = BaseCondPoisson(
-            Scope([0], [1]), cond_f=lambda data: {"l": l}
-        )
+        torch_poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": l})
+        node_poisson = BaseCondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": l})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 10, (3, 1))
@@ -90,9 +87,7 @@ class TestPoisson(unittest.TestCase):
         log_probs_torch = log_likelihood(torch_poisson, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(
-            np.allclose(log_probs, log_probs_torch.detach().cpu().numpy())
-        )
+        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
@@ -102,9 +97,7 @@ class TestPoisson(unittest.TestCase):
             requires_grad=True,
         )
 
-        torch_poisson = CondPoisson(
-            Scope([0], [1]), cond_f=lambda data: {"l": l}
-        )
+        torch_poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": l})
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 10, (3, 1))
@@ -138,17 +131,11 @@ class TestPoisson(unittest.TestCase):
         poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": l})
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, poisson, torch.tensor([[-float("inf")]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, poisson, torch.tensor([[float("inf")]])
-        )
+        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[-float("inf")]]))
+        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[float("inf")]]))
 
         # check valid integers, but outside of valid range
-        self.assertRaises(
-            ValueError, log_likelihood, poisson, torch.tensor([[-1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[-1]]))
 
         # check valid integers within valid range
         log_likelihood(poisson, torch.tensor([[0]]))
@@ -159,21 +146,15 @@ class TestPoisson(unittest.TestCase):
             ValueError,
             log_likelihood,
             poisson,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             poisson,
-            torch.tensor(
-                [[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]
-            ),
+            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
         )
-        self.assertRaises(
-            ValueError, log_likelihood, poisson, torch.tensor([[10.1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[10.1]]))
 
 
 if __name__ == "__main__":

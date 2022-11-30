@@ -1,9 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.torch.structure.spn import NegativeBinomial, NegativeBinomialLayer
-from spflow.torch.inference import log_likelihood
-import torch
-import unittest
 import random
+import unittest
+
+import torch
+
+from spflow.meta.data import Scope
+from spflow.torch.inference import log_likelihood
+from spflow.torch.structure.spn import NegativeBinomial, NegativeBinomialLayer
 
 
 class TestNode(unittest.TestCase):
@@ -32,9 +34,7 @@ class TestNode(unittest.TestCase):
         dummy_data = torch.tensor([[3, 1], [1, 2], [0, 0]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 
@@ -43,9 +43,7 @@ class TestNode(unittest.TestCase):
         n = [random.randint(2, 10), random.randint(2, 10)]
         p = [random.random(), random.random()]
 
-        torch_negative_binomial = NegativeBinomialLayer(
-            scope=[Scope([0]), Scope([1])], n=n, p=p
-        )
+        torch_negative_binomial = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=n, p=p)
 
         # create dummy input data (batch size x random variables)
         data = torch.cat(
@@ -84,20 +82,14 @@ class TestNode(unittest.TestCase):
         torch.manual_seed(0)
 
         # initialize distribution
-        torch_negative_binomial = NegativeBinomialLayer(
-            scope=[Scope([0]), Scope([1])], n=5, p=0.3
-        )
+        torch_negative_binomial = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=5, p=0.3)
 
         # create dummy data
         p_target = torch.tensor([0.8, 0.8])
-        data = torch.distributions.NegativeBinomial(5, 1 - p_target).sample(
-            (100000,)
-        )
+        data = torch.distributions.NegativeBinomial(5, 1 - p_target).sample((100000,))
 
         # initialize gradient optimizer
-        optimizer = torch.optim.SGD(
-            torch_negative_binomial.parameters(), lr=0.5
-        )
+        optimizer = torch.optim.SGD(torch_negative_binomial.parameters(), lr=0.5)
 
         # perform optimization (possibly overfitting)
         for i in range(40):
@@ -112,17 +104,11 @@ class TestNode(unittest.TestCase):
             # update parameters
             optimizer.step()
 
-        self.assertTrue(
-            torch.allclose(
-                torch_negative_binomial.p, p_target, atol=1e-3, rtol=1e-3
-            )
-        )
+        self.assertTrue(torch.allclose(torch_negative_binomial.p, p_target, atol=1e-3, rtol=1e-3))
 
     def test_likelihood_marginalization(self):
 
-        negative_binomial = NegativeBinomialLayer(
-            scope=[Scope([0]), Scope([1])], n=5, p=random.random()
-        )
+        negative_binomial = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=5, p=random.random())
         data = torch.tensor([[float("nan"), float("nan")]])
 
         # should not raise and error and should return 1

@@ -1,21 +1,20 @@
 """Contains Geometric leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple, Type
+from typing import Iterable, List, Optional, Tuple, Type, Union
+
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
+from spflow.base.structure.general.nodes.leaves.parametric.geometric import Geometric
+from spflow.base.structure.module import Module
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureType, FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
-)
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureType, FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.module import Module
-from spflow.base.structure.general.nodes.leaves.parametric.geometric import (
-    Geometric,
 )
 
 
@@ -72,9 +71,7 @@ class GeometricLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'GeometricLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'GeometricLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -119,9 +116,7 @@ class GeometricLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "GeometricLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "GeometricLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -131,9 +126,7 @@ class GeometricLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'GeometricLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'GeometricLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         p = []
         scopes = []
@@ -159,9 +152,7 @@ class GeometricLayer(Module):
 
         return GeometricLayer(scopes, p=p)
 
-    def set_params(
-        self, p: Union[int, float, List[float], np.ndarray] = 0.5
-    ) -> None:
+    def set_params(self, p: Union[int, float, List[float], np.ndarray] = 0.5) -> None:
         r"""Sets the parameters for the represented distributions.
 
         Args:
@@ -210,9 +201,7 @@ class GeometricLayer(Module):
 
         return [self.nodes[i].dist for i in node_ids]
 
-    def check_support(
-        self, data: np.ndarray, node_ids: Optional[List[int]] = None
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, node_ids: Optional[List[int]] = None) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Geometric distributions, which are:
@@ -239,9 +228,7 @@ class GeometricLayer(Module):
         if node_ids is None:
             node_ids = list(range(self.n_out))
 
-        return np.concatenate(
-            [self.nodes[i].check_support(data) for i in node_ids], axis=1
-        )
+        return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -291,7 +278,5 @@ def marginalize(
         new_node = Geometric(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = GeometricLayer(
-            marg_scopes, *[np.array(p) for p in zip(*marg_params)]
-        )
+        new_layer = GeometricLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer

@@ -1,17 +1,19 @@
 """Contains inference methods for ``MultivariateGaussianLayer`` leaves for SPFlow in the ``torch`` backend.
 """
-import torch
 from typing import Optional
+
+import torch
+
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.multivariate_gaussian import (
-    MultivariateGaussianLayer,
-)
 from spflow.torch.inference.general.nodes.leaves.parametric.multivariate_gaussian import (
     log_likelihood,
+)
+from spflow.torch.structure.general.layers.leaves.parametric.multivariate_gaussian import (
+    MultivariateGaussianLayer,
 )
 
 

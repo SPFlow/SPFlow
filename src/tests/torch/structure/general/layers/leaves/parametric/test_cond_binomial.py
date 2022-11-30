@@ -1,12 +1,13 @@
-from spflow.torch.structure import AutoLeaf
-from spflow.torch.structure.spn import CondBinomial, CondBinomialLayer
-from spflow.torch.structure import marginalize, toTorch, toBase
-from spflow.base.structure.spn import CondBinomialLayer as BaseCondBinomialLayer
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.meta.dispatch import DispatchContext
-import torch
-import numpy as np
 import unittest
+
+import numpy as np
+import torch
+
+from spflow.base.structure.spn import CondBinomialLayer as BaseCondBinomialLayer
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.meta.dispatch import DispatchContext
+from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondBinomial, CondBinomialLayer
 
 
 class TestNode(unittest.TestCase):
@@ -29,12 +30,7 @@ class TestNode(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.scopes_out), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1], [3]), Scope([0], [3]), Scope([2], [3])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1], [3]), Scope([0], [3]), Scope([2], [3])]))
         # make sure parameter properties works correctly
         for n_layer_node, n_value in zip(l.n, n_values):
             self.assertTrue(torch.allclose(n_layer_node, torch.tensor(n_value)))
@@ -85,21 +81,15 @@ class TestNode(unittest.TestCase):
             self.assertEqual(layer_scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, CondBinomialLayer, Scope([0], [1]), n_nodes=0, n=2
-        )
+        self.assertRaises(ValueError, CondBinomialLayer, Scope([0], [1]), n_nodes=0, n=2)
 
         # ----- invalid scope -----
-        self.assertRaises(
-            ValueError, CondBinomialLayer, Scope([]), n_nodes=3, n=2
-        )
+        self.assertRaises(ValueError, CondBinomialLayer, Scope([]), n_nodes=3, n=2)
         self.assertRaises(ValueError, CondBinomialLayer, [], n_nodes=3, n=2)
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
-        l = CondBinomialLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3, n=2
-        )
+        l = CondBinomialLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3, n=2)
 
         for layer_scope, node_scope in zip(l.scopes_out, scopes):
             self.assertEqual(layer_scope, node_scope)
@@ -132,9 +122,7 @@ class TestNode(unittest.TestCase):
             cond_f=lambda data: {"p": p_value},
         )
 
-        for n_layer_node, p_layer_node in zip(
-            l.n, l.retrieve_params(torch.tensor([[1]]), DispatchContext())
-        ):
+        for n_layer_node, p_layer_node in zip(l.n, l.retrieve_params(torch.tensor([[1]]), DispatchContext())):
             self.assertTrue(torch.all(n_layer_node == n_value))
             self.assertTrue(torch.all(p_layer_node == p_value))
 
@@ -232,12 +220,8 @@ class TestNode(unittest.TestCase):
         self.assertTrue(
             CondBinomialLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0], [2]), [FeatureTypes.Binomial(n=3)]
-                    ),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.Binomial(n=3)]
-                    ),
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Binomial(n=3)]),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.Binomial(n=3)]),
                 ]
             )
         )
@@ -247,19 +231,13 @@ class TestNode(unittest.TestCase):
             CondBinomialLayer.accepts(
                 [
                     FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.Binomial(n=3)]
-                    ),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.Binomial(n=3)]),
                 ]
             )
         )
 
         # non-conditional scope
-        self.assertFalse(
-            CondBinomialLayer.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]
-            )
-        )
+        self.assertFalse(CondBinomialLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]))
 
         # multivariate signature
         self.assertFalse(
@@ -285,9 +263,7 @@ class TestNode(unittest.TestCase):
             ]
         )
         self.assertTrue(torch.all(binomial.n == torch.tensor([3, 5])))
-        self.assertTrue(
-            binomial.scopes_out == [Scope([0], [2]), Scope([1], [3])]
-        )
+        self.assertTrue(binomial.scopes_out == [Scope([0], [2]), Scope([1], [3])])
 
         # ----- invalid arguments -----
 
@@ -334,12 +310,8 @@ class TestNode(unittest.TestCase):
             CondBinomialLayer,
             AutoLeaf.infer(
                 [
-                    FeatureContext(
-                        Scope([0], [2]), [FeatureTypes.Binomial(n=3)]
-                    ),
-                    FeatureContext(
-                        Scope([1], [3]), [FeatureTypes.Binomial(n=5)]
-                    ),
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Binomial(n=3)]),
+                    FeatureContext(Scope([1], [3]), [FeatureTypes.Binomial(n=5)]),
                 ]
             ),
         )
@@ -353,9 +325,7 @@ class TestNode(unittest.TestCase):
         )
         self.assertTrue(isinstance(binomial, CondBinomialLayer))
         self.assertTrue(torch.all(binomial.n == torch.tensor([3, 5])))
-        self.assertTrue(
-            binomial.scopes_out == [Scope([0], [2]), Scope([1], [3])]
-        )
+        self.assertTrue(binomial.scopes_out == [Scope([0], [2]), Scope([1], [3])])
 
     def test_layer_structural_marginalization(self):
 
@@ -373,9 +343,7 @@ class TestNode(unittest.TestCase):
 
         # ---------- different scopes -----------
 
-        l = CondBinomialLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n=[3, 2]
-        )
+        l = CondBinomialLayer(scope=[Scope([1], [2]), Scope([0], [2])], n=[3, 2])
 
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
@@ -410,23 +378,15 @@ class TestNode(unittest.TestCase):
         # ----- full dist -----
         dist = l.dist(p_values)
 
-        for n_value, p_value, n_dist, p_dist in zip(
-            n_values, p_values, dist.total_count, dist.probs
-        ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(n_value).double(), n_dist)
-            )
+        for n_value, p_value, n_dist, p_dist in zip(n_values, p_values, dist.total_count, dist.probs):
+            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
             self.assertTrue(torch.allclose(p_value, p_dist))
 
         # ----- partial dist -----
         dist = l.dist(p_values, [1, 2])
 
-        for n_value, p_value, n_dist, p_dist in zip(
-            n_values[1:], p_values[1:], dist.total_count, dist.probs
-        ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(n_value).double(), n_dist)
-            )
+        for n_value, p_value, n_dist, p_dist in zip(n_values[1:], p_values[1:], dist.total_count, dist.probs):
+            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
             self.assertTrue(torch.allclose(p_value, p_dist))
 
         dist = l.dist(p_values, [1, 0])
@@ -437,9 +397,7 @@ class TestNode(unittest.TestCase):
             dist.total_count,
             dist.probs,
         ):
-            self.assertTrue(
-                torch.allclose(torch.tensor(n_value).double(), n_dist)
-            )
+            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
             self.assertTrue(torch.allclose(p_value, p_dist))
 
     def test_layer_backend_conversion_1(self):

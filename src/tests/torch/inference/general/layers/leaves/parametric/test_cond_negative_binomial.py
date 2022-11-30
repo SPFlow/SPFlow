@@ -1,13 +1,12 @@
+import random
+import unittest
+
+import torch
+
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure.spn import (
-    CondNegativeBinomial,
-    CondNegativeBinomialLayer,
-)
-from spflow.torch.inference import log_likelihood, likelihood
-import torch
-import unittest
-import random
+from spflow.torch.inference import likelihood, log_likelihood
+from spflow.torch.structure.spn import CondNegativeBinomial, CondNegativeBinomialLayer
 
 
 class TestNode(unittest.TestCase):
@@ -21,9 +20,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_no_p(self):
 
-        negative_binomial = CondNegativeBinomialLayer(
-            Scope([0], [1]), n=2, n_nodes=2
-        )
+        negative_binomial = CondNegativeBinomialLayer(Scope([0], [1]), n=2, n_nodes=2)
         self.assertRaises(
             ValueError,
             log_likelihood,
@@ -35,9 +32,7 @@ class TestNode(unittest.TestCase):
 
         cond_f = lambda data: {"p": [1.0, 1.0]}
 
-        negative_binomial = CondNegativeBinomialLayer(
-            Scope([0], [1]), n=2, n_nodes=2, cond_f=cond_f
-        )
+        negative_binomial = CondNegativeBinomialLayer(Scope([0], [1]), n=2, n_nodes=2, cond_f=cond_f)
 
         # create test inputs/outputs
         data = torch.tensor([[0.0], [1.0]])
@@ -51,9 +46,7 @@ class TestNode(unittest.TestCase):
 
     def test_likelihood_args_p(self):
 
-        negative_binomial = CondNegativeBinomialLayer(
-            Scope([0], [1]), n=2, n_nodes=2
-        )
+        negative_binomial = CondNegativeBinomialLayer(Scope([0], [1]), n=2, n_nodes=2)
 
         dispatch_ctx = DispatchContext()
         dispatch_ctx.args[negative_binomial] = {"p": [1.0, 1.0]}
@@ -63,9 +56,7 @@ class TestNode(unittest.TestCase):
         targets = torch.tensor([[1.0, 1.0], [0.0, 0.0]])
 
         probs = likelihood(negative_binomial, data, dispatch_ctx=dispatch_ctx)
-        log_probs = log_likelihood(
-            negative_binomial, data, dispatch_ctx=dispatch_ctx
-        )
+        log_probs = log_likelihood(negative_binomial, data, dispatch_ctx=dispatch_ctx)
 
         self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
         self.assertTrue(torch.allclose(probs, targets))
@@ -98,23 +89,15 @@ class TestNode(unittest.TestCase):
         )
 
         nodes = [
-            CondNegativeBinomial(
-                Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}
-            ),
-            CondNegativeBinomial(
-                Scope([1], [2]), n=2, cond_f=lambda data: {"p": 0.5}
-            ),
-            CondNegativeBinomial(
-                Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.9}
-            ),
+            CondNegativeBinomial(Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.2}),
+            CondNegativeBinomial(Scope([1], [2]), n=2, cond_f=lambda data: {"p": 0.5}),
+            CondNegativeBinomial(Scope([0], [2]), n=3, cond_f=lambda data: {"p": 0.9}),
         ]
 
         dummy_data = torch.tensor([[3, 1], [1, 2], [0, 0]])
 
         layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat(
-            [log_likelihood(node, dummy_data) for node in nodes], dim=1
-        )
+        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
 

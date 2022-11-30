@@ -1,9 +1,10 @@
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.base.structure import AutoLeaf
-from spflow.base.structure.spn import Hypergeometric, marginalize
+import unittest
 
 import numpy as np
-import unittest
+
+from spflow.base.structure import AutoLeaf
+from spflow.base.structure.spn import Hypergeometric, marginalize
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
 class TestHypergeometric(unittest.TestCase):
@@ -53,29 +54,15 @@ class TestHypergeometric(unittest.TestCase):
     def test_accept(self):
 
         # discrete meta type (should reject)
-        self.assertFalse(
-            Hypergeometric.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(Hypergeometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # Bernoulli feature type instance
         self.assertTrue(
-            Hypergeometric.accepts(
-                [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                    )
-                ]
-            )
+            Hypergeometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)])])
         )
 
         # invalid feature type
-        self.assertFalse(
-            Hypergeometric.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(Hypergeometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
         # conditional scope
         self.assertFalse(
@@ -107,11 +94,7 @@ class TestHypergeometric(unittest.TestCase):
     def test_initialization_from_signatures(self):
 
         hypergeometric = Hypergeometric.from_signatures(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                )
-            ]
+            [FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)])]
         )
         self.assertEqual(hypergeometric.N, 4)
         self.assertEqual(hypergeometric.M, 2)
@@ -160,23 +143,11 @@ class TestHypergeometric(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             Hypergeometric,
-            AutoLeaf.infer(
-                [
-                    FeatureContext(
-                        Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                    )
-                ]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        hypergeometric = AutoLeaf(
-            [
-                FeatureContext(
-                    Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]
-                )
-            ]
-        )
+        hypergeometric = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)])])
         self.assertTrue(isinstance(hypergeometric, Hypergeometric))
         self.assertEqual(hypergeometric.N, 4)
         self.assertEqual(hypergeometric.M, 2)

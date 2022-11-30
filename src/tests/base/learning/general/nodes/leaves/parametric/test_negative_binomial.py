@@ -1,14 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    NegativeBinomial,
-)
-from spflow.base.learning import (
-    maximum_likelihood_estimation,
-)
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.learning import maximum_likelihood_estimation
+from spflow.base.structure.spn import NegativeBinomial
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -54,9 +51,7 @@ class TestNode(unittest.TestCase):
 
         # simulate data
         data = np.random.negative_binomial(n=3, p=0.0, size=(100, 1))
-        data[data < 0] = np.iinfo(
-            data.dtype
-        ).max  # p=zero leads to integer overflow due to infinite number of trials
+        data[data < 0] = np.iinfo(data.dtype).max  # p=zero leads to integer overflow due to infinite number of trials
 
         # perform MLE
         maximum_likelihood_estimation(leaf, data)
@@ -129,18 +124,14 @@ class TestNode(unittest.TestCase):
     def test_mle_nan_strategy_ignore(self):
 
         leaf = NegativeBinomial(Scope([0]), n=2)
-        maximum_likelihood_estimation(
-            leaf, np.array([[np.nan], [1], [2], [1]]), nan_strategy="ignore"
-        )
+        maximum_likelihood_estimation(leaf, np.array([[np.nan], [1], [2], [1]]), nan_strategy="ignore")
         self.assertTrue(np.isclose(leaf.p, (3 * 2) / (1 + 2 + 2 + 2 + 1 + 2)))
 
     def test_mle_nan_strategy_callable(self):
 
         leaf = NegativeBinomial(Scope([0]), n=2)
         # should not raise an issue
-        maximum_likelihood_estimation(
-            leaf, np.array([[1], [0], [1]]), nan_strategy=lambda x: x
-        )
+        maximum_likelihood_estimation(leaf, np.array([[1], [0], [1]]), nan_strategy=lambda x: x)
 
     def test_mle_nan_strategy_invalid(self):
 

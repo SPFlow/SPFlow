@@ -1,14 +1,11 @@
-from spflow.meta.data import Scope
-from spflow.base.structure.spn import (
-    MultivariateGaussian,
-)
-from spflow.base.learning import (
-    maximum_likelihood_estimation,
-)
+import random
+import unittest
 
 import numpy as np
-import unittest
-import random
+
+from spflow.base.learning import maximum_likelihood_estimation
+from spflow.base.structure.spn import MultivariateGaussian
+from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
@@ -30,9 +27,7 @@ class TestNode(unittest.TestCase):
         # perform MLE
         maximum_likelihood_estimation(leaf, data, bias_correction=True)
 
-        self.assertTrue(
-            np.allclose(leaf.mean, np.array([-1.7, 0.3]), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(np.allclose(leaf.mean, np.array([-1.7, 0.3]), atol=1e-2, rtol=1e-2))
         self.assertTrue(
             np.allclose(
                 leaf.cov,
@@ -60,9 +55,7 @@ class TestNode(unittest.TestCase):
         # perform MLE
         maximum_likelihood_estimation(leaf, data, bias_correction=True)
 
-        self.assertTrue(
-            np.allclose(leaf.mean, np.array([0.5, 0.2]), atol=1e-2, rtol=1e-2)
-        )
+        self.assertTrue(np.allclose(leaf.mean, np.array([0.5, 0.2]), atol=1e-2, rtol=1e-2))
         self.assertTrue(
             np.allclose(
                 leaf.cov,
@@ -79,15 +72,11 @@ class TestNode(unittest.TestCase):
 
         # perform MLE
         maximum_likelihood_estimation(leaf, data, bias_correction=False)
-        self.assertTrue(
-            np.allclose(leaf.cov, np.array([[1.0, -0.25], [-0.25, 0.0625]]))
-        )
+        self.assertTrue(np.allclose(leaf.cov, np.array([[1.0, -0.25], [-0.25, 0.0625]])))
 
         # perform MLE
         maximum_likelihood_estimation(leaf, data, bias_correction=True)
-        self.assertTrue(
-            np.allclose(leaf.cov, 2 * np.array([[1.0, -0.25], [-0.25, 0.0625]]))
-        )
+        self.assertTrue(np.allclose(leaf.cov, 2 * np.array([[1.0, -0.25], [-0.25, 0.0625]])))
 
     def test_mle_edge_cov_zero(self):
 
@@ -147,11 +136,7 @@ class TestNode(unittest.TestCase):
         # row of NaN values since partially missing rows are not taken into account by numpy.ma.cov and therefore results in different result
         maximum_likelihood_estimation(
             leaf,
-            np.exp(
-                np.array(
-                    [[np.nan, np.nan], [-2.3, 0.1], [-1.8, 1.9], [0.9, 0.7]]
-                )
-            ),
+            np.exp(np.array([[np.nan, np.nan], [-2.3, 0.1], [-1.8, 1.9], [0.9, 0.7]])),
             nan_strategy="ignore",
             bias_correction=False,
         )
@@ -172,9 +157,7 @@ class TestNode(unittest.TestCase):
 
         leaf = MultivariateGaussian(Scope([0, 1]))
         # should not raise an issue
-        maximum_likelihood_estimation(
-            leaf, np.array([[0.5, 1.0], [-1.0, 0.0]]), nan_strategy=lambda x: x
-        )
+        maximum_likelihood_estimation(leaf, np.array([[0.5, 1.0], [-1.0, 0.0]]), nan_strategy=lambda x: x)
 
     def test_mle_nan_strategy_invalid(self):
 
@@ -200,21 +183,15 @@ class TestNode(unittest.TestCase):
 
         data = np.vstack(
             [
-                np.random.multivariate_normal(
-                    [1.7, 2.1], np.eye(2), size=(10000,)
-                ),
-                np.random.multivariate_normal(
-                    [0.5, -0.3], np.eye(2), size=(10000,)
-                ),
+                np.random.multivariate_normal([1.7, 2.1], np.eye(2), size=(10000,)),
+                np.random.multivariate_normal([0.5, -0.3], np.eye(2), size=(10000,)),
             ]
         )
         weights = np.concatenate([np.zeros(10000), np.ones(10000)])
 
         maximum_likelihood_estimation(leaf, data, weights)
 
-        self.assertTrue(
-            np.allclose(leaf.mean, np.array([0.5, -0.3]), atol=1e-2, rtol=1e-1)
-        )
+        self.assertTrue(np.allclose(leaf.mean, np.array([0.5, -0.3]), atol=1e-2, rtol=1e-1))
         self.assertTrue(np.allclose(leaf.cov, np.eye(2), atol=1e-2, rtol=1e-2))
 
 

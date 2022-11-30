@@ -1,19 +1,19 @@
+import random
+import unittest
+
+import numpy as np
+
+from spflow.base.inference import likelihood, log_likelihood
+from spflow.base.structure.spn import CondPoisson
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.base.structure.spn import CondPoisson
-from spflow.base.inference import log_likelihood, likelihood
-import numpy as np
-import unittest
-import random
 
 
 class TestCondPoisson(unittest.TestCase):
     def test_likelihood_no_l(self):
 
         poisson = CondPoisson(Scope([0], [1]))
-        self.assertRaises(
-            ValueError, log_likelihood, poisson, np.array([[0], [1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[0], [1]]))
 
     def test_likelihood_module_cond_f(self):
 
@@ -149,12 +149,8 @@ class TestCondPoisson(unittest.TestCase):
         poisson = CondPoisson(Scope([0], [1]), cond_f=lambda data: {"l": 1})
 
         # check infinite values
-        self.assertRaises(
-            ValueError, log_likelihood, poisson, np.array([[-np.inf]])
-        )
-        self.assertRaises(
-            ValueError, log_likelihood, poisson, np.array([[np.inf]])
-        )
+        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[-np.inf]]))
+        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[np.inf]]))
 
         # check valid integers, but outside of valid range
         self.assertRaises(ValueError, log_likelihood, poisson, np.array([[-1]]))
@@ -176,9 +172,7 @@ class TestCondPoisson(unittest.TestCase):
             poisson,
             np.array([[np.nextafter(0.0, 1.0)]]),
         )
-        self.assertRaises(
-            ValueError, log_likelihood, poisson, np.array([[10.1]])
-        )
+        self.assertRaises(ValueError, log_likelihood, poisson, np.array([[10.1]]))
 
 
 if __name__ == "__main__":

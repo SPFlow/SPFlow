@@ -1,9 +1,11 @@
-from spflow.meta.dispatch import DispatchContext
-from spflow.meta.data import Scope, FeatureTypes, FeatureContext
-from spflow.base.structure.spn import CondPoisson, CondPoissonLayer, marginalize
-from spflow.base.structure import AutoLeaf
-import numpy as np
 import unittest
+
+import numpy as np
+
+from spflow.base.structure import AutoLeaf
+from spflow.base.structure.spn import CondPoisson, CondPoissonLayer, marginalize
+from spflow.meta.data import FeatureContext, FeatureTypes, Scope
+from spflow.meta.dispatch import DispatchContext
 
 
 class TestLayer(unittest.TestCase):
@@ -15,12 +17,7 @@ class TestLayer(unittest.TestCase):
         # make sure number of creates nodes is correct
         self.assertEqual(len(l.nodes), 3)
         # make sure scopes are correct
-        self.assertTrue(
-            np.all(
-                l.scopes_out
-                == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]
-            )
-        )
+        self.assertTrue(np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]))
 
         # ---- different scopes -----
         l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3)
@@ -28,9 +25,7 @@ class TestLayer(unittest.TestCase):
             self.assertEqual(node.scope, node_scope)
 
         # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError, CondPoissonLayer, Scope([0], [1]), n_nodes=0
-        )
+        self.assertRaises(ValueError, CondPoissonLayer, Scope([0], [1]), n_nodes=0)
 
         # ----- invalid scope -----
         self.assertRaises(ValueError, CondPoissonLayer, Scope([]), n_nodes=3)
@@ -38,9 +33,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- individual scopes and parameters -----
         scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
-        l = CondPoissonLayer(
-            scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3
-        )
+        l = CondPoissonLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3)
         for node, node_scope in zip(l.nodes, scopes):
             self.assertEqual(node.scope, node_scope)
 
@@ -62,9 +55,7 @@ class TestLayer(unittest.TestCase):
 
         # ----- float/int parameter values -----
         l_value = 2
-        l = CondPoissonLayer(
-            scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"l": l_value}
-        )
+        l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"l": l_value})
 
         for l_node in l.retrieve_params(np.array([[1.0]]), DispatchContext()):
             self.assertTrue(l_node == l_value)
@@ -73,41 +64,29 @@ class TestLayer(unittest.TestCase):
         l_values = [1.0, 2.0, 3.0]
         l.set_cond_f(lambda data: {"l": l_values})
 
-        for l_node, l_actual in zip(
-            l.retrieve_params(np.array([[1.0]]), DispatchContext()), l_values
-        ):
+        for l_node, l_actual in zip(l.retrieve_params(np.array([[1.0]]), DispatchContext()), l_values):
             self.assertTrue(l_node == l_actual)
 
         # wrong number of values
         l.set_cond_f(lambda data: {"l": l_values[:-1]})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(lambda data: {"l": [l_values for _ in range(3)]})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # ----- numpy parameter values -----
         l.set_cond_f(lambda data: {"l": np.array(l_values)})
-        for l_node, l_actual in zip(
-            l.retrieve_params(np.array([[1.0]]), DispatchContext()), l_values
-        ):
+        for l_node, l_actual in zip(l.retrieve_params(np.array([[1.0]]), DispatchContext()), l_values):
             self.assertTrue(l_node == l_actual)
 
         # wrong number of values
         l.set_cond_f(lambda data: {"l": np.array(l_values[:-1])})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
         # wrong number of dimensions (nested list)
         l.set_cond_f(lambda data: {"l": np.array([l_values for _ in range(3)])})
-        self.assertRaises(
-            ValueError, l.retrieve_params, np.array([[1]]), DispatchContext()
-        )
+        self.assertRaises(ValueError, l.retrieve_params, np.array([[1]]), DispatchContext())
 
     def test_accept(self):
 
@@ -135,12 +114,8 @@ class TestLayer(unittest.TestCase):
         self.assertTrue(
             CondPoissonLayer.accepts(
                 [
-                    FeatureContext(
-                        Scope([0], [2]), [FeatureTypes.Poisson(1.0)]
-                    ),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.Poisson(1.0)]
-                    ),
+                    FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson(1.0)]),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(1.0)]),
                 ]
             )
         )
@@ -150,19 +125,13 @@ class TestLayer(unittest.TestCase):
             CondPoissonLayer.accepts(
                 [
                     FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
-                    FeatureContext(
-                        Scope([1], [2]), [FeatureTypes.Poisson(1.0)]
-                    ),
+                    FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(1.0)]),
                 ]
             )
         )
 
         # non-conditional scope
-        self.assertFalse(
-            CondPoissonLayer.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondPoissonLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # multivariate signature
         self.assertFalse(
@@ -184,9 +153,7 @@ class TestLayer(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Discrete]),
             ]
         )
-        self.assertTrue(
-            poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         poisson = CondPoissonLayer.from_signatures(
             [
@@ -194,9 +161,7 @@ class TestLayer(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson]),
             ]
         )
-        self.assertTrue(
-            poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         poisson = CondPoissonLayer.from_signatures(
             [
@@ -204,9 +169,7 @@ class TestLayer(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(l=2.0)]),
             ]
         )
-        self.assertTrue(
-            poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
         # ----- invalid arguments -----
 
@@ -260,9 +223,7 @@ class TestLayer(unittest.TestCase):
             ]
         )
         self.assertTrue(isinstance(poisson, CondPoissonLayer))
-        self.assertTrue(
-            poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])]
-        )
+        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
     def test_layer_structural_marginalization(self):
 

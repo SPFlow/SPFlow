@@ -1,14 +1,15 @@
 """Contains Uniform leaf node for SPFlow in the ``base`` backend.
 """
-from typing import Tuple, List
-import numpy as np
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from typing import List, Tuple
 
+import numpy as np
 from scipy.stats import uniform  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
+
+from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.scope import Scope
 
 
 class Uniform(LeafNode):
@@ -54,13 +55,9 @@ class Uniform(LeafNode):
                 Defaults to True.
         """
         if len(scope.query) != 1:
-            raise ValueError(
-                f"Query scope size for 'Uniform' should be 1, but was: {len(scope.query)}."
-            )
+            raise ValueError(f"Query scope size for 'Uniform' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(
-                f"Evidence scope for 'Uniform' should be empty, but was {scope.evidence}."
-            )
+            raise ValueError(f"Evidence scope for 'Uniform' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
         self.set_params(start, end, support_outside)
@@ -83,11 +80,7 @@ class Uniform(LeafNode):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
+        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
             return False
 
         # leaf is a continuous Uniform distribution
@@ -108,9 +101,7 @@ class Uniform(LeafNode):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Uniform' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'Uniform' cannot be instantiated from the following signatures: {signatures}.")
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -135,9 +126,7 @@ class Uniform(LeafNode):
         """
         return uniform(loc=self.start, scale=self.end - self.start)
 
-    def set_params(
-        self, start: float, end: float, support_outside: bool = True
-    ) -> None:
+    def set_params(self, start: float, end: float, support_outside: bool = True) -> None:
         r"""Sets the parameters for the represented distribution.
 
         Args:
@@ -154,9 +143,7 @@ class Uniform(LeafNode):
                 f"Value of 'start' for 'Uniform' must be less than value of 'end', but were: {start}, {end}."
             )
         if not (np.isfinite(start) and np.isfinite(end)):
-            raise ValueError(
-                f"Values of 'start' and 'end' for 'Uniform' must be finite, but were: {start}, {end}."
-            )
+            raise ValueError(f"Values of 'start' and 'end' for 'Uniform' must be finite, but were: {start}, {end}.")
 
         self.start = start
         self.end = end
@@ -170,9 +157,7 @@ class Uniform(LeafNode):
         """
         return self.start, self.end, self.support_outside
 
-    def check_support(
-        self, data: np.ndarray, is_scope_data: bool = False
-    ) -> np.ndarray:
+    def check_support(self, data: np.ndarray, is_scope_data: bool = False) -> np.ndarray:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Uniform distribution, which is:
@@ -207,9 +192,7 @@ class Uniform(LeafNode):
             scope_data = data[:, self.scope.query]
 
         if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope):
-            raise ValueError(
-                f"Expected 'scope_data' to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}"
-            )
+            raise ValueError(f"Expected 'scope_data' to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}")
 
         valid = np.ones(scope_data.shape, dtype=bool)
 
@@ -221,8 +204,8 @@ class Uniform(LeafNode):
 
         # check if values are in valid range
         if not self.support_outside:
-            valid[valid & ~nan_mask] &= (
-                scope_data[valid & ~nan_mask] >= self.start
-            ) & (scope_data[valid & ~nan_mask] <= self.end)
+            valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= self.start) & (
+                scope_data[valid & ~nan_mask] <= self.end
+            )
 
         return valid

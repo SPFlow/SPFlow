@@ -1,16 +1,17 @@
-from spflow.meta.data import Scope
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.spn.nodes.product_node import marginalize
-from spflow.base.structure.general.nodes.leaves.parametric.cond_poisson import (
-    CondPoisson,
-)
+import unittest
 from typing import Callable
 
 import numpy as np
-import unittest
+
+from spflow.base.structure.autoleaf import AutoLeaf
+from spflow.base.structure.general.nodes.leaves.parametric.cond_poisson import (
+    CondPoisson,
+)
+from spflow.base.structure.spn.nodes.product_node import marginalize
+from spflow.meta.data import Scope
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.dispatch.dispatch_context import DispatchContext
 
 
 class TestPoisson(unittest.TestCase):
@@ -34,15 +35,10 @@ class TestPoisson(unittest.TestCase):
 
         # l = 0
         poisson.set_cond_f(lambda data: {"l": 0.0})
-        self.assertTrue(
-            poisson.retrieve_params(np.array([[1.0]]), DispatchContext()) == 0.0
-        )
+        self.assertTrue(poisson.retrieve_params(np.array([[1.0]]), DispatchContext()) == 0.0)
         # l > 0
         poisson.set_cond_f(lambda data: {"l": np.nextafter(0.0, 1.0)})
-        self.assertTrue(
-            poisson.retrieve_params(np.array([[1.0]]), DispatchContext())
-            == np.nextafter(0.0, 1.0)
-        )
+        self.assertTrue(poisson.retrieve_params(np.array([[1.0]]), DispatchContext()) == np.nextafter(0.0, 1.0))
         # l = -inf and l = inf
         poisson.set_cond_f(lambda data: {"l": -np.inf})
         self.assertRaises(
@@ -70,39 +66,19 @@ class TestPoisson(unittest.TestCase):
     def test_accept(self):
 
         # continuous meta type
-        self.assertTrue(
-            CondPoisson.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertTrue(CondPoisson.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
         # Poisson feature type class
-        self.assertTrue(
-            CondPoisson.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])]
-            )
-        )
+        self.assertTrue(CondPoisson.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])]))
 
         # Poisson feature type instance
-        self.assertTrue(
-            CondPoisson.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(1.0)])]
-            )
-        )
+        self.assertTrue(CondPoisson.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(1.0)])]))
 
         # invalid feature type
-        self.assertFalse(
-            CondPoisson.accepts(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]
-            )
-        )
+        self.assertFalse(CondPoisson.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
         # non-conditional scope
-        self.assertFalse(
-            CondPoisson.accepts(
-                [FeatureContext(Scope([0]), [FeatureTypes.Discrete])]
-            )
-        )
+        self.assertFalse(CondPoisson.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
         # multivariate signature
         self.assertFalse(
@@ -118,15 +94,9 @@ class TestPoisson(unittest.TestCase):
 
     def test_initialization_from_signatures(self):
 
-        poisson = CondPoisson.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]
-        )
-        poisson = CondPoisson.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])]
-        )
-        poisson = CondPoisson.from_signatures(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(l=1.5)])]
-        )
+        poisson = CondPoisson.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])])
+        poisson = CondPoisson.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])])
+        poisson = CondPoisson.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(l=1.5)])])
 
         # ----- invalid arguments -----
 
@@ -164,15 +134,11 @@ class TestPoisson(unittest.TestCase):
         # make sure leaf is correctly inferred
         self.assertEqual(
             CondPoisson,
-            AutoLeaf.infer(
-                [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])]
-            ),
+            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson])]),
         )
 
         # make sure AutoLeaf can return correctly instantiated object
-        poisson = AutoLeaf(
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(l=1.5)])]
-        )
+        poisson = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(l=1.5)])])
         self.assertTrue(isinstance(poisson, CondPoisson))
 
     def test_structural_marginalization(self):

@@ -1,32 +1,28 @@
 """Contains Gaussian leaf layer for SPFlow in the ``torch`` backend.
 """
-from typing import List, Union, Optional, Iterable, Tuple
 from functools import reduce
+from typing import Iterable, List, Optional, Tuple, Union
+
 import numpy as np
 import torch
 import torch.distributions as D
 from torch.nn.parameter import Parameter
 
+from spflow.base.structure.general.layers.leaves.parametric.gaussian import (
+    GaussianLayer as BaseGaussianLayer,
+)
+from spflow.meta.data.feature_context import FeatureContext
+from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.data.scope import Scope
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.feature_types import FeatureTypes
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.torch.utils.projections import (
-    proj_bounded_to_real,
-    proj_real_to_bounded,
-)
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.torch.structure.module import Module
-from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import (
-    Gaussian,
-)
-from spflow.base.structure.general.layers.leaves.parametric.gaussian import (
-    GaussianLayer as BaseGaussianLayer,
-)
+from spflow.torch.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
 class GaussianLayer(Module):
@@ -90,9 +86,7 @@ class GaussianLayer(Module):
             self._n_out = n_nodes
         else:
             if len(scope) == 0:
-                raise ValueError(
-                    "List of scopes for 'GaussianLayer' was empty."
-                )
+                raise ValueError("List of scopes for 'GaussianLayer' was empty.")
 
             self._n_out = len(scope)
 
@@ -100,9 +94,7 @@ class GaussianLayer(Module):
             if len(s.query) != 1:
                 raise ValueError("Size of query scope must be 1 for all nodes.")
             if len(s.evidence) != 0:
-                raise ValueError(
-                    f"Evidence scope for 'GaussianLayer' should be empty, but was {s.evidence}."
-                )
+                raise ValueError(f"Evidence scope for 'GaussianLayer' should be empty, but was {s.evidence}.")
 
         super().__init__(children=[], **kwargs)
 
@@ -112,9 +104,7 @@ class GaussianLayer(Module):
 
         # compute scope
         self.scopes_out = scope
-        self.combined_scope = reduce(
-            lambda s1, s2: s1.join(s2), self.scopes_out
-        )
+        self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         # parse weights
         self.set_params(mean, std)
@@ -139,9 +129,7 @@ class GaussianLayer(Module):
         return True
 
     @classmethod
-    def from_signatures(
-        cls, signatures: List[FeatureContext]
-    ) -> "GaussianLayer":
+    def from_signatures(cls, signatures: List[FeatureContext]) -> "GaussianLayer":
         """Creates an instance from a specified signature.
 
         Returns:
@@ -151,9 +139,7 @@ class GaussianLayer(Module):
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
-            raise ValueError(
-                f"'GaussianLayer' cannot be instantiated from the following signatures: {signatures}."
-            )
+            raise ValueError(f"'GaussianLayer' cannot be instantiated from the following signatures: {signatures}.")
 
         mean = []
         std = []
@@ -244,9 +230,7 @@ class GaussianLayer(Module):
             )
 
         if not torch.any(torch.isfinite(mean)):
-            raise ValueError(
-                f"Values of 'mean' for 'GaussianLayer' must be finite, but was: {mean}"
-            )
+            raise ValueError(f"Values of 'mean' for 'GaussianLayer' must be finite, but was: {mean}")
 
         if isinstance(std, int) or isinstance(std, float):
             std = torch.tensor([std for _ in range(self.n_out)])
@@ -262,9 +246,7 @@ class GaussianLayer(Module):
             )
 
         if torch.any(std <= 0.0) or not torch.any(torch.isfinite(std)):
-            raise ValueError(
-                f"Value of 'std' for 'GaussianLayer' must be greater than 0, but was: {std}"
-            )
+            raise ValueError(f"Value of 'std' for 'GaussianLayer' must be greater than 0, but was: {std}")
 
         self.mean.data = mean
         self.std_aux.data = proj_bounded_to_real(std, lb=0.0)
@@ -318,9 +300,7 @@ class GaussianLayer(Module):
             scope_data = data
         else:
             # all query scopes are univariate
-            scope_data = data[
-                :, [self.scopes_out[node_id].query[0] for node_id in node_ids]
-            ]
+            scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
         # NaN values do not throw an error but are simply flagged as False
         valid = self.dist(node_ids).support.check(scope_data)  # type: ignore
@@ -398,9 +378,7 @@ def marginalize(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toTorch(
-    layer: BaseGaussianLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> GaussianLayer:
+def toTorch(layer: BaseGaussianLayer, dispatch_ctx: Optional[DispatchContext] = None) -> GaussianLayer:
     """Conversion for ``GaussianLayer`` from ``base`` backend to ``torch`` backend.
 
     Args:
@@ -414,9 +392,7 @@ def toTorch(
 
 
 @dispatch(memoize=True)  # type: ignore
-def toBase(
-    layer: GaussianLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> BaseGaussianLayer:
+def toBase(layer: GaussianLayer, dispatch_ctx: Optional[DispatchContext] = None) -> BaseGaussianLayer:
     """Conversion for ``GaussianLayer`` from ``torch`` backend to ``base`` backend.
 
     Args:
