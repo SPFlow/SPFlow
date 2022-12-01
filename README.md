@@ -411,7 +411,7 @@ This article explains how to develop new features for and using the SPFlow libra
 
 ## Custom Modules
 
-`spflow.meta.structure.MetaModule` is the fundamental class for all modules in any backend, but should not be used directly. Instead, each backend provides a basic abstract subclass `spflow.<backend>.structure.Module` thereof, that all modules in the backend should inherit from (or a subclass of it). Each module should implement the `n_out` and `scopes_out` properties. The first should be an integer, indicating the number of outputs the module represents. The latter is a list of `Scope` objects, containing the scopes of each corresponding outputs. Inheriting classes should also explicitely call the super-class's `__init__` with the list of child modules as an argument, which will set the child modules correctly. The following can be used as a starting template:
+`spflow.meta.structure.MetaModule` is the fundamental class for all modules in any backend, but should not be used directly. Instead, each backend provides a basic abstract subclass `spflow.<backend>.structure.Module` thereof, that all modules in the backend should inherit from (or a subclass of it). Each module should implement the `n_out` and `scopes_out` properties. The first should be an integer, indicating the number of outputs the module represents. The latter is a list of `Scope` objects, containing the scopes of each corresponding outputs. Inheriting classes should also explicitly call the super-class's `__init__` with the list of child modules as an argument, which will set the child modules correctly. The following can be used as a starting template:
 ```python
 from spflow.<backend>.structure import Module
 
