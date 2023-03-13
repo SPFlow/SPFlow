@@ -2,10 +2,10 @@
 """
 from typing import Callable, Optional, Union
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_isclose
 
-from spflow.base.structure.general.nodes.leaves.parametric.exponential import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.exponential import (
     Exponential,
 )
 from spflow.meta.dispatch.dispatch import dispatch
@@ -80,9 +80,9 @@ def maximum_likelihood_estimation(
     scope_data = data[:, leaf.scope.query]
 
     if weights is None:
-        weights = tl.ones(data.shape[0])
+        weights = tl.ones(tl.shape(data)[0])
 
-    if tl.ndim(weights) != 1 or weights.shape[0] != data.shape[0]:
+    if tl.ndim(weights) != 1 or tl.shape(weights)[0] != tl.shape(data)[0]:
         raise ValueError(
             "Number of specified weights for maximum-likelihood estimation does not match number of data points."
         )
@@ -95,12 +95,12 @@ def maximum_likelihood_estimation(
             raise ValueError("Encountered values outside of the support for 'Exponential'.")
 
     # NaN entries (no information)
-    nan_mask = np.isnan(scope_data)
+    nan_mask = tl_isnan(scope_data)
 
     if tl.all(nan_mask):
         raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
 
-    if nan_strategy is None and np.any(nan_mask):
+    if nan_strategy is None and tl.any(nan_mask):
         raise ValueError(
             "Maximum-likelihood estimation cannot be performed on missing data by default. Set a strategy for handling missing values if this is intended."
         )
@@ -121,7 +121,7 @@ def maximum_likelihood_estimation(
         )
 
     # normalize weights to sum to n_samples
-    weights /= tl.sum(weights) / scope_data.shape[0]
+    weights /= tl.sum(weights) / tl.shape(scope_data)[0]
 
     # total number of instances
     n_total = tl.sum(weights)
@@ -136,7 +136,7 @@ def maximum_likelihood_estimation(
     l_est = n_total / cum_rate
 
     # edge case: if rate 0, set to larger value (should not happen, but just in case)
-    if np.isclose(l_est, 0):
+    if tl_isclose(l_est, 0):
         l_est = 1e-8
 
     # set parameters of leaf node

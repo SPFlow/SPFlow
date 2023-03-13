@@ -3,9 +3,9 @@
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 
-from spflow.base.structure.module import Module
-from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.product_node import ProductNode
+from spflow.tensorly.structure.module import Module
+from spflow.tensorly.structure.nested_module import NestedModule
+from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (

@@ -2,14 +2,13 @@
 """
 from typing import Iterable, List, Optional, Tuple, Type, Union
 
-import numpy as np
 import tensorly as tl
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.exponential import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.exponential import (
     Exponential,
 )
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -172,9 +171,9 @@ class ExponentialLayer(Module):
             raise ValueError(
                 f"Numpy array of 'l' values for 'ExponentialLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional."
             )
-        if l.shape[0] != self.n_out:
+        if tl.shape(l)[0] != self.n_out:
             raise ValueError(
-                f"Length of numpy array of 'l' values for 'ExponentialLayer' must match number of output nodes {self.n_out}, but is {l.shape[0]}"
+                f"Length of numpy array of 'l' values for 'ExponentialLayer' must match number of output nodes {self.n_out}, but is {tl.shape(l)[0]}"
             )
 
         for node_l, node in zip(l, self.nodes):
@@ -281,5 +280,5 @@ def marginalize(
         new_node = Exponential(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = ExponentialLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
+        new_layer = ExponentialLayer(marg_scopes, *[tl.tensor(p) for p in zip(*marg_params)])
         return new_layer

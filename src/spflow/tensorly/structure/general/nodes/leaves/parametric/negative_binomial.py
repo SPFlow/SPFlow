@@ -2,12 +2,12 @@
 """
 from typing import List, Tuple
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_isinf, tl_isfinite
 from scipy.stats import nbinom  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.tensorly.structure.general.nodes.leaf_node import LeafNode
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
@@ -127,16 +127,16 @@ class NegativeBinomial(LeafNode):
             p:
                 Floating point value representing the success probability of each trial in the range :math:`(0,1]`.
         """
-        if p <= 0.0 or p > 1.0 or not np.isfinite(p):
+        if p <= 0.0 or p > 1.0 or not tl_isfinite(p):
             raise ValueError(
                 f"Value of p for Negative Binomial distribution must to be between 0.0 (excluding) and 1.0 (including), but was: {p}"
             )
-        if n < 0 or not np.isfinite(n):
+        if n < 0 or not tl_isfinite(n):
             raise ValueError(
                 f"Value of n for Negative Binomial distribution must to greater of equal to 0, but was: {n}"
             )
 
-        if not (np.remainder(n, 1.0) == 0.0):
+        if not ((n % 1.0) == 0.0):
             raise ValueError(
                 f"Value of n for Negative Binomial distribution must be (equal to) an integer value, but was: {n}"
             )
@@ -181,21 +181,21 @@ class NegativeBinomial(LeafNode):
             # select relevant data for scope
             scope_data = data[:, self.scope.query]
 
-        if tl.ndim(scope_data) != 2 or scope_data.shape[1] != len(self.scope.query):
+        if tl.ndim(scope_data) != 2 or tl.shape(scope_data)[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
+                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {tl.shape(scope_data)}"
             )
 
-        valid = tl.ones(scope_data.shape, dtype=bool)
+        valid = tl.ones(tl.shape(scope_data), dtype=bool)
 
         # nan entries (regarded as valid)
-        nan_mask = np.isnan(scope_data)
+        nan_mask = tl_isnan(scope_data)
 
         # check for infinite values
-        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
+        valid[~nan_mask] &= ~tl_isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] % 1) == 0
 
         # check if values are in valid range
         valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] >= 0

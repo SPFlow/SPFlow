@@ -2,13 +2,13 @@
 """
 from typing import Callable, Optional, Union
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_unsqueeze, tl_repeat
 
-from spflow.base.learning.general.nodes.leaves.parametric.multivariate_gaussian import (
+from spflow.tensorly.learning.general.nodes.leaves.parametric.multivariate_gaussian import (
     maximum_likelihood_estimation,
 )
-from spflow.base.structure.general.layers.leaves.parametric.multivariate_gaussian import (
+from spflow.tensorly.structure.general.layers.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussianLayer,
 )
 from spflow.meta.dispatch.dispatch import dispatch
@@ -82,11 +82,11 @@ def maximum_likelihood_estimation(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     if weights is None:
-        weights = tl.ones((data.shape[0], layer.n_out))
+        weights = tl.ones((tl.shape(data)[0], layer.n_out))
 
     if (
-        (tl.ndim(weights) == 1 and weights.shape[0] != data.shape[0])
-        or (tl.ndim(weights) == 2 and (weights.shape[0] != data.shape[0] or weights.shape[1] != layer.n_out))
+        (tl.ndim(weights) == 1 and tl.shape(weights)[0] != data.shape[0])
+        or (tl.ndim(weights) == 2 and (tl.shape(weights)[0] != data.shape[0] or tl.shape(weights)[1] != layer.n_out))
         or (tl.ndim(weights) not in [1, 2])
     ):
         raise ValueError(
@@ -95,7 +95,7 @@ def maximum_likelihood_estimation(
 
     if tl.ndim(weights) == 1:
         # broadcast weights
-        weights = np.expand_dims(weights, 1).repeat(layer.n_out, 1)
+        weights = tl_repeat(tl_unsqueeze(weights, 1), repeats=layer.n_out, axis=1)
 
     for node, node_weights in zip(layer.nodes, weights.T):
         maximum_likelihood_estimation(

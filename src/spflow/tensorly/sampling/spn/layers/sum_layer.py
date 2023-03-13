@@ -2,12 +2,11 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
 
-from spflow.base.inference.module import log_likelihood
-from spflow.base.sampling.module import sample
-from spflow.base.structure.spn.layers.sum_layer import SumLayer
+from spflow.tensorly.inference.module import log_likelihood
+from spflow.tensorly.sampling.module import sample
+from spflow.tensorly.structure.spn.layers.sum_layer import SumLayer
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -56,7 +55,7 @@ def sample(
     """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, tl.shape(data)[0])
 
     # compute log-likelihoods of this module (needed to initialize log-likelihood cache for placeholder)
     log_likelihood(sum_layer, data, check_support=check_support, dispatch_ctx=dispatch_ctx)

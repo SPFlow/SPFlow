@@ -2,12 +2,12 @@
 """
 from typing import Callable, List, Optional, Tuple, Union
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_isinf, tl_isfinite
 from scipy.stats import gamma  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.tensorly.structure.general.nodes.leaf_node import LeafNode
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -180,9 +180,9 @@ class CondGamma(LeafNode):
             beta = params["beta"]
 
         # check if values for 'alpha', 'beta' are valid
-        if alpha <= 0.0 or not np.isfinite(alpha):
+        if alpha <= 0.0 or not tl_isfinite(alpha):
             raise ValueError(f"Value of 'alpha' for 'CondGamma' must be greater than 0, but was: {alpha}")
-        if beta <= 0.0 or not np.isfinite(beta):
+        if beta <= 0.0 or not tl_isfinite(beta):
             raise ValueError(f"Value of 'beta' for 'CondGamma' must be greater than 0, but was: {beta}")
 
         return alpha, beta
@@ -230,18 +230,18 @@ class CondGamma(LeafNode):
             # select relevant data for scope
             scope_data = data[:, self.scope.query]
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
+        if scope_data.ndim != 2 or tl.shape(scope_data)[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
+                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {tl.shape(scope_data)}"
             )
 
-        valid = tl.ones(scope_data.shape, dtype=bool)
+        valid = tl.ones(tl.shape(scope_data), dtype=bool)
 
         # nan entries (regarded as valid)
-        nan_mask = np.isnan(scope_data)
+        nan_mask = tl_isnan(scope_data)
 
         # check for infinite values
-        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
+        valid[~nan_mask] &= ~tl_isinf(scope_data[~nan_mask])
 
         # check if values are in valid range
         valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] > 0

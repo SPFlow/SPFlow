@@ -2,10 +2,9 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
 
-from spflow.base.structure.general.layers.leaves.parametric.gamma import GammaLayer
+from spflow.tensorly.structure.general.layers.leaves.parametric.gamma import GammaLayer
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

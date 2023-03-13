@@ -2,12 +2,12 @@
 """
 from typing import Callable, List, Optional, Tuple, Union
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isinf, tl_isfinite, tl_isnan
 from scipy.stats import binom  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.tensorly.structure.general.nodes.leaf_node import LeafNode
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
@@ -149,10 +149,10 @@ class CondBinomial(LeafNode):
             n:
                 Integer representing the number of i.i.d. Bernoulli trials (greater or equal to 0).
         """
-        if n < 0 or not np.isfinite(n):
+        if n < 0 or not tl_isfinite(n):
             raise ValueError(f"Value of 'n' for 'Binomial' must to greater of equal to 0, but was: {n}")
 
-        if not (np.remainder(n, 1.0) == 0.0):
+        if not (n % 1.0 == 0.0):
             raise ValueError(f"Value of 'n' for 'Binomial' must be (equal to) an integer value, but was: {n}")
 
         self.n = n
@@ -202,7 +202,7 @@ class CondBinomial(LeafNode):
             p = cond_f(data)["p"]
 
         # check if value for 'p' is valid
-        if p < 0.0 or p > 1.0 or not np.isfinite(p):
+        if p < 0.0 or p > 1.0 or not tl_isfinite(p):
             raise ValueError(
                 f"Value of 'p' for 'CondBinomial' distribution must to be between 0.0 and 1.0, but was: {p}"
             )
@@ -248,19 +248,19 @@ class CondBinomial(LeafNode):
 
         if tl.ndim(scope_data) != 2 or tl.shape(scope_data)[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
+                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {tl.shape(scope_data)}"
             )
 
-        valid = tl.ones(scope_data.shape, dtype=bool)
+        valid = tl.ones(tl.shape(scope_data), dtype=bool)
 
         # nan entries (regarded as valid)
-        nan_mask = np.isnan(scope_data)
+        nan_mask = tl_isnan(scope_data)
 
         # check for infinite values
-        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
+        valid[~nan_mask] &= ~tl_isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] % 1 == 0
 
         # check if values are in valid range
         valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] >= 0) & (scope_data[valid & ~nan_mask] <= self.n)

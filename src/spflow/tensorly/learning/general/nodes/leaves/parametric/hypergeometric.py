@@ -2,10 +2,9 @@
 """
 from typing import Callable, Optional, Union
 
-import numpy as np
 import tensorly as tl
 
-from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.hypergeometric import (
     Hypergeometric,
 )
 from spflow.meta.dispatch.dispatch import dispatch

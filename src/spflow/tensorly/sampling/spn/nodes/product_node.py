@@ -2,11 +2,10 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
 
-from spflow.base.sampling.module import sample
-from spflow.base.structure.spn.nodes.product_node import ProductNode
+from spflow.tensorly.sampling.module import sample
+from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -51,7 +50,7 @@ def sample(
     """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, tl.shape(data)[0])
 
     # sample from all child outputs
     for child in node.children:

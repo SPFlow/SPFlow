@@ -2,11 +2,10 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
 
-from spflow.base.sampling.module import sample
-from spflow.base.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import (
+from spflow.tensorly.sampling.module import sample
+from spflow.tensorly.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussianLayer,
 )
 from spflow.meta.data.scope import Scope
@@ -58,7 +57,7 @@ def sample(
     """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, tl.shape(data)[0])
 
     # make sure no over-lapping scopes are being sampled
     layer_scopes = layer.scopes_out

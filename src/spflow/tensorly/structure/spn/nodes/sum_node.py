@@ -3,11 +3,11 @@
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 
-import numpy as np
 import tensorly as tl
+from ....utils.helper_functions import tl_isclose
 
-from spflow.base.structure.general.nodes.node import Node
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.general.nodes.node import Node
+from spflow.tensorly.structure.module import Module
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -100,7 +100,7 @@ class SumNode(Node):
             )
         if not tl.all(values > 0):
             raise ValueError("Weights for 'SumNode' must be all positive.")
-        if not np.isclose(values.sum(), 1.0):
+        if not tl_isclose(values.sum(), 1.0):
             raise ValueError("Weights for 'SumNode' must sum up to one.")
         if not (len(values) == self.n_in):
             raise ValueError("Number of weights for 'SumNode' does not match total number of child outputs.")

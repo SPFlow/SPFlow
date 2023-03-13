@@ -2,11 +2,10 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
 
-from spflow.base.inference.spn.nodes.cond_sum_node import log_likelihood
-from spflow.base.structure.spn.layers.cond_sum_layer import CondSumLayer
+from spflow.tensorly.inference.spn.nodes.cond_sum_node import log_likelihood
+from spflow.tensorly.structure.spn.layers.cond_sum_layer import CondSumLayer
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

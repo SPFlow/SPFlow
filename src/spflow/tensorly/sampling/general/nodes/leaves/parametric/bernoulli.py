@@ -2,10 +2,10 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_squeeze
 
-from spflow.base.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
+from spflow.tensorly.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -53,12 +53,12 @@ def sample(
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    marg_ids = (np.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
+    marg_ids = tl_squeeze(tl_isnan(data[:, leaf.scope.query]) == len(leaf.scope.query), axis=1)
 
     instance_ids_mask = tl.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
 
-    sampling_ids = marg_ids & instance_ids_mask.astype(bool)
+    sampling_ids = marg_ids & tl.tensor(instance_ids_mask, dtype=bool)
 
     data[sampling_ids, leaf.scope.query] = leaf.dist.rvs(size=tl.sum(sampling_ids))
 

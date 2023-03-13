@@ -4,11 +4,11 @@ from abc import ABC
 from copy import deepcopy
 from typing import Callable, Iterable, List, Optional, Union
 
-import numpy as np
 import tensorly as tl
+from ....utils.helper_functions import tl_isclose
 
-from spflow.base.structure.module import Module
-from spflow.base.structure.spn.nodes.product_node import Node
+from spflow.tensorly.structure.module import Module
+from spflow.tensorly.structure.spn.nodes.product_node import Node
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -132,13 +132,13 @@ class CondSumNode(Node):
         # check if value for 'weights' is valid
         if isinstance(weights, list):
             weights = tl.tensor(weights)
-        if weights.ndim != 1:
+        if tl.ndim(weights) != 1:
             raise ValueError(
-                f"Numpy array of weight values for 'CondSumNode' is expected to be one-dimensional, but is {weights.ndim}-dimensional."
+                f"Numpy array of weight values for 'CondSumNode' is expected to be one-dimensional, but is {tl.ndim(weights)}-dimensional."
             )
         if not tl.all(weights > 0):
             raise ValueError("Weights for 'CondCondSumNode' must be all positive.")
-        if not np.isclose(tl.sum(weights), 1.0):
+        if not tl_isclose(tl.sum(weights), 1.0):
             raise ValueError("Weights for 'CondCondSumNode' must sum up to one.")
         if not (len(weights) == self.n_in):
             raise ValueError("Number of weights for 'CondCondSumNode' does not match total number of child outputs.")

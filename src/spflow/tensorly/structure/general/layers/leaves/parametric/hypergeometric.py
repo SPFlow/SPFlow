@@ -2,14 +2,14 @@
 """
 from typing import Iterable, List, Optional, Tuple, Type, Union
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_unique
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.hypergeometric import (
     Hypergeometric,
 )
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -218,7 +218,7 @@ class HypergeometricLayer(Module):
             M = tl.tensor(M)
         if tl.ndim(M) != 1:
             raise ValueError(
-                f"Numpy array of 'M' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {M.ndim}-dimensional."
+                f"Numpy array of 'M' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {tl.ndim(M)}-dimensional."
             )
         if M.shape[0] != self.n_out:
             raise ValueError(
@@ -240,7 +240,7 @@ class HypergeometricLayer(Module):
 
         node_scopes = tl.tensor([s.query[0] for s in self.scopes_out])
 
-        for node_scope in np.unique(node_scopes):
+        for node_scope in tl_unique(node_scopes):
             # at least one such element exists
             N_values = N[node_scopes == node_scope]
             if not tl.all(N_values == N_values[0]):

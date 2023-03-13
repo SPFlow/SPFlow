@@ -3,10 +3,10 @@
 from abc import ABC
 from typing import List, Optional, Tuple, Union
 
-import numpy as np
+
 import tensorly as tl
 
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 
 

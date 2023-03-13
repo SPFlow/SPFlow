@@ -3,10 +3,10 @@
 from functools import reduce
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
+from ..utils.helper_functions import tl_full
 
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -89,10 +89,10 @@ def sample(
     """
     combined_module_scope = reduce(lambda s1, s2: s1.join(s2), module.scopes_out)
 
-    data = np.full((n, max(combined_module_scope.query) + 1), tl.nan)
+    data = tl_full((n, max(combined_module_scope.query) + 1), tl.nan)
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, tl.shape(data)[0])
 
     return sample(
         module,

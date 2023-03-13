@@ -2,15 +2,14 @@
 """
 from typing import Iterable, List, Optional, Tuple, Type, Union
 
-import numpy as np
 import tensorly as tl
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
 )
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
