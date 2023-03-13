@@ -2,10 +2,10 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
+from ..utils.helper_functions import tl_unique
 
-from spflow.base.structure.nested_module import NestedModule
+from spflow.tensorly.structure.nested_module import NestedModule
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -49,7 +49,7 @@ def sample(
     """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, tl.shape(data)[0])
 
     # dictionary to hold the
     sampling_ids_per_child = [([], []) for _ in placeholder.host.children]
@@ -58,7 +58,7 @@ def sample(
         # convert ids to actual child and output ids of host module
         child_ids_actual, output_ids_actual = placeholder.input_to_output_ids(output_ids)
 
-        for child_id in np.unique(child_ids_actual):
+        for child_id in tl_unique(child_ids_actual):
             sampling_ids_per_child[child_id][0].append(instance_id)
             sampling_ids_per_child[child_id][1].append(
                 tl.tensor(output_ids_actual)[child_ids_actual == child_id].tolist()

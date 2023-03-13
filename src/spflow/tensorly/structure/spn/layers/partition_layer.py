@@ -4,12 +4,12 @@ import itertools
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 
-import numpy as np
 import tensorly as tl
+from ....utils.helper_functions import tl_split
 
-from spflow.base.structure.module import Module
-from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.product_node import ProductNode
+from spflow.tensorly.structure.module import Module
+from spflow.tensorly.structure.nested_module import NestedModule
+from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -111,7 +111,7 @@ class PartitionLayer(NestedModule):
         self.nodes = []
 
         # create placeholders and nodes
-        for input_ids in itertools.product(*np.split(list(range(self.n_in)), tl.cumsum(partition_sizes[:-1]))):
+        for input_ids in itertools.product(*tl_split(list(range(self.n_in)), tl.cumsum(partition_sizes[:-1]))):
             ph = self.create_placeholder(input_ids)
             self.nodes.append(ProductNode(children=[ph]))
 
@@ -175,7 +175,7 @@ def marginalize(
         marg_partitions = []
 
         children = layer.children
-        partitions = np.split(children, tl.cumsum(layer.modules_per_partition[:-1]))
+        partitions = tl_split(children, tl.cumsum(layer.modules_per_partition[:-1]))
 
         for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
             partition_children = partition_children.tolist()

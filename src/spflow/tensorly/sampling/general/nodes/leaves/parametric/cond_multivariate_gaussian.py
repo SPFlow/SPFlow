@@ -2,10 +2,10 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_inv, tl_unique, tl_ix_
 
-from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
 )
 from spflow.meta.dispatch.dispatch import dispatch
@@ -51,18 +51,18 @@ def sample(
         Each row corresponds to a sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, tl.shape(data)[0])
 
-    if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
+    if any([i >=tl.shape(data)[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
     # retrieve values for 'mean','cov'
     mean, cov = leaf.retrieve_params(data, dispatch_ctx)
 
-    nan_data = np.isnan(data[np.ix_(sampling_ctx.instance_ids, leaf.scope.query)])
+    nan_data = tl_isnan(data[tl_ix_(sampling_ctx.instance_ids, leaf.scope.query)])
 
     # group by scope rvs to sample
-    for nan_mask in np.unique(nan_data, axis=0):
+    for nan_mask in tl_unique(nan_data, axis=0):
 
         cond_mask = ~nan_mask
 
@@ -73,7 +73,7 @@ def sample(
         elif tl.sum(nan_mask) == len(leaf.scope.query):
             sampling_ids = tl.tensor(sampling_ctx.instance_ids)[tl.sum((nan_data == nan_mask),axis=1) == nan_mask.shape[0]]
 
-            data[np.ix_(sampling_ids, leaf.scope.query)] = leaf.dist(mean=mean, cov=cov).rvs(size=sampling_ids.shape[0])
+            data[tl_ix_(sampling_ids, leaf.scope.query)] = leaf.dist(mean=mean, cov=cov).rvs(size=sampling_ids.shape[0])
         # sample from conditioned distribution
         else:
             # NOTE: the conditional sampling implemented here is based on the algorithm described in Arnaud Doucet (2010): "A Note on Efficient Conditional Simulation of Gaussian Distributions" (https://www.stats.ox.ac.uk/~doucet/doucet_simulationconditionalgaussian.pdf)
@@ -83,13 +83,13 @@ def sample(
             joint_samples = leaf.dist(mean=mean, cov=cov).rvs(size=sampling_ids.shape[0])
 
             # compute inverse of marginal covariance matrix of conditioning RVs
-            marg_cov_inv = np.linalg.inv(cov[np.ix_(cond_mask, cond_mask)])
+            marg_cov_inv = tl_inv(cov[tl_ix_(cond_mask, cond_mask)])
 
             # get conditional (evidence) covariance matrix
-            cond_cov = cov[np.ix_(cond_mask, ~cond_mask)]
+            cond_cov = cov[tl_ix_(cond_mask, ~cond_mask)]
 
-            data[np.ix_(sampling_ids, ~cond_mask)] = joint_samples[:, ~cond_mask] + (
-                (data[np.ix_(sampling_ids, cond_mask)] - joint_samples[:, cond_mask]) @ (marg_cov_inv @ cond_cov)
+            data[tl_ix_(sampling_ids, ~cond_mask)] = joint_samples[:, ~cond_mask] + (
+                (data[tl_ix_(sampling_ids, cond_mask)] - joint_samples[:, cond_mask]) @ (marg_cov_inv @ cond_cov)
             )
 
     return data

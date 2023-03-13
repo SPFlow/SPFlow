@@ -4,12 +4,14 @@ from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
 
 import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_unique
+
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.cond_binomial import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_binomial import (
     CondBinomial,
 )
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -247,11 +249,11 @@ class CondBinomialLayer(Module):
             p = tl.tensor(p)
         if tl.ndim(p) != 1:
             raise ValueError(
-                f"Numpy array of 'p' values for 'CondBinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
+                f"Numpy array of 'p' values for 'CondBinomialLayer' is expected to be one-dimensional, but is {tl.ndim(p)}-dimensional."
             )
-        if p.shape[0] != self.n_out:
+        if tl.shape(p)[0] != self.n_out:
             raise ValueError(
-                f"Length of numpy array of 'p' values for 'CondBinomialLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
+                f"Length of numpy array of 'p' values for 'CondBinomialLayer' must match number of output nodes {self.n_out}, but is {tl.shape(p)[0]}"
             )
 
         return p
@@ -270,16 +272,16 @@ class CondBinomialLayer(Module):
             n = tl.tensor(n)
         if tl.ndim(n) != 1:
             raise ValueError(
-                f"Numpy array of 'n' values for 'CondBinomialLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional."
+                f"Numpy array of 'n' values for 'CondBinomialLayer' is expected to be one-dimensional, but is {tl.ndim(n)}-dimensional."
             )
-        if n.shape[0] != self.n_out:
+        if tl.shape(n)[0] != self.n_out:
             raise ValueError(
-                f"Length of numpy array of 'n' values for 'CondBinomialLayer' must match number of output nodes {self.n_out}, but is {n.shape[0]}"
+                f"Length of numpy array of 'n' values for 'CondBinomialLayer' must match number of output nodes {self.n_out}, but is {tl.shape(n)[0]}"
             )
 
         node_scopes = tl.tensor([s.query[0] for s in self.scopes_out])
 
-        for node_scope in np.unique(node_scopes):
+        for node_scope in tl_unique(node_scopes):
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not tl.all(n_values == n_values[0]):
@@ -288,7 +290,7 @@ class CondBinomialLayer(Module):
         for node_n, node in zip(n, self.nodes):
             node.set_params(node_n)
 
-    def get_params(self) -> Tuple[np.ndarray]:
+    def get_params(self) -> Tuple[tl.tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -388,8 +390,8 @@ def marginalize(
     if len(marg_scopes) == 0:
         return None
     elif len(marg_scopes) == 1 and prune:
-        new_node = CondBinomial(marg_scopes[0], np.array(marg_params[0]))
+        new_node = CondBinomial(marg_scopes[0], tl.tensor(marg_params[0]))
         return new_node
     else:
-        new_layer = CondBinomialLayer(marg_scopes, np.array(sum(marg_params, tuple())))
+        new_layer = CondBinomialLayer(marg_scopes, tl.tensor(sum(marg_params, tuple())))
         return new_layer

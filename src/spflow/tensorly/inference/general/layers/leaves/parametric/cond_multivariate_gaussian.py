@@ -2,10 +2,9 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
 
-from spflow.base.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import (
+from spflow.tensorly.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussianLayer,
 )
 from spflow.meta.dispatch.dispatch import dispatch

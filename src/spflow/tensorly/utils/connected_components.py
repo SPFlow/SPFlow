@@ -6,7 +6,6 @@ Typical usage example:
 """
 from typing import List, Set
 
-import numpy as np
 import tensorly as tl
 
 

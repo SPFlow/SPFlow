@@ -12,8 +12,11 @@ def tl_vstack(stackList):  # all elements have the same shape
     return tl.concatenate(stackList, axis=0).reshape((len(stackList), stackList[0].shape[0]))
 
 
-def tl_isclose(a: tl.tensor, b: tl.tensor, rtol: float, atol: float) -> tl.tensor:
+def tl_isclose(a: tl.tensor, b: tl.tensor, rtol=1e-05, atol=1e-08) -> tl.tensor:
     return tl.abs(a - b) <= (atol + rtol * tl.abs(b))
+
+def tl_allclose(a: tl.tensor, b: tl.tensor, rtol=1e-05, atol=1e-08):
+    return tl.all(tl.abs(a - b) <= (atol + rtol * tl.abs(b)))
 
 def tl_stack(arrays, axis=0): # TODO: Does not work for axis=-1
     # check that all arrays have the same shape
@@ -167,7 +170,7 @@ def tl_real(tensor: tl.tensor):
     else:
         raise NotImplementedError("tl_cholesky is not implemented for this backend")
 
-def ix_(*args):
+def tl_ix_(*args):
     """
     Construct an open mesh from multiple sequences.
 
@@ -190,7 +193,7 @@ def ix_(*args):
 
     return tuple(out)
 
-def tensor_nan_to_num(tensor : tl.tensor, copy=True):
+def tl_nan_to_num(tensor : tl.tensor, copy=True):
     """
     Replace NaN and infinity values in a tensor with zero and finite values, respectively.
 
@@ -225,5 +228,53 @@ def tl_cov(tensor: tl.tensor, aweights=None, ddof=None):
         return tl.tensor(np.cov(tensor,aweights=aweights,ddof=ddof))
     elif backend == "pytorch":
         return tl.tensor(torch.cov(tensor,aweights=aweights,correction=ddof))
+    else:
+        raise NotImplementedError("tl_cov is not implemented for this backend")
+
+def tl_repeat(tensor: tl.tensor, repeats, axis=None):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return tl.tensor(np.repeat(tensor,repeats=repeats,axis=axis))
+    elif backend == "pytorch":
+        return tl.tensor(torch.repeat_interleave(tensor, repeats=repeats, dim=axis))
+    else:
+        raise NotImplementedError("tl_cov is not implemented for this backend")
+
+def tl_spacing(tensor: tl.tensor):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return tl.tensor(np.spacing(tensor))
+    elif backend == "pytorch":
+        return tl.tensor(torch.min(
+            torch.nextafter(tensor, torch.tensor(float("inf"))) - tensor,
+            torch.nextafter(tensor, -torch.tensor(float("inf"))) - tensor,
+        ))
+    else:
+        raise NotImplementedError("tl_cov is not implemented for this backend")
+
+def tl_split(tensor: tl.tensor, indices_or_sections, axis=0):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return tl.tensor(np.split(tensor,indices_or_sections=indices_or_sections,axis=axis))
+    elif backend == "pytorch":
+        return tl.tensor(torch.split(tensor, split_size_or_sections=indices_or_sections, dim=axis))
+    else:
+        raise NotImplementedError("tl_cov is not implemented for this backend")
+
+def tl_array_split(tensor: tl.tensor, indices_or_sections, axis=0):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return tl.tensor(np.array_split(tensor,indices_or_sections=indices_or_sections,axis=axis))
+    elif backend == "pytorch":
+        return tl.tensor(torch.tensor_split(tensor, tensor_indices_or_sections=indices_or_sections, dim=axis))
+    else:
+        raise NotImplementedError("tl_cov is not implemented for this backend")
+
+def tl_pad_edge(tensor: tl.tensor, pad_width):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return tl.tensor(np.pad(tensor,pad_width=pad_width,mode="edge"))
+    elif backend == "pytorch":
+        return tl.tensor(torch.nn.functional.pad(tensor, pad=pad_width, mode="replicate"))
     else:
         raise NotImplementedError("tl_cov is not implemented for this backend")

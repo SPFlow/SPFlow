@@ -3,11 +3,12 @@
 from copy import deepcopy
 from typing import Callable, Iterable, List, Optional, Union
 
-import numpy as np
+import tensorly as tl
+from ....utils.helper_functions import tl_stack, tl_allclose
 
-from spflow.base.structure.module import Module
-from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode
+from spflow.tensorly.structure.module import Module
+from spflow.tensorly.structure.nested_module import NestedModule
+from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -122,7 +123,7 @@ class CondSumLayer(NestedModule):
 
         self.cond_f = cond_f
 
-    def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> np.ndarray:
+    def retrieve_params(self, data: tl.tensor, dispatch_ctx: DispatchContext) -> tl.tensor:
         r"""Retrieves the conditional parameters of the leaf node.
 
         First, checks if conditional parameter (``weights``) is passed as an additional argument in the dispatch context.
@@ -168,42 +169,42 @@ class CondSumLayer(NestedModule):
         if weights is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                weights = np.array([f(data)["weights"] for f in cond_f])
+                weights = tl.tensor([f(data)["weights"] for f in cond_f])
             else:
                 weights = cond_f(data)["weights"]
 
         if isinstance(weights, list):
-            weights = np.array(weights)
-        if weights.ndim != 1 and weights.ndim != 2:
+            weights = tl.tensor(weights)
+        if tl.ndim(weights) != 1 and tl.ndim(weights) != 2:
             raise ValueError(
                 f"Numpy array of weight values for 'CondSumLayer' is expected to be one- or two-dimensional, but is {weights.ndim}-dimensional."
             )
-        if not np.all(weights > 0):
+        if not tl.all(weights > 0):
             raise ValueError("Weights for 'CondSumLayer' must be all positive.")
-        if not np.allclose(weights.sum(axis=-1), 1.0):
+        if not tl_allclose(weights.sum(axis=-1), 1.0):
             raise ValueError("Weights for 'CondSumLayer' must sum up to one in last dimension.")
-        if not (weights.shape[-1] == self.n_in):
+        if not (tl.shape(weights)[-1] == self.n_in):
             raise ValueError(
                 "Number of weights for 'CondSumLayer' in last dimension does not match total number of child outputs."
             )
 
         # same weights for all sum nodes
-        if weights.ndim == 1:
+        if tl.ndim(weights) == 1:
             # broadcast weights to all nodes
-            weights = np.stack([weights for _ in range(self.n_out)])
-        if weights.ndim == 2:
+            weights = tl_stack([weights for _ in range(self.n_out)])
+        if tl.ndim(weights) == 2:
             # same weights for all sum nodes
-            if weights.shape[0] == 1:
+            if tl.shape(weights)[0] == 1:
                 # broadcast weights to all nodes
-                weights = np.concatenate([weights for _ in range(self.n_out)], axis=0)
+                weights = tl.concatenate([weights for _ in range(self.n_out)], axis=0)
             # different weights for all sum nodes
-            elif weights.shape[0] == self.n_out:
+            elif tl.shape(weights)[0] == self.n_out:
                 # already in correct output shape
                 pass
             # incorrect number of specified weights
             else:
                 raise ValueError(
-                    f"Incorrect number of weights for 'CondSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {weights.shape[0]}."
+                    f"Incorrect number of weights for 'CondSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {tl.shape(weights)[0]}."
                 )
 
         return weights

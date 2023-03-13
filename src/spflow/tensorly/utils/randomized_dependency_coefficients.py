@@ -9,9 +9,10 @@ from typing import Callable
 
 import numpy as np
 import tensorly as tl
+from ..utils.helper_functions import tl_isnan, tl_stack
 from sklearn.cross_decomposition import CCA
 
-from spflow.base.utils.empirical_cdf import empirical_cdf
+from spflow.tensorly.utils.empirical_cdf import empirical_cdf
 
 
 def randomized_dependency_coefficients(
@@ -42,32 +43,32 @@ def randomized_dependency_coefficients(
         ValueError: Invalid inputs.
     """
     # default arguments according to paper
-    if tl.any(np.isnan(data)):
+    if tl.any(tl_isnan(data)):
         raise ValueError("Randomized dependency coefficients cannot be computed for data with missing values.")
 
     # compute ecd values for data
     ecdf = empirical_cdf(data)
 
     # bring ecdf values into correct shape and pad with ones (for biases)
-    ecdf_features = np.stack([ecdf.T, tl.ones(ecdf.T.shape)], axis=-1)
+    ecdf_features = tl_stack([ecdf.T, tl.ones(ecdf.T.shape)], axis=-1)
 
     # compute random weights (and biases) generated from normal distribution
-    rand_gaussians = tl.random.random_tensor((data.shape[1], 2, k))  # 2 for weight (of size 1) and bias
+    rand_gaussians = tl.random.random_tensor((tl.shape(data)[1], 2, k))  # 2 for weight (of size 1) and bias
 
     # compute linear combinations of ecdf feature using generated weights
-    features = np.stack([tl.dot(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)])
+    features = tl_stack([tl.dot(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)])
     features *= tl.sqrt(s)  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
 
     # apply non-linearity phi
     features = phi(features)
 
     # create matrix holding the pair-wise dependency coefficients
-    rdcs = tl.eye(data.shape[1])
+    rdcs = tl.eye(tl.shape(data)[1])
 
     cca = CCA(n_components=1)
 
     # compute rdcs for all pairs of features
-    for i, j in combinations(range(data.shape[1]), 2):
+    for i, j in combinations(range(tl.shape(data)[1]), 2):
         i_cca, j_cca = cca.fit_transform(features[i], features[j])
         rdcs[j][i] = rdcs[i][j] = np.corrcoef(i_cca.T, j_cca.T)[0, 1]
 

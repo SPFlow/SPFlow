@@ -2,12 +2,12 @@
 """
 from typing import Callable, List, Optional, Tuple, Union
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_isinf, tl_isfinite
 from scipy.stats import lognorm  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.tensorly.structure.general.nodes.leaf_node import LeafNode
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -182,7 +182,7 @@ class CondLogNormal(LeafNode):
             std = params["std"]
 
         # check if values for 'mean', 'std' are valid
-        if not (np.isfinite(mean) and np.isfinite(std)):
+        if not (tl_isfinite(mean) and tl_isfinite(std)):
             raise ValueError(f"Values for 'mean' and 'std' for 'CondLogNormal' must be finite, but were: {mean}, {std}")
         if std <= 0.0:
             raise ValueError(f"Value for 'std' for 'CondLogNormal' must be greater than 0.0, but was: {std}")
@@ -203,7 +203,7 @@ class CondLogNormal(LeafNode):
         """
         return lognorm(loc=0.0, scale=tl.exp(tl.tensor(mean)), s=std)
 
-    def check_support(self, data: np.ndarray, is_scope_data: bool = False) -> np.ndarray:
+    def check_support(self, data: tl.tensor, is_scope_data: bool = False) -> tl.tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Log-Normal distribution, which is:
@@ -232,18 +232,18 @@ class CondLogNormal(LeafNode):
             # select relevant data for scope
             scope_data = data[:, self.scope.query]
 
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
+        if scope_data.ndim != 2 or tl.shape(scope_data)[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
+                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {tl.shape(scope_data)}"
             )
 
-        valid = np.ones(scope_data.shape, dtype=bool)
+        valid = tl.ones(tl.shape(scope_data), dtype=bool)
 
         # nan entries (regarded as valid)
-        nan_mask = np.isnan(scope_data)
+        nan_mask = tl_isnan(scope_data)
 
         # check for infinite values
-        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
+        valid[~nan_mask] &= ~tl_isinf(scope_data[~nan_mask])
 
         # check if values are in valid range
         valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] > 0

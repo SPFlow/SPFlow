@@ -4,7 +4,7 @@ All leaf nodes in the ``base`` backend should inherit from ``LeafNode`` or a sub
 """
 from abc import ABC
 
-from spflow.base.structure.general.nodes.node import Node
+from spflow.tensorly.structure.general.nodes.node import Node
 from spflow.meta.data.scope import Scope
 
 

@@ -2,13 +2,13 @@
 """
 from typing import Iterable, List, Optional, Tuple, Union
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_isinf, tl_eigvalsh
 from scipy.stats import multivariate_normal  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
-from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.tensorly.structure.general.nodes.leaf_node import LeafNode
+from spflow.tensorly.structure.general.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -195,9 +195,9 @@ class MultivariateGaussian(LeafNode):
             mean = mean.squeeze(0)
 
         # check mean vector for nan or inf values
-        if tl.any(np.isinf(mean)):
+        if tl.any(tl_isinf(mean)):
             raise ValueError("Value of 'mean' for 'MultivariateGaussian' may not contain infinite values.")
-        if tl.any(np.isnan(mean)):
+        if tl.any(tl_isnan(mean)):
             raise ValueError("Value of 'mean' for 'MultivariateGaussian' may not contain NaN values.")
 
         # test whether or not matrix has correct shape
@@ -209,9 +209,9 @@ class MultivariateGaussian(LeafNode):
             )
 
         # check covariance matrix for nan or inf values
-        if tl.any(np.isinf(cov)):
+        if tl.any(tl_isinf(cov)):
             raise ValueError("Value of 'cov' for 'MultivariateGaussian' may not contain infinite values.")
-        if tl.any(np.isnan(cov)):
+        if tl.any(tl_isnan(cov)):
             raise ValueError("Value of 'cov' for 'MultivariateGaussian' may not contain NaN values.")
 
         # test covariance matrix for symmetry
@@ -220,7 +220,7 @@ class MultivariateGaussian(LeafNode):
 
         # test covariance matrix for positive semi-definiteness
         # NOTE: since we established in the test right before that matrix is symmetric we can use numpy's eigvalsh instead of eigvals
-        if tl.any(np.linalg.eigvalsh(cov) < 0):
+        if tl.any(tl_eigvalsh(cov) < 0):
             raise ValueError("Value of 'cov' for 'MultivariateGaussian' must be positive semi-definite.")
 
         self.mean = mean
@@ -265,19 +265,19 @@ class MultivariateGaussian(LeafNode):
             # select relevant data for scope
             scope_data = data[:, self.scope.query]
 
-        if tl.ndim(scope_data) != 2 or scope_data.shape[1] != len(self.scope.query):
+        if tl.ndim(scope_data) != 2 or tl.shape(scope_data)[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
+                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {tl.shape(scope_data)}"
             )
 
-        valid = tl.ones(scope_data.shape, dtype=bool)
+        valid = tl.ones(tl.shape(scope_data), dtype=bool)
 
         # nan entries (regarded as valid)
-        nan_mask = np.isnan(scope_data)
+        nan_mask = tl_isnan(scope_data)
 
         # check for infinite values
         # additionally check for infinite values (may return NaNs despite support)
-        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
+        valid[~nan_mask] &= ~tl_isinf(scope_data[~nan_mask])
 
         return valid
 
@@ -330,7 +330,7 @@ def marginalize(
         return Gaussian(
             Scope(marg_scope),
             node.mean[marg_scope_ids[0]],
-            np.sqrt(node.cov[marg_scope_ids[0]][marg_scope_ids[0]]),
+            tl.sqrt(node.cov[marg_scope_ids[0]][marg_scope_ids[0]]),
         )
     # entire node is marginalized over
     elif len(marg_scope) == 0:

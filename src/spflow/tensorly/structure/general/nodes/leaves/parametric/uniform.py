@@ -2,8 +2,8 @@
 """
 from typing import List, Tuple
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_isinf, tl_isfinite
 from scipy.stats import uniform  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
@@ -143,7 +143,7 @@ class Uniform(LeafNode):
             raise ValueError(
                 f"Value of 'start' for 'Uniform' must be less than value of 'end', but were: {start}, {end}."
             )
-        if not (np.isfinite(start) and np.isfinite(end)):
+        if not (tl_isfinite(start) and tl_isfinite(end)):
             raise ValueError(f"Values of 'start' and 'end' for 'Uniform' must be finite, but were: {start}, {end}.")
 
         self.start = start
@@ -192,16 +192,16 @@ class Uniform(LeafNode):
             # select relevant data for scope
             scope_data = data[:, self.scope.query]
 
-        if tl.ndim(scope_data) != 2 or scope_data.shape[1] != len(self.scope):
-            raise ValueError(f"Expected 'scope_data' to be of shape (n,{len(self.scope)}), but was: {scope_data.shape}")
+        if tl.ndim(scope_data) != 2 or tl.shape(scope_data)[1] != len(self.scope):
+            raise ValueError(f"Expected 'scope_data' to be of shape (n,{len(self.scope)}), but was: {tl.shape(scope_data)}")
 
-        valid = tl.ones(scope_data.shape, dtype=bool)
+        valid = tl.ones(tl.shape(scope_data), dtype=bool)
 
         # nan entries (regarded as valid)
-        nan_mask = np.isnan(scope_data)
+        nan_mask = tl_isnan(scope_data)
 
         # check for infinite values
-        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
+        valid[~nan_mask] &= ~tl_isinf(scope_data[~nan_mask])
 
         # check if values are in valid range
         if not self.support_outside:

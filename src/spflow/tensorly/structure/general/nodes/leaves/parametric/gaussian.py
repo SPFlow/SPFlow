@@ -2,12 +2,12 @@
 """
 from typing import List, Tuple
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_isinf, tl_isfinite
 from scipy.stats import norm  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.tensorly.structure.general.nodes.leaf_node import LeafNode
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -142,7 +142,7 @@ class Gaussian(LeafNode):
             std:
                 Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
         """
-        if not (np.isfinite(mean) and np.isfinite(std)):
+        if not (tl_isfinite(mean) and tl_isfinite(std)):
             raise ValueError(f"Values for 'mean' and 'std' for 'Gaussian' must be finite, but were: {mean}, {std}.")
         if std <= 0.0:
             raise ValueError(f"Value for 'std' for 'Gaussian' must be greater than 0.0, but was: {std}.")
@@ -187,17 +187,17 @@ class Gaussian(LeafNode):
             # select relevant data for scope
             scope_data = data[:, self.scope.query]
 
-        if tl.ndim(scope_data) != 2 or scope_data.shape[1] != len(self.scope.query):
+        if tl.ndim(scope_data) != 2 or tl.shape(scope_data)[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
+                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {tl.shape(scope_data)}"
             )
 
-        valid = tl.ones(scope_data.shape, dtype=bool)
+        valid = tl.ones(tl.shape(scope_data), dtype=bool)
 
         # nan entries (regarded as valid)
-        nan_mask = np.isnan(scope_data)
+        nan_mask = tl_isnan(scope_data)
 
         # check for infinite values
-        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
+        valid[~nan_mask] &= ~tl_isinf(scope_data[~nan_mask])
 
         return valid

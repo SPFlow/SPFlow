@@ -3,20 +3,20 @@
 from functools import partial
 from typing import Any, Callable, Dict, Optional, Union
 
-import numpy as np
 import tensorly as tl
+from ....utils.helper_functions import tl_unique
 from sklearn.cluster import KMeans
 
-from spflow.base.learning.general.nodes.leaves.parametric.gaussian import (
+from spflow.tensorly.learning.general.nodes.leaves.parametric.gaussian import (
     maximum_likelihood_estimation,
 )
-from spflow.base.structure.autoleaf import AutoLeaf
-from spflow.base.structure.module import Module
-from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode
-from spflow.base.structure.spn.nodes.product_node import ProductNode
-from spflow.base.structure.spn.nodes.sum_node import SumNode
-from spflow.base.utils.connected_components import connected_components
-from spflow.base.utils.randomized_dependency_coefficients import (
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.tensorly.structure.module import Module
+from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode
+from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
+from spflow.tensorly.structure.spn.nodes.sum_node import SumNode
+from spflow.tensorly.utils.connected_components import connected_components
+from spflow.tensorly.utils.randomized_dependency_coefficients import (
     randomized_dependency_coefficients,
 )
 from spflow.meta.data.feature_context import FeatureContext
@@ -57,7 +57,7 @@ def partition_by_rdc(
     # create adjacency matrix of features from thresholded rdcs
     adj_mat = (rdcs >= threshold).astype(int)
 
-    partition_ids = tl.zeros(data.shape[1])
+    partition_ids = tl.zeros(tl.shape(data)[1])
 
     for i, cc in enumerate(connected_components(adj_mat)):
         partition_ids[list(cc)] = i
@@ -162,11 +162,11 @@ def learn_spn(
     """
     # initialize feature context
     if feature_ctx is None:
-        feature_ctx = FeatureContext(Scope(list(range(data.shape[1]))))
+        feature_ctx = FeatureContext(Scope(list(range(tl.shape(data)[1]))))
 
     scope = feature_ctx.scope
 
-    if len(scope.query) != data.shape[1]:
+    if len(scope.query) != tl.shape(data)[1]:
         raise ValueError(f"Number of query variables in 'scope' does not match number of features in data.")
     if scope.is_conditional() and fit_params:
         raise ValueError("Option 'fit_params' is set to True, but is incompatible with a conditional scope.")
@@ -206,7 +206,7 @@ def learn_spn(
     def fit_leaf(leaf: Module, data: tl.tensor, scope: Scope):
 
         # create empty data set with data at correct leaf scope indices
-        leaf_data = np.empty((data.shape[0], max(scope.query) + 1), dtype=np.float)
+        leaf_data = tl.zeros((tl.shape(data)[0], max(scope.query) + 1), dtype=float)
         leaf_data[:, scope.query] = data[:, [scope.query.index(rv) for rv in scope.query]]
 
         # estimate leaf node parameters from data
@@ -253,7 +253,7 @@ def learn_spn(
         # compute partitions of rvs from partition id labels
         partitions = []
 
-        for partition_id in tl.sort(np.unique(partition_ids)):
+        for partition_id in tl.sort(tl_unique(partition_ids)):
             partitions.append(tl.where(partition_ids == partition_id)[0])
 
         # multiple partition (i.e., data can be partitioned)
@@ -275,7 +275,7 @@ def learn_spn(
             )
         else:
             # if not enough instances to cluster, create univariate leaf nodes (can be set to prevent overfitting too much or to reduce network size)
-            if data.shape[0] < min_instances_slice:
+            if tl.shape(data)[0] < min_instances_slice:
                 return create_partitioned_mv_leaf(scope, data, fit_params)
             # cluster data
             else:
@@ -284,7 +284,7 @@ def learn_spn(
                 # non-conditional clusters
                 if not scope.is_conditional():
                     weights = (
-                        [tl.sum(labels == cluster_id)/ data.shape[0] for cluster_id in np.unique(labels)]
+                        [tl.sum(labels == cluster_id)/ tl.shape(data)[0] for cluster_id in tl_unique(labels)]
                         if fit_params
                         else None
                     )
@@ -300,7 +300,7 @@ def learn_spn(
                                 min_features_slice=min_features_slice,
                                 min_instances_slice=min_instances_slice,
                             )
-                            for cluster_id in np.unique(labels)
+                            for cluster_id in tl_unique(labels)
                         ],
                         weights=weights,
                     )
@@ -317,6 +317,6 @@ def learn_spn(
                                 min_features_slice=min_features_slice,
                                 min_instances_slice=min_instances_slice,
                             )
-                            for cluster_id in np.unique(labels)
+                            for cluster_id in tl_unique(labels)
                         ],
                     )

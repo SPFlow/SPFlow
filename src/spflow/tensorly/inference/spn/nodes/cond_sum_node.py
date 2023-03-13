@@ -2,11 +2,10 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
 from scipy.special import logsumexp  # type: ignore
 
-from spflow.base.structure.spn.nodes.cond_sum_node import CondSumNode
+from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

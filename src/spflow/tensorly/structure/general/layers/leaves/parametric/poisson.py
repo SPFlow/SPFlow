@@ -2,12 +2,11 @@
 """
 from typing import Iterable, List, Optional, Tuple, Type, Union
 
-import numpy as np
 import tensorly as tl
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.poisson import Poisson
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.general.nodes.leaves.parametric.poisson import Poisson
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -168,7 +167,7 @@ class PoissonLayer(Module):
             raise ValueError(
                 f"Numpy array of 'l' values for 'PoissonLayer' is expected to be one-dimensional, but is {tl.ndim(l)}-dimensional."
             )
-        if l.shape[0] != self.n_out:
+        if tl.shape(l)[0] != self.n_out:
             raise ValueError(
                 f"Length of numpy array of 'l' values for 'PoissonLayer' must match number of output nodes {self.n_out}, but is {l.shape[0]}"
             )

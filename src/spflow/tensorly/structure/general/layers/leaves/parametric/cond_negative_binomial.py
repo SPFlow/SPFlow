@@ -2,14 +2,14 @@
 """
 from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_unique
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.cond_negative_binomial import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_negative_binomial import (
     CondNegativeBinomial,
 )
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -279,7 +279,7 @@ class CondNegativeBinomialLayer(Module):
 
         node_scopes = tl.tensor([s.query[0] for s in self.scopes_out])
 
-        for node_scope in np.unique(node_scopes):
+        for node_scope in tl_unique(node_scopes):
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not tl.all(n_values == n_values[0]):

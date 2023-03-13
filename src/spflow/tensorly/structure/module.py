@@ -5,9 +5,8 @@ All valid SPFlow modules in the ``base`` backend should inherit from this class 
 from abc import ABC
 from typing import List, Optional, Tuple, Union
 
-import numpy as np
 import tensorly as tl
-from ..utils.helper_functions import tl_ravel
+from ..utils.helper_functions import tl_ravel, tl_tolist
 
 from spflow.meta.structure.module import MetaModule
 
