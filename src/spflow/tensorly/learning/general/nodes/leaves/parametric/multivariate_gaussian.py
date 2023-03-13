@@ -2,14 +2,14 @@
 """
 from typing import Callable, Optional, Union
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_isclose, tl_cov, tl_eigvalsh, tl_nan_to_num
 import numpy.ma as ma
 
-from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
 )
-from spflow.base.utils.nearest_sym_pd import nearest_sym_pd
+from spflow.tensorly.utils.nearest_sym_pd import nearest_sym_pd
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -83,9 +83,9 @@ def maximum_likelihood_estimation(
     scope_data = data[:, leaf.scope.query]
 
     if weights is None:
-        weights = tl.ones(data.shape[0])
+        weights = tl.ones(tl.shape(data)[0])
 
-    if tl.ndim(weights) != 1 or weights.shape[0] != data.shape[0]:
+    if tl.ndim(weights) != 1 or tl.shape(weights)[0] != tl.shape(data)[0]:
         raise ValueError(
             "Number of specified weights for maximum-likelihood estimation does not match number of data points."
         )
@@ -98,7 +98,7 @@ def maximum_likelihood_estimation(
             raise ValueError("Encountered values outside of the support for 'MultivariateGaussian'.")
 
     # NaN entries (no information)
-    nan_mask = np.isnan(scope_data)
+    nan_mask = tl_isnan(scope_data)
 
     if tl.all(nan_mask):
         raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
@@ -122,15 +122,15 @@ def maximum_likelihood_estimation(
         )
 
     # normalize weights to sum to n_samples
-    weights /= tl.sum(weights)  / scope_data.shape[0]
+    weights /= tl.sum(weights)  / tl.shape(scope_data)[0]
 
     if nan_strategy == "ignore":
         n_total = tl.sum(weights * ~nan_mask,axis=0)
         # compute mean of available data
-        mean_est = tl.sum(weights * np.nan_to_num(scope_data, nan=0.0), axis=0) / n_total
+        mean_est = tl.sum(weights * tl_nan_to_num(scope_data), axis=0) / n_total
         # compute covariance of full samples only!
-        full_sample_mask = tl.sum(~nan_mask,axis=1) == scope_data.shape[1]
-        cov_est = np.cov(
+        full_sample_mask = tl.sum(~nan_mask,axis=1) == tl.shape(scope_data)[1]
+        cov_est = tl_cov(
             scope_data[full_sample_mask].T,
             aweights=weights[full_sample_mask].squeeze(-1),
             ddof=1 if bias_correction else 0,
@@ -139,7 +139,7 @@ def maximum_likelihood_estimation(
         n_total = tl.sum(weights,axis=0)
         # calculate mean and standard deviation from data
         mean_est = tl.sum(weights * scope_data, axis=0) / n_total
-        cov_est = np.cov(
+        cov_est = tl_cov(
             scope_data.T,
             aweights=weights.squeeze(-1),
             ddof=1 if bias_correction else 0,
@@ -149,12 +149,12 @@ def maximum_likelihood_estimation(
         cov_est = cov_est.reshape(1, 1)
 
     # edge case (if all values are the same, not enough samples or very close to each other)
-    for i in range(scope_data.shape[1]):
-        if np.isclose(cov_est[i][i], 0):
+    for i in range(tl.shape(scope_data)[1]):
+        if tl_isclose(cov_est[i][i], 0):
             cov_est[i][i] = 1e-8
 
     # sometimes numpy returns a matrix with negative eigenvalues (i.e., not a valid positive semi-definite matrix)
-    if tl.any(np.linalg.eigvalsh(cov_est) < 0):
+    if tl.any(tl_eigvalsh(cov_est) < 0):
         # compute nearest symmetric positive semidefinite matrix
         cov_est = nearest_sym_pd(cov_est)
 

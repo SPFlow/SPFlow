@@ -2,11 +2,11 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
+from ....utils.helper_functions import tl_unique
 
-from spflow.base.inference.module import log_likelihood
-from spflow.base.structure.spn.nodes.sum_node import SumNode
+from spflow.tensorly.inference.module import log_likelihood
+from spflow.tensorly.structure.spn.nodes.sum_node import SumNode
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -51,7 +51,7 @@ def sample(
     """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, tl.shape(data)[0])
 
     # compute log likelihoods of data instances (TODO: only compute for relevant instances? might clash with cashed values or cashing in general)
     child_lls = tl.concatenate(
@@ -73,11 +73,11 @@ def sample(
     # sample branch for each instance id
     # this solution is based on a trick described here: https://stackoverflow.com/questions/34187130/fast-random-weighted-selection-across-all-rows-of-a-stochastic-matrix/34190035#34190035
     cum_sampling_weights = tl.cumsum(sampling_weights,axis=1)
-    random_choices = tl.random.random_tensor(sampling_weights.shape[0], 1)
+    random_choices = tl.random.random_tensor(tl.shape(sampling_weights)[0], 1)
     branches = tl.sum((cum_sampling_weights < random_choices),axis=1)
 
     # group sampled branches
-    for branch in np.unique(branches):
+    for branch in tl_unique(branches):
         # group instances by sampled branch
         branch_instance_ids = tl.tensor(sampling_ctx.instance_ids)[branches == branch].tolist()
 

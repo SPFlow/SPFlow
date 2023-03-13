@@ -2,13 +2,13 @@
 """
 from typing import Callable, Iterable, List, Optional, Tuple, Union
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_isinf, tl_eigvalsh
 from scipy.stats import multivariate_normal  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
-from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import (
+from spflow.tensorly.structure.general.nodes.leaf_node import LeafNode
+from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )
 from spflow.meta.data.feature_context import FeatureContext
@@ -216,35 +216,35 @@ class CondMultivariateGaussian(LeafNode):
 
         # check mean vector dimensions
         if (
-            (tl.ndim(mean) == 1 and mean.shape[0] != len(self.scope.query))
-            or (tl.ndim(mean) == 2 and mean.shape[1] != len(self.scope.query))
+            (tl.ndim(mean) == 1 and tl.shape(mean)[0] != len(self.scope.query))
+            or (tl.ndim(mean) == 2 and tl.shape(mean)[1] != len(self.scope.query))
             or tl.ndim(mean) > 2
         ):
             raise ValueError(
-                f"Dimensions of 'mean' for 'CondMultivariateGaussian' should match scope size {len(self.scope.query)}, but was: {mean.shape}."
+                f"Dimensions of 'mean' for 'CondMultivariateGaussian' should match scope size {len(self.scope.query)}, but was: {tl.shape(mean)}."
             )
 
         if tl.ndim(mean) == 2:
             mean = mean.squeeze(0)
 
         # check mean vector for nan or inf values
-        if tl.any(np.isinf(mean)):
+        if tl.any(tl_isinf(mean)):
             raise ValueError("Value of 'mean' for 'CondMultivariateGaussian' may not contain infinite values.")
-        if tl.any(np.isnan(mean)):
+        if tl.any(tl_isnan(mean)):
             raise ValueError("Value of 'mean' for 'CondMultivariateGaussian' may not contain NaN values.")
 
         # test whether or not matrix has correct shape
         if tl.ndim(cov) != 2 or (
-            tl.ndim(cov) == 2 and (cov.shape[0] != len(self.scope.query) or cov.shape[1] != len(self.scope.query))
+            tl.ndim(cov) == 2 and (tl.shape(cov)[0] != len(self.scope.query) or cov.shape[1] != len(self.scope.query))
         ):
             raise ValueError(
                 f"Value of 'cov' for 'CondMultivariateGaussian' expected to be of shape ({len(self.scope.query), len(self.scope.query)}), but was: {cov.shape}."
             )
 
         # check covariance matrix for nan or inf values
-        if tl.any(np.isinf(cov)):
+        if tl.any(tl_isinf(cov)):
             raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' may not contain infinite values.")
-        if tl.any(np.isnan(cov)):
+        if tl.any(tl_isnan(cov)):
             raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' may not contain NaN values.")
 
         # test covariance matrix for symmetry
@@ -253,7 +253,7 @@ class CondMultivariateGaussian(LeafNode):
 
         # test covariance matrix for positive semi-definiteness
         # NOTE: since we established in the test right before that matrix is symmetric we can use numpy's eigvalsh instead of eigvals
-        if tl.any(np.linalg.eigvalsh(cov) < 0):
+        if tl.any(tl_eigvalsh(cov) < 0):
             raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' must be positive semi-definite.")
 
         return mean, cov
@@ -276,7 +276,7 @@ class CondMultivariateGaussian(LeafNode):
         """
         return multivariate_normal(mean=mean, cov=cov)
 
-    def check_support(self, data: tl.tensor, is_scope_data: bool = False) -> np.ndarray:
+    def check_support(self, data: tl.tensor, is_scope_data: bool = False) -> tl.tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Multivariate Gaussian distribution, which is:
@@ -305,19 +305,19 @@ class CondMultivariateGaussian(LeafNode):
             # select relevant data for scope
             scope_data = data[:, self.scope.query]
 
-        if tl.ndim(scope_data) != 2 or scope_data.shape[1] != len(self.scope.query):
+        if tl.ndim(scope_data) != 2 or tl.shape(scope_data)[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
+                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {tl.shape(scope_data)}"
             )
 
-        valid = tl.ones(scope_data.shape, dtype=bool)
+        valid = tl.ones(tl.shape(scope_data), dtype=bool)
 
         # nan entries (regarded as valid)
-        nan_mask = np.isnan(scope_data)
+        nan_mask = tl_isnan(scope_data)
 
         # check for infinite values
         # additionally check for infinite values (may return NaNs despite support)
-        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
+        valid[~nan_mask] &= ~tl_isinf(scope_data[~nan_mask])
 
         return valid
 

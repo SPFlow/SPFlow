@@ -2,10 +2,9 @@
 """
 from typing import Callable, Optional, Union
 
-import numpy as np
 import tensorly as tl
 
-from spflow.base.structure.general.nodes.leaves.parametric.uniform import Uniform
+from spflow.tensorly.structure.general.nodes.leaves.parametric.uniform import Uniform
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

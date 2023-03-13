@@ -2,10 +2,10 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan
 
-from spflow.base.structure.general.nodes.leaves.parametric.cond_log_normal import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_log_normal import (
     CondLogNormal,
 )
 from spflow.meta.dispatch.dispatch import dispatch
@@ -67,7 +67,7 @@ def log_likelihood(
 
     # create mask based on marginalized instances (NaNs)
     # keeps default value of 1 (0 in log-space)
-    marg_ids = np.isnan(data).sum(axis=-1).astype(bool)
+    marg_ids = tl_isnan(data).sum(axis=-1).astype(bool)
 
     if check_support:
         # create masked based on distribution's support

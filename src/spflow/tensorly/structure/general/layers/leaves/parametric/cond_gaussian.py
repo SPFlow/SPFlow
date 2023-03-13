@@ -2,14 +2,13 @@
 """
 from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
 
-import numpy as np
 import tensorly as tl
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -247,7 +246,7 @@ class CondGaussianLayer(Module):
             mean = tl.tensor(mean)
         if tl.ndim(mean) != 1:
             raise ValueError(
-                f"Numpy array of 'mean' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional."
+                f"Numpy array of 'mean' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {tl.ndim(mean)}-dimensional."
             )
         if mean.shape[0] != self.n_out:
             raise ValueError(
@@ -260,7 +259,7 @@ class CondGaussianLayer(Module):
             std = tl.tensor(std)
         if tl.ndim(std) != 1:
             raise ValueError(
-                f"Numpy array of 'std' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional."
+                f"Numpy array of 'std' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {tl.ndim(std)}-dimensional."
             )
         if std.shape[0] != self.n_out:
             raise ValueError(

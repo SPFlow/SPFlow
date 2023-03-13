@@ -4,8 +4,9 @@ Typical usage example:
 
     ecdf_values = empirical_cdf(data)
 """
-import numpy as np
+
 import tensorly as tl
+from ..utils.helper_functions import tl_isnan
 from scipy.stats import rankdata
 
 
@@ -26,7 +27,7 @@ def empirical_cdf(data: tl.tensor) -> tl.tensor:
     # empirical cumulative distribution function (step function that increases by 1/N at each unique data step in order)
     # here: done using scipy's 'rankdata' function (preferred over numpy's argsort due to tie-breaking)
 
-    nan_mask = np.isnan(data)
+    nan_mask = tl_isnan(data)
 
     # rank data values from min to max
     ecd = rankdata(data, axis=0, method="max").astype(float)

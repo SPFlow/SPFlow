@@ -3,13 +3,12 @@
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 
-import numpy as np
 import tensorly as tl
-from ....utils.helper_functions import tl_vstack
+from ....utils.helper_functions import tl_vstack, tl_allclose, tl_squeeze
 
-from spflow.base.structure.module import Module
-from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.sum_node import SumNode
+from spflow.tensorly.structure.module import Module
+from spflow.tensorly.structure.nested_module import NestedModule
+from spflow.tensorly.structure.spn.nodes.sum_node import SumNode
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -118,32 +117,32 @@ class SumLayer(NestedModule):
         """
         if isinstance(values, list):
             values = tl.tensor(values)
-        if values.ndim != 1 and values.ndim != 2:
+        if tl.ndim(values) != 1 and tl.ndim(values) != 2:
             raise ValueError(
                 f"Numpy array of weight values for 'SumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional."
             )
         if not tl.all(values > 0):
             raise ValueError("Weights for 'SumLayer' must be all positive.")
-        if not np.allclose(values.sum(axis=-1), 1.0):
+        if not tl_allclose(values.sum(axis=-1), 1.0):
             raise ValueError("Weights for 'SumLayer' must sum up to one in last dimension.")
-        if not (values.shape[-1] == self.n_in):
+        if not (tl.shape(values)[-1] == self.n_in):
             raise ValueError(
                 "Number of weights for 'SumLayer' in last dimension does not match total number of child outputs."
             )
 
         # same weights for all sum nodes
-        if values.ndim == 1:
+        if tl.ndim(values) == 1:
             for node in self.nodes:
-                node.weights = values.copy()
-        if values.ndim == 2:
+                node.weights = tl.copy(values)
+        if tl.ndim(values) == 2:
             # same weights for all sum nodes
-            if values.shape[0] == 1:
+            if tl.shape(values)[0] == 1:
                 for node in self.nodes:
-                    node.weights = values.squeeze(0).copy()
+                    node.weights = tl.copy(tl_squeeze(values, axis=0))
             # different weights for all sum nodes
             elif values.shape[0] == self.n_out:
                 for node, node_values in zip(self.nodes, values):
-                    node.weights = node_values.copy()
+                    node.weights = tl.copy(node_values)
             # incorrect number of specified weights
             else:
                 raise ValueError(

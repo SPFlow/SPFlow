@@ -2,12 +2,12 @@
 """
 from typing import Iterable, List, Optional, Tuple, Type, Union
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_unique
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.binomial import Binomial
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.general.nodes.leaves.parametric.binomial import Binomial
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -187,7 +187,7 @@ class BinomialLayer(Module):
             raise ValueError(
                 f"Numpy array of 'n' values for 'BinomialLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional."
             )
-        if n.shape[0] != self.n_out:
+        if tl.shape(n)[0] != self.n_out:
             raise ValueError(
                 f"Length of numpy array of 'n' values for 'BinomialLayer' must match number of output nodes {self.n_out}, but is {n.shape[0]}"
             )
@@ -200,14 +200,14 @@ class BinomialLayer(Module):
             raise ValueError(
                 f"Numpy array of 'p' values for 'BinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
             )
-        if p.shape[0] != self.n_out:
+        if tl.shape(p)[0] != self.n_out:
             raise ValueError(
                 f"Length of numpy array of 'p' values for 'BinomialLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
             )
 
         node_scopes = tl.tensor([s.query[0] for s in self.scopes_out])
 
-        for node_scope in np.unique(node_scopes):
+        for node_scope in tl_unique(node_scopes):
             # at least one such element exists
             n_values = n[node_scopes == node_scope]
             if not tl.all(n_values == n_values[0]):
@@ -317,5 +317,5 @@ def marginalize(
         new_node = Binomial(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = BinomialLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
+        new_layer = BinomialLayer(marg_scopes, *[tl.tensor(p) for p in zip(*marg_params)])
         return new_layer

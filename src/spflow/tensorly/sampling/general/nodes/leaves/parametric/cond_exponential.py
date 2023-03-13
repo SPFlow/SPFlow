@@ -2,10 +2,11 @@
 """
 from typing import Optional
 
-import numpy as np
-import tensorly as tl
 
-from spflow.base.structure.general.nodes.leaves.parametric.cond_exponential import (
+import tensorly as tl
+from ......utils.helper_functions import tl_isnan
+
+from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_exponential import (
     CondExponential,
 )
 from spflow.meta.dispatch.dispatch import dispatch
@@ -58,7 +59,7 @@ def sample(
     # retrieve value for 'l'
     l = leaf.retrieve_params(data, dispatch_ctx)
 
-    marg_ids = (np.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
+    marg_ids = (tl_isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
     instance_ids_mask = tl.zeros(data.shape[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
