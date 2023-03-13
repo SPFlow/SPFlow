@@ -2,10 +2,10 @@
 """
 from typing import Optional
 
-import numpy as np
+
 import tensorly as tl
 
-from spflow.base.structure.spn.layers.sum_layer import SumLayer
+from spflow.tensorly.structure.spn.layers.sum_layer import SumLayer
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

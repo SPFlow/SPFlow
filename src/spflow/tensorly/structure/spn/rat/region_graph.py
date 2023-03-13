@@ -3,8 +3,9 @@
 import random
 from typing import List, Optional, Set
 
-import numpy as np
 import tensorly as tl
+from ....utils.helper_functions import tl_array_split
+
 
 from spflow.meta.data.scope import Scope
 
@@ -183,7 +184,7 @@ def split(scope: Scope, depth: int, n_splits: int = 2) -> Partition:
     shuffled_rvs = scope.query.copy()
     random.shuffle(shuffled_rvs)
 
-    split_rvs = np.array_split(shuffled_rvs, n_splits)
+    split_rvs = tl_array_split(shuffled_rvs, n_splits)
 
     if any(region_rvs.size == 0 for region_rvs in split_rvs):
         raise ValueError(

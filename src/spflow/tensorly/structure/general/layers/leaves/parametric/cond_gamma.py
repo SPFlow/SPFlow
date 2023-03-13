@@ -2,12 +2,11 @@
 """
 from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
 
-import numpy as np
 import tensorly as tl
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -243,7 +242,7 @@ class CondGammaLayer(Module):
             alpha = tl.tensor(alpha)
         if tl.ndim(alpha) != 1:
             raise ValueError(
-                f"Numpy array of 'alpha' values for 'CondGammaLayer' is expected to be one-dimensional, but is {alpha.ndim}-dimensional."
+                f"Numpy array of 'alpha' values for 'CondGammaLayer' is expected to be one-dimensional, but is {tl.ndim(alpha)}-dimensional."
             )
         if alpha.shape[0] != self.n_out:
             raise ValueError(
@@ -256,7 +255,7 @@ class CondGammaLayer(Module):
             beta = tl.tensor(beta)
         if tl.ndim(beta) != 1:
             raise ValueError(
-                f"Numpy array of 'beta' values for 'CondGammaLayer' is expected to be one-dimensional, but is {beta.ndim}-dimensional."
+                f"Numpy array of 'beta' values for 'CondGammaLayer' is expected to be one-dimensional, but is {tl.ndim(beta)}-dimensional."
             )
         if beta.shape[0] != self.n_out:
             raise ValueError(

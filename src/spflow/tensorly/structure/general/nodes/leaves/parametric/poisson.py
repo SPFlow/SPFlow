@@ -2,12 +2,12 @@
 """
 from typing import List, Tuple
 
-import numpy as np
 import tensorly as tl
+from ......utils.helper_functions import tl_isnan, tl_isinf, tl_isfinite
 from scipy.stats import poisson  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.tensorly.structure.general.nodes.leaf_node import LeafNode
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -128,7 +128,7 @@ class Poisson(LeafNode):
             l:
                 Floating point value representing the rate parameter (:math:`\lambda`), expected value and variance of the Poisson distribution (must be greater than or equal to 0).
         """
-        if not np.isfinite(l):
+        if not tl_isfinite(l):
             raise ValueError(f"Value of 'l' for 'Poisson' must be finite, but was: {l}")
 
         if l < 0:
@@ -173,21 +173,21 @@ class Poisson(LeafNode):
             # select relevant data for scope
             scope_data = data[:, self.scope.query]
 
-        if tl.ndim(scope_data) != 2 or scope_data.shape[1] != len(self.scopes_out[0].query):
+        if tl.ndim(scope_data) != 2 or tl.shape(scope_data)[1] != len(self.scopes_out[0].query):
             raise ValueError(
-                f"Expected 'scope_data' to be of shape (n,{len(self.scopes_out[0].query)}), but was: {scope_data.shape}"
+                f"Expected 'scope_data' to be of shape (n,{len(self.scopes_out[0].query)}), but was: {tl.shape(scope_data)}"
             )
 
-        valid = tl.ones(scope_data.shape, dtype=bool)
+        valid = tl.ones(tl.shape(scope_data), dtype=bool)
 
         # nan entries (regarded as valid)
-        nan_mask = np.isnan(scope_data)
+        nan_mask = tl_isnan(scope_data)
 
         # check for infinite values
-        valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
+        valid[~nan_mask] &= ~tl_isinf(scope_data[~nan_mask])
 
         # check if all values are valid integers
-        valid[valid & ~nan_mask] &= np.remainder(scope_data[valid & ~nan_mask], 1) == 0
+        valid[valid & ~nan_mask] &= (scope_data[valid & ~nan_mask] % 1) == 0
 
         # check if values are in valid range
         valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] >= 0

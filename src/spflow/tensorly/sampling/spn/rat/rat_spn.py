@@ -2,10 +2,9 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
 
-from spflow.base.structure.spn.rat.rat_spn import RatSPN
+from spflow.tensorly.structure.spn.rat.rat_spn import RatSPN
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -48,7 +47,7 @@ def sample(
         Each row corresponds to a sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, tl.shape(data)[0])
 
     return sample(
         rat_spn.root_node,

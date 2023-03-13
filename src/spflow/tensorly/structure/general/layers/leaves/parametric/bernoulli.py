@@ -2,12 +2,11 @@
 """
 from typing import Iterable, List, Optional, Tuple, Union
 
-import numpy as np
 import tensorly as tl
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -178,7 +177,7 @@ class BernoulliLayer(Module):
         for node_p, node in zip(p, self.nodes):
             node.set_params(node_p)
 
-    def get_params(self) -> Tuple[np.ndarray]:
+    def get_params(self) -> Tuple[tl.tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -279,5 +278,5 @@ def marginalize(
         new_node = Bernoulli(marg_scopes[0], *marg_params[0])
         return new_node
     else:
-        new_layer = BernoulliLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
+        new_layer = BernoulliLayer(marg_scopes, *[tl.tensor(p) for p in zip(*marg_params)])
         return new_layer

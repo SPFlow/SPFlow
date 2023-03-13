@@ -2,17 +2,16 @@
 """
 from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
 
-import numpy as np
 import tensorly as tl
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )
-from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
 )
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -309,7 +308,7 @@ class CondMultivariateGaussianLayer(Module):
         for m, c, s in zip(mean, cov, self.scopes_out):
             if tl.ndim(m) != 1:
                 raise ValueError(
-                    f"All numpy arrays of 'mean' values for 'CondMultivariateGaussianLayer' are expected to be one-dimensional, but at least one is {m.ndim}-dimensional."
+                    f"All numpy arrays of 'mean' values for 'CondMultivariateGaussianLayer' are expected to be one-dimensional, but at least one is {tl.ndim(m)}-dimensional."
                 )
             if m.shape[0] != len(s.query):
                 raise ValueError(
@@ -318,7 +317,7 @@ class CondMultivariateGaussianLayer(Module):
 
             if tl.ndim(c) != 2:
                 raise ValueError(
-                    f"All numpy arrays of 'cov' values for 'CondMultivariateGaussianLayer' are expected to be two-dimensional, but at least one is {c.ndim}-dimensional."
+                    f"All numpy arrays of 'cov' values for 'CondMultivariateGaussianLayer' are expected to be two-dimensional, but at least one is {tl.ndim(c)}-dimensional."
                 )
             if c.shape[0] != len(s.query) or c.shape[1] != len(s.query):
                 raise ValueError(

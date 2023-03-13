@@ -2,10 +2,9 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
 
-from spflow.base.structure.spn.rat.rat_spn import RatSPN
+from spflow.tensorly.structure.spn.rat.rat_spn import RatSPN
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

@@ -2,11 +2,10 @@
 """
 from typing import Optional
 
-import numpy as np
 import tensorly as tl
 
-from spflow.base.sampling.module import sample
-from spflow.base.structure.general.layers.leaves.parametric.gaussian import (
+from spflow.tensorly.sampling.module import sample
+from spflow.tensorly.structure.general.layers.leaves.parametric.gaussian import (
     GaussianLayer,
 )
 from spflow.meta.data.scope import Scope

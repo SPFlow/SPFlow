@@ -6,6 +6,7 @@ Typical usage example:
 """
 import numpy as np
 import tensorly as tl
+from ..utils.helper_functions import tl_cholesky, tl_svd, tl_eigvalsh, tl_real, tl_spacing
 
 
 def nearest_sym_pd(A: tl.tensor) -> tl.tensor:
@@ -26,7 +27,7 @@ def nearest_sym_pd(A: tl.tensor) -> tl.tensor:
 
     def is_pd(A: tl.tensor) -> tl.tensor:
         try:
-            np.linalg.cholesky(A)
+            tl_cholesky(A)
             return True
         except np.linalg.LinAlgError:
             return False
@@ -35,8 +36,8 @@ def nearest_sym_pd(A: tl.tensor) -> tl.tensor:
     B = (A + A) / 2
 
     # compute symmetric polar factor of B from SVD (which is symmetric positive definite)
-    U, s, _ = np.linalg.svd(B)
-    H = np.dot(U, tl.dot(tl.diag(s), tl.transpose(U)))
+    U, s, _ = tl_svd(B)
+    H = tl.dot(U, tl.dot(tl.diag(s), tl.transpose(U)))
 
     # compute closest symmetric positive semi-definite matrix to A in Frobenius norm (see paper linked above)
     A_hat = (B + H) / 2
@@ -48,13 +49,13 @@ def nearest_sym_pd(A: tl.tensor) -> tl.tensor:
         return A_hat
 
     # else fix it
-    spacing = np.spacing(tl.norm(A_hat))
+    spacing = tl_spacing(tl.norm(A_hat))
     I = tl.eye(A.shape[0])
     k = 1
 
     while not is_pd(A_hat):
         # compute smallest real part eigenvalue
-        min_eigval = tl.min(np.real(np.linalg.eigvalsh(A_hat)))
+        min_eigval = tl.min(tl_real(tl_eigvalsh(A_hat)))
         # adjust matrix
         A_hat += I * (-min_eigval * (k**2) + spacing)
         k += 1

@@ -3,12 +3,12 @@
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 
-import numpy as np
 import tensorly as tl
+from ....utils.helper_functions import tl_split, tl_pad_edge
 
-from spflow.base.structure.module import Module
-from spflow.base.structure.nested_module import NestedModule
-from spflow.base.structure.spn.nodes.product_node import ProductNode
+from spflow.tensorly.structure.module import Module
+from spflow.tensorly.structure.nested_module import NestedModule
+from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -117,12 +117,12 @@ class HadamardLayer(NestedModule):
         self.n_in = sum(partition_sizes)
         self.nodes = []
 
-        partition_indices = np.split(list(range(self.n_in)), tl.cumsum(partition_sizes)[:-1])
+        partition_indices = tl_split(list(range(self.n_in)), tl.cumsum(partition_sizes)[:-1])
 
         # create placeholders and nodes
         for input_ids in zip(
             *[
-                np.pad(indices, (0, max_size - size), mode="edge")
+                tl_pad_edge(indices, (0, max_size - size))
                 for indices, size in zip(partition_indices, partition_sizes)
             ]
         ):
@@ -189,7 +189,7 @@ def marginalize(
         marg_partitions = []
 
         children = layer.children
-        partitions = np.split(children, tl.cumsum(layer.modules_per_partition[:-1]))
+        partitions = tl_split(children, tl.cumsum(layer.modules_per_partition[:-1]))
 
         for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
             partition_children = partition_children.tolist()
