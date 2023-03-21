@@ -66,7 +66,7 @@ def log_likelihood(
 
     # create mask based on marginalized instances (NaNs)
     # keeps default value of 1 (0 in log-space)
-    marg_ids = tl_isnan(data).sum(axis=-1).astype(bool)
+    marg_ids = tl.tensor(tl.sum(tl_isnan(data),axis=-1), dtype=bool)
 
     if check_support:
         # create masked based on distribution's support

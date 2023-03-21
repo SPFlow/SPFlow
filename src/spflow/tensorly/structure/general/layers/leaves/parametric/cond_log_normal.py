@@ -273,7 +273,7 @@ class CondLogNormalLayer(Module):
     def dist(
         self,
         mean: tl.tensor,
-        std: tl.tensors,
+        std: tl.tensor,
         node_ids: Optional[List[int]] = None,
     ) -> List[rv_frozen]:
         r"""Returns the SciPy distributions represented by the leaf layer.

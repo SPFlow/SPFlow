@@ -30,7 +30,7 @@ def empirical_cdf(data: tl.tensor) -> tl.tensor:
     nan_mask = tl_isnan(data)
 
     # rank data values from min to max
-    ecd = rankdata(data, axis=0, method="max").astype(float)
+    ecd = tl.tensor(rankdata(data, axis=0, method="max"), dtype=float)
 
     # set nan values to 0
     ecd[nan_mask] = 0
