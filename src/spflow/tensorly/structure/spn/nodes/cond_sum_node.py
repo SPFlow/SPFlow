@@ -83,7 +83,7 @@ class CondSumNode(Node):
         """
         self.cond_f = cond_f
 
-    def retrieve_params(self, data: tl.tensor, dispatch_ctx: DispatchContext) -> tl.tensor:
+    def retrieve_params(self, data, dispatch_ctx: DispatchContext):
         """Retrieves the conditional weights of the sum node.
 
         First, checks if conditional weights (``weights``) are passed as an additional argument in the dispatch context.

@@ -63,7 +63,7 @@ def sample(
     instance_ids_mask = tl.zeros(tl.shape(data)[0])
     instance_ids_mask[sampling_ctx.instance_ids] = 1
 
-    sampling_ids = marg_ids & instance_ids_mask.astype(bool)
+    sampling_ids = marg_ids & tl.tensor(instance_ids_mask, dtype=bool)
 
     data[sampling_ids, leaf.scope.query] = leaf.dist(mean=mean, std=std).rvs(size=tl.sum(sampling_ids))
 

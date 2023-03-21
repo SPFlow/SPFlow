@@ -55,7 +55,7 @@ def partition_by_rdc(
     rdcs = randomized_dependency_coefficients(partitioning_data)
 
     # create adjacency matrix of features from thresholded rdcs
-    adj_mat = (rdcs >= threshold).astype(int)
+    adj_mat = tl.tensor((rdcs >= threshold), dtype=int)
 
     partition_ids = tl.zeros(tl.shape(data)[1])
 

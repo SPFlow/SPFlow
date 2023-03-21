@@ -3,7 +3,6 @@
 import random
 from typing import List, Optional, Set
 
-import tensorly as tl
 from ....utils.helper_functions import tl_array_split
 
 
