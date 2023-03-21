@@ -79,7 +79,7 @@ def log_likelihood(
 
     if check_support:
         # create masked based on distribution's support
-        valid_ids = node.check_support(data[~n_marg.astype(bool)], is_scope_data=True)
+        valid_ids = node.check_support(data[~tl.tensor(n_marg, dtype=bool)], is_scope_data=True)
 
         if not valid_ids.all():
             raise ValueError(
@@ -92,6 +92,6 @@ def log_likelihood(
         raise ValueError("Encountered 'None' value for MultivariateGaussian covariance matrix during inference.")
 
     # compute probabilities for all non-marginalized instances
-    probs[~n_marg.astype(bool), 0] = node.dist(mean=mean, cov=cov).logpdf(x=data[~n_marg.astype(bool)])
+    probs[~tl.tensor(n_marg, dtype=bool), 0] = node.dist(mean=mean, cov=cov).logpdf(x=data[~tl.tensor(n_marg, dtype=bool)])
 
     return probs

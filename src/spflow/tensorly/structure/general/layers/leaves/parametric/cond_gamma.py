@@ -289,7 +289,7 @@ class CondGammaLayer(Module):
 
         return [self.nodes[i].dist(alpha[i], beta[i]) for i in node_ids]
 
-    def check_support(self, data: tl.tensor, node_ids: Optional[List[int]] = None) -> tl.tensors:
+    def check_support(self, data: tl.tensor, node_ids: Optional[List[int]] = None) -> tl.tensor:
         r"""Checks if specified data is in support of the represented distributions.
 
         Determines whether or note instances are part of the supports of the Gamma distributions, which are:

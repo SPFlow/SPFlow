@@ -14,7 +14,6 @@ from plum import dispatch as plum_dispatch  # type: ignore
 from spflow.meta.dispatch.memoize import memoize as memoize_decorator
 from spflow.meta.dispatch.substitutable import substitutable as substitutable_decorator
 
-
 def dispatch(*args, memoize=False, substitutable=True) -> Callable:
     """Decorator that wraps a function and dispatches it.
 
