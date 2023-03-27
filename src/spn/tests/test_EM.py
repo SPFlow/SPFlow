@@ -7,7 +7,7 @@ from spn.algorithms.LearningWrappers import learn_parametric
 from spn.structure.Base import Context
 from spn.structure.StatisticalTypes import MetaType
 import numpy as np
-from sklearn.datasets.samples_generator import make_blobs
+from sklearn.datasets import make_blobs
 
 from spn.structure.leaves.parametric.Parametric import Gaussian
 
