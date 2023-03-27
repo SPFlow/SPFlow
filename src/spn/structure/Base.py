@@ -154,7 +154,7 @@ class Context:
             else:
                 raise Exception("Unkown MetaType " + str(feature_meta_type))
 
-        self.domains = np.asanyarray(domain)
+        self.domains = np.asanyarray(domain, dtype=object)
 
         return self
 
