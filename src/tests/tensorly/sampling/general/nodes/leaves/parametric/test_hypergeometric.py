@@ -6,7 +6,7 @@ import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_isclose
 
 from spflow.tensorly.sampling import sample
-from spflow.tensorly.structure.spn import Hypergeometric
+from spflow.tensorly.structure.general.nodes.leaves import Hypergeometric
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 

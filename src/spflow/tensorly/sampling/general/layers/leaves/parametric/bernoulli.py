@@ -1,8 +1,9 @@
 """Contains sampling methods for ``BernoulliLayer`` leaves for SPFlow in the ``base`` backend.
 """
-from typing import Optional
+from typing import Optional, Union
 
 import tensorly as tl
+from spflow.tensorly.utils.helper_functions import T
 
 from spflow.tensorly.sampling.module import sample
 from spflow.tensorly.structure.general.layers.leaves.parametric.bernoulli import (
@@ -19,15 +20,14 @@ from spflow.meta.dispatch.sampling_context import (
     init_default_sampling_context,
 )
 
-
 @dispatch  # type: ignore
 def sample(
     layer: BernoulliLayer,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
-) -> tl.tensor:
+) -> T:
     r"""Samples from ``BernoulliLayer`` leaves in the ``base`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.

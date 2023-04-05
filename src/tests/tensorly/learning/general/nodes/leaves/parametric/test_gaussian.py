@@ -5,8 +5,8 @@ import numpy as np
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_isclose, tl_vstack, tl_isnan
 
-from spflow.base.learning import maximum_likelihood_estimation
-from spflow.base.structure.spn import Gaussian
+from spflow.tensorly.learning import maximum_likelihood_estimation
+from spflow.tensorly.structure.spn import Gaussian
 from spflow.meta.data import Scope
 
 
@@ -180,7 +180,7 @@ class TestNode(unittest.TestCase):
 
         leaf = Gaussian(Scope([0]))
 
-        data = tl_vstack(
+        data = np.vstack(
             [
                 np.random.normal(1.7, 0.8, size=(10000, 1)),
                 np.random.normal(0.5, 1.4, size=(10000, 1)),

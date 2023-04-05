@@ -202,7 +202,7 @@ class MultivariateGaussian(LeafNode):
 
         # test whether or not matrix has correct shape
         if tl.ndim(cov) != 2 or (
-            tl.nimd(cov) == 2 and (cov.shape[0] != len(self.scope.query) or cov.shape[1] != len(self.scope.query))
+            tl.ndim(cov) == 2 and (cov.shape[0] != len(self.scope.query) or cov.shape[1] != len(self.scope.query))
         ):
             raise ValueError(
                 f"Value of 'cov' for 'MultivariateGaussian' expected to be of shape ({len(self.scope.query), len(self.scope.query)}), but was: {cov.shape}."

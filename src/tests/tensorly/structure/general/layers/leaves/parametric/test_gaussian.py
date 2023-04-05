@@ -2,8 +2,11 @@ import unittest
 
 import tensorly as tl
 
-from spflow.base.structure import AutoLeaf
-from spflow.base.structure.spn import Gaussian, GaussianLayer, marginalize
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.spn import marginalize
+from spflow.tensorly.structure.general.nodes.leaves import Gaussian
+from spflow.tensorly.structure.general.layers.leaves import GaussianLayer
+from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
@@ -330,8 +333,8 @@ class TestLayer(unittest.TestCase):
         mean, std, *others = layer.get_params()
 
         self.assertTrue(len(others) == 0)
-        self.assertTrue(tl.allclose(mean, tl.tensor([-0.73, 0.29])))
-        self.assertTrue(tl.allclose(std, tl.tensor([1.3, 0.92])))
+        self.assertTrue(tl_allclose(mean, tl.tensor([-0.73, 0.29])))
+        self.assertTrue(tl_allclose(std, tl.tensor([1.3, 0.92])))
 
 
 if __name__ == "__main__":

@@ -2,13 +2,13 @@ import unittest
 
 import tensorly as tl
 
-from spflow.base.inference import log_likelihood
-from spflow.base.structure.spn import (
-    Exponential,
-    ExponentialLayer,
+from spflow.tensorly.inference import log_likelihood
+from spflow.tensorly.structure.spn import (
     ProductNode,
     SumNode,
 )
+from spflow.tensorly.structure.general.nodes.leaves import Exponential
+from spflow.tensorly.structure.general.layers.leaves import ExponentialLayer
 from spflow.meta.data import Scope
 
 

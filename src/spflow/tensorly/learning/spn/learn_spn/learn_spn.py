@@ -4,7 +4,7 @@ from functools import partial
 from typing import Any, Callable, Dict, Optional, Union
 
 import tensorly as tl
-from ....utils.helper_functions import tl_unique
+from spflow.tensorly.utils.helper_functions import tl_unique
 from sklearn.cluster import KMeans
 
 from spflow.tensorly.learning.general.nodes.leaves.parametric.gaussian import (
@@ -94,7 +94,7 @@ def cluster_by_kmeans(
         clustering_data = data
 
     # compute k-Means clusters
-    if(tl.get_backend=="numpy"):
+    if(tl.get_backend()=="numpy"):
         data_labels = KMeans(n_clusters=n_clusters).fit_predict(clustering_data)
     else:
         raise NotImplementedError("KMeans without numpy not yet implemented")

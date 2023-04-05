@@ -16,8 +16,8 @@ from spflow.tensorly.utils.empirical_cdf import empirical_cdf
 
 
 def randomized_dependency_coefficients(
-    data: tl.tensor, k: int = 20, s: float = 1 / 6, phi: Callable = tl.sin
-) -> tl.tensor:
+    data, k: int = 20, s: float = 1 / 6, phi: Callable = tl.sin
+):
     """Computes the randomized dependency coefficients (RDCs) for a given data set.
 
     Returns the randomized dependency coefficients (RDCs) computed from a specified data set, as described in (Lopez-Paz et al., 2013): "The Randomized Dependence Coefficient"
@@ -50,13 +50,13 @@ def randomized_dependency_coefficients(
     ecdf = empirical_cdf(data)
 
     # bring ecdf values into correct shape and pad with ones (for biases)
-    ecdf_features = tl_stack([ecdf.T, tl.ones(ecdf.T.shape)], axis=-1)
+    ecdf_features = tl.stack([ecdf.T, tl.ones(ecdf.T.shape)], axis=-1)
 
     # compute random weights (and biases) generated from normal distribution
     rand_gaussians = tl.random.random_tensor((tl.shape(data)[1], 2, k))  # 2 for weight (of size 1) and bias
 
     # compute linear combinations of ecdf feature using generated weights
-    features = tl_stack([tl.dot(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)])
+    features = tl.stack([tl.dot(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)])
     features *= tl.sqrt(s)  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
 
     # apply non-linearity phi

@@ -6,7 +6,7 @@ import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_repeat, tl_cov, tl_allclose, tl_full, tl_ix_, tl_inv
 
 from spflow.tensorly.sampling import sample
-from spflow.tensorly.structure.spn import MultivariateGaussian
+from spflow.tensorly.structure.general.nodes.leaves import MultivariateGaussian
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 

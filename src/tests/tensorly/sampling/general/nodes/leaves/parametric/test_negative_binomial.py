@@ -5,8 +5,8 @@ import numpy as np
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_isnan, tl_isclose
 
-from spflow.base.sampling import sample
-from spflow.base.structure.spn import NegativeBinomial
+from spflow.tensorly.sampling import sample
+from spflow.tensorly.structure.general.nodes.leaves import NegativeBinomial
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 

@@ -3,8 +3,10 @@ import unittest
 import tensorly as tl
 
 from spflow.tensorly.inference import log_likelihood
-from spflow.tensorly.structure.spn import Gamma, GammaLayer, ProductNode, SumNode
+from spflow.tensorly.structure.spn import ProductNode, SumNode
 from spflow.meta.data import Scope
+from spflow.tensorly.structure.general.nodes.leaves import Gamma
+from spflow.tensorly.structure.general.layers.leaves import GammaLayer
 
 
 class TestNode(unittest.TestCase):

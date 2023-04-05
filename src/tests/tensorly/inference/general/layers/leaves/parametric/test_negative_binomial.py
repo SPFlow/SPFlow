@@ -4,12 +4,12 @@ import tensorly as tl
 
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.structure.spn import (
-    NegativeBinomial,
-    NegativeBinomialLayer,
     ProductNode,
     SumNode,
 )
 from spflow.meta.data import Scope
+from spflow.tensorly.structure.general.nodes.leaves import NegativeBinomial
+from spflow.tensorly.structure.general.layers.leaves import NegativeBinomialLayer
 
 
 class TestNode(unittest.TestCase):

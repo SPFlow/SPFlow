@@ -5,6 +5,9 @@ from spflow.tensorly.utils.helper_functions import tl_unsqueeze
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.spn import Binomial, BinomialLayer, marginalize
+from spflow.tensorly.structure.general.nodes.leaves import Binomial
+from spflow.tensorly.structure.general.layers.leaves import BinomialLayer
+from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
@@ -359,8 +362,8 @@ class TestLayer(unittest.TestCase):
         n, p, *others = l.get_params()
 
         self.assertTrue(len(others) == 0)
-        self.assertTrue(tl.allclose(n, tl.tensor([2, 2])))
-        self.assertTrue(tl.allclose(p, tl.tensor([0.73, 0.29])))
+        self.assertTrue(tl_allclose(n, tl.tensor([2, 2])))
+        self.assertTrue(tl_allclose(p, tl.tensor([0.73, 0.29])))
 
 
 if __name__ == "__main__":

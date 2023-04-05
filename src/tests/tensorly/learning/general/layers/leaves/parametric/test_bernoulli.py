@@ -6,7 +6,7 @@ import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_allclose, tl_vstack
 
 from spflow.tensorly.learning import maximum_likelihood_estimation
-from spflow.tensorly.structure.spn import BernoulliLayer
+from spflow.tensorly.structure.general.layers.leaves import BernoulliLayer
 from spflow.meta.data import Scope
 
 
@@ -38,13 +38,13 @@ class TestNode(unittest.TestCase):
 
         data = np.hstack(
             [
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.binomial(n=1, p=0.8, size=(10000, 1)),
                         np.random.binomial(n=1, p=0.2, size=(10000, 1)),
                     ]
                 ),
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.binomial(n=1, p=0.3, size=(10000, 1)),
                         np.random.binomial(n=1, p=0.7, size=(10000, 1)),

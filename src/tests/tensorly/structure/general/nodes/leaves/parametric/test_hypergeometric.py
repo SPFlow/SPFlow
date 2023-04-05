@@ -3,7 +3,8 @@ import unittest
 import tensorly as tl
 
 from spflow.tensorly.structure import AutoLeaf
-from spflow.tensorly.structure.spn import Hypergeometric, marginalize
+from spflow.tensorly.structure.spn import marginalize
+from spflow.tensorly.structure.general.nodes.leaves import Hypergeometric
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 

@@ -6,7 +6,6 @@ from spflow.tensorly.utils.helper_functions import tl_allclose
 
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.structure.spn import (
-    Gaussian,
     HadamardLayer,
     PartitionLayer,
     ProductLayer,
@@ -14,6 +13,7 @@ from spflow.tensorly.structure.spn import (
     SumLayer,
     SumNode,
 )
+from spflow.tensorly.structure.general.nodes.leaves import Gaussian
 from spflow.meta.data import Scope
 
 

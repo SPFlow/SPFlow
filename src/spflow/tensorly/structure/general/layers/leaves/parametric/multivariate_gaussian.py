@@ -4,6 +4,7 @@ from typing import Iterable, List, Optional, Tuple, Type, Union
 
 import tensorly as tl
 from scipy.stats.distributions import rv_frozen  # type: ignore
+from spflow.tensorly.utils.helper_functions import tl_isinstance
 
 from spflow.tensorly.structure.general.nodes.leaves.parametric.gaussian import Gaussian
 from spflow.tensorly.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
@@ -216,8 +217,8 @@ class MultivariateGaussianLayer(Module):
                 mean = [tl.tensor(mean) for _ in range(self.n_out)]
             # can also be a list of different means
             else:
-                mean = [m if isinstance(m, tl.tensor) else tl.tensor(m) for m in mean]
-        elif isinstance(mean, tl.tensor):
+                mean = [m if tl_isinstance(m) else tl.tensor(m) for m in mean]
+        elif tl_isinstance(mean):
             # can be a one-dimensional numpy array specifying single mean (broadcast to all nodes)
             if tl.ndim(mean) == 1:
                 mean = [mean for _ in range(self.n_out)]
@@ -233,8 +234,8 @@ class MultivariateGaussianLayer(Module):
                 cov = [tl.tensor(cov) for _ in range(self.n_out)]
             # can also be a list of different covs
             else:
-                cov = [c if isinstance(c, tl.tensor) else tl.tensor(c) for c in cov]
-        elif isinstance(cov, tl.tensor):
+                cov = [c if tl_isinstance(c) else tl.tensor(c) for c in cov]
+        elif tl_isinstance(cov):
             # can be a two-dimensional numpy array specifying single cov (broadcast to all nodes)
             if tl.ndim(cov) == 2:
                 cov = [cov for _ in range(self.n_out)]

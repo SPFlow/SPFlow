@@ -143,7 +143,7 @@ class TestNode(unittest.TestCase):
 
         leaf = Gamma(Scope([0]))
 
-        data = tl_vstack(
+        data = np.vstack(
             [
                 np.random.gamma(shape=1.7, scale=1.0 / 0.8, size=(10000, 1)),
                 np.random.gamma(shape=0.5, scale=1.0 / 1.4, size=(10000, 1)),

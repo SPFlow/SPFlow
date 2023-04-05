@@ -2,8 +2,11 @@ import unittest
 
 import tensorly as tl
 
-from spflow.base.structure import AutoLeaf
-from spflow.base.structure.spn import Uniform, UniformLayer, marginalize
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.spn import marginalize
+from spflow.tensorly.structure.general.nodes.leaves import Uniform
+from spflow.tensorly.structure.general.layers.leaves import UniformLayer
+from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
@@ -321,9 +324,9 @@ class TestLayer(unittest.TestCase):
         start, end, support_outside, *others = layer.get_params()
 
         self.assertTrue(len(others) == 0)
-        self.assertTrue(tl.allclose(start, tl.tensor([-0.73, 0.29])))
-        self.assertTrue(tl.allclose(end, tl.tensor([0.5, 1.3])))
-        self.assertTrue(tl.allclose(support_outside, tl.tensor([True, False])))
+        self.assertTrue(tl_allclose(start, tl.tensor([-0.73, 0.29])))
+        self.assertTrue(tl_allclose(end, tl.tensor([0.5, 1.3])))
+        self.assertTrue(tl_allclose(support_outside, tl.tensor([True, False])))
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ from ......utils.helper_functions import tl_isnan, tl_isinf, tl_isfinite
 from scipy.stats import geom  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaf_node import LeafNode
+from spflow.tensorly.structure.general.nodes.leaf_node import LeafNode
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
