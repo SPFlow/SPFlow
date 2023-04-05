@@ -1,8 +1,9 @@
 """Contains inference methods for SPN-like sum nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional
+from typing import Optional, Union
 
 import tensorly as tl
+from spflow.tensorly.utils.helper_functions import T
 from scipy.special import logsumexp  # type: ignore
 
 from spflow.tensorly.structure.spn.nodes.sum_node import SumNode
@@ -16,10 +17,10 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
     sum_node: SumNode,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> tl.tensor:
+) -> T:
     """Computes log-likelihoods for SPN-like sum nodes in the ``base`` backend given input data.
 
     Log-likelihood for sum node is the logarithm of the sum of weighted exponentials (LogSumExp) of its input likelihoods (weighted sum in linear space).

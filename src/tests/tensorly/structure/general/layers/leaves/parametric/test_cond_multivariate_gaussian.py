@@ -4,11 +4,11 @@ import tensorly as tl
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.spn import (
-    CondGaussian,
-    CondMultivariateGaussian,
-    CondMultivariateGaussianLayer,
     marginalize,
 )
+from spflow.tensorly.structure.general.nodes.leaves import CondGaussian
+from spflow.tensorly.structure.general.nodes.leaves import CondMultivariateGaussian
+from spflow.tensorly.structure.general.layers.leaves import CondMultivariateGaussianLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
 

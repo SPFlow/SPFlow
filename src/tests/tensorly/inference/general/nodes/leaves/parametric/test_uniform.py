@@ -5,8 +5,8 @@ import numpy as np
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_allclose
 
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import Uniform
+from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.tensorly.structure.spn import Uniform
 from spflow.meta.data import Scope
 
 

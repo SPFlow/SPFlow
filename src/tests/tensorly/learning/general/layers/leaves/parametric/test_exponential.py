@@ -38,13 +38,13 @@ class TestNode(unittest.TestCase):
 
         data = np.hstack(
             [
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.exponential(scale=1.0 / 1.8, size=(10000, 1)),
                         np.random.exponential(scale=1.0 / 0.2, size=(10000, 1)),
                     ]
                 ),
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.exponential(scale=1.0 / 0.3, size=(10000, 1)),
                         np.random.exponential(scale=1.0 / 1.7, size=(10000, 1)),

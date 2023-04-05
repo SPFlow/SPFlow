@@ -5,7 +5,8 @@ import numpy as np
 import tensorly as tl
 
 from spflow.tensorly.structure import AutoLeaf
-from spflow.tensorly.structure.spn import LogNormal, marginalize
+from spflow.tensorly.structure.spn import marginalize
+from spflow.tensorly.structure.general.nodes.leaves import LogNormal
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 

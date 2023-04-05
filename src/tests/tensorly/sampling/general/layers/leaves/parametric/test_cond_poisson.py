@@ -8,11 +8,11 @@ from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.sampling import sample
 from spflow.tensorly.structure.spn import (
-    CondPoisson,
-    CondPoissonLayer,
     ProductNode,
     SumNode,
 )
+from spflow.tensorly.structure.general.nodes.leaves import CondPoisson
+from spflow.tensorly.structure.general.layers.leaves import CondPoissonLayer
 from spflow.meta.data import Scope
 
 

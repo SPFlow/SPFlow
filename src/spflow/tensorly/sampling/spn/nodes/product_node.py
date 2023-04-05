@@ -1,8 +1,9 @@
 """Contains sampling methods for SPN-like product nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional
+from typing import Optional, TypeVar, Union
 
 import tensorly as tl
+from spflow.tensorly.utils.helper_functions import T
 
 from spflow.tensorly.sampling.module import sample
 from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
@@ -16,15 +17,14 @@ from spflow.meta.dispatch.sampling_context import (
     init_default_sampling_context,
 )
 
-
 @dispatch  # type: ignore
 def sample(
     node: ProductNode,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
-) -> tl.tensor:
+) -> T:
     """Samples from SPN-like product nodes in the ``base`` backend given potential evidence.
 
     Recursively samples from each input.

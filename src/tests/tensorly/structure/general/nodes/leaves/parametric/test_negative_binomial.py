@@ -4,7 +4,8 @@ import numpy as np
 import tensorly as tl
 
 from spflow.tensorly.structure import AutoLeaf
-from spflow.tensorly.structure.spn import NegativeBinomial, marginalize
+from spflow.tensorly.structure.spn import marginalize
+from spflow.tensorly.structure.general.nodes.leaves import NegativeBinomial
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 

@@ -4,11 +4,11 @@ import tensorly as tl
 
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.structure.spn import (
-    Hypergeometric,
-    HypergeometricLayer,
     ProductNode,
     SumNode,
 )
+from spflow.tensorly.structure.general.nodes.leaves import Hypergeometric
+from spflow.tensorly.structure.general.layers.leaves import HypergeometricLayer
 from spflow.meta.data import Scope
 
 

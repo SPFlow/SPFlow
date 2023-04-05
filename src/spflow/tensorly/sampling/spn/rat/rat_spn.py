@@ -4,6 +4,8 @@ from typing import Optional
 
 import tensorly as tl
 
+from spflow.tensorly.utils.helper_functions import T
+
 from spflow.tensorly.structure.spn.rat.rat_spn import RatSPN
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -19,11 +21,11 @@ from spflow.meta.dispatch.sampling_context import (
 @dispatch  # type: ignore
 def sample(
     rat_spn: RatSPN,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
-) -> tl.tensor:
+) -> T:
     r"""Samples from RAT-SPNs in the ``base`` backend given potential evidence.
 
     Missing values (i.e., NaN) are filled with sampled values.

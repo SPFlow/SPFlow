@@ -39,13 +39,13 @@ class TestNode(unittest.TestCase):
 
         data = np.hstack(
             [
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.gamma(shape=1.7, scale=1.0 / 0.8, size=(10000, 1)),
                         np.random.gamma(shape=0.5, scale=1.0 / 1.4, size=(10000, 1)),
                     ]
                 ),
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.gamma(shape=0.9, scale=1.0 / 0.3, size=(10000, 1)),
                         np.random.gamma(shape=1.3, scale=1.0 / 1.7, size=(10000, 1)),

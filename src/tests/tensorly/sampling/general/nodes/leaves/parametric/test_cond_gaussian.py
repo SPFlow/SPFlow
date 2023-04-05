@@ -6,7 +6,7 @@ import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_isnan
 
 from spflow.tensorly.sampling import sample
-from spflow.tensorly.structure.spn import CondGaussian
+from spflow.tensorly.structure.general.nodes.leaves import CondGaussian
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 
@@ -20,7 +20,7 @@ class TestCondGaussian(unittest.TestCase):
 
         gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 0.0005})
 
-        data = tl.tensor([[tl.tensor], [tl.tensor], [tl.tensor]])
+        data = tl.tensor([[tl.nan], [tl.nan], [tl.nan]])
 
         samples = sample(gaussian, data, sampling_ctx=SamplingContext([0, 2]))
 

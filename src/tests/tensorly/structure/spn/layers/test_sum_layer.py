@@ -41,7 +41,7 @@ class TestLayer(unittest.TestCase):
             self.assertTrue(tl.all(node.weights == weights))
 
         # one dimensional weight array
-        l = SumLayer(n_nodes=3, children=input_nodes, weights=tl_squeeze(weights.squeeze,0))
+        l = SumLayer(n_nodes=3, children=input_nodes, weights=tl_squeeze(weights,0))
 
         for node in l.nodes:
             self.assertTrue(tl.all(node.weights == weights))

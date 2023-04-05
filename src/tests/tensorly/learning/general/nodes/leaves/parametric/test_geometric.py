@@ -158,7 +158,7 @@ class TestNode(unittest.TestCase):
 
         leaf = Geometric(Scope([0]))
 
-        data = tl_vstack(
+        data = np.vstack(
             [
                 np.random.geometric(0.8, size=(10000, 1)),
                 np.random.geometric(0.2, size=(10000, 1)),

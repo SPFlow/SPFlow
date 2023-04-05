@@ -3,7 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
-from ..utils.helper_functions import tl_unique
+from spflow.tensorly.utils.helper_functions import tl_unique, T
 
 from spflow.tensorly.structure.nested_module import NestedModule
 from spflow.meta.dispatch.dispatch import dispatch
@@ -20,11 +20,11 @@ from spflow.meta.dispatch.sampling_context import (
 @dispatch  # type: ignore
 def sample(
     placeholder: NestedModule.Placeholder,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
-) -> tl.tensor:
+) -> T:
     r"""Samples from a placeholder modules in the ``base`` with potential evidence.
 
     Samples from the actual inputs represented by the placeholder module.
