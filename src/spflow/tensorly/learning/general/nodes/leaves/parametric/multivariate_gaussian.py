@@ -3,7 +3,7 @@
 from typing import Callable, Optional, Union
 
 import tensorly as tl
-from ......utils.helper_functions import tl_isnan, tl_isclose, tl_cov, tl_eigvalsh, tl_nan_to_num
+from spflow.tensorly.utils.helper_functions import tl_isnan, tl_isclose, tl_cov, tl_eigvalsh, tl_nan_to_num, T
 import numpy.ma as ma
 
 from spflow.tensorly.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
@@ -20,8 +20,8 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def maximum_likelihood_estimation(
     leaf: MultivariateGaussian,
-    data: tl.tensor,
-    weights: Optional[tl.tensor] = None,
+    data: T,
+    weights: Optional[T] = None,
     bias_correction: bool = True,
     nan_strategy: Optional[Union[str, Callable]] = None,
     check_support: bool = True,

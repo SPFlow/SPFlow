@@ -30,7 +30,7 @@ class TestNode(unittest.TestCase):
         # perform MLE
         maximum_likelihood_estimation(layer, data)
 
-        self.assertTrue(tl.allclose(layer.p, tl.tensor([0.3, 0.7]), atol=1e-2, rtol=1e-2))
+        self.assertTrue(tl_allclose(layer.p, tl.tensor([0.3, 0.7]), atol=1e-2, rtol=1e-2))
 
     def test_weighted_mle(self):
 
@@ -38,13 +38,13 @@ class TestNode(unittest.TestCase):
 
         data = np.hstack(
             [
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.negative_binomial(n=3, p=0.8, size=(10000, 1)),
                         np.random.negative_binomial(n=3, p=0.2, size=(10000, 1)),
                     ]
                 ),
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.negative_binomial(n=5, p=0.3, size=(10000, 1)),
                         np.random.negative_binomial(n=5, p=0.7, size=(10000, 1)),

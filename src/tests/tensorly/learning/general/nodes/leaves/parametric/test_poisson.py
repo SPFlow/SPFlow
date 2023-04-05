@@ -156,7 +156,7 @@ class TestNode(unittest.TestCase):
 
         leaf = Poisson(Scope([0]))
 
-        data = tl_vstack(
+        data = np.vstack(
             [
                 np.random.poisson(1.7, size=(10000, 1)),
                 np.random.poisson(0.5, size=(10000, 1)),

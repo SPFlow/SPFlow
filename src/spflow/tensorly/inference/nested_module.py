@@ -3,7 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
-
+from spflow.tensorly.utils.helper_functions import T
 from spflow.tensorly.structure.nested_module import NestedModule
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import DispatchContext
@@ -12,10 +12,10 @@ from spflow.meta.dispatch.dispatch_context import DispatchContext
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
     nesting_module: NestedModule.Placeholder,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> tl.tensor:
+) -> T:
     """Raises ``LookupError`` for placeholder-modules in the ``base`` backend.
 
     The log-likelihoods for placeholder-modules should be set in the dispatch context cache by the host module.

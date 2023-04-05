@@ -38,13 +38,13 @@ class TestNode(unittest.TestCase):
 
         data = np.hstack(
             [
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.binomial(n=3, p=0.8, size=(10000, 1)),
                         np.random.binomial(n=3, p=0.2, size=(10000, 1)),
                     ]
                 ),
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.binomial(n=5, p=0.3, size=(10000, 1)),
                         np.random.binomial(n=5, p=0.7, size=(10000, 1)),
@@ -57,7 +57,7 @@ class TestNode(unittest.TestCase):
 
         maximum_likelihood_estimation(leaf, data, weights)
 
-        self.assertTrue(np.all(leaf.n == tl.tensor([3, 5])))
+        self.assertTrue(tl.all(leaf.n == tl.tensor([3, 5])))
         self.assertTrue(tl_allclose(leaf.p, tl.tensor([0.2, 0.7]), atol=1e-3, rtol=1e-2))
 
 

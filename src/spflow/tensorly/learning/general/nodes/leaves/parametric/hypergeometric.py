@@ -3,7 +3,7 @@
 from typing import Callable, Optional, Union
 
 import tensorly as tl
-
+from spflow.tensorly.utils.helper_functions import T
 from spflow.tensorly.structure.general.nodes.leaves.parametric.hypergeometric import (
     Hypergeometric,
 )
@@ -17,8 +17,8 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def maximum_likelihood_estimation(
     leaf: Hypergeometric,
-    data: tl.tensor,
-    weights: Optional[tl.tensor] = None,
+    data: T,
+    weights: Optional[T] = None,
     bias_correction: bool = True,
     nan_strategy: Optional[Union[str, Callable]] = None,
     check_support: bool = True,

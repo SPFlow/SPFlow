@@ -183,7 +183,7 @@ class TestNode(unittest.TestCase):
 
         leaf = MultivariateGaussian(Scope([0, 1]))
 
-        data = tl_vstack(
+        data = np.vstack(
             [
                 np.random.multivariate_normal([1.7, 2.1], tl.eye(2), size=(10000,)),
                 np.random.multivariate_normal([0.5, -0.3], tl.eye(2), size=(10000,)),

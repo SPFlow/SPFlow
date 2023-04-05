@@ -4,12 +4,12 @@ import tensorly as tl
 
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.structure.spn import (
-    MultivariateGaussian,
-    MultivariateGaussianLayer,
     ProductNode,
     SumNode,
 )
 from spflow.meta.data import Scope
+from spflow.tensorly.structure.general.nodes.leaves import MultivariateGaussian
+from spflow.tensorly.structure.general.layers.leaves import MultivariateGaussianLayer
 
 
 class TestNode(unittest.TestCase):

@@ -38,13 +38,13 @@ class TestNode(unittest.TestCase):
 
         data = np.hstack(
             [
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.geometric(p=0.8, size=(10000, 1)),
                         np.random.geometric(p=0.2, size=(10000, 1)),
                     ]
                 ),
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.geometric(p=0.3, size=(10000, 1)),
                         np.random.geometric(p=0.7, size=(10000, 1)),

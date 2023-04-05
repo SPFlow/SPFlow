@@ -1,9 +1,11 @@
 """Contains sampling methods for SPN-like sum nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional
+from typing import Optional, Union
 
 import tensorly as tl
-from ....utils.helper_functions import tl_unique
+import numpy as np
+import torch
+from ....utils.helper_functions import tl_unique, tl_unsqueeze, T
 
 from spflow.tensorly.inference.module import log_likelihood
 from spflow.tensorly.structure.spn.nodes.sum_node import SumNode
@@ -17,15 +19,14 @@ from spflow.meta.dispatch.sampling_context import (
     init_default_sampling_context,
 )
 
-
 @dispatch  # type: ignore
 def sample(
     node: SumNode,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
-) -> tl.tensor:
+) -> T:
     """Samples from SPN-like sum nodes in the ``base`` backend given potential evidence.
 
     Samples from each input proportionally to its weighted likelihoods given the evidence.
@@ -73,7 +74,7 @@ def sample(
     # sample branch for each instance id
     # this solution is based on a trick described here: https://stackoverflow.com/questions/34187130/fast-random-weighted-selection-across-all-rows-of-a-stochastic-matrix/34190035#34190035
     cum_sampling_weights = tl.cumsum(sampling_weights,axis=1)
-    random_choices = tl.random.random_tensor(tl.shape(sampling_weights)[0], 1)
+    random_choices = tl_unsqueeze(tl.random.random_tensor(tl.shape(sampling_weights)[0], 1), axis=1)
     branches = tl.sum((cum_sampling_weights < random_choices),axis=1)
 
     # group sampled branches

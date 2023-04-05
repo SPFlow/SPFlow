@@ -1,14 +1,14 @@
 import unittest
 
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import tl_unsqueeze
+from spflow.tensorly.utils.helper_functions import tl_unsqueeze,tl_allclose
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.spn import (
-    CondNegativeBinomial,
-    CondNegativeBinomialLayer,
     marginalize,
 )
+from spflow.tensorly.structure.general.nodes.leaves import CondNegativeBinomial
+from spflow.tensorly.structure.general.layers.leaves import CondNegativeBinomialLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
 
@@ -354,7 +354,7 @@ class TestLayer(unittest.TestCase):
         n, *others = l.get_params()
 
         self.assertTrue(len(others) == 0)
-        self.assertTrue(tl.allclose(n, tl.tensor([2, 2])))
+        self.assertTrue(tl_allclose(n, tl.tensor([2, 2])))
 
 
 if __name__ == "__main__":

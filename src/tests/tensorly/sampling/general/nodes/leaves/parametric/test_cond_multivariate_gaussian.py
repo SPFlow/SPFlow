@@ -5,8 +5,8 @@ import numpy as np
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_repeat, tl_cov, tl_allclose, tl_full, tl_ix_, tl_inv
 
-from spflow.base.sampling import sample
-from spflow.base.structure.spn import CondMultivariateGaussian
+from spflow.tensorly.sampling import sample
+from spflow.tensorly.structure.general.nodes.leaves import CondMultivariateGaussian
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 

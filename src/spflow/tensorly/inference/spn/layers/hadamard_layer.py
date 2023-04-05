@@ -3,7 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
-
+from spflow.tensorly.utils.helper_functions import T
 from spflow.tensorly.structure.spn.layers.hadamard_layer import HadamardLayer
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -15,10 +15,10 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
     hadamard_layer: HadamardLayer,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> tl.tensor:
+) -> T:
     """Computes log-likelihoods for SPN-like element-wise product layers in the 'base' backend given input data.
 
     Log-likelihoods for product nodes are the sum of its input likelihoods (product in linear space).

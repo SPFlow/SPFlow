@@ -163,7 +163,7 @@ class TestNode(unittest.TestCase):
 
         leaf = Binomial(Scope([0]), n=3)
 
-        data = tl_vstack(
+        data = np.vstack(
             [
                 np.random.binomial(n=3, p=0.8, size=(10000, 1)),
                 np.random.binomial(n=3, p=0.2, size=(10000, 1)),

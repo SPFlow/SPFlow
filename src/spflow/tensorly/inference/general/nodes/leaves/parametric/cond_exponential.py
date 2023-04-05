@@ -3,7 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
-from ......utils.helper_functions import tl_isnan
+from spflow.tensorly.utils.helper_functions import tl_isnan, T
 
 from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_exponential import (
     CondExponential,
@@ -18,10 +18,10 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
     node: CondExponential,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> tl.tensor:
+) -> T:
     r"""Computes log-likelihoods for ``CondExponential`` node given input data in the ``base`` backend.
 
     Log-likelihood for ``CondExponential`` is given by the logarithm of its probability distribution function (PDF):

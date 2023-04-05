@@ -1,9 +1,11 @@
 """Contains sampling methods for ``Bernoulli`` nodes for SPFlow in the ``base`` backend.
 """
-from typing import Optional
+from typing import Optional, Union
 
 import tensorly as tl
-from ......utils.helper_functions import tl_isnan, tl_squeeze
+
+
+from spflow.tensorly.utils.helper_functions import tl_isnan, tl_squeeze, T
 
 from spflow.tensorly.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
 from spflow.meta.dispatch.dispatch import dispatch
@@ -16,15 +18,14 @@ from spflow.meta.dispatch.sampling_context import (
     init_default_sampling_context,
 )
 
-
 @dispatch  # type: ignore
 def sample(
     leaf: Bernoulli,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
-) -> tl.tensor:
+)->T:
     r"""Samples from ``Bernoulli`` nodes in the ``base`` backend given potential evidence.
 
     Samples missing values proportionally to its probability mass function (PMF).

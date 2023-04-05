@@ -159,7 +159,7 @@ class TestNode(unittest.TestCase):
 
         leaf = Exponential(Scope([0]))
 
-        data = tl_vstack(
+        data = np.vstack(
             [
                 np.random.exponential(1.0 / 0.8, size=(10000, 1)),
                 np.random.exponential(1.0 / 1.4, size=(10000, 1)),

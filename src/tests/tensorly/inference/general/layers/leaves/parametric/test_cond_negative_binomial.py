@@ -3,13 +3,13 @@ import unittest
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_allclose
 
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import (
-    CondNegativeBinomial,
-    CondNegativeBinomialLayer,
+from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.tensorly.structure.spn import (
     ProductNode,
     SumNode,
 )
+from spflow.tensorly.structure.general.nodes.leaves import CondNegativeBinomial
+from spflow.tensorly.structure.general.layers.leaves import CondNegativeBinomialLayer
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 

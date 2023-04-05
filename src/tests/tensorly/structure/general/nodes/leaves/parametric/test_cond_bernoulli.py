@@ -5,9 +5,7 @@ import numpy as np
 import tensorly as tl
 
 from spflow.tensorly.structure.autoleaf import AutoLeaf
-from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_bernoulli import (
-    CondBernoulli,
-)
+from spflow.tensorly.structure.general.nodes.leaves import CondBernoulli
 from spflow.tensorly.structure.spn.nodes.product_node import marginalize
 from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext

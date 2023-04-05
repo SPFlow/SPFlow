@@ -3,7 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
-
+from spflow.tensorly.utils.helper_functions import T
 from spflow.tensorly.structure.module import Module
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -15,10 +15,10 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
     module: Module,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> tl.tensor:
+) -> T:
     """Raises ``NotImplementedError`` for modules in the ``base`` backend that have not dispatched a log-likelihood inference routine.
 
     Args:
@@ -46,10 +46,10 @@ def log_likelihood(
 @dispatch  # type: ignore
 def likelihood(
     module: Module,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> tl.tensor:
+) -> T:
     """Computes likelihoods for modules in the ``base`` backend given input data.
 
     Likelihoods are per default computed from the infered log-likelihoods of a module.

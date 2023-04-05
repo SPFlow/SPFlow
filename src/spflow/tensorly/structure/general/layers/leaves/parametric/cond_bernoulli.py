@@ -5,7 +5,7 @@ from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
 import tensorly as tl
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
-from spflow.base.structure.general.nodes.leaves.parametric.cond_bernoulli import (
+from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_bernoulli import (
     CondBernoulli,
 )
 from spflow.tensorly.structure.module import Module

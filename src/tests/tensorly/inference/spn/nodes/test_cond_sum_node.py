@@ -3,7 +3,8 @@ import unittest
 import tensorly as tl
 
 from spflow.tensorly.inference import likelihood, log_likelihood
-from spflow.tensorly.structure.spn import CondSumNode, Gaussian, ProductNode
+from spflow.tensorly.structure.spn import CondSumNode, ProductNode
+from spflow.tensorly.structure.general.nodes.leaves import Gaussian
 from spflow.meta.data import Scope
 
 

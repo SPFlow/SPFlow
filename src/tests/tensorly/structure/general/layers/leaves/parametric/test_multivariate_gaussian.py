@@ -4,11 +4,12 @@ import tensorly as tl
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.spn import (
-    Gaussian,
-    MultivariateGaussian,
-    MultivariateGaussianLayer,
     marginalize,
 )
+from spflow.tensorly.structure.general.nodes.leaves import Gaussian
+from spflow.tensorly.structure.general.nodes.leaves import MultivariateGaussian
+from spflow.tensorly.structure.general.layers.leaves import MultivariateGaussianLayer
+from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
@@ -430,9 +431,9 @@ class TestLayer(unittest.TestCase):
         mean, cov, *others = layer.get_params()
 
         self.assertTrue(len(others) == 0)
-        self.assertTrue(tl.allclose(mean, tl.tensor([[-0.73, 0.29], [0.36, -1.4]])))
+        self.assertTrue(tl_allclose(mean, tl.tensor([[-0.73, 0.29], [0.36, -1.4]])))
         self.assertTrue(
-            tl.allclose(
+            tl_allclose(
                 cov,
                 tl.tensor([[[1.0, 0.92], [0.92, 1.2]], [[1.0, 0.3], [0.3, 1.4]]]),
             )

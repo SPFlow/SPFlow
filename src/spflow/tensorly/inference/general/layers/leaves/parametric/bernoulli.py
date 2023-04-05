@@ -3,6 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
+from spflow.tensorly.utils.helper_functions import T
 
 from spflow.tensorly.structure.general.layers.leaves.parametric.bernoulli import (
     BernoulliLayer,
@@ -17,10 +18,10 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
     layer: BernoulliLayer,
-    data,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) :
+) -> T:
     r"""Computes log-likelihoods for ``BernoulliLayer`` leaves in the ``base`` backend given input data.
 
     Log-likelihood for ``BernoulliLayer`` is given by the logarithm of its individual probability mass functions (PMFs):
