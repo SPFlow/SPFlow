@@ -3,7 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
-from ......utils.helper_functions import tl_isnan, tl_inv, tl_unique, tl_ix_
+from spflow.tensorly.utils.helper_functions import tl_isnan, tl_inv, tl_unique, tl_ix_, T
 
 from spflow.tensorly.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
@@ -22,11 +22,11 @@ from spflow.meta.dispatch.sampling_context import (
 @dispatch  # type: ignore
 def sample(
     leaf: CondMultivariateGaussian,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
-) -> tl.tensor:
+) -> T:
     r"""Samples from ``CondMultivariateGaussian`` nodes in the ``base`` backend given potential evidence.
 
     Samples missing values proportionally to its probability distribution function (PDF).

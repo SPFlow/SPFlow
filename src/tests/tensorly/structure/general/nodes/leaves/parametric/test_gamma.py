@@ -4,7 +4,8 @@ import numpy as np
 import tensorly as tl
 
 from spflow.tensorly.structure import AutoLeaf
-from spflow.tensorly.structure.spn import Gamma, marginalize
+from spflow.tensorly.structure.spn import marginalize
+from spflow.tensorly.structure.general.nodes.leaves import Gamma
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 

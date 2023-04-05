@@ -1,14 +1,14 @@
 import unittest
 
 import tensorly as tl
-
+from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.tensorly.inference import likelihood, log_likelihood
 from spflow.tensorly.structure.spn import (
-    CondBinomial,
-    CondBinomialLayer,
     ProductNode,
     SumNode,
 )
+from spflow.tensorly.structure.general.nodes.leaves import CondBinomial
+from spflow.tensorly.structure.general.layers.leaves import CondBinomialLayer
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 
@@ -32,8 +32,8 @@ class TestNode(unittest.TestCase):
         probs = likelihood(binomial, data)
         log_probs = log_likelihood(binomial, data)
 
-        self.assertTrue(tl.allclose(probs, tl.exp(log_probs)))
-        self.assertTrue(tl.allclose(probs, targets))
+        self.assertTrue(tl_allclose(probs, tl.exp(log_probs)))
+        self.assertTrue(tl_allclose(probs, targets))
 
     def test_likelihood_args_p(self):
 
@@ -49,8 +49,8 @@ class TestNode(unittest.TestCase):
         probs = likelihood(binomial, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(binomial, data, dispatch_ctx=dispatch_ctx)
 
-        self.assertTrue(tl.allclose(probs, tl.exp(log_probs)))
-        self.assertTrue(tl.allclose(probs, targets))
+        self.assertTrue(tl_allclose(probs, tl.exp(log_probs)))
+        self.assertTrue(tl_allclose(probs, targets))
 
     def test_likelihood_args_cond_f(self):
 
@@ -68,8 +68,8 @@ class TestNode(unittest.TestCase):
         probs = likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
         log_probs = log_likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
 
-        self.assertTrue(tl.allclose(probs, tl.exp(log_probs)))
-        self.assertTrue(tl.allclose(probs, targets))
+        self.assertTrue(tl_allclose(probs, tl.exp(log_probs)))
+        self.assertTrue(tl_allclose(probs, targets))
 
     def test_layer_likelihood_1(self):
 

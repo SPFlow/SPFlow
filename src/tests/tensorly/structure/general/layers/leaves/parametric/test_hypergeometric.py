@@ -3,7 +3,10 @@ import unittest
 import tensorly as tl
 
 from spflow.tensorly.structure import AutoLeaf
-from spflow.tensorly.structure.spn import Hypergeometric, HypergeometricLayer, marginalize
+from spflow.tensorly.structure.spn import marginalize
+from spflow.tensorly.structure.general.nodes.leaves import Hypergeometric
+from spflow.tensorly.structure.general.layers.leaves import HypergeometricLayer
+from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
@@ -398,9 +401,9 @@ class TestLayer(unittest.TestCase):
         N, M, n, *others = layer.get_params()
 
         self.assertTrue(len(others) == 0)
-        self.assertTrue(tl.allclose(N, tl.tensor([5, 5])))
-        self.assertTrue(tl.allclose(M, tl.tensor([3, 3])))
-        self.assertTrue(tl.allclose(n, tl.tensor([4, 4])))
+        self.assertTrue(tl_allclose(N, tl.tensor([5, 5])))
+        self.assertTrue(tl_allclose(M, tl.tensor([3, 3])))
+        self.assertTrue(tl_allclose(n, tl.tensor([4, 4])))
 
 
 if __name__ == "__main__":

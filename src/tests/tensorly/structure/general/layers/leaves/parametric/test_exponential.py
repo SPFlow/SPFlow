@@ -1,9 +1,11 @@
 import unittest
 
 import tensorly as tl
-
+from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.tensorly.structure import AutoLeaf
-from spflow.tensorly.structure.spn import Exponential, ExponentialLayer, marginalize
+from spflow.tensorly.structure.spn import marginalize
+from spflow.tensorly.structure.general.nodes.leaves import Exponential
+from spflow.tensorly.structure.general.layers.leaves import ExponentialLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 
@@ -274,7 +276,7 @@ class TestLayer(unittest.TestCase):
         l, *others = layer.get_params()
 
         self.assertTrue(len(others) == 0)
-        self.assertTrue(tl.allclose(l, tl.tensor([0.73, 0.29])))
+        self.assertTrue(tl_allclose(l, tl.tensor([0.73, 0.29])))
 
 
 if __name__ == "__main__":

@@ -8,7 +8,8 @@ from spflow.tensorly.utils.helper_functions import tl_allclose
 
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.sampling import sample
-from spflow.tensorly.structure.spn import Gaussian, PartitionLayer, ProductNode, SumNode
+from spflow.tensorly.structure.spn import PartitionLayer, ProductNode, SumNode
+from spflow.tensorly.structure.general.nodes.leaves import Gaussian
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 

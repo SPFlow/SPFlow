@@ -2,12 +2,13 @@ import random
 import unittest
 
 import numpy as np
-import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_allclose
 
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.sampling import sample
-from spflow.tensorly.structure.spn import Binomial, BinomialLayer, ProductNode, SumNode
+from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.tensorly.structure.general.nodes.leaves import Binomial
+from spflow.tensorly.structure.general.layers.leaves import BinomialLayer
 from spflow.meta.data import Scope
 
 

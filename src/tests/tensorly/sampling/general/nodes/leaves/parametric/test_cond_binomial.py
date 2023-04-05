@@ -6,7 +6,7 @@ import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_isnan, tl_isclose
 
 from spflow.tensorly.sampling import sample
-from spflow.tensorly.structure.spn import CondBinomial
+from spflow.tensorly.structure.general.nodes.leaves import CondBinomial
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 
@@ -18,7 +18,7 @@ class TestCondBinomial(unittest.TestCase):
 
         binomial = CondBinomial(Scope([0], [1]), n=10, cond_f=lambda data: {"p": 0.0})
 
-        data = tl.tensor([[tl.tensor], [tl.tensor], [tl.tensor]])
+        data = tl.tensor([[tl.nan], [tl.nan], [tl.nan]])
 
         samples = sample(binomial, data, sampling_ctx=SamplingContext([0, 2]))
 
@@ -31,7 +31,7 @@ class TestCondBinomial(unittest.TestCase):
 
         binomial = CondBinomial(Scope([0], [1]), n=10, cond_f=lambda data: {"p": 1.0})
 
-        data = tl.tensor([[tl.tensor], [tl.tensor], [tl.tensor]])
+        data = tl.tensor([[tl.nan], [tl.nan], [tl.nan]])
 
         samples = sample(binomial, data, sampling_ctx=SamplingContext([0, 2]))
 

@@ -3,6 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
+from spflow.tensorly.utils.helper_functions import T
 
 from spflow.tensorly.sampling.module import sample
 from spflow.tensorly.structure.general.layers.leaves.parametric.cond_gaussian import (
@@ -23,11 +24,11 @@ from spflow.meta.dispatch.sampling_context import (
 @dispatch  # type: ignore
 def sample(
     layer: CondGaussianLayer,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
-) -> tl.tensor:
+) -> T:
     r"""Samples from ``CondGaussianLayer`` leaves in the ``base`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.

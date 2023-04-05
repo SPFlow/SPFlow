@@ -3,7 +3,7 @@
 from typing import Callable, Optional, Union
 
 import tensorly as tl
-from ......utils.helper_functions import tl_isnan, tl_isclose
+from spflow.tensorly.utils.helper_functions import tl_isnan, tl_isclose, T
 
 from spflow.tensorly.structure.general.nodes.leaves.parametric.geometric import Geometric
 from spflow.meta.dispatch.dispatch import dispatch
@@ -16,8 +16,8 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def maximum_likelihood_estimation(
     leaf: Geometric,
-    data: tl.tensor,
-    weights: Optional[tl.tensor] = None,
+    data: T,
+    weights: Optional[T] = None,
     bias_correction: bool = True,
     nan_strategy: Optional[Union[str, Callable]] = None,
     check_support: bool = True,

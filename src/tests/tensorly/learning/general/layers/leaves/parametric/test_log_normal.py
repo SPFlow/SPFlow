@@ -5,8 +5,8 @@ import numpy as np
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_allclose, tl_vstack
 
-from spflow.base.learning import maximum_likelihood_estimation
-from spflow.base.structure.spn import LogNormalLayer
+from spflow.tensorly.learning import maximum_likelihood_estimation
+from spflow.tensorly.structure.spn import LogNormalLayer
 from spflow.meta.data import Scope
 
 
@@ -39,13 +39,13 @@ class TestNode(unittest.TestCase):
 
         data = np.hstack(
             [
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.lognormal(1.7, 0.8, size=(10000, 1)),
                         np.random.lognormal(0.5, 1.4, size=(10000, 1)),
                     ]
                 ),
-                tl_vstack(
+                np.vstack(
                     [
                         np.random.lognormal(0.9, 0.3, size=(10000, 1)),
                         np.random.lognormal(1.3, 1.7, size=(10000, 1)),

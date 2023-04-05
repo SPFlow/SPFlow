@@ -3,7 +3,7 @@
 from typing import Callable, Optional, Union
 
 import tensorly as tl
-from ......utils.helper_functions import tl_isnan, tl_isclose
+from spflow.tensorly.utils.helper_functions import tl_isnan, tl_isclose, T
 from scipy.special import digamma, polygamma
 from scipy.stats import gamma
 
@@ -18,8 +18,8 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def maximum_likelihood_estimation(
     leaf: Gamma,
-    data: tl.tensor,
-    weights: Optional[tl.tensor] = None,
+    data: T,
+    weights: Optional[T] = None,
     bias_correction: bool = True,
     nan_strategy: Optional[Union[str, Callable]] = None,
     check_support: bool = True,

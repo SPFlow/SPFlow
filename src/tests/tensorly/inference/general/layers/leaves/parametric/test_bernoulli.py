@@ -3,13 +3,15 @@ import unittest
 import tensorly as tl
 
 from spflow.tensorly.inference import log_likelihood
-from spflow.tensorly.structure.spn import Bernoulli, BernoulliLayer, ProductNode, SumNode
+from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.tensorly.structure.general.nodes.leaves import Bernoulli
+from spflow.tensorly.structure.general.layers.leaves import BernoulliLayer
 from spflow.meta.data import Scope
 
 
 class TestNode(unittest.TestCase):
     def test_layer_likelihood_1(self):
-
+        #tl.set_backend("pytorch")
         bernoulli_layer = BernoulliLayer(scope=Scope([0]), p=[0.8, 0.3], n_nodes=2)
         s1 = SumNode(children=[bernoulli_layer], weights=[0.3, 0.7])
 

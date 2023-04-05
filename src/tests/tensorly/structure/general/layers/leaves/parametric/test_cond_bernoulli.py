@@ -3,7 +3,9 @@ import unittest
 import tensorly as tl
 
 from spflow.tensorly.structure import AutoLeaf
-from spflow.tensorly.structure.spn import CondBernoulli, CondBernoulliLayer, marginalize
+from spflow.tensorly.structure.spn import marginalize
+from spflow.tensorly.structure.general.nodes.leaves import CondBernoulli
+from spflow.tensorly.structure.general.layers.leaves import CondBernoulliLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
 

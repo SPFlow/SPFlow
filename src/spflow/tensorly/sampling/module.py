@@ -4,7 +4,7 @@ from functools import reduce
 from typing import Optional
 
 import tensorly as tl
-from ..utils.helper_functions import tl_full
+from ..utils.helper_functions import tl_full, T
 
 from spflow.tensorly.structure.module import Module
 from spflow.meta.dispatch.dispatch import dispatch
@@ -24,7 +24,7 @@ def sample(
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[DispatchContext] = None,
-) -> tl.tensor:
+) -> T:
     r"""Samples from modules in the ``base`` backend without any evidence.
 
     Samples a single instance from the module.
@@ -64,7 +64,7 @@ def sample(
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
-) -> tl.tensor:
+) -> T:
     r"""Samples specified numbers of instances from modules in the ``base`` backend without any evidence.
 
     Samples a specified number of instance from the module by creating an empty two-dimensional NumPy array (i.e., filled with NaN values) of appropriate size and filling it.

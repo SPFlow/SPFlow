@@ -3,7 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
-
+from spflow.tensorly.utils.helper_functions import T
 from spflow.tensorly.structure.general.layers.leaves.parametric.log_normal import (
     LogNormalLayer,
 )
@@ -17,10 +17,10 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
     layer: LogNormalLayer,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> tl.tensor:
+) -> T:
     r"""Computes log-likelihoods for ``LogNormalLayer`` leaves in the ``base`` backend given input data.
 
     Log-likelihood for ``LogNormalLayer`` is given by the logarithm of its individual probability distribution functions (PDFs):

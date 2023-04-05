@@ -2,9 +2,11 @@ import unittest
 
 import tensorly as tl
 
-from spflow.base.inference import log_likelihood
-from spflow.base.structure.spn import Poisson, PoissonLayer, ProductNode, SumNode
+from spflow.tensorly.inference import log_likelihood
+from spflow.tensorly.structure.spn import ProductNode, SumNode
 from spflow.meta.data import Scope
+from spflow.tensorly.structure.general.nodes.leaves import Poisson
+from spflow.tensorly.structure.general.layers.leaves import PoissonLayer
 
 
 class TestNode(unittest.TestCase):

@@ -6,7 +6,7 @@ import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_isnan, tl_isclose
 
 from spflow.tensorly.sampling import sample
-from spflow.tensorly.structure.spn import CondGeometric
+from spflow.tensorly.structure.general.nodes.leaves import CondGeometric
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 
@@ -18,7 +18,7 @@ class TestCondGeometric(unittest.TestCase):
 
         geometric = CondGeometric(Scope([0], [1]), cond_f=lambda data: {"p": 1.0})
 
-        data = tl.tensor([[tl.tensor], [tl.tensor], [tl.tensor]])
+        data = tl.tensor([[tl.nan], [tl.nan], [tl.nan]])
 
         samples = sample(geometric, data, sampling_ctx=SamplingContext([0, 2]))
 

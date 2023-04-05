@@ -3,6 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
+from spflow.tensorly.utils.helper_functions import T
 
 from spflow.tensorly.structure.spn.layers.product_layer import ProductLayer
 from spflow.meta.dispatch.dispatch import dispatch
@@ -19,11 +20,11 @@ from spflow.meta.dispatch.sampling_context import (
 @dispatch  # type: ignore
 def sample(
     product_layer: ProductLayer,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
-) -> tl.tensor:
+) -> T:
     """Samples from SPN-like product layers in the ``base`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.

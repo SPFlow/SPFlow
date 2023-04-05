@@ -3,7 +3,10 @@ import unittest
 import tensorly as tl
 
 from spflow.tensorly.structure import AutoLeaf
-from spflow.tensorly.structure.spn import CondGaussian, CondGaussianLayer, marginalize
+from spflow.tensorly.structure.spn import marginalize
+from spflow.tensorly.structure.general.nodes.leaves import CondGaussian
+from spflow.tensorly.structure.general.layers.leaves import CondGaussianLayer
+from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
 

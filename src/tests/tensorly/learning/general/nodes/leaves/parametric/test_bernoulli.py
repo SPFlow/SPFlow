@@ -167,7 +167,7 @@ class TestNode(unittest.TestCase):
 
         leaf = Bernoulli(Scope([0]))
 
-        data = tl_vstack(
+        data = np.vstack(
             [
                 np.random.binomial(n=1, p=0.8, size=(10000, 1)),
                 np.random.binomial(n=1, p=0.2, size=(10000, 1)),

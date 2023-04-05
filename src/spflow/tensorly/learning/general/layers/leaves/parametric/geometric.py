@@ -3,7 +3,7 @@
 from typing import Callable, Optional, Union
 
 import tensorly as tl
-from ......utils.helper_functions import tl_unsqueeze, tl_repeat
+from spflow.tensorly.utils.helper_functions import tl_unsqueeze, tl_repeat, T
 
 from spflow.tensorly.learning.general.nodes.leaves.parametric.geometric import (
     maximum_likelihood_estimation,
@@ -21,8 +21,8 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def maximum_likelihood_estimation(
     layer: GeometricLayer,
-    data: tl.tensor,
-    weights: Optional[tl.tensor] = None,
+    data: T,
+    weights: Optional[T] = None,
     bias_correction: bool = True,
     nan_strategy: Optional[Union[str, Callable]] = None,
     check_support: bool = True,

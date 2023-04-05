@@ -9,6 +9,7 @@ from typing import List, Set
 import tensorly as tl
 
 
+
 def connected_components(adjacency_matrix: tl.tensor) -> List[Set[int]]:
     """Computes all connected components in an undirected graph.
 

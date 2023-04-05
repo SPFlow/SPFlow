@@ -184,7 +184,7 @@ class TestNode(unittest.TestCase):
 
         leaf = LogNormal(Scope([0]))
 
-        data = tl_vstack(
+        data = np.vstack(
             [
                 np.random.lognormal(1.7, 0.8, size=(10000, 1)),
                 np.random.lognormal(0.5, 1.4, size=(10000, 1)),

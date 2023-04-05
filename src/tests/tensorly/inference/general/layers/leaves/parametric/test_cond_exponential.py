@@ -5,11 +5,11 @@ from spflow.tensorly.utils.helper_functions import tl_allclose
 
 from spflow.tensorly.inference import likelihood, log_likelihood
 from spflow.tensorly.structure.spn import (
-    CondExponential,
-    CondExponentialLayer,
     ProductNode,
     SumNode,
 )
+from spflow.tensorly.structure.general.nodes.leaves import CondExponential
+from spflow.tensorly.structure.general.layers.leaves import CondExponentialLayer
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 

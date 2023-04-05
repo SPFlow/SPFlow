@@ -3,7 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
-
+from spflow.tensorly.utils.helper_functions import T
 from spflow.tensorly.inference.spn.nodes.cond_sum_node import log_likelihood
 from spflow.tensorly.structure.spn.layers.cond_sum_layer import CondSumLayer
 from spflow.meta.dispatch.dispatch import dispatch
@@ -16,10 +16,10 @@ from spflow.meta.dispatch.dispatch_context import (
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
     sum_layer: CondSumLayer,
-    data: tl.tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> tl.tensor:
+) -> T:
     """Computes log-likelihoods for conditional SPN-like sum layers given input data in the ``base`` backend.
 
     Log-likelihoods for sum nodes are the logarithm of the sum of weighted exponentials (LogSumExp) of its input likelihoods (weighted sum in linear space).
