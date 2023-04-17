@@ -41,7 +41,7 @@ def learn_classifier(data, ds_context, spn_learn_wrapper, label_idx, **kwargs):
     return spn
 
 
-def get_splitting_functions(cols, rows, ohe, threshold, rand_gen, n_jobs):
+def get_splitting_functions(cols, rows, ohe, threshold, rand_gen, n_jobs, n_clusters=2, standardize=False):
     from spn.algorithms.splitting.Clustering import get_split_rows_KMeans, get_split_rows_TSNE, get_split_rows_GMM
     from spn.algorithms.splitting.PoissonStabilityTest import get_split_cols_poisson_py
     from spn.algorithms.splitting.RDC import get_split_cols_RDC_py, get_split_rows_RDC_py
@@ -60,7 +60,7 @@ def get_splitting_functions(cols, rows, ohe, threshold, rand_gen, n_jobs):
         if rows == "rdc":
             split_rows = get_split_rows_RDC_py(rand_gen=rand_gen, ohe=ohe, n_jobs=n_jobs)
         elif rows == "kmeans":
-            split_rows = get_split_rows_KMeans()
+            split_rows = get_split_rows_KMeans(n_clusters=n_clusters, standardize=standardize)
         elif rows == "tsne":
             split_rows = get_split_rows_TSNE()
         elif rows == "gmm":
@@ -118,7 +118,11 @@ def learn_mspn(
     memory=None,
     rand_gen=None,
     cpus=-1,
+    alpha=1,
+    n_clusters=2,
+    standardize=False,
 ):
+    
     if leaves is None:
         leaves = create_histogram_leaf
 
@@ -126,11 +130,9 @@ def learn_mspn(
         rand_gen = np.random.RandomState(17)
 
     def l_mspn(data, ds_context, cols, rows, min_instances_slice, threshold, ohe):
-        split_cols, split_rows = get_splitting_functions(cols, rows, ohe, threshold, rand_gen, cpus)
-
+        split_cols, split_rows = get_splitting_functions(cols, rows, ohe, threshold, rand_gen, cpus, n_clusters=n_clusters, standardize=standardize)
         nextop = get_next_operation(min_instances_slice)
-
-        return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop)
+        return learn_structure(data, ds_context, split_rows, split_cols, leaves, nextop, alpha=alpha)
 
     if memory:
         l_mspn = memory.cache(l_mspn)
