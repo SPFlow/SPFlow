@@ -1,6 +1,5 @@
 """
 Created on March 25, 2018
-
 @author: Alejandro Molina
 """
 import numpy as np
@@ -10,6 +9,7 @@ from sklearn.metrics import pairwise
 
 from spn.algorithms.splitting.Base import split_data_by_clusters, preproc
 import logging
+from sklearn.preprocessing import StandardScaler
 
 logger = logging.getLogger(__name__)
 _rpy_initialized = False
@@ -33,14 +33,18 @@ def init_rpy():
     numpy2ri.activate()
 
 
-def get_split_rows_KMeans(n_clusters=2, pre_proc=None, ohe=False, seed=17):
+def get_split_rows_KMeans(n_clusters=2, pre_proc=None, ohe=False, seed=17, standardize=False):
     def split_rows_KMeans(local_data, ds_context, scope):
         data = preproc(local_data, ds_context, pre_proc, ohe)
-
-        clusters = KMeans(n_clusters=n_clusters, random_state=seed).fit_predict(data)
-
+        
+        if standardize:
+            scaler = StandardScaler().fit(data)
+            standardized_data = scaler.transform(data)
+            clusters = KMeans(n_clusters=n_clusters, random_state=seed,init="random").fit_predict(standardized_data)
+        else:
+            clusters = KMeans(n_clusters=n_clusters, random_state=seed).fit_predict(data)
         return split_data_by_clusters(local_data, clusters, scope, rows=True)
-
+    
     return split_rows_KMeans
 
 
