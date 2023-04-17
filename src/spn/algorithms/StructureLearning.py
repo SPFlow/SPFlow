@@ -276,7 +276,6 @@ def learn_structure(
                 child_data_slice = data_slicer(local_data, [col], num_conditional_cols)
                 local_children_params.append((child_data_slice, ds_context, [scope[col]]))
             
-            create_leaf = create_histogram_leaf
             result_nodes = pool.starmap(create_leaf, local_children_params)
             # result_nodes = []
             # for l in tqdm(local_children_params):
