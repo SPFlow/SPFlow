@@ -87,7 +87,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy
         breaks, densities, repr_points = getHistogramVals(data, meta_type, domain, source=hist_source)
 
     # laplace smoothing
-    if alpha:
+    if alpha>0:
         n_samples = data.shape[0]
         n_bins = len(breaks) - 1
         counts = densities * n_samples
@@ -143,7 +143,7 @@ def getHistogramVals(data, meta_type, domain, source="numpy"):
         densities, breaks = np.histogram(data, bins="auto", density=True)
         mids = ((breaks + np.roll(breaks, -1)) / 2.0)[:-1]
         return breaks, densities, mids
-
+    
     if source == "astropy":
         from astropy.stats import histogram
 
