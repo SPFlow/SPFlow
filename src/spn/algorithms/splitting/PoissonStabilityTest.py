@@ -12,7 +12,7 @@ import numpy
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from networkx.algorithms.components.connected import connected_components
-from networkx.convert_matrix import from_numpy_matrix
+from networkx.convert_matrix import from_numpy_array
 from pandas.core.frame import DataFrame
 from scipy import NINF
 from scipy.stats._continuous_distns import chi2
@@ -3176,7 +3176,7 @@ def getIndependentGroupsStabilityTestPoisson(data, alpha=0.001, n_jobs=-2):
     pvals[pvals > alpha] = 0
 
     result = numpy.zeros(df.shape[1])
-    for i, c in enumerate(connected_components(from_numpy_matrix(pvals))):
+    for i, c in enumerate(connected_components(from_numpy_array(pvals))):
         result[list(c)] = i + 1
 
     return result
