@@ -106,7 +106,7 @@ def get_split_rows_RDC(n_clusters=2, k=10, s=1 / 6, ohe=True, seed=17):
 import itertools
 
 from networkx.algorithms.components.connected import connected_components
-from networkx.convert_matrix import from_numpy_matrix
+from networkx.convert_matrix import from_numpy_array
 import scipy.stats
 
 from sklearn.cross_decomposition import CCA
@@ -300,7 +300,7 @@ def getIndependentRDCGroups_py(
     #
     # getting connected components
     result = np.zeros(n_features)
-    for i, c in enumerate(connected_components(from_numpy_matrix(rdc_adjacency_matrix))):
+    for i, c in enumerate(connected_components(from_numpy_array(rdc_adjacency_matrix))):
         result[list(c)] = i + 1
 
     return result

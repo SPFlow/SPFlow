@@ -5,7 +5,7 @@ Created on March 20, 2018
 """
 
 import numpy as np
-from networkx import from_numpy_matrix, connected_components
+from networkx import from_numpy_array, connected_components
 
 from sklearn.feature_extraction.text import TfidfTransformer
 
@@ -65,7 +65,7 @@ def clusters_by_adjacency_matrix(adm, threshold, n_features):
     adm[adm > 0] = 1
 
     result = np.zeros(n_features)
-    for i, c in enumerate(connected_components(from_numpy_matrix(adm))):
+    for i, c in enumerate(connected_components(from_numpy_array(adm))):
         result[list(c)] = i + 1
 
     return result
