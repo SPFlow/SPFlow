@@ -23,6 +23,7 @@ from spn.algorithms.Validity import is_valid
 from spn.structure.Base import Product, Sum, assign_ids
 import multiprocessing
 import os
+from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 
 parallel = True
 
@@ -96,7 +97,7 @@ def get_next_operation(min_instances_slice=100, min_features_slice=1, multivaria
                 return Operation.SPLIT_ROWS, None
             else:
                 return Operation.SPLIT_COLUMNS, None
-
+            
         return Operation.SPLIT_COLUMNS, None
 
     return next_operation
@@ -121,6 +122,8 @@ def learn_structure(
     next_operation=get_next_operation(),
     initial_scope=None,
     data_slicer=default_slicer,
+    alpha=1.0,
+    n_clusters=2
 ):
     assert dataset is not None
     assert ds_context is not None
@@ -131,7 +134,7 @@ def learn_structure(
 
     root = Product()
     root.children.append(None)
-
+    
     if initial_scope is None:
         initial_scope = list(range(dataset.shape[1]))
         num_conditional_cols = None
@@ -147,7 +150,7 @@ def learn_structure(
     while tasks:
 
         local_data, parent, children_pos, scope, no_clusters, no_independencies = tasks.popleft()
-
+        
         operation, op_params = next_operation(
             local_data,
             scope,
@@ -158,7 +161,7 @@ def learn_structure(
         )
 
         logging.debug("OP: {} on slice {} (remaining tasks {})".format(operation, local_data.shape, len(tasks)))
-
+        
         if operation == Operation.REMOVE_UNINFORMATIVE_FEATURES:
             node = Product()
             node.scope.extend(scope)
@@ -206,7 +209,7 @@ def learn_structure(
             continue
 
         elif operation == Operation.SPLIT_ROWS:
-
+            
             split_start_t = perf_counter()
             data_slices = split_rows(local_data, ds_context, scope)
             split_end_t = perf_counter()
@@ -272,7 +275,7 @@ def learn_structure(
                 local_tasks.append(len(node.children) - 1)
                 child_data_slice = data_slicer(local_data, [col], num_conditional_cols)
                 local_children_params.append((child_data_slice, ds_context, [scope[col]]))
-
+            
             result_nodes = pool.starmap(create_leaf, local_children_params)
             # result_nodes = []
             # for l in tqdm(local_children_params):
@@ -291,7 +294,7 @@ def learn_structure(
 
         elif operation == Operation.CREATE_LEAF:
             leaf_start_t = perf_counter()
-            node = create_leaf(local_data, ds_context, scope)
+            node = create_leaf(local_data, ds_context, scope, alpha=alpha)
             parent.children[children_pos] = node
             leaf_end_t = perf_counter()
 
