@@ -107,7 +107,7 @@ class TestNode(unittest.TestCase):
 
         data = tl.tensor([[0, 1], [1, 1], [0, 0]])
 
-        self.assertTrue(tl.all(log_likelihood(p1, data) == log_likelihood(p2, data)))
+        self.assertTrue(tl_allclose(log_likelihood(p1, data), log_likelihood(p2, data)))
 
 
 if __name__ == "__main__":

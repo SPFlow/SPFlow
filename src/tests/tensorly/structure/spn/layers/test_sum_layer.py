@@ -1,7 +1,7 @@
 import unittest
 
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import tl_squeeze, tl_unsqueeze
+from spflow.tensorly.utils.helper_functions import tl_squeeze, tl_unsqueeze, tl_allclose
 
 from spflow.tensorly.structure.spn import SumLayer, marginalize
 from spflow.meta.data import Scope
@@ -38,13 +38,13 @@ class TestLayer(unittest.TestCase):
         l = SumLayer(n_nodes=3, children=input_nodes, weights=weights)
 
         for node in l.nodes:
-            self.assertTrue(tl.all(node.weights == weights))
+            self.assertTrue(tl_allclose(node.weights, weights))
 
         # one dimensional weight array
         l = SumLayer(n_nodes=3, children=input_nodes, weights=tl_squeeze(weights,0))
 
         for node in l.nodes:
-            self.assertTrue(tl.all(node.weights == weights))
+            self.assertTrue(tl_allclose(node.weights, weights))
 
         # ----- different weights for all nodes -----
         weights = tl.tensor([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3], [0.1, 0.7, 0.2]])
@@ -52,7 +52,7 @@ class TestLayer(unittest.TestCase):
         l = SumLayer(n_nodes=3, children=input_nodes, weights=weights)
 
         for node, node_weights in zip(l.nodes, weights):
-            self.assertTrue(tl.all(node.weights == node_weights))
+            self.assertTrue(tl_allclose(node.weights, node_weights))
 
         # ----- two dimensional weight array of wrong shape -----
         weights = tl.tensor([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3]])
@@ -110,13 +110,13 @@ class TestLayer(unittest.TestCase):
             [0],
         )
         self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1]), Scope([1])])
-        self.assertTrue(tl.all(l.weights == l_marg.weights))
+        self.assertTrue(tl_allclose(l.weights, l_marg.weights))
 
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
 
         self.assertTrue(l_marg.scopes_out == [Scope([0, 1]), Scope([0, 1]), Scope([0, 1])])
-        self.assertTrue(tl.all(l.weights == l_marg.weights))
+        self.assertTrue(tl_allclose(l.weights, l_marg.weights))
 
 
 if __name__ == "__main__":

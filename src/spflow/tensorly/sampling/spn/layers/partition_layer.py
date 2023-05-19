@@ -62,7 +62,7 @@ def sample(
             raise ValueError("Too many output ids specified for outputs over same scope.")
 
         node_id = node_ids[0]
-        node_instance_ids = tl.tensor(sampling_ctx.instance_ids)[indices]
+        node_instance_ids = tl.tensor(sampling_ctx.instance_ids, dtype=int)[indices]
 
         sample(
             partition_layer.nodes[node_id],

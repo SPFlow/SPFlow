@@ -1,9 +1,9 @@
 """Contains inference methods for SPN-like sum nodes for SPFlow in the ``base`` backend.
 """
 from typing import Optional, Union
-
+import torch
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import T
+from spflow.tensorly.utils.helper_functions import T, tl_logsumexp
 from scipy.special import logsumexp  # type: ignore
 
 from spflow.tensorly.structure.spn.nodes.sum_node import SumNode
@@ -58,6 +58,6 @@ def log_likelihood(
         ],
         axis=1,
     )
-
+    weighted_inputs = child_lls + tl.log(sum_node.weights)
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return logsumexp(child_lls, b=sum_node.weights, axis=1, keepdims=True)
+    return tl_logsumexp(weighted_inputs, axis=-1, keepdims=True)

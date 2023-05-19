@@ -1,7 +1,7 @@
 import unittest
 
 import tensorly as tl
-
+from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.structure.spn import ProductNode, SumNode
 from spflow.meta.data import Scope
@@ -23,7 +23,7 @@ class TestNode(unittest.TestCase):
 
         data = tl.tensor([[3], [1], [5]])
 
-        self.assertTrue(tl.all(log_likelihood(s1, data) == log_likelihood(s2, data)))
+        self.assertTrue(tl_allclose(log_likelihood(s1, data), log_likelihood(s2, data)))
 
     def test_layer_likelihood_2(self):
 
@@ -38,7 +38,7 @@ class TestNode(unittest.TestCase):
 
         data = tl.tensor([[3, 1], [2, 7], [5, 4]])
 
-        self.assertTrue(tl.all(log_likelihood(p1, data) == log_likelihood(p2, data)))
+        self.assertTrue(tl_allclose(log_likelihood(p1, data), log_likelihood(p2, data)))
 
 
 if __name__ == "__main__":

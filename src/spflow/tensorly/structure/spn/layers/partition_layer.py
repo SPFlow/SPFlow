@@ -3,10 +3,10 @@
 import itertools
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
-
+import numpy as np
 import tensorly as tl
 from ....utils.helper_functions import tl_split
-
+from spflow.meta.structure import MetaModule
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.nested_module import NestedModule
 from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
@@ -53,7 +53,7 @@ class PartitionLayer(NestedModule):
             List of scopes keeping track of the scopes each partition represents.
     """
 
-    def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
+    def __init__(self, child_partitions: List[List[MetaModule]], **kwargs) -> None:
         r"""Initializes ``PartitionLayer`` object.
 
         Args:
@@ -111,7 +111,7 @@ class PartitionLayer(NestedModule):
         self.nodes = []
 
         # create placeholders and nodes
-        for input_ids in itertools.product(*tl_split(list(range(self.n_in)), tl.cumsum(partition_sizes[:-1]))):
+        for input_ids in itertools.product(*np.split(list(range(self.n_in)), np.cumsum(partition_sizes[:-1]))):
             ph = self.create_placeholder(input_ids)
             self.nodes.append(ProductNode(children=[ph]))
 
@@ -128,6 +128,12 @@ class PartitionLayer(NestedModule):
         """Returns the output scopes this layer represents."""
         return [self.scope for _ in range(self.n_out)]
 
+    def parameters(self):
+        params = []
+        for child in self.children:
+            params.extend(list(child.parameters()))
+        return params
+
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
@@ -135,7 +141,7 @@ def marginalize(
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[PartitionLayer, Module, None]:
+) -> Union[PartitionLayer, MetaModule, None]:
     """Structural marginalization for SPN-like partition layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -175,7 +181,7 @@ def marginalize(
         marg_partitions = []
 
         children = layer.children
-        partitions = tl_split(children, tl.cumsum(layer.modules_per_partition[:-1]))
+        partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
 
         for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
             partition_children = partition_children.tolist()

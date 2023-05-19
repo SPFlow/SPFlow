@@ -78,10 +78,9 @@ def sample(
     branches = tl.sum((cum_sampling_weights < random_choices),axis=1)
 
     # group sampled branches
-    for branch in tl_unique(branches):
+    for branch in tl.tensor(tl_unique(branches), dtype=int):
         # group instances by sampled branch
-        branch_instance_ids = tl.tensor(sampling_ctx.instance_ids)[branches == branch].tolist()
-
+        branch_instance_ids = tl.tensor(sampling_ctx.instance_ids, dtype=int)[branches == branch].tolist()
         # get corresponding child and output id for sampled branch
         child_ids, output_ids = node.input_to_output_ids([branch])
 

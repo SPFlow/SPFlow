@@ -53,11 +53,11 @@ def randomized_dependency_coefficients(
     ecdf_features = tl.stack([ecdf.T, tl.ones(ecdf.T.shape)], axis=-1)
 
     # compute random weights (and biases) generated from normal distribution
-    rand_gaussians = tl.random.random_tensor((tl.shape(data)[1], 2, k))  # 2 for weight (of size 1) and bias
+    rand_gaussians = tl.random.random_tensor((tl.shape(data)[1], 2, k), dtype=data.dtype)  # 2 for weight (of size 1) and bias
 
     # compute linear combinations of ecdf feature using generated weights
     features = tl.stack([tl.dot(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)])
-    features *= tl.sqrt(s)  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
+    features *= tl.sqrt(tl.tensor(s))  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
 
     # apply non-linearity phi
     features = phi(features)
