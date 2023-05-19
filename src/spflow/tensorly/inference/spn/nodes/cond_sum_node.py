@@ -4,7 +4,7 @@ from typing import Optional
 
 import tensorly as tl
 from scipy.special import logsumexp  # type: ignore
-from spflow.tensorly.utils.helper_functions import T
+from spflow.tensorly.utils.helper_functions import T, tl_logsumexp
 from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -60,6 +60,6 @@ def log_likelihood(
         ],
         axis=1,
     )
-
+    weighted_inputs = child_lls + tl.log(weights)
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return logsumexp(child_lls, b=weights, axis=1, keepdims=True)
+    return tl_logsumexp(weighted_inputs, axis=-1, keepdims=True)

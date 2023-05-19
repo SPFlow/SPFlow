@@ -89,7 +89,7 @@ class TestNode(unittest.TestCase):
 
         data = tl.tensor([[1], [5], [3]])
 
-        self.assertTrue(tl.all(log_likelihood(s1, data) == log_likelihood(s2, data)))
+        self.assertTrue(tl_allclose(log_likelihood(s1, data), log_likelihood(s2, data)))
 
     def test_layer_likelihood_2(self):
 
@@ -107,7 +107,7 @@ class TestNode(unittest.TestCase):
 
         data = tl.tensor([[1, 6], [5, 3], [3, 7]])
 
-        self.assertTrue(tl.all(log_likelihood(p1, data) == log_likelihood(p2, data)))
+        self.assertTrue(tl_allclose(log_likelihood(p1, data), log_likelihood(p2, data)))
 
 
 if __name__ == "__main__":

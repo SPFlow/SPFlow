@@ -5,7 +5,8 @@ import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_allclose, tl_unsqueeze
 
 from spflow.tensorly.inference import likelihood, log_likelihood
-from spflow.tensorly.structure.spn import Binomial
+#from spflow.tensorly.structure.spn import Binomial
+from spflow.tensorly.structure.general.nodes.leaves import Binomial
 from spflow.meta.data import Scope
 
 

@@ -4,8 +4,9 @@ from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 
 import tensorly as tl
-from ....utils.helper_functions import tl_vstack, tl_allclose, tl_squeeze
-
+import torch
+from ....utils.helper_functions import tl_vstack, tl_allclose, tl_squeeze, T
+from spflow.meta.structure import MetaModule
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.nested_module import NestedModule
 from spflow.tensorly.structure.spn.nodes.sum_node import SumNode
@@ -14,6 +15,10 @@ from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
+)
+from spflow.tensorly.structure.spn.nodes.sum_node import (
+    proj_convex_to_real,
+    proj_real_to_convex,
 )
 
 
@@ -39,8 +44,8 @@ class SumLayer(NestedModule):
     def __init__(
         self,
         n_nodes: int,
-        children: List[Module],
-        weights: Optional[Union[tl.tensor, List[List[float]], List[float]]] = None,
+        children: List[MetaModule],
+        weights: Optional[Union[T, List[List[float]], List[float]]] = None,
         **kwargs,
     ) -> None:
         r"""Initializes ``SumLayer`` object.
@@ -79,8 +84,19 @@ class SumLayer(NestedModule):
         self.nodes = [SumNode(children=[ph]) for _ in range(n_nodes)]
 
         # parse weights
-        if weights is not None:
-            self.weights = weights
+        if weights is None:
+            weights = tl.random.random_tensor((self.n_out, self.n_in)) + 1e-08  # avoid zeros
+            weights /= tl.sum(weights, axis=-1, keepdims=True)
+
+        if self.backend == "pytorch":
+            self._weights = torch.nn.Parameter(requires_grad=True)
+        else:
+            self._weights = None
+        self.weights = weights
+
+        #if weights is not None:
+        #    self.weights = weights
+
 
         # compute scope
         self.scope = self.nodes[0].scope
@@ -96,12 +112,12 @@ class SumLayer(NestedModule):
         return [self.scope for _ in range(self.n_out)]
 
     @property
-    def weights(self) -> tl.tensor:
+    def weights(self) -> T:
         """Returns the weights of all nodes as a two-dimensional NumPy array."""
-        return tl_vstack([node.weights for node in self.nodes])
+        return tl_vstack([proj_real_to_convex(node._weights) for node in self.nodes])
 
     @weights.setter
-    def weights(self, values: Union[tl.tensor, List[List[float]], List[float]]) -> None:
+    def weights(self, values: Union[T, List[List[float]], List[float]]) -> None:
         """Sets the weights of all nodes to specified values.
 
         Args:
@@ -138,17 +154,30 @@ class SumLayer(NestedModule):
             # same weights for all sum nodes
             if tl.shape(values)[0] == 1:
                 for node in self.nodes:
-                    node.weights = tl.copy(tl_squeeze(values, axis=0))
+                    if self.backend == "pytorch":
+                        node._weights.data = tl.copy(tl_squeeze(proj_convex_to_real(values), axis=0))
+                    else:
+                        node._weights = tl.copy(tl_squeeze(proj_convex_to_real(values), axis=0))
             # different weights for all sum nodes
             elif values.shape[0] == self.n_out:
                 for node, node_values in zip(self.nodes, values):
-                    node.weights = tl.copy(node_values)
+                    if self.backend == "pytorch":
+                        node._weights.data = tl.copy(proj_convex_to_real(node_values))
+                    else:
+                        node._weights = tl.copy(proj_convex_to_real(node_values))
             # incorrect number of specified weights
             else:
                 raise ValueError(
                     f"Incorrect number of weights for 'SumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
                 )
 
+    def parameters(self):
+        params = []
+        for child in self.children:
+            params.extend(list(child.parameters()))
+        for node in self.nodes:
+            params.insert(0,node._weights)
+        return params
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
@@ -156,7 +185,7 @@ def marginalize(
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[SumLayer, Module, None]:
+) -> Union[SumLayer, MetaModule, None]:
     """Structural marginalization for SPN-like sum layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.

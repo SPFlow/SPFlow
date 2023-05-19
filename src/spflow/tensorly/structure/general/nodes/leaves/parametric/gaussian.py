@@ -3,7 +3,7 @@
 from typing import List, Tuple
 
 import tensorly as tl
-from ......utils.helper_functions import tl_isnan, tl_isinf, tl_isfinite
+from ......utils.helper_functions import tl_isnan, tl_isinf, tl_isfinite, T
 from scipy.stats import norm  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
@@ -158,7 +158,7 @@ class Gaussian(LeafNode):
         """
         return self.mean, self.std
 
-    def check_support(self, data: tl.tensor, is_scope_data: bool = False) -> tl.tensor:
+    def check_support(self, data: T, is_scope_data: bool = False) -> T:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of the Gaussian distribution, which is:

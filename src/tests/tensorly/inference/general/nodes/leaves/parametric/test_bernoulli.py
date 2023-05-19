@@ -3,10 +3,12 @@ import unittest
 
 import numpy as np
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import tl_allclose
+import torch
+from spflow.tensorly.utils.helper_functions import tl_allclose, tl_nextafter
 
 from spflow.tensorly.inference import likelihood, log_likelihood
-from spflow.tensorly.structure.spn import Bernoulli
+#from spflow.tensorly.structure.spn import Bernoulli
+from spflow.tensorly.structure.general.nodes.leaves import Bernoulli
 from spflow.meta.data import Scope
 
 
@@ -106,25 +108,25 @@ class TestBernoulli(unittest.TestCase):
             ValueError,
             log_likelihood,
             bernoulli,
-            tl.tensor([[np.nextafter(0.0, -1.0)]]),
+            tl.tensor([[tl_nextafter(0.0, -1.0)]]),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             bernoulli,
-            tl.tensor([[np.nextafter(0.0, 1.0)]]),
+            tl.tensor([[tl_nextafter(0.0, 1.0)]]),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             bernoulli,
-            tl.tensor([[np.nextafter(1.0, 2.0)]]),
+            tl.tensor([[tl_nextafter(1.0, 2.0)]]),
         )
         self.assertRaises(
             ValueError,
             log_likelihood,
             bernoulli,
-            tl.tensor([[np.nextafter(1.0, 0.0)]]),
+            tl.tensor([[tl_nextafter(1.0, 0.0)]]),
         )
         self.assertRaises(ValueError, log_likelihood, bernoulli, tl.tensor([[0.5]]))
 

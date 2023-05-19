@@ -68,10 +68,10 @@ def sample(
 
         # single node id
         node_id = node_ids[0]
-        node_instance_ids = tl.tensor(sampling_ctx.instance_ids)[indices]
+        node_instance_ids = tl.tensor(sampling_ctx.instance_ids, dtype=int)[indices]
 
         sample(
-            sum_layer.nodes[node_id],
+            sum_layer.nodes[int(node_id)],
             data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
