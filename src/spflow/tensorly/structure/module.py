@@ -38,10 +38,15 @@ class Module(MetaModule, ABC):
         if children is None:
             children = []
 
-        if any(not isinstance(child, Module) for child in children):
+        #if any(not isinstance(child, Module) for child in children):
+        if any(not isinstance(child, MetaModule) for child in children):
             raise ValueError("Children must all be of type 'Module'.")
 
+        self.backend = tl.get_backend()
+        if any(child.backend != self.backend for child in children):
+            raise ValueError("Children must all have the same backend as the parent")
         self.children = children
+
 
     def input_to_output_ids(self, input_ids: Union[List[int], tl.tensor]) -> Tuple[List[int], List[int]]:
         """Translates input indices into corresponding child module indices and child module output indices.
@@ -61,7 +66,7 @@ class Module(MetaModule, ABC):
             input_ids = list(range(self.n_out))
 
         if isinstance(input_ids, list):
-            input_ids = tl.tensor(input_ids)
+            input_ids = tl.tensor(input_ids, dtype=int)
 
         # remember original shape
         shape = tl.shape(input_ids)
@@ -70,7 +75,7 @@ class Module(MetaModule, ABC):
 
         # infer number of inputs from children (and their numbers of outputs)
         child_num_outputs = tl.tensor([child.n_out for child in self.children])
-        child_cum_outputs = tl.cumsum(child_num_outputs)
+        child_cum_outputs = tl.cumsum(child_num_outputs, -1)
 
         # get child module for corresponding input
         child_ids = tl.sum(child_cum_outputs <= tl.reshape(input_ids,(-1, 1)), axis=1)
@@ -81,4 +86,4 @@ class Module(MetaModule, ABC):
         child_ids = tl.reshape(child_ids,shape)
         output_ids = tl.reshape(output_ids,shape)
 
-        return child_ids.tolist(), output_ids.tolist()
+        return tl.tensor(child_ids, dtype=int).tolist(), tl.tensor(output_ids,dtype=int).tolist()

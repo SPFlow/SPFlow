@@ -2,17 +2,20 @@
 """
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
-
+from itertools import chain
+import torch
 import tensorly as tl
-from ....utils.helper_functions import tl_isclose
+from ....utils.helper_functions import tl_isclose, T
 
 from spflow.tensorly.structure.general.nodes.node import Node
 from spflow.tensorly.structure.module import Module
+from spflow.meta.structure import MetaModule
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.tensorly.utils.projections import proj_convex_to_real, proj_real_to_convex
 
 
 class SumNode(Node):
@@ -33,8 +36,8 @@ class SumNode(Node):
 
     def __init__(
         self,
-        children: List[Module],
-        weights: Optional[Union[tl.tensor, List[float]]] = None,
+        children: List[MetaModule],#List[Module],
+        weights: Optional[Union[T, List[float]]] = None,
     ) -> None:
         r"""Initializes ``SumNode`` object.
 
@@ -73,15 +76,21 @@ class SumNode(Node):
             weights = tl.random.random_tensor(self.n_in) + 1e-08  # avoid zeros
             weights /= tl.sum(weights)
 
+        if self.backend == "pytorch":
+            self._weights = torch.nn.Parameter(requires_grad=True)
+        else:
+            self._weights = None
         self.weights = weights
 
     @property
-    def weights(self) -> tl.tensor:
+    def weights(self) -> T:
         """Returns the weights of the node as a NumPy array."""
-        return self._weights
+
+        return proj_real_to_convex(self._weights)
+
 
     @weights.setter
-    def weights(self, values: Union[tl.tensor, List[float]]) -> None:
+    def weights(self, values: Union[T, List[float]]) -> None:
         """Sets the weights of the node to specified values.
 
         Args:
@@ -94,18 +103,29 @@ class SumNode(Node):
         """
         if isinstance(values, list):
             values = tl.tensor(values)
-        if values.ndim != 1:
+        if tl.ndim(values) != 1:
             raise ValueError(
                 f"Numpy array of weight values for 'SumNode' is expected to be one-dimensional, but is {values.ndim}-dimensional."
             )
         if not tl.all(values > 0):
             raise ValueError("Weights for 'SumNode' must be all positive.")
-        if not tl_isclose(values.sum(), 1.0):
+        if not tl_isclose(tl.sum(values), 1.0):
             raise ValueError("Weights for 'SumNode' must sum up to one.")
         if not (len(values) == self.n_in):
             raise ValueError("Number of weights for 'SumNode' does not match total number of child outputs.")
+        if self.backend == "pytorch":
+            self._weights.data = proj_convex_to_real(values)
+        else:
+            self._weights = proj_convex_to_real(values)
 
-        self._weights = values
+
+    def parameters(self):
+        params = []
+        for child in self.children:
+            params.extend(list(child.parameters()))
+        params.insert(0,self._weights)
+        return params
+
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -162,3 +182,5 @@ def marginalize(
         return SumNode(children=marg_children, weights=sum_node.weights)
     else:
         return deepcopy(sum_node)
+
+

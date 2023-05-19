@@ -5,8 +5,8 @@ from copy import deepcopy
 from typing import Callable, Iterable, List, Optional, Union
 
 import tensorly as tl
-from ....utils.helper_functions import tl_isclose
-
+from ....utils.helper_functions import tl_isclose,tl_isinstance
+from spflow.meta.structure import MetaModule
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.spn.nodes.product_node import Node
 from spflow.meta.data.scope import Scope
@@ -35,7 +35,7 @@ class CondSumNode(Node):
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, children: List[Module], cond_f: Optional[Callable] = None) -> None:
+    def __init__(self, children: List[MetaModule], cond_f: Optional[Callable] = None) -> None:
         """Initializes ``CondSumNode`` object.
 
         Args:
@@ -71,6 +71,7 @@ class CondSumNode(Node):
         self.n_in = sum(child.n_out for child in children)
 
         self.cond_f = cond_f
+
 
     def set_cond_f(self, cond_f: Optional[Callable] = None) -> None:
         """Sets the function to retrieve the node's conditonal weights.
@@ -130,7 +131,7 @@ class CondSumNode(Node):
             weights = cond_f(data)["weights"]
 
         # check if value for 'weights' is valid
-        if isinstance(weights, list):
+        if isinstance(weights, list) or not(tl_isinstance(weights)):
             weights = tl.tensor(weights)
         if tl.ndim(weights) != 1:
             raise ValueError(

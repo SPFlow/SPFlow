@@ -2,7 +2,6 @@ import unittest
 
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_allclose
-
 from spflow.tensorly.inference import likelihood, log_likelihood
 from spflow.tensorly.structure.spn import (
     ProductNode,
@@ -89,7 +88,7 @@ class TestNode(unittest.TestCase):
 
         data = tl.tensor([[0], [1], [0]])
 
-        self.assertTrue(tl.all(log_likelihood(s1, data) == log_likelihood(s2, data)))
+        self.assertTrue(tl_allclose(log_likelihood(s1, data), log_likelihood(s2, data)))
 
     def test_layer_likelihood_2(self):
 

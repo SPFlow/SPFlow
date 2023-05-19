@@ -59,9 +59,10 @@ def sample(
         child_ids_actual, output_ids_actual = placeholder.input_to_output_ids(output_ids)
 
         for child_id in tl_unique(child_ids_actual):
+            child_id = tl.tensor(child_id, dtype=int)
             sampling_ids_per_child[child_id][0].append(instance_id)
             sampling_ids_per_child[child_id][1].append(
-                tl.tensor(output_ids_actual)[child_ids_actual == child_id].tolist()
+                tl.tensor(output_ids_actual, dtype=int)[child_ids_actual == child_id].tolist()
             )
 
     # sample from children
