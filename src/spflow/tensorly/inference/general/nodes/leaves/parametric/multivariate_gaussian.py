@@ -92,6 +92,6 @@ def log_likelihood(
         raise ValueError("Encountered 'None' value for MultivariateGaussian covariance matrix during inference.")
 
     # compute probabilities for all non-marginalized instances
-    probs[~n_marg.astype(bool), 0] = node.dist.logpdf(x=data[~tl.tensor(n_marg, dtype=bool)])
+    probs[~tl.tensor(n_marg, dtype=bool), 0] = node.dist.logpdf(x=data[~tl.tensor(n_marg, dtype=bool)])
 
     return probs

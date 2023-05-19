@@ -49,6 +49,8 @@ class Module(MetaModule, nn.Module, ABC):
         for i, child in enumerate(children):
             self.add_module(f"child_{i + 1}", child)
 
+        self.backend = "pytorch"
+
     def input_to_output_ids(self, input_ids: Union[List[int], torch.Tensor]) -> Tuple[List[int], List[int]]:
         """Translates input indices into corresponding child module indices and child module output indices.
 

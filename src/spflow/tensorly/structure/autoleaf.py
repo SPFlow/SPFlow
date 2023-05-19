@@ -93,6 +93,7 @@ from spflow.tensorly.structure.general.layers.leaves.parametric.uniform import (
     Uniform,
     UniformLayer,
 )
+
 from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType
@@ -151,7 +152,7 @@ class AutoLeaf:
         219: CondPoissonLayer,
         # multivariate layers (make sure they have lower priority than univariate layers since they may also match univariate signatures)
         300: MultivariateGaussianLayer,
-        301: CondMultivariateGaussianLayer,
+        301: CondMultivariateGaussianLayer
     }
 
     def __new__(cls, signatures: List[FeatureContext]):

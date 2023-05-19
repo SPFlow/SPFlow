@@ -2,7 +2,10 @@
 """
 from typing import Iterable, List, Optional, Union
 
-from spflow.tensorly.structure.autoleaf import AutoLeaf
+import tensorly as tl
+
+from spflow.tensorly.structure.autoleaf import AutoLeaf as TlAutoLeaf
+from spflow.torch.structure.autoleaf import AutoLeaf as TorchAutoLeaf
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.spn.layers.cond_sum_layer import CondSumLayer, marginalize
 from spflow.tensorly.structure.spn.layers.hadamard_layer import HadamardLayer, marginalize
@@ -118,6 +121,14 @@ class RatSPN(Module):
             # leaf region
             else:
                 # split leaf scope into univariate ones and combine them element-wise
+                backend = tl.get_backend()
+                if backend=="numpy":
+                    AutoLeaf = TlAutoLeaf
+                elif backend=="pytorch":
+                    AutoLeaf = TorchAutoLeaf
+                else:
+                    raise NotImplementedError("AutoLeaf is not implemented for this backend")
+
                 if len(region.scope.query) > 1:
                     partition_signatures = [[feature_ctx.select([rv])] * self.n_leaf_nodes for rv in region.scope.query]
                     child_partitions = [[AutoLeaf(signatures)] for signatures in partition_signatures]

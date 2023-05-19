@@ -2,6 +2,7 @@ import numpy as np
 import tensorly as tl
 import torch
 from typing import Union
+from scipy.special import logsumexp, softmax
 
 T = Union[np.ndarray, torch.Tensor]
 
@@ -27,9 +28,9 @@ def tl_vstack(tensor):
     if backend == "numpy":
         return tl.tensor(np.vstack(tensor))
     elif backend == "pytorch":
-        if not (torch.is_tensor(tensor)):
-            tensor = torch.tensor(tensor)
-        return tl.tensor(torch.vstack(tensor))
+        #if not (torch.is_tensor(tensor)):
+        #    tensor = torch.tensor(tensor)
+        return torch.vstack(tensor)
     else:
         raise NotImplementedError("tl_vstack is not implemented for this backend")
 
@@ -41,11 +42,11 @@ def tl_isclose(a, b, rtol=1e-05, atol=1e-08):
     if backend == "numpy":
         return tl.tensor(np.isclose(a=a, b=b, rtol=rtol, atol=atol))
     elif backend == "pytorch":
-        if not (torch.is_tensor(a)):
-            a = torch.tensor(a)
-        if not (torch.is_tensor(b)):
-            b = torch.tensor(b)
-        return tl.tensor(torch.isclose(input=a, other=b, rtol=rtol, atol=atol))
+        #if not (torch.is_tensor(a)):
+        a = torch.tensor(a, dtype=torch.float32)
+        #if not (torch.is_tensor(b)):
+        b = torch.tensor(b, dtype=torch.float32)
+        return tl.tensor(torch.isclose(input=a, other=b, rtol=np.float32(rtol), atol=np.float32(atol)))
     else:
         raise NotImplementedError("tl_isclose is not implemented for this backend")
 
@@ -59,10 +60,10 @@ def tl_allclose(a, b, rtol=1e-05, atol=1e-08):
     if backend == "numpy":
         return tl.tensor(np.allclose(a=a, b=b, rtol=rtol, atol=atol))
     elif backend == "pytorch":
-        if not (torch.is_tensor(a)):
-            a = torch.tensor(a)
-        if not (torch.is_tensor(b)):
-            b = torch.tensor(b)
+        #if not (torch.is_tensor(a)):
+        a = torch.tensor(a, dtype=torch.float32)
+        #if not (torch.is_tensor(b)):
+        b = torch.tensor(b, dtype=torch.float32)
         return tl.tensor(torch.allclose(input=a, other=b, rtol=rtol, atol=atol))
     else:
         raise NotImplementedError("tl_isclose is not implemented for this backend")
@@ -168,7 +169,7 @@ def tl_unique(tensor, axis=None):
     elif backend == "pytorch":
         if not(torch.is_tensor(tensor)):
             tensor = torch.tensor(tensor)
-        return tl.tensor(torch.unique(tensor, axis=axis))
+        return tl.tensor(torch.unique(tensor, dim=axis))
     else:
         raise NotImplementedError("tl_unique is not implemented for this backend")
 
@@ -179,7 +180,7 @@ def tl_isnan(tensor):
     elif backend == "pytorch":
         if not(torch.is_tensor(tensor)):
             tensor = torch.tensor(tensor)
-        return tl.tensor(torch.isnan(tensor))
+        return tl.tensor(torch.isnan(tensor), dtype=bool)
     else:
         raise NotImplementedError("tl_isnan is not implemented for this backend")
 
@@ -190,7 +191,7 @@ def tl_isinf(tensor):
     elif backend == "pytorch":
         if not(torch.is_tensor(tensor)):
             tensor = torch.tensor(tensor)
-        return tl.tensor(torch.isinf(tensor))
+        return tl.tensor(torch.isinf(tensor), dtype=bool)
     else:
         raise NotImplementedError("tl_isinf is not implemented for this backend")
 
@@ -201,12 +202,21 @@ def tl_isfinite(tensor):
     elif backend == "pytorch":
         if not(torch.is_tensor(tensor)):
             tensor = torch.tensor(tensor)
-        return tl.tensor(torch.isfinite(tensor))
+        return tl.tensor(torch.isfinite(tensor), dtype=bool)
     else:
         raise NotImplementedError("tl_isfinite is not implemented for this backend")
 
+#def tl_full(shape, fill_value, dtype=float):
+#    return tl.ones(shape,dtype=dtype) * fill_value
+
 def tl_full(shape, fill_value, dtype=float):
-    return tl.ones(shape,dtype=dtype) * fill_value
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return tl.tensor(np.full(shape, fill_value), dtype=dtype)
+    elif backend == "pytorch":
+        return tl.tensor(torch.full(shape, fill_value), dtype=dtype)
+    else:
+        raise NotImplementedError("tl_full is not implemented for this backend")
 
 def tl_eigvalsh(tensor: tl.tensor):
     backend = tl.get_backend()
@@ -387,7 +397,7 @@ def tl_array_split(tensor: tl.tensor, indices_or_sections, axis=0):
     elif backend == "pytorch":
         if not(torch.is_tensor(tensor)):
             tensor = torch.tensor(tensor)
-        arr = tl.tensor(torch.tensor_split(tensor, tensor_indices_or_sections=indices_or_sections, dim=axis))
+        arr = torch.tensor_split(tensor, indices_or_sections, dim=axis)
         tensor_list = [tl.tensor(arr[i]) for i in range(len(arr))]
         return tensor_list
     else:
@@ -412,3 +422,38 @@ def tl_isinstance(tensor: tl.tensor):
         return isinstance(tensor, torch.Tensor)
     else:
         raise NotImplementedError("tl_isinstance is not implemented for this backend")
+
+def tl_nextafter(input, other):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return tl.tensor(np.nextafter(input,other))
+    elif backend == "pytorch":
+        if not(torch.is_tensor(input)):
+            input = torch.tensor(input)
+        if not(torch.is_tensor(other)):
+            other = torch.tensor(other)
+        return tl.tensor(torch.nextafter(input,other))
+    else:
+        raise NotImplementedError("tl_nextafter is not implemented for this backend")
+
+def tl_logsumexp(tensor, axis=None, keepdims=None):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return tl.tensor(logsumexp(tensor,axis=axis,keepdims=keepdims))
+    elif backend == "pytorch":
+        if not(torch.is_tensor(tensor)):
+            tensor = torch.tensor(tensor)
+        return torch.logsumexp(input=tensor, dim=axis, keepdim=keepdims)
+    else:
+        raise NotImplementedError("tl_logsumexp is not implemented for this backend")
+
+def tl_softmax(input, axis):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return softmax(input,axis=axis)
+    elif backend == "pytorch":
+        if not (torch.is_tensor(input)):
+            input = torch.tensor(input)
+        return torch.nn.functional.softmax(input=input, dim=axis)
+    else:
+        raise NotImplementedError("tl_squeeze is not implemented for this backend")

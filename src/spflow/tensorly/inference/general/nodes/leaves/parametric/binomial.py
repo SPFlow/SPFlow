@@ -76,6 +76,6 @@ def log_likelihood(
             raise ValueError(f"Encountered data instances that are not in the support of the Binomial distribution.")
 
     # compute probabilities for all non-marginalized instances
-    probs[~marg_ids] = node.dist.logpmf(k=data[~marg_ids])
+    probs[~marg_ids] =node.dist.logpmf(k=data[~marg_ids])
 
     return probs

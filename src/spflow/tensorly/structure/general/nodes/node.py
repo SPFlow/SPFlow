@@ -7,6 +7,7 @@ from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 
 from spflow.tensorly.structure.module import Module
+from spflow.meta.structure import MetaModule
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -29,7 +30,7 @@ class Node(Module, ABC):
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, children: Optional[List[Module]] = None, **kwargs) -> None:
+    def __init__(self, children: Optional[List[MetaModule]] = None, **kwargs) -> None:
         r"""Initializes ``Node`` object.
 
         Initializes node by correctly setting its children.
