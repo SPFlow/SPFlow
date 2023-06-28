@@ -4,95 +4,95 @@ from typing import Dict, List, Optional, Tuple, Type, Union
 
 # ----- non-conditional modules -----
 from spflow.tensorly.structure.general.layers.leaves.parametric.bernoulli import (
-    Bernoulli,
+#    Bernoulli,
     BernoulliLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_bernoulli import Bernoulli
 from spflow.tensorly.structure.general.layers.leaves.parametric.binomial import (
-    Binomial,
     BinomialLayer,
 )
-
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_binomial import Binomial
 # ----- conditional modules -----
 from spflow.tensorly.structure.general.layers.leaves.parametric.cond_bernoulli import (
-    CondBernoulli,
     CondBernoulliLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_bernoulli import CondBernoulli
 from spflow.tensorly.structure.general.layers.leaves.parametric.cond_binomial import (
-    CondBinomial,
     CondBinomialLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_binomial import CondBinomial
 from spflow.tensorly.structure.general.layers.leaves.parametric.cond_exponential import (
-    CondExponential,
     CondExponentialLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_exponential import CondExponential
 from spflow.tensorly.structure.general.layers.leaves.parametric.cond_gamma import (
-    CondGamma,
     CondGammaLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gamma import CondGamma
 from spflow.tensorly.structure.general.layers.leaves.parametric.cond_gaussian import (
-    CondGaussian,
     CondGaussianLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gaussian import CondGaussian
 from spflow.tensorly.structure.general.layers.leaves.parametric.cond_geometric import (
-    CondGeometric,
     CondGeometricLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_geometric import CondGeometric
 from spflow.tensorly.structure.general.layers.leaves.parametric.cond_log_normal import (
-    CondLogNormal,
     CondLogNormalLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_log_normal import CondLogNormal
 from spflow.tensorly.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import (
-    CondMultivariateGaussian,
     CondMultivariateGaussianLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_multivariate_gaussian import CondMultivariateGaussian
 from spflow.tensorly.structure.general.layers.leaves.parametric.cond_negative_binomial import (
-    CondNegativeBinomial,
     CondNegativeBinomialLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_negative_binomial import CondNegativeBinomial
 from spflow.tensorly.structure.general.layers.leaves.parametric.cond_poisson import (
-    CondPoisson,
     CondPoissonLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_poisson import CondPoisson
 from spflow.tensorly.structure.general.layers.leaves.parametric.exponential import (
-    Exponential,
     ExponentialLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_exponential import Exponential
 from spflow.tensorly.structure.general.layers.leaves.parametric.gamma import (
-    Gamma,
     GammaLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gamma import Gamma
 from spflow.tensorly.structure.general.layers.leaves.parametric.gaussian import (
-    Gaussian,
     GaussianLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.tensorly.structure.general.layers.leaves.parametric.geometric import (
-    Geometric,
     GeometricLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_geometric import Geometric
 from spflow.tensorly.structure.general.layers.leaves.parametric.hypergeometric import (
-    Hypergeometric,
     HypergeometricLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_hypergeometric import Hypergeometric
 from spflow.tensorly.structure.general.layers.leaves.parametric.log_normal import (
-    LogNormal,
     LogNormalLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_log_normal import LogNormal
 from spflow.tensorly.structure.general.layers.leaves.parametric.multivariate_gaussian import (
-    MultivariateGaussian,
     MultivariateGaussianLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_multivariate_gaussian import MultivariateGaussian
 from spflow.tensorly.structure.general.layers.leaves.parametric.negative_binomial import (
-    NegativeBinomial,
     NegativeBinomialLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_negative_binomial import NegativeBinomial
 from spflow.tensorly.structure.general.layers.leaves.parametric.poisson import (
-    Poisson,
     PoissonLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_poisson import Poisson
 from spflow.tensorly.structure.general.layers.leaves.parametric.uniform import (
-    Uniform,
     UniformLayer,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_uniform import Uniform
 
 from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext

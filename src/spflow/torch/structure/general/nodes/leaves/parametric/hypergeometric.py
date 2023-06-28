@@ -65,9 +65,12 @@ class Hypergeometric(LeafNode):
         super().__init__(scope=scope)
 
         # register parameters as torch buffers (should not be changed)
-        self.register_buffer("N", torch.empty(size=[]))
-        self.register_buffer("M", torch.empty(size=[]))
-        self.register_buffer("n", torch.empty(size=[]))
+        #self.register_buffer("N", torch.empty(size=[]))
+        #self.register_buffer("M", torch.empty(size=[]))
+        #self.register_buffer("n", torch.empty(size=[]))
+        self.N = torch.empty(size=[])
+        self.M = torch.empty(size=[])
+        self.n = torch.empty(size=[])
 
         # set parameters
         self.set_params(N, M, n)

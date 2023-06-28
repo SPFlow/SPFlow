@@ -8,7 +8,7 @@ from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Gaussian as BaseGaussian
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import GeneralGaussian as Gaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 
 
 class TestGaussian(unittest.TestCase):
@@ -25,7 +25,7 @@ class TestGaussian(unittest.TestCase):
         mean = random.random()
         std = random.random() + 1e-7  # offset by small number to avoid zero
 
-        torch_gaussian = Gaussian("pytorch", Scope([0]), mean, std)
+        torch_gaussian = Gaussian(Scope([0]), mean, std)
         node_gaussian = BaseGaussian(Scope([0]), mean, std)
 
         # create dummy input data (batch size x random variables)
@@ -42,7 +42,7 @@ class TestGaussian(unittest.TestCase):
         mean = random.random()
         std = random.random() + 1e-7  # offset by small number to avoid zero
 
-        torch_gaussian = Gaussian("pytorch", Scope([0]), mean, std)
+        torch_gaussian = Gaussian(Scope([0]), mean, std)
 
         # create dummy input data (batch size x random variables)
         data = np.random.randn(3, 1)
@@ -80,7 +80,7 @@ class TestGaussian(unittest.TestCase):
     def test_gradient_optimization(self):
 
         # initialize distribution
-        torch_gaussian = Gaussian("pytorch", Scope([0]), mean=1.0, std=2.0)
+        torch_gaussian = Gaussian(Scope([0]), mean=1.0, std=2.0)
 
         torch.manual_seed(0)
 
@@ -109,7 +109,7 @@ class TestGaussian(unittest.TestCase):
 
     def test_likelihood_marginalization(self):
 
-        gaussian = Gaussian("pytorch", Scope([0]), 0.0, 1.0)
+        gaussian = Gaussian(Scope([0]), 0.0, 1.0)
         data = torch.tensor([[float("nan")]])
 
         # should not raise and error and should return 1
@@ -121,7 +121,7 @@ class TestGaussian(unittest.TestCase):
 
         # Support for Gaussian distribution: floats (-inf, inf)
 
-        gaussian = Gaussian("pytorch", Scope([0]), 0.0, 1.0)
+        gaussian = Gaussian(Scope([0]), 0.0, 1.0)
 
         # check infinite values
         self.assertRaises(ValueError, log_likelihood, gaussian, torch.tensor([[float("inf")]]))

@@ -12,9 +12,11 @@ from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import CondBinomial as TorchCondBinomial
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_binomial import CondBinomial
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_binomial import (
-    CondBinomial,
+    #CondBinomial,
     toBase,
     toTorch,
 )
@@ -172,7 +174,7 @@ class TestBinomial(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         binomial = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Binomial(n=3)])])
-        self.assertTrue(isinstance(binomial, CondBinomial))
+        self.assertTrue(isinstance(binomial, TorchCondBinomial))
         self.assertEqual(binomial.n, 3)
 
     def test_structural_marginalization(self):

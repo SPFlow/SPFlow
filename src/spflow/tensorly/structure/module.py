@@ -9,7 +9,11 @@ import tensorly as tl
 from ..utils.helper_functions import tl_ravel, tl_tolist
 
 from spflow.meta.structure.module import MetaModule
-
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.dispatch.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 
 class Module(MetaModule, ABC):
     r"""Abstract module class for building graph-based models in the ``base`` backend.
@@ -38,7 +42,7 @@ class Module(MetaModule, ABC):
         if children is None:
             children = []
 
-        #if any(not isinstance(child, Module) for child in children):
+        # if any(not isinstance(child, Module) for child in children):
         if any(not isinstance(child, MetaModule) for child in children):
             raise ValueError("Children must all be of type 'Module'.")
 
@@ -46,7 +50,6 @@ class Module(MetaModule, ABC):
         if any(child.backend != self.backend for child in children):
             raise ValueError("Children must all have the same backend as the parent")
         self.children = children
-
 
     def input_to_output_ids(self, input_ids: Union[List[int], tl.tensor]) -> Tuple[List[int], List[int]]:
         """Translates input indices into corresponding child module indices and child module output indices.
@@ -78,12 +81,35 @@ class Module(MetaModule, ABC):
         child_cum_outputs = tl.cumsum(child_num_outputs, -1)
 
         # get child module for corresponding input
-        child_ids = tl.sum(child_cum_outputs <= tl.reshape(input_ids,(-1, 1)), axis=1)
+        child_ids = tl.sum(child_cum_outputs <= tl.reshape(input_ids, (-1, 1)), axis=1)
         # get output id of child module for corresponding input
         output_ids = input_ids - (child_cum_outputs[child_ids.tolist()] - child_num_outputs[child_ids.tolist()])
 
         # restore original shape
-        child_ids = tl.reshape(child_ids,shape)
-        output_ids = tl.reshape(output_ids,shape)
+        child_ids = tl.reshape(child_ids, shape)
+        output_ids = tl.reshape(output_ids, shape)
 
-        return tl.tensor(child_ids, dtype=int).tolist(), tl.tensor(output_ids,dtype=int).tolist()
+        return tl.tensor(child_ids, dtype=int).tolist(), tl.tensor(output_ids, dtype=int).tolist()
+
+    def modules(self):
+        modules = []
+        for child in self.children:
+            modules.extend(list(child.modules()))
+        modules.insert(0, self)
+        return modules
+
+    def parameters(self):
+        print("leafnode")
+        return self.get_params()
+
+
+
+
+
+@dispatch(memoize=True)  # type: ignore
+def toNodeBased(mod: Module, dispatch_ctx: Optional[DispatchContext] = None):
+    return mod
+
+@dispatch(memoize=True)  # type: ignore
+def toLayerBased(mod: Module, dispatch_ctx: Optional[DispatchContext] = None):
+    return mod

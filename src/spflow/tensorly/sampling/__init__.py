@@ -52,6 +52,11 @@ from .spn.layers.hadamard_layer import sample
 from .spn.layers.partition_layer import sample
 from .spn.layers.product_layer import sample
 from .spn.layers.sum_layer import sample
+from .spn.layers_layerbased.cond_sum_layer import sample
+from .spn.layers_layerbased.hadamard_layer import sample
+from .spn.layers_layerbased.partition_layer import sample
+from .spn.layers_layerbased.product_layer import sample
+from .spn.layers_layerbased.sum_layer import sample
 from .spn.nodes.cond_sum_node import sample
 from .spn.nodes.product_node import sample
 from .spn.nodes.sum_node import sample

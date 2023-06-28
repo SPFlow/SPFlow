@@ -6,7 +6,7 @@ import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_isclose, tl_vstack, tl_isnan
 
 from spflow.tensorly.learning import maximum_likelihood_estimation
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import GeneralGaussian as Gaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.meta.data import Scope
 
 
@@ -17,7 +17,7 @@ class TestNode(unittest.TestCase):
         np.random.seed(0)
         random.seed(0)
 
-        leaf = Gaussian("numpy", Scope([0]))
+        leaf = Gaussian(Scope([0]))
 
         # simulate data
         data = np.random.normal(loc=-1.7, scale=0.2, size=(10000, 1))

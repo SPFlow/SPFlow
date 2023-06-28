@@ -12,13 +12,15 @@ from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import CondLogNormal as TorchCondLogNormal
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_log_normal import CondLogNormal
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_log_normal import (
-    CondLogNormal,
+    #CondLogNormal,
     toBase,
     toTorch,
 )
-from spflow.torch.structure.spn.nodes.sum_node import marginalize
+from spflow.tensorly.structure.spn.nodes.sum_node import marginalize
 
 
 class TestLogNormal(unittest.TestCase):
@@ -200,7 +202,7 @@ class TestLogNormal(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         log_normal = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.LogNormal])])
-        self.assertTrue(isinstance(log_normal, CondLogNormal))
+        self.assertTrue(isinstance(log_normal, TorchCondLogNormal))
 
     def test_structural_marginalization(self):
 

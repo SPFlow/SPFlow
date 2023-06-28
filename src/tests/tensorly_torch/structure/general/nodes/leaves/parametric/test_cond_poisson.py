@@ -12,13 +12,15 @@ from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import CondPoisson as TorchCondPoisson
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_poisson import CondPoisson
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_poisson import (
-    CondPoisson,
+    #CondPoisson,
     toBase,
     toTorch,
 )
-from spflow.torch.structure.spn.nodes.sum_node import marginalize
+from spflow.tensorly.structure.spn.nodes.sum_node import marginalize
 
 
 class TestPoisson(unittest.TestCase):
@@ -150,7 +152,7 @@ class TestPoisson(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         poisson = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Poisson(l=1.5)])])
-        self.assertTrue(isinstance(poisson, CondPoisson))
+        self.assertTrue(isinstance(poisson, TorchCondPoisson))
 
     def test_structural_marginalization(self):
 

@@ -8,8 +8,12 @@ from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Bernoulli as BaseBernoulli
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Bernoulli
+from spflow.torch.structure import  marginalize, toBase, toTorch#,AutoLeaf
+from spflow.torch.structure.spn import Bernoulli as TorchBernoulli
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_bernoulli import Bernoulli
+from spflow.tensorly.structure import AutoLeaf
+
+
 
 
 class TestBernoulli(unittest.TestCase):
@@ -124,7 +128,7 @@ class TestBernoulli(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         bernoulli = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.75)])])
-        self.assertTrue(isinstance(bernoulli, Bernoulli))
+        self.assertTrue(isinstance(bernoulli, TorchBernoulli))
         self.assertTrue(torch.isclose(bernoulli.p, torch.tensor(0.75)))
 
     def test_structural_marginalization(self):

@@ -12,7 +12,8 @@ from spflow.torch.learning import (
     expectation_maximization,
     maximum_likelihood_estimation,
 )
-from spflow.torch.structure.spn import ProductNode, SumNode, UniformLayer
+from spflow.torch.structure.spn import UniformLayer #ProductNode, SumNode,
+from spflow.tensorly.structure.spn import ProductNode, SumNode
 
 
 class TestNode(unittest.TestCase):

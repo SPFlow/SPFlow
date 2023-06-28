@@ -12,9 +12,11 @@ from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import CondGamma as TorchCondGamma
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gamma import CondGamma
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gamma import (
-    CondGamma,
+    #CondGamma,
     toBase,
     toTorch,
 )
@@ -232,7 +234,7 @@ class TestGamma(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         gamma = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Gamma])])
-        self.assertTrue(isinstance(gamma, CondGamma))
+        self.assertTrue(isinstance(gamma, TorchCondGamma))
 
     def test_structural_marginalization(self):
 

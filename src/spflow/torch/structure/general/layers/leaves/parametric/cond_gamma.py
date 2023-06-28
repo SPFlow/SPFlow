@@ -20,7 +20,7 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma
-from spflow.torch.structure.module import Module
+from spflow.tensorly.structure.module import Module
 
 
 class CondGammaLayer(Module):

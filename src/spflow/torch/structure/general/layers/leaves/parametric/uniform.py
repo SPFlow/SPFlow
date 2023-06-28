@@ -19,7 +19,7 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaves.parametric.uniform import Uniform
-from spflow.torch.structure.module import Module
+from spflow.tensorly.structure.module import Module
 
 
 class UniformLayer(Module):
@@ -93,10 +93,14 @@ class UniformLayer(Module):
         super().__init__(children=[], **kwargs)
 
         # register interval bounds as torch buffers (should not be changed)
-        self.register_buffer("start", torch.empty(size=[]))
-        self.register_buffer("end", torch.empty(size=[]))
-        self.register_buffer("end_next", torch.empty(size=[]))
-        self.register_buffer("support_outside", torch.empty(size=[]))
+        #self.register_buffer("start", torch.empty(size=[]))
+        #self.register_buffer("end", torch.empty(size=[]))
+        #self.register_buffer("end_next", torch.empty(size=[]))
+        #self.register_buffer("support_outside", torch.empty(size=[]))
+        self.start = torch.empty(size=[])
+        self.end = torch.empty(size=[])
+        self.end_next = torch.empty(size=[])
+        self.support_outside = torch.empty(size=[])
 
         # compute scope
         self.scopes_out = scope

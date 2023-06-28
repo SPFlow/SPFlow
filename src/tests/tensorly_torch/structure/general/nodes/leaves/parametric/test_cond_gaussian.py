@@ -12,9 +12,11 @@ from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import CondGaussian as TorchCondGaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gaussian import CondGaussian
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
-    CondGaussian,
+    #CondGaussian,
     toBase,
     toTorch,
 )
@@ -201,7 +203,7 @@ class TestGaussian(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         gaussian = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])])
-        self.assertTrue(isinstance(gaussian, CondGaussian))
+        self.assertTrue(isinstance(gaussian, TorchCondGaussian))
 
     def test_structural_marginalization(self):
 

@@ -4,11 +4,12 @@ from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 import numpy as np
 import tensorly as tl
-from ....utils.helper_functions import tl_split, tl_pad_edge
+from ....utils.helper_functions import tl_split, tl_pad_edge, tl_tolist
 from spflow.meta.structure import MetaModule
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.nested_module import NestedModule
 from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
+
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -231,3 +232,67 @@ def marginalize(
             return HadamardLayer(child_partitions=marg_partitions)
     else:
         return deepcopy(layer)
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(hadamard_layer: HadamardLayer, dispatch_ctx: Optional[DispatchContext] = None) -> HadamardLayer:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+
+    children = hadamard_layer.children
+    partitions = np.split(children, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
+
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return HadamardLayer(
+        child_partitions=[
+            [updateBackend(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions
+        ]
+    )
+
+@dispatch(memoize=True)  # type: ignore
+def toNodeBased(hadamard_layer: HadamardLayer, dispatch_ctx: Optional[DispatchContext] = None) -> HadamardLayer:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+
+    children = hadamard_layer.children
+    partitions = np.split(children, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
+
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return HadamardLayer(
+        child_partitions=[
+            [toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions
+        ]
+    )
+
+@dispatch(memoize=True)  # type: ignore
+def toLayerBased(hadamard_layer: HadamardLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    from spflow.tensorly.structure.spn.layers_layerbased import HadamardLayer as HadamardLayerLayer
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+
+    children = hadamard_layer.children
+    partitions = np.split(children, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
+
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return HadamardLayerLayer(
+        child_partitions=[
+            [toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions
+        ]
+    )

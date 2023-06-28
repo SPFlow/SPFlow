@@ -10,6 +10,7 @@ from spflow.torch.inference import log_likelihood
 from spflow.tensorly.sampling import sample
 from spflow.torch.structure.spn import Gaussian
 from spflow.tensorly.structure.spn import CondSumLayer, SumNode
+from spflow.tensorly.structure.spn.nodes.sum_node import toLayerBased
 
 class TestNode(unittest.TestCase):
     @classmethod
@@ -59,8 +60,11 @@ class TestNode(unittest.TestCase):
             weights=[0.3, 0.4, 0.3],
         )
 
+        layerbased_spn = toLayerBased(layer_spn)
+
         layer_samples = sample(layer_spn, 10000)
         nodes_samples = sample(nodes_spn, 10000)
+        layerbased_samples = sample(layerbased_spn, 10000)
 
         expected_mean = (
             0.3 * (0.8 * 3.0 + 0.1 * 1.0 + 0.1 * 0.0)
@@ -89,6 +93,24 @@ class TestNode(unittest.TestCase):
             ValueError,
             sample,
             list(layer_spn.children)[0],
+            1,
+            sampling_ctx=SamplingContext([0], [[0, 1]]),
+        )
+
+        self.assertTrue(
+            torch.allclose(
+                layer_samples.mean(dim=0),
+                layerbased_samples.mean(dim=0),
+                atol=0.01,
+                rtol=0.1,
+            )
+        )
+
+        # sample from multiple outputs (with same scope)
+        self.assertRaises(
+            ValueError,
+            sample,
+            list(layerbased_spn.children)[0],
             1,
             sampling_ctx=SamplingContext([0], [[0, 1]]),
         )

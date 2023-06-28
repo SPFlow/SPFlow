@@ -8,8 +8,11 @@ from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import LogNormal as BaseLogNormal
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import LogNormal
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import LogNormal as TorchLogNormal
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_log_normal import LogNormal
+from spflow.torch.structure import marginalize, toBase, toTorch
+#from spflow.torch.structure.spn import LogNormal
 
 
 class TestLogNormal(unittest.TestCase):
@@ -128,7 +131,7 @@ class TestLogNormal(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         log_normal = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.LogNormal(mean=-1.0, std=0.5)])])
-        self.assertTrue(isinstance(log_normal, LogNormal))
+        self.assertTrue(isinstance(log_normal, TorchLogNormal))
         self.assertTrue(torch.isclose(log_normal.mean, torch.tensor(-1.0)))
         self.assertTrue(torch.isclose(log_normal.std, torch.tensor(0.5)))
 

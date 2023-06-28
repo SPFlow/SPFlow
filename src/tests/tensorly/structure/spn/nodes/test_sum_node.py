@@ -1,7 +1,7 @@
 import unittest
 
 import tensorly as tl
-
+from spflow.tensorly.structure.module import test
 from spflow.tensorly.structure.spn import ProductNode, SumNode, marginalize
 from spflow.meta.data import Scope
 
@@ -66,6 +66,7 @@ class TestSumNode(unittest.TestCase):
                 ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
             ]
         )
+        test(s)
 
         s_marg = marginalize(s, [0])
         self.assertEqual(s_marg.scopes_out, [Scope([1])])

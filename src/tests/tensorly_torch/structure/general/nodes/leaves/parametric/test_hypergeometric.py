@@ -8,8 +8,11 @@ from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Hypergeometric as BaseHypergeometric
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Hypergeometric
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import Hypergeometric as TorchHypergeometric
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_hypergeometric import Hypergeometric
+from spflow.torch.structure import marginalize, toBase, toTorch
+#from spflow.torch.structure.spn import Hypergeometric
 
 
 class TestHypergeometric(unittest.TestCase):
@@ -160,7 +163,7 @@ class TestHypergeometric(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         hypergeometric = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)])])
-        self.assertTrue(isinstance(hypergeometric, Hypergeometric))
+        self.assertTrue(isinstance(hypergeometric, TorchHypergeometric))
         self.assertTrue(torch.isclose(hypergeometric.N, torch.tensor(4)))
         self.assertTrue(torch.isclose(hypergeometric.M, torch.tensor(2)))
         self.assertTrue(torch.isclose(hypergeometric.n, torch.tensor(3)))

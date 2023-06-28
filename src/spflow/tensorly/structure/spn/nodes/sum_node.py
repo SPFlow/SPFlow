@@ -3,8 +3,11 @@
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 from itertools import chain
+
+import numpy as np
 import torch
 import tensorly as tl
+
 from ....utils.helper_functions import tl_isclose, T
 
 from spflow.tensorly.structure.general.nodes.node import Node
@@ -120,11 +123,15 @@ class SumNode(Node):
 
 
     def parameters(self):
+        print("sumnode")
         params = []
         for child in self.children:
             params.extend(list(child.parameters()))
         params.insert(0,self._weights)
         return params
+
+
+
 
 
 
@@ -183,4 +190,75 @@ def marginalize(
     else:
         return deepcopy(sum_node)
 
+@dispatch(memoize=True)  # type: ignore # ToDo: überprüfen ob sum_layer.weights ein parameter ist
+def updateBackend(sum_node: SumNode, dispatch_ctx: Optional[DispatchContext] = None) -> SumNode:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    if isinstance(sum_node.weights, np.ndarray):
+        return SumNode(
+            children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
+            weights=tl.tensor(sum_node.weights)
+        )
+    elif torch.is_tensor(sum_node.weights):
+        return SumNode(
+            children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
+            weights=tl.tensor(sum_node.weights.data)
+        )
+    else:
+        raise NotImplementedError("updateBackend has no implementation for this backend")
+
+@dispatch(memoize=True)  # type: ignore # ToDo: überprüfen ob sum_layer.weights ein parameter ist
+def toLayerBased(sum_node: SumNode, dispatch_ctx: Optional[DispatchContext] = None) -> SumNode:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    if isinstance(sum_node.weights, np.ndarray):
+        return SumNode(
+            children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
+            weights=tl.tensor(sum_node.weights)
+        )
+    elif torch.is_tensor(sum_node.weights):
+        return SumNode(
+            children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
+            weights=tl.tensor(sum_node.weights.data)
+        )
+    else:
+        raise NotImplementedError("toLayerBased has no implementation for this backend")
+
+@dispatch(memoize=True)  # type: ignore # ToDo: überprüfen ob sum_layer.weights ein parameter ist
+def toNodeBased(sum_node: SumNode, dispatch_ctx: Optional[DispatchContext] = None) -> SumNode:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    if isinstance(sum_node.weights, np.ndarray):
+        return SumNode(
+            children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
+            weights=tl.tensor(sum_node.weights)
+        )
+    elif torch.is_tensor(sum_node.weights):
+        return SumNode(
+            children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
+            weights=tl.tensor(sum_node.weights.data)
+        )
+    else:
+        raise NotImplementedError("toNodeBased has no implementation for this backend")
 

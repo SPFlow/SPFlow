@@ -8,8 +8,11 @@ from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Exponential as BaseExponential
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Exponential
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import Exponential as TorchExponential
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_exponential import Exponential
+from spflow.torch.structure import marginalize, toBase, toTorch
+#from spflow.torch.structure.spn import Exponential
 
 
 class TestExponential(unittest.TestCase):
@@ -124,7 +127,7 @@ class TestExponential(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         exponential = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Exponential(l=1.5)])])
-        self.assertTrue(isinstance(exponential, Exponential))
+        self.assertTrue(isinstance(exponential, TorchExponential))
         self.assertTrue(torch.isclose(exponential.l, torch.tensor(1.5)))
 
     def test_base_backend_conversion(self):

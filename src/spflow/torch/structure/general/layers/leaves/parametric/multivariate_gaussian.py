@@ -23,7 +23,7 @@ from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaus
 from spflow.torch.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
 )
-from spflow.torch.structure.module import Module
+from spflow.tensorly.structure.module import Module
 
 
 class MultivariateGaussianLayer(Module):
@@ -111,7 +111,8 @@ class MultivariateGaussianLayer(Module):
             cov = [torch.eye(len(s.query)) for s in scope]
 
         # create leaf nodes
-        self.nodes = torch.nn.ModuleList([MultivariateGaussian(s) for s in scope])
+        #self.nodes = torch.nn.ModuleList([MultivariateGaussian(s) for s in scope])
+        self.nodes = [MultivariateGaussian(s) for s in scope]
 
         # compute scope
         self.scopes_out = scope
@@ -254,7 +255,16 @@ class MultivariateGaussianLayer(Module):
                 mean = [np.array(mean) for _ in range(self.n_out)]
             # can also be a list of different means
             else:
-                mean = [m if isinstance(m, np.ndarray) else np.array(m) for m in mean]
+                #mean = [m if isinstance(m, np.ndarray) else np.array(m) for m in mean]
+                for i in range(len(mean)):
+                    m = mean[i]
+                    if isinstance(m, np.ndarray):
+                        mean[i] = m
+                    elif isinstance(m, torch.Tensor):
+                        mean[i] = np.array(m.detach())
+                    else:
+                        mean[i] = np.array(m)
+
         elif isinstance(mean, np.ndarray) or isinstance(mean, torch.Tensor):
             # can be a one-dimensional numpy array/torch tensor specifying single mean (broadcast to all nodes)
             if mean.ndim == 1:
@@ -271,7 +281,16 @@ class MultivariateGaussianLayer(Module):
                 cov = [np.array(cov) for _ in range(self.n_out)]
             # can also be a list of different covs
             else:
-                cov = [c if isinstance(c, np.ndarray) else np.array(c) for c in cov]
+                #cov = [c if isinstance(c, np.ndarray) else np.array(c) for c in cov]
+                for i in range(len(cov)):
+                    c = cov[i]
+                    if isinstance(c, np.ndarray):
+                        cov[i] = c
+                    elif isinstance(c, torch.Tensor):
+                        cov[i] = np.array(c.detach())
+                    else:
+                        cov[i] = np.array(c)
+
         elif isinstance(cov, np.ndarray) or isinstance(cov, torch.Tensor):
             # can be a two-dimensional numpy array/torch tensor specifying single cov (broadcast to all nodes)
             if cov.ndim == 2:
@@ -302,9 +321,10 @@ class MultivariateGaussianLayer(Module):
                 )
 
             if c.ndim != 2:
-                raise ValueError(
-                    f"All tensors of 'cov' values for 'MultivariateGaussianLayer' are expected to be two-dimensional, but at least one is {c.ndim}-dimensional."
-                )
+                c = c.reshape((-1,1))
+                #raise ValueError(
+                #    f"All tensors of 'cov' values for 'MultivariateGaussianLayer' are expected to be two-dimensional, but at least one is {c.ndim}-dimensional."
+                #)
             if c.shape[0] != len(s.query) or c.shape[1] != len(s.query):
                 raise ValueError(
                     f"Dimensions of a covariance matrix for 'MultivariateGaussianLayer' do not match corresponding scope size."
@@ -313,13 +333,13 @@ class MultivariateGaussianLayer(Module):
         for node_mean, node_cov, node in zip(mean, cov, self.nodes):
             node.set_params(node_mean, node_cov)
 
-    def get_params(self) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
+    def get_params(self) -> List[List[torch.Tensor]]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             Tuple of a list of one-dimensional PyTorch tensor and a list of a two-dimensional PyTorch tensor representing the means and covariances, respectively.
         """
-        return (self.mean, self.cov)
+        return [self.mean, self.cov]
 
     def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]] = None) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.

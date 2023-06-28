@@ -21,7 +21,7 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaves.parametric.gamma import Gamma
-from spflow.torch.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.torch.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
@@ -254,13 +254,13 @@ class GammaLayer(Module):
         self.alpha_aux.data = proj_bounded_to_real(alpha, lb=0.0)
         self.beta_aux.data = proj_bounded_to_real(beta, lb=0.0)
 
-    def get_params(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_params(self) -> List[torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             Tuple of two one-dimensional PyTorch tensors representing the shape and rate parameters, respectively.
         """
-        return (self.alpha, self.beta)
+        return [self.alpha_aux, self.beta_aux]
 
     def check_support(
         self,
