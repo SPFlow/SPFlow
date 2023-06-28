@@ -18,6 +18,8 @@ from spflow.tensorly.structure.spn import (
     SumNode,
 )
 from spflow.tensorly.structure.general.nodes.leaves import (Gaussian, CondGaussian)
+#from spflow.tensorly.structure.general.nodes.leaves import CondGaussian
+#from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 

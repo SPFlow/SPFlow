@@ -382,8 +382,10 @@ def tl_split(tensor: tl.tensor, indices_or_sections, axis=0):
     elif backend == "pytorch":
         if not(torch.is_tensor(tensor)):
             tensor = torch.tensor(tensor)
-        arr = tl.tensor(torch.split(tensor, split_size_or_sections=indices_or_sections, dim=axis))
-        tensor_list = [tl.tensor(arr[i]) for i in range(len(arr))]
+        if not(isinstance(indices_or_sections,list)):
+            indices_or_sections = indices_or_sections.tolist()
+        arr = torch.tensor_split(tensor, indices_or_sections, axis)
+        tensor_list = [el for el in arr]
         return tensor_list
     else:
         raise NotImplementedError("tl_cov is not implemented for this backend")
@@ -443,6 +445,8 @@ def tl_logsumexp(tensor, axis=None, keepdims=None):
     elif backend == "pytorch":
         if not(torch.is_tensor(tensor)):
             tensor = torch.tensor(tensor)
+        if keepdims==None:
+            keepdims=False
         return torch.logsumexp(input=tensor, dim=axis, keepdim=keepdims)
     else:
         raise NotImplementedError("tl_logsumexp is not implemented for this backend")
@@ -457,3 +461,33 @@ def tl_softmax(input, axis):
         return torch.nn.functional.softmax(input=input, dim=axis)
     else:
         raise NotImplementedError("tl_squeeze is not implemented for this backend")
+
+def tl_cartesian_product(*input):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        mesh = np.meshgrid(*input, indexing='ij')
+        stacked = np.stack(mesh, axis=-1)
+        flattened = stacked.reshape(-1, len(input))
+        return flattened
+    elif backend == "pytorch":
+        return torch.cartesian_prod(*input)
+    else:
+        raise NotImplementedError("tl_squeeze is not implemented for this backend")
+
+def tl_multinomial(input, num_samples):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return np.random.multinomial(num_samples, input)
+    elif backend == "pytorch":
+        return torch.multinomial(input, num_samples)
+    else:
+        raise NotImplementedError("tl_multinomial is not implemented for this backend")
+
+def tl_hstack(input):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return np.hstack(input)
+    elif backend == "pytorch":
+        return torch.hstack(input)
+    else:
+        raise NotImplementedError("tl_hstack is not implemented for this backend")

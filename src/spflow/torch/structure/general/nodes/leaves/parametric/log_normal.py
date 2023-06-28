@@ -182,7 +182,8 @@ class LogNormal(LeafNode):
         Returns:
             Tuple of the floating point values representing the mean and standard deviation.
         """
-        return self.mean.data.cpu().numpy(), self.std.data.cpu().numpy()  # type: ignore
+        #return self.mean.data.cpu().numpy(), self.std.data.cpu().numpy()  # type: ignore
+        return [self.mean, self.std_aux]  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.

@@ -67,7 +67,8 @@ class NegativeBinomial(LeafNode):
         super().__init__(scope=scope)
 
         # register number of trials n as torch buffer (should not be changed)
-        self.register_buffer("n", torch.empty(size=[]))
+        #self.register_buffer("n", torch.empty(size=[]))
+        self.n = torch.empty(size=[])
 
         # register auxiliary torch parameter for the success probability p
         self.p_aux = Parameter()
@@ -172,7 +173,8 @@ class NegativeBinomial(LeafNode):
         Returns:
             Tuple of the number of successes and the floating point value representing the success probability.
         """
-        return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
+        #return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
+        return [self.p_aux]  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.

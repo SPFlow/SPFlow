@@ -8,8 +8,11 @@ from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Poisson as BasePoisson
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Poisson
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import Poisson as TorchPoisson
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_poisson import Poisson
+from spflow.torch.structure import marginalize, toBase, toTorch
+#from spflow.torch.structure.spn import Poisson
 
 
 class TestPoisson(unittest.TestCase):
@@ -120,7 +123,7 @@ class TestPoisson(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         poisson = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Poisson(l=1.5)])])
-        self.assertTrue(isinstance(poisson, Poisson))
+        self.assertTrue(isinstance(poisson, TorchPoisson))
         self.assertTrue(torch.isclose(poisson.l, torch.tensor(1.5)))
 
     def test_base_backend_conversion(self):

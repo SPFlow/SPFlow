@@ -5,7 +5,8 @@ import torch
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondSumNode, ProductNode
+from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.tensorly.structure.spn import CondSumNode, ProductNode
 from spflow.torch.structure.general.nodes.leaves import Gaussian
 
 def create_example_spn():

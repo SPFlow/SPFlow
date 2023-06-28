@@ -3,7 +3,7 @@
 from typing import Iterable, List, Optional, Tuple, Union
 
 import tensorly as tl
-from ......utils.helper_functions import tl_isnan, tl_isinf, tl_eigvalsh
+from ......utils.helper_functions import tl_isnan, tl_isinf, tl_eigvalsh, T
 from scipy.stats import multivariate_normal  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
@@ -46,8 +46,8 @@ class MultivariateGaussian(LeafNode):
     def __init__(
         self,
         scope: Scope,
-        mean: Optional[Union[List[float], tl.tensor]] = None,
-        cov: Optional[Union[List[List[float]], tl.tensor]] = None,
+        mean: Optional[Union[List[float], T]] = None,
+        cov: Optional[Union[List[List[float]], T]] = None,
     ) -> None:
         r"""Initializes ``MultivariateGaussian`` leaf node.
 

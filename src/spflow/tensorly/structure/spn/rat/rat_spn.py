@@ -4,8 +4,8 @@ from typing import Iterable, List, Optional, Union
 
 import tensorly as tl
 
-from spflow.tensorly.structure.autoleaf import AutoLeaf as TlAutoLeaf
-from spflow.torch.structure.autoleaf import AutoLeaf as TorchAutoLeaf
+#from spflow.tensorly.structure.autoleaf import AutoLeaf as TlAutoLeaf
+#from spflow.torch.structure.autoleaf import AutoLeaf as TorchAutoLeaf
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.spn.layers.cond_sum_layer import CondSumLayer, marginalize
 from spflow.tensorly.structure.spn.layers.hadamard_layer import HadamardLayer, marginalize
@@ -125,7 +125,7 @@ class RatSPN(Module):
                 if backend=="numpy":
                     AutoLeaf = TlAutoLeaf
                 elif backend=="pytorch":
-                    AutoLeaf = TorchAutoLeaf
+                    pass #AutoLeaf = TorchAutoLeaf
                 else:
                     raise NotImplementedError("AutoLeaf is not implemented for this backend")
 

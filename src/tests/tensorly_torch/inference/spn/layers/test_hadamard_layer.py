@@ -6,6 +6,7 @@ from spflow.meta.data import Scope
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.structure.spn import HadamardLayer, ProductNode, SumNode
 from spflow.torch.structure.general.nodes.leaves import Gaussian
+from spflow.tensorly.structure.spn.nodes.sum_node import toLayerBased
 
 class TestNode(unittest.TestCase):
     @classmethod
@@ -44,7 +45,7 @@ class TestNode(unittest.TestCase):
             ],
             weights=[0.3, 0.2, 0.5],
         )
-
+        layer_based_spn = toLayerBased(layer_spn)
         dummy_data = torch.tensor(
             [
                 [1.0, 0.25, 0.0, -0.7],
@@ -55,8 +56,10 @@ class TestNode(unittest.TestCase):
 
         layer_ll = log_likelihood(layer_spn, dummy_data)
         nodes_ll = log_likelihood(nodes_spn, dummy_data)
+        lb_ll = log_likelihood(layer_based_spn, dummy_data)
 
         self.assertTrue(torch.allclose(layer_ll, nodes_ll))
+        self.assertTrue(torch.allclose(layer_ll, torch.tensor(lb_ll, dtype=float)))
 
 
 if __name__ == "__main__":

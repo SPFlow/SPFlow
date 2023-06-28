@@ -3,6 +3,7 @@
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 
+import numpy as np
 import tensorly as tl
 import torch
 from ....utils.helper_functions import tl_vstack, tl_allclose, tl_squeeze, T
@@ -10,6 +11,7 @@ from spflow.meta.structure import MetaModule
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.nested_module import NestedModule
 from spflow.tensorly.structure.spn.nodes.sum_node import SumNode
+
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -234,3 +236,73 @@ def marginalize(
         return SumLayer(n_nodes=layer.n_out, children=marg_children, weights=layer.weights)
     else:
         return deepcopy(layer)
+
+@dispatch(memoize=True)  # type: ignore # ToDo: überprüfen ob sum_layer.weights ein parameter ist
+def updateBackend(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = None) -> SumLayer:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    if isinstance(sum_layer.weights, np.ndarray):
+        return SumLayer(
+            n_nodes=sum_layer.n_out,
+            children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+            weights=tl.tensor(sum_layer.weights)
+        )
+    elif torch.is_tensor(sum_layer.weights):
+        return SumLayer(
+            n_nodes=sum_layer.n_out,
+            children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+            weights=tl.tensor(sum_layer.weights.data)
+        )
+    else:
+        raise NotImplementedError("updateBackend has no implementation for this backend")
+
+@dispatch(memoize=True)  # type: ignore
+def toNodeBased(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = None) -> SumLayer:
+    """Conversion for ``SumLayer`` from ``layerbased`` to ``nodebased``.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return SumLayer(
+        n_nodes=sum_layer.n_out,
+        children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+        weights= sum_layer.weights
+    )
+
+
+
+@dispatch(memoize=True)  # type: ignore
+def toLayerBased(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    from spflow.tensorly.structure.spn.layers_layerbased import SumLayer as SumLayerLayer
+    """Conversion for ``SumLayer`` from ``layerbased`` to ``nodebased``.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return SumLayerLayer(
+        n_nodes=sum_layer.n_out,
+        children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+        weights= sum_layer.weights
+    )
+
+
+@dispatch(memoize=True)  # type: ignore
+def test(sum_layer: SumLayer):
+    print("sum_layer")
+    for child in sum_layer.children:
+        test(child)

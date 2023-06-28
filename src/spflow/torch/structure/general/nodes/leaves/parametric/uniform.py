@@ -75,9 +75,12 @@ class Uniform(LeafNode):
         super().__init__(scope=scope)
 
         # register interval bounds as torch buffers (should not be changed)
-        self.register_buffer("start", torch.empty(size=[]))
-        self.register_buffer("end", torch.empty(size=[]))
-        self.register_buffer("end_next", torch.empty(size=[]))
+        #self.register_buffer("start", torch.empty(size=[]))
+        #self.register_buffer("end", torch.empty(size=[]))
+        #self.register_buffer("end_next", torch.empty(size=[]))
+        self.start = torch.empty(size=[])
+        self.end = torch.empty(size=[])
+        self.end_next = torch.empty(size=[])
 
         # set parameters
         self.set_params(start, end, support_outside)

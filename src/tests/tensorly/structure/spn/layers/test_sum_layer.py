@@ -100,7 +100,7 @@ class TestLayer(unittest.TestCase):
             DummyNode(Scope([0, 1])),
         ]
         l = SumLayer(n_nodes=3, children=input_nodes)
-
+        print(l.modules())
         # ----- marginalize over entire scope -----
         self.assertTrue(marginalize(l, [0, 1]) == None)
 

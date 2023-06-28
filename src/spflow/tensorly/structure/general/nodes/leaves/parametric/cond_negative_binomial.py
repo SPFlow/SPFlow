@@ -37,7 +37,7 @@ class CondNegativeBinomial(LeafNode):
             a floating point value representing the success probability in :math:`(0,1]`.
     """
 
-    def __init__(self, scope: Scope, n: float, cond_f: Optional[Callable] = None) -> None:
+    def __init__(self, scope: Scope, n: int, cond_f: Optional[Callable] = None) -> None:
         r"""Initializes ``CondBernoulli`` leaf node.
 
         Args:

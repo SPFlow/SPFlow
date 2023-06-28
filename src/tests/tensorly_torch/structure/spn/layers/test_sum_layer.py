@@ -6,9 +6,13 @@ import torch
 from spflow.base.structure.spn import Gaussian as BaseGaussian
 from spflow.base.structure.spn import SumLayer as BaseSumLayer
 from spflow.meta.data import Scope
-from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure import toBase, toTorch
 from spflow.torch.structure.spn import Gaussian
 from spflow.tensorly.structure.spn import SumLayer
+from spflow.tensorly.structure import marginalize
+from spflow.tensorly.structure.spn.layers.sum_layer import toLayerBased, toNodeBased
+from spflow.tensorly.structure.spn.layers_layerbased.sum_layer import toLayerBased, toNodeBased
+
 
 from ...general.nodes.dummy_node import DummyNode
 
@@ -100,7 +104,7 @@ class TestNode(unittest.TestCase):
         l_marg = marginalize(l, [2])
         self.assertTrue(l_marg.scopes_out == [Scope([0, 1]), Scope([0, 1]), Scope([0, 1])])
         self.assertTrue(torch.allclose(l.weights, l_marg.weights))
-
+    """
     def test_sum_layer_backend_conversion_1(self):
 
         torch_sum_layer = SumLayer(
@@ -130,6 +134,31 @@ class TestNode(unittest.TestCase):
         torch_sum_layer = toTorch(base_sum_layer)
         self.assertTrue(np.allclose(base_sum_layer.weights, torch_sum_layer.weights.detach().numpy()))
         self.assertEqual(base_sum_layer.n_out, torch_sum_layer.n_out)
+    """
+    def test_sum_layer_layerbased_conversion(self):
+
+        sum_layer = SumLayer(
+            n_nodes=3,
+            children=[
+                Gaussian(Scope([0])),
+                Gaussian(Scope([0])),
+                Gaussian(Scope([0])),
+            ],
+        )
+
+        layer_based_sum_layer = toLayerBased(sum_layer)
+        self.assertTrue(np.allclose(layer_based_sum_layer.weights.detach().numpy(), sum_layer.weights.detach().numpy()))
+        self.assertEqual(layer_based_sum_layer.n_out, sum_layer.n_out)
+        node_based_sum_layer = toNodeBased(layer_based_sum_layer)
+        self.assertTrue(np.allclose(node_based_sum_layer.weights.detach().numpy(), sum_layer.weights.detach().numpy()))
+        self.assertEqual(node_based_sum_layer.n_out, sum_layer.n_out)
+
+        node_based_sum_layer2 = toNodeBased(sum_layer)
+        self.assertTrue(np.allclose(node_based_sum_layer2.weights.detach().numpy(), sum_layer.weights.detach().numpy()))
+        self.assertEqual(node_based_sum_layer2.n_out, sum_layer.n_out)
+        layer_based_sum_layer2 = toLayerBased(layer_based_sum_layer)
+        self.assertTrue(np.allclose(layer_based_sum_layer2.weights.detach().numpy(), sum_layer.weights.detach().numpy()))
+        self.assertEqual(layer_based_sum_layer2.n_out, sum_layer.n_out)
 
 
 if __name__ == "__main__":

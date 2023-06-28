@@ -8,8 +8,11 @@ from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Binomial as BaseBinomial
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Binomial
+from spflow.torch.structure import marginalize, toBase, toTorch
+#from spflow.torch.structure.spn import Binomial
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_binomial import Binomial
+from spflow.torch.structure.spn import Binomial as TorchBinomial
+from spflow.tensorly.structure import AutoLeaf
 
 
 class TestBinomial(unittest.TestCase):
@@ -142,7 +145,7 @@ class TestBinomial(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         binomial = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3, p=0.75)])])
-        self.assertTrue(isinstance(binomial, Binomial))
+        self.assertTrue(isinstance(binomial, TorchBinomial))
         self.assertTrue(torch.isclose(binomial.n, torch.tensor(3)))
         self.assertTrue(torch.isclose(binomial.p, torch.tensor(0.75)))
 

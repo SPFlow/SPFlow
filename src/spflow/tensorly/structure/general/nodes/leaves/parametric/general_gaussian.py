@@ -1,16 +1,16 @@
-from typing import List, Tuple
+from typing import List
 
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import T
+
 from spflow.meta.data import FeatureContext
-from spflow.meta.structure import MetaModule
-from spflow.tensorly.structure.general.nodes.leaves import Gaussian as TensorlyGaussian
-from spflow.torch.structure.general.nodes.leaves import Gaussian as TorchGaussian
+
 from spflow.meta.data.scope import Scope
 
 
-class GeneralGaussian(MetaModule): # ToDo: backend über tl.getBackend() abfragen
-    def __new__(cls, scope: Scope,mean: float = 0.0,std: float = 1.0):
+class Gaussian:  # ToDo: backend über tl.getBackend() abfragen
+    def __new__(cls, scope: Scope, mean: float = 0.0, std: float = 1.0):
+        from spflow.tensorly.structure.general.nodes.leaves import Gaussian as TensorlyGaussian
+        from spflow.torch.structure.general.nodes.leaves import Gaussian as TorchGaussian
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,6 +22,8 @@ class GeneralGaussian(MetaModule): # ToDo: backend über tl.getBackend() abfrage
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
+        from spflow.tensorly.structure.general.nodes.leaves import Gaussian as TensorlyGaussian
+        from spflow.torch.structure.general.nodes.leaves import Gaussian as TorchGaussian
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyGaussian.accepts(signatures)
@@ -32,6 +34,8 @@ class GeneralGaussian(MetaModule): # ToDo: backend über tl.getBackend() abfrage
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
+        from spflow.tensorly.structure.general.nodes.leaves import Gaussian as TensorlyGaussian
+        from spflow.torch.structure.general.nodes.leaves import Gaussian as TorchGaussian
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyGaussian.from_signatures(signatures)
@@ -40,6 +44,8 @@ class GeneralGaussian(MetaModule): # ToDo: backend über tl.getBackend() abfrage
         else:
             raise NotImplementedError("GeneralGaussian is not implemented for this backend")
 
+
+"""
     @property
     def dist(self):
         backend = tl.get_backend()
@@ -76,3 +82,4 @@ class GeneralGaussian(MetaModule): # ToDo: backend über tl.getBackend() abfrage
             return TorchGaussian.check_support(data=data, is_scope_data=is_scope_data)
         else:
             raise NotImplementedError("GeneralGaussian is not implemented for this backend")
+"""

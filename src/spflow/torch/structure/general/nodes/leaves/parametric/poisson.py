@@ -166,7 +166,8 @@ class Poisson(LeafNode):
         Returns:
             Floating point value representing the rate parameter, expected value and variance.
         """
-        return (self.l.data.cpu().numpy(),)  # type: ignore
+        #return (self.l.data.cpu().numpy(),)  # type: ignore
+        return [self.l_aux]  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
