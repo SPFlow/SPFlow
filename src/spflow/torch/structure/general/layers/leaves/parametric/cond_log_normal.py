@@ -22,7 +22,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_log_normal import (
     CondLogNormal,
 )
-from spflow.torch.structure.module import Module
+from spflow.tensorly.structure.module import Module
 
 
 class CondLogNormalLayer(Module):

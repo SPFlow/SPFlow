@@ -12,9 +12,11 @@ from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import CondExponential as TorchCondExponential
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_exponential import CondExponential
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_exponential import (
-    CondExponential,
+    #CondExponential,
     toBase,
     toTorch,
 )
@@ -156,7 +158,7 @@ class TestExponential(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         exponential = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Exponential])])
-        self.assertTrue(isinstance(exponential, CondExponential))
+        self.assertTrue(isinstance(exponential, TorchCondExponential))
 
     def test_structural_marginalization(self):
 

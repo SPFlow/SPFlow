@@ -7,7 +7,7 @@ import torch
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.learning.general.nodes.leaves.parametric.bernoulli import em  # TODO
-from spflow.torch.structure.module import Module
+from spflow.tensorly.structure.module import Module
 
 
 def expectation_maximization(

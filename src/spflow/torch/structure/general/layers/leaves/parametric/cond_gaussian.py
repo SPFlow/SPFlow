@@ -22,7 +22,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )
-from spflow.torch.structure.module import Module
+from spflow.tensorly.structure.module import Module
 
 
 class CondGaussianLayer(Module):

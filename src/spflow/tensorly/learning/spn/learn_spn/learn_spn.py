@@ -12,7 +12,7 @@ from spflow.tensorly.learning.general.nodes.leaves.parametric.gaussian import (
     maximum_likelihood_estimation,
 )
 from spflow.tensorly.structure.autoleaf import AutoLeaf as TensorlyAutoLeaf
-from spflow.torch.structure.autoleaf import AutoLeaf as TorchAutoLeaf
+#from spflow.torch.structure.autoleaf import AutoLeaf as TorchAutoLeaf
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
@@ -241,7 +241,7 @@ def learn_spn(
         if (backend == "numpy"):
             AutoLeaf = TensorlyAutoLeaf
         elif (backend == "pytorch"):
-            AutoLeaf = TorchAutoLeaf
+            pass#AutoLeaf = TorchAutoLeaf
         else:
             raise NotImplementedError("AutoLeaf not implemented with this backend")
 

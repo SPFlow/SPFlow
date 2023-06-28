@@ -11,12 +11,14 @@ from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import CondMultivariateGaussian as TorchCondMultivariateGaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_multivariate_gaussian import CondMultivariateGaussian
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
     CondGaussian,
 )
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
-    CondMultivariateGaussian,
+    #CondMultivariateGaussian,
     marginalize,
     toBase,
     toTorch,
@@ -347,7 +349,7 @@ class TestMultivariateGaussian(unittest.TestCase):
                 )
             ]
         )
-        self.assertTrue(isinstance(multivariate_gaussian, CondMultivariateGaussian))
+        self.assertTrue(isinstance(multivariate_gaussian, TorchCondMultivariateGaussian))
 
     def test_structural_marginalization(self):
 
@@ -356,7 +358,7 @@ class TestMultivariateGaussian(unittest.TestCase):
         self.assertTrue(
             isinstance(
                 marginalize(multivariate_gaussian, [2]),
-                CondMultivariateGaussian,
+                TorchCondMultivariateGaussian,
             )
         )
         self.assertTrue(isinstance(marginalize(multivariate_gaussian, [1]), CondGaussian))

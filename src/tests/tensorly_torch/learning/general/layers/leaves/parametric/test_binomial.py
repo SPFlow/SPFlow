@@ -6,14 +6,14 @@ import torch
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.inference import log_likelihood
+from spflow.tensorly.inference import log_likelihood
 from spflow.torch.learning import (
     em,
     expectation_maximization,
     maximum_likelihood_estimation,
 )
-from spflow.torch.structure.spn import BinomialLayer, ProductNode, SumNode
-
+from spflow.torch.structure.spn import BinomialLayer#, ProductNode, SumNode
+from spflow.tensorly.structure.spn import ProductNode, SumNode
 
 class TestNode(unittest.TestCase):
     @classmethod

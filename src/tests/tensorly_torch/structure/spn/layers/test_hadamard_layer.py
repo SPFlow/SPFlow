@@ -9,6 +9,8 @@ from spflow.meta.data import Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import Gaussian
 from spflow.tensorly.structure.spn import HadamardLayer
+from spflow.tensorly.structure.spn.layers.hadamard_layer import toLayerBased, toNodeBased
+from spflow.tensorly.structure.spn.layers_layerbased.hadamard_layer import toLayerBased, toNodeBased
 
 from ...general.nodes.dummy_node import DummyNode
 
@@ -166,6 +168,26 @@ class TestNode(unittest.TestCase):
 
         torch_hadamard_layer = toTorch(base_hadamard_layer)
         self.assertEqual(base_hadamard_layer.n_out, torch_hadamard_layer.n_out)
+
+    def test_sum_layer_layerbased_conversion(self):
+
+        hadamard_layer = HadamardLayer(
+            child_partitions=[
+                [Gaussian(Scope([0])), Gaussian(Scope([0]))],
+                [Gaussian(Scope([1]))],
+                [Gaussian(Scope([2])), Gaussian(Scope([2]))],
+            ]
+        )
+
+        layer_based_hadamard_layer = toLayerBased(hadamard_layer)
+        self.assertEqual(layer_based_hadamard_layer.n_out, hadamard_layer.n_out)
+        node_based_hadamard_layer = toNodeBased(layer_based_hadamard_layer)
+        self.assertEqual(node_based_hadamard_layer.n_out, hadamard_layer.n_out)
+
+        node_based_hadamard_layer2 = toNodeBased(hadamard_layer)
+        self.assertEqual(node_based_hadamard_layer2.n_out, hadamard_layer.n_out)
+        layer_based_hadamard_layer2 = toLayerBased(layer_based_hadamard_layer)
+        self.assertEqual(layer_based_hadamard_layer2.n_out, hadamard_layer.n_out)
 
 
 if __name__ == "__main__":

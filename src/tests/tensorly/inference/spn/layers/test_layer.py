@@ -3,7 +3,6 @@ import unittest
 
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_allclose
-
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.structure.spn import (
     HadamardLayer,
@@ -15,7 +14,9 @@ from spflow.tensorly.structure.spn import (
 )
 from spflow.tensorly.structure.general.nodes.leaves import Gaussian
 from spflow.meta.data import Scope
-
+from spflow.tensorly.structure.spn.layers.sum_layer import test
+from spflow.tensorly.structure.module import test
+from spflow.tensorly.structure.spn.nodes.sum_node import test
 
 class TestNode(unittest.TestCase):
     def test_sum_layer_likelihood(self):
@@ -36,6 +37,7 @@ class TestNode(unittest.TestCase):
             ],
             weights=[0.3, 0.4, 0.3],
         )
+        test(layer_spn)
 
         nodes_spn = SumNode(
             children=[

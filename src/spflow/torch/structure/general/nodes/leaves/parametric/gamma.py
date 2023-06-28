@@ -186,7 +186,8 @@ class Gamma(LeafNode):
         Returns:
             Tuple of the floating points representing the shape and rate parameters.
         """
-        return self.alpha.data.cpu().numpy(), self.beta.data.cpu().numpy()  # type: ignore
+        #return self.alpha.data.cpu().numpy(), self.beta.data.cpu().numpy()  # type: ignore
+        return [self.alpha_aux, self.beta_aux]  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.

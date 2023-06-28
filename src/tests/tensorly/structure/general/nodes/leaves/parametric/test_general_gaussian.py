@@ -6,7 +6,7 @@ import tensorly as tl
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.spn import marginalize
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import GeneralGaussian as Gaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 
 

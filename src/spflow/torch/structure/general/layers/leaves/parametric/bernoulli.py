@@ -21,7 +21,7 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
-from spflow.torch.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.torch.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
@@ -232,13 +232,13 @@ class BernoulliLayer(Module):
         """
         self.p = p
 
-    def get_params(self) -> Tuple[torch.Tensor]:
+    def get_params(self) -> List[torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             One-dimensional PyTorch tensor representing the success probabilities.
         """
-        return (self.p,)
+        return [self.p_aux]
 
     def check_support(
         self,

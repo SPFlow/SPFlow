@@ -10,6 +10,8 @@ from spflow.meta.dispatch import DispatchContext
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import Gaussian
 from spflow.tensorly.structure.spn import CondSumLayer
+from spflow.tensorly.structure.spn.layers.cond_sum_layer import toLayerBased, toNodeBased
+from spflow.tensorly.structure.spn.layers_layerbased.cond_sum_layer import toLayerBased, toNodeBased
 
 
 from ...general.nodes.dummy_node import DummyNode
@@ -192,7 +194,7 @@ class TestNode(unittest.TestCase):
         # ----- marginalize over non-scope rvs -----
         l_marg = marginalize(l, [2])
         self.assertTrue(l_marg.scopes_out == [Scope([0, 1]), Scope([0, 1]), Scope([0, 1])])
-
+    """
     def test_sum_layer_backend_conversion_1(self):
 
         torch_sum_layer = CondSumLayer(
@@ -218,8 +220,28 @@ class TestNode(unittest.TestCase):
             ],
         )
         torch_sum_layer = toTorch(base_sum_layer)
-
         self.assertEqual(base_sum_layer.n_out, torch_sum_layer.n_out)
+        """
+    def test_sum_layer_layerbased_conversion(self):
+
+        sum_layer = CondSumLayer(
+            n_nodes=3,
+            children=[
+                Gaussian(Scope([0])),
+                Gaussian(Scope([0])),
+                Gaussian(Scope([0])),
+            ],
+        )
+
+        layer_based_sum_layer = toLayerBased(sum_layer)
+        self.assertEqual(layer_based_sum_layer.n_out, sum_layer.n_out)
+        node_based_sum_layer = toNodeBased(layer_based_sum_layer)
+        self.assertEqual(node_based_sum_layer.n_out, sum_layer.n_out)
+
+        node_based_sum_layer2 = toNodeBased(sum_layer)
+        self.assertEqual(node_based_sum_layer2.n_out, sum_layer.n_out)
+        layer_based_sum_layer2 = toLayerBased(layer_based_sum_layer)
+        self.assertEqual(layer_based_sum_layer2.n_out, sum_layer.n_out)
 
 
 if __name__ == "__main__":

@@ -8,8 +8,11 @@ from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import NegativeBinomial as BaseNegativeBinomial
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import NegativeBinomial
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import NegativeBinomial as TorchNegativeBinomial
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_negative_binomial import NegativeBinomial
+from spflow.torch.structure import marginalize, toBase, toTorch
+#from spflow.torch.structure.spn import NegativeBinomial
 
 
 class TestNegativeBinomial(unittest.TestCase):
@@ -160,7 +163,7 @@ class TestNegativeBinomial(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         negative_binomial = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.NegativeBinomial(n=3, p=0.75)])])
-        self.assertTrue(isinstance(negative_binomial, NegativeBinomial))
+        self.assertTrue(isinstance(negative_binomial, TorchNegativeBinomial))
         self.assertTrue(torch.isclose(negative_binomial.n, torch.tensor(3)))
         self.assertTrue(torch.isclose(negative_binomial.p, torch.tensor(0.75)))
 

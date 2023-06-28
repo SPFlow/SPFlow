@@ -11,11 +11,13 @@ from spflow.base.structure.spn import (
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
+from spflow.tensorly.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import (
     CondGaussian,
     CondMultivariateGaussian,
-    ProductNode,
+    #ProductNode,
 )
+from spflow.tensorly.structure.spn import ProductNode
 
 
 class TestMultivariateGaussian(unittest.TestCase):

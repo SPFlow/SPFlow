@@ -26,8 +26,8 @@ from spflow.torch.structure.general.nodes.leaves.parametric.cond_multivariate_ga
     CondMultivariateGaussian,
     marginalize,
 )
-from spflow.torch.structure.module import Module
-from spflow.torch.structure.spn.nodes.sum_node import marginalize
+from spflow.tensorly.structure.module import Module
+from spflow.tensorly.structure.spn.nodes.sum_node import marginalize
 
 
 class CondMultivariateGaussianLayer(Module):
@@ -110,7 +110,8 @@ class CondMultivariateGaussianLayer(Module):
         super().__init__(children=[], **kwargs)
 
         # create leaf nodes
-        self.nodes = torch.nn.ModuleList([CondMultivariateGaussian(s) for s in scope])
+        #self.nodes = torch.nn.ModuleList([CondMultivariateGaussian(s) for s in scope])
+        self.nodes = [CondMultivariateGaussian(s) for s in scope]
 
         # compute scope
         self.scopes_out = scope

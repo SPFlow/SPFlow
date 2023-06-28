@@ -9,6 +9,7 @@ from spflow.meta.structure import MetaModule
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.nested_module import NestedModule
 from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode
+
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -265,3 +266,56 @@ def marginalize(
         return CondSumLayer(n_nodes=layer.n_out, children=marg_children)
     else:
         return deepcopy(layer)
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(sum_layer: CondSumLayer, dispatch_ctx: Optional[DispatchContext] = None) -> CondSumLayer:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return CondSumLayer(
+        n_nodes=sum_layer.n_out,
+        children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+        cond_f=sum_layer.cond_f
+    )
+
+@dispatch(memoize=True)  # type: ignore
+def toNodeBased(sum_layer: CondSumLayer, dispatch_ctx: Optional[DispatchContext] = None) -> CondSumLayer:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return CondSumLayer(
+        n_nodes=sum_layer.n_out,
+        children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+        cond_f=sum_layer.cond_f
+    )
+
+@dispatch(memoize=True)  # type: ignore
+def toLayerBased(sum_layer: CondSumLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    from spflow.tensorly.structure.spn.layers_layerbased import CondSumLayer as CondSumLayerLayer
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return CondSumLayerLayer(
+        n_nodes=sum_layer.n_out,
+        children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+        cond_f=sum_layer.cond_f
+    )
+

@@ -65,7 +65,8 @@ class CondBinomial(LeafNode):
         super().__init__(scope=scope)
 
         # register number of trials n as torch buffer (should not be changed)
-        self.register_buffer("n", torch.empty(size=[]))
+        #self.register_buffer("n", torch.empty(size=[]))
+        self.n = torch.empty(size=[])
 
         # set parameters
         self.set_params(n)

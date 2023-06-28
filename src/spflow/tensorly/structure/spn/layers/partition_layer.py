@@ -5,11 +5,12 @@ from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 import numpy as np
 import tensorly as tl
-from ....utils.helper_functions import tl_split
+from ....utils.helper_functions import tl_split, tl_tolist
 from spflow.meta.structure import MetaModule
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.nested_module import NestedModule
 from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
+
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -111,6 +112,7 @@ class PartitionLayer(NestedModule):
         self.nodes = []
 
         # create placeholders and nodes
+        #for input_ids in itertools.product(*np.split(list(range(self.n_in)), tl.cumsum(tl.tensor(partition_sizes[:-1]), axis=-1, dtype=int))):
         for input_ids in itertools.product(*np.split(list(range(self.n_in)), np.cumsum(partition_sizes[:-1]))):
             ph = self.create_placeholder(input_ids)
             self.nodes.append(ProductNode(children=[ph]))
@@ -181,6 +183,7 @@ def marginalize(
         marg_partitions = []
 
         children = layer.children
+        #partitions = tl_split(children, tl.cumsum(tl.tensor(layer.modules_per_partition[:-1]), axis=-1, dtype=int))
         partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
 
         for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
@@ -215,3 +218,67 @@ def marginalize(
             return PartitionLayer(child_partitions=marg_partitions)
     else:
         return deepcopy(layer)
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(partition_layer: PartitionLayer, dispatch_ctx: Optional[DispatchContext] = None) -> PartitionLayer:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+
+    children = partition_layer.children
+    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
+
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return PartitionLayer(
+        child_partitions=[
+            [updateBackend(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions
+        ]
+    )
+
+@dispatch(memoize=True)  # type: ignore
+def toNodeBased(partition_layer: PartitionLayer, dispatch_ctx: Optional[DispatchContext] = None) -> PartitionLayer:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+
+    children = partition_layer.children
+    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
+
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return PartitionLayer(
+        child_partitions=[
+            [toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions
+        ]
+    )
+
+@dispatch(memoize=True)  # type: ignore
+def toLayerBased(partition_layer: PartitionLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    from spflow.tensorly.structure.spn.layers_layerbased import PartitionLayer as PartitionLayerLayer
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+
+    children = partition_layer.children
+    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
+
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return PartitionLayerLayer(
+        child_partitions=[
+            [toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions
+        ]
+    )
