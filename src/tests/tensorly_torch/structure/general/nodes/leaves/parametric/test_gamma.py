@@ -8,8 +8,11 @@ from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Gamma as BaseGamma
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Gamma
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import Gamma as TorchGamma
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gamma import Gamma
+from spflow.torch.structure import marginalize, toBase, toTorch
+#from spflow.torch.structure.spn import Gamma
 
 
 class TestGamma(unittest.TestCase):
@@ -134,7 +137,7 @@ class TestGamma(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         gamma = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)])])
-        self.assertTrue(isinstance(gamma, Gamma))
+        self.assertTrue(isinstance(gamma, TorchGamma))
         self.assertTrue(torch.isclose(gamma.alpha, torch.tensor(1.5)))
         self.assertTrue(torch.isclose(gamma.beta, torch.tensor(0.5)))
 

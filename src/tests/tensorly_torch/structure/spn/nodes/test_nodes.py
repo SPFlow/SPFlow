@@ -9,7 +9,8 @@ from spflow.base.structure.spn import ProductNode as BaseProductNode
 from spflow.base.structure.spn import SumNode as BaseSumNode
 from spflow.meta.data import Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.tensorly.structure.spn import Gaussian, ProductNode, SumNode
+from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.torch.structure.spn import Gaussian
 
 from ...general.nodes.dummy_node import DummyNode
 
@@ -127,6 +128,7 @@ class TestTorchNode(unittest.TestCase):
 
         p_marg = marginalize(p, [2])
         self.assertEqual(p_marg.scopes_out, [Scope([0, 1, 3])])
+
 
     def test_backend_conversion(self):
 

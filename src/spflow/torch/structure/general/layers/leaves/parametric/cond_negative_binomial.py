@@ -21,7 +21,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_negative_binomial import (
     CondNegativeBinomial,
 )
-from spflow.torch.structure.module import Module
+from spflow.tensorly.structure.module import Module
 
 
 class CondNegativeBinomialLayer(Module):
@@ -103,8 +103,8 @@ class CondNegativeBinomialLayer(Module):
         super().__init__(children=[], **kwargs)
 
         # register number of trials n as torch buffer (should not be changed)
-        self.register_buffer("n", torch.empty(size=[]))
-
+        #self.register_buffer("n", torch.empty(size=[]))
+        self.n = torch.empty(size=[])
         # compute scope
         self.scopes_out = scope
         self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)

@@ -12,9 +12,11 @@ from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import CondGeometric as TorchCondGeometric
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_geometric import CondGeometric
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_geometric import (
-    CondGeometric,
+    #CondGeometric,
     toBase,
     toTorch,
 )
@@ -141,7 +143,7 @@ class TestGeometric(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         geometric = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])])
-        self.assertTrue(isinstance(geometric, CondGeometric))
+        self.assertTrue(isinstance(geometric, TorchCondGeometric))
 
     def test_structural_marginalization(self):
 

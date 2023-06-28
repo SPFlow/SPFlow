@@ -8,8 +8,11 @@ from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Geometric as BaseGeometric
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Geometric
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import Geometric as TorchGeometric
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_geometric import Geometric
+from spflow.torch.structure import marginalize, toBase, toTorch
+#from spflow.torch.structure.spn import Geometric
 
 
 class TestGeometric(unittest.TestCase):
@@ -117,7 +120,7 @@ class TestGeometric(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         geometric = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Geometric(p=0.75)])])
-        self.assertTrue(isinstance(geometric, Geometric))
+        self.assertTrue(isinstance(geometric, TorchGeometric))
         self.assertTrue(torch.isclose(geometric.p, torch.tensor(0.75)))
 
     def test_base_backend_conversion(self):

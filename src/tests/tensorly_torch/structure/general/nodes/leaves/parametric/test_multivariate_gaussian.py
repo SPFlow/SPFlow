@@ -8,8 +8,11 @@ from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import MultivariateGaussian as BaseMultivariateGaussian
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Gaussian, MultivariateGaussian
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import MultivariateGaussian as TorchMultivariateGaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_multivariate_gaussian import MultivariateGaussian
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Gaussian#, MultivariateGaussian
 
 
 class TestMultivariateGaussian(unittest.TestCase):
@@ -136,7 +139,7 @@ class TestMultivariateGaussian(unittest.TestCase):
 
         multivariate_gaussian = MultivariateGaussian(Scope([0, 1]), [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
 
-        self.assertTrue(isinstance(marginalize(multivariate_gaussian, [2]), MultivariateGaussian))
+        self.assertTrue(isinstance(marginalize(multivariate_gaussian, [2]), TorchMultivariateGaussian))
         self.assertTrue(isinstance(marginalize(multivariate_gaussian, [1]), Gaussian))
         self.assertTrue(marginalize(multivariate_gaussian, [0, 1]) is None)
 
@@ -316,7 +319,7 @@ class TestMultivariateGaussian(unittest.TestCase):
                 )
             ]
         )
-        self.assertTrue(isinstance(multivariate_gaussian, MultivariateGaussian))
+        self.assertTrue(isinstance(multivariate_gaussian, TorchMultivariateGaussian))
         self.assertTrue(torch.allclose(multivariate_gaussian.mean, torch.tensor([-1.0, 1.0])))
         self.assertTrue(
             torch.allclose(

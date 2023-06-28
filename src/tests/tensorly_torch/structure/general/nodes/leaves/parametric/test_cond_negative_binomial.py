@@ -12,13 +12,15 @@ from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.torch.structure.autoleaf import AutoLeaf
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import CondNegativeBinomial as TorchCondNegativeBinomial
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_negative_binomial import CondNegativeBinomial
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_negative_binomial import (
-    CondNegativeBinomial,
+    #CondNegativeBinomial,
     toBase,
     toTorch,
 )
-from spflow.torch.structure.spn.nodes.sum_node import marginalize
+from spflow.tensorly.structure.spn.nodes.sum_node import marginalize
 
 
 class TestNegativeBinomial(unittest.TestCase):
@@ -202,7 +204,7 @@ class TestNegativeBinomial(unittest.TestCase):
                 )
             ]
         )
-        self.assertTrue(isinstance(negative_binomial, CondNegativeBinomial))
+        self.assertTrue(isinstance(negative_binomial, TorchCondNegativeBinomial))
         self.assertEqual(negative_binomial.n, torch.tensor(3))
 
     def test_structural_marginalization(self):

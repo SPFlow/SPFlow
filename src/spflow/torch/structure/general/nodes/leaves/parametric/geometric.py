@@ -163,7 +163,8 @@ class Geometric(LeafNode):
         Returns:
             Floating point value representing the success probability.
         """
-        return (self.p.data.cpu().numpy(),)  # type: ignore
+        #return (self.p.data.cpu().numpy(),)  # type: ignore
+        return [self.p_aux] # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.

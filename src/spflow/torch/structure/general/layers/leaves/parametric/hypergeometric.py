@@ -20,7 +20,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.torch.structure.general.nodes.leaves.parametric.hypergeometric import (
     Hypergeometric,
 )
-from spflow.torch.structure.module import Module
+from spflow.tensorly.structure.module import Module
 
 
 class HypergeometricLayer(Module):
@@ -99,9 +99,12 @@ class HypergeometricLayer(Module):
         super().__init__(children=[], **kwargs)
 
         # register number of trials n as torch buffer (should not be changed)
-        self.register_buffer("N", torch.empty(size=[]))
-        self.register_buffer("M", torch.empty(size=[]))
-        self.register_buffer("n", torch.empty(size=[]))
+        #self.register_buffer("N", torch.empty(size=[]))
+        #self.register_buffer("M", torch.empty(size=[]))
+        #self.register_buffer("n", torch.empty(size=[]))
+        self.N = torch.empty(size=[])
+        self.M = torch.empty(size=[])
+        self.n = torch.empty(size=[])
 
         # compute scope
         self.scopes_out = scope

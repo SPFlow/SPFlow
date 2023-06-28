@@ -305,7 +305,9 @@ class MultivariateGaussian(LeafNode):
         Returns:
             Tuple of a one-dimensional and a two-dimensional PyTorch tensor representing the mean and covariance matrix, respectively.
         """
-        return self.mean.data.cpu().detach().tolist(), self.cov.data.cpu().detach().tolist()  # type: ignore
+
+        #return self.mean.data.cpu().detach().tolist(), self.cov.data.cpu().detach().tolist()  # type: ignore
+        return [self.mean, self.tril_diag_aux, self.tril_nondiag]  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.

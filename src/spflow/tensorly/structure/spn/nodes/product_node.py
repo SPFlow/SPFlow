@@ -121,3 +121,48 @@ def marginalize(
             return ProductNode(marg_children)
     else:
         return deepcopy(product_node)
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(product_node: ProductNode, dispatch_ctx: Optional[DispatchContext] = None) -> ProductNode:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return ProductNode(
+        children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in product_node.children]
+    )
+
+@dispatch(memoize=True)  # type: ignore
+def toLayerBased(product_node: ProductNode, dispatch_ctx: Optional[DispatchContext] = None) -> ProductNode:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return ProductNode(
+        children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in product_node.children]
+    )
+
+@dispatch(memoize=True)  # type: ignore
+def toNodeBased(product_node: ProductNode, dispatch_ctx: Optional[DispatchContext] = None) -> ProductNode:
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        product_node:
+            Product node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return ProductNode(
+        children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in product_node.children]
+    )

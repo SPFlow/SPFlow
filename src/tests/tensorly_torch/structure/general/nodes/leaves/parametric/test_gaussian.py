@@ -8,8 +8,11 @@ from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Gaussian as BaseGaussian
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Gaussian
+from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.torch.structure.spn import Gaussian as TorchGaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
+from spflow.torch.structure import marginalize, toBase, toTorch
+#from spflow.torch.structure.spn import Gaussian
 
 
 class TestGaussian(unittest.TestCase):
@@ -127,7 +130,7 @@ class TestGaussian(unittest.TestCase):
 
         # make sure AutoLeaf can return correctly instantiated object
         gaussian = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Gaussian(mean=-1.0, std=0.5)])])
-        self.assertTrue(isinstance(gaussian, Gaussian))
+        self.assertTrue(isinstance(gaussian, TorchGaussian))
         self.assertTrue(torch.isclose(gaussian.mean, torch.tensor(-1.0)))
         self.assertTrue(torch.isclose(gaussian.std, torch.tensor(0.5)))
 

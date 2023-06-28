@@ -6,7 +6,7 @@ import numpy as np
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.tensorly.inference import likelihood, log_likelihood
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import GeneralGaussian as Gaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.meta.data import Scope
 
 
@@ -17,7 +17,7 @@ class TestGaussian(unittest.TestCase):
         mean = random.random()
         var = 1.0
 
-        gaussian = Gaussian(backend="numpy",scope=Scope([0]),mean=mean, std=math.sqrt(var))
+        gaussian = Gaussian(scope=Scope([0]),mean=mean, std=math.sqrt(var))
 
         # create test inputs/outputs
         data = tl.tensor([[mean], [mean + math.sqrt(var)], [mean - math.sqrt(var)]])

@@ -52,6 +52,11 @@ from .spn.layers.hadamard_layer import log_likelihood
 from .spn.layers.partition_layer import log_likelihood
 from .spn.layers.product_layer import log_likelihood
 from .spn.layers.sum_layer import log_likelihood
+from .spn.layers_layerbased.cond_sum_layer import log_likelihood
+from .spn.layers_layerbased.hadamard_layer import log_likelihood
+from .spn.layers_layerbased.partition_layer import log_likelihood
+from .spn.layers_layerbased.product_layer import log_likelihood
+from .spn.layers_layerbased.sum_layer import log_likelihood
 from .spn.nodes.cond_sum_node import log_likelihood
 from .spn.nodes.product_node import log_likelihood
 from .spn.nodes.sum_node import log_likelihood

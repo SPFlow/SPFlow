@@ -22,7 +22,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.torch.structure.general.nodes.leaves.parametric.negative_binomial import (
     NegativeBinomial,
 )
-from spflow.torch.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.torch.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
@@ -99,7 +99,8 @@ class NegativeBinomialLayer(Module):
         super().__init__(children=[], **kwargs)
 
         # register number of trials n as torch buffer (should not be changed)
-        self.register_buffer("n", torch.empty(size=[]))
+        #self.register_buffer("n", torch.empty(size=[]))
+        self.n = torch.empty(size=[])
 
         # register auxiliary torch parameter for the success probabilities p for each implicit node
         self.p_aux = Parameter()
@@ -268,13 +269,13 @@ class NegativeBinomialLayer(Module):
         self.p = p
         self.n.data = n
 
-    def get_params(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_params(self) -> List[torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             Tuple of two one-dimensional PyTorch tensors representing the numbers of successes and the success probabilities, respectively.
         """
-        return (self.n, self.p)
+        return [self.p_aux]
 
     def check_support(
         self,
