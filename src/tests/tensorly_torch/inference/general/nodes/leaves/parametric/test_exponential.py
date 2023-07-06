@@ -9,7 +9,8 @@ from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Exponential as BaseExponential
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import Exponential
+#from spflow.torch.structure.spn import Exponential
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_exponential import Exponential
 
 
 class TestExponential(unittest.TestCase):

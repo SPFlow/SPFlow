@@ -7,7 +7,7 @@ from spflow.base.structure.spn import Gaussian as BaseGaussian
 from spflow.base.structure.spn import SumLayer as BaseSumLayer
 from spflow.meta.data import Scope
 from spflow.torch.structure import toBase, toTorch
-from spflow.torch.structure.spn import Gaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.tensorly.structure.spn import SumLayer
 from spflow.tensorly.structure import marginalize
 from spflow.tensorly.structure.spn.layers.sum_layer import toLayerBased, toNodeBased

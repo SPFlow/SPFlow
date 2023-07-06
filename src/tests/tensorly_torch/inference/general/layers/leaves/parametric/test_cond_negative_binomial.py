@@ -6,7 +6,8 @@ import torch
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondNegativeBinomial, CondNegativeBinomialLayer
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_negative_binomial import CondNegativeBinomialLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_negative_binomial import CondNegativeBinomial
 
 
 class TestNode(unittest.TestCase):

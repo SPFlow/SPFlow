@@ -8,7 +8,8 @@ from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Binomial as BaseBinomial
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import Binomial
+#from spflow.torch.structure.spn import Binomial
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_binomial import Binomial
 
 
 class TestBinomial(unittest.TestCase):

@@ -10,7 +10,8 @@ from spflow.base.structure.spn import CondGamma as BaseCondGamma
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondGamma
+#from spflow.torch.structure.spn import CondGamma
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gamma import CondGamma
 
 
 class TestGamma(unittest.TestCase):

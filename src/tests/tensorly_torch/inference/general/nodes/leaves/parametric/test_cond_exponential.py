@@ -10,7 +10,8 @@ from spflow.base.structure.spn import CondExponential as BaseCondExponential
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondExponential
+#from spflow.torch.structure.spn import CondExponential
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_exponential import CondExponential
 
 
 class TestExponential(unittest.TestCase):

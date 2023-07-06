@@ -5,9 +5,9 @@ import tensorly as tl
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.tensorly.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import Gaussian#, ProductNode, SumNode
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.tensorly.structure.spn import ProductNode, SumNode
-from spflow.torch.utils.projections import proj_convex_to_real, proj_real_to_convex
+from spflow.tensorly.utils.projections import proj_convex_to_real, proj_real_to_convex
 
 from ....structure.general.nodes.dummy_node import DummyNode
 

@@ -9,7 +9,8 @@ from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Gamma as BaseGamma
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import Gamma
+#from spflow.torch.structure.spn import Gamma
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gamma import Gamma
 
 
 class TestGamma(unittest.TestCase):

@@ -6,8 +6,12 @@ import torch
 from spflow.base.structure.spn import CondBinomialLayer as BaseCondBinomialLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import CondBinomial, CondBinomialLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondBinomial as CondBinomialTorch
+from spflow.torch.structure.spn import CondBinomialLayer as CondBinomialLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_binomial import CondBinomialLayer
 
 
 class TestNode(unittest.TestCase):
@@ -323,7 +327,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1], [3]), [FeatureTypes.Binomial(n=5)]),
             ]
         )
-        self.assertTrue(isinstance(binomial, CondBinomialLayer))
+        self.assertTrue(isinstance(binomial, CondBinomialLayerTorch))
         self.assertTrue(torch.all(binomial.n == torch.tensor([3, 5])))
         self.assertTrue(binomial.scopes_out == [Scope([0], [2]), Scope([1], [3])])
 
@@ -350,12 +354,12 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, CondBinomial))
+        self.assertTrue(isinstance(l_marg, CondBinomialTorch))
         self.assertEqual(l_marg.scope, Scope([0], [2]))
         self.assertTrue(torch.allclose(l_marg.n, torch.tensor(2)))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, CondBinomialLayer))
+        self.assertTrue(isinstance(l_marg, CondBinomialLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
         self.assertTrue(torch.allclose(l_marg.n, torch.tensor(2)))
 

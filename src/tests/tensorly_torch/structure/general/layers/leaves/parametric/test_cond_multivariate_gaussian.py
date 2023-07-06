@@ -8,12 +8,14 @@ from spflow.base.structure.spn import (
 )
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import (
-    CondGaussian,
-    CondMultivariateGaussian,
-    CondMultivariateGaussianLayer,
-)
+from spflow.torch.structure import marginalize, toBase, toTorch
+
+from spflow.torch.structure.spn import CondMultivariateGaussian as CondMultivariateGaussianTorch
+from spflow.torch.structure.spn import CondMultivariateGaussianLayer as CondMultivariateGaussianLayerTorch
+from spflow.torch.structure.spn import CondGaussian as CondGaussianTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_multivariate_gaussian import CondMultivariateGaussianLayer
 
 
 class TestNode(unittest.TestCase):
@@ -453,15 +455,15 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [0, 2], prune=True)
-        self.assertTrue(isinstance(l_marg, CondMultivariateGaussian))
+        self.assertTrue(isinstance(l_marg, CondMultivariateGaussianTorch))
         self.assertEqual(l_marg.scope, Scope([1, 3], [4]))
 
         l_marg = marginalize(l, [0, 1, 2], prune=True)
-        self.assertTrue(isinstance(l_marg, CondGaussian))
+        self.assertTrue(isinstance(l_marg, CondGaussianTorch))
         self.assertEqual(l_marg.scope, Scope([3], [4]))
 
         l_marg = marginalize(l, [0, 2], prune=False)
-        self.assertTrue(isinstance(l_marg, CondMultivariateGaussianLayer))
+        self.assertTrue(isinstance(l_marg, CondMultivariateGaussianLayerTorch))
         self.assertEqual(l_marg.scopes_out, [Scope([1, 3], [4])])
         self.assertEqual(len(l_marg.nodes), 1)
 

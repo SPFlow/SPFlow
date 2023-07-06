@@ -4,11 +4,12 @@ import unittest
 import numpy as np
 import torch
 
-from spflow.base.inference import likelihood, log_likelihood
+from spflow.tensorly.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Bernoulli as BaseBernoulli
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import Bernoulli
+#from spflow.torch.structure.spn import Bernoulli
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_bernoulli import Bernoulli
 
 
 class TestBernoulli(unittest.TestCase):
@@ -24,17 +25,17 @@ class TestBernoulli(unittest.TestCase):
 
         p = random.random()
 
-        torch_bernoulli = Bernoulli(Scope([0]), p)
+        general_bernoulli = Bernoulli(Scope([0]), p)
         node_bernoulli = BaseBernoulli(Scope([0]), p)
 
         # create dummy input data (batch size x random variables)
         data = np.random.randint(0, 2, (3, 1))
 
         log_probs = log_likelihood(node_bernoulli, data)
-        log_probs_torch = log_likelihood(torch_bernoulli, torch.tensor(data))
+        log_probs_general = log_likelihood(general_bernoulli, torch.tensor(data))
 
         # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+        self.assertTrue(np.allclose(log_probs, log_probs_general.detach().cpu().numpy()))
 
     def test_gradient_computation(self):
 
