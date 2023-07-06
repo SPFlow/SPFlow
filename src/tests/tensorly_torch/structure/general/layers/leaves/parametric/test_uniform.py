@@ -5,8 +5,12 @@ import torch
 
 from spflow.base.structure.spn import UniformLayer as BaseUniformLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Uniform, UniformLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Uniform as UniformTorch
+from spflow.torch.structure.spn import UniformLayer as UniformLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_uniform import UniformLayer
 
 
 class TestNode(unittest.TestCase):
@@ -449,14 +453,14 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, Uniform))
+        self.assertTrue(isinstance(l_marg, UniformTorch))
         self.assertEqual(l_marg.scope, Scope([0]))
         self.assertTrue(torch.allclose(l_marg.start, torch.tensor(0.29)))
         self.assertTrue(torch.allclose(l_marg.end, torch.tensor(0.9)))
         self.assertTrue(torch.all(l_marg.support_outside == torch.tensor(False)))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, UniformLayer))
+        self.assertTrue(isinstance(l_marg, UniformLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
         self.assertTrue(torch.allclose(l_marg.start, torch.tensor(0.29)))
         self.assertTrue(torch.allclose(l_marg.end, torch.tensor(0.9)))

@@ -10,8 +10,10 @@ from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
 from spflow.tensorly.inference import likelihood, log_likelihood
 from spflow.torch.structure import marginalize
-from spflow.torch.structure.spn import Gaussian, MultivariateGaussian#, ProductNode
+#from spflow.torch.structure.spn import Gaussian, MultivariateGaussian#, ProductNode
 from spflow.tensorly.structure.spn import ProductNode
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_multivariate_gaussian import MultivariateGaussian
 
 
 class TestMultivariateGaussian(unittest.TestCase):

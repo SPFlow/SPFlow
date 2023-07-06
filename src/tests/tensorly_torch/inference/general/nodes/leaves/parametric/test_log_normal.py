@@ -8,7 +8,8 @@ from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import LogNormal as BaseLogNormal
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import LogNormal
+#from spflow.torch.structure.spn import LogNormal
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_log_normal import LogNormal
 
 
 class TestLogNormal(unittest.TestCase):

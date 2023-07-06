@@ -5,8 +5,13 @@ import torch
 
 from spflow.base.structure.spn import HypergeometricLayer as BaseHypergeometricLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Hypergeometric, HypergeometricLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Hypergeometric as HypergeometricTorch
+from spflow.torch.structure.spn import HypergeometricLayer as HypergeometricLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_hypergeometric import HypergeometricLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_hypergeometric import Hypergeometric
 
 
 class TestNode(unittest.TestCase):
@@ -367,7 +372,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
             ]
         )
-        self.assertTrue(isinstance(hypergeometric, HypergeometricLayer))
+        self.assertTrue(isinstance(hypergeometric, HypergeometricLayerTorch))
         self.assertTrue(torch.all(hypergeometric.N == torch.tensor([4, 6])))
         self.assertTrue(torch.all(hypergeometric.M == torch.tensor([2, 5])))
         self.assertTrue(torch.all(hypergeometric.n == torch.tensor([3, 4])))
@@ -399,14 +404,14 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, Hypergeometric))
+        self.assertTrue(isinstance(l_marg, HypergeometricTorch))
         self.assertEqual(l_marg.scope, Scope([0]))
         self.assertTrue(torch.allclose(l_marg.N, torch.tensor(7)))
         self.assertTrue(torch.allclose(l_marg.M, torch.tensor(6)))
         self.assertTrue(torch.allclose(l_marg.n, torch.tensor(3)))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, HypergeometricLayer))
+        self.assertTrue(isinstance(l_marg, HypergeometricLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
         self.assertTrue(torch.allclose(l_marg.N, torch.tensor(7)))
         self.assertTrue(torch.allclose(l_marg.M, torch.tensor(6)))

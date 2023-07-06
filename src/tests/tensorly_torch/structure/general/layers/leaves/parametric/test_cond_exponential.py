@@ -6,8 +6,12 @@ import torch
 from spflow.base.structure.spn import CondExponentialLayer as BaseCondExponentialLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import CondExponential, CondExponentialLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondExponential as CondExponentialTorch
+from spflow.torch.structure.spn import CondExponentialLayer as CondExponentialLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_exponential import CondExponentialLayer
 
 
 class TestNode(unittest.TestCase):
@@ -285,11 +289,11 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, CondExponential))
+        self.assertTrue(isinstance(l_marg, CondExponentialTorch))
         self.assertEqual(l_marg.scope, Scope([0], [2]))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, CondExponentialLayer))
+        self.assertTrue(isinstance(l_marg, CondExponentialLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
 
         # ----- marginalize over non-scope rvs -----

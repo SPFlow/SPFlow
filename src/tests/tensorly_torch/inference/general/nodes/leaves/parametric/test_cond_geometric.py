@@ -9,7 +9,8 @@ from spflow.base.structure.spn import CondGeometric as BaseCondGeometric
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondGeometric
+#from spflow.torch.structure.spn import CondGeometric
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_geometric import CondGeometric
 
 
 class TestGeometric(unittest.TestCase):

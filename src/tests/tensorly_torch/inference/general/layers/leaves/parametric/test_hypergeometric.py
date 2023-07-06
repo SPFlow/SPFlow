@@ -4,7 +4,8 @@ import torch
 
 from spflow.meta.data import Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure.spn import Hypergeometric, HypergeometricLayer
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_hypergeometric import HypergeometricLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_hypergeometric import Hypergeometric
 
 
 class TestNode(unittest.TestCase):

@@ -7,7 +7,7 @@ from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
 from spflow.tensorly.inference import likelihood, log_likelihood
 from spflow.tensorly.structure.spn import CondSumNode, ProductNode
-from spflow.torch.structure.general.nodes.leaves import Gaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 
 def create_example_spn():
     spn = CondSumNode(

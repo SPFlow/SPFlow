@@ -9,7 +9,8 @@ from spflow.base.structure.spn import CondBernoulli as BaseCondBernoulli
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondBernoulli
+#from spflow.torch.structure.spn import CondBernoulli
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_bernoulli import CondBernoulli
 
 
 class TestBernoulli(unittest.TestCase):

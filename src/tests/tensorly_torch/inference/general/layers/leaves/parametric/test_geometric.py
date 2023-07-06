@@ -5,7 +5,8 @@ import torch
 
 from spflow.meta.data import Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure.spn import Geometric, GeometricLayer
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_geometric import GeometricLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_geometric import Geometric
 
 
 class TestNode(unittest.TestCase):

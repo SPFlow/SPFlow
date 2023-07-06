@@ -7,8 +7,9 @@ import torch
 from spflow.base.structure.spn import Gaussian as BaseGaussian
 from spflow.base.structure.spn import PartitionLayer as BasePartitionLayer
 from spflow.meta.data import Scope
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Gaussian
+#from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.tensorly.structure import marginalize
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.tensorly.structure.spn import PartitionLayer
 from spflow.tensorly.structure.spn.layers.partition_layer import toLayerBased, toNodeBased
 from spflow.tensorly.structure.spn.layers_layerbased.partition_layer import toLayerBased, toNodeBased

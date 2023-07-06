@@ -8,7 +8,8 @@ from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Gaussian as BaseGaussian
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import Gaussian
+#from spflow.torch.structure.spn import Gaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 
 
 class TestGaussian(unittest.TestCase):

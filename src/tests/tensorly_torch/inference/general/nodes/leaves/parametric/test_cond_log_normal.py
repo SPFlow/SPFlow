@@ -10,7 +10,7 @@ from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import CondLogNormal
-
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_log_normal import CondLogNormal
 
 class TestLogNormal(unittest.TestCase):
     @classmethod

@@ -5,8 +5,12 @@ import torch
 
 from spflow.base.structure.spn import GaussianLayer as BaseGaussianLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Gaussian, GaussianLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Gaussian as GaussianTorch
+from spflow.torch.structure.spn import GaussianLayer as GaussianLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_gaussian import GaussianLayer
 
 
 class TestNode(unittest.TestCase):
@@ -287,7 +291,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1]), [FeatureTypes.Gaussian(mean=1.0, std=0.5)]),
             ]
         )
-        self.assertTrue(isinstance(gaussian, GaussianLayer))
+        self.assertTrue(isinstance(gaussian, GaussianLayerTorch))
         self.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
 
     def test_layer_structural_marginalization(self):
@@ -315,13 +319,13 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, Gaussian))
+        self.assertTrue(isinstance(l_marg, GaussianTorch))
         self.assertEqual(l_marg.scope, Scope([0]))
         self.assertTrue(torch.allclose(l_marg.mean, torch.tensor(-0.29)))
         self.assertTrue(torch.allclose(l_marg.std, torch.tensor(1.9)))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, GaussianLayer))
+        self.assertTrue(isinstance(l_marg, GaussianLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
         self.assertTrue(torch.allclose(l_marg.mean, torch.tensor(-0.29)))
         self.assertTrue(torch.allclose(l_marg.std, torch.tensor(1.9)))

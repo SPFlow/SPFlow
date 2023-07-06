@@ -9,7 +9,8 @@ from spflow.base.structure.spn import CondPoisson as BaseCondPoisson
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondPoisson
+#from spflow.torch.structure.spn import CondPoisson
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_poisson import CondPoisson
 
 
 class TestPoisson(unittest.TestCase):

@@ -6,7 +6,8 @@ import torch
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondGamma, CondGammaLayer
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_gamma import CondGammaLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gamma import CondGamma
 
 
 class TestNode(unittest.TestCase):

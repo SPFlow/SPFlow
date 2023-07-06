@@ -8,7 +8,8 @@ from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 from spflow.torch.inference import log_likelihood
 from spflow.torch.sampling import sample
-from spflow.torch.structure.spn import CondBernoulli, CondBernoulliLayer
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_bernoulli import CondBernoulliLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_bernoulli import CondBernoulli
 
 
 class TestNode(unittest.TestCase):

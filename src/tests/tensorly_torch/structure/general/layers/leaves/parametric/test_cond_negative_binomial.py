@@ -8,8 +8,12 @@ from spflow.base.structure.spn import (
 )
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import CondNegativeBinomial, CondNegativeBinomialLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondNegativeBinomial as CondNegativeBinomialTorch
+from spflow.torch.structure.spn import CondNegativeBinomialLayer as CondNegativeBinomialLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_negative_binomial import CondNegativeBinomialLayer
 
 
 class TestNode(unittest.TestCase):
@@ -361,12 +365,12 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, CondNegativeBinomial))
+        self.assertTrue(isinstance(l_marg, CondNegativeBinomialTorch))
         self.assertEqual(l_marg.scope, Scope([0], [2]))
         self.assertTrue(torch.allclose(l_marg.n, torch.tensor(2)))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, CondNegativeBinomialLayer))
+        self.assertTrue(isinstance(l_marg, CondNegativeBinomialLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
         self.assertTrue(torch.allclose(l_marg.n, torch.tensor(2)))
 

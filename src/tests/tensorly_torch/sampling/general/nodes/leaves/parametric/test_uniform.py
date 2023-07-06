@@ -7,7 +7,8 @@ import torch
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 from spflow.torch.sampling import sample
-from spflow.torch.structure.spn import Uniform
+#from spflow.torch.structure.spn import Uniform
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_uniform import Uniform
 
 
 class TestUniform(unittest.TestCase):
