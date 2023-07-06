@@ -5,7 +5,8 @@ import torch
 
 from spflow.meta.data import Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure.spn import Gaussian, GaussianLayer
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_gaussian import GaussianLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 
 
 class TestNode(unittest.TestCase):

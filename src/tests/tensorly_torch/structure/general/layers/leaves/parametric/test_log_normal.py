@@ -5,8 +5,12 @@ import torch
 
 from spflow.base.structure.spn import LogNormalLayer as BaseLogNormalLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import LogNormal, LogNormalLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import LogNormal as LogNormalTorch
+from spflow.torch.structure.spn import LogNormalLayer as LogNormalLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_log_normal import LogNormalLayer
 
 
 class TestNode(unittest.TestCase):
@@ -313,13 +317,13 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, LogNormal))
+        self.assertTrue(isinstance(l_marg, LogNormalTorch))
         self.assertEqual(l_marg.scope, Scope([0]))
         self.assertTrue(torch.allclose(l_marg.mean, torch.tensor(-0.29)))
         self.assertTrue(torch.allclose(l_marg.std, torch.tensor(1.9)))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, LogNormalLayer))
+        self.assertTrue(isinstance(l_marg, LogNormalLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
         self.assertTrue(torch.allclose(l_marg.mean, torch.tensor(-0.29)))
         self.assertTrue(torch.allclose(l_marg.std, torch.tensor(1.9)))

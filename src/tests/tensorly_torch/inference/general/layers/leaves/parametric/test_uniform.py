@@ -5,7 +5,8 @@ import torch
 
 from spflow.meta.data import Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure.spn import Uniform, UniformLayer
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_uniform import UniformLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_uniform import Uniform
 
 
 class TestNode(unittest.TestCase):

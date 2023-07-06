@@ -5,8 +5,13 @@ import torch
 
 from spflow.base.structure.spn import BinomialLayer as BaseBinomialLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Binomial, BinomialLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Binomial as BinomialTorch
+from spflow.torch.structure.spn import BinomialLayer as BinomialLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_binomial import BinomialLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_binomial import Binomial
 
 
 class TestNode(unittest.TestCase):
@@ -281,7 +286,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1]), [FeatureTypes.Binomial(n=5, p=0.25)]),
             ]
         )
-        self.assertTrue(isinstance(binomial, BinomialLayer))
+        self.assertTrue(isinstance(binomial, BinomialLayerTorch))
         self.assertTrue(torch.all(binomial.n == torch.tensor([3, 5])))
         self.assertTrue(torch.allclose(binomial.p, torch.tensor([0.75, 0.25])))
         self.assertTrue(binomial.scopes_out == [Scope([0]), Scope([1])])
@@ -310,13 +315,13 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, Binomial))
+        self.assertTrue(isinstance(l_marg, BinomialTorch))
         self.assertEqual(l_marg.scope, Scope([0]))
         self.assertTrue(torch.allclose(l_marg.n, torch.tensor(2)))
         self.assertTrue(torch.allclose(l_marg.p, torch.tensor(0.29)))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, BinomialLayer))
+        self.assertTrue(isinstance(l_marg, BinomialLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
         self.assertTrue(torch.allclose(l_marg.n, torch.tensor(2)))
         self.assertTrue(torch.allclose(l_marg.p, torch.tensor(0.29)))

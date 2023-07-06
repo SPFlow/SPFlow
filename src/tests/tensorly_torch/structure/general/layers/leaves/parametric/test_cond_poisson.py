@@ -6,9 +6,12 @@ import torch
 from spflow.base.structure.spn import CondPoissonLayer as BaseCondPoissonLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import CondPoisson, CondPoissonLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondPoisson as CondPoissonTorch
+from spflow.torch.structure.spn import CondPoissonLayer as CondPoissonLayerTorch
 
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_poisson import CondPoissonLayer
 
 class TestNode(unittest.TestCase):
     @classmethod
@@ -259,7 +262,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(l=2.0)]),
             ]
         )
-        self.assertTrue(isinstance(poisson, CondPoissonLayer))
+        self.assertTrue(isinstance(poisson, CondPoissonLayerTorch))
         self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
     def test_layer_structural_marginalization(self):
@@ -285,11 +288,11 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, CondPoisson))
+        self.assertTrue(isinstance(l_marg, CondPoissonTorch))
         self.assertEqual(l_marg.scope, Scope([0], [2]))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, CondPoissonLayer))
+        self.assertTrue(isinstance(l_marg, CondPoissonLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
 
         # ----- marginalize over non-scope rvs -----

@@ -10,7 +10,7 @@ from spflow.torch.inference.general.nodes.leaves.parametric.gaussian import (
 from spflow.tensorly.inference.module import log_likelihood
 from spflow.tensorly.inference.spn.layers.cond_sum_layer import log_likelihood
 from spflow.tensorly.inference.spn.nodes.cond_sum_node import log_likelihood
-from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.tensorly.structure.spn.layers.cond_sum_layer import CondSumLayer, toLayerBased
 from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.tensorly.structure.spn.nodes.cond_sum_node import toLayerBased

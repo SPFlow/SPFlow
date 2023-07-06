@@ -9,7 +9,8 @@ from spflow.base.structure.spn import CondBinomial as BaseCondBinomial
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondBinomial
+#from spflow.torch.structure.spn import CondBinomial
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_binomial import CondBinomial
 
 
 class TestBinomial(unittest.TestCase):

@@ -6,8 +6,12 @@ import torch
 from spflow.base.structure.spn import CondBernoulliLayer as BaseCondBernoulliLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import CondBernoulli, CondBernoulliLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondBernoulli as CondBernoulliTorch
+from spflow.torch.structure.spn import CondBernoulliLayer as CondBernoulliLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_bernoulli import CondBernoulliLayer
 
 
 class TestNode(unittest.TestCase):
@@ -289,11 +293,11 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, CondBernoulli))
+        self.assertTrue(isinstance(l_marg, CondBernoulliTorch))
         self.assertEqual(l_marg.scope, Scope([0], [2]))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, CondBernoulliLayer))
+        self.assertTrue(isinstance(l_marg, CondBernoulliLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
 
         # ----- marginalize over non-scope rvs -----

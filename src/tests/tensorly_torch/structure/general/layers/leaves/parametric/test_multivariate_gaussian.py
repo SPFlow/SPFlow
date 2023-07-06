@@ -7,12 +7,13 @@ from spflow.base.structure.spn import (
     MultivariateGaussianLayer as BaseMultivariateGaussianLayer,
 )
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import (
-    Gaussian,
-    MultivariateGaussian,
-    MultivariateGaussianLayer,
-)
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import MultivariateGaussian as MultivariateGaussianTorch
+from spflow.torch.structure.spn import MultivariateGaussianLayer as MultivariateGaussianLayerTorch
+from spflow.torch.structure.spn import Gaussian as GaussianTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_multivariate_gaussian import MultivariateGaussianLayer
 
 
 class TestNode(unittest.TestCase):
@@ -403,19 +404,19 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [0, 2], prune=True)
-        self.assertTrue(isinstance(l_marg, MultivariateGaussian))
+        self.assertTrue(isinstance(l_marg, MultivariateGaussianTorch))
         self.assertEqual(l_marg.scope, Scope([1, 3]))
         self.assertTrue(torch.all(l_marg.mean == torch.tensor([3.7, -0.9])))
         self.assertTrue(torch.allclose(l_marg.cov, torch.tensor([[0.5, 0.0], [0.0, 0.7]])))
 
         l_marg = marginalize(l, [0, 1, 2], prune=True)
-        self.assertTrue(isinstance(l_marg, Gaussian))
+        self.assertTrue(isinstance(l_marg, GaussianTorch))
         self.assertEqual(l_marg.scope, Scope([3]))
         self.assertTrue(torch.all(l_marg.mean == torch.tensor(-0.9)))
         self.assertTrue(torch.all(l_marg.std == torch.tensor(np.sqrt(0.7))))
 
         l_marg = marginalize(l, [0, 2], prune=False)
-        self.assertTrue(isinstance(l_marg, MultivariateGaussianLayer))
+        self.assertTrue(isinstance(l_marg, MultivariateGaussianLayerTorch))
         self.assertEqual(l_marg.scopes_out, [Scope([1, 3])])
         self.assertEqual(len(l_marg.nodes), 1)
         self.assertTrue(torch.all(l_marg.mean[0] == torch.tensor([3.7, -0.9])))

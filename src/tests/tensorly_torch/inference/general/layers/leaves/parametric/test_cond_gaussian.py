@@ -6,7 +6,8 @@ import torch
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondGaussian, CondGaussianLayer
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_gaussian import CondGaussianLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gaussian import CondGaussian
 
 
 class TestNode(unittest.TestCase):

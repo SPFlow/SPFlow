@@ -8,7 +8,8 @@ from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import NegativeBinomial as BaseNegativeBinomial
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import NegativeBinomial
+#from spflow.torch.structure.spn import NegativeBinomial
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_negative_binomial import NegativeBinomial
 
 
 class TestNegativeBinomial(unittest.TestCase):

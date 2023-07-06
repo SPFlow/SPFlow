@@ -5,7 +5,7 @@ import torch
 from spflow.meta.data import Scope
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.structure.spn import Gaussian, ProductLayer, ProductNode, SumNode
-from spflow.torch.structure.general.nodes.leaves import Gaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.tensorly.structure.spn.nodes.sum_node import toLayerBased
 
 class TestNode(unittest.TestCase):

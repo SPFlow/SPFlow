@@ -5,7 +5,8 @@ import torch
 
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure.spn.rat import RatSPN, random_region_graph
+from spflow.tensorly.inference import log_likelihood
+from spflow.tensorly.structure.spn.rat import RatSPN, random_region_graph
 
 
 class TestModule(unittest.TestCase):

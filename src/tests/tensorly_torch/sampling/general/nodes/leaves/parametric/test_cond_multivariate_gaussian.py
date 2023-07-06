@@ -6,7 +6,8 @@ import torch
 
 from spflow.meta.data import Scope
 from spflow.torch.sampling import sample
-from spflow.torch.structure.spn import CondMultivariateGaussian
+#from spflow.torch.structure.spn import CondMultivariateGaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_multivariate_gaussian import CondMultivariateGaussian
 
 
 class TestMultivariateGaussian(unittest.TestCase):
