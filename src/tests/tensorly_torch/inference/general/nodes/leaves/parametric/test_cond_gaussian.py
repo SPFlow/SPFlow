@@ -9,7 +9,8 @@ from spflow.base.structure.spn import CondGaussian as BaseCondGaussian
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import CondGaussian
+#from spflow.torch.structure.spn import CondGaussian
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gaussian import CondGaussian
 
 
 class TestGaussian(unittest.TestCase):

@@ -7,7 +7,8 @@ import torch
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 from spflow.torch.sampling import sample
-from spflow.torch.structure.spn import Hypergeometric
+#from spflow.torch.structure.spn import Hypergeometric
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_hypergeometric import Hypergeometric
 
 
 class TestHypergeometric(unittest.TestCase):

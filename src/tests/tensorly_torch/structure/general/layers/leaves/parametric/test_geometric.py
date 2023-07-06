@@ -5,8 +5,12 @@ import torch
 
 from spflow.base.structure.spn import GeometricLayer as BaseGeometricLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Geometric, GeometricLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Geometric as GeometricTorch
+from spflow.torch.structure.spn import GeometricLayer as GeometricLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_geometric import GeometricLayer
 
 
 class TestNode(unittest.TestCase):
@@ -249,12 +253,12 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, Geometric))
+        self.assertTrue(isinstance(l_marg, GeometricTorch))
         self.assertEqual(l_marg.scope, Scope([0]))
         self.assertTrue(torch.allclose(l_marg.p, torch.tensor(0.29)))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, GeometricLayer))
+        self.assertTrue(isinstance(l_marg, GeometricLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
         self.assertTrue(torch.allclose(l_marg.p, torch.tensor(0.29)))
 

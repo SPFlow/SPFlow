@@ -9,6 +9,7 @@ from spflow.base.structure.spn import Poisson as BasePoisson
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import Poisson
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_poisson import Poisson
 
 
 class TestPoisson(unittest.TestCase):

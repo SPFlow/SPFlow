@@ -6,7 +6,8 @@ import torch
 
 from spflow.meta.data import Scope
 from spflow.torch.inference import log_likelihood
-from spflow.torch.structure.spn import Bernoulli, BernoulliLayer
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_bernoulli import BernoulliLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_bernoulli import Bernoulli
 
 
 class TestNode(unittest.TestCase):

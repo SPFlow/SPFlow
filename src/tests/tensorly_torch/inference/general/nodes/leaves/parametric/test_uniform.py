@@ -8,7 +8,8 @@ from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Uniform as BaseUniform
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import Uniform
+#from spflow.torch.structure.spn import Uniform
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_uniform import Uniform
 
 
 class TestUniform(unittest.TestCase):

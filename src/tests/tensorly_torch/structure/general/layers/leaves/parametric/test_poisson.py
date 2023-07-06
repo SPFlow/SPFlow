@@ -5,8 +5,12 @@ import torch
 
 from spflow.base.structure.spn import PoissonLayer as BasePoissonLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Poisson, PoissonLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Poisson as PoissonTorch
+from spflow.torch.structure.spn import PoissonLayer as PoissonLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_poisson import PoissonLayer
 
 
 class TestNode(unittest.TestCase):
@@ -232,7 +236,7 @@ class TestNode(unittest.TestCase):
                 FeatureContext(Scope([1]), [FeatureTypes.Poisson(l=2.0)]),
             ]
         )
-        self.assertTrue(isinstance(poisson, PoissonLayer))
+        self.assertTrue(isinstance(poisson, PoissonLayerTorch))
         self.assertTrue(poisson.scopes_out == [Scope([0]), Scope([1])])
 
     def test_layer_structural_marginalization(self):
@@ -259,12 +263,12 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, Poisson))
+        self.assertTrue(isinstance(l_marg, PoissonTorch))
         self.assertEqual(l_marg.scope, Scope([0]))
         self.assertTrue(torch.allclose(l_marg.l, torch.tensor(0.29)))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, PoissonLayer))
+        self.assertTrue(isinstance(l_marg, PoissonLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
         self.assertTrue(torch.allclose(l_marg.l, torch.tensor(0.29)))
 

@@ -8,7 +8,8 @@ from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Geometric as BaseGeometric
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import Geometric
+#from spflow.torch.structure.spn import Geometric
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_geometric import Geometric
 
 
 class TestGeometric(unittest.TestCase):

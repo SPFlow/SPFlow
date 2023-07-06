@@ -8,7 +8,8 @@ from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 from spflow.torch.inference import log_likelihood
 from spflow.torch.sampling import sample
-from spflow.torch.structure.spn import CondGeometric, CondGeometricLayer
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_geometric import CondGeometricLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_geometric import CondGeometric
 
 
 class TestNode(unittest.TestCase):

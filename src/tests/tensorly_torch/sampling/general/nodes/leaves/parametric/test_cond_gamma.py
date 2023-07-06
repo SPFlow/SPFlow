@@ -7,7 +7,8 @@ import torch
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 from spflow.torch.sampling import sample
-from spflow.torch.structure.spn import CondGamma
+#from spflow.torch.structure.spn import CondGamma
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gamma import CondGamma
 
 
 class TestGamma(unittest.TestCase):

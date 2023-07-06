@@ -5,8 +5,13 @@ import torch
 
 from spflow.base.structure.spn import BernoulliLayer as BaseBernoulliLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Bernoulli, BernoulliLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import Bernoulli as BernoulliTorch
+from spflow.torch.structure.spn import BernoulliLayer as BernoulliLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_bernoulli import BernoulliLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_bernoulli import Bernoulli
 
 
 class TestNode(unittest.TestCase):
@@ -253,12 +258,12 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, Bernoulli))
+        self.assertTrue(isinstance(l_marg, BernoulliTorch))
         self.assertEqual(l_marg.scope, Scope([0]))
         self.assertTrue(torch.allclose(l_marg.p, torch.tensor(0.29)))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, BernoulliLayer))
+        self.assertTrue(isinstance(l_marg, BernoulliLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
         self.assertTrue(torch.allclose(l_marg.p, torch.tensor(0.29)))
 

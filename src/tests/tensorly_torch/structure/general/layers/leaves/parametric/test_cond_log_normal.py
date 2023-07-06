@@ -6,8 +6,12 @@ import torch
 from spflow.base.structure.spn import CondLogNormalLayer as BaseCondLogNormalLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
-from spflow.torch.structure.spn import CondLogNormal, CondLogNormalLayer
+from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure.spn import CondLogNormal as CondLogNormalTorch
+from spflow.torch.structure.spn import CondLogNormalLayer as CondLogNormalLayerTorch
+
+from spflow.tensorly.structure import AutoLeaf
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_log_normal import CondLogNormalLayer
 
 
 class TestNode(unittest.TestCase):
@@ -362,11 +366,11 @@ class TestNode(unittest.TestCase):
 
         # ----- partially marginalize -----
         l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, CondLogNormal))
+        self.assertTrue(isinstance(l_marg, CondLogNormalTorch))
         self.assertEqual(l_marg.scope, Scope([0], [2]))
 
         l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, CondLogNormalLayer))
+        self.assertTrue(isinstance(l_marg, CondLogNormalLayerTorch))
         self.assertEqual(len(l_marg.scopes_out), 1)
 
         # ----- marginalize over non-scope rvs -----

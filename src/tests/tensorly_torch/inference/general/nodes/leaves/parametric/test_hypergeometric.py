@@ -7,7 +7,8 @@ from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Hypergeometric as BaseHypergeometric
 from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import Hypergeometric
+#from spflow.torch.structure.spn import Hypergeometric
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_hypergeometric import Hypergeometric
 
 
 class TestHypergeometric(unittest.TestCase):

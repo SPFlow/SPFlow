@@ -19,7 +19,7 @@ from spflow.tensorly.structure.spn.rat.region_graph import random_region_graph
 from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
-from spflow.torch.structure.autoleaf import (
+from spflow.tensorly.structure.autoleaf import (
     AutoLeaf,
     Bernoulli,
     BernoulliLayer,
