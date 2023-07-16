@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 import torch
-
+import tensorly as tl
 from spflow.base.structure.spn import CondBernoulliLayer as BaseCondBernoulliLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
@@ -12,6 +12,8 @@ from spflow.torch.structure.spn import CondBernoulliLayer as CondBernoulliLayerT
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_bernoulli import CondBernoulliLayer
+from spflow.torch.structure.general.layers.leaves.parametric.cond_bernoulli import updateBackend
+
 
 
 class TestNode(unittest.TestCase):
@@ -342,6 +344,16 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        bernoulli = CondBernoulliLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
+        for backend in backends:
+            tl.set_backend(backend)
+            bernoulli_updated = updateBackend(bernoulli)
+            self.assertTrue(np.all(bernoulli.scopes_out == bernoulli_updated.scopes_out))
+            # check conversion from torch to python
+            
 
 
 if __name__ == "__main__":

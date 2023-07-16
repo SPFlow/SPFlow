@@ -11,6 +11,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.layers.leaves.parametric.poisson import (
     PoissonLayer as BasePoissonLayer,
 )
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_poisson import PoissonLayer as GeneralPoissonLayer
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -214,13 +215,21 @@ class PoissonLayer(Module):
 
         self.l_aux.data = proj_bounded_to_real(l, lb=0.0)
 
-    def get_params(self) -> List[torch.Tensor]:
+    def get_trainable_params(self) -> List[torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             One-dimensional PyTorch tensor representing the rate parameters.
         """
         return [self.l_aux]
+
+    def get_params(self) -> List[torch.Tensor]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            One-dimensional PyTorch tensor representing the rate parameters.
+        """
+        return [self.l.detach().numpy()]
 
     def check_support(
         self,
@@ -358,3 +367,16 @@ def toBase(layer: PoissonLayer, dispatch_ctx: Optional[DispatchContext] = None) 
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BasePoissonLayer(scope=layer.scopes_out, l=layer.l.detach().numpy())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: PoissonLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralPoissonLayer(scope=leaf_node.scopes_out, l=leaf_node.l.detach().numpy())

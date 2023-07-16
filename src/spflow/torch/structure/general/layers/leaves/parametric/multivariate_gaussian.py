@@ -10,6 +10,7 @@ import torch.distributions as D
 from spflow.base.structure.general.layers.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussianLayer as BaseMultivariateGaussianLayer,
 )
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_multivariate_gaussian import MultivariateGaussianLayer as GeneralMultivariateGaussianLayer
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -333,13 +334,36 @@ class MultivariateGaussianLayer(Module):
         for node_mean, node_cov, node in zip(mean, cov, self.nodes):
             node.set_params(node_mean, node_cov)
 
-    def get_params(self) -> List[List[torch.Tensor]]:
+    def get_trainable_params(self) -> List[List[torch.Tensor]]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             Tuple of a list of one-dimensional PyTorch tensor and a list of a two-dimensional PyTorch tensor representing the means and covariances, respectively.
         """
         return [self.mean, self.cov]
+
+    def get_params(self) -> List[List[torch.Tensor]]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of a list of one-dimensional PyTorch tensor and a list of a two-dimensional PyTorch tensor representing the means and covariances, respectively.
+        """
+        """
+        if torch.is_tensor(self.mean):
+            mean_out = self.mean.detach().numpy()
+        else:
+            mean_out = self.mean
+
+        if torch.is_tensor(self.cov):
+            cov_out = self.cov.detach().numpy()
+        else:
+            cov_out = self.cov
+
+        return [mean_out, cov_out]
+        """
+        mean_out = [m.data.cpu().detach().numpy() for m in self.mean]
+        cov_out = [c.data.cpu().detach().numpy() for c in self.cov]
+        return [mean_out, cov_out]
 
     def check_support(self, data: torch.Tensor, node_ids: Optional[List[int]] = None) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions.
@@ -411,7 +435,7 @@ def marginalize(
 
         if marg_node is not None:
             marg_scopes.append(marg_node.scope)
-            marg_params.append(marg_node.get_params())
+            marg_params.append(marg_node.get_trainable_params())
             marg_nodes.append(marg_node)
 
     if len(marg_scopes) == 0:
@@ -459,3 +483,18 @@ def toBase(
         mean=[m.detach().numpy() for m in layer.mean],
         cov=[c.detach().numpy() for c in layer.cov],
     )
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: MultivariateGaussianLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralMultivariateGaussianLayer(scope=leaf_node.scopes_out,
+        mean=[m.detach().numpy() for m in leaf_node.mean],
+        cov=[c.detach().numpy() for c in leaf_node.cov])

@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import CondGaussianLayer as BaseCondGaussianLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -9,6 +10,7 @@ from spflow.meta.dispatch import DispatchContext
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import CondGaussian as CondGaussianTorch
 from spflow.torch.structure.spn import CondGaussianLayer as CondGaussianLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.cond_gaussian import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_gaussian import CondGaussianLayer
@@ -424,6 +426,16 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        gaussian = CondGaussianLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
+        for backend in backends:
+            tl.set_backend(backend)
+            gaussian_updated = updateBackend(gaussian)
+            self.assertTrue(np.all(gaussian.scopes_out == gaussian_updated.scopes_out))
+            # check conversion from torch to python
+
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.nodes.leaves.parametric.exponential import (
     Exponential as BaseExponential,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_exponential import Exponential as GeneralExponential
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -160,7 +161,7 @@ class Exponential(LeafNode):
 
         self.l_aux.data = proj_bounded_to_real(torch.tensor(float(l)), lb=0.0)
 
-    def get_params(self) -> Tuple[float]:
+    def get_trainable_params(self) -> Tuple[float]:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -168,6 +169,14 @@ class Exponential(LeafNode):
         """
         #return (self.l.data.cpu().numpy(),)  # type: ignore
         return [self.l_aux] # type: ignore
+
+    def get_params(self) -> Tuple[float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Floating point value representing the rate parameter.
+        """
+        return (self.l.data.cpu().numpy(),)  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -226,7 +235,7 @@ def toTorch(node: BaseExponential, dispatch_ctx: Optional[DispatchContext] = Non
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return Exponential(node.scope, *node.get_params())
+    return Exponential(node.scope, *node.get_trainable_params())
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -240,4 +249,17 @@ def toBase(node: Exponential, dispatch_ctx: Optional[DispatchContext] = None) ->
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseExponential(node.scope, *node.get_params())
+    return BaseExponential(node.scope, *node.get_trainable_params())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: Exponential, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralExponential(scope=leaf_node.scope, l=leaf_node.l.data.item())

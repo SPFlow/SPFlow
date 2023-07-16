@@ -3,7 +3,9 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
+from spflow.torch.structure.general.nodes.leaves.parametric.negative_binomial import updateBackend
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import NegativeBinomial as BaseNegativeBinomial
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -189,6 +191,23 @@ class TestNegativeBinomial(unittest.TestCase):
                 np.array([*toTorch(node_negative_binomial).get_params()]),
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        n = random.randint(2, 10)
+        p = random.random()
+        negative_binomial = NegativeBinomial(Scope([0]), n, p)
+        for backend in backends:
+            tl.set_backend(backend)
+            negative_binomial_updated = updateBackend(negative_binomial)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*negative_binomial.get_params()]),
+                    np.array([*negative_binomial_updated.get_params()]),
+                )
+            )
 
 
 if __name__ == "__main__":

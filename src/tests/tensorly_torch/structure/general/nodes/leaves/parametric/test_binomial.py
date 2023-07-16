@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 import torch
-
+import tensorly as tl
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Binomial as BaseBinomial
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -11,6 +11,7 @@ from spflow.torch.inference import log_likelihood
 from spflow.torch.structure import marginalize, toBase, toTorch
 #from spflow.torch.structure.spn import Binomial
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_binomial import Binomial
+from spflow.torch.structure.general.nodes.leaves.parametric.binomial import updateBackend
 from spflow.torch.structure.spn import Binomial as TorchBinomial
 from spflow.tensorly.structure import AutoLeaf
 
@@ -178,6 +179,23 @@ class TestBinomial(unittest.TestCase):
                 np.array([*toTorch(node_binomial).get_params()]),
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        n = random.randint(2, 10)
+        p = random.random()
+        binomial = Binomial(Scope([0]), n, p)
+        for backend in backends:
+            tl.set_backend(backend)
+            binomial_updated = updateBackend(binomial)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*binomial.get_params()]),
+                    np.array([*binomial_updated.get_params()]),
+                )
+            )
 
 
 if __name__ == "__main__":

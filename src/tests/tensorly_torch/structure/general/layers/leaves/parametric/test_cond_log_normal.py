@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import CondLogNormalLayer as BaseCondLogNormalLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -9,6 +10,7 @@ from spflow.meta.dispatch import DispatchContext
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import CondLogNormal as CondLogNormalTorch
 from spflow.torch.structure.spn import CondLogNormalLayer as CondLogNormalLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.cond_log_normal import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_log_normal import CondLogNormalLayer
@@ -424,6 +426,16 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        logNormal = CondLogNormalLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
+        for backend in backends:
+            tl.set_backend(backend)
+            logNormal_updated = updateBackend(logNormal)
+            self.assertTrue(np.all(logNormal.scopes_out == logNormal_updated.scopes_out))
+            # check conversion from torch to python
+
 
 
 if __name__ == "__main__":

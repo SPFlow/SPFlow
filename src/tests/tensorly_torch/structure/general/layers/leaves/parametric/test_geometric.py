@@ -2,12 +2,14 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import GeometricLayer as BaseGeometricLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import Geometric as GeometricTorch
 from spflow.torch.structure.spn import GeometricLayer as GeometricLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.geometric import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_geometric import GeometricLayer
@@ -307,6 +309,23 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertTrue(np.allclose(base_layer.p, torch_layer.p.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        geometric = GeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
+        for backend in backends:
+            tl.set_backend(backend)
+            geometric_updated = updateBackend(geometric)
+            self.assertTrue(np.all(geometric.scopes_out == geometric_updated.scopes_out))
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*geometric.get_params()[0]]),
+                    np.array([*geometric_updated.get_params()[0]]),
+                )
+            )
+
+
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.layers.leaves.parametric.gamma import (
     GammaLayer as BaseGammaLayer,
 )
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_gamma import GammaLayer as GeneralGammaLayer
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -254,13 +255,21 @@ class GammaLayer(Module):
         self.alpha_aux.data = proj_bounded_to_real(alpha, lb=0.0)
         self.beta_aux.data = proj_bounded_to_real(beta, lb=0.0)
 
-    def get_params(self) -> List[torch.Tensor]:
+    def get_trainable_params(self) -> List[torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             Tuple of two one-dimensional PyTorch tensors representing the shape and rate parameters, respectively.
         """
         return [self.alpha_aux, self.beta_aux]
+
+    def get_params(self) -> List[torch.Tensor]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of two one-dimensional PyTorch tensors representing the shape and rate parameters, respectively.
+        """
+        return [self.alpha.detach().numpy(), self.beta.detach().numpy()]
 
     def check_support(
         self,
@@ -409,4 +418,20 @@ def toBase(layer: GammaLayer, dispatch_ctx: Optional[DispatchContext] = None) ->
         scope=layer.scopes_out,
         alpha=layer.alpha.detach().numpy(),
         beta=layer.beta.detach().numpy(),
+    )
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: GammaLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralGammaLayer(scope=leaf_node.scopes_out,
+        alpha=leaf_node.alpha.detach().numpy(),
+        beta=leaf_node.beta.detach().numpy()
     )

@@ -135,6 +135,14 @@ class Geometric(LeafNode):
 
         self.p = p
 
+    def get_trainable_params(self) -> Tuple[float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Floating point value representing the success probability.
+        """
+        return (self.p,)
+
     def get_params(self) -> Tuple[float]:
         """Returns the parameters of the represented distribution.
 
