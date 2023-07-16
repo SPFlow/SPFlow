@@ -136,6 +136,14 @@ class Poisson(LeafNode):
 
         self.l = float(l)
 
+    def get_trainable_params(self) -> Tuple[float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Floating point value representing the rate parameter, expected value and variance.
+        """
+        return (self.l,)
+
     def get_params(self) -> Tuple[float]:
         """Returns the parameters of the represented distribution.
 

@@ -3,7 +3,9 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
+from spflow.torch.structure.general.nodes.leaves.parametric.uniform import updateBackend
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Uniform as BaseUniform
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -170,6 +172,23 @@ class TestUniform(unittest.TestCase):
                 np.array([*toTorch(node_uniform).get_params()]),
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        start = random.random()
+        end = start + 1e-7 + random.random()
+        uniform = Uniform(Scope([0]), start, end)
+        for backend in backends:
+            tl.set_backend(backend)
+            uniform_updated = updateBackend(uniform)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*uniform.get_params()]),
+                    np.array([*uniform_updated.get_params()]),
+                )
+            )
 
 
 if __name__ == "__main__":

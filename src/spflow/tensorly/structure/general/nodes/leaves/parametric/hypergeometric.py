@@ -157,6 +157,14 @@ class Hypergeometric(LeafNode):
         self.M = M
         self.n = n
 
+    def get_trainable_params(self) -> Tuple[int, int, int]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of integer values representing the size of the total population, the size of the population of interest and the number of draws.
+        """
+        return self.N, self.M, self.n
+
     def get_params(self) -> Tuple[int, int, int]:
         """Returns the parameters of the represented distribution.
 

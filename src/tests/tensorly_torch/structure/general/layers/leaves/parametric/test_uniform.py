@@ -2,12 +2,14 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import UniformLayer as BaseUniformLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import Uniform as UniformTorch
 from spflow.torch.structure.spn import UniformLayer as UniformLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.uniform import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_uniform import UniformLayer
@@ -543,6 +545,38 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.allclose(base_layer.end, torch_layer.end.numpy()))
         self.assertTrue(np.allclose(base_layer.support_outside, torch_layer.support_outside.numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        uniform = UniformLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+            start=[0.2, -0.9, 0.31],
+            end=[0.3, 1.0, 0.5],
+            support_outside=[True, False, True])
+        for backend in backends:
+            tl.set_backend(backend)
+            uniform_updated = updateBackend(uniform)
+            self.assertTrue(np.all(uniform.scopes_out == uniform_updated.scopes_out))
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*uniform.get_params()[0]]),
+                    np.array([*uniform_updated.get_params()[0]]),
+                )
+            )
+
+            self.assertTrue(
+                np.allclose(
+                    np.array([*uniform.get_params()[1]]),
+                    np.array([*uniform_updated.get_params()[1]]),
+                )
+            )
+
+            self.assertTrue(
+                np.allclose(
+                    np.array([*uniform.get_params()[2]]),
+                    np.array([*uniform_updated.get_params()[2]]),
+                )
+            )
 
 
 if __name__ == "__main__":

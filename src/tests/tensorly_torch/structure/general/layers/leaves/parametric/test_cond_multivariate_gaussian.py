@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import (
     CondMultivariateGaussianLayer as BaseCondMultivariateGaussianLayer,
@@ -13,6 +14,7 @@ from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import CondMultivariateGaussian as CondMultivariateGaussianTorch
 from spflow.torch.structure.spn import CondMultivariateGaussianLayer as CondMultivariateGaussianLayerTorch
 from spflow.torch.structure.spn import CondGaussian as CondGaussianTorch
+from spflow.torch.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_multivariate_gaussian import CondMultivariateGaussianLayer
@@ -531,6 +533,20 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        mutlivariateGaussian = CondMultivariateGaussianLayer(scope=[
+                Scope([0, 1, 2], [4]),
+                Scope([1, 2, 3], [4]),
+                Scope([0, 1, 2], [4]),
+            ])
+        for backend in backends:
+            tl.set_backend(backend)
+            mutlivariateGaussian_updated = updateBackend(mutlivariateGaussian)
+            self.assertTrue(np.all(mutlivariateGaussian.scopes_out == mutlivariateGaussian_updated.scopes_out))
+            # check conversion from torch to python
+
 
 
 if __name__ == "__main__":

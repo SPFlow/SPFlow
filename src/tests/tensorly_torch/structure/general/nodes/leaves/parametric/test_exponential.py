@@ -3,7 +3,8 @@ import unittest
 
 import numpy as np
 import torch
-
+import tensorly as tl
+from spflow.torch.structure.general.nodes.leaves.parametric.exponential import updateBackend
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Exponential as BaseExponential
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -151,6 +152,22 @@ class TestExponential(unittest.TestCase):
                 np.array([*toTorch(node_exponential).get_params()]),
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        l = random.random()
+        exponential = Exponential(Scope([0]), l)
+        for backend in backends:
+            tl.set_backend(backend)
+            exponential_updated = updateBackend(exponential)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*exponential.get_params()]),
+                    np.array([*exponential_updated.get_params()]),
+                )
+            )
 
 
 if __name__ == "__main__":

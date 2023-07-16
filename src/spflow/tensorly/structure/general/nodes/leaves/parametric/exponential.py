@@ -134,6 +134,14 @@ class Exponential(LeafNode):
 
         self.l = l
 
+    def get_trainable_params(self) -> Tuple[float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Floating point value representing the rate parameter.
+        """
+        return (self.l,)
+
     def get_params(self) -> Tuple[float]:
         """Returns the parameters of the represented distribution.
 

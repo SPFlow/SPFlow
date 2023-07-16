@@ -2,12 +2,14 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import PoissonLayer as BasePoissonLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import Poisson as PoissonTorch
 from spflow.torch.structure.spn import PoissonLayer as PoissonLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.poisson import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_poisson import PoissonLayer
@@ -317,6 +319,23 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertTrue(np.allclose(base_layer.l, torch_layer.l.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        poisson = PoissonLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
+        for backend in backends:
+            tl.set_backend(backend)
+            poisson_updated = updateBackend(poisson)
+            self.assertTrue(np.all(poisson.scopes_out == poisson_updated.scopes_out))
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*poisson.get_params()[0]]),
+                    np.array([*poisson_updated.get_params()[0]]),
+                )
+            )
+
+
 
 
 if __name__ == "__main__":

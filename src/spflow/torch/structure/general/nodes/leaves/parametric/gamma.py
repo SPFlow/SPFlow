@@ -10,6 +10,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.nodes.leaves.parametric.gamma import (
     Gamma as BaseGamma,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gamma import Gamma as GeneralGamma
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -180,7 +181,7 @@ class Gamma(LeafNode):
         self.alpha_aux.data = proj_bounded_to_real(torch.tensor(float(alpha)), lb=0.0)
         self.beta_aux.data = proj_bounded_to_real(torch.tensor(float(beta)), lb=0.0)
 
-    def get_params(self) -> Tuple[float, float]:
+    def get_trainable_params(self) -> Tuple[float, float]:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -188,6 +189,14 @@ class Gamma(LeafNode):
         """
         #return self.alpha.data.cpu().numpy(), self.beta.data.cpu().numpy()  # type: ignore
         return [self.alpha_aux, self.beta_aux]  # type: ignore
+
+    def get_params(self) -> Tuple[float, float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the floating points representing the shape and rate parameters.
+        """
+        return self.alpha.data.cpu().numpy(), self.beta.data.cpu().numpy()  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -246,7 +255,7 @@ def toTorch(node: BaseGamma, dispatch_ctx: Optional[DispatchContext] = None) -> 
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return Gamma(node.scope, *node.get_params())
+    return Gamma(node.scope, *node.get_trainable_params())
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -260,4 +269,17 @@ def toBase(node: Gamma, dispatch_ctx: Optional[DispatchContext] = None) -> BaseG
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseGamma(node.scope, *node.get_params())
+    return BaseGamma(node.scope, *node.get_trainable_params())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: Gamma, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralGamma(scope=leaf_node.scope, alpha=leaf_node.alpha.data.item(), beta=leaf_node.beta.data.item())

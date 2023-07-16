@@ -147,6 +147,14 @@ class LogNormal(LeafNode):
         self.mean = mean
         self.std = std
 
+    def get_trainable_params(self) -> Tuple[float, float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the floating point values representing the mean and standard deviation.
+        """
+        return self.mean, self.std
+
     def get_params(self) -> Tuple[float, float]:
         """Returns the parameters of the represented distribution.
 

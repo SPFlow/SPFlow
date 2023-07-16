@@ -212,7 +212,7 @@ class CondNegativeBinomial(LeafNode):
 
         return p
 
-    def get_params(self) -> Tuple[int]:
+    def get_trainable_params(self) -> Tuple[int]:
         """Returns the parameters of the represented distribution.
 
         Returns:

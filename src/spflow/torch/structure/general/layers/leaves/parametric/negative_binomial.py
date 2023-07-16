@@ -11,6 +11,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.layers.leaves.parametric.negative_binomial import (
     NegativeBinomialLayer as BaseNegativeBinomialLayer,
 )
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_negative_binomial import NegativeBinomialLayer as GeneralNegativeBinomialLayer
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
@@ -269,13 +270,21 @@ class NegativeBinomialLayer(Module):
         self.p = p
         self.n.data = n
 
-    def get_params(self) -> List[torch.Tensor]:
+    def get_trainable_params(self) -> List[torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             Tuple of two one-dimensional PyTorch tensors representing the numbers of successes and the success probabilities, respectively.
         """
         return [self.p_aux]
+
+    def get_params(self) -> List[torch.Tensor]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of two one-dimensional PyTorch tensors representing the numbers of successes and the success probabilities, respectively.
+        """
+        return [self.n.detach().numpy(), self.p.detach().numpy()]
 
     def check_support(
         self,
@@ -424,3 +433,16 @@ def toBase(layer: NegativeBinomialLayer, dispatch_ctx: Optional[DispatchContext]
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseNegativeBinomialLayer(scope=layer.scopes_out, n=layer.n.numpy(), p=layer.p.detach().numpy())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: NegativeBinomialLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralNegativeBinomialLayer(scope=leaf_node.scopes_out,n=leaf_node.n.data.detach().numpy(), p=leaf_node.p.data.detach().numpy())

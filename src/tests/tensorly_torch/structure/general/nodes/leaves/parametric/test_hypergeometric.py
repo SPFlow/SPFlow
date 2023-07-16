@@ -3,7 +3,9 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
+from spflow.torch.structure.general.nodes.leaves.parametric.hypergeometric import updateBackend
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Hypergeometric as BaseHypergeometric
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -191,6 +193,24 @@ class TestHypergeometric(unittest.TestCase):
                 np.array([*toTorch(node_hypergeometric).get_params()]),
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        N = 15
+        M = 10
+        n = 10
+        hypergeometric = Hypergeometric(Scope([0]), N, M, n)
+        for backend in backends:
+            tl.set_backend(backend)
+            hypergeometric_updated = updateBackend(hypergeometric)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*hypergeometric.get_params()]),
+                    np.array([*hypergeometric_updated.get_params()]),
+                )
+            )
 
 
 if __name__ == "__main__":

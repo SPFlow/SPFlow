@@ -4,6 +4,7 @@ from typing import Callable
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.general.nodes.leaves.parametric.cond_bernoulli import (
     CondBernoulli as BaseCondBernoulli,
@@ -15,6 +16,7 @@ from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.tensorly.structure.autoleaf import AutoLeaf
 from spflow.torch.structure.spn import CondBernoulli as TorchCondBernoulli
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_bernoulli import CondBernoulli
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_bernoulli import updateBackend
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_bernoulli import (
     #CondBernoulli,
     toBase,
@@ -181,6 +183,16 @@ class TestBernoulli(unittest.TestCase):
         # check conversion from python to torch
         self.assertTrue(np.all(node_bernoulli.scopes_out == toTorch(node_bernoulli).scopes_out))
 
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        p = random.random()
+        cond_bernoulli = CondBernoulli(Scope([0], [1]), p)
+        for backend in backends:
+            tl.set_backend(backend)
+            cond_bernoulli_updated = updateBackend(cond_bernoulli)
+
+            # check conversion from torch to python
+            self.assertTrue(np.all(cond_bernoulli.scopes_out == cond_bernoulli_updated.scopes_out))
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

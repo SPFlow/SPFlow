@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import (
     MultivariateGaussianLayer as BaseMultivariateGaussianLayer,
@@ -11,6 +12,7 @@ from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import MultivariateGaussian as MultivariateGaussianTorch
 from spflow.torch.structure.spn import MultivariateGaussianLayer as MultivariateGaussianLayerTorch
 from spflow.torch.structure.spn import Gaussian as GaussianTorch
+from spflow.torch.structure.general.layers.leaves.parametric.multivariate_gaussian import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_multivariate_gaussian import MultivariateGaussianLayer
@@ -506,6 +508,36 @@ class TestNode(unittest.TestCase):
         ):
             self.assertTrue(np.allclose(base_mean, torch_mean.detach().numpy()))
             self.assertTrue
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        mean_values = [[0.0, -1.0, 2.3], [1.0, 5.0, -3.0], [-7.1, 3.2, -0.9]]
+        cov_values = [
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            [[0.5, 0.0, 0.0], [0.0, 1.3, 0.0], [0.0, 0.0, 0.7]],
+            [[3.1, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 0.3]],
+        ]
+        multivariateGaussian = MultivariateGaussianLayer(scope=[Scope([0, 1, 2]), Scope([1, 2, 3]), Scope([0, 1, 2])],
+            mean=mean_values,
+            cov=cov_values)
+        for backend in backends:
+            tl.set_backend(backend)
+            multivariateGaussian_updated = updateBackend(multivariateGaussian)
+            self.assertTrue(np.all(multivariateGaussian.scopes_out == multivariateGaussian_updated.scopes_out))
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*multivariateGaussian.get_params()[0]]),
+                    np.array([*multivariateGaussian_updated.get_params()[0]]),
+                )
+            )
+
+            self.assertTrue(
+                np.allclose(
+                    np.array([*multivariateGaussian.get_params()[1]]),
+                    np.array([*multivariateGaussian_updated.get_params()[1]]),
+                )
+            )
 
 
 if __name__ == "__main__":

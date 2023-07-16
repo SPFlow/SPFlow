@@ -9,6 +9,7 @@ import torch
 from spflow.base.structure.general.layers.leaves.parametric.hypergeometric import (
     HypergeometricLayer as BaseHypergeometricLayer,
 )
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_hypergeometric import HypergeometricLayer as GeneralHypergeometricLayer
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
@@ -278,13 +279,21 @@ class HypergeometricLayer(Module):
         self.M.data = M
         self.n.data = n
 
-    def get_params(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def get_trainable_params(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             Thee one-dimensional PyTorch tensors representing the total numbers of entities, the numbers of entities of interest and the numbers of draws.
         """
         return self.N, self.M, self.n
+
+    def get_params(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Thee one-dimensional PyTorch tensors representing the total numbers of entities, the numbers of entities of interest and the numbers of draws.
+        """
+        return self.N.detach().numpy(), self.M.detach().numpy(), self.n.detach().numpy()
 
     def check_support(
         self,
@@ -529,3 +538,19 @@ def toBase(layer: HypergeometricLayer, dispatch_ctx: Optional[DispatchContext] =
         M=layer.M.numpy(),
         n=layer.n.numpy(),
     )
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: HypergeometricLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralHypergeometricLayer( scope=leaf_node.scopes_out,
+        N=leaf_node.N.detach().numpy(),
+        M=leaf_node.M.detach().numpy(),
+        n=leaf_node.n.detach().numpy())

@@ -10,6 +10,7 @@ import torch.distributions as D
 from spflow.base.structure.general.layers.leaves.parametric.uniform import (
     UniformLayer as BaseUniformLayer,
 )
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_uniform import UniformLayer as GeneralUniformLayer
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
@@ -254,13 +255,21 @@ class UniformLayer(Module):
         self.end_next.data = end_next
         self.support_outside.data = support_outside
 
-    def get_params(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def get_trainable_params(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             Tuple of three one-dimensional PyTorch tensor representing the starts and ends of the intervals and the booleans indicating whether or not values outside of the intervals are part of the supports.
         """
         return (self.start, self.end, self.support_outside)
+
+    def get_params(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of three one-dimensional PyTorch tensor representing the starts and ends of the intervals and the booleans indicating whether or not values outside of the intervals are part of the supports.
+        """
+        return (self.start.detach().numpy(), self.end.detach().numpy(), self.support_outside.detach().numpy())
 
     def check_support(
         self,
@@ -427,3 +436,19 @@ def toBase(layer: UniformLayer, dispatch_ctx: Optional[DispatchContext] = None) 
         end=layer.end.numpy(),
         support_outside=layer.support_outside.numpy(),
     )
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: UniformLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralUniformLayer(scope=leaf_node.scopes_out,
+        start=leaf_node.start.numpy(),
+        end=leaf_node.end.numpy(),
+        support_outside=leaf_node.support_outside.numpy())

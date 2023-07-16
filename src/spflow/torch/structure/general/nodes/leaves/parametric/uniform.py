@@ -9,6 +9,7 @@ import torch.distributions as D
 from spflow.base.structure.general.nodes.leaves.parametric.uniform import (
     Uniform as BaseUniform,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_uniform import Uniform as GeneralUniform
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
@@ -170,6 +171,14 @@ class Uniform(LeafNode):
         # create Torch distribution with specified parameters
         self.dist = D.Uniform(low=self.start, high=end_next)
 
+    def get_trainable_params(self) -> Tuple[float, float, bool]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the floating point values representing the start and end of the interval and the boolean indicating whether or not values outside of the interval are part of the support.
+        """
+        return self.start.cpu().numpy(), self.end.cpu().numpy(), self.support_outside  # type: ignore
+
     def get_params(self) -> Tuple[float, float, bool]:
         """Returns the parameters of the represented distribution.
 
@@ -263,3 +272,16 @@ def toBase(node: Uniform, dispatch_ctx: Optional[DispatchContext] = None) -> Bas
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseUniform(node.scope, node.start.cpu().numpy(), node.end.cpu().numpy())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: Uniform, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralUniform(scope=leaf_node.scope, start=leaf_node.start.data.item(), end=leaf_node.end.data.item(), support_outside=leaf_node.support_outside)

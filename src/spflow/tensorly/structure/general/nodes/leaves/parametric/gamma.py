@@ -152,6 +152,14 @@ class Gamma(LeafNode):
         self.alpha = alpha
         self.beta = beta
 
+    def get_trainable_params(self) -> Tuple[float, float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the floating points representing the shape and rate parameters.
+        """
+        return self.alpha, self.beta
+
     def get_params(self) -> Tuple[float, float]:
         """Returns the parameters of the represented distribution.
 

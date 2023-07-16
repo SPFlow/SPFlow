@@ -3,7 +3,9 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
+from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import updateBackend
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import LogNormal as BaseLogNormal
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -157,6 +159,23 @@ class TestLogNormal(unittest.TestCase):
                 np.array([*toTorch(node_log_normal).get_params()]),
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        mean = random.random()
+        std = random.random() + 1e-7  # offset by small number to avoid zero
+        log_normal = LogNormal(Scope([0]), mean, std)
+        for backend in backends:
+            tl.set_backend(backend)
+            log_normal_updated = updateBackend(log_normal)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*log_normal.get_params()]),
+                    np.array([*log_normal_updated.get_params()]),
+                )
+            )
 
 
 if __name__ == "__main__":

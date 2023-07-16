@@ -10,6 +10,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.nodes.leaves.parametric.log_normal import (
     LogNormal as BaseLogNormal,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_log_normal import LogNormal as GeneralLogNormal
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -176,7 +177,7 @@ class LogNormal(LeafNode):
         self.mean.data = torch.tensor(float(mean))
         self.std_aux.data = proj_bounded_to_real(torch.tensor(float(std)), lb=0.0)
 
-    def get_params(self) -> Tuple[float, float]:
+    def get_trainable_params(self) -> Tuple[float, float]:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -184,6 +185,14 @@ class LogNormal(LeafNode):
         """
         #return self.mean.data.cpu().numpy(), self.std.data.cpu().numpy()  # type: ignore
         return [self.mean, self.std_aux]  # type: ignore
+
+    def get_params(self) -> Tuple[float, float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the floating point values representing the mean and standard deviation.
+        """
+        return self.mean.data.cpu().numpy(), self.std.data.cpu().numpy()  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -242,7 +251,7 @@ def toTorch(node: BaseLogNormal, dispatch_ctx: Optional[DispatchContext] = None)
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return LogNormal(node.scope, *node.get_params())
+    return LogNormal(node.scope, *node.get_trainable_params())
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -256,4 +265,17 @@ def toBase(node: LogNormal, dispatch_ctx: Optional[DispatchContext] = None) -> B
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseLogNormal(node.scope, *node.get_params())
+    return BaseLogNormal(node.scope, *node.get_trainable_params())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: LogNormal, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralLogNormal(scope=leaf_node.scope, mean=leaf_node.mean.data.item(), std=leaf_node.std.data.item())
