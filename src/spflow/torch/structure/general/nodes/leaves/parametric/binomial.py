@@ -18,6 +18,7 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_binomial import Binomial as GeneralBinomial
 from spflow.torch.structure.general.nodes.leaf_node import LeafNode
 from spflow.torch.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
@@ -189,7 +190,7 @@ class Binomial(LeafNode):
         self.p = torch.tensor(float(p))
         self.n.data = torch.tensor(int(n))  # type: ignore
 
-    def get_params(self) -> Tuple[int, float]:
+    def get_trainable_params(self) -> Tuple[int, float]:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -197,6 +198,14 @@ class Binomial(LeafNode):
         """
         #return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
         return [self.p_aux]  # type: ignore
+
+    def get_params(self) -> Tuple[int, float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Integer number representing the number of i.i.d. Bernoulli trials and the floating point value representing the success probability.
+        """
+        return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -255,7 +264,7 @@ def toTorch(node: BaseBinomial, dispatch_ctx: Optional[DispatchContext] = None) 
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return Binomial(node.scope, *node.get_params())
+    return Binomial(node.scope, *node.get_trainable_params())
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -269,4 +278,17 @@ def toBase(node: Binomial, dispatch_ctx: Optional[DispatchContext] = None) -> Ba
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseBinomial(node.scope, *node.get_params())
+    return BaseBinomial(node.scope, *node.get_trainable_params())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: Binomial, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralBinomial(scope=leaf_node.scope, n=leaf_node.n.data.item(), p=leaf_node.p.data.item())

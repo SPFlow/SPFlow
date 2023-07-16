@@ -3,7 +3,9 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
+from spflow.torch.structure.general.nodes.leaves.parametric.poisson import updateBackend
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Poisson as BasePoisson
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -147,6 +149,22 @@ class TestPoisson(unittest.TestCase):
                 np.array([*toTorch(node_poisson).get_params()]),
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        l = random.random()
+        poisson = Poisson(Scope([0]), l)
+        for backend in backends:
+            tl.set_backend(backend)
+            poisson_updated = updateBackend(poisson)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*poisson.get_params()]),
+                    np.array([*poisson_updated.get_params()]),
+                )
+            )
 
 
 if __name__ == "__main__":

@@ -3,7 +3,9 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
+from spflow.torch.structure.general.nodes.leaves.parametric.geometric import updateBackend
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Geometric as BaseGeometric
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -144,6 +146,22 @@ class TestGeometric(unittest.TestCase):
                 np.array([*toTorch(node_geometric).get_params()]),
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        p = random.random()
+        geometric = Geometric(Scope([0]), p)
+        for backend in backends:
+            tl.set_backend(backend)
+            geometric_updated = updateBackend(geometric)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*geometric.get_params()]),
+                    np.array([*geometric_updated.get_params()]),
+                )
+            )
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian as BaseMultivariateGaussian,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_multivariate_gaussian import MultivariateGaussian as GeneralMultivariateGaussian
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -299,7 +300,7 @@ class MultivariateGaussian(LeafNode):
         self.tril_diag_aux.data = proj_bounded_to_real(torch.diag(L), lb=0.0)
         self.tril_nondiag.data = L[self.tril_nondiag_indices[0], self.tril_nondiag_indices[1]]
 
-    def get_params(self) -> Tuple[List[float], List[List[float]]]:
+    def get_trainable_params(self) -> Tuple[List[float], List[List[float]]]:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -308,6 +309,14 @@ class MultivariateGaussian(LeafNode):
 
         #return self.mean.data.cpu().detach().tolist(), self.cov.data.cpu().detach().tolist()  # type: ignore
         return [self.mean, self.tril_diag_aux, self.tril_nondiag]  # type: ignore
+
+    def get_params(self) -> Tuple[List[float], List[List[float]]]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of a one-dimensional and a two-dimensional PyTorch tensor representing the mean and covariance matrix, respectively.
+        """
+        return self.mean.data.cpu().detach().tolist(), self.cov.data.cpu().detach().tolist()  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -406,7 +415,7 @@ def toTorch(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return MultivariateGaussian(node.scope, *node.get_params())
+    return MultivariateGaussian(node.scope, *node.get_trainable_params())
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -423,4 +432,17 @@ def toBase(
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseMultivariateGaussian(torch_node.scope, *torch_node.get_params())
+    return BaseMultivariateGaussian(torch_node.scope, *torch_node.get_trainable_params())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: MultivariateGaussian, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralMultivariateGaussian(scope=leaf_node.scope, mean=leaf_node.mean.data.item(), cov=leaf_node.cov.data.item())

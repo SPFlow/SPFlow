@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import CondBinomialLayer as BaseCondBinomialLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -9,6 +10,7 @@ from spflow.meta.dispatch import DispatchContext
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import CondBinomial as CondBinomialTorch
 from spflow.torch.structure.spn import CondBinomialLayer as CondBinomialLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.cond_binomial import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_binomial import CondBinomialLayer
@@ -427,6 +429,22 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertTrue(np.allclose(base_layer.n, torch_layer.n.numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        binomial = CondBinomialLayer(scope=[Scope([0], [3]), Scope([1], [3]), Scope([0], [3])],
+            n=[2, 5, 2])
+        for backend in backends:
+            tl.set_backend(backend)
+            binomial_updated = updateBackend(binomial)
+            self.assertTrue(np.all(binomial.scopes_out == binomial_updated.scopes_out))
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*binomial.get_params()[0]]),
+                    np.array([*binomial_updated.get_params()[0]]),
+                )
+            )
 
 
 if __name__ == "__main__":

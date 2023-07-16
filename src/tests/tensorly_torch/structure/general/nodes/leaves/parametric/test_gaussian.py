@@ -3,7 +3,9 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import updateBackend
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Gaussian as BaseGaussian
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -156,6 +158,23 @@ class TestGaussian(unittest.TestCase):
                 np.array([*toTorch(node_gaussian).get_params()]),
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        mean = random.random()
+        std = random.random() + 1e-7  # offset by small number to avoid zero
+        gaussian = Gaussian(Scope([0]), mean, std)
+        for backend in backends:
+            tl.set_backend(backend)
+            gaussian_updated = updateBackend(gaussian)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*gaussian.get_params()]),
+                    np.array([*gaussian_updated.get_params()]),
+                )
+            )
 
 
 if __name__ == "__main__":

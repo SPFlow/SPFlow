@@ -4,10 +4,11 @@ from typing import Callable
 
 import numpy as np
 import torch
-
+import tensorly as tl
 from spflow.base.structure.general.nodes.leaves.parametric.cond_negative_binomial import (
     CondNegativeBinomial as BaseCondNegativeBinomial,
 )
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_negative_binomial import updateBackend
 from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
@@ -225,6 +226,18 @@ class TestNegativeBinomial(unittest.TestCase):
         self.assertTrue(np.all(torch_negative_binomial.scopes_out == toBase(torch_negative_binomial).scopes_out))
         # check conversion from python to torch
         self.assertTrue(np.all(node_negative_binomial.scopes_out == toTorch(node_negative_binomial).scopes_out))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        n = random.randint(2, 10)
+
+        cond_negative_binomial = CondNegativeBinomial(Scope([0], [1]), n)
+        for backend in backends:
+            tl.set_backend(backend)
+            cond_negative_binomial_updated = updateBackend(cond_negative_binomial)
+
+            # check conversion from torch to python
+            self.assertTrue(np.all(cond_negative_binomial.scopes_out == cond_negative_binomial_updated.scopes_out))
 
 
 if __name__ == "__main__":

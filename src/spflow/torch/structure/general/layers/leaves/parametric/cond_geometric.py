@@ -10,6 +10,7 @@ import torch.distributions as D
 from spflow.base.structure.general.layers.leaves.parametric.cond_geometric import (
     CondGeometricLayer as BaseCondGeometricLayer,
 )
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_geometric import CondGeometricLayer as GeneralCondGeometricLayer
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -410,3 +411,16 @@ def toBase(
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondGeometricLayer(scope=torch_layer.scopes_out)
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: CondGeometricLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralCondGeometricLayer(scope=leaf_node.scopes_out)

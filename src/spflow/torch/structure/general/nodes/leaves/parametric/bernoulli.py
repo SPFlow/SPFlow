@@ -10,6 +10,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.nodes.leaves.parametric.bernoulli import (
     Bernoulli as BaseBernoulli,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_bernoulli import Bernoulli as GeneralBernoulli
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -178,7 +179,7 @@ class Bernoulli(LeafNode):
         """
         self.p = torch.tensor(float(p))
 
-    def get_params(self) -> Tuple[float]:
+    def get_trainable_params(self) -> Tuple[float]:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -186,6 +187,14 @@ class Bernoulli(LeafNode):
         """
         #return (self.p.data.cpu().numpy(),)  # type: ignore
         return [self.p_aux] # type: ignore
+
+    def get_params(self) -> Tuple[float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Floating point value representing the success probability.
+        """
+        return (self.p.data.cpu().numpy(),)  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -244,7 +253,7 @@ def toTorch(node: BaseBernoulli, dispatch_ctx: Optional[DispatchContext] = None)
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return Bernoulli(node.scope, *node.get_params())
+    return Bernoulli(node.scope, *node.get_trainable_params())
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -258,4 +267,17 @@ def toBase(node: Bernoulli, dispatch_ctx: Optional[DispatchContext] = None) -> B
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseBernoulli(node.scope, *node.get_params())
+    return BaseBernoulli(node.scope, *node.get_trainable_params())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: Bernoulli, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralBernoulli(scope=leaf_node.scope, p=leaf_node.p.data.item())

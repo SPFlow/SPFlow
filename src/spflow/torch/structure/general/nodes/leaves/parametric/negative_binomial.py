@@ -10,6 +10,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.nodes.leaves.parametric.negative_binomial import (
     NegativeBinomial as BaseNegativeBinomial,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_negative_binomial import NegativeBinomial as GeneralNegativeBinomial
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
@@ -167,7 +168,7 @@ class NegativeBinomial(LeafNode):
         self.n.data = torch.tensor(int(n))  # type: ignore
         self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)  # type: ignore
 
-    def get_params(self) -> Tuple[int, float]:
+    def get_trainable_params(self) -> Tuple[int, float]:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -175,6 +176,14 @@ class NegativeBinomial(LeafNode):
         """
         #return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
         return [self.p_aux]  # type: ignore
+
+    def get_params(self) -> Tuple[int, float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the number of successes and the floating point value representing the success probability.
+        """
+        return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -236,7 +245,7 @@ def toTorch(node: BaseNegativeBinomial, dispatch_ctx: Optional[DispatchContext] 
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return NegativeBinomial(node.scope, *node.get_params())
+    return NegativeBinomial(node.scope, *node.get_trainable_params())
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -250,4 +259,17 @@ def toBase(node: NegativeBinomial, dispatch_ctx: Optional[DispatchContext] = Non
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseNegativeBinomial(node.scope, *node.get_params())
+    return BaseNegativeBinomial(node.scope, *node.get_trainable_params())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: NegativeBinomial, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralNegativeBinomial(scope=leaf_node.scope, n=leaf_node.n.data.item(), p=leaf_node.p.data.item())

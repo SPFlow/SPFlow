@@ -65,12 +65,12 @@ class Gaussian:  # ToDo: backend über tl.getBackend() abfragen
         else:
             raise NotImplementedError("GeneralGaussian is not implemented for this backend")
 
-    def get_params(self) -> Tuple[float, float]:
+    def get_trainable_params(self) -> Tuple[float, float]:
         backend = tl.get_backend()
         if backend == "numpy":
-            return TensorlyGaussian.get_params()
+            return TensorlyGaussian.get_trainable_params()
         elif backend == "pytorch":
-            return TorchGaussian.get_params()
+            return TorchGaussian.get_trainable_params()
         else:
             raise NotImplementedError("GeneralGaussian is not implemented for this backend")
 

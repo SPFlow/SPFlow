@@ -2,12 +2,14 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import GammaLayer as BaseGammaLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import Gamma as GammaTorch
 from spflow.torch.structure.spn import GammaLayer as GammaLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.gamma import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_gamma import GammaLayer
@@ -404,6 +406,30 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.allclose(base_layer.alpha, torch_layer.alpha.detach().numpy()))
         self.assertTrue(np.allclose(base_layer.beta, torch_layer.beta.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        gamma = GammaLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+            alpha=[0.2, 0.9, 0.31],
+            beta=[1.9, 0.3, 0.71])
+        for backend in backends:
+            tl.set_backend(backend)
+            gamma_updated = updateBackend(gamma)
+            self.assertTrue(np.all(gamma.scopes_out == gamma_updated.scopes_out))
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*gamma.get_params()[0]]),
+                    np.array([*gamma_updated.get_params()[0]]),
+                )
+            )
+
+            self.assertTrue(
+                np.allclose(
+                    np.array([*gamma.get_params()[1]]),
+                    np.array([*gamma_updated.get_params()[1]]),
+                )
+            )
 
 
 if __name__ == "__main__":

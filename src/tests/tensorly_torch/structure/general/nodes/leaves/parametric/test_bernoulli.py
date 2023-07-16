@@ -3,7 +3,8 @@ import unittest
 
 import numpy as np
 import torch
-
+import tensorly as tl
+from spflow.tensorly.utils.helper_functions import tl_allclose
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Bernoulli as BaseBernoulli
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -11,6 +12,7 @@ from spflow.torch.inference import log_likelihood
 from spflow.torch.structure import  marginalize, toBase, toTorch#,AutoLeaf
 from spflow.torch.structure.spn import Bernoulli as TorchBernoulli
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_bernoulli import Bernoulli
+from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import updateBackend
 from spflow.tensorly.structure import AutoLeaf
 
 
@@ -160,6 +162,22 @@ class TestBernoulli(unittest.TestCase):
             )
         )
 
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        p = random.random()
+        bernoulli = Bernoulli(Scope([0]), p)
+        for backend in backends:
+            tl.set_backend(backend)
+            bernoulli_updated = updateBackend(bernoulli)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*bernoulli.get_params()]),
+                    np.array([*bernoulli_updated.get_params()]),
+                )
+            )
+        # check conversion from python to torch
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

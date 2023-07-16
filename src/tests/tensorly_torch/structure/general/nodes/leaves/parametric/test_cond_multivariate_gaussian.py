@@ -3,10 +3,11 @@ from typing import Callable
 
 import numpy as np
 import torch
-
+import tensorly as tl
 from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
     CondMultivariateGaussian as BaseCondMultivariateGaussian,
 )
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import updateBackend
 from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
@@ -375,6 +376,16 @@ class TestMultivariateGaussian(unittest.TestCase):
         )
         # check conversion from python to torch
         self.assertTrue(np.all(node_multivariate_gaussian.scopes_out == toTorch(node_multivariate_gaussian).scopes_out))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        cond_multivariate_gaussian = CondMultivariateGaussian(Scope([0, 1, 2], [3]))
+        for backend in backends:
+            tl.set_backend(backend)
+            cond_multivariate_gaussian_updated = updateBackend(cond_multivariate_gaussian)
+
+            # check conversion from torch to python
+            self.assertTrue(np.all(cond_multivariate_gaussian.scopes_out == cond_multivariate_gaussian_updated.scopes_out))
 
 
 if __name__ == "__main__":

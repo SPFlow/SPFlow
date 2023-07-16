@@ -144,6 +144,14 @@ class NegativeBinomial(LeafNode):
         self.n = n
         self.p = p
 
+    def get_trainable_params(self) -> Tuple[int, float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the number of successes and the floating point value representing the success probability.
+        """
+        return self.n, self.p
+
     def get_params(self) -> Tuple[int, float]:
         """Returns the parameters of the represented distribution.
 

@@ -3,7 +3,9 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
+from spflow.torch.structure.general.nodes.leaves.parametric.binomial import updateBackend
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import Gamma as BaseGamma
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -170,6 +172,23 @@ class TestGamma(unittest.TestCase):
                 np.array([*toTorch(node_gamma).get_params()]),
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        alpha = random.randint(1, 5)
+        beta = random.randint(1, 5)
+        gamma = Gamma(Scope([0]), alpha, beta)
+        for backend in backends:
+            tl.set_backend(backend)
+            gamma_updated = updateBackend(gamma)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*gamma.get_params()]),
+                    np.array([*gamma_updated.get_params()]),
+                )
+            )
 
 
 if __name__ == "__main__":
