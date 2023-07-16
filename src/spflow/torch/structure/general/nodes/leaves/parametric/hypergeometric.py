@@ -8,6 +8,7 @@ import torch
 from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import (
     Hypergeometric as BaseHypergeometric,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_hypergeometric import Hypergeometric as GeneralHypergeometric
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
@@ -219,6 +220,14 @@ class Hypergeometric(LeafNode):
         self.N.data = torch.tensor(int(N))
         self.n.data = torch.tensor(int(n))
 
+    def get_trainable_params(self) -> Tuple[int, int, int]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of integer values representing the size of the total population, the size of the population of interest and the number of draws.
+        """
+        return self.N.data.cpu().numpy(), self.M.data.cpu().numpy(), self.n.data.cpu().numpy()  # type: ignore
+
     def get_params(self) -> Tuple[int, int, int]:
         """Returns the parameters of the represented distribution.
 
@@ -298,7 +307,7 @@ def toTorch(node: BaseHypergeometric, dispatch_ctx: Optional[DispatchContext] = 
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return Hypergeometric(node.scope, *node.get_params())
+    return Hypergeometric(node.scope, *node.get_trainable_params())
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -312,4 +321,17 @@ def toBase(node: Hypergeometric, dispatch_ctx: Optional[DispatchContext] = None)
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseHypergeometric(node.scope, *node.get_params())
+    return BaseHypergeometric(node.scope, *node.get_trainable_params())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: Hypergeometric, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralHypergeometric(scope=leaf_node.scope, N=leaf_node.N.data.item(), M=leaf_node.M.data.item(), n=leaf_node.n.data.item())

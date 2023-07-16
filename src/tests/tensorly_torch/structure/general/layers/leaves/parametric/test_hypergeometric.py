@@ -2,12 +2,14 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import HypergeometricLayer as BaseHypergeometricLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import Hypergeometric as HypergeometricTorch
 from spflow.torch.structure.spn import HypergeometricLayer as HypergeometricLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.hypergeometric import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_hypergeometric import HypergeometricLayer
@@ -456,6 +458,38 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.allclose(base_layer.M, torch_layer.M.numpy()))
         self.assertTrue(np.allclose(base_layer.n, torch_layer.n.numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        hypergeometric = HypergeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+            N=[10, 5, 10],
+            M=[8, 2, 8],
+            n=[3, 4, 3])
+        for backend in backends:
+            tl.set_backend(backend)
+            hypergeometric_updated = updateBackend(hypergeometric)
+            self.assertTrue(np.all(hypergeometric.scopes_out == hypergeometric_updated.scopes_out))
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*hypergeometric.get_params()[0]]),
+                    np.array([*hypergeometric_updated.get_params()[0]]),
+                )
+            )
+
+            self.assertTrue(
+                np.allclose(
+                    np.array([*hypergeometric.get_params()[1]]),
+                    np.array([*hypergeometric_updated.get_params()[1]]),
+                )
+            )
+
+            self.assertTrue(
+                np.allclose(
+                    np.array([*hypergeometric.get_params()[2]]),
+                    np.array([*hypergeometric_updated.get_params()[2]]),
+                )
+            )
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ import torch.distributions as D
 from spflow.base.structure.general.nodes.leaves.parametric.cond_poisson import (
     CondPoisson as BaseCondPoisson,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_poisson import CondPoisson as GeneralCondPoisson
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -262,3 +263,16 @@ def toBase(node: CondPoisson, dispatch_ctx: Optional[DispatchContext] = None) ->
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseCondPoisson(node.scope)
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: CondPoisson, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralCondPoisson(scope=leaf_node.scope)

@@ -10,6 +10,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.nodes.leaves.parametric.geometric import (
     Geometric as BaseGeometric,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_geometric import Geometric as GeneralGeometric
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -157,7 +158,7 @@ class Geometric(LeafNode):
 
         self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)
 
-    def get_params(self) -> Tuple[float]:
+    def get_trainable_params(self) -> Tuple[float]:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -165,6 +166,14 @@ class Geometric(LeafNode):
         """
         #return (self.p.data.cpu().numpy(),)  # type: ignore
         return [self.p_aux] # type: ignore
+
+    def get_params(self) -> Tuple[float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Floating point value representing the success probability.
+        """
+        return (self.p.data.cpu().numpy(),)  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -224,7 +233,7 @@ def toTorch(node: BaseGeometric, dispatch_ctx: Optional[DispatchContext] = None)
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return Geometric(node.scope, *node.get_params())
+    return Geometric(node.scope, *node.get_trainable_params())
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -238,4 +247,17 @@ def toBase(node: Geometric, dispatch_ctx: Optional[DispatchContext] = None) -> B
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseGeometric(node.scope, *node.get_params())
+    return BaseGeometric(node.scope, *node.get_trainable_params())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: Geometric, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralGeometric(scope=leaf_node.scope, p=leaf_node.p.data.item())

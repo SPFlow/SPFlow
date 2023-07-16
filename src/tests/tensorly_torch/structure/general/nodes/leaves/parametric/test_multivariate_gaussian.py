@@ -3,7 +3,9 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
+from spflow.torch.structure.general.nodes.leaves.parametric.multivariate_gaussian import updateBackend
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import MultivariateGaussian as BaseMultivariateGaussian
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -369,6 +371,29 @@ class TestMultivariateGaussian(unittest.TestCase):
                 np.array([node_to_torch_params[1]]),
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        mean = np.arange(3)
+        cov = np.array([[2, 2, 1], [2, 3, 2], [1, 2, 3]])
+        multivariateGaussian = MultivariateGaussian(Scope([0]), mean, cov)
+        for backend in backends:
+            tl.set_backend(backend)
+            multivariateGaussian_updated = updateBackend(multivariateGaussian)
+
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([multivariateGaussian.get_params()[0]]),
+                    np.array([multivariateGaussian_updated.get_params()[0]]),
+                )
+            )
+            self.assertTrue(
+                np.allclose(
+                    np.array([multivariateGaussian.get_params()[1]]),
+                    np.array([multivariateGaussian_updated.get_params()[1]]),
+                )
+            )
 
 
 if __name__ == "__main__":

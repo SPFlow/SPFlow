@@ -2,12 +2,14 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import GaussianLayer as BaseGaussianLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import Gaussian as GaussianTorch
 from spflow.torch.structure.spn import GaussianLayer as GaussianLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.gaussian import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_gaussian import GaussianLayer
@@ -395,6 +397,30 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.allclose(base_layer.mean, torch_layer.mean.detach().numpy()))
         self.assertTrue(np.allclose(base_layer.std, torch_layer.std.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        gaussian = GaussianLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+            mean=[0.2, 0.9, 0.31],
+            std=[1.9, 0.3, 0.71])
+        for backend in backends:
+            tl.set_backend(backend)
+            gaussian_updated = updateBackend(gaussian)
+            self.assertTrue(np.all(gaussian.scopes_out == gaussian_updated.scopes_out))
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*gaussian.get_params()[0]]),
+                    np.array([*gaussian_updated.get_params()[0]]),
+                )
+            )
+
+            self.assertTrue(
+                np.allclose(
+                    np.array([*gaussian.get_params()[1]]),
+                    np.array([*gaussian_updated.get_params()[1]]),
+                )
+            )
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ import torch.distributions as D
 from spflow.base.structure.general.nodes.leaves.parametric.cond_binomial import (
     CondBinomial as BaseCondBinomial,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_binomial import CondBinomial as GeneralCondBinomial
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -192,6 +193,14 @@ class CondBinomial(LeafNode):
 
         return p
 
+    def get_trainable_params(self) -> Tuple[int]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Integer number representing the number of i.i.d. Bernoulli trials and the floating point value representing the success probability.
+        """
+        return (self.n.data.cpu().numpy(),)  # type: ignore
+
     def get_params(self) -> Tuple[int]:
         """Returns the parameters of the represented distribution.
 
@@ -289,7 +298,7 @@ def toTorch(node: BaseCondBinomial, dispatch_ctx: Optional[DispatchContext] = No
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return CondBinomial(node.scope, *node.get_params())
+    return CondBinomial(node.scope, *node.get_trainable_params())
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -303,4 +312,17 @@ def toBase(node: CondBinomial, dispatch_ctx: Optional[DispatchContext] = None) -
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BaseCondBinomial(node.scope, *node.get_params())
+    return BaseCondBinomial(node.scope, *node.get_trainable_params())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: CondBinomial, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralCondBinomial(scope=leaf_node.scope, n=leaf_node.n.data.item())

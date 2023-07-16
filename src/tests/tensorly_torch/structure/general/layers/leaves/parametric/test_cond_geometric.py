@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import CondGeometricLayer as BaseCondGeometricLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
@@ -9,6 +10,7 @@ from spflow.meta.dispatch import DispatchContext
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import CondGeometric as CondGeometricTorch
 from spflow.torch.structure.spn import CondGeometricLayer as CondGeometricLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.cond_geometric import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_geometric import CondGeometricLayer
@@ -327,6 +329,16 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        geometric = CondGeometricLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
+        for backend in backends:
+            tl.set_backend(backend)
+            geometric_updated = updateBackend(geometric)
+            self.assertTrue(np.all(geometric.scopes_out == geometric_updated.scopes_out))
+            # check conversion from torch to python
+
 
 
 if __name__ == "__main__":

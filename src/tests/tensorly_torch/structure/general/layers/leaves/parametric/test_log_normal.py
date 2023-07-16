@@ -2,12 +2,14 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import LogNormalLayer as BaseLogNormalLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.torch.structure.spn import LogNormal as LogNormalTorch
 from spflow.torch.structure.spn import LogNormalLayer as LogNormalLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.log_normal import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_log_normal import LogNormalLayer
@@ -393,6 +395,30 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.allclose(base_layer.mean, torch_layer.mean.detach().numpy()))
         self.assertTrue(np.allclose(base_layer.std, torch_layer.std.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        logNormal = LogNormalLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+            mean=[0.2, 0.9, 0.31],
+            std=[1.9, 0.3, 0.71])
+        for backend in backends:
+            tl.set_backend(backend)
+            logNormal_updated = updateBackend(logNormal)
+            self.assertTrue(np.all(logNormal.scopes_out == logNormal_updated.scopes_out))
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*logNormal.get_params()[0]]),
+                    np.array([*logNormal_updated.get_params()[0]]),
+                )
+            )
+
+            self.assertTrue(
+                np.allclose(
+                    np.array([*logNormal.get_params()[1]]),
+                    np.array([*logNormal_updated.get_params()[1]]),
+                )
+            )
 
 
 if __name__ == "__main__":

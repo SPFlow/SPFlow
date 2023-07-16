@@ -11,6 +11,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.layers.leaves.parametric.log_normal import (
     LogNormalLayer as BaseLogNormalLayer,
 )
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_log_normal import LogNormalLayer as GeneralLogNormalLayer
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -249,13 +250,21 @@ class LogNormalLayer(Module):
         self.mean.data = mean
         self.std_aux.data = proj_bounded_to_real(std, lb=0.0)
 
-    def get_params(self) -> List[torch.Tensor]:
+    def get_trainable_params(self) -> List[torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             Tuple of one-dimensional PyTorch tensor representing the means and standard deviations.
         """
         return [self.mean, self.std_aux]
+
+    def get_params(self) -> List[torch.Tensor]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of one-dimensional PyTorch tensor representing the means and standard deviations.
+        """
+        return [self.mean.detach().numpy(), self.std.detach().numpy()]
 
     def check_support(
         self,
@@ -405,3 +414,18 @@ def toBase(layer: LogNormalLayer, dispatch_ctx: Optional[DispatchContext] = None
         mean=layer.mean.detach().numpy(),
         std=layer.std.detach().numpy(),
     )
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: LogNormalLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralLogNormalLayer(scope=leaf_node.scopes_out,
+        mean=leaf_node.mean.detach().numpy(),
+        std=leaf_node.std.detach().numpy())

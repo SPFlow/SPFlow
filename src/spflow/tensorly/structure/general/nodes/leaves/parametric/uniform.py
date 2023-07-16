@@ -150,6 +150,14 @@ class Uniform(LeafNode):
         self.end = end
         self.support_outside = support_outside
 
+    def get_trainable_params(self) -> Tuple[float, float, bool]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of the floating point values representing the start and end of the interval and the boolean indicating whether or not values outside of the interval are part of the support.
+        """
+        return self.start, self.end, self.support_outside
+
     def get_params(self) -> Tuple[float, float, bool]:
         """Returns the parameters of the represented distribution.
 

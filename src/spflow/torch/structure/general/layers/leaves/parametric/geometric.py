@@ -11,6 +11,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.layers.leaves.parametric.geometric import (
     GeometricLayer as BaseGeometricLayer,
 )
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_geometric import GeometricLayer as GeneralGeometricLayer
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -212,13 +213,21 @@ class GeometricLayer(Module):
 
         self.p_aux.data = proj_bounded_to_real(p, lb=0.0, ub=1.0)
 
-    def get_params(self) -> List[torch.Tensor]:
+    def get_trainable_params(self) -> List[torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             One-dimensional PyTorch tensor representing the success probabilities.
         """
         return [self.p_aux]
+
+    def get_params(self) -> List[torch.Tensor]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            One-dimensional PyTorch tensor representing the success probabilities.
+        """
+        return [self.p.detach().numpy()]
 
     def check_support(
         self,
@@ -357,3 +366,16 @@ def toBase(layer: GeometricLayer, dispatch_ctx: Optional[DispatchContext] = None
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseGeometricLayer(scope=layer.scopes_out, p=layer.p.detach().numpy())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: GeometricLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralGeometricLayer(scope=leaf_node.scopes_out, p=leaf_node.p.data.detach().numpy())

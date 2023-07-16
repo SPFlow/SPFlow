@@ -4,10 +4,11 @@ from typing import Callable
 
 import numpy as np
 import torch
-
+import tensorly as tl
 from spflow.base.structure.general.nodes.leaves.parametric.cond_poisson import (
     CondPoisson as BaseCondPoisson,
 )
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_poisson import updateBackend
 from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
@@ -170,6 +171,16 @@ class TestPoisson(unittest.TestCase):
         self.assertTrue(np.all(torch_poisson.scopes_out == toBase(torch_poisson).scopes_out))
         # check conversion from python to torch
         self.assertTrue(np.all(node_poisson.scopes_out == toTorch(node_poisson).scopes_out))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        cond_poisson = CondPoisson(Scope([0], [1]))
+        for backend in backends:
+            tl.set_backend(backend)
+            cond_poisson_updated = updateBackend(cond_poisson)
+
+            # check conversion from torch to python
+            self.assertTrue(np.all(cond_poisson.scopes_out == cond_poisson_updated.scopes_out))
 
 
 if __name__ == "__main__":

@@ -209,6 +209,14 @@ class CondBinomial(LeafNode):
 
         return p
 
+    def get_trainable_params(self) -> Tuple[int]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Integer number representing the number of i.i.d. Bernoulli trials and the floating point value representing the success probability.
+        """
+        return (self.n,)
+
     def get_params(self) -> Tuple[int]:
         """Returns the parameters of the represented distribution.
 

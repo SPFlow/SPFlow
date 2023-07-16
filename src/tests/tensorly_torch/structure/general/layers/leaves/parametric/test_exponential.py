@@ -2,12 +2,14 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import ExponentialLayer as BaseExponentialLayer
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.structure import AutoLeaf, marginalize, toBase, toTorch
 from spflow.torch.structure.spn import Exponential as ExponentialTorch
 from spflow.torch.structure.spn import ExponentialLayer as ExponentialLayerTorch
+from spflow.torch.structure.general.layers.leaves.parametric.bernoulli import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_exponential import ExponentialLayer
@@ -321,6 +323,21 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertTrue(np.allclose(base_layer.l, torch_layer.l.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        exponential = ExponentialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
+        for backend in backends:
+            tl.set_backend(backend)
+            exponential_updated = updateBackend(exponential)
+            self.assertTrue(np.all(exponential.scopes_out == exponential_updated.scopes_out))
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    np.array([*exponential.get_params()[0]]),
+                    np.array([*exponential_updated.get_params()[0]]),
+                )
+            )
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.layers.leaves.parametric.bernoulli import (
     BernoulliLayer as BaseBernoulliLayer,
 )
+from spflow.tensorly.structure.general.layers.leaves.parametric.general_bernoulli import BernoulliLayer as GeneralBernoulli
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -232,13 +233,16 @@ class BernoulliLayer(Module):
         """
         self.p = p
 
-    def get_params(self) -> List[torch.Tensor]:
+    def get_trainable_params(self) -> List[torch.Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             One-dimensional PyTorch tensor representing the success probabilities.
         """
         return [self.p_aux]
+
+    def get_params(self):
+        return self.p.data.cpu().numpy()
 
     def check_support(
         self,
@@ -376,3 +380,16 @@ def toBase(layer: BernoulliLayer, dispatch_ctx: Optional[DispatchContext] = None
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return BaseBernoulliLayer(scope=layer.scopes_out, p=layer.p.detach().numpy())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: BernoulliLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralBernoulli(scope=leaf_node.scopes_out, p=leaf_node.p.data)

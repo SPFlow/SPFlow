@@ -10,6 +10,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.nodes.leaves.parametric.poisson import (
     Poisson as BasePoisson,
 )
+from spflow.tensorly.structure.general.nodes.leaves.parametric.general_poisson import Poisson as GeneralPoisson
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -160,7 +161,7 @@ class Poisson(LeafNode):
 
         self.l_aux.data = proj_bounded_to_real(torch.tensor(float(l)), lb=0.0)
 
-    def get_params(self) -> Tuple[float]:
+    def get_trainable_params(self) -> Tuple[float]:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -168,6 +169,14 @@ class Poisson(LeafNode):
         """
         #return (self.l.data.cpu().numpy(),)  # type: ignore
         return [self.l_aux]  # type: ignore
+
+    def get_params(self) -> Tuple[float]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Floating point value representing the rate parameter, expected value and variance.
+        """
+        return (self.l.data.cpu().numpy(),)  # type: ignore
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -229,7 +238,7 @@ def toTorch(node: BasePoisson, dispatch_ctx: Optional[DispatchContext] = None) -
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return Poisson(node.scope, *node.get_params())
+    return Poisson(node.scope, *node.get_trainable_params())
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -243,4 +252,17 @@ def toBase(node: Poisson, dispatch_ctx: Optional[DispatchContext] = None) -> Bas
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return BasePoisson(node.scope, *node.get_params())
+    return BasePoisson(node.scope, *node.get_trainable_params())
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: Poisson, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralPoisson(scope=leaf_node.scope, l=leaf_node.l.data.item())

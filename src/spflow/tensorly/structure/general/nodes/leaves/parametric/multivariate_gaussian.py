@@ -226,9 +226,19 @@ class MultivariateGaussian(LeafNode):
         self.mean = mean
         self.cov = cov
 
-    def get_params(
+    def get_trainable_params(
         self,
-    ) -> Tuple[tl.tensor, tl.tensor]:
+    ) -> Tuple[T, T]:
+        """Returns the parameters of the represented distribution.
+
+        Returns:
+            Tuple of a one-dimensional and a two-dimensional NumPy array representing the mean and covariance matrix, respectively.
+        """
+        return self.mean, self.cov
+
+    def get_params(
+            self,
+    ) -> Tuple[T, T]:
         """Returns the parameters of the represented distribution.
 
         Returns:
