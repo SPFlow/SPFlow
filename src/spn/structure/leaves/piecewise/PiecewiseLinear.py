@@ -47,12 +47,7 @@ class PiecewiseLinear(Leaf):
     def mean(self):
         # Use the histogram values to compute the mean
         y_range_norm = self.y_range / np.sum(self.y_range)
-
-        mean = 0.0
-        for k, x in enumerate(self.x_range):
-            mean += x * y_range_norm[k]
-
-        return mean
+        return np.dot(self.x_range,y_range_norm[:len(self.x_range)])
 
     @property
     def types(self):
