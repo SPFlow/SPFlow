@@ -294,7 +294,10 @@ def learn_structure(
 
         elif operation == Operation.CREATE_LEAF:
             leaf_start_t = perf_counter()
-            node = create_leaf(local_data, ds_context, scope, alpha=alpha)
+            if create_leaf == create_histogram_leaf:
+                node = create_leaf(local_data, ds_context, scope, alpha=alpha)
+            else:
+                node = create_leaf(local_data, ds_context, scope)
             parent.children[children_pos] = node
             leaf_end_t = perf_counter()
 

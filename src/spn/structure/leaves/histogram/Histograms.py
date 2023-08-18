@@ -87,7 +87,7 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy
         breaks, densities, repr_points = getHistogramVals(data, meta_type, domain, source=hist_source)
 
     # laplace smoothing
-    if alpha>0:
+    if alpha > 0:
         n_samples = data.shape[0]
         n_bins = len(breaks) - 1
         counts = densities * n_samples
