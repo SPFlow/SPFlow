@@ -4,6 +4,7 @@ Created on Ocotber 27, 2018
 @author: Nicola Di Mauro
 """
 
+from spn.structure.leaves.histogram.Histograms import create_histogram_leaf
 import logging
 from collections import deque
 from spn.algorithms.StructureLearning import Operation, default_slicer
@@ -51,6 +52,7 @@ def learn_structure_cnet(
     next_operation_cnet=get_next_operation_cnet(),
     initial_scope=None,
     data_slicer=default_slicer,
+    alpha=1.0,
 ):
     assert dataset is not None
     assert ds_context is not None
@@ -82,7 +84,10 @@ def learn_structure_cnet(
             col_conditioning, found_conditioning = conditioning(local_data)
 
             if not found_conditioning:
-                node = create_leaf(local_data, ds_context, scope)
+                if create_leaf == create_histogram_leaf:
+                    node = create_leaf(local_data, ds_context, scope, alpha=alpha)
+                else:
+                    node = create_leaf(local_data, ds_context, scope)
                 parent.children[children_pos] = node
 
                 continue
@@ -129,7 +134,10 @@ def learn_structure_cnet(
 
         elif operation == Operation.CREATE_LEAF:
             cltree_start_t = perf_counter()
-            node = create_leaf(local_data, ds_context, scope)
+            if create_leaf == create_histogram_leaf:
+                node = create_leaf(local_data, ds_context, scope, alpha=alpha)
+            else:
+                node = create_leaf(local_data, ds_context, scope)
             parent.children[children_pos] = node
             cltree_end_t = perf_counter()
         else:
