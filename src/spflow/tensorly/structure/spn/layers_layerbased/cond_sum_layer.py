@@ -8,9 +8,6 @@ import torch
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import tl_stack, tl_allclose, tl_isinstance, T
 
-from spflow.base.structure.spn.layers.cond_sum_layer import (
-    CondSumLayer as BaseCondSumLayer,
-)
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (

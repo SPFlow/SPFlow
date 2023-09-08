@@ -1,16 +1,21 @@
 """Contains Gaussian leaf node for SPFlow in the ``base`` backend.
 """
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import numpy as np
 from scipy.stats import norm  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
+from spflow.tensorly.structure.spn.nodes.leaves.parametric import Gaussian as GeneralGaussian
 from spflow.base.structure.general.nodes.leaf_node import LeafNode
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
-
+from spflow.meta.dispatch.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.dispatch.dispatch import dispatch
 
 class Gaussian(LeafNode):
     r"""(Univariate) Gaussian (a.k.a. Normal) distribution leaf node in the ``base`` backend.
@@ -200,3 +205,16 @@ class Gaussian(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         return valid
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: Gaussian, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralGaussian(scope=leaf_node.scope, mean=leaf_node.mean, std=leaf_node.std)

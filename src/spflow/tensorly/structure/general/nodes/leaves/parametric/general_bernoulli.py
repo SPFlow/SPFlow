@@ -9,7 +9,7 @@ from spflow.meta.data.scope import Scope
 
 class Bernoulli:
     def __new__(cls, scope: Scope, p: float = 0.5):
-        from spflow.tensorly.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli as TensorlyBernoulli
+        from spflow.base.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli as TensorlyBernoulli
         from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli as TorchBernoulli
         """TODO"""
         backend = tl.get_backend()
@@ -22,7 +22,7 @@ class Bernoulli:
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli as TensorlyBernoulli
+        from spflow.base.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli as TensorlyBernoulli
         from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli as TorchBernoulli
         backend = tl.get_backend()
         if backend == "numpy":
@@ -34,7 +34,7 @@ class Bernoulli:
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli as TensorlyBernoulli
+        from spflow.base.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli as TensorlyBernoulli
         from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli as TorchBernoulli
         backend = tl.get_backend()
         if backend == "numpy":

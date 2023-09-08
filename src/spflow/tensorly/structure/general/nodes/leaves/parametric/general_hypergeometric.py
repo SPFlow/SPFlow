@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class Hypergeometric:
     def __new__(cls, scope: Scope, N: int, M: int, n: int):
-        from spflow.tensorly.structure.general.nodes.leaves import Hypergeometric as TensorlyHypergeometric
-        from spflow.torch.structure.general.nodes.leaves import Hypergeometric as TorchHypergeometric
+        from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import Hypergeometric as TensorlyHypergeometric
+        from spflow.torch.structure.general.nodes.leaves.parametric.hypergeometric import Hypergeometric as TorchHypergeometric
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class Hypergeometric:
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves import Hypergeometric as TensorlyHypergeometric
-        from spflow.torch.structure.general.nodes.leaves import Hypergeometric as TorchHypergeometric
+        from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import Hypergeometric as TensorlyHypergeometric
+        from spflow.torch.structure.general.nodes.leaves.parametric.hypergeometric import Hypergeometric as TorchHypergeometric
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyHypergeometric.accepts(signatures)
@@ -34,8 +34,8 @@ class Hypergeometric:
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves import Hypergeometric as TensorlyHypergeometric
-        from spflow.torch.structure.general.nodes.leaves import Hypergeometric as TorchHypergeometric
+        from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import Hypergeometric as TensorlyHypergeometric
+        from spflow.torch.structure.general.nodes.leaves.parametric.hypergeometric import Hypergeometric as TorchHypergeometric
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyHypergeometric.from_signatures(signatures)

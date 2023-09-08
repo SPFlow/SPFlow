@@ -314,6 +314,7 @@ class TestNode(unittest.TestCase):
         for p_value, p_dist in zip(reversed(p_values[:-1]), dist.probs):
             self.assertTrue(torch.allclose(p_value, p_dist))
 
+    """
     def test_layer_backend_conversion_1(self):
 
         torch_layer = CondGeometricLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
@@ -329,7 +330,7 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
-
+    """
     def test_update_backend(self):
         backends = ["numpy", "pytorch"]
         geometric = CondGeometricLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])

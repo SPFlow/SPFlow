@@ -8,7 +8,8 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import (
     Hypergeometric,
 )
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
+from spflow.tensorly.structure.spn.layers.leaves.parametric import HypergeometricLayer as GeneralHypergeometricLayer
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -364,3 +365,20 @@ def marginalize(
     else:
         new_layer = HypergeometricLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer
+
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: HypergeometricLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralHypergeometricLayer( scope=leaf_node.scopes_out,
+        N=leaf_node.N.detach().numpy(),
+        M=leaf_node.M.detach().numpy(),
+        n=leaf_node.n.detach().numpy())

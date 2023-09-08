@@ -107,6 +107,7 @@ class MultivariateGaussian(LeafNode):
 
         # set parameters
         self.set_params(mean, cov)
+        self.backend = "pytorch"
 
     @property
     def covariance_tril(self) -> torch.Tensor:
@@ -445,4 +446,4 @@ def updateBackend(leaf_node: MultivariateGaussian, dispatch_ctx: Optional[Dispat
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralMultivariateGaussian(scope=leaf_node.scope, mean=leaf_node.mean.data.item(), cov=leaf_node.cov.data.item())
+    return GeneralMultivariateGaussian(scope=leaf_node.scope, mean=leaf_node.mean.data.numpy(), cov=leaf_node.cov.data.numpy())

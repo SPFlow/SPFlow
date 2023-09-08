@@ -68,6 +68,7 @@ class Exponential(LeafNode):
 
         # set parameters
         self.set_params(l)
+        self.backend = "pytorch"
 
     @property
     def l(self) -> torch.Tensor:

@@ -58,7 +58,8 @@ class ProductLayer(NestedModule):
         # create prodcut nodes
         self.nodes = [ProductNode(children=[ph]) for _ in range(n_nodes)]
 
-        self.scope = self.nodes[0].scope
+        #self.scope = self.nodes[0].scope
+        self.scope = Scope([int(x) for x in self.nodes[0].scope.query], self.nodes[0].scope.evidence)
 
     @property
     def n_out(self) -> int:

@@ -110,6 +110,7 @@ class BinomialLayer(Module):
 
         # parse weights
         self.set_params(n, p)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -188,9 +189,9 @@ class BinomialLayer(Module):
             ValueError: Invalid arguments.
         """
         if isinstance(p, float) or isinstance(p, int):
-            p = torch.tensor([p for _ in range(self.n_out)])
+            p = torch.tensor([p for _ in range(self.n_out)], dtype=torch.float64)
         elif isinstance(p, list) or isinstance(p, np.ndarray):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=torch.float64)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'BinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."

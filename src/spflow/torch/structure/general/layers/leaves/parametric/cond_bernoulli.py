@@ -5,6 +5,7 @@ from typing import Callable, Iterable, List, Optional, Union
 
 import numpy as np
 import torch
+import tensorly as tl
 import torch.distributions as D
 
 from spflow.base.structure.general.layers.leaves.parametric.cond_bernoulli import (
@@ -105,6 +106,7 @@ class CondBernoulliLayer(Module):
         self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -233,14 +235,14 @@ class CondBernoulliLayer(Module):
         if p is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                p = torch.tensor([f(data)["p"] for f in cond_f])
+                p = torch.tensor([f(data)["p"] for f in cond_f], dtype=torch.float64)
             else:
                 p = cond_f(data)["p"]
 
         if isinstance(p, float) or isinstance(p, int):
-            p = torch.tensor([p for _ in range(self.n_out)])
+            p = torch.tensor([p for _ in range(self.n_out)], dtype=torch.float64)
         elif isinstance(p, list) or isinstance(p, np.ndarray):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=torch.float64)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'CondBernoulliLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -428,4 +430,13 @@ def updateBackend(leaf_node: CondBernoulliLayer, dispatch_ctx: Optional[Dispatch
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralCondBernoulliLayer(scope=leaf_node.scopes_out)
+    data = tl.tensor([])
+    cond_f = None
+    if leaf_node.cond_f != None:
+        params = leaf_node.cond_f(data)
+
+        for key in leaf_node.cond_f(params):
+            # Update the value for each key
+            params[key] = tl.tensor(params[key])
+        cond_f = lambda data: params
+    return GeneralCondBernoulliLayer(scope=leaf_node.scopes_out, cond_f=cond_f)

@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Hypergeometric as BaseHypergeometric
@@ -9,6 +10,8 @@ from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
 #from spflow.torch.structure.spn import Hypergeometric
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_hypergeometric import Hypergeometric
+from spflow.torch.structure.general.nodes.leaves.parametric.hypergeometric import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestHypergeometric(unittest.TestCase):
@@ -201,6 +204,27 @@ class TestHypergeometric(unittest.TestCase):
             torch.tensor([[torch.nextafter(torch.tensor(float(max(n, M))), torch.tensor(-1.0))]]),
         )
         self.assertRaises(ValueError, log_likelihood, hypergeometric, torch.tensor([[5.5]]))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        N = 15
+        M = 10
+        n = 10
+
+        hypergeometric = Hypergeometric(Scope([0]), N, M, n)
+
+        # create dummy input data (batch size x random variables)
+        data = np.array([[5], [10]])
+
+        log_probs = log_likelihood(hypergeometric, tl.tensor(data))
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            hypergeometric_updated = updateBackend(hypergeometric)
+            log_probs_updated = log_likelihood(hypergeometric_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

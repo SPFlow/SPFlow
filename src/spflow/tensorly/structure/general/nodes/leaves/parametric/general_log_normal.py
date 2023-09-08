@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class LogNormal:  # ToDo: backend über tl.getBackend() abfragen
     def __new__(cls, scope: Scope, mean: float = 0.0, std: float = 1.0):
-        from spflow.tensorly.structure.general.nodes.leaves import LogNormal as TensorlyLogNormal
-        from spflow.torch.structure.general.nodes.leaves import LogNormal as TorchLogNormal
+        from spflow.base.structure.general.nodes.leaves.parametric.log_normal import LogNormal as TensorlyLogNormal
+        from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import LogNormal as TorchLogNormal
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class LogNormal:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves import LogNormal as TensorlyLogNormal
-        from spflow.torch.structure.general.nodes.leaves import LogNormal as TorchLogNormal
+        from spflow.base.structure.general.nodes.leaves.parametric.log_normal import LogNormal as TensorlyLogNormal
+        from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import LogNormal as TorchLogNormal
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyLogNormal.accepts(signatures)
@@ -34,8 +34,8 @@ class LogNormal:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves import LogNormal as TensorlyLogNormal
-        from spflow.torch.structure.general.nodes.leaves import LogNormal as TorchLogNormal
+        from spflow.base.structure.general.nodes.leaves.parametric.log_normal import LogNormal as TensorlyLogNormal
+        from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import LogNormal as TorchLogNormal
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyLogNormal.from_signatures(signatures)

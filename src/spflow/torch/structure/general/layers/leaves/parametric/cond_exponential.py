@@ -5,6 +5,7 @@ from typing import Callable, Iterable, List, Optional, Union
 
 import numpy as np
 import torch
+import tensorly as tl
 import torch.distributions as D
 
 from spflow.base.structure.general.layers.leaves.parametric.cond_exponential import (
@@ -103,6 +104,7 @@ class CondExponentialLayer(Module):
         self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -254,9 +256,9 @@ class CondExponentialLayer(Module):
                 l = cond_f(data)["l"]
 
         if isinstance(l, int) or isinstance(l, float):
-            l = torch.tensor([l for _ in range(self.n_out)])
+            l = torch.tensor([l for _ in range(self.n_out)], dtype=torch.float64)
         elif isinstance(l, list) or isinstance(l, np.ndarray):
-            l = torch.tensor(l)
+            l = torch.tensor(l, dtype=torch.float64)
         if l.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'l' values for 'CondExponentialLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional."
@@ -423,4 +425,13 @@ def updateBackend(leaf_node: CondExponentialLayer, dispatch_ctx: Optional[Dispat
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralCondExponentialLayer(scope=leaf_node.scopes_out)
+    data = tl.tensor([])
+    cond_f = None
+    if leaf_node.cond_f != None:
+        params = leaf_node.cond_f(data)
+
+        for key in leaf_node.cond_f(params):
+            # Update the value for each key
+            params[key] = tl.tensor(params[key])
+        cond_f = lambda data: params
+    return GeneralCondExponentialLayer(scope=leaf_node.scopes_out, cond_f=cond_f)

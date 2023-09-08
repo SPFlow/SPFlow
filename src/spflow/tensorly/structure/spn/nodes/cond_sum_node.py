@@ -214,7 +214,7 @@ def updateBackend(sum_node: CondSumNode, dispatch_ctx: Optional[DispatchContext]
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondSumNode(
-        children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children]
+        children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children], cond_f=sum_node.cond_f
     )
 
 @dispatch(memoize=True)  # type: ignore

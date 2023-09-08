@@ -1,6 +1,6 @@
 """Contains Uniform leaf node for SPFlow in the ``base`` backend.
 """
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import numpy as np
 from scipy.stats import uniform  # type: ignore
@@ -10,7 +10,12 @@ from spflow.base.structure.general.nodes.leaf_node import LeafNode
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
-
+from spflow.meta.dispatch.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.tensorly.structure.spn.nodes.leaves.parametric import Uniform as GeneralUniform
+from spflow.meta.dispatch.dispatch import dispatch
 
 class Uniform(LeafNode):
     r"""(Univariate) continuous Uniform distribution leaf node in the ``base`` backend.
@@ -209,3 +214,16 @@ class Uniform(LeafNode):
             )
 
         return valid
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: Uniform, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralUniform(scope=leaf_node.scope, start=leaf_node.start, end=leaf_node.end, support_outside=leaf_node.support_outside)

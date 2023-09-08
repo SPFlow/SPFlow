@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
@@ -10,7 +11,8 @@ from spflow.torch.inference import log_likelihood
 from spflow.tensorly.sampling import sample
 from spflow.torch.structure.spn import Gaussian
 from spflow.tensorly.structure.spn import SumLayer, SumNode
-from spflow.tensorly.structure.spn.nodes.sum_node import toLayerBased
+from spflow.tensorly.structure.spn.nodes.sum_node import toLayerBased, updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestNode(unittest.TestCase):
@@ -109,6 +111,38 @@ class TestNode(unittest.TestCase):
             1,
             sampling_ctx=SamplingContext([0], [[0, 1]]),
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        input_nodes = [
+            Gaussian(Scope([0]), mean=3.0, std=0.01),
+            Gaussian(Scope([0]), mean=1.0, std=0.01),
+            Gaussian(Scope([0]), mean=0.0, std=0.01),
+        ]
+
+        layer_spn = SumNode(
+            children=[
+                SumLayer(
+                    n_nodes=3,
+                    children=input_nodes,
+                    weights=[[0.8, 0.1, 0.1], [0.2, 0.3, 0.5], [0.2, 0.7, 0.1]],
+                ),
+            ],
+            weights=[0.3, 0.4, 0.3],
+        )
+        layer_samples = sample(layer_spn, 10000)
+        samples_mean = tl_toNumpy(layer_samples).mean()
+        for backend in backends:
+            tl.set_backend(backend)
+            layer_updated = updateBackend(layer_spn)
+            layer_samples_updated = sample(layer_updated, 10000)
+            samples_mean_updated = tl_toNumpy(layer_samples_updated).mean()
+            self.assertTrue(np.allclose(samples_mean, samples_mean_updated, atol=0.01, rtol=0.1))
 
 
 

@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Binomial as BaseBinomial
@@ -10,6 +11,8 @@ from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
 #from spflow.torch.structure.spn import Binomial
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_binomial import Binomial
+from spflow.torch.structure.general.nodes.leaves.parametric.binomial import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestBinomial(unittest.TestCase):
@@ -215,6 +218,28 @@ class TestBinomial(unittest.TestCase):
         )
         self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[0.5]]))
         self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[3.5]]))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        p = random.random()
+
+        n = random.randint(2, 10)
+        p = random.random()
+
+        binomial = Binomial(Scope([0]), n, p)
+
+        # create dummy input data (batch size x random variables)
+        data = np.random.randint(0, 2, (3, 1))
+
+        log_probs = log_likelihood(binomial, tl.tensor(data))
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            binomial_updated = updateBackend(binomial)
+            log_probs_updated = log_likelihood(binomial_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

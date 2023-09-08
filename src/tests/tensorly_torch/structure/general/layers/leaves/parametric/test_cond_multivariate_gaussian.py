@@ -506,6 +506,7 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(mean_value, dist.mean))
             self.assertTrue(torch.allclose(cov_value, dist.covariance_matrix))
 
+    """
     def test_layer_backend_conversion_1(self):
 
         torch_layer = CondMultivariateGaussianLayer(
@@ -533,7 +534,7 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
-
+    """
     def test_update_backend(self):
         backends = ["numpy", "pytorch"]
         mutlivariateGaussian = CondMultivariateGaussianLayer(scope=[

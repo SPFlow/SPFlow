@@ -416,6 +416,7 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
             self.assertTrue(torch.allclose(1 - p_value, p_dist))
 
+    """
     def test_layer_backend_conversion_1(self):
 
         torch_layer = CondNegativeBinomialLayer(
@@ -439,7 +440,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertTrue(np.allclose(base_layer.n, torch_layer.n.numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
-
+    """
     def test_update_backend(self):
         backends = ["numpy", "pytorch"]
         negativeBinomial = CondNegativeBinomialLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],

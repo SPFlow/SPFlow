@@ -11,7 +11,7 @@ from torch.nn.parameter import Parameter
 from spflow.base.structure.general.layers.leaves.parametric.bernoulli import (
     BernoulliLayer as BaseBernoulliLayer,
 )
-from spflow.tensorly.structure.general.layers.leaves.parametric.general_bernoulli import BernoulliLayer as GeneralBernoulli
+from spflow.tensorly.structure.spn.layers.leaves.parametric import BernoulliLayer as GeneralBernoulli
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -101,6 +101,7 @@ class BernoulliLayer(Module):
 
         # parse weights
         self.set_params(p)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -182,9 +183,9 @@ class BernoulliLayer(Module):
             ValueError: Invalid arguments.
         """
         if isinstance(p, float) or isinstance(p, int):
-            p = torch.tensor([p for _ in range(self.n_out)])
+            p = torch.tensor([p for _ in range(self.n_out)], dtype=torch.float64)
         elif isinstance(p, list) or isinstance(p, np.ndarray):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=torch.float64)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'BernoulliLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."

@@ -9,7 +9,8 @@ from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gauss
 from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import (
     MultivariateGaussian,
 )
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.spn.layers.leaves.parametric import MultivariateGaussianLayer as GeneralMultivariateGaussianLayer
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -379,3 +380,18 @@ def marginalize(
     else:
         new_layer = MultivariateGaussianLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: MultivariateGaussianLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralMultivariateGaussianLayer(scope=leaf_node.scopes_out,
+        mean=[m.detach().numpy() for m in leaf_node.mean],
+        cov=[c.detach().numpy() for c in leaf_node.cov])

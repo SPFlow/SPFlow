@@ -1,6 +1,7 @@
 # ---- specific imports
 
 # import all definitions of 'log_likelihood' and 'likelihood'
+"""
 from .general.layers.leaves.parametric.bernoulli import log_likelihood
 from .general.layers.leaves.parametric.binomial import log_likelihood
 from .general.layers.leaves.parametric.cond_bernoulli import log_likelihood
@@ -56,3 +57,4 @@ from .spn.nodes.cond_sum_node import log_likelihood
 from .spn.nodes.product_node import log_likelihood
 from .spn.nodes.sum_node import log_likelihood
 from .spn.rat.rat_spn import log_likelihood
+"""

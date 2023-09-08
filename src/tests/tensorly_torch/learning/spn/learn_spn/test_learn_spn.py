@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.tensorly.learning.spn.learn_spn import (
@@ -17,7 +18,8 @@ from spflow.tensorly.structure.spn import (
     ProductNode,
     SumNode,
 )
-from spflow.torch.structure.spn import Gaussian, CondGaussian
+from spflow.tensorly.structure.spn import Gaussian, CondGaussian
+
 
 
 # dummy clustering and partition methods
@@ -364,6 +366,8 @@ class TestNode(unittest.TestCase):
                 {k: FeatureTypes.Gaussian for k in range(3)},
             ),
         )
+
+
 
 
 if __name__ == "__main__":

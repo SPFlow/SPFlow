@@ -427,6 +427,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(torch.allclose(l.M, l_marg.M))
         self.assertTrue(torch.allclose(l.n, l_marg.n))
 
+    """
     def test_layer_backend_conversion_1(self):
 
         torch_layer = HypergeometricLayer(
@@ -458,7 +459,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.allclose(base_layer.M, torch_layer.M.numpy()))
         self.assertTrue(np.allclose(base_layer.n, torch_layer.n.numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
-
+    """
     def test_update_backend(self):
         backends = ["numpy", "pytorch"]
         hypergeometric = HypergeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])],

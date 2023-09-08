@@ -11,8 +11,8 @@ class CondBernoulliLayer:
         cond_f: Optional[Union[Callable, List[Callable]]] = None,
         n_nodes: int = 1,
         **kwargs):
-        from spflow.tensorly.structure.general.layers.leaves import CondBernoulliLayer as TensorlyCondBernoulli
-        from spflow.torch.structure.general.layers.leaves import CondBernoulliLayer as TorchCondBernoulli
+        from spflow.base.structure.general.layers.leaves.parametric.cond_bernoulli import CondBernoulliLayer as TensorlyCondBernoulli
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_bernoulli import CondBernoulliLayer as TorchCondBernoulli
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -24,8 +24,8 @@ class CondBernoulliLayer:
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import CondBernoulliLayer as TensorlyCondBernoulli
-        from spflow.torch.structure.general.layers.leaves import CondBernoulliLayer as TorchCondBernoulli
+        from spflow.base.structure.general.layers.leaves.parametric.cond_bernoulli import CondBernoulliLayer as TensorlyCondBernoulli
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_bernoulli import CondBernoulliLayer as TorchCondBernoulli
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondBernoulli.accepts(signatures)
@@ -36,8 +36,8 @@ class CondBernoulliLayer:
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import CondBernoulliLayer as TensorlyCondBernoulli
-        from spflow.torch.structure.general.layers.leaves import CondBernoulliLayer as TorchCondBernoulli
+        from spflow.base.structure.general.layers.leaves.parametric.cond_bernoulli import CondBernoulliLayer as TensorlyCondBernoulli
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_bernoulli import CondBernoulliLayer as TorchCondBernoulli
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondBernoulli.from_signatures(signatures)

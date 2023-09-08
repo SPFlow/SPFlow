@@ -86,7 +86,8 @@ class CondSumLayer(NestedModule):
         self.nodes = [CondSumNode(children=[ph]) for _ in range(n_nodes)]
 
         # compute scope
-        self.scope = self.nodes[0].scope
+        #self.scope = self.nodes[0].scope
+        self.scope = Scope([int(x) for x in self.nodes[0].scope.query], self.nodes[0].scope.evidence)
 
         self.set_cond_f(cond_f)
 

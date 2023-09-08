@@ -2,7 +2,9 @@ import random
 import unittest
 
 import numpy as np
+import pytest
 import torch
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
@@ -14,6 +16,8 @@ from spflow.torch.learning import (
 )
 from spflow.torch.structure.spn import ExponentialLayer#, ProductNode, SumNode
 from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
+from spflow.torch.structure.general.layers.leaves.parametric.exponential import updateBackend
 
 
 class TestNode(unittest.TestCase):
@@ -261,6 +265,53 @@ class TestNode(unittest.TestCase):
         expectation_maximization(sum_node, data, max_steps=10)
 
         self.assertTrue(torch.allclose(layer.l, torch.tensor([0.8, 1.4]), atol=1e-2, rtol=1e-2))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = ExponentialLayer(scope=[Scope([0]), Scope([1])])
+
+        # simulate data
+        data = np.hstack(
+            [
+                np.random.exponential(scale=1.0 / 0.3, size=(20000, 1)),
+                np.random.exponential(scale=1.0 / 2.7, size=(20000, 1)),
+            ]
+        )
+
+        # perform MLE
+        maximum_likelihood_estimation(layer, tl.tensor(data))
+
+        params = tl_toNumpy(layer.l)
+
+        layer = ExponentialLayer(scope=[Scope([0]), Scope([1])])
+        prod_node = ProductNode([layer])
+        expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+        params_em = tl_toNumpy(layer.l)
+
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            layer = ExponentialLayer(scope=[Scope([0]), Scope([1])])
+            layer_updated = updateBackend(layer)
+            maximum_likelihood_estimation(layer_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(layer_updated.l), params, atol=1e-2, rtol=1e-3))
+
+            layer = ExponentialLayer(scope=[Scope([0]), Scope([1])])
+            layer_updated = updateBackend(layer)
+            prod_node = ProductNode([layer_updated])
+            if tl.get_backend() != "pytorch":
+                with pytest.raises(NotImplementedError):
+                    expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+            else:
+                expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+                self.assertTrue(np.allclose(tl_toNumpy(layer_updated.l), params_em, atol=1e-3, rtol=1e-2))
 
 
 if __name__ == "__main__":

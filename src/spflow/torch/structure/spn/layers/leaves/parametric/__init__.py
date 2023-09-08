@@ -1,4 +1,5 @@
 # ----- specific imports -----CondPoissonLayer
+"""
 from spflow.torch.structure.general.layers.leaves.parametric.bernoulli import (
     BernoulliLayer,
 )
@@ -59,3 +60,4 @@ from spflow.torch.structure.general.layers.leaves.parametric.negative_binomial i
 )
 from spflow.torch.structure.general.layers.leaves.parametric.poisson import PoissonLayer
 from spflow.torch.structure.general.layers.leaves.parametric.uniform import UniformLayer
+"""

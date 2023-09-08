@@ -97,7 +97,7 @@ def sample(
             else:
                 data[torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")] = (
                     leaf.dist(mean=mean, cov=cov).sample((sampling_ids.shape[0],)).squeeze(1)
-                )
+                ).type(torch.float64)
         # sample from conditioned distribution
         else:
             # note: the conditional sampling implemented here is based on the algorithm described in Arnaud Doucet (2010): "A Note on Efficient Conditional Simulation of Gaussian Distributions" (https://www.stats.ox.ac.uk/~doucet/doucet_simulationconditionalgaussian.pdf)

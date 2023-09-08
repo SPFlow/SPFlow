@@ -14,8 +14,8 @@ class HypergeometricLayer:
         n: Union[int, List[int], np.ndarray],
         n_nodes: int = 1,
         **kwargs):
-        from spflow.tensorly.structure.general.layers.leaves import HypergeometricLayer as TensorlyHypergeometric
-        from spflow.torch.structure.general.layers.leaves import HypergeometricLayer as TorchHypergeometric
+        from spflow.base.structure.general.layers.leaves.parametric.hypergeometric import HypergeometricLayer as TensorlyHypergeometric
+        from spflow.torch.structure.general.layers.leaves.parametric.hypergeometric import HypergeometricLayer as TorchHypergeometric
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -27,8 +27,8 @@ class HypergeometricLayer:
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import HypergeometricLayer as TensorlyHypergeometric
-        from spflow.torch.structure.general.layers.leaves import HypergeometricLayer as TorchHypergeometric
+        from spflow.base.structure.general.layers.leaves.parametric.hypergeometric import HypergeometricLayer as TensorlyHypergeometric
+        from spflow.torch.structure.general.layers.leaves.parametric.hypergeometric import HypergeometricLayer as TorchHypergeometric
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyHypergeometric.accepts(signatures)
@@ -39,8 +39,8 @@ class HypergeometricLayer:
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import HypergeometricLayer as TensorlyHypergeometric
-        from spflow.torch.structure.general.layers.leaves import HypergeometricLayer as TorchHypergeometric
+        from spflow.base.structure.general.layers.leaves.parametric.hypergeometric import HypergeometricLayer as TensorlyHypergeometric
+        from spflow.torch.structure.general.layers.leaves.parametric.hypergeometric import HypergeometricLayer as TorchHypergeometric
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyHypergeometric.from_signatures(signatures)

@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Poisson as BasePoisson
@@ -10,6 +11,8 @@ from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import Poisson
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_poisson import Poisson
+from spflow.torch.structure.general.nodes.leaves.parametric.poisson import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestPoisson(unittest.TestCase):
@@ -138,6 +141,25 @@ class TestPoisson(unittest.TestCase):
             torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
         )
         self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[10.1]]))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        l = random.randint(1, 10)
+
+        poisson = Poisson(Scope([0]), l)
+
+        # create dummy input data (batch size x random variables)
+        data = np.random.randint(0, 10, (3, 1))
+
+        log_probs = log_likelihood(poisson, tl.tensor(data))
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            poisson_updated = updateBackend(poisson)
+            log_probs_updated = log_likelihood(poisson_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

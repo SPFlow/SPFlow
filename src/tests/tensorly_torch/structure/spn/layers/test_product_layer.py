@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+import tensorly as tl
 
 from spflow.base.structure.spn import Gaussian as BaseGaussian
 from spflow.base.structure.spn import ProductLayer as BaseProductLayer
@@ -10,7 +11,8 @@ from spflow.tensorly.structure import marginalize
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.tensorly.structure.spn import ProductLayer
 from spflow.tensorly.structure.spn.layers.product_layer import toLayerBased, toNodeBased
-from spflow.tensorly.structure.spn.layers_layerbased.product_layer import toLayerBased, toNodeBased
+from spflow.tensorly.structure.spn.layers_layerbased.product_layer import toLayerBased, toNodeBased, updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 from ...general.nodes.dummy_node import DummyNode
 
@@ -128,6 +130,23 @@ class TestNode(unittest.TestCase):
         self.assertEqual(node_based_product_layer2.n_out, product_layer.n_out)
         layer_based_product_layer2 = toLayerBased(layer_based_product_layer)
         self.assertEqual(layer_based_product_layer2.n_out, product_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        product_layer = ProductLayer(
+            n_nodes=3,
+            children=[
+                Gaussian(Scope([0])),
+                Gaussian(Scope([1])),
+                Gaussian(Scope([2])),
+            ],
+        )
+        n_out = product_layer.n_out
+        for backend in backends:
+            tl.set_backend(backend)
+            product_layer_updated = updateBackend(product_layer)
+            self.assertTrue(n_out == product_layer_updated.n_out)
+
 
 if __name__ == "__main__":
     unittest.main()

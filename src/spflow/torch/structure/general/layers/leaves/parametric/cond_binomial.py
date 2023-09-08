@@ -5,6 +5,7 @@ from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+import tensorly as tl
 import torch.distributions as D
 
 from spflow.base.structure.general.layers.leaves.parametric.cond_binomial import (
@@ -119,6 +120,7 @@ class CondBinomialLayer(Module):
         self.set_params(n)
 
         self.set_cond_f(cond_f)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -247,9 +249,9 @@ class CondBinomialLayer(Module):
                 p = cond_f(data)["p"]
 
         if isinstance(p, float) or isinstance(p, int):
-            p = torch.tensor([p for _ in range(self.n_out)])
+            p = torch.tensor([p for _ in range(self.n_out)], dtype=torch.float64)
         elif isinstance(p, list) or isinstance(p, np.ndarray):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=torch.float64)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'CondBinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -480,4 +482,13 @@ def updateBackend(leaf_node: CondBinomialLayer, dispatch_ctx: Optional[DispatchC
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralCondBinomialLayer(scope=leaf_node.scopes_out, n=leaf_node.n.data.detach().numpy())
+    data = tl.tensor([])
+    cond_f = None
+    if leaf_node.cond_f != None:
+        params = leaf_node.cond_f(data)
+
+        for key in leaf_node.cond_f(params):
+            # Update the value for each key
+            params[key] = tl.tensor(params[key])
+        cond_f = lambda data: params
+    return GeneralCondBinomialLayer(scope=leaf_node.scopes_out, n=leaf_node.n.data.detach().numpy(), cond_f=cond_f)
