@@ -121,6 +121,7 @@ class MultivariateGaussianLayer(Module):
 
         # parse weights
         self.set_params(mean, cov)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:

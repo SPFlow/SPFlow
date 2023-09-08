@@ -10,7 +10,8 @@ from spflow.meta.data.scope import Scope
 
 class BernoulliLayer:
     def __new__(cls, scope: Union[Scope, List[Scope]], p: Union[int, float, List[float], T] = 0.5, n_nodes: int = 1, **kwargs):
-        from spflow.tensorly.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as TensorlyBernoulli
+        #from spflow.base.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as TensorlyBernoulli
+        from spflow.base.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as TensorlyBernoulli
         from spflow.torch.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as TorchBernoulli
         """TODO"""
         backend = tl.get_backend()
@@ -23,7 +24,7 @@ class BernoulliLayer:
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as TensorlyBernoulli
+        from spflow.base.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as TensorlyBernoulli
         from spflow.torch.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as TorchBernoulli
         backend = tl.get_backend()
         if backend == "numpy":
@@ -35,7 +36,7 @@ class BernoulliLayer:
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as TensorlyBernoulli
+        from spflow.base.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as TensorlyBernoulli
         from spflow.torch.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as TorchBernoulli
         backend = tl.get_backend()
         if backend == "numpy":

@@ -89,7 +89,8 @@ class GaussianLayer(Module):
         self.nodes = [Gaussian(s, 0.0, 1.0) for s in scope]
 
         # compute scope
-        self.scopes_out = scope
+        #self.scopes_out = scope
+        self.scopes_out = [Scope([int(x) for x in s.query], s.evidence) for s in scope]
 
         # parse weights
         self.set_params(mean, std)

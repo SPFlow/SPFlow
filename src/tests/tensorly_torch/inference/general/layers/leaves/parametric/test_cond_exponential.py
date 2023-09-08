@@ -2,12 +2,16 @@ import random
 import unittest
 
 import torch
+import numpy as np
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_exponential import CondExponentialLayer
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_exponential import CondExponential
+from spflow.torch.structure.general.layers.leaves.parametric.cond_exponential import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 
@@ -135,6 +139,24 @@ class TestNode(unittest.TestCase):
     def test_support(self):
         # TODO
         pass
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        cond_f = lambda data: {"l": [0.5, 1.0]}
+
+        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
+
+        # create test inputs/outputs
+        data = torch.tensor([[2], [5]])
+        log_probs = log_likelihood(exponential, data)
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            layer_updated = updateBackend(exponential)
+            log_probs_updated = log_likelihood(layer_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

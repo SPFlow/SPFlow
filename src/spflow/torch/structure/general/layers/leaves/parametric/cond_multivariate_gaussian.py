@@ -5,6 +5,7 @@ from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+import tensorly as tl
 import torch.distributions as D
 
 from spflow.base.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import (
@@ -119,6 +120,7 @@ class CondMultivariateGaussianLayer(Module):
         self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -489,4 +491,11 @@ def updateBackend(leaf_node: CondMultivariateGaussianLayer, dispatch_ctx: Option
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralCondMultivariateGaussianLayer(scope=leaf_node.scopes_out)
+    data = tl.tensor([])
+    params = leaf_node.cond_f(data)
+
+    for key in leaf_node.cond_f(params):
+        # Update the value for each key
+        params[key] = tl.tensor(params[key])
+    cond_f = lambda data: params
+    return GeneralCondMultivariateGaussianLayer(scope=leaf_node.scopes_out, cond_f=cond_f)

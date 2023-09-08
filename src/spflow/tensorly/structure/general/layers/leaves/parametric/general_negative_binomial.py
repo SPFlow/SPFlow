@@ -14,8 +14,8 @@ class NegativeBinomialLayer:  # ToDo: backend über tl.getBackend() abfragen
         p: Union[int, float, List[float], T] = 0.5,
         n_nodes: int = 1,
         **kwargs):
-        from spflow.tensorly.structure.general.layers.leaves import NegativeBinomialLayer as TensorlyNegativeBinomial
-        from spflow.torch.structure.general.layers.leaves import NegativeBinomialLayer as TorchNegativeBinomial
+        from spflow.base.structure.general.layers.leaves.parametric.negative_binomial import NegativeBinomialLayer as TensorlyNegativeBinomial
+        from spflow.torch.structure.general.layers.leaves.parametric.negative_binomial import NegativeBinomialLayer as TorchNegativeBinomial
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -27,8 +27,8 @@ class NegativeBinomialLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import NegativeBinomialLayer as TensorlyNegativeBinomial
-        from spflow.torch.structure.general.layers.leaves import NegativeBinomialLayer as TorchNegativeBinomial
+        from spflow.base.structure.general.layers.leaves.parametric.negative_binomial import NegativeBinomialLayer as TensorlyNegativeBinomial
+        from spflow.torch.structure.general.layers.leaves.parametric.negative_binomial import NegativeBinomialLayer as TorchNegativeBinomial
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyNegativeBinomial.accepts(signatures)
@@ -39,8 +39,8 @@ class NegativeBinomialLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import NegativeBinomialLayer as TensorlyNegativeBinomial
-        from spflow.torch.structure.general.layers.leaves import NegativeBinomialLayer as TorchNegativeBinomial
+        from spflow.base.structure.general.layers.leaves.parametric.negative_binomial import NegativeBinomialLayer as TensorlyNegativeBinomial
+        from spflow.torch.structure.general.layers.leaves.parametric.negative_binomial import NegativeBinomialLayer as TorchNegativeBinomial
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyNegativeBinomial.from_signatures(signatures)

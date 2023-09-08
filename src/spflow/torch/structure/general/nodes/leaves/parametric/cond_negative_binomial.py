@@ -5,6 +5,7 @@ from typing import Callable, List, Optional, Tuple, Type, Union
 import numpy as np
 import torch
 import torch.distributions as D
+import tensorly as tl
 
 from spflow.base.structure.general.nodes.leaves.parametric.cond_negative_binomial import (
     CondNegativeBinomial as BaseCondNegativeBinomial,
@@ -72,6 +73,7 @@ class CondNegativeBinomial(LeafNode):
         self.set_params(n)
 
         self.set_cond_f(cond_f)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -325,4 +327,11 @@ def updateBackend(leaf_node: CondNegativeBinomial, dispatch_ctx: Optional[Dispat
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralCondNegativeBinomial(scope=leaf_node.scope, n=leaf_node.n.data.item())
+    data = tl.tensor([])
+    params = leaf_node.cond_f(data)
+
+    for key in leaf_node.cond_f(params):
+        # Update the value for each key
+        params[key] = tl.tensor(params[key])
+    cond_f = lambda data: params
+    return GeneralCondNegativeBinomial(scope=leaf_node.scope, n=leaf_node.n.data.item(), cond_f=cond_f)

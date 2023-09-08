@@ -4,442 +4,472 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.structure.spn import CondBinomialLayer as BaseCondBinomialLayer
+from spflow.base.structure.general.nodes.leaves.parametric.cond_binomial import CondBinomial as CondBinomialBase
+from spflow.base.structure.general.layers.leaves.parametric.cond_binomial import CondBinomialLayer as CondBinomialLayerBase
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.structure.spn import CondBinomial as CondBinomialTorch
-from spflow.torch.structure.spn import CondBinomialLayer as CondBinomialLayerTorch
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_binomial import CondBinomial as CondBinomialTorch
+from spflow.torch.structure.general.layers.leaves.parametric.cond_binomial import CondBinomialLayer as CondBinomialLayerTorch
 from spflow.torch.structure.general.layers.leaves.parametric.cond_binomial import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_binomial import CondBinomialLayer
 
+tc = unittest.TestCase()
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+def test_layer_initialization(do_for_all_backends):
 
-    def test_layer_initialization(self):
+    # ----- check attributes after correct initialization -----
+    n_values = [3, 2, 7]
+    l = CondBinomialLayer(
+        scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
+        n=n_values,
+    )
+    # make sure number of creates nodes is correct
+    tc.assertEqual(len(l.scopes_out), 3)
+    # make sure scopes are correct
+    tc.assertTrue(np.all(l.scopes_out == [Scope([1], [3]), Scope([0], [3]), Scope([2], [3])]))
+    # make sure parameter properties works correctly
+    for n_layer_node, n_value in zip(l.n, n_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(n_layer_node), np.array(n_value)))
 
-        # ----- check attributes after correct initialization -----
-        n_values = [3, 2, 7]
-        l = CondBinomialLayer(
-            scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
-            n=n_values,
-        )
-        # make sure number of creates nodes is correct
-        self.assertEqual(len(l.scopes_out), 3)
-        # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1], [3]), Scope([0], [3]), Scope([2], [3])]))
-        # make sure parameter properties works correctly
-        for n_layer_node, n_value in zip(l.n, n_values):
-            self.assertTrue(torch.allclose(n_layer_node, torch.tensor(n_value)))
+    # ----- n initialization -----
+    l = CondBinomialLayer(
+        scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
+        n=[3, 5, 2],
+    )
+    # wrong number of n values
+    tc.assertRaises(
+        ValueError,
+        CondBinomialLayer,
+        scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
+        n=[3, 5],
+    )
+    # wrong shape of n values
+    tc.assertRaises(
+        ValueError,
+        CondBinomialLayer,
+        scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
+        n=[[3, 5, 2]],
+    )
 
-        # ----- n initialization -----
-        l = CondBinomialLayer(
-            scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
-            n=[3, 5, 2],
-        )
-        # wrong number of n values
-        self.assertRaises(
-            ValueError,
-            CondBinomialLayer,
-            scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
-            n=[3, 5],
-        )
-        # wrong shape of n values
-        self.assertRaises(
-            ValueError,
-            CondBinomialLayer,
-            scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
-            n=[[3, 5, 2]],
-        )
+    # n numpy array
+    l = CondBinomialLayer(
+        scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
+        n=np.array([3, 5, 2]),
+    )
+    # wrong number of n values
+    tc.assertRaises(
+        ValueError,
+        CondBinomialLayer,
+        scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
+        n=np.array([3, 5]),
+    )
+    # wrong shape of n values
+    tc.assertRaises(
+        ValueError,
+        CondBinomialLayer,
+        scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
+        n=np.array([[3, 5, 2]]),
+    )
 
-        # n numpy array
-        l = CondBinomialLayer(
-            scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
-            n=np.array([3, 5, 2]),
-        )
-        # wrong number of n values
-        self.assertRaises(
-            ValueError,
-            CondBinomialLayer,
-            scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
-            n=np.array([3, 5]),
-        )
-        # wrong shape of n values
-        self.assertRaises(
-            ValueError,
-            CondBinomialLayer,
-            scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
-            n=np.array([[3, 5, 2]]),
-        )
+    # ---- different scopes -----
+    l = CondBinomialLayer(scope=Scope([1], [0]), n_nodes=3, n=2)
+    for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
+        tc.assertEqual(layer_scope, node_scope)
 
-        # ---- different scopes -----
-        l = CondBinomialLayer(scope=Scope([1], [0]), n_nodes=3, n=2)
-        for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
-            self.assertEqual(layer_scope, node_scope)
+    # ----- invalid number of nodes -----
+    tc.assertRaises(ValueError, CondBinomialLayer, Scope([0], [1]), n_nodes=0, n=2)
 
-        # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, CondBinomialLayer, Scope([0], [1]), n_nodes=0, n=2)
+    # ----- invalid scope -----
+    tc.assertRaises(ValueError, CondBinomialLayer, Scope([]), n_nodes=3, n=2)
+    tc.assertRaises(ValueError, CondBinomialLayer, [], n_nodes=3, n=2)
 
-        # ----- invalid scope -----
-        self.assertRaises(ValueError, CondBinomialLayer, Scope([]), n_nodes=3, n=2)
-        self.assertRaises(ValueError, CondBinomialLayer, [], n_nodes=3, n=2)
+    # ----- individual scopes and parameters -----
+    scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
+    l = CondBinomialLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3, n=2)
 
-        # ----- individual scopes and parameters -----
-        scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
-        l = CondBinomialLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3, n=2)
+    for layer_scope, node_scope in zip(l.scopes_out, scopes):
+        tc.assertEqual(layer_scope, node_scope)
 
-        for layer_scope, node_scope in zip(l.scopes_out, scopes):
-            self.assertEqual(layer_scope, node_scope)
+    # -----number of cond_f functions -----
+    CondBinomialLayer(
+        Scope([0], [1]),
+        n=2,
+        n_nodes=2,
+        cond_f=[lambda data: {"p": 0.5}, lambda data: {"p": 0.5}],
+    )
+    tc.assertRaises(
+        ValueError,
+        CondBinomialLayer,
+        Scope([0], [1]),
+        n=2,
+        n_nodes=2,
+        cond_f=[lambda data: {"p": 0.5}],
+    )
 
-        # -----number of cond_f functions -----
-        CondBinomialLayer(
-            Scope([0], [1]),
-            n=2,
-            n_nodes=2,
-            cond_f=[lambda data: {"p": 0.5}, lambda data: {"p": 0.5}],
-        )
-        self.assertRaises(
-            ValueError,
-            CondBinomialLayer,
-            Scope([0], [1]),
-            n=2,
-            n_nodes=2,
-            cond_f=[lambda data: {"p": 0.5}],
-        )
+def test_retrieve_params(do_for_all_backends):
 
-    def test_retrieve_params(self):
+    # ----- float/int parameter values -----
+    n_value = 5
+    p_value = 0.13
+    l = CondBinomialLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        n=n_value,
+        cond_f=lambda data: {"p": p_value},
+    )
 
-        # ----- float/int parameter values -----
-        n_value = 5
-        p_value = 0.13
-        l = CondBinomialLayer(
-            scope=Scope([1], [0]),
-            n_nodes=3,
-            n=n_value,
-            cond_f=lambda data: {"p": p_value},
-        )
+    for n_layer_node, p_layer_node in zip(l.n, l.retrieve_params(torch.tensor([[1]]), DispatchContext())):
+        tc.assertTrue(np.all(tl_toNumpy(n_layer_node) == n_value))
+        tc.assertTrue(np.all(tl_toNumpy(p_layer_node) == p_value))
 
-        for n_layer_node, p_layer_node in zip(l.n, l.retrieve_params(torch.tensor([[1]]), DispatchContext())):
-            self.assertTrue(torch.all(n_layer_node == n_value))
-            self.assertTrue(torch.all(p_layer_node == p_value))
+    # ----- list parameter values -----
+    n_values = [3, 2, 7]
+    p_values = [0.17, 0.8, 0.53]
+    l = CondBinomialLayer(
+        scope=[Scope([0], [3]), Scope([1], [3]), Scope([2], [3])],
+        n=n_values,
+        cond_f=lambda data: {"p": p_values},
+    )
 
-        # ----- list parameter values -----
-        n_values = [3, 2, 7]
-        p_values = [0.17, 0.8, 0.53]
-        l = CondBinomialLayer(
-            scope=[Scope([0], [3]), Scope([1], [3]), Scope([2], [3])],
-            n=n_values,
-            cond_f=lambda data: {"p": p_values},
-        )
+    for n_layer_node, p_layer_node, n_value, p_value in zip(
+        l.n,
+        l.retrieve_params(torch.tensor([[1]]), DispatchContext()),
+        n_values,
+        p_values,
+    ):
+        tc.assertTrue(np.allclose(n_layer_node, n_value))
+        tc.assertTrue(np.allclose(p_layer_node, p_value))
 
-        for n_layer_node, p_layer_node, n_value, p_value in zip(
-            l.n,
-            l.retrieve_params(torch.tensor([[1]]), DispatchContext()),
-            n_values,
-            p_values,
-        ):
-            self.assertTrue(torch.allclose(n_layer_node, torch.tensor(n_value)))
-            self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
+    # wrong number of values
+    l.set_cond_f(lambda data: {"p": p_values[:-1]})
+    tc.assertRaises(
+        ValueError,
+        l.retrieve_params,
+        torch.tensor([[1]]),
+        DispatchContext(),
+    )
 
-        # wrong number of values
-        l.set_cond_f(lambda data: {"p": p_values[:-1]})
-        self.assertRaises(
-            ValueError,
-            l.retrieve_params,
-            torch.tensor([[1]]),
-            DispatchContext(),
-        )
+    # wrong number of dimensions (nested list)
+    l.set_cond_f(lambda data: {"p": [p_values for _ in range(3)]})
+    tc.assertRaises(
+        ValueError,
+        l.retrieve_params,
+        torch.tensor([[1]]),
+        DispatchContext(),
+    )
 
-        # wrong number of dimensions (nested list)
-        l.set_cond_f(lambda data: {"p": [p_values for _ in range(3)]})
-        self.assertRaises(
-            ValueError,
-            l.retrieve_params,
-            torch.tensor([[1]]),
-            DispatchContext(),
-        )
+    # ----- numpy parameter values -----
+    l.set_cond_f(lambda data: {"p": np.array(p_values)})
+    for p_node, p_actual in zip(
+        l.retrieve_params(torch.tensor([[1.0]]), DispatchContext()),
+        p_values,
+    ):
+        tc.assertTrue(p_node == p_actual)
 
-        # ----- numpy parameter values -----
-        l.set_cond_f(lambda data: {"p": np.array(p_values)})
-        for p_node, p_actual in zip(
-            l.retrieve_params(torch.tensor([[1.0]]), DispatchContext()),
-            p_values,
-        ):
-            self.assertTrue(p_node == p_actual)
+    # wrong number of values
+    l.set_cond_f(lambda data: {"p": np.array(p_values[:-1])})
+    tc.assertRaises(
+        ValueError,
+        l.retrieve_params,
+        torch.tensor([[1]]),
+        DispatchContext(),
+    )
 
-        # wrong number of values
-        l.set_cond_f(lambda data: {"p": np.array(p_values[:-1])})
-        self.assertRaises(
-            ValueError,
-            l.retrieve_params,
-            torch.tensor([[1]]),
-            DispatchContext(),
-        )
+    # wrong number of dimensions (nested list)
+    l.set_cond_f(lambda data: {"p": np.array([p_values for _ in range(3)])})
+    tc.assertRaises(
+        ValueError,
+        l.retrieve_params,
+        torch.tensor([[1]]),
+        DispatchContext(),
+    )
 
-        # wrong number of dimensions (nested list)
-        l.set_cond_f(lambda data: {"p": np.array([p_values for _ in range(3)])})
-        self.assertRaises(
-            ValueError,
-            l.retrieve_params,
-            torch.tensor([[1]]),
-            DispatchContext(),
-        )
+    l.set_cond_f(lambda data: {"p": np.expand_dims(np.array(p_values), 0)})
+    tc.assertRaises(
+        ValueError,
+        l.retrieve_params,
+        torch.tensor([[1]]),
+        DispatchContext(),
+    )
 
-        l.set_cond_f(lambda data: {"p": np.expand_dims(np.array(p_values), 0)})
-        self.assertRaises(
-            ValueError,
-            l.retrieve_params,
-            torch.tensor([[1]]),
-            DispatchContext(),
-        )
+    l.set_cond_f(lambda data: {"p": np.expand_dims(np.array(p_values), 1)})
+    tc.assertRaises(
+        ValueError,
+        l.retrieve_params,
+        torch.tensor([[1]]),
+        DispatchContext(),
+    )
 
-        l.set_cond_f(lambda data: {"p": np.expand_dims(np.array(p_values), 1)})
-        self.assertRaises(
-            ValueError,
-            l.retrieve_params,
-            torch.tensor([[1]]),
-            DispatchContext(),
-        )
+def test_accept(do_for_all_backends):
 
-    def test_accept(self):
-
-        # discrete meta type (should reject)
-        self.assertFalse(
-            CondBinomialLayer.accepts(
-                [
-                    FeatureContext(Scope([0], [2]), [FeatureTypes.Discrete]),
-                    FeatureContext(Scope([1], [2]), [FeatureTypes.Discrete]),
-                ]
-            )
-        )
-
-        # feature type instance
-        self.assertTrue(
-            CondBinomialLayer.accepts(
-                [
-                    FeatureContext(Scope([0], [2]), [FeatureTypes.Binomial(n=3)]),
-                    FeatureContext(Scope([1], [2]), [FeatureTypes.Binomial(n=3)]),
-                ]
-            )
-        )
-
-        # invalid feature type
-        self.assertFalse(
-            CondBinomialLayer.accepts(
-                [
-                    FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
-                    FeatureContext(Scope([1], [2]), [FeatureTypes.Binomial(n=3)]),
-                ]
-            )
-        )
-
-        # non-conditional scope
-        self.assertFalse(CondBinomialLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]))
-
-        # multivariate signature
-        self.assertFalse(
-            CondBinomialLayer.accepts(
-                [
-                    FeatureContext(
-                        Scope([0, 1], [2]),
-                        [
-                            FeatureTypes.Binomial(n=3),
-                            FeatureTypes.Binomial(n=3),
-                        ],
-                    )
-                ]
-            )
-        )
-
-    def test_initialization_from_signatures(self):
-
-        binomial = CondBinomialLayer.from_signatures(
+    # discrete meta type (should reject)
+    tc.assertFalse(
+        CondBinomialLayer.accepts(
             [
-                FeatureContext(Scope([0], [2]), [FeatureTypes.Binomial(n=3)]),
-                FeatureContext(Scope([1], [3]), [FeatureTypes.Binomial(n=5)]),
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Discrete]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Discrete]),
             ]
         )
-        self.assertTrue(torch.all(binomial.n == torch.tensor([3, 5])))
-        self.assertTrue(binomial.scopes_out == [Scope([0], [2]), Scope([1], [3])])
+    )
 
-        # ----- invalid arguments -----
-
-        # discrete meta type
-        self.assertRaises(
-            ValueError,
-            CondBinomialLayer.from_signatures,
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
+    # feature type instance
+    tc.assertTrue(
+        CondBinomialLayer.accepts(
+            [
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Binomial(n=3)]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Binomial(n=3)]),
+            ]
         )
+    )
 
-        # invalid feature type
-        self.assertRaises(
-            ValueError,
-            CondBinomialLayer.from_signatures,
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+    # invalid feature type
+    tc.assertFalse(
+        CondBinomialLayer.accepts(
+            [
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Binomial(n=3)]),
+            ]
         )
+    )
 
-        # non-conditional scope
-        self.assertRaises(
-            ValueError,
-            CondBinomialLayer.from_signatures,
-            [FeatureContext(Scope([0]), [FeatureTypes.Binomial(3)])],
-        )
+    # non-conditional scope
+    tc.assertFalse(CondBinomialLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Binomial(n=3)])]))
 
-        # multivariate signature
-        self.assertRaises(
-            ValueError,
-            CondBinomialLayer.from_signatures,
+    # multivariate signature
+    tc.assertFalse(
+        CondBinomialLayer.accepts(
             [
                 FeatureContext(
                     Scope([0, 1], [2]),
-                    [FeatureTypes.Binomial(3), FeatureTypes.Binomial(5)],
+                    [
+                        FeatureTypes.Binomial(n=3),
+                        FeatureTypes.Binomial(n=3),
+                    ],
                 )
-            ],
+            ]
         )
+    )
 
-    def test_autoleaf(self):
+def test_initialization_from_signatures(do_for_all_backends):
 
-        # make sure leaf is registered
-        self.assertTrue(AutoLeaf.is_registered(CondBinomialLayer))
+    binomial = CondBinomialLayer.from_signatures(
+        [
+            FeatureContext(Scope([0], [2]), [FeatureTypes.Binomial(n=3)]),
+            FeatureContext(Scope([1], [3]), [FeatureTypes.Binomial(n=5)]),
+        ]
+    )
+    tc.assertTrue(np.all(tl_toNumpy(binomial.n) == np.array([3, 5])))
+    tc.assertTrue(binomial.scopes_out == [Scope([0], [2]), Scope([1], [3])])
 
-        # make sure leaf is correctly inferred
-        self.assertEqual(
-            CondBinomialLayer,
-            AutoLeaf.infer(
-                [
-                    FeatureContext(Scope([0], [2]), [FeatureTypes.Binomial(n=3)]),
-                    FeatureContext(Scope([1], [3]), [FeatureTypes.Binomial(n=5)]),
-                ]
-            ),
-        )
+    # ----- invalid arguments -----
 
-        # make sure AutoLeaf can return correctly instantiated object
-        binomial = AutoLeaf(
+    # discrete meta type
+    tc.assertRaises(
+        ValueError,
+        CondBinomialLayer.from_signatures,
+        [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
+    )
+
+    # invalid feature type
+    tc.assertRaises(
+        ValueError,
+        CondBinomialLayer.from_signatures,
+        [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+    )
+
+    # non-conditional scope
+    tc.assertRaises(
+        ValueError,
+        CondBinomialLayer.from_signatures,
+        [FeatureContext(Scope([0]), [FeatureTypes.Binomial(3)])],
+    )
+
+    # multivariate signature
+    tc.assertRaises(
+        ValueError,
+        CondBinomialLayer.from_signatures,
+        [
+            FeatureContext(
+                Scope([0, 1], [2]),
+                [FeatureTypes.Binomial(3), FeatureTypes.Binomial(5)],
+            )
+        ],
+    )
+
+def test_autoleaf(do_for_all_backends):
+
+    if tl.get_backend() == "numpy":
+        CondBinomialInstLayer = CondBinomialLayerBase
+    elif tl.get_backend() == "pytorch":
+        CondBinomialInstLayer = CondBinomialLayerTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    # make sure leaf is registered
+    tc.assertTrue(AutoLeaf.is_registered(CondBinomialLayer))
+
+    # make sure leaf is correctly inferred
+    tc.assertEqual(
+        CondBinomialLayer,
+        AutoLeaf.infer(
             [
                 FeatureContext(Scope([0], [2]), [FeatureTypes.Binomial(n=3)]),
                 FeatureContext(Scope([1], [3]), [FeatureTypes.Binomial(n=5)]),
             ]
-        )
-        self.assertTrue(isinstance(binomial, CondBinomialLayerTorch))
-        self.assertTrue(torch.all(binomial.n == torch.tensor([3, 5])))
-        self.assertTrue(binomial.scopes_out == [Scope([0], [2]), Scope([1], [3])])
+        ),
+    )
 
-    def test_layer_structural_marginalization(self):
+    # make sure AutoLeaf can return correctly instantiated object
+    binomial = AutoLeaf(
+        [
+            FeatureContext(Scope([0], [2]), [FeatureTypes.Binomial(n=3)]),
+            FeatureContext(Scope([1], [3]), [FeatureTypes.Binomial(n=5)]),
+        ]
+    )
+    tc.assertTrue(isinstance(binomial, CondBinomialInstLayer))
+    tc.assertTrue(np.all(tl_toNumpy(binomial.n) == np.array([3, 5])))
+    tc.assertTrue(binomial.scopes_out == [Scope([0], [2]), Scope([1], [3])])
 
-        # ---------- same scopes -----------
+def test_layer_structural_marginalization(do_for_all_backends):
 
-        l = CondBinomialLayer(scope=Scope([1], [0]), n_nodes=2, n=2)
+    # ---------- same scopes -----------
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [1]) == None)
+    if tl.get_backend() == "numpy":
+        CondBinomialInst = CondBinomialBase
+        CondBinomialInstLayer = CondBinomialLayerBase
+    elif tl.get_backend() == "pytorch":
+        CondBinomialInst = CondBinomialTorch
+        CondBinomialInstLayer = CondBinomialLayerTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    l = CondBinomialLayer(scope=Scope([1], [0]), n_nodes=2, n=2)
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1], [0]), Scope([1], [0])])
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [1]) == None)
 
-        # ---------- different scopes -----------
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        l = CondBinomialLayer(scope=[Scope([1], [2]), Scope([0], [2])], n=[3, 2])
+    tc.assertTrue(l_marg.scopes_out == [Scope([1], [0]), Scope([1], [0])])
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0, 1]) == None)
+    # ---------- different scopes -----------
 
-        # ----- partially marginalize -----
-        l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, CondBinomialTorch))
-        self.assertEqual(l_marg.scope, Scope([0], [2]))
-        self.assertTrue(torch.allclose(l_marg.n, torch.tensor(2)))
+    l = CondBinomialLayer(scope=[Scope([1], [2]), Scope([0], [2])], n=[3, 2])
 
-        l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, CondBinomialLayerTorch))
-        self.assertEqual(len(l_marg.scopes_out), 1)
-        self.assertTrue(torch.allclose(l_marg.n, torch.tensor(2)))
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [0, 1]) == None)
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    # ----- partially marginalize -----
+    l_marg = marginalize(l, [1], prune=True)
+    tc.assertTrue(isinstance(l_marg, CondBinomialInst))
+    tc.assertEqual(l_marg.scope, Scope([0], [2]))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.n), np.array(2)))
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1], [2]), Scope([0], [2])])
-        self.assertTrue(torch.allclose(l.n, l_marg.n))
+    l_marg = marginalize(l, [1], prune=False)
+    tc.assertTrue(isinstance(l_marg, CondBinomialInstLayer))
+    tc.assertEqual(len(l_marg.scopes_out), 1)
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.n), np.array(2)))
 
-    def test_layer_dist(self):
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        n_values = [3, 2, 7]
-        p_values = torch.tensor([0.73, 0.29, 0.5])
-        l = CondBinomialLayer(
-            scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
-            n=n_values,
-            n_nodes=3,
-        )
+    tc.assertTrue(l_marg.scopes_out == [Scope([1], [2]), Scope([0], [2])])
+    tc.assertTrue(np.allclose(tl_toNumpy(l.n), tl_toNumpy(l_marg.n)))
 
-        # ----- full dist -----
-        dist = l.dist(p_values)
+def test_layer_dist(do_for_all_backends):
 
-        for n_value, p_value, n_dist, p_dist in zip(n_values, p_values, dist.total_count, dist.probs):
-            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
-            self.assertTrue(torch.allclose(p_value, p_dist))
+    n_values = [3, 2, 7]
+    p_values = np.array([0.73, 0.29, 0.5])
+    l = CondBinomialLayer(
+        scope=[Scope([1], [3]), Scope([0], [3]), Scope([2], [3])],
+        n=n_values,
+        n_nodes=3,
+    )
 
-        # ----- partial dist -----
-        dist = l.dist(p_values, [1, 2])
+    # ----- full dist -----
+    dist = l.dist(tl.tensor(p_values))
 
-        for n_value, p_value, n_dist, p_dist in zip(n_values[1:], p_values[1:], dist.total_count, dist.probs):
-            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
-            self.assertTrue(torch.allclose(p_value, p_dist))
+    if tl.get_backend() == "numpy":
+        p_list = [d.kwds.get("p") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        p_list = dist.probs
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        dist = l.dist(p_values, [1, 0])
+    if tl.get_backend() == "numpy":
+        n_list = [d.kwds.get("n") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        n_list = dist.total_count
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        for n_value, p_value, n_dist, p_dist in zip(
-            reversed(n_values[:-1]),
-            reversed(p_values[:-1]),
-            dist.total_count,
-            dist.probs,
-        ):
-            self.assertTrue(torch.allclose(torch.tensor(n_value).double(), n_dist))
-            self.assertTrue(torch.allclose(p_value, p_dist))
+    for n_value, p_value, n_dist, p_dist in zip(n_values, p_values, n_list, p_list):
+        tc.assertTrue(np.allclose(np.array(n_value), tl_toNumpy(n_dist)))
+        tc.assertTrue(np.allclose(tl_toNumpy(p_value), tl_toNumpy(p_dist)))
 
-    def test_layer_backend_conversion_1(self):
+    # ----- partial dist -----
+    dist = l.dist(tl.tensor(p_values), [1, 2])
 
-        torch_layer = CondBinomialLayer(
-            scope=[Scope([0], [3]), Scope([1], [3]), Scope([0], [3])],
-            n=[2, 5, 2],
-        )
-        base_layer = toBase(torch_layer)
+    if tl.get_backend() == "numpy":
+        p_list = [d.kwds.get("p") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        p_list = dist.probs
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.n, torch_layer.n.numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
+    if tl.get_backend() == "numpy":
+        n_list = [d.kwds.get("n") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        n_list = dist.total_count
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-    def test_layer_backend_conversion_2(self):
+    for n_value, p_value, n_dist, p_dist in zip(n_values[1:], p_values[1:], n_list, p_list):
+        tc.assertTrue(np.allclose(np.array(n_value), tl_toNumpy(n_dist)))
+        tc.assertTrue(np.allclose(tl_toNumpy(p_value), tl_toNumpy(p_dist)))
 
-        base_layer = BaseCondBinomialLayer(
-            scope=[Scope([0], [3]), Scope([1], [3]), Scope([0], [3])],
-            n=[2, 5, 2],
-        )
-        torch_layer = toTorch(base_layer)
+    dist = l.dist(tl.tensor(p_values), [1, 0])
 
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.n, torch_layer.n.numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
+    if tl.get_backend() == "numpy":
+        p_list = [d.kwds.get("p") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        p_list = dist.probs
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        binomial = CondBinomialLayer(scope=[Scope([0], [3]), Scope([1], [3]), Scope([0], [3])],
-            n=[2, 5, 2])
-        for backend in backends:
-            tl.set_backend(backend)
+    if tl.get_backend() == "numpy":
+        n_list = [d.kwds.get("n") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        n_list = dist.total_count
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    for n_value, p_value, n_dist, p_dist in zip(
+        reversed(n_values[:-1]),
+        reversed(p_values[:-1]),
+        n_list,
+        p_list,
+    ):
+        tc.assertTrue(np.allclose(np.array(n_value), tl_toNumpy(n_dist)))
+        tc.assertTrue(np.allclose(tl_toNumpy(p_value), tl_toNumpy(p_dist)))
+
+
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    binomial = CondBinomialLayer(scope=[Scope([0], [3]), Scope([1], [3]), Scope([0], [3])],
+        n=[2, 5, 2])
+    for backend in backends:
+        with tl.backend_context(backend):
             binomial_updated = updateBackend(binomial)
-            self.assertTrue(np.all(binomial.scopes_out == binomial_updated.scopes_out))
+            tc.assertTrue(np.all(binomial.scopes_out == binomial_updated.scopes_out))
             # check conversion from torch to python
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*binomial.get_params()[0]]),
                     np.array([*binomial_updated.get_params()[0]]),

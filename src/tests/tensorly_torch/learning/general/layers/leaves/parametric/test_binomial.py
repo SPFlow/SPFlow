@@ -2,7 +2,9 @@ import random
 import unittest
 
 import numpy as np
+import pytest
 import torch
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
@@ -14,6 +16,8 @@ from spflow.torch.learning import (
 )
 from spflow.torch.structure.spn import BinomialLayer#, ProductNode, SumNode
 from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
+from spflow.torch.structure.general.layers.leaves.parametric.binomial import updateBackend
 
 class TestNode(unittest.TestCase):
     @classmethod
@@ -278,6 +282,53 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(torch.all(layer.n == torch.tensor([3, 3])))
         self.assertTrue(torch.isclose(p_opt, p_em))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = BinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
+
+        # simulate data
+        data = np.hstack(
+            [
+                np.random.binomial(n=3, p=0.3, size=(10000, 1)),
+                np.random.binomial(n=10, p=0.7, size=(10000, 1)),
+            ]
+        )
+
+        # perform MLE
+        maximum_likelihood_estimation(layer, tl.tensor(data))
+
+        params = tl_toNumpy(layer.p)
+
+        layer = BinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
+        prod_node = ProductNode([layer])
+        expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+        params_em = tl_toNumpy(layer.p)
+
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            layer = BinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
+            layer_updated = updateBackend(layer)
+            maximum_likelihood_estimation(layer_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(layer_updated.p), params, atol=1e-2, rtol=1e-3))
+
+            layer = BinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
+            layer_updated = updateBackend(layer)
+            prod_node = ProductNode([layer_updated])
+            if tl.get_backend() != "pytorch":
+                with pytest.raises(NotImplementedError):
+                    expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+            else:
+                expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+                self.assertTrue(np.allclose(tl_toNumpy(layer_updated.p), params_em, atol=1e-3, rtol=1e-2))
 
 
 if __name__ == "__main__":

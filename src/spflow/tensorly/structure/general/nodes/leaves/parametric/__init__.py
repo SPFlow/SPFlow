@@ -1,4 +1,5 @@
 # ----- specific imports -----
+"""
 from .bernoulli import Bernoulli
 from .binomial import Binomial
 from .cond_bernoulli import CondBernoulli
@@ -21,3 +22,4 @@ from .multivariate_gaussian import MultivariateGaussian
 from .negative_binomial import NegativeBinomial
 from .poisson import Poisson
 from .uniform import Uniform
+"""

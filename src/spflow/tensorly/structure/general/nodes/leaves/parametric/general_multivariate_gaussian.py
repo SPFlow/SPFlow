@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class MultivariateGaussian:
     def __new__(cls, scope: Scope, mean: Optional[Union[List[float], T]] = None,cov: Optional[Union[List[List[float]], T]] = None):
-        from spflow.tensorly.structure.general.nodes.leaves import MultivariateGaussian as TensorlyMultivariateGaussian
-        from spflow.torch.structure.general.nodes.leaves import MultivariateGaussian as TorchMultivariateGaussian
+        from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as TensorlyMultivariateGaussian
+        from spflow.torch.structure.general.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as TorchMultivariateGaussian
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class MultivariateGaussian:
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves import MultivariateGaussian as TensorlyMultivariateGaussian
-        from spflow.torch.structure.general.nodes.leaves import MultivariateGaussian as TorchMultivariateGaussian
+        from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as TensorlyMultivariateGaussian
+        from spflow.torch.structure.general.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as TorchMultivariateGaussian
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyMultivariateGaussian.accepts(signatures)
@@ -34,8 +34,8 @@ class MultivariateGaussian:
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves import MultivariateGaussian as TensorlyMultivariateGaussian
-        from spflow.torch.structure.general.nodes.leaves import MultivariateGaussian as TorchMultivariateGaussian
+        from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as TensorlyMultivariateGaussian
+        from spflow.torch.structure.general.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as TorchMultivariateGaussian
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyMultivariateGaussian.from_signatures(signatures)

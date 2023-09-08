@@ -11,8 +11,7 @@ from spflow.torch.utils import kmeans as torch_kmeans
 from spflow.tensorly.learning.general.nodes.leaves.parametric.gaussian import (
     maximum_likelihood_estimation,
 )
-from spflow.tensorly.structure.autoleaf import AutoLeaf as TensorlyAutoLeaf
-#from spflow.torch.structure.autoleaf import AutoLeaf as TorchAutoLeaf
+from spflow.tensorly.structure.autoleaf import AutoLeaf
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
@@ -220,13 +219,6 @@ def learn_spn(
     def create_uv_leaf(scope: Scope, data: tl.tensor, fit_params: bool = True):
         # create leaf node
         signature = feature_ctx.select(scope.query)
-        backend = tl.get_backend()
-        if (backend == "numpy"):
-            AutoLeaf = TensorlyAutoLeaf
-        elif (backend == "pytorch"):
-            AutoLeaf = TorchAutoLeaf
-        else:
-            raise NotImplementedError("AutoLeaf not implemented with this backend")
         leaf = AutoLeaf([signature])
 
         if fit_params:
@@ -237,14 +229,6 @@ def learn_spn(
     def create_partitioned_mv_leaf(scope: Scope, data: tl.tensor, fit_params: bool = True):
         # combine univariate leafs via product node
         leaves = []
-        backend = tl.get_backend()
-        if (backend == "numpy"):
-            AutoLeaf = TensorlyAutoLeaf
-        elif (backend == "pytorch"):
-            pass#AutoLeaf = TorchAutoLeaf
-        else:
-            raise NotImplementedError("AutoLeaf not implemented with this backend")
-
         for rv in scope.query:
             # create leaf node
             signature = feature_ctx.select([rv])
@@ -339,3 +323,4 @@ def learn_spn(
                             for cluster_id in tl_unique(labels)
                         ],
                     )
+

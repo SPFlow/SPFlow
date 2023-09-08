@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class CondGeometric:  # ToDo: backend über tl.getBackend() abfragen
     def __new__(cls, scope: Scope, cond_f: Optional[Callable] = None):
-        from spflow.tensorly.structure.general.nodes.leaves import CondGeometric as TensorlyCondGeometric
-        from spflow.torch.structure.general.nodes.leaves import CondGeometric as TorchCondGeometric
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_geometric import CondGeometric as TensorlyCondGeometric
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_geometric import CondGeometric as TorchCondGeometric
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class CondGeometric:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves import CondGeometric as TensorlyCondGeometric
-        from spflow.torch.structure.general.nodes.leaves import CondGeometric as TorchCondGeometric
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_geometric import CondGeometric as TensorlyCondGeometric
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_geometric import CondGeometric as TorchCondGeometric
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondGeometric.accepts(signatures)
@@ -34,8 +34,8 @@ class CondGeometric:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves import CondGeometric as TensorlyCondGeometric
-        from spflow.torch.structure.general.nodes.leaves import CondGeometric as TorchCondGeometric
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_geometric import CondGeometric as TensorlyCondGeometric
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_geometric import CondGeometric as TorchCondGeometric
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondGeometric.from_signatures(signatures)

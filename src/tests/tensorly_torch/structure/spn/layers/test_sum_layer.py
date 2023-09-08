@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import Gaussian as BaseGaussian
 from spflow.base.structure.spn import SumLayer as BaseSumLayer
@@ -11,7 +12,8 @@ from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian 
 from spflow.tensorly.structure.spn import SumLayer
 from spflow.tensorly.structure import marginalize
 from spflow.tensorly.structure.spn.layers.sum_layer import toLayerBased, toNodeBased
-from spflow.tensorly.structure.spn.layers_layerbased.sum_layer import toLayerBased, toNodeBased
+from spflow.tensorly.structure.spn.layers_layerbased.sum_layer import toLayerBased, toNodeBased, updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 from ...general.nodes.dummy_node import DummyNode
@@ -159,6 +161,30 @@ class TestNode(unittest.TestCase):
         layer_based_sum_layer2 = toLayerBased(layer_based_sum_layer)
         self.assertTrue(np.allclose(layer_based_sum_layer2.weights.detach().numpy(), sum_layer.weights.detach().numpy()))
         self.assertEqual(layer_based_sum_layer2.n_out, sum_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        sum_layer = SumLayer(
+            n_nodes=3,
+            children=[
+                Gaussian(Scope([0])),
+                Gaussian(Scope([0])),
+                Gaussian(Scope([0])),
+            ],
+        )
+        weights = sum_layer.weights.detach().numpy()
+        n_out = sum_layer.n_out
+        for backend in backends:
+            tl.set_backend(backend)
+            sum_layer_updated = updateBackend(sum_layer)
+            self.assertTrue(n_out == sum_layer_updated.n_out)
+            # check conversion from torch to python
+            self.assertTrue(
+                np.allclose(
+                    weights,
+                    tl_toNumpy(sum_layer_updated.weights)
+                )
+            )
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import CondLogNormal as BaseCondLogNormal
@@ -11,6 +12,8 @@ from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
 from spflow.torch.structure.spn import CondLogNormal
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_log_normal import CondLogNormal
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_log_normal import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 class TestLogNormal(unittest.TestCase):
     @classmethod
@@ -112,7 +115,7 @@ class TestLogNormal(unittest.TestCase):
         self.assertTrue(std.grad is not None)
 
 
-"""
+    """
     def test_likelihood_marginalization(self):
 
         log_normal = LogNormal(Scope([0], [1]), 0.0, 1.0)
@@ -142,6 +145,27 @@ class TestLogNormal(unittest.TestCase):
         )
         log_likelihood(log_normal, torch.tensor([[4.3]]))
     """
+
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        mean = random.random()
+        std = random.random() + 1e-7  # offset by small number to avoid zero
+
+        log_normal = CondLogNormal(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
+
+        # create dummy input data (batch size x random variables)
+        data = np.random.rand(3, 1)
+
+        log_probs = log_likelihood(log_normal, tl.tensor(data))
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            log_normal_updated = updateBackend(log_normal)
+            log_probs_updated = log_likelihood(log_normal_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.general.layers.leaves.parametric.gaussian import (
     GaussianLayer as BaseGaussianLayer,
@@ -19,6 +20,7 @@ from spflow.tensorly.structure.spn.rat.region_graph import random_region_graph
 from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
+from spflow.tensorly.structure.spn.rat.rat_spn import updateBackend
 from spflow.tensorly.structure.autoleaf import (
     AutoLeaf,
     Bernoulli,
@@ -86,6 +88,10 @@ from spflow.tensorly.structure.spn.nodes.sum_node import (
     #toTorch,
 )
 from spflow.tensorly.structure.spn.rat.rat_spn import RatSPN, marginalize#, toBase, toTorch
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian as TorchGaussian
+from spflow.torch.structure.general.layers.leaves.parametric.gaussian import GaussianLayer as TorchGaussianLayer
+from spflow.tensorly.structure.general.nodes.leaves.parametric.gaussian import Gaussian as Gaussian
+from spflow.tensorly.structure.general.layers.leaves.parametric.gaussian import GaussianLayer as GaussianLayer
 
 leaf_node_classes = (
     Bernoulli,
@@ -93,6 +99,7 @@ leaf_node_classes = (
     Exponential,
     Gamma,
     Gaussian,
+    TorchGaussian,
     Geometric,
     Hypergeometric,
     LogNormal,
@@ -118,6 +125,7 @@ leaf_layer_classes = (
     ExponentialLayer,
     GammaLayer,
     GaussianLayer,
+    TorchGaussianLayer,
     GeometricLayer,
     HypergeometricLayer,
     LogNormalLayer,
@@ -164,11 +172,11 @@ def get_rat_spn_properties(rat_spn: RatSPN):
         # leaf node
         elif isinstance(layer, leaf_node_classes):
             n_leaf_nodes += 1
-            layers += list(layer.children())
+            layers += list(layer.children)
         # leaf layer
         elif isinstance(layer, leaf_layer_classes):
             n_leaf_nodes += layer.n_out
-            layers += list(layer.children())
+            layers += list(layer.children)
         else:
             raise TypeError(f"Encountered unknown layer of type {type(layer)}.")
 
@@ -398,7 +406,7 @@ class TestRatSpn(unittest.TestCase):
 
         self.assertTrue(isinstance(rat_spn.root_node, CondSumNode))
         self.assertTrue(isinstance(rat_spn.root_region, CondSumLayer))
-
+    """
     def test_rat_spn_backend_conversion_1(self):
 
         # create region graph
@@ -524,7 +532,34 @@ class TestRatSpn(unittest.TestCase):
                 self.assertTrue(torch.allclose(torch_module.std, torch_module.std))
 
             modules += list(zip(torch_module.children(), base_module.children))
+    """
 
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        random_variables = list(range(7))
+        scope = Scope(random_variables)
+        region_graph = random_region_graph(scope, depth=2, replicas=1)
+        feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
+
+        rat_spn = RatSPN(
+            region_graph,
+            feature_ctx,
+            n_root_nodes=1,
+            n_region_nodes=1,
+            n_leaf_nodes=1,
+        )
+
+        n_sum_nodes, n_product_nodes, n_leaf_nodes = get_rat_spn_properties(rat_spn)
+        #self.assertEqual(n_sum_nodes, 4)
+        #self.assertEqual(n_product_nodes, 6)
+        #self.assertEqual(n_leaf_nodes, 7)
+        for backend in backends:
+            tl.set_backend(backend)
+            rat_spn_updated = updateBackend(rat_spn)
+            n_sum_nodes_up, n_product_nodes_up, n_leaf_nodes_up = get_rat_spn_properties(rat_spn_updated)
+            self.assertEqual(n_sum_nodes,n_sum_nodes_up)
+            self.assertEqual(n_product_nodes,n_product_nodes_up)
+            self.assertEqual(n_leaf_nodes, n_leaf_nodes_up)
 
 if __name__ == "__main__":
     unittest.main()

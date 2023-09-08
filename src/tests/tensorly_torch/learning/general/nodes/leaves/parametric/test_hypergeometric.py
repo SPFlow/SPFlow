@@ -3,6 +3,8 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
+import pytest
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
@@ -14,6 +16,7 @@ from spflow.torch.learning import (
 )
 from spflow.torch.structure.spn import Hypergeometric#, ProductNode, SumNode
 from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.torch.structure.general.nodes.leaves.parametric.hypergeometric import updateBackend
 
 
 class TestNode(unittest.TestCase):
@@ -132,6 +135,56 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(torch.all(torch.tensor([l1.N, l1.M, l1.n]) == torch.tensor([10, 3, 5])))
         self.assertTrue(torch.all(torch.tensor([l2.N, l2.M, l2.n]) == torch.tensor([10, 3, 5])))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        leaf = Hypergeometric(Scope([0]), N=10, M=7, n=3)
+
+        # simulate data
+        data = np.random.hypergeometric(ngood=7, nbad=10 - 7, nsample=3, size=(10000, 1))
+
+        # perform MLE
+        maximum_likelihood_estimation(leaf, tl.tensor(data))
+
+        params = leaf.get_params()[0]
+        params2 = leaf.get_params()[1]
+        params3 = leaf.get_params()[2]
+
+        leaf = Hypergeometric(Scope([0]), N=10, M=7, n=3)
+        prod_node = ProductNode([leaf])
+        expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+        params_em = leaf.get_params()[0]
+        params_em2 = leaf.get_params()[1]
+        params_em3 = leaf.get_params()[2]
+
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            leaf = Hypergeometric(Scope([0]), N=10, M=7, n=3)
+            leaf_updated = updateBackend(leaf)
+            maximum_likelihood_estimation(leaf_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.isclose(leaf_updated.get_params()[0], params, atol=1e-2, rtol=1e-3))
+            self.assertTrue(np.isclose(leaf_updated.get_params()[1], params2, atol=1e-2, rtol=1e-3))
+            self.assertTrue(np.isclose(leaf_updated.get_params()[2], params3, atol=1e-2, rtol=1e-3))
+
+            leaf = Hypergeometric(Scope([0]), N=10, M=7, n=3)
+            leaf_updated = updateBackend(leaf)
+            prod_node = ProductNode([leaf_updated])
+            if tl.get_backend() != "pytorch":
+                with pytest.raises(NotImplementedError):
+                    expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+            else:
+                expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+                self.assertTrue(np.isclose(leaf_updated.get_params()[0], params_em, atol=1e-3, rtol=1e-2))
+                self.assertTrue(np.isclose(leaf_updated.get_params()[1], params_em2, atol=1e-3, rtol=1e-2))
+                self.assertTrue(np.isclose(leaf_updated.get_params()[2], params_em3, atol=1e-3, rtol=1e-2))
 
 
 if __name__ == "__main__":

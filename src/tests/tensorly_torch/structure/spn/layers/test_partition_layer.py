@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import Gaussian as BaseGaussian
 from spflow.base.structure.spn import PartitionLayer as BasePartitionLayer
@@ -12,7 +13,7 @@ from spflow.tensorly.structure import marginalize
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.tensorly.structure.spn import PartitionLayer
 from spflow.tensorly.structure.spn.layers.partition_layer import toLayerBased, toNodeBased
-from spflow.tensorly.structure.spn.layers_layerbased.partition_layer import toLayerBased, toNodeBased
+from spflow.tensorly.structure.spn.layers_layerbased.partition_layer import toLayerBased, toNodeBased, updateBackend
 
 from ...general.nodes.dummy_node import DummyNode
 
@@ -158,6 +159,25 @@ class TestNode(unittest.TestCase):
         self.assertEqual(node_based_partition_layer2.n_out, partition_layer.n_out)
         layer_based_partition_layer2 = toLayerBased(layer_based_partition_layer)
         self.assertEqual(layer_based_partition_layer2.n_out, partition_layer.n_out)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        partition_layer = PartitionLayer(
+            child_partitions=[
+                [Gaussian(Scope([0])), Gaussian(Scope([0]))],
+                [Gaussian(Scope([1]))],
+                [
+                    Gaussian(Scope([2])),
+                    Gaussian(Scope([2])),
+                    Gaussian(Scope([2])),
+                ],
+            ]
+        )
+        n_out = partition_layer.n_out
+        for backend in backends:
+            tl.set_backend(backend)
+            partition_layer_updated = updateBackend(partition_layer)
+            self.assertTrue(n_out == partition_layer_updated.n_out)
 
 
 if __name__ == "__main__":

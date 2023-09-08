@@ -305,7 +305,7 @@ class TestNode(unittest.TestCase):
 
         for l_value, l_dist in zip(reversed(l_values[:-1]), dist.rate):
             self.assertTrue(torch.allclose(torch.tensor(l_value).double(), l_dist))
-
+    """
     def test_layer_backend_conversion_1(self):
 
         torch_layer = ExponentialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
@@ -323,7 +323,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertTrue(np.allclose(base_layer.l, torch_layer.l.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
-
+    """
     def test_update_backend(self):
         backends = ["numpy", "pytorch"]
         exponential = ExponentialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])

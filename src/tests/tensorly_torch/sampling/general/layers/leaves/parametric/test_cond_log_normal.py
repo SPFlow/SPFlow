@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
@@ -10,6 +11,8 @@ from spflow.torch.inference import log_likelihood
 from spflow.torch.sampling import sample
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_log_normal import CondLogNormalLayer
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_log_normal import CondLogNormal
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_log_normal import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestNode(unittest.TestCase):
@@ -87,6 +90,59 @@ class TestNode(unittest.TestCase):
                 rtol=0.1,
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = CondLogNormalLayer(
+            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
+            cond_f=lambda data: {
+                "mean": [0.2, 1.8, 0.2],
+                "std": [0.01, 0.05, 0.01],
+            },
+        )
+
+        # get samples
+        samples = sample(
+            layer,
+            10000,
+            sampling_ctx=SamplingContext(
+                list(range(10000)),
+                [[0, 1] for _ in range(5000)] + [[2, 1] for _ in range(5000, 10000)],
+            ),
+        )
+        np_samples = tl_toNumpy(samples)
+        mean = np_samples.mean(axis=0)
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+
+            # for each backend update the model and draw the samples
+            layer_updated = updateBackend(layer)
+            samples_updated = sample(
+                layer_updated,
+                10000,
+                sampling_ctx=SamplingContext(
+                    list(range(10000)),
+                    [[0, 1] for _ in range(5000)] + [[2, 1] for _ in range(5000, 10000)],
+                ),
+            )
+            mean_updated = tl_toNumpy(samples_updated).mean(axis=0)
+
+            # check if model and updated model produce similar samples
+            self.assertTrue(
+                np.allclose(
+                    mean,
+                    mean_updated,
+                    atol=0.01,
+                    rtol=0.1,
+                )
+            )
 
 
 if __name__ == "__main__":

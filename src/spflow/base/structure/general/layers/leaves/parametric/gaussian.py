@@ -6,7 +6,8 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.spn.layers.leaves.parametric import GaussianLayer as GeneralGaussianLayer
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -319,3 +320,18 @@ def marginalize(
     else:
         new_layer = GaussianLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: GaussianLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralGaussianLayer(scope=leaf_node.scopes_out,
+        mean=leaf_node.mean.detach().numpy(),
+        std=leaf_node.std.detach().numpy(),)

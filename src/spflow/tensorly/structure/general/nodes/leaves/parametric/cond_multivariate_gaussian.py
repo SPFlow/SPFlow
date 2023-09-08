@@ -3,6 +3,7 @@
 from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 import tensorly as tl
+import numpy as np
 from ......utils.helper_functions import tl_isnan, tl_isinf, tl_eigvalsh
 from scipy.stats import multivariate_normal  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
@@ -248,7 +249,7 @@ class CondMultivariateGaussian(LeafNode):
             raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' may not contain NaN values.")
 
         # test covariance matrix for symmetry
-        if not tl.all(cov == tl.transpose(cov)):
+        if not np.all((cov == np.transpose(cov))):
             raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' must be symmetric.")
 
         # test covariance matrix for positive semi-definiteness

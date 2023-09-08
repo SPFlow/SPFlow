@@ -379,6 +379,7 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(torch.tensor(alpha_value), alpha_dist))
             self.assertTrue(torch.allclose(torch.tensor(beta_value), beta_dist))
 
+    """
     def test_layer_backend_conversion_1(self):
 
         torch_layer = GammaLayer(
@@ -406,7 +407,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.allclose(base_layer.alpha, torch_layer.alpha.detach().numpy()))
         self.assertTrue(np.allclose(base_layer.beta, torch_layer.beta.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
-
+    """
     def test_update_backend(self):
         backends = ["numpy", "pytorch"]
         gamma = GammaLayer(scope=[Scope([0]), Scope([1]), Scope([0])],

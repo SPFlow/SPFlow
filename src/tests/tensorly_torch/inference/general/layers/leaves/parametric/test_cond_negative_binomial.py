@@ -2,12 +2,16 @@ import random
 import unittest
 
 import torch
+import tensorly as tl
+import numpy as np
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_negative_binomial import CondNegativeBinomialLayer
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_negative_binomial import CondNegativeBinomial
+from spflow.torch.structure.general.layers.leaves.parametric.cond_negative_binomial import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestNode(unittest.TestCase):
@@ -147,6 +151,25 @@ class TestNode(unittest.TestCase):
     def test_support(self):
         # TODO
         pass
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        cond_f = lambda data: {"p": [1.0, 1.0]}
+
+        negative_binomial = CondNegativeBinomialLayer(Scope([0], [1]), n=2, n_nodes=2, cond_f=cond_f)
+
+        # create test inputs/outputs
+        data = torch.tensor([[0.0], [1.0]])
+
+        log_probs = log_likelihood(negative_binomial, data)
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            layer_updated = updateBackend(negative_binomial)
+            log_probs_updated = log_likelihood(layer_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

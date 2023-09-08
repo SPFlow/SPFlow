@@ -5,8 +5,9 @@ from typing import Iterable, List, Optional, Tuple, Type, Union
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
+from spflow.tensorly.structure.spn.layers.leaves.parametric import BinomialLayer as GeneralBinomialLayer
 from spflow.base.structure.general.nodes.leaves.parametric.binomial import Binomial
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -16,7 +17,6 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-
 
 class BinomialLayer(Module):
     r"""Layer of multiple (univariate) Binomial distribution leaf nodes in the ``base`` backend.
@@ -318,3 +318,16 @@ def marginalize(
     else:
         new_layer = BinomialLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: BinomialLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralBinomialLayer(scope=leaf_node.scopes_out,n=leaf_node.n, p=leaf_node.p)

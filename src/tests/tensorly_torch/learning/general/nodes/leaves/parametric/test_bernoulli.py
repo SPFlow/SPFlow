@@ -2,7 +2,9 @@ import random
 import unittest
 
 import numpy as np
+import pytest
 import torch
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
@@ -14,6 +16,7 @@ from spflow.torch.learning import (
 )
 from spflow.torch.structure.spn import Bernoulli#, ProductNode, SumNode
 from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import updateBackend
 
 class TestNode(unittest.TestCase):
     @classmethod
@@ -277,6 +280,48 @@ class TestNode(unittest.TestCase):
         p_em = (sum_node.weights * torch.tensor([l1.p, l2.p])).sum()
 
         self.assertTrue(torch.isclose(p_opt, p_em))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        leaf = Bernoulli(Scope([0]))
+
+        # simulate data
+        data = np.random.binomial(n=1, p=0.3, size=(10000, 1))
+
+        # perform MLE
+        maximum_likelihood_estimation(leaf, tl.tensor(data))
+
+        params = leaf.get_params()[0]
+
+        leaf = Bernoulli(Scope([0]))
+        prod_node = ProductNode([leaf])
+        expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+        params_em = leaf.get_params()[0]
+
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            leaf = Bernoulli(Scope([0]))
+            leaf_updated = updateBackend(leaf)
+            maximum_likelihood_estimation(leaf_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.isclose(leaf_updated.get_params()[0], params, atol=1e-2, rtol=1e-3))
+
+            leaf = Bernoulli(Scope([0]))
+            leaf_updated = updateBackend(leaf)
+            prod_node = ProductNode([leaf_updated])
+            if tl.get_backend() != "pytorch":
+                with pytest.raises(NotImplementedError):
+                    expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+            else:
+                expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+                self.assertTrue(np.isclose(leaf_updated.get_params()[0], params_em, atol=1e-3, rtol=1e-2))
 
 
 if __name__ == "__main__":

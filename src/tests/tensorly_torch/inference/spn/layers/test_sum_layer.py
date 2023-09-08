@@ -1,6 +1,8 @@
 import unittest
 
 import torch
+import tensorly as tl
+import numpy as np
 
 from spflow.meta.data import Scope
 from spflow.tensorly.inference import log_likelihood
@@ -9,6 +11,8 @@ from spflow.tensorly.structure.spn.nodes.sum_node import toLayerBased
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.tensorly.inference.spn.nodes.sum_node import log_likelihood
 from spflow.tensorly.structure.spn.layers_layerbased.sum_layer import toLayerBased
+from spflow.tensorly.structure.spn.nodes.sum_node import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 class TestNode(unittest.TestCase):
     @classmethod
@@ -204,6 +208,41 @@ class TestNode(unittest.TestCase):
                 rtol=1e-3,
             )
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        input_nodes = [
+            Gaussian(Scope([0])),
+            Gaussian(Scope([0])),
+            Gaussian(Scope([0])),
+        ]
+
+        layer_spn = SumNode(
+            children=[
+                SumLayer(
+                    n_nodes=3,
+                    children=input_nodes,
+                    weights=[[0.8, 0.1, 0.1], [0.2, 0.3, 0.5], [0.2, 0.7, 0.1]],
+                ),
+            ],
+            weights=[0.3, 0.4, 0.3],
+        )
+        dummy_data = tl.tensor(
+            [
+                [1.0],
+                [
+                    0.0,
+                ],
+                [0.25],
+            ]
+        )
+
+        layer_ll = log_likelihood(layer_spn, dummy_data)
+        for backend in backends:
+            tl.set_backend(backend)
+            layer_updated = updateBackend(layer_spn)
+            layer_ll_updated = log_likelihood(layer_updated, tl.tensor(dummy_data))
+            self.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(layer_ll_updated)))
 
 
 

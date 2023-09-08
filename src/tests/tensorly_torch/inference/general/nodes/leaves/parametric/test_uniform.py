@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Uniform as BaseUniform
@@ -10,6 +11,8 @@ from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
 #from spflow.torch.structure.spn import Uniform
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_uniform import Uniform
+from spflow.torch.structure.general.nodes.leaves.parametric.uniform import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestUniform(unittest.TestCase):
@@ -148,6 +151,45 @@ class TestUniform(unittest.TestCase):
             uniform,
             torch.tensor([[torch.nextafter(torch.tensor(2.0), torch.tensor(3.0))]]),
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        start = random.random()
+        end = start + 1e-7 + random.random()
+
+        uniform = Uniform(Scope([0]), start, end)
+
+        # create test inputs/outputs
+        """
+        data_np = np.array(
+            [
+                [np.nextafter(start, -np.inf)],
+                [start],
+                [(start + end) / 2.0],
+                [end],
+                [np.nextafter(end, np.inf)],
+            ]
+        )
+        """
+        data_torch = torch.tensor(
+            [
+                [torch.nextafter(torch.tensor(start), -torch.tensor(float("Inf")))],
+                [start],
+                [(start + end) / 2.0],
+                [end],
+                [torch.nextafter(torch.tensor(end), torch.tensor(float("Inf")))],
+            ]
+        )
+
+        log_probs = log_likelihood(uniform, data_torch)
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            uniform_updated = updateBackend(uniform)
+            log_probs_updated = log_likelihood(uniform_updated, tl.tensor(data_torch, dtype=tl.float64))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

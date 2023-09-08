@@ -104,6 +104,6 @@ def log_likelihood(
         # compute probabilities for values inside distribution support
         log_prob[torch.meshgrid(non_marg_ids, node_ids_tensor, indexing="ij")] = layer.dist(
             alpha=alpha, beta=beta, node_ids=node_ids
-        ).log_prob(scope_data[non_marg_ids, :].type(torch.get_default_dtype()))
+        ).log_prob(scope_data[non_marg_ids, :].type(torch.get_default_dtype())).type(torch.get_default_dtype())
 
     return log_prob

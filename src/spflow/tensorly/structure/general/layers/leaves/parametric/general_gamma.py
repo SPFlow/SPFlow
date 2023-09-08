@@ -13,8 +13,8 @@ class GammaLayer:
         beta: Union[int, float, List[float], T] = 1.0,
         n_nodes: int = 1,
         **kwargs):
-        from spflow.tensorly.structure.general.layers.leaves import GammaLayer as TensorlyGamma
-        from spflow.torch.structure.general.layers.leaves import GammaLayer as TorchGamma
+        from spflow.base.structure.general.layers.leaves.parametric.gamma import GammaLayer as TensorlyGamma
+        from spflow.torch.structure.general.layers.leaves.parametric.gamma import GammaLayer as TorchGamma
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -26,8 +26,8 @@ class GammaLayer:
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import GammaLayer as TensorlyGamma
-        from spflow.torch.structure.general.layers.leaves import GammaLayer as TorchGamma
+        from spflow.base.structure.general.layers.leaves.parametric.gamma import GammaLayer as TensorlyGamma
+        from spflow.torch.structure.general.layers.leaves.parametric.gamma import GammaLayer as TorchGamma
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyGamma.accepts(signatures)
@@ -38,8 +38,8 @@ class GammaLayer:
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import GammaLayer as TensorlyGamma
-        from spflow.torch.structure.general.layers.leaves import GammaLayer as TorchGamma
+        from spflow.base.structure.general.layers.leaves.parametric.gamma import GammaLayer as TensorlyGamma
+        from spflow.torch.structure.general.layers.leaves.parametric.gamma import GammaLayer as TorchGamma
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyGamma.from_signatures(signatures)

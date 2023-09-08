@@ -103,6 +103,7 @@ class ExponentialLayer(Module):
 
         # parse weights
         self.set_params(l)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:

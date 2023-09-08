@@ -13,8 +13,8 @@ class LogNormalLayer:  # ToDo: backend über tl.getBackend() abfragen
         std: Union[int, float, List[float], T] = 1.0,
         n_nodes: int = 1,
         **kwargs):
-        from spflow.tensorly.structure.general.layers.leaves import LogNormalLayer as TensorlyLogNormal
-        from spflow.torch.structure.general.layers.leaves import LogNormalLayer as TorchLogNormal
+        from spflow.base.structure.general.layers.leaves.parametric.log_normal import LogNormalLayer as TensorlyLogNormal
+        from spflow.torch.structure.general.layers.leaves.parametric.log_normal import LogNormalLayer as TorchLogNormal
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -26,8 +26,8 @@ class LogNormalLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import LogNormalLayer as TensorlyLogNormal
-        from spflow.torch.structure.general.layers.leaves import LogNormalLayer as TorchLogNormal
+        from spflow.base.structure.general.layers.leaves.parametric.log_normal import LogNormalLayer as TensorlyLogNormal
+        from spflow.torch.structure.general.layers.leaves.parametric.log_normal import LogNormalLayer as TorchLogNormal
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyLogNormal.accepts(signatures)
@@ -38,8 +38,8 @@ class LogNormalLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import LogNormalLayer as TensorlyLogNormal
-        from spflow.torch.structure.general.layers.leaves import LogNormalLayer as TorchLogNormal
+        from spflow.base.structure.general.layers.leaves.parametric.log_normal import LogNormalLayer as TensorlyLogNormal
+        from spflow.torch.structure.general.layers.leaves.parametric.log_normal import LogNormalLayer as TorchLogNormal
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyLogNormal.from_signatures(signatures)

@@ -1,16 +1,21 @@
 """Contains Hypergeometric leaf node for SPFlow in the ``base`` backend.
 """
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import numpy as np
 from scipy.stats import hypergeom  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
+from spflow.tensorly.structure.spn.nodes.leaves.parametric import Hypergeometric as GeneralHypergeometric
 from spflow.base.structure.general.nodes.leaf_node import LeafNode
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
-
+from spflow.meta.dispatch.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.dispatch.dispatch import dispatch
 
 class Hypergeometric(LeafNode):
     r"""(Univariate) Hypergeometric distribution leaf node in the 'base' backend.
@@ -220,3 +225,16 @@ class Hypergeometric(LeafNode):
         )
 
         return valid
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: Hypergeometric, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralHypergeometric(scope=leaf_node.scope, N=leaf_node.N, M=leaf_node.M, n=leaf_node.n)

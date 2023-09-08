@@ -118,7 +118,8 @@ class PartitionLayer(NestedModule):
             self.nodes.append(ProductNode(children=[ph]))
 
         self._n_out = len(self.nodes)
-        self.scope = scope
+        #self.scope = scope
+        self.scope = Scope([int(x) for x in scope.query], scope.evidence)
 
     @property
     def n_out(self) -> int:
