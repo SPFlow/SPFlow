@@ -3,12 +3,14 @@
 from typing import Callable, Iterable, List, Optional, Tuple, Type, Union
 
 import numpy as np
+import tensorly as tl
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.base.structure.general.nodes.leaves.parametric.cond_geometric import (
     CondGeometric,
 )
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.module import Module
+from spflow.tensorly.structure.spn.layers.leaves.parametric import CondGeometricLayer as GeneralCondGeometricLayer
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -336,3 +338,23 @@ def marginalize(
     else:
         new_layer = CondGeometricLayer(marg_scopes)
         return new_layer
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: CondGeometricLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    data = tl.tensor([])
+    params = leaf_node.cond_f(data)
+
+    for key in leaf_node.cond_f(params):
+        # Update the value for each key
+        params[key] = tl.tensor(params[key])
+    cond_f = lambda data: params
+    return GeneralCondGeometricLayer(scope=leaf_node.scopes_out, cond_f=cond_f)

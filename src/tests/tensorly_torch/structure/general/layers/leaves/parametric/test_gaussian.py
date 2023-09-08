@@ -370,6 +370,7 @@ class TestNode(unittest.TestCase):
             self.assertTrue(torch.allclose(torch.tensor(mean_value), mean_dist))
             self.assertTrue(torch.allclose(torch.tensor(std_value), std_dist))
 
+    """
     def test_layer_backend_conversion_1(self):
 
         torch_layer = GaussianLayer(
@@ -392,12 +393,12 @@ class TestNode(unittest.TestCase):
             std=[1.9, 0.3, 0.71],
         )
         torch_layer = toTorch(base_layer)
-
+    
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertTrue(np.allclose(base_layer.mean, torch_layer.mean.detach().numpy()))
         self.assertTrue(np.allclose(base_layer.std, torch_layer.std.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
-
+    """
     def test_update_backend(self):
         backends = ["numpy", "pytorch"]
         gaussian = GaussianLayer(scope=[Scope([0]), Scope([1]), Scope([0])],

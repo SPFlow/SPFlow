@@ -2,7 +2,9 @@ import random
 import unittest
 
 import numpy as np
+import pytest
 import torch
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
@@ -14,6 +16,8 @@ from spflow.torch.learning import (
 )
 from spflow.torch.structure.spn import LogNormalLayer#, ProductNode, SumNode
 from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
+from spflow.torch.structure.general.layers.leaves.parametric.log_normal import updateBackend
 
 
 class TestNode(unittest.TestCase):
@@ -283,6 +287,60 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(torch.allclose(layer.mean, torch.tensor([2.0, -2.0]), atol=1e-2, rtol=1e-1))
         self.assertTrue(torch.allclose(layer.std, torch.tensor([1.0, 1.0]), atol=1e-2, rtol=1e-1))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = LogNormalLayer(scope=[Scope([0]), Scope([1])])
+
+        # simulate data
+        data = np.hstack(
+            [
+                np.random.lognormal(mean=-1.7, sigma=0.2, size=(20000, 1)),
+                np.random.lognormal(mean=0.5, sigma=1.3, size=(20000, 1)),
+            ]
+        )
+
+        # perform MLE
+        maximum_likelihood_estimation(layer, tl.tensor(data))
+
+        mean = tl_toNumpy(layer.mean)
+        std = tl_toNumpy(layer.std)
+
+        layer = LogNormalLayer(scope=[Scope([0]), Scope([1])])
+        prod_node = ProductNode([layer])
+        expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+        mean_em = tl_toNumpy(layer.mean)
+        std_em = tl_toNumpy(layer.std)
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            layer = LogNormalLayer(scope=[Scope([0]), Scope([1])])
+            layer_updated = updateBackend(layer)
+            maximum_likelihood_estimation(layer_updated, tl.tensor(data))
+            # check conversion from torch to python
+            mean_updated = tl_toNumpy(layer_updated.mean)
+            std_updated = tl_toNumpy(layer_updated.std)
+            self.assertTrue(np.allclose(mean, mean_updated, atol=1e-2, rtol=1e-1))
+            self.assertTrue(np.allclose(std, std_updated, atol=1e-2, rtol=1e-1))
+
+            layer = LogNormalLayer(scope=[Scope([0]), Scope([1])])
+            layer_updated = updateBackend(layer)
+            prod_node = ProductNode([layer_updated])
+            if tl.get_backend() != "pytorch":
+                with pytest.raises(NotImplementedError):
+                    expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+            else:
+                expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+                mean_em_updated = tl_toNumpy(layer_updated.mean)
+                std_em_updated = tl_toNumpy(layer_updated.std)
+                self.assertTrue(np.allclose(mean_em, mean_em_updated, atol=1e-2, rtol=1e-1))
+                self.assertTrue(np.allclose(std_em, std_em_updated, atol=1e-2, rtol=1e-1))
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import unittest
 import numpy as np
 import torch
 from packaging import version
+import tensorly as tl
 
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import CondGamma as BaseCondGamma
@@ -12,6 +13,8 @@ from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
 #from spflow.torch.structure.spn import CondGamma
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gamma import CondGamma
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_gamma import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestGamma(unittest.TestCase):
@@ -176,6 +179,26 @@ class TestGamma(unittest.TestCase):
             gamma,
             torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        alpha = torch.tensor(random.randint(1, 5), dtype=torch.get_default_dtype())
+        beta = torch.tensor(random.randint(1, 5), dtype=torch.get_default_dtype())
+
+        gamma = CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta})
+
+        # create dummy input data (batch size x random variables)
+        data = np.random.rand(3, 1)
+
+        log_probs = log_likelihood(gamma, tl.tensor(data))
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            gamma_updated = updateBackend(gamma)
+            log_probs_updated = log_likelihood(gamma_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

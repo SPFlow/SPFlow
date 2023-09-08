@@ -12,6 +12,8 @@ from spflow.meta.data import Scope
 from spflow.tensorly.structure.spn import ProductNode, SumNode
 from spflow.tensorly.structure import marginalize
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
+from spflow.tensorly.structure.spn.nodes.product_node import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 from ...general.nodes.dummy_node import DummyNode
 
@@ -255,6 +257,52 @@ class TestTorchNode(unittest.TestCase):
             )
         )
     """
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        weights_1: np.array = np.random.rand(2)
+        weights_1 /= weights_1.sum()
+
+        weights_2: np.array = np.random.rand(1)
+        weights_2 /= weights_2.sum()
+
+        # INode graph
+        graph = ProductNode(
+            [
+                SumNode(
+                    [Gaussian(Scope([0])), Gaussian(Scope([0]))],
+                    weights=tl.tensor(weights_1),
+                ),
+                SumNode([Gaussian(Scope([1]))], weights=tl.tensor(weights_2)),
+            ]
+        )
+        p_out = graph.scopes_out
+        s1_out = graph.children[0].scopes_out
+        s2_out = graph.children[1].scopes_out
+        for backend in backends:
+            tl.set_backend(backend)
+            graph_updated = updateBackend(graph)
+            p_out_updated = graph_updated.scopes_out
+            s1_out_updated = graph_updated.children[0].scopes_out
+            s2_out_updated = graph_updated.children[1].scopes_out
+            self.assertTrue(p_out == p_out_updated)
+            self.assertTrue(s1_out == s1_out_updated)
+            self.assertTrue(s2_out == s2_out_updated)
+            # check conversion from torch to python
+            weights_1_up = graph.children[0].weights
+            weights_2_up = graph.children[1].weights
+            self.assertTrue(
+                np.allclose(
+                    weights_1,
+                    tl_toNumpy(weights_1_up)
+                )
+            )
+            self.assertTrue(
+                np.allclose(
+                    weights_2,
+                    tl_toNumpy(weights_2_up)
+                )
+            )
 
 if __name__ == "__main__":
     unittest.main()

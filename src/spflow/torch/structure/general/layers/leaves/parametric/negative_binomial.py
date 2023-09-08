@@ -112,6 +112,7 @@ class NegativeBinomialLayer(Module):
 
         # parse weights
         self.set_params(n, p)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:

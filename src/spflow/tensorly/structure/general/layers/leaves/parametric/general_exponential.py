@@ -13,8 +13,8 @@ class ExponentialLayer:  # ToDo: backend über tl.getBackend() abfragen
         l: Union[int, float, List[float], T] = 1.0,
         n_nodes: int = 1,
         **kwargs):
-        from spflow.tensorly.structure.general.layers.leaves import ExponentialLayer as TensorlyExponential
-        from spflow.torch.structure.general.layers.leaves import ExponentialLayer as TorchExponential
+        from spflow.base.structure.general.layers.leaves.parametric.exponential import ExponentialLayer as TensorlyExponential
+        from spflow.torch.structure.general.layers.leaves.parametric.exponential import ExponentialLayer as TorchExponential
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -26,8 +26,8 @@ class ExponentialLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import ExponentialLayer as TensorlyExponential
-        from spflow.torch.structure.general.layers.leaves import ExponentialLayer as TorchExponential
+        from spflow.base.structure.general.layers.leaves.parametric.exponential import ExponentialLayer as TensorlyExponential
+        from spflow.torch.structure.general.layers.leaves.parametric.exponential import ExponentialLayer as TorchExponential
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyExponential.accepts(signatures)
@@ -38,8 +38,8 @@ class ExponentialLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import ExponentialLayer as TensorlyExponential
-        from spflow.torch.structure.general.layers.leaves import ExponentialLayer as TorchExponential
+        from spflow.base.structure.general.layers.leaves.parametric.exponential import ExponentialLayer as TensorlyExponential
+        from spflow.torch.structure.general.layers.leaves.parametric.exponential import ExponentialLayer as TorchExponential
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyExponential.from_signatures(signatures)

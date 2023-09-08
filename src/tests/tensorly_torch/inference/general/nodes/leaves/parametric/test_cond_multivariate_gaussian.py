@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.inference import log_likelihood
 from spflow.base.structure.spn import (
@@ -12,6 +13,8 @@ from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.inference import likelihood, log_likelihood
 from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 #from spflow.torch.structure.spn import (
 #    CondGaussian,
 #    CondMultivariateGaussian,
@@ -236,6 +239,29 @@ class TestMultivariateGaussian(unittest.TestCase):
             multivariate_gaussian,
             torch.tensor([[0.0, float("inf")]]),
         )
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        mean = np.arange(3)
+        cov = np.array([[2, 2, 1], [2, 3, 2], [1, 2, 3]])
+
+        multivariate_gaussian = CondMultivariateGaussian(
+            Scope([0, 1, 2], [3]),
+            cond_f=lambda data: {"mean": mean, "cov": cov},
+        )
+
+        # create dummy input data (batch size x random variables)
+        data = np.random.rand(3, 3)
+
+        log_probs = log_likelihood(multivariate_gaussian, tl.tensor(data))
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            multivariate_gaussian_updated = updateBackend(multivariate_gaussian)
+            log_probs_updated = log_likelihood(multivariate_gaussian_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

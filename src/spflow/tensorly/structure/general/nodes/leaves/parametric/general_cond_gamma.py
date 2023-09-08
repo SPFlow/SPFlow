@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class CondGamma:  # ToDo: backend über tl.getBackend() abfragen
     def __new__(cls, scope: Scope, cond_f: Optional[Callable] = None):
-        from spflow.tensorly.structure.general.nodes.leaves import CondGamma as TensorlyCondGamma
-        from spflow.torch.structure.general.nodes.leaves import CondGamma as TorchCondGamma
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma as TensorlyCondGamma
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma as TorchCondGamma
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class CondGamma:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves import CondGamma as TensorlyCondGamma
-        from spflow.torch.structure.general.nodes.leaves import CondGamma as TorchCondGamma
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma as TensorlyCondGamma
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma as TorchCondGamma
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondGamma.accepts(signatures)
@@ -34,8 +34,8 @@ class CondGamma:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves import CondGamma as TensorlyCondGamma
-        from spflow.torch.structure.general.nodes.leaves import CondGamma as TorchCondGamma
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma as TensorlyCondGamma
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_gamma import CondGamma as TorchCondGamma
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondGamma.from_signatures(signatures)

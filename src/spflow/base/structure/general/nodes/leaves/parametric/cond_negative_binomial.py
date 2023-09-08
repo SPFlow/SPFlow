@@ -3,15 +3,20 @@
 from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
+import tensorly as tl
 from scipy.stats import nbinom  # type: ignore
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
+from spflow.tensorly.structure.spn.nodes.leaves.parametric import CondNegativeBinomial as GeneralCondNegativeBinomial
 from spflow.base.structure.general.nodes.leaf_node import LeafNode
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch.dispatch_context import DispatchContext
-
+from spflow.meta.dispatch.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
+from spflow.meta.dispatch.dispatch import dispatch
 
 class CondNegativeBinomial(LeafNode):
     r"""Conditional (univariate) Negative Binomial distribution leaf node in the ``base`` backend.
@@ -268,3 +273,23 @@ class CondNegativeBinomial(LeafNode):
         valid[valid & ~nan_mask] &= scope_data[valid & ~nan_mask] >= 0
 
         return valid
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: CondNegativeBinomial, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    data = tl.tensor([])
+    params = leaf_node.cond_f(data)
+
+    for key in leaf_node.cond_f(params):
+        # Update the value for each key
+        params[key] = tl.tensor(params[key])
+    cond_f = lambda data: params
+    return GeneralCondNegativeBinomial(scope=leaf_node.scope, n=leaf_node.n, cond_f=cond_f)

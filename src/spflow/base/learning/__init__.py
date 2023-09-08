@@ -1,4 +1,5 @@
 # ---- sub-packages -----
+"""
 from . import spn
 from .general.layers.leaves.parametric.bernoulli import maximum_likelihood_estimation
 from .general.layers.leaves.parametric.binomial import maximum_likelihood_estimation
@@ -38,5 +39,5 @@ from .general.nodes.leaves.parametric.negative_binomial import (
 )
 from .general.nodes.leaves.parametric.poisson import maximum_likelihood_estimation
 from .general.nodes.leaves.parametric.uniform import maximum_likelihood_estimation
-
+"""
 # ---- specific imports

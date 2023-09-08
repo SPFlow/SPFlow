@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class CondLogNormal:  # ToDo: backend über tl.getBackend() abfragen
     def __new__(cls, scope: Scope, cond_f: Optional[Callable] = None):
-        from spflow.tensorly.structure.general.nodes.leaves import CondLogNormal as TensorlyCondLogNormal
-        from spflow.torch.structure.general.nodes.leaves import CondLogNormal as TorchCondLogNormal
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_log_normal import CondLogNormal as TensorlyCondLogNormal
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_log_normal import CondLogNormal as TorchCondLogNormal
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class CondLogNormal:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves import CondLogNormal as TensorlyCondLogNormal
-        from spflow.torch.structure.general.nodes.leaves import CondLogNormal as TorchCondLogNormal
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_log_normal import CondLogNormal as TensorlyCondLogNormal
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_log_normal import CondLogNormal as TorchCondLogNormal
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondLogNormal.accepts(signatures)
@@ -34,8 +34,8 @@ class CondLogNormal:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves import CondLogNormal as TensorlyCondLogNormal
-        from spflow.torch.structure.general.nodes.leaves import CondLogNormal as TorchCondLogNormal
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_log_normal import CondLogNormal as TensorlyCondLogNormal
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_log_normal import CondLogNormal as TorchCondLogNormal
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondLogNormal.from_signatures(signatures)

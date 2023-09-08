@@ -4,6 +4,7 @@ from typing import Callable, List, Optional, Tuple, Type, Union
 
 import torch
 import torch.distributions as D
+import tensorly as tl
 
 from spflow.base.structure.general.nodes.leaves.parametric.cond_bernoulli import (
     CondBernoulli as BaseCondBernoulli,
@@ -60,6 +61,7 @@ class CondBernoulli(LeafNode):
         super().__init__(scope=scope)
 
         self.set_cond_f(cond_f)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -285,4 +287,11 @@ def updateBackend(leaf_node: CondBernoulli, dispatch_ctx: Optional[DispatchConte
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralCondBernoulli(scope=leaf_node.scope)
+    data = tl.tensor([])
+    params = leaf_node.cond_f(data)
+
+    for key in leaf_node.cond_f(params):
+        # Update the value for each key
+        params[key] = tl.tensor(params[key])
+    cond_f = lambda data: params
+    return GeneralCondBernoulli(scope=leaf_node.scope, cond_f=cond_f)

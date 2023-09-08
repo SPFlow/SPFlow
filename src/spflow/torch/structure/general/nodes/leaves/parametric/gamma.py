@@ -71,6 +71,7 @@ class Gamma(LeafNode):
             raise ValueError(f"Evidence scope for 'Gamma' should be empty, but was {scope.evidence}.")
 
         super().__init__(scope=scope)
+        self.backend = "pytorch"
 
         # register auxiliary torch parameters for alpha and beta
         self.alpha_aux = Parameter()

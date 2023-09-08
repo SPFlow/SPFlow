@@ -2,7 +2,9 @@ import random
 import unittest
 
 import numpy as np
+import pytest
 import torch
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
@@ -14,6 +16,8 @@ from spflow.torch.learning import (
 )
 from spflow.torch.structure.spn import HypergeometricLayer#, ProductNode, SumNode
 from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
+from spflow.torch.structure.general.layers.leaves.parametric.hypergeometric import updateBackend
 
 
 class TestNode(unittest.TestCase):
@@ -149,6 +153,67 @@ class TestNode(unittest.TestCase):
         self.assertTrue(torch.all(layer.N == torch.tensor([10, 10])))
         self.assertTrue(torch.all(layer.M == torch.tensor([3, 3])))
         self.assertTrue(torch.all(layer.n == torch.tensor([5, 5])))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=[10, 4], M=[7, 2], n=[3, 2])
+
+        # simulate data
+        data = np.hstack(
+            [
+                np.random.hypergeometric(ngood=7, nbad=10 - 7, nsample=3, size=(1000, 1)),
+                np.random.hypergeometric(ngood=2, nbad=4 - 2, nsample=2, size=(1000, 1)),
+            ]
+        )
+
+        # perform MLE
+        maximum_likelihood_estimation(layer, tl.tensor(data))
+
+        M = tl_toNumpy(layer.M)
+        N = tl_toNumpy(layer.N)
+        n = tl_toNumpy(layer.n)
+
+        layer = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=[10, 4], M=[7, 2], n=[3, 2])
+        prod_node = ProductNode([layer])
+        expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+        M_em = tl_toNumpy(layer.M)
+        N_em = tl_toNumpy(layer.N)
+        n_em = tl_toNumpy(layer.n)
+
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            layer = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=[10, 4], M=[7, 2], n=[3, 2])
+            layer_updated = updateBackend(layer)
+            maximum_likelihood_estimation(layer_updated, tl.tensor(data))
+            # check conversion from torch to python
+            M_updated = tl_toNumpy(layer_updated.M)
+            N_updated = tl_toNumpy(layer_updated.N)
+            n_updated = tl_toNumpy(layer_updated.n)
+            self.assertTrue(np.allclose(M, M_updated, atol=1e-2, rtol=1e-1))
+            self.assertTrue(np.allclose(N, N_updated, atol=1e-2, rtol=1e-1))
+            self.assertTrue(np.allclose(n, n_updated, atol=1e-2, rtol=1e-1))
+
+            layer = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=[10, 4], M=[7, 2], n=[3, 2])
+            layer_updated = updateBackend(layer)
+            prod_node = ProductNode([layer_updated])
+            if tl.get_backend() != "pytorch":
+                with pytest.raises(NotImplementedError):
+                    expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+            else:
+                expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+                M_em_updated = tl_toNumpy(layer_updated.M)
+                N_em_updated = tl_toNumpy(layer_updated.N)
+                n_em_updated = tl_toNumpy(layer_updated.n)
+                self.assertTrue(np.allclose(M_em, M_em_updated, atol=1e-2, rtol=1e-1))
+                self.assertTrue(np.allclose(N_em, N_em_updated, atol=1e-2, rtol=1e-1))
+                self.assertTrue(np.allclose(n_em, n_em_updated, atol=1e-2, rtol=1e-1))
 
 
 if __name__ == "__main__":

@@ -75,6 +75,7 @@ class Gaussian(LeafNode):
 
         # set parameters
         self.set_params(mean, std)
+        self.backend = "pytorch"
 
     @property
     def std(self) -> torch.Tensor:

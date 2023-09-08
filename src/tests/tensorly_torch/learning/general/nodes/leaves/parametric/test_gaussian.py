@@ -3,6 +3,8 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
+import pytest
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
@@ -14,6 +16,7 @@ from spflow.torch.learning import (
 )
 from spflow.torch.structure.spn import Gaussian#, ProductNode, SumNode
 from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import updateBackend
 
 
 class TestNode(unittest.TestCase):
@@ -284,6 +287,52 @@ class TestNode(unittest.TestCase):
         self.assertTrue(torch.isclose(l2.mean, torch.tensor(-2.0), atol=1e-3, rtol=1e-3))
         self.assertTrue(torch.isclose(l2.std, torch.tensor(1.0), atol=1e-2, rtol=1e-2))
         self.assertTrue(torch.allclose(sum_node.weights, torch.tensor([0.5, 0.5]), atol=1e-3, rtol=1e-2))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        leaf = Gaussian(Scope([0]))
+
+        # simulate data
+        data = np.random.normal(loc=-1.7, scale=0.2, size=(10000, 1))
+
+        # perform MLE
+        maximum_likelihood_estimation(leaf, tl.tensor(data))
+
+        params = leaf.get_params()[0]
+        params2 = leaf.get_params()[1]
+
+        leaf = Gaussian(Scope([0]))
+        prod_node = ProductNode([leaf])
+        expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+        params_em = leaf.get_params()[0]
+        params_em2 = leaf.get_params()[1]
+
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            leaf = Gaussian(Scope([0]))
+            leaf_updated = updateBackend(leaf)
+            maximum_likelihood_estimation(leaf_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.isclose(leaf_updated.get_params()[0], params, atol=1e-2, rtol=1e-3))
+            self.assertTrue(np.isclose(leaf_updated.get_params()[1], params2, atol=1e-2, rtol=1e-3))
+
+            leaf = Gaussian(Scope([0]))
+            leaf_updated = updateBackend(leaf)
+            prod_node = ProductNode([leaf_updated])
+            if tl.get_backend() != "pytorch":
+                with pytest.raises(NotImplementedError):
+                    expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+            else:
+                expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+                self.assertTrue(np.isclose(leaf_updated.get_params()[0], params_em, atol=1e-3, rtol=1e-2))
+                self.assertTrue(np.isclose(leaf_updated.get_params()[1], params_em2, atol=1e-3, rtol=1e-2))
 
 
 if __name__ == "__main__":

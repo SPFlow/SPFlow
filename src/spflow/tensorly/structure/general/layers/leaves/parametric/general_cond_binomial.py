@@ -13,8 +13,8 @@ class CondBinomialLayer:  # ToDo: backend über tl.getBackend() abfragen
         cond_f: Optional[Union[Callable, List[Callable]]] = None,
         n_nodes: int = 1,
         **kwargs):
-        from spflow.tensorly.structure.general.layers.leaves import CondBinomialLayer as TensorlyCondBinomial
-        from spflow.torch.structure.general.layers.leaves import CondBinomialLayer as TorchCondBinomial
+        from spflow.base.structure.general.layers.leaves.parametric.cond_binomial import CondBinomialLayer as TensorlyCondBinomial
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_binomial import CondBinomialLayer as TorchCondBinomial
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -26,8 +26,8 @@ class CondBinomialLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import CondBinomialLayer as TensorlyCondBinomial
-        from spflow.torch.structure.general.layers.leaves import CondBinomialLayer as TorchCondBinomial
+        from spflow.base.structure.general.layers.leaves.parametric.cond_binomial import CondBinomialLayer as TensorlyCondBinomial
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_binomial import CondBinomialLayer as TorchCondBinomial
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondBinomial.accepts(signatures)
@@ -38,8 +38,8 @@ class CondBinomialLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import CondBinomialLayer as TensorlyCondBinomial
-        from spflow.torch.structure.general.layers.leaves import CondBinomialLayer as TorchCondBinomial
+        from spflow.base.structure.general.layers.leaves.parametric.cond_binomial import CondBinomialLayer as TensorlyCondBinomial
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_binomial import CondBinomialLayer as TorchCondBinomial
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondBinomial.from_signatures(signatures)

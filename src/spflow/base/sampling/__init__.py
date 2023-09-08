@@ -1,6 +1,7 @@
 # ---- specific imports
 
 # import all definitions of 'sample'
+"""
 from .general.layers.leaves.parametric.bernoulli import sample
 from .general.layers.leaves.parametric.binomial import sample
 from .general.layers.leaves.parametric.cond_bernoulli import sample
@@ -56,3 +57,4 @@ from .spn.nodes.cond_sum_node import sample
 from .spn.nodes.product_node import sample
 from .spn.nodes.sum_node import sample
 from .spn.rat.rat_spn import sample
+"""

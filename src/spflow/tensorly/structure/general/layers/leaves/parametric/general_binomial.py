@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class BinomialLayer:
     def __new__(cls, scope: Union[Scope, List[Scope]], n: Union[int, List[int], T], p: Union[int, float, List[float], T] = 0.5, n_nodes: int = 1,**kwargs):
-        from spflow.tensorly.structure.general.layers.leaves import BinomialLayer as TensorlyBinomial
-        from spflow.torch.structure.general.layers.leaves import BinomialLayer as TorchBinomial
+        from spflow.base.structure.general.layers.leaves.parametric.binomial import BinomialLayer as TensorlyBinomial
+        from spflow.torch.structure.general.layers.leaves.parametric.binomial import BinomialLayer as TorchBinomial
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class BinomialLayer:
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import BinomialLayer as TensorlyBinomial
-        from spflow.torch.structure.general.layers.leaves import BinomialLayer as TorchBinomial
+        from spflow.base.structure.general.layers.leaves.parametric.binomial import BinomialLayer as TensorlyBinomial
+        from spflow.torch.structure.general.layers.leaves.parametric.binomial import BinomialLayer as TorchBinomial
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyBinomial.accepts(signatures)
@@ -34,8 +34,8 @@ class BinomialLayer:
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import BinomialLayer as TensorlyBinomial
-        from spflow.torch.structure.general.layers.leaves import BinomialLayer as TorchBinomial
+        from spflow.base.structure.general.layers.leaves.parametric.binomial import BinomialLayer as TensorlyBinomial
+        from spflow.torch.structure.general.layers.leaves.parametric.binomial import BinomialLayer as TorchBinomial
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyBinomial.from_signatures(signatures)

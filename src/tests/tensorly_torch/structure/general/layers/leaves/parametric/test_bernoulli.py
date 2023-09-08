@@ -1,327 +1,335 @@
 import unittest
+from typing import Callable
 
 import numpy as np
 import torch
 import tensorly as tl
-from spflow.base.structure.spn import BernoulliLayer as BaseBernoulliLayer
+from pytest import fixture
+import pytest
+from spflow.base.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli as BernoulliBase
+from spflow.base.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as BernoulliLayerBase
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Bernoulli as BernoulliTorch
-from spflow.torch.structure.spn import BernoulliLayer as BernoulliLayerTorch
+from spflow.base.structure import marginalize
+from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli as BernoulliTorch
+from spflow.torch.structure.general.layers.leaves.parametric.bernoulli import BernoulliLayer as BernoulliLayerTorch
 from spflow.torch.structure.general.layers.leaves.parametric.bernoulli import updateBackend
 from spflow.tensorly.structure import AutoLeaf
-from spflow.tensorly.structure.general.layers.leaves.parametric.general_bernoulli import BernoulliLayer
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_bernoulli import Bernoulli
+from spflow.tensorly.structure.spn.layers.leaves.parametric import BernoulliLayer
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
+import unittest
 
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+tc = unittest.TestCase()
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
 
-    def test_layer_initialization(self):
+def test_layer_initialization(do_for_all_backends):
+    # ----- check attributes after correct initialization -----
+    p_values = [0.3, 0.7, 0.5]
+    l = BernoulliLayer(scope=Scope([1]), n_nodes=3, p=p_values)
+    # make sure number of creates nodes is correct
+    tc.assertEqual(len(l.scopes_out), 3)
+    # make sure scopes are correct
+    tc.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
+    # make sure parameter properties works correctly
+    for p_layer_node, p_value in zip(l.p, p_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(p_layer_node), np.array(p_value)))
 
-        # ----- check attributes after correct initialization -----
-        p_values = [0.3, 0.7, 0.5]
-        l = BernoulliLayer(scope=Scope([1]), n_nodes=3, p=p_values)
-        # make sure number of creates nodes is correct
-        self.assertEqual(len(l.scopes_out), 3)
-        # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
-        # make sure parameter properties works correctly
-        for p_layer_node, p_value in zip(l.p, p_values):
-            self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
+    # ----- float/int parameter values -----
+    p_value = 0.13
+    l = BernoulliLayer(scope=Scope([1]), n_nodes=3, p=p_value)
 
-        # ----- float/int parameter values -----
-        p_value = 0.13
-        l = BernoulliLayer(scope=Scope([1]), n_nodes=3, p=p_value)
+    for p_layer_node in l.p:
+        tc.assertTrue(np.all(tl_toNumpy(p_layer_node) == p_value))
 
-        for p_layer_node in l.p:
-            self.assertTrue(torch.all(p_layer_node == p_value))
+    # ----- list parameter values -----
+    p_values = [0.17, 0.8, 0.53]
+    l = BernoulliLayer(scope=Scope([1]), n_nodes=3, p=p_values)
 
-        # ----- list parameter values -----
-        p_values = [0.17, 0.8, 0.53]
-        l = BernoulliLayer(scope=Scope([1]), n_nodes=3, p=p_values)
+    for p_layer_node, p_value in zip(l.p, p_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(p_layer_node), np.array(p_value)))
 
-        for p_layer_node, p_value in zip(l.p, p_values):
-            self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
+    # wrong number of values
+    tc.assertRaises(ValueError, BernoulliLayer, Scope([0]), p_values[:-1], n_nodes=3)
+    # wrong number of dimensions (nested list)
+    tc.assertRaises(
+        ValueError,
+        BernoulliLayer,
+        Scope([0]),
+        [p_values for _ in range(3)],
+        n_nodes=3,
+    )
 
-        # wrong number of values
-        self.assertRaises(ValueError, BernoulliLayer, Scope([0]), p_values[:-1], n_nodes=3)
-        # wrong number of dimensions (nested list)
-        self.assertRaises(
-            ValueError,
-            BernoulliLayer,
-            Scope([0]),
-            [p_values for _ in range(3)],
-            n_nodes=3,
-        )
+    # ----- numpy parameter values -----
 
-        # ----- numpy parameter values -----
+    l = BernoulliLayer(scope=Scope([1]), n_nodes=3, p=np.array(p_values))
 
-        l = BernoulliLayer(scope=Scope([1]), n_nodes=3, p=np.array(p_values))
+    for p_layer_node, p_value in zip(l.p, p_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(p_layer_node), np.array(p_value)))
 
-        for p_layer_node, p_value in zip(l.p, p_values):
-            self.assertTrue(torch.allclose(p_layer_node, torch.tensor(p_value)))
+    # wrong number of values
+    tc.assertRaises(
+        ValueError,
+        BernoulliLayer,
+        Scope([0]),
+        np.array(p_values[:-1]),
+        n_nodes=3,
+    )
+    # wrong number of dimensions (nested list)
+    tc.assertRaises(
+        ValueError,
+        BernoulliLayer,
+        Scope([0]),
+        np.array([p_values for _ in range(3)]),
+        n_nodes=3,
+    )
 
-        # wrong number of values
-        self.assertRaises(
-            ValueError,
-            BernoulliLayer,
-            Scope([0]),
-            np.array(p_values[:-1]),
-            n_nodes=3,
-        )
-        # wrong number of dimensions (nested list)
-        self.assertRaises(
-            ValueError,
-            BernoulliLayer,
-            Scope([0]),
-            np.array([p_values for _ in range(3)]),
-            n_nodes=3,
-        )
+    # ---- different scopes -----
+    l = BernoulliLayer(scope=Scope([1]), n_nodes=3)
+    for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
+        tc.assertEqual(layer_scope, node_scope)
 
-        # ---- different scopes -----
-        l = BernoulliLayer(scope=Scope([1]), n_nodes=3)
-        for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
-            self.assertEqual(layer_scope, node_scope)
+    # ----- invalid number of nodes -----
+    tc.assertRaises(ValueError, BernoulliLayer, Scope([0]), n_nodes=0)
 
-        # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, BernoulliLayer, Scope([0]), n_nodes=0)
+    # ----- invalid scope -----
+    tc.assertRaises(ValueError, BernoulliLayer, Scope([]), n_nodes=3)
+    tc.assertRaises(ValueError, BernoulliLayer, [], n_nodes=3)
 
-        # ----- invalid scope -----
-        self.assertRaises(ValueError, BernoulliLayer, Scope([]), n_nodes=3)
-        self.assertRaises(ValueError, BernoulliLayer, [], n_nodes=3)
+    # ----- individual scopes and parameters -----
+    scopes = [Scope([1]), Scope([0]), Scope([0])]
+    l = BernoulliLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
 
-        # ----- individual scopes and parameters -----
-        scopes = [Scope([1]), Scope([0]), Scope([0])]
-        l = BernoulliLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
+    for layer_scope, node_scope in zip(l.scopes_out, scopes):
+        tc.assertEqual(layer_scope, node_scope)
 
-        for layer_scope, node_scope in zip(l.scopes_out, scopes):
-            self.assertEqual(layer_scope, node_scope)
+def test_accept(do_for_all_backends):
 
-    def test_accept(self):
-
-        # discrete meta type
-        self.assertTrue(
-            BernoulliLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Discrete]),
-                ]
-            )
-        )
-
-        # feature type class
-        self.assertTrue(
-            BernoulliLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Bernoulli]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Discrete]),
-                ]
-            )
-        )
-
-        # feature type instance
-        self.assertTrue(
-            BernoulliLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(0.5)]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Bernoulli(0.5)]),
-                ]
-            )
-        )
-
-        # invalid feature type
-        self.assertFalse(
-            BernoulliLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # conditional scope
-        self.assertFalse(BernoulliLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
-
-        # multivariate signature
-        self.assertFalse(
-            BernoulliLayer.accepts(
-                [
-                    FeatureContext(
-                        Scope([0, 1]),
-                        [FeatureTypes.Discrete, FeatureTypes.Discrete],
-                    )
-                ]
-            )
-        )
-
-    def test_initialization_from_signatures(self):
-
-        bernoulli = BernoulliLayer.from_signatures(
+    # discrete meta type
+    tc.assertTrue(
+        BernoulliLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
                 FeatureContext(Scope([1]), [FeatureTypes.Discrete]),
             ]
         )
-        self.assertTrue(torch.allclose(bernoulli.p, torch.tensor([0.5, 0.5])))
-        self.assertTrue(bernoulli.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        bernoulli = BernoulliLayer.from_signatures(
+    # feature type class
+    tc.assertTrue(
+        BernoulliLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.Bernoulli]),
-                FeatureContext(Scope([1]), [FeatureTypes.Bernoulli]),
+                FeatureContext(Scope([1]), [FeatureTypes.Discrete]),
             ]
         )
-        self.assertTrue(torch.allclose(bernoulli.p, torch.tensor([0.5, 0.5])))
-        self.assertTrue(bernoulli.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        bernoulli = BernoulliLayer.from_signatures(
+    # feature type instance
+    tc.assertTrue(
+        BernoulliLayer.accepts(
             [
-                FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.75)]),
-                FeatureContext(Scope([1]), [FeatureTypes.Bernoulli(p=0.25)]),
+                FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(0.5)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Bernoulli(0.5)]),
             ]
         )
-        self.assertTrue(torch.allclose(bernoulli.p, torch.tensor([0.75, 0.25])))
-        self.assertTrue(bernoulli.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        # ----- invalid arguments -----
-
-        # invalid feature type
-        self.assertRaises(
-            ValueError,
-            BernoulliLayer.from_signatures,
-            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+    # invalid feature type
+    tc.assertFalse(
+        BernoulliLayer.accepts(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+            ]
         )
+    )
 
-        # conditional scope
-        self.assertRaises(
-            ValueError,
-            BernoulliLayer.from_signatures,
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
-        )
+    # conditional scope
+    tc.assertFalse(BernoulliLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
-        # multivariate signature
-        self.assertRaises(
-            ValueError,
-            BernoulliLayer.from_signatures,
+    # multivariate signature
+    tc.assertFalse(
+        BernoulliLayer.accepts(
             [
                 FeatureContext(
                     Scope([0, 1]),
                     [FeatureTypes.Discrete, FeatureTypes.Discrete],
                 )
-            ],
+            ]
         )
+    )
 
-    def test_autoleaf(self):
+def test_initialization_from_signatures(do_for_all_backends):
 
-        # make sure leaf is registered
-        self.assertTrue(AutoLeaf.is_registered(BernoulliLayer))
+    bernoulli = BernoulliLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+            FeatureContext(Scope([1]), [FeatureTypes.Discrete]),
+        ]
+    )
+    tc.assertTrue(np.allclose(tl_toNumpy(bernoulli.p), np.array([0.5, 0.5])))
+    tc.assertTrue(bernoulli.scopes_out == [Scope([0]), Scope([1])])
 
-        feature_ctx_1 = FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.75)])
-        feature_ctx_2 = FeatureContext(Scope([1]), [FeatureTypes.Bernoulli(p=0.25)])
+    bernoulli = BernoulliLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Bernoulli]),
+            FeatureContext(Scope([1]), [FeatureTypes.Bernoulli]),
+        ]
+    )
+    tc.assertTrue(np.allclose(tl_toNumpy(bernoulli.p), np.array([0.5, 0.5])))
+    tc.assertTrue(bernoulli.scopes_out == [Scope([0]), Scope([1])])
 
-        # make sure leaf is correctly inferred
-        self.assertEqual(BernoulliLayer, AutoLeaf.infer([feature_ctx_1, feature_ctx_2]))
+    bernoulli = BernoulliLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.75)]),
+            FeatureContext(Scope([1]), [FeatureTypes.Bernoulli(p=0.25)]),
+        ]
+    )
+    tc.assertTrue(np.allclose(tl_toNumpy(bernoulli.p), np.array([0.75, 0.25])))
+    tc.assertTrue(bernoulli.scopes_out == [Scope([0]), Scope([1])])
 
-        # make sure AutoLeaf can return correctly instantiated object
-        bernoulli = AutoLeaf([feature_ctx_1, feature_ctx_2])
-        self.assertTrue(torch.allclose(bernoulli.p, torch.tensor([0.75, 0.25])))
-        self.assertTrue(bernoulli.scopes_out == [Scope([0]), Scope([1])])
+    # ----- invalid arguments -----
 
-    def test_layer_structural_marginalization(self):
+    # invalid feature type
+    tc.assertRaises(
+        ValueError,
+        BernoulliLayer.from_signatures,
+        [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+    )
 
-        # ---------- same scopes -----------
+    # conditional scope
+    tc.assertRaises(
+        ValueError,
+        BernoulliLayer.from_signatures,
+        [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
+    )
 
-        l = BernoulliLayer(scope=Scope([1]), p=[0.73, 0.29], n_nodes=2)
+    # multivariate signature
+    tc.assertRaises(
+        ValueError,
+        BernoulliLayer.from_signatures,
+        [
+            FeatureContext(
+                Scope([0, 1]),
+                [FeatureTypes.Discrete, FeatureTypes.Discrete],
+            )
+        ],
+    )
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [1]) == None)
+def test_autoleaf(do_for_all_backends):
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    tc.assertTrue(AutoLeaf.is_registered(BernoulliLayer))
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
-        self.assertTrue(torch.allclose(l.p, l_marg.p))
+    feature_ctx_1 = FeatureContext(Scope([0]), [FeatureTypes.Bernoulli(p=0.75)])
+    feature_ctx_2 = FeatureContext(Scope([1]), [FeatureTypes.Bernoulli(p=0.25)])
 
-        # ---------- different scopes -----------
+    # make sure leaf is correctly inferred
+    tc.assertEqual(BernoulliLayer, AutoLeaf.infer([feature_ctx_1, feature_ctx_2]))
 
-        l = BernoulliLayer(scope=[Scope([1]), Scope([0])], p=[0.73, 0.29])
+    # make sure AutoLeaf can return correctly instantiated object
+    bernoulli = AutoLeaf([feature_ctx_1, feature_ctx_2])
+    tc.assertTrue(np.allclose(tl_toNumpy(bernoulli.p), np.array([0.75, 0.25])))
+    tc.assertTrue(bernoulli.scopes_out == [Scope([0]), Scope([1])])
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0, 1]) == None)
+def test_layer_structural_marginalization(do_for_all_backends):
+    # ---------- same scopes -----------
 
-        # ----- partially marginalize -----
-        l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, BernoulliTorch))
-        self.assertEqual(l_marg.scope, Scope([0]))
-        self.assertTrue(torch.allclose(l_marg.p, torch.tensor(0.29)))
+    l = BernoulliLayer(scope=Scope([1]), p=[0.73, 0.29], n_nodes=2)
 
-        l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, BernoulliLayerTorch))
-        self.assertEqual(len(l_marg.scopes_out), 1)
-        self.assertTrue(torch.allclose(l_marg.p, torch.tensor(0.29)))
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [1]) == None)
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
-        self.assertTrue(torch.allclose(l.p, l_marg.p))
+    tc.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
+    tc.assertTrue(np.allclose(tl_toNumpy(l.p), tl_toNumpy(l_marg.p)))
 
-    def test_layer_dist(self):
+    # ---------- different scopes -----------
 
-        p_values = [0.73, 0.29, 0.5]
-        l = BernoulliLayer(scope=Scope([1]), p=p_values, n_nodes=3)
+    l = BernoulliLayer(scope=[Scope([1]), Scope([0])], p=[0.73, 0.29])
 
-        # ----- full dist -----
-        dist = l.dist()
+    if tl.get_backend() == "numpy":
+        BernoulliInst = BernoulliBase
+        BernoulliInstLayer = BernoulliLayerBase
+    elif tl.get_backend() == "pytorch":
+        BernoulliInst = BernoulliTorch
+        BernoulliInstLayer = BernoulliLayerTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        for p_value, p_dist in zip(p_values, dist.probs):
-            self.assertTrue(torch.allclose(torch.tensor(p_value), p_dist))
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [0, 1]) == None)
 
-        # ----- partial dist -----
-        dist = l.dist([1, 2])
+    # ----- partially marginalize -----
+    l_marg = marginalize(l, [1], prune=True)
+    tc.assertTrue(isinstance(l_marg, BernoulliInst))
+    tc.assertEqual(l_marg.scope, Scope([0]))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.p), np.array(0.29)))
 
-        for p_value, p_dist in zip(p_values[1:], dist.probs):
-            self.assertTrue(torch.allclose(torch.tensor(p_value), p_dist))
+    l_marg = marginalize(l, [1], prune=False)
+    tc.assertTrue(isinstance(l_marg, BernoulliInstLayer))
+    tc.assertEqual(len(l_marg.scopes_out), 1)
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.p), np.array(0.29)))
 
-        dist = l.dist([1, 0])
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        for p_value, p_dist in zip(reversed(p_values[:-1]), dist.probs):
-            self.assertTrue(torch.allclose(torch.tensor(p_value), p_dist))
+    tc.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
+    tc.assertTrue(np.allclose(tl_toNumpy(l.p), tl_toNumpy(l_marg.p)))
 
-    def test_layer_backend_conversion_1(self):
+def test_layer_dist(do_for_all_backends):
 
-        torch_layer = BernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
-        base_layer = toBase(torch_layer)
+    p_values = [0.73, 0.29, 0.5]
+    l = BernoulliLayer(scope=Scope([1]), p=p_values, n_nodes=3)
+    dist = l.dist()
+    # ----- full dist -----
 
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.p, torch_layer.p.detach().numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
+    if tl.get_backend() == "numpy":
+        p_list = [d.kwds.get("p") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        p_list = dist.probs
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-    def test_layer_backend_conversion_2(self):
+    for p_value, p_dist in zip(p_values, p_list):
+        tc.assertTrue(np.allclose(np.array(p_value), tl_toNumpy(p_dist)))
 
-        base_layer = BaseBernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
-        torch_layer = toTorch(base_layer)
+    # ----- partial dist -----
+    dist = l.dist([1, 2])
 
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.p, torch_layer.p.detach().numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
+    if tl.get_backend() == "numpy":
+        p_list = [d.kwds.get("p") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        p_list = dist.probs
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        bernoulli = BernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
-        for backend in backends:
-            tl.set_backend(backend)
+    for p_value, p_dist in zip(p_values[1:], p_list):
+        tc.assertTrue(np.allclose(np.array(p_value), tl_toNumpy(p_dist)))
+
+    dist = l.dist([1, 0])
+
+    if tl.get_backend() == "numpy":
+        p_list = [d.kwds.get("p") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        p_list = dist.probs
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    for p_value, p_dist in zip(reversed(p_values[:-1]), p_list):
+        tc.assertTrue(np.allclose(np.array(p_value), tl_toNumpy(p_dist)))
+
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    bernoulli = BernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
+    for backend in backends:
+        with tl.backend_context(backend):
             bernoulli_updated = updateBackend(bernoulli)
-            self.assertTrue(np.all(bernoulli.scopes_out == bernoulli_updated.scopes_out))
+            tc.assertTrue(np.all(bernoulli.scopes_out == bernoulli_updated.scopes_out))
             # check conversion from torch to python
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*bernoulli.get_params()]),
                     np.array([*bernoulli_updated.get_params()]),

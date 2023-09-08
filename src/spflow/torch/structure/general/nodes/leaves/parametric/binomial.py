@@ -77,6 +77,7 @@ class Binomial(LeafNode):
 
         # set parameters
         self.set_params(n, p)
+        self.backend = "pytorch"
 
     @property
     def p(self) -> torch.Tensor:

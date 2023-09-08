@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class Gaussian:  # ToDo: backend über tl.getBackend() abfragen
     def __new__(cls, scope: Scope, mean: float = 0.0, std: float = 1.0):
-        from spflow.tensorly.structure.general.nodes.leaves import Gaussian as TensorlyGaussian
-        from spflow.torch.structure.general.nodes.leaves import Gaussian as TorchGaussian
+        from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian as TensorlyGaussian
+        from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian as TorchGaussian
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class Gaussian:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves import Gaussian as TensorlyGaussian
-        from spflow.torch.structure.general.nodes.leaves import Gaussian as TorchGaussian
+        from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian as TensorlyGaussian
+        from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian as TorchGaussian
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyGaussian.accepts(signatures)
@@ -34,8 +34,8 @@ class Gaussian:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves import Gaussian as TensorlyGaussian
-        from spflow.torch.structure.general.nodes.leaves import Gaussian as TorchGaussian
+        from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian as TensorlyGaussian
+        from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian as TorchGaussian
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyGaussian.from_signatures(signatures)

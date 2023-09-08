@@ -95,6 +95,6 @@ def sample(
 
         data[torch.meshgrid(sampling_ids, torch.tensor(node_scope.query), indexing="ij")] = (
             layer.dist(alpha=alpha, beta=beta, node_ids=[node_id]).sample((sampling_mask.sum(),)).to(alpha.device)
-        )
+        ).type(torch.float64)
 
     return data

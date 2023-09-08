@@ -2,7 +2,9 @@ import random
 import unittest
 
 import numpy as np
+import pytest
 import torch
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
@@ -14,6 +16,8 @@ from spflow.torch.learning import (
 )
 from spflow.torch.structure.spn import UniformLayer #ProductNode, SumNode,
 from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
+from spflow.torch.structure.general.layers.leaves.parametric.uniform import updateBackend
 
 
 class TestNode(unittest.TestCase):
@@ -126,6 +130,55 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(torch.all(layer.start == torch.tensor([-1.0, -1.0])))
         self.assertTrue(torch.all(layer.end == torch.tensor([3.0, 3.0])))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
+
+        # simulate data
+        data = tl.tensor([[0.5, -3.0]])
+
+        # perform MLE
+        maximum_likelihood_estimation(layer, tl.tensor(data))
+
+        start = tl_toNumpy(layer.start)
+        end = tl_toNumpy(layer.end)
+
+        layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
+        prod_node = ProductNode([layer])
+        expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+        start_em = tl_toNumpy(layer.start)
+        end_em = tl_toNumpy(layer.end)
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
+            layer_updated = updateBackend(layer)
+            maximum_likelihood_estimation(layer_updated, tl.tensor(data))
+            # check conversion from torch to python
+            start_updated = tl_toNumpy(layer_updated.start)
+            end_updated = tl_toNumpy(layer_updated.end)
+            self.assertTrue(np.allclose(start, start_updated, atol=1e-2, rtol=1e-1))
+            self.assertTrue(np.allclose(end, end_updated, atol=1e-2, rtol=1e-1))
+
+            layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
+            layer_updated = updateBackend(layer)
+            prod_node = ProductNode([layer_updated])
+            if tl.get_backend() != "pytorch":
+                with pytest.raises(NotImplementedError):
+                    expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+            else:
+                expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+                start_em_updated = tl_toNumpy(layer_updated.start)
+                end_em_updated = tl_toNumpy(layer_updated.end)
+                self.assertTrue(np.allclose(start_em, start_em_updated, atol=1e-2, rtol=1e-1))
+                self.assertTrue(np.allclose(end_em, end_em_updated, atol=1e-2, rtol=1e-1))
 
 
 if __name__ == "__main__":

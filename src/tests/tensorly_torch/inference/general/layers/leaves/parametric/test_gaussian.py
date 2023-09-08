@@ -2,11 +2,15 @@ import random
 import unittest
 
 import torch
+import numpy as np
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.torch.inference import log_likelihood
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_gaussian import GaussianLayer
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
+from spflow.torch.structure.general.layers.leaves.parametric.gaussian import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestNode(unittest.TestCase):
@@ -143,6 +147,26 @@ class TestNode(unittest.TestCase):
     def test_support(self):
         # TODO
         pass
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        layer = GaussianLayer(
+            scope=[Scope([0]), Scope([1]), Scope([0])],
+            mean=[0.2, 1.0, 2.3],
+            std=[1.0, 0.3, 0.97],
+        )
+
+        dummy_data = torch.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
+
+        layer_ll = log_likelihood(layer, dummy_data)
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            layer_updated = updateBackend(layer)
+            log_probs_updated = log_likelihood(layer_updated, tl.tensor(dummy_data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

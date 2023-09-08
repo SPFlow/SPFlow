@@ -5,6 +5,7 @@ from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+import tensorly as tl
 import torch.distributions as D
 
 from spflow.base.structure.general.layers.leaves.parametric.cond_gaussian import (
@@ -103,6 +104,7 @@ class CondGaussianLayer(Module):
         self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -266,17 +268,17 @@ class CondGaussianLayer(Module):
                     mean.append(args["mean"])
                     std.append(args["std"])
 
-                mean = torch.tensor(mean)
-                std = torch.tensor(std)
+                mean = torch.tensor(mean, dtype=torch.float64)
+                std = torch.tensor(std, dtype=torch.float64)
             else:
                 args = cond_f(data)
                 mean = args["mean"]
                 std = args["std"]
 
         if isinstance(mean, int) or isinstance(mean, float):
-            mean = torch.tensor([mean for _ in range(self.n_out)])
+            mean = torch.tensor([mean for _ in range(self.n_out)], dtype=torch.float64)
         elif isinstance(mean, list) or isinstance(mean, np.ndarray):
-            mean = torch.tensor(mean)
+            mean = torch.tensor(mean, dtype=torch.float64)
         if mean.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'mean' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional."
@@ -290,9 +292,9 @@ class CondGaussianLayer(Module):
             raise ValueError(f"Values of 'mean' for 'CondGaussianLayer' must be finite, but was: {mean}")
 
         if isinstance(std, int) or isinstance(std, float):
-            std = torch.tensor([std for _ in range(self.n_out)])
+            std = torch.tensor([std for _ in range(self.n_out)], dtype=torch.float64)
         elif isinstance(std, list) or isinstance(std, np.ndarray):
-            std = torch.tensor(std)
+            std = torch.tensor(std, dtype=torch.float64)
         if std.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'std' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional."
@@ -456,4 +458,13 @@ def updateBackend(leaf_node: CondGaussianLayer, dispatch_ctx: Optional[DispatchC
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralCondGaussianLayer(scope=leaf_node.scopes_out)
+    data = tl.tensor([])
+    cond_f = None
+    if leaf_node.cond_f != None:
+        params = leaf_node.cond_f(data)
+
+        for key in leaf_node.cond_f(params):
+            # Update the value for each key
+            params[key] = tl.tensor(params[key])
+        cond_f = lambda data: params
+    return GeneralCondGaussianLayer(scope=leaf_node.scopes_out, cond_f=cond_f)

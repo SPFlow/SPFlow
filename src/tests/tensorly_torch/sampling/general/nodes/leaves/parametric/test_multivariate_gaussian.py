@@ -3,12 +3,16 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
 from spflow.torch.sampling import sample
+from spflow.tensorly.sampling import sample
 #from spflow.torch.structure.spn import MultivariateGaussian
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_multivariate_gaussian import MultivariateGaussian
+from spflow.torch.structure.general.nodes.leaves.parametric.multivariate_gaussian import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy, tl_isnan
 
 
 class TestMultivariateGaussian(unittest.TestCase):
@@ -103,6 +107,43 @@ class TestMultivariateGaussian(unittest.TestCase):
 
             self.assertTrue(torch.allclose(mean_exact, mean_est, atol=0.01, rtol=0.1))
             self.assertTrue(torch.allclose(cov_exact, cov_est, atol=0.01, rtol=0.1))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        # generate mean vector
+        mean = torch.randn((1, 5)) * 0.1
+        # generate p.s.d covariance matrix
+        cov = torch.randn((5, 5)) * 0.1
+        cov = cov @ cov.T
+
+        # create distribution
+        mv = MultivariateGaussian(Scope([0, 1, 2, 3, 4]), mean=mean, cov=cov)
+
+        # conditionally sample
+        data = sample(mv, 100000)
+
+        # estimate mean and covariance matrix for conditioned distribution from data
+        mean_est = tl_toNumpy(data.mean(dim=0))
+        cov_est = tl_toNumpy(torch.cov(data.T))
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            mv_updated = updateBackend(mv)
+            data_updated = sample(mv_updated, 100000)
+
+            # estimate mean and covariance matrix for conditioned distribution from data
+            mean_est_updated = tl_toNumpy(data_updated).mean(axis=0)
+            cov_est_updated = np.cov(tl_toNumpy(data_updated).T)
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(mean, mean_est_updated, atol=0.01, rtol=0.1))
+            self.assertTrue(np.allclose(cov_est, cov_est_updated, atol=0.01, rtol=0.1))
+
 
 
 if __name__ == "__main__":

@@ -8,7 +8,8 @@ from scipy.stats.distributions import rv_frozen  # type: ignore
 from spflow.base.structure.general.nodes.leaves.parametric.negative_binomial import (
     NegativeBinomial,
 )
-from spflow.base.structure.module import Module
+from spflow.tensorly.structure.spn.layers.leaves.parametric import NegativeBinomialLayer as GeneralNegativeBinomialLayer
+from spflow.tensorly.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
@@ -321,3 +322,16 @@ def marginalize(
     else:
         new_layer = NegativeBinomialLayer(marg_scopes, *[np.array(p) for p in zip(*marg_params)])
         return new_layer
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: NegativeBinomialLayer, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralNegativeBinomialLayer(scope=leaf_node.scopes_out,n=leaf_node.n.data.detach().numpy(), p=leaf_node.p.data.detach().numpy())

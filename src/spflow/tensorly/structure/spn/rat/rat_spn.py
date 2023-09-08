@@ -72,6 +72,8 @@ class RatSPN(Module):
         self.n_root_nodes = n_root_nodes
         self.n_region_nodes = n_region_nodes
         self.n_leaf_nodes = n_leaf_nodes
+        self.region_graph = region_graph
+        self.feature_ctx = feature_ctx
 
         if n_root_nodes < 1:
             raise ValueError(f"Specified value of 'n_root_nodes' must be at least 1, but is {n_root_nodes}.")
@@ -82,6 +84,7 @@ class RatSPN(Module):
 
         # create RAT-SPN from region graph
         self.from_region_graph(region_graph, feature_ctx)
+        test = 5
 
     def from_region_graph(
         self,
@@ -211,3 +214,7 @@ def marginalize(
         marg_rat.root_region = marg_root_node.children[0]
 
         return marg_rat
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(rat_spn: RatSPN) -> RatSPN:
+    return RatSPN(rat_spn.region_graph, rat_spn.feature_ctx, rat_spn.n_root_nodes, rat_spn.n_region_nodes, rat_spn.n_leaf_nodes)

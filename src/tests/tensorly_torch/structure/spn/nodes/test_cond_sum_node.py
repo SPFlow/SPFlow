@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.structure.spn import CondSumNode as BaseCondSumNode
 from spflow.base.structure.spn import Gaussian as BaseGaussian
@@ -11,6 +12,8 @@ from spflow.meta.dispatch import DispatchContext
 from spflow.tensorly.structure.spn import CondSumNode, ProductNode
 from spflow.tensorly.structure import marginalize
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
+from spflow.tensorly.structure.spn.nodes.cond_sum_node import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 from ...general.nodes.dummy_node import DummyNode
 
@@ -118,6 +121,15 @@ class TestTorchNode(unittest.TestCase):
 
         self.assertTrue(np.all(s_torch.scopes_out == s_base.scopes_out))
     """
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        sum_node = CondSumNode([Gaussian(Scope([0])), Gaussian(Scope([0]))])
+        for backend in backends:
+            tl.set_backend(backend)
+            sum_node_updated = updateBackend(sum_node)
+            self.assertTrue(sum_node.scopes_out == sum_node_updated.scopes_out)
+
 
 if __name__ == "__main__":
     unittest.main()

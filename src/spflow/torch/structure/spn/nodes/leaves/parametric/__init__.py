@@ -1,4 +1,5 @@
 # ----- specific imports -----
+"""
 from spflow.torch.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
 from spflow.torch.structure.general.nodes.leaves.parametric.binomial import Binomial
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_bernoulli import (
@@ -47,3 +48,4 @@ from spflow.torch.structure.general.nodes.leaves.parametric.negative_binomial im
 )
 from spflow.torch.structure.general.nodes.leaves.parametric.poisson import Poisson
 from spflow.torch.structure.general.nodes.leaves.parametric.uniform import Uniform
+"""

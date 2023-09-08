@@ -1,4 +1,5 @@
 # ----- specific imports -----
+"""
 from .bernoulli import BernoulliLayer
 from .binomial import BinomialLayer
 from .cond_bernoulli import CondBernoulliLayer
@@ -21,3 +22,4 @@ from .multivariate_gaussian import MultivariateGaussianLayer
 from .negative_binomial import NegativeBinomialLayer
 from .poisson import PoissonLayer
 from .uniform import UniformLayer
+"""

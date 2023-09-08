@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import LogNormal as BaseLogNormal
@@ -10,6 +11,8 @@ from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
 #from spflow.torch.structure.spn import LogNormal
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_log_normal import LogNormal
+from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestLogNormal(unittest.TestCase):
@@ -146,6 +149,26 @@ class TestLogNormal(unittest.TestCase):
             torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
         )
         log_likelihood(log_normal, torch.tensor([[4.3]]))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        mean = random.random()
+        std = random.random() + 1e-7  # offset by small number to avoid zero
+
+        log_normal = LogNormal(Scope([0]), mean, std)
+
+        # create dummy input data (batch size x random variables)
+        data = np.random.rand(3, 1)
+
+        log_probs = log_likelihood(log_normal, tl.tensor(data))
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            log_normal_updated = updateBackend(log_normal)
+            log_probs_updated = log_likelihood(log_normal_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":
