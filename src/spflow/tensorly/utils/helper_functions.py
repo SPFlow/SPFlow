@@ -25,12 +25,14 @@ def tl_ravel(tensor):
 
 def tl_vstack(tensor):
     backend = tl.get_backend()
-    if backend == "numpy":
+
+    if isinstance(tensor[0], np.ndarray):#backend == "numpy":
         return tl.tensor(np.vstack(tensor))
-    elif backend == "pytorch":
+    elif torch.is_tensor(tensor[0]):#backend == "pytorch":
         #if not (torch.is_tensor(tensor)):
         #    tensor = torch.tensor(tensor)
         return torch.vstack(tensor)
+
     else:
         raise NotImplementedError("tl_vstack is not implemented for this backend")
 
@@ -453,9 +455,9 @@ def tl_logsumexp(tensor, axis=None, keepdims=None):
 
 def tl_softmax(input, axis):
     backend = tl.get_backend()
-    if backend == "numpy":
+    if isinstance(input, np.ndarray):#backend == "numpy":
         return softmax(input,axis=axis)
-    elif backend == "pytorch":
+    elif torch.is_tensor(input):#backend == "pytorch":
         if not (torch.is_tensor(input)):
             input = torch.tensor(input)
         return torch.nn.functional.softmax(input=input, dim=axis)
@@ -491,3 +493,17 @@ def tl_hstack(input):
         return torch.hstack(input)
     else:
         raise NotImplementedError("tl_hstack is not implemented for this backend")
+
+def tl_toNumpy(input):
+    if isinstance(input,np.ndarray):
+        return input
+    elif torch.is_tensor(input):
+        return input.detach().cpu().numpy()
+    elif isinstance(input, list):
+        return np.array(input)
+    elif isinstance(input, float):
+        return np.array(input)
+    elif isinstance(input, np.int32):
+        return np.array(input)
+    else:
+        raise NotImplementedError("tl_toNumpy is not implemented for this type")

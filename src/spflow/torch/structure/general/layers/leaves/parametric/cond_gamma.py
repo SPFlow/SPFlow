@@ -5,6 +5,7 @@ from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+import tensorly as tl
 import torch.distributions as D
 
 from spflow.base.structure.general.layers.leaves.parametric.cond_gamma import (
@@ -103,6 +104,7 @@ class CondGammaLayer(Module):
         self.combined_scope = reduce(lambda s1, s2: s1.join(s2), self.scopes_out)
 
         self.set_cond_f(cond_f)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -262,17 +264,17 @@ class CondGammaLayer(Module):
                     alpha.append(args["alpha"])
                     beta.append(args["beta"])
 
-                alpha = torch.tensor(alpha)
-                beta = torch.tensor(beta)
+                alpha = torch.tensor(alpha, dtype=torch.float64)
+                beta = torch.tensor(beta, dtype=torch.float64)
             else:
                 args = cond_f(data)
                 alpha = args["alpha"]
                 beta = args["beta"]
 
         if isinstance(alpha, int) or isinstance(alpha, float):
-            alpha = torch.tensor([alpha for _ in range(self.n_out)])
+            alpha = torch.tensor([alpha for _ in range(self.n_out)], dtype=torch.float64)
         elif isinstance(alpha, list) or isinstance(alpha, np.ndarray):
-            alpha = torch.tensor(alpha)
+            alpha = torch.tensor(alpha, dtype=torch.float64)
         if alpha.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'alpha' values for 'CondGammaLayer' is expected to be one-dimensional, but is {alpha.ndim}-dimensional."
@@ -286,9 +288,9 @@ class CondGammaLayer(Module):
             raise ValueError(f"Values of 'alpha' for 'CondGammaLayer' must be greater than 0, but was: {alpha}")
 
         if isinstance(beta, int) or isinstance(beta, float):
-            beta = torch.tensor([beta for _ in range(self.n_out)])
+            beta = torch.tensor([beta for _ in range(self.n_out)], dtype=torch.float64)
         elif isinstance(beta, list) or isinstance(beta, np.ndarray):
-            beta = torch.tensor(beta)
+            beta = torch.tensor(beta, dtype=torch.float64)
         if beta.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'beta' values for 'CondGammaLayer' is expected to be one-dimensional, but is {beta.ndim}-dimensional."
@@ -449,4 +451,13 @@ def updateBackend(leaf_node: CondGammaLayer, dispatch_ctx: Optional[DispatchCont
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralCondGammaLayer(scope=leaf_node.scopes_out)
+    data = tl.tensor([])
+    cond_f = None
+    if leaf_node.cond_f != None:
+        params = leaf_node.cond_f(data)
+
+        for key in leaf_node.cond_f(params):
+            # Update the value for each key
+            params[key] = tl.tensor(params[key])
+        cond_f = lambda data: params
+    return GeneralCondGammaLayer(scope=leaf_node.scopes_out, cond_f=cond_f)

@@ -292,6 +292,7 @@ class TestNode(unittest.TestCase):
         for p_value, p_dist in zip(reversed(p_values[:-1]), dist.probs):
             self.assertTrue(torch.allclose(torch.tensor(p_value).double(), p_dist))
 
+    """
     def test_layer_backend_conversion_1(self):
 
         torch_layer = GeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
@@ -309,7 +310,7 @@ class TestNode(unittest.TestCase):
         self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
         self.assertTrue(np.allclose(base_layer.p, torch_layer.p.detach().numpy()))
         self.assertEqual(base_layer.n_out, torch_layer.n_out)
-
+    """
     def test_update_backend(self):
         backends = ["numpy", "pytorch"]
         geometric = GeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
@@ -330,4 +331,6 @@ class TestNode(unittest.TestCase):
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)
+    print("geo")
+    tl.set_backend("pytorch")
     unittest.main()

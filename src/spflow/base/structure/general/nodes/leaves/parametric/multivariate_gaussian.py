@@ -16,6 +16,8 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
+from spflow.tensorly.structure.spn.nodes.leaves.parametric import MultivariateGaussian as GeneralMultivariateGaussian
+
 
 
 class MultivariateGaussian(LeafNode):
@@ -342,3 +344,16 @@ def marginalize(
         marg_cov = node.cov[marg_scope_ids][:, marg_scope_ids]
 
         return MultivariateGaussian(Scope(marg_scope), marg_mean, marg_cov)
+
+@dispatch(memoize=True)  # type: ignore
+def updateBackend(leaf_node: MultivariateGaussian, dispatch_ctx: Optional[DispatchContext] = None):
+    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+
+    Args:
+        sum_node:
+            Sum node to be converted.
+        dispatch_ctx:
+            Dispatch context.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    return GeneralMultivariateGaussian(scope=leaf_node.scope, mean=leaf_node.mean, cov=leaf_node.cov)

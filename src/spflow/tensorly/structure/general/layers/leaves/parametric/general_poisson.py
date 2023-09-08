@@ -12,8 +12,8 @@ class PoissonLayer:  # ToDo: backend über tl.getBackend() abfragen
         l: Union[int, float, List[float], T] = 1.0,
         n_nodes: int = 1,
         **kwargs):
-        from spflow.tensorly.structure.general.layers.leaves import PoissonLayer as TensorlyPoisson
-        from spflow.torch.structure.general.layers.leaves import PoissonLayer as TorchPoisson
+        from spflow.base.structure.general.layers.leaves.parametric.poisson import PoissonLayer as TensorlyPoisson
+        from spflow.torch.structure.general.layers.leaves.parametric.poisson import PoissonLayer as TorchPoisson
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -25,8 +25,8 @@ class PoissonLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import PoissonLayer as TensorlyPoisson
-        from spflow.torch.structure.general.layers.leaves import PoissonLayer as TorchPoisson
+        from spflow.base.structure.general.layers.leaves.parametric.poisson import PoissonLayer as TensorlyPoisson
+        from spflow.torch.structure.general.layers.leaves.parametric.poisson import PoissonLayer as TorchPoisson
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyPoisson.accepts(signatures)
@@ -37,8 +37,8 @@ class PoissonLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import PoissonLayer as TensorlyPoisson
-        from spflow.torch.structure.general.layers.leaves import PoissonLayer as TorchPoisson
+        from spflow.base.structure.general.layers.leaves.parametric.poisson import PoissonLayer as TensorlyPoisson
+        from spflow.torch.structure.general.layers.leaves.parametric.poisson import PoissonLayer as TorchPoisson
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyPoisson.from_signatures(signatures)

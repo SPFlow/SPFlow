@@ -12,9 +12,9 @@ class CondMultivariateGaussianLayer:  # ToDo: backend über tl.getBackend() abfr
         cond_f: Optional[Union[Callable, List[Callable]]] = None,
         n_nodes: int = 1,
         **kwargs,):
-        from spflow.tensorly.structure.general.layers.leaves import \
+        from spflow.base.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import \
             CondMultivariateGaussianLayer as TensorlyCondMultivariateGaussian
-        from spflow.torch.structure.general.layers.leaves import \
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import \
             CondMultivariateGaussianLayer as TorchCondMultivariateGaussian
         """TODO"""
         backend = tl.get_backend()
@@ -27,9 +27,9 @@ class CondMultivariateGaussianLayer:  # ToDo: backend über tl.getBackend() abfr
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import \
+        from spflow.base.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import \
             CondMultivariateGaussianLayer as TensorlyCondMultivariateGaussian
-        from spflow.torch.structure.general.layers.leaves import \
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import \
             CondMultivariateGaussianLayer as TorchCondMultivariateGaussian
         backend = tl.get_backend()
         if backend == "numpy":
@@ -41,9 +41,9 @@ class CondMultivariateGaussianLayer:  # ToDo: backend über tl.getBackend() abfr
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import \
+        from spflow.base.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import \
             CondMultivariateGaussianLayer as TensorlyCondMultivariateGaussian
-        from spflow.torch.structure.general.layers.leaves import \
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import \
             CondMultivariateGaussianLayer as TorchCondMultivariateGaussian
         backend = tl.get_backend()
         if backend == "numpy":

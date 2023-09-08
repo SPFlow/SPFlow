@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.base.inference import likelihood, log_likelihood
 from spflow.base.structure.spn import Geometric as BaseGeometric
@@ -10,6 +11,8 @@ from spflow.meta.data import Scope
 from spflow.torch.inference import likelihood, log_likelihood
 #from spflow.torch.structure.spn import Geometric
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_geometric import Geometric
+from spflow.torch.structure.general.nodes.leaves.parametric.geometric import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestGeometric(unittest.TestCase):
@@ -152,6 +155,25 @@ class TestGeometric(unittest.TestCase):
             torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]),
         )
         self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[1.5]]))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        p = random.random()
+
+        geometric = Geometric(Scope([0]), p)
+
+        # create dummy input data (batch size x random variables)
+        data = np.random.randint(1, 10, (3, 1))
+
+        log_probs = log_likelihood(geometric, tl.tensor(data))
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            geometric_updated = updateBackend(geometric)
+            log_probs_updated = log_likelihood(geometric_updated, tl.tensor(data))
+            # check conversion from torch to python
+            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

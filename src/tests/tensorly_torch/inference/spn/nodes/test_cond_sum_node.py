@@ -1,6 +1,8 @@
 import unittest
 
 import torch
+import tensorly as tl
+import numpy as np
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
@@ -8,6 +10,8 @@ from spflow.torch.inference import likelihood, log_likelihood
 from spflow.tensorly.inference import likelihood, log_likelihood
 from spflow.tensorly.structure.spn import CondSumNode, ProductNode
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
+from spflow.tensorly.structure.spn.nodes.cond_sum_node import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 def create_example_spn():
     spn = CondSumNode(
@@ -115,6 +119,19 @@ class TestNode(unittest.TestCase):
         ll.backward()
 
         self.assertTrue(weights.grad is not None)
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        dummy_spn = create_example_spn()
+        dummy_data = torch.tensor([[1.0, 0.0, 1.0]])
+
+        ll_result = log_likelihood(dummy_spn, dummy_data)
+
+        for backend in backends:
+            tl.set_backend(backend)
+            layer_updated = updateBackend(dummy_spn)
+            layer_ll_updated = log_likelihood(layer_updated, tl.tensor(dummy_data))
+            self.assertTrue(np.allclose(tl_toNumpy(ll_result), tl_toNumpy(layer_ll_updated)))
 
 
 if __name__ == "__main__":

@@ -85,6 +85,7 @@ class Uniform(LeafNode):
 
         # set parameters
         self.set_params(start, end, support_outside)
+        self.backend = "pytorch"
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:

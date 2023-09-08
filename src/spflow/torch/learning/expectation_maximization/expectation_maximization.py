@@ -34,6 +34,10 @@ def expectation_maximization(
     Returns:
         One-dimensional PyTorch tensors, containing the average log-likelihood for each iteration step.
     """
+
+    if module.backend != "pytorch":
+        raise NotImplementedError("em is not implemented in this backend")
+
     prev_avg_ll = torch.tensor(-float("inf"))
     ll_history = []
 

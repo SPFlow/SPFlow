@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class Uniform:
     def __new__(cls, scope: Scope, start: float, end: float, support_outside: bool = True):
-        from spflow.tensorly.structure.general.nodes.leaves import Uniform as TensorlyUniform
-        from spflow.torch.structure.general.nodes.leaves import Uniform as TorchUniform
+        from spflow.base.structure.general.nodes.leaves.parametric.uniform import Uniform as TensorlyUniform
+        from spflow.torch.structure.general.nodes.leaves.parametric.uniform import Uniform as TorchUniform
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class Uniform:
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves import Uniform as TensorlyUniform
-        from spflow.torch.structure.general.nodes.leaves import Uniform as TorchUniform
+        from spflow.base.structure.general.nodes.leaves.parametric.uniform import Uniform as TensorlyUniform
+        from spflow.torch.structure.general.nodes.leaves.parametric.uniform import Uniform as TorchUniform
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyUniform.accepts(signatures)
@@ -34,8 +34,8 @@ class Uniform:
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves import Uniform as TensorlyUniform
-        from spflow.torch.structure.general.nodes.leaves import Uniform as TorchUniform
+        from spflow.base.structure.general.nodes.leaves.parametric.uniform import Uniform as TensorlyUniform
+        from spflow.torch.structure.general.nodes.leaves.parametric.uniform import Uniform as TorchUniform
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyUniform.from_signatures(signatures)

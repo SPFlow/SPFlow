@@ -125,6 +125,6 @@ def log_likelihood(
                 # compute probabilities for values inside distribution support
                 log_prob[marg_ids, 0] = leaf.dist(mean=mean, cov=cov).log_prob(
                     marg_data.type(torch.get_default_dtype())
-                )
+                ).type(torch.get_default_dtype())
 
     return log_prob

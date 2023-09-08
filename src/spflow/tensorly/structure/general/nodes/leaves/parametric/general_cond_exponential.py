@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class CondExponential:  # ToDo: backend über tl.getBackend() abfragen
     def __new__(cls, scope: Scope, cond_f: Optional[Callable] = None):
-        from spflow.tensorly.structure.general.nodes.leaves import CondExponential as TensorlyCondExponential
-        from spflow.torch.structure.general.nodes.leaves import CondExponential as TorchCondExponential
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_exponential import CondExponential as TensorlyCondExponential
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_exponential import CondExponential as TorchCondExponential
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class CondExponential:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves import CondExponential as TensorlyCondExponential
-        from spflow.torch.structure.general.nodes.leaves import CondExponential as TorchCondExponential
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_exponential import CondExponential as TensorlyCondExponential
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_exponential import CondExponential as TorchCondExponential
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondExponential.accepts(signatures)
@@ -34,8 +34,8 @@ class CondExponential:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves import CondExponential as TensorlyCondExponential
-        from spflow.torch.structure.general.nodes.leaves import CondExponential as TorchCondExponential
+        from spflow.base.structure.general.nodes.leaves.parametric.cond_exponential import CondExponential as TensorlyCondExponential
+        from spflow.torch.structure.general.nodes.leaves.parametric.cond_exponential import CondExponential as TorchCondExponential
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondExponential.from_signatures(signatures)

@@ -101,7 +101,8 @@ class SumLayer(NestedModule):
 
 
         # compute scope
-        self.scope = self.nodes[0].scope
+        #self.scope = self.nodes[0].scope
+        self.scope = Scope([int(x) for x in self.nodes[0].scope.query], self.nodes[0].scope.evidence)
 
     @property
     def n_out(self) -> int:
@@ -248,18 +249,20 @@ def updateBackend(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] =
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    if isinstance(sum_layer.weights, np.ndarray):
-        return SumLayer(
-            n_nodes=sum_layer.n_out,
-            children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
-            weights=tl.tensor(sum_layer.weights)
-        )
-    elif torch.is_tensor(sum_layer.weights):
+
+    if isinstance(sum_layer.weights, torch.Tensor):#torch.nn.parameter.Parameter):
         return SumLayer(
             n_nodes=sum_layer.n_out,
             children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
             weights=tl.tensor(sum_layer.weights.data)
         )
+    elif isinstance(sum_layer.weights, np.ndarray):
+        return SumLayer(
+            n_nodes=sum_layer.n_out,
+            children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+            weights=tl.tensor(sum_layer.weights)
+        )
+
     else:
         raise NotImplementedError("updateBackend has no implementation for this backend")
 

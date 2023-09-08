@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class Exponential:  # ToDo: backend über tl.getBackend() abfragen
     def __new__(cls, scope: Scope, l: float = 1.0):
-        from spflow.tensorly.structure.general.nodes.leaves import Exponential as TensorlyExponential
-        from spflow.torch.structure.general.nodes.leaves import Exponential as TorchExponential
+        from spflow.base.structure.general.nodes.leaves.parametric.exponential import Exponential as TensorlyExponential
+        from spflow.torch.structure.general.nodes.leaves.parametric.exponential import Exponential as TorchExponential
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class Exponential:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves import Exponential as TensorlyExponential
-        from spflow.torch.structure.general.nodes.leaves import Exponential as TorchExponential
+        from spflow.base.structure.general.nodes.leaves.parametric.exponential import Exponential as TensorlyExponential
+        from spflow.torch.structure.general.nodes.leaves.parametric.exponential import Exponential as TorchExponential
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyExponential.accepts(signatures)
@@ -34,8 +34,8 @@ class Exponential:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves import Exponential as TensorlyExponential
-        from spflow.torch.structure.general.nodes.leaves import Exponential as TorchExponential
+        from spflow.base.structure.general.nodes.leaves.parametric.exponential import Exponential as TensorlyExponential
+        from spflow.torch.structure.general.nodes.leaves.parametric.exponential import Exponential as TorchExponential
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyExponential.from_signatures(signatures)

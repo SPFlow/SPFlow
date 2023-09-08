@@ -3,12 +3,15 @@ import unittest
 
 import numpy as np
 import torch
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.torch.inference import log_likelihood
 from spflow.tensorly.sampling import sample
 from spflow.torch.structure.spn import Gaussian
 from spflow.tensorly.structure.spn import CondSumNode, ProductNode
+from spflow.tensorly.structure.spn.nodes.cond_sum_node import updateBackend
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 class TestNode(unittest.TestCase):
@@ -104,6 +107,62 @@ class TestNode(unittest.TestCase):
 
         samples = sample(s, 1000)
         self.assertTrue(torch.isclose(samples.mean(), torch.tensor(3.0), rtol=0.1))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        s = CondSumNode(
+            children=[
+                CondSumNode(
+                    children=[
+                        ProductNode(
+                            children=[
+                                Gaussian(Scope([0]), -7.0, 1.0),
+                                Gaussian(Scope([1]), 7.0, 1.0),
+                            ],
+                        ),
+                        ProductNode(
+                            children=[
+                                Gaussian(Scope([0]), -5.0, 1.0),
+                                Gaussian(Scope([1]), 5.0, 1.0),
+                            ],
+                        ),
+                    ],
+                    cond_f=lambda data: {"weights": [0.2, 0.8]},
+                ),
+                CondSumNode(
+                    children=[
+                        ProductNode(
+                            children=[
+                                Gaussian(Scope([0]), -3.0, 1.0),
+                                Gaussian(Scope([1]), 3.0, 1.0),
+                            ],
+                        ),
+                        ProductNode(
+                            children=[
+                                Gaussian(Scope([0]), -1.0, 1.0),
+                                Gaussian(Scope([1]), 1.0, 1.0),
+                            ],
+                        ),
+                    ],
+                    cond_f=lambda data: {"weights": [0.6, 0.4]},
+                ),
+            ],
+            cond_f=lambda data: {"weights": [0.7, 0.3]},
+        )
+
+        samples = sample(s, 1000)
+        samples_mean = tl_toNumpy(samples).mean()
+        for backend in backends:
+            tl.set_backend(backend)
+            s_updated = updateBackend(s)
+            samples_updated = sample(s_updated, 10000)
+            samples_mean_updated = tl_toNumpy(samples_updated).mean()
+            self.assertTrue(np.allclose(samples_mean, samples_mean_updated, atol=0.01, rtol=0.1))
 
 
 if __name__ == "__main__":

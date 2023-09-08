@@ -13,8 +13,8 @@ class GeometricLayer:  # ToDo: backend über tl.getBackend() abfragen
         p: Union[int, float, List[float], T] = 0.5,
         n_nodes: int = 1,
         **kwargs):
-        from spflow.tensorly.structure.general.layers.leaves import GeometricLayer as TensorlyGeometric
-        from spflow.torch.structure.general.layers.leaves import GeometricLayer as TorchGeometric
+        from spflow.base.structure.general.layers.leaves.parametric.geometric import GeometricLayer as TensorlyGeometric
+        from spflow.torch.structure.general.layers.leaves.parametric.geometric import GeometricLayer as TorchGeometric
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -26,8 +26,8 @@ class GeometricLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import GeometricLayer as TensorlyGeometric
-        from spflow.torch.structure.general.layers.leaves import GeometricLayer as TorchGeometric
+        from spflow.base.structure.general.layers.leaves.parametric.geometric import GeometricLayer as TensorlyGeometric
+        from spflow.torch.structure.general.layers.leaves.parametric.geometric import GeometricLayer as TorchGeometric
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyGeometric.accepts(signatures)
@@ -38,8 +38,8 @@ class GeometricLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import GeometricLayer as TensorlyGeometric
-        from spflow.torch.structure.general.layers.leaves import GeometricLayer as TorchGeometric
+        from spflow.base.structure.general.layers.leaves.parametric.geometric import GeometricLayer as TensorlyGeometric
+        from spflow.torch.structure.general.layers.leaves.parametric.geometric import GeometricLayer as TorchGeometric
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyGeometric.from_signatures(signatures)

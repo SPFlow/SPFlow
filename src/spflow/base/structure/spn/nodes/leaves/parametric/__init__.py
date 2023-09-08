@@ -1,4 +1,5 @@
 # ----- specific imports -----
+"""
 from spflow.base.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
 from spflow.base.structure.general.nodes.leaves.parametric.binomial import Binomial
 from spflow.base.structure.general.nodes.leaves.parametric.cond_bernoulli import (
@@ -47,3 +48,4 @@ from spflow.base.structure.general.nodes.leaves.parametric.negative_binomial imp
 )
 from spflow.base.structure.general.nodes.leaves.parametric.poisson import Poisson
 from spflow.base.structure.general.nodes.leaves.parametric.uniform import Uniform
+"""

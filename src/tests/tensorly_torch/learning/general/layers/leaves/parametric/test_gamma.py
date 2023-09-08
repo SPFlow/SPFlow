@@ -2,7 +2,9 @@ import random
 import unittest
 
 import numpy as np
+import pytest
 import torch
+import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
@@ -14,6 +16,8 @@ from spflow.torch.learning import (
 )
 from spflow.torch.structure.spn import GammaLayer#, ProductNode, SumNode
 from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
+from spflow.torch.structure.general.layers.leaves.parametric.gamma import updateBackend
 
 
 class TestNode(unittest.TestCase):
@@ -246,6 +250,61 @@ class TestNode(unittest.TestCase):
 
         self.assertTrue(torch.allclose(layer.alpha, torch.tensor([1.4, 0.9]), atol=1e-2, rtol=1e-1))
         self.assertTrue(torch.allclose(layer.beta, torch.tensor([0.8, 1.9]), atol=1e-2, rtol=1e-1))
+
+    def test_update_backend(self):
+        backends = ["numpy", "pytorch"]
+        # set seed
+        torch.manual_seed(0)
+        np.random.seed(0)
+        random.seed(0)
+
+        layer = GammaLayer(scope=[Scope([0]), Scope([1])])
+
+        # simulate data
+        data = np.hstack(
+            [
+                np.random.gamma(shape=0.3, scale=1.0 / 1.7, size=(50000, 1)),
+                np.random.gamma(shape=1.9, scale=1.0 / 0.7, size=(50000, 1)),
+            ]
+        )
+
+        # perform MLE
+        maximum_likelihood_estimation(layer, tl.tensor(data))
+
+        alpha = tl_toNumpy(layer.alpha)
+        beta = tl_toNumpy(layer.beta)
+
+        layer = GammaLayer(scope=[Scope([0]), Scope([1])])
+        prod_node = ProductNode([layer])
+        expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+        alpha_em = tl_toNumpy(layer.alpha)
+        beta_em = tl_toNumpy(layer.beta)
+
+
+        # make sure that probabilities match python backend probabilities
+        for backend in backends:
+            tl.set_backend(backend)
+            layer = GammaLayer(scope=[Scope([0]), Scope([1])])
+            layer_updated = updateBackend(layer)
+            maximum_likelihood_estimation(layer_updated, tl.tensor(data))
+            # check conversion from torch to python
+            alpha_updated = tl_toNumpy(layer_updated.alpha)
+            beta_updated = tl_toNumpy(layer_updated.beta)
+            self.assertTrue(np.allclose(alpha, alpha_updated, atol=1e-2, rtol=1e-1))
+            self.assertTrue(np.allclose(beta, beta_updated, atol=1e-2, rtol=1e-1))
+
+            layer = GammaLayer(scope=[Scope([0]), Scope([1])])
+            layer_updated = updateBackend(layer)
+            prod_node = ProductNode([layer_updated])
+            if tl.get_backend() != "pytorch":
+                with pytest.raises(NotImplementedError):
+                    expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+            else:
+                expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+                alpha_em_updated = tl_toNumpy(layer_updated.alpha)
+                beta_em_updated = tl_toNumpy(layer_updated.beta)
+                self.assertTrue(np.allclose(alpha_em, alpha_em_updated, atol=1e-2, rtol=1e-1))
+                self.assertTrue(np.allclose(beta_em, beta_em_updated, atol=1e-2, rtol=1e-1))
 
 
 if __name__ == "__main__":

@@ -9,8 +9,8 @@ from spflow.meta.data.scope import Scope
 
 class Geometric:  # ToDo: backend über tl.getBackend() abfragen
     def __new__(cls, scope: Scope, p: float = 0.5):
-        from spflow.tensorly.structure.general.nodes.leaves import Geometric as TensorlyGeometric
-        from spflow.torch.structure.general.nodes.leaves import Geometric as TorchGeometric
+        from spflow.base.structure.general.nodes.leaves.parametric.geometric import Geometric as TensorlyGeometric
+        from spflow.torch.structure.general.nodes.leaves.parametric.geometric import Geometric as TorchGeometric
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -22,8 +22,8 @@ class Geometric:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.nodes.leaves import Geometric as TensorlyGeometric
-        from spflow.torch.structure.general.nodes.leaves import Geometric as TorchGeometric
+        from spflow.base.structure.general.nodes.leaves.parametric.geometric import Geometric as TensorlyGeometric
+        from spflow.torch.structure.general.nodes.leaves.parametric.geometric import Geometric as TorchGeometric
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyGeometric.accepts(signatures)
@@ -34,8 +34,8 @@ class Geometric:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.nodes.leaves import Geometric as TensorlyGeometric
-        from spflow.torch.structure.general.nodes.leaves import Geometric as TorchGeometric
+        from spflow.base.structure.general.nodes.leaves.parametric.geometric import Geometric as TensorlyGeometric
+        from spflow.torch.structure.general.nodes.leaves.parametric.geometric import Geometric as TorchGeometric
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyGeometric.from_signatures(signatures)

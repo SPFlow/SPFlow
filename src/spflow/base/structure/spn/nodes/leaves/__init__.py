@@ -1,5 +1,5 @@
 # ---- sub-packages -----
-from . import parametric
+#from . import parametric
 
 # ---- specific imports -----
-from .parametric import *
+#from .parametric import *

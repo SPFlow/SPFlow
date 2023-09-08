@@ -29,6 +29,7 @@ class LeafNode(Node, ABC):
         """
         super().__init__(children=[], **kwargs)
 
-        self.scope = scope
+        #self.scope = scope
+        self.scope = Scope([int(x) for x in scope.query], scope.evidence)
 
 

@@ -12,8 +12,8 @@ class CondGammaLayer:  # ToDo: backend über tl.getBackend() abfragen
         cond_f: Optional[Union[Callable, List[Callable]]] = None,
         n_nodes: int = 1,
         **kwargs):
-        from spflow.tensorly.structure.general.layers.leaves import CondGammaLayer as TensorlyCondGamma
-        from spflow.torch.structure.general.layers.leaves import CondGammaLayer as TorchCondGamma
+        from spflow.base.structure.general.layers.leaves.parametric.cond_gamma import CondGammaLayer as TensorlyCondGamma
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_gamma import CondGammaLayer as TorchCondGamma
         """TODO"""
         backend = tl.get_backend()
         if backend == "numpy":
@@ -25,8 +25,8 @@ class CondGammaLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
-        from spflow.tensorly.structure.general.layers.leaves import CondGammaLayer as TensorlyCondGamma
-        from spflow.torch.structure.general.layers.leaves import CondGammaLayer as TorchCondGamma
+        from spflow.base.structure.general.layers.leaves.parametric.cond_gamma import CondGammaLayer as TensorlyCondGamma
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_gamma import CondGammaLayer as TorchCondGamma
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondGamma.accepts(signatures)
@@ -37,8 +37,8 @@ class CondGammaLayer:  # ToDo: backend über tl.getBackend() abfragen
 
     @classmethod
     def from_signatures(cls, signatures: List[FeatureContext]):
-        from spflow.tensorly.structure.general.layers.leaves import CondGammaLayer as TensorlyCondGamma
-        from spflow.torch.structure.general.layers.leaves import CondGammaLayer as TorchCondGamma
+        from spflow.base.structure.general.layers.leaves.parametric.cond_gamma import CondGammaLayer as TensorlyCondGamma
+        from spflow.torch.structure.general.layers.leaves.parametric.cond_gamma import CondGammaLayer as TorchCondGamma
         backend = tl.get_backend()
         if backend == "numpy":
             return TensorlyCondGamma.from_signatures(signatures)

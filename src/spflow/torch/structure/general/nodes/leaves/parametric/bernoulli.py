@@ -71,6 +71,7 @@ class Bernoulli(LeafNode):
 
         # set parameters
         self.set_params(p)
+        self.backend = "pytorch"
 
     @property
     def p(self) -> torch.Tensor:
