@@ -345,6 +345,6 @@ def updateBackend(leaf_node: UniformLayer, dispatch_ctx: Optional[DispatchContex
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return GeneralUniformLayer(scope=leaf_node.scopes_out,
-        start=leaf_node.start.numpy(),
-        end=leaf_node.end.numpy(),
-        support_outside=leaf_node.support_outside.numpy())
+        start=leaf_node.start,
+        end=leaf_node.end,
+        support_outside=leaf_node.support_outside)

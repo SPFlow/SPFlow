@@ -4,428 +4,430 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.structure.spn import GammaLayer as BaseGammaLayer
+from spflow.base.structure.general.nodes.leaves.parametric.gamma import Gamma as GammaBase
+from spflow.base.structure.general.layers.leaves.parametric.gamma import GammaLayer as GammaLayerBase
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Gamma as GammaTorch
-from spflow.torch.structure.spn import GammaLayer as GammaLayerTorch
+from spflow.torch.structure import marginalize
+from spflow.torch.structure.general.nodes.leaves.parametric.gamma import Gamma as GammaTorch
+from spflow.torch.structure.general.layers.leaves.parametric.gamma import GammaLayer as GammaLayerTorch
 from spflow.torch.structure.general.layers.leaves.parametric.gamma import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_gamma import GammaLayer
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
+
+tc = unittest.TestCase()
 
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_layer_initialization(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    # ----- check attributes after correct initialization -----
+    alpha_values = [0.5, 2.3, 1.0]
+    beta_values = [1.3, 1.0, 0.2]
+    l = GammaLayer(scope=Scope([1]), n_nodes=3, alpha=alpha_values, beta=beta_values)
+    # make sure number of creates nodes is correct
+    tc.assertEqual(len(l.scopes_out), 3)
+    # make sure scopes are correct
+    tc.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
+    # make sure parameter properties works correctly
+    for alpha_layer_node, beta_layer_node, alpha_value, beta_value in zip(
+        l.alpha, l.beta, alpha_values, beta_values
+    ):
+        tc.assertTrue(np.allclose(tl_toNumpy(alpha_layer_node), alpha_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(beta_layer_node), beta_value))
 
-    def test_layer_initialization(self):
+    # ----- float/int parameter values -----
+    alpha_value = 0.73
+    beta_value = 1.9
+    l = GammaLayer(scope=Scope([1]), n_nodes=3, alpha=alpha_value, beta=beta_value)
 
-        # ----- check attributes after correct initialization -----
-        alpha_values = [0.5, 2.3, 1.0]
-        beta_values = [1.3, 1.0, 0.2]
-        l = GammaLayer(scope=Scope([1]), n_nodes=3, alpha=alpha_values, beta=beta_values)
-        # make sure number of creates nodes is correct
-        self.assertEqual(len(l.scopes_out), 3)
-        # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
-        # make sure parameter properties works correctly
-        for alpha_layer_node, beta_layer_node, alpha_value, beta_value in zip(
-            l.alpha, l.beta, alpha_values, beta_values
-        ):
-            self.assertTrue(torch.allclose(alpha_layer_node, torch.tensor(alpha_value)))
-            self.assertTrue(torch.allclose(beta_layer_node, torch.tensor(beta_value)))
+    for alpha_layer_node, beta_layer_node in zip(l.alpha, l.beta):
+        tc.assertTrue(np.allclose(tl_toNumpy(alpha_layer_node), alpha_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(beta_layer_node), beta_value))
 
-        # ----- float/int parameter values -----
-        alpha_value = 0.73
-        beta_value = 1.9
-        l = GammaLayer(scope=Scope([1]), n_nodes=3, alpha=alpha_value, beta=beta_value)
+    # ----- list parameter values -----
+    alpha_values = [0.17, 0.8, 0.53]
+    beta_values = [0.9, 1.34, 0.98]
+    l = GammaLayer(scope=Scope([1]), n_nodes=3, alpha=alpha_values, beta=beta_values)
 
-        for alpha_layer_node, beta_layer_node in zip(l.alpha, l.beta):
-            self.assertTrue(torch.allclose(alpha_layer_node, torch.tensor(alpha_value)))
-            self.assertTrue(torch.allclose(beta_layer_node, torch.tensor(beta_value)))
+    for alpha_layer_node, beta_layer_node, alpha_value, beta_value in zip(
+        l.alpha, l.beta, alpha_values, beta_values
+    ):
+        tc.assertTrue(np.allclose(tl_toNumpy(alpha_layer_node), alpha_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(beta_layer_node), beta_value))
 
-        # ----- list parameter values -----
-        alpha_values = [0.17, 0.8, 0.53]
-        beta_values = [0.9, 1.34, 0.98]
-        l = GammaLayer(scope=Scope([1]), n_nodes=3, alpha=alpha_values, beta=beta_values)
+    # wrong number of values
+    tc.assertRaises(
+        ValueError,
+        GammaLayer,
+        Scope([0]),
+        alpha_values[:-1],
+        beta_values,
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        GammaLayer,
+        Scope([0]),
+        alpha_values,
+        beta_values[:-1],
+        n_nodes=3,
+    )
+    # wrong number of dimensions (nested list)
+    tc.assertRaises(
+        ValueError,
+        GammaLayer,
+        Scope([0]),
+        alpha_values,
+        [beta_values for _ in range(3)],
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        GammaLayer,
+        Scope([0]),
+        [alpha_values for _ in range(3)],
+        beta_values,
+        n_nodes=3,
+    )
 
-        for alpha_layer_node, beta_layer_node, alpha_value, beta_value in zip(
-            l.alpha, l.beta, alpha_values, beta_values
-        ):
-            self.assertTrue(torch.allclose(alpha_layer_node, torch.tensor(alpha_value)))
-            self.assertTrue(torch.allclose(beta_layer_node, torch.tensor(beta_value)))
+    # ----- numpy parameter values -----
 
-        # wrong number of values
-        self.assertRaises(
-            ValueError,
-            GammaLayer,
-            Scope([0]),
-            alpha_values[:-1],
-            beta_values,
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            GammaLayer,
-            Scope([0]),
-            alpha_values,
-            beta_values[:-1],
-            n_nodes=3,
-        )
-        # wrong number of dimensions (nested list)
-        self.assertRaises(
-            ValueError,
-            GammaLayer,
-            Scope([0]),
-            alpha_values,
-            [beta_values for _ in range(3)],
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            GammaLayer,
-            Scope([0]),
-            [alpha_values for _ in range(3)],
-            beta_values,
-            n_nodes=3,
-        )
+    l = GammaLayer(
+        scope=Scope([1]),
+        n_nodes=3,
+        alpha=np.array(alpha_values),
+        beta=np.array(beta_values),
+    )
 
-        # ----- numpy parameter values -----
+    for alpha_layer_node, beta_layer_node, alpha_value, beta_value in zip(
+        l.alpha, l.beta, alpha_values, beta_values
+    ):
+        tc.assertTrue(np.allclose(tl_toNumpy(alpha_layer_node), alpha_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(beta_layer_node), beta_value))
 
-        l = GammaLayer(
-            scope=Scope([1]),
-            n_nodes=3,
-            alpha=np.array(alpha_values),
-            beta=np.array(beta_values),
-        )
+    # wrong number of values
+    tc.assertRaises(
+        ValueError,
+        GammaLayer,
+        Scope([0]),
+        np.array(alpha_values[:-1]),
+        np.array(beta_values),
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        GammaLayer,
+        Scope([0]),
+        np.array(alpha_values),
+        np.array(beta_values[:-1]),
+        n_nodes=3,
+    )
+    # wrong number of dimensions (nested list)
+    tc.assertRaises(
+        ValueError,
+        GammaLayer,
+        Scope([0]),
+        np.array(alpha_values),
+        np.array([beta_values for _ in range(3)]),
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        GammaLayer,
+        Scope([0]),
+        np.array([alpha_values for _ in range(3)]),
+        np.array(beta_values),
+        n_nodes=3,
+    )
 
-        for alpha_layer_node, beta_layer_node, alpha_value, beta_value in zip(
-            l.alpha, l.beta, alpha_values, beta_values
-        ):
-            self.assertTrue(torch.allclose(alpha_layer_node, torch.tensor(alpha_value)))
-            self.assertTrue(torch.allclose(beta_layer_node, torch.tensor(beta_value)))
+    # ---- different scopes -----
+    l = GammaLayer(scope=Scope([1]), n_nodes=3)
+    for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
+        tc.assertEqual(layer_scope, node_scope)
 
-        # wrong number of values
-        self.assertRaises(
-            ValueError,
-            GammaLayer,
-            Scope([0]),
-            np.array(alpha_values[:-1]),
-            np.array(beta_values),
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            GammaLayer,
-            Scope([0]),
-            np.array(alpha_values),
-            np.array(beta_values[:-1]),
-            n_nodes=3,
-        )
-        # wrong number of dimensions (nested list)
-        self.assertRaises(
-            ValueError,
-            GammaLayer,
-            Scope([0]),
-            np.array(alpha_values),
-            np.array([beta_values for _ in range(3)]),
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            GammaLayer,
-            Scope([0]),
-            np.array([alpha_values for _ in range(3)]),
-            np.array(beta_values),
-            n_nodes=3,
-        )
+    # ----- invalid number of nodes -----
+    tc.assertRaises(ValueError, GammaLayer, Scope([0]), n_nodes=0)
 
-        # ---- different scopes -----
-        l = GammaLayer(scope=Scope([1]), n_nodes=3)
-        for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
-            self.assertEqual(layer_scope, node_scope)
+    # ----- invalid scope -----
+    tc.assertRaises(ValueError, GammaLayer, Scope([]), n_nodes=3)
+    tc.assertRaises(ValueError, GammaLayer, [], n_nodes=3)
 
-        # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, GammaLayer, Scope([0]), n_nodes=0)
+    # ----- individual scopes and parameters -----
+    scopes = [Scope([1]), Scope([0]), Scope([0])]
+    l = GammaLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
 
-        # ----- invalid scope -----
-        self.assertRaises(ValueError, GammaLayer, Scope([]), n_nodes=3)
-        self.assertRaises(ValueError, GammaLayer, [], n_nodes=3)
+    for layer_scope, node_scope in zip(l.scopes_out, scopes):
+        tc.assertEqual(layer_scope, node_scope)
 
-        # ----- individual scopes and parameters -----
-        scopes = [Scope([1]), Scope([0]), Scope([0])]
-        l = GammaLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
+def test_accept(do_for_all_backends):
 
-        for layer_scope, node_scope in zip(l.scopes_out, scopes):
-            self.assertEqual(layer_scope, node_scope)
-
-    def test_accept(self):
-
-        # continuous meta type
-        self.assertTrue(
-            GammaLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # feature type class
-        self.assertTrue(
-            GammaLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Gamma]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # feature type instance
-        self.assertTrue(
-            GammaLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Gamma(1.0, 1.0)]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # invalid feature type
-        self.assertFalse(
-            GammaLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # conditional scope
-        self.assertFalse(GammaLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
-
-        # multivariate signature
-        self.assertFalse(
-            GammaLayer.accepts(
-                [
-                    FeatureContext(
-                        Scope([0, 1]),
-                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
-                    )
-                ]
-            )
-        )
-
-    def test_initialization_from_signatures(self):
-
-        gamma = GammaLayer.from_signatures(
+    # continuous meta type
+    tc.assertTrue(
+        GammaLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
                 FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
             ]
         )
-        self.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        gamma = GammaLayer.from_signatures(
+    # feature type class
+    tc.assertTrue(
+        GammaLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.Gamma]),
-                FeatureContext(Scope([1]), [FeatureTypes.Gamma]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
             ]
         )
-        self.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        gamma = GammaLayer.from_signatures(
+    # feature type instance
+    tc.assertTrue(
+        GammaLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.Gamma(1.0, 1.0)]),
-                FeatureContext(Scope([1]), [FeatureTypes.Gamma(1.0, 1.0)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
             ]
         )
-        self.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        # ----- invalid arguments -----
-
-        # invalid feature type
-        self.assertRaises(
-            ValueError,
-            GammaLayer.from_signatures,
-            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+    # invalid feature type
+    tc.assertFalse(
+        GammaLayer.accepts(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+            ]
         )
+    )
 
-        # conditional scope
-        self.assertRaises(
-            ValueError,
-            GammaLayer.from_signatures,
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
-        )
+    # conditional scope
+    tc.assertFalse(GammaLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
-        # multivariate signature
-        self.assertRaises(
-            ValueError,
-            GammaLayer.from_signatures,
+    # multivariate signature
+    tc.assertFalse(
+        GammaLayer.accepts(
             [
                 FeatureContext(
                     Scope([0, 1]),
                     [FeatureTypes.Continuous, FeatureTypes.Continuous],
                 )
-            ],
-        )
-
-    def test_autoleaf(self):
-
-        # make sure leaf is registered
-        self.assertTrue(AutoLeaf.is_registered(GammaLayer))
-
-        # make sure leaf is correctly inferred
-        self.assertEqual(
-            GammaLayer,
-            AutoLeaf.infer(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Gamma]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Gamma]),
-                ]
-            ),
-        )
-
-        # make sure AutoLeaf can return correctly instantiated object
-        gamma = AutoLeaf(
-            [
-                FeatureContext(Scope([0]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)]),
-                FeatureContext(Scope([1]), [FeatureTypes.Gamma(alpha=0.5, beta=1.5)]),
             ]
         )
-        self.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-    def test_layer_structural_marginalization(self):
+def test_initialization_from_signatures(do_for_all_backends):
 
-        # ---------- same scopes -----------
+    gamma = GammaLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+            FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+        ]
+    )
+    tc.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
 
-        l = GammaLayer(scope=Scope([1]), alpha=[0.73, 0.29], beta=[0.41, 1.9], n_nodes=2)
+    gamma = GammaLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Gamma]),
+            FeatureContext(Scope([1]), [FeatureTypes.Gamma]),
+        ]
+    )
+    tc.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [1]) == None)
+    gamma = GammaLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Gamma(1.0, 1.0)]),
+            FeatureContext(Scope([1]), [FeatureTypes.Gamma(1.0, 1.0)]),
+        ]
+    )
+    tc.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    # ----- invalid arguments -----
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
-        self.assertTrue(torch.allclose(l.alpha, l_marg.alpha))
-        self.assertTrue(torch.allclose(l.beta, l_marg.beta))
+    # invalid feature type
+    tc.assertRaises(
+        ValueError,
+        GammaLayer.from_signatures,
+        [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+    )
 
-        # ---------- different scopes -----------
+    # conditional scope
+    tc.assertRaises(
+        ValueError,
+        GammaLayer.from_signatures,
+        [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+    )
 
-        l = GammaLayer(scope=[Scope([1]), Scope([0])], alpha=[0.73, 0.29], beta=[0.41, 1.9])
+    # multivariate signature
+    tc.assertRaises(
+        ValueError,
+        GammaLayer.from_signatures,
+        [
+            FeatureContext(
+                Scope([0, 1]),
+                [FeatureTypes.Continuous, FeatureTypes.Continuous],
+            )
+        ],
+    )
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0, 1]) == None)
+def test_autoleaf(do_for_all_backends):
 
-        # ----- partially marginalize -----
-        l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, GammaTorch))
-        self.assertEqual(l_marg.scope, Scope([0]))
-        self.assertTrue(torch.allclose(l_marg.alpha, torch.tensor(0.29)))
-        self.assertTrue(torch.allclose(l_marg.beta, torch.tensor(1.9)))
+    # make sure leaf is registered
+    tc.assertTrue(AutoLeaf.is_registered(GammaLayer))
 
-        l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, GammaLayerTorch))
-        self.assertEqual(len(l_marg.scopes_out), 1)
-        self.assertTrue(torch.allclose(l_marg.alpha, torch.tensor(0.29)))
-        self.assertTrue(torch.allclose(l_marg.beta, torch.tensor(1.9)))
+    # make sure leaf is correctly inferred
+    tc.assertEqual(
+        GammaLayer,
+        AutoLeaf.infer(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Gamma]),
+                FeatureContext(Scope([1]), [FeatureTypes.Gamma]),
+            ]
+        ),
+    )
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    # make sure AutoLeaf can return correctly instantiated object
+    gamma = AutoLeaf(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Gamma(alpha=1.5, beta=0.5)]),
+            FeatureContext(Scope([1]), [FeatureTypes.Gamma(alpha=0.5, beta=1.5)]),
+        ]
+    )
+    tc.assertTrue(gamma.scopes_out == [Scope([0]), Scope([1])])
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
-        self.assertTrue(torch.allclose(l.alpha, l_marg.alpha))
-        self.assertTrue(torch.allclose(l.beta, l_marg.beta))
+def test_layer_structural_marginalization(do_for_all_backends):
 
-    def test_layer_dist(self):
+    # ---------- same scopes -----------
 
-        alpha_values = [0.73, 0.29, 0.5]
-        beta_values = [0.9, 1.34, 0.98]
-        l = GammaLayer(scope=Scope([1]), alpha=alpha_values, beta=beta_values, n_nodes=3)
+    if tl.get_backend() == "numpy":
+        GammaInst = GammaBase
+        GammaInstLayer = GammaLayerBase
+    elif tl.get_backend() == "pytorch":
+        GammaInst = GammaTorch
+        GammaInstLayer = GammaLayerTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        # ----- full dist -----
-        dist = l.dist()
+    l = GammaLayer(scope=Scope([1]), alpha=[0.73, 0.29], beta=[0.41, 1.9], n_nodes=2)
 
-        for alpha_value, beta_value, alpha_dist, beta_dist in zip(
-            alpha_values, beta_values, dist.concentration, dist.rate
-        ):
-            self.assertTrue(torch.allclose(torch.tensor(alpha_value), alpha_dist))
-            self.assertTrue(torch.allclose(torch.tensor(beta_value), beta_dist))
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [1]) == None)
 
-        # ----- partial dist -----
-        dist = l.dist([1, 2])
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        for alpha_value, beta_value, alpha_dist, beta_dist in zip(
-            alpha_values[1:], beta_values[1:], dist.concentration, dist.rate
-        ):
-            self.assertTrue(torch.allclose(torch.tensor(alpha_value), alpha_dist))
-            self.assertTrue(torch.allclose(torch.tensor(beta_value), beta_dist))
+    tc.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
+    tc.assertTrue(np.allclose(tl_toNumpy(l.alpha), tl_toNumpy(l_marg.alpha)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l.beta), tl_toNumpy(l_marg.beta)))
 
-        dist = l.dist([1, 0])
+    # ---------- different scopes -----------
 
-        for alpha_value, beta_value, alpha_dist, beta_dist in zip(
-            reversed(alpha_values[:-1]),
-            reversed(beta_values[:-1]),
-            dist.concentration,
-            dist.rate,
-        ):
-            self.assertTrue(torch.allclose(torch.tensor(alpha_value), alpha_dist))
-            self.assertTrue(torch.allclose(torch.tensor(beta_value), beta_dist))
+    l = GammaLayer(scope=[Scope([1]), Scope([0])], alpha=[0.73, 0.29], beta=[0.41, 1.9])
 
-    """
-    def test_layer_backend_conversion_1(self):
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [0, 1]) == None)
 
-        torch_layer = GammaLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            alpha=[0.2, 0.9, 0.31],
-            beta=[1.9, 0.3, 0.71],
-        )
-        base_layer = toBase(torch_layer)
+    # ----- partially marginalize -----
+    l_marg = marginalize(l, [1], prune=True)
+    tc.assertTrue(isinstance(l_marg, GammaInst))
+    tc.assertEqual(l_marg.scope, Scope([0]))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.alpha), tl.tensor(0.29)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.beta), tl.tensor(1.9)))
 
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.alpha, torch_layer.alpha.detach().numpy()))
-        self.assertTrue(np.allclose(base_layer.beta, torch_layer.beta.detach().numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
+    l_marg = marginalize(l, [1], prune=False)
+    tc.assertTrue(isinstance(l_marg, GammaInstLayer))
+    tc.assertEqual(len(l_marg.scopes_out), 1)
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.alpha), tl.tensor(0.29)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.beta), tl.tensor(1.9)))
 
-    def test_layer_backend_conversion_2(self):
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        base_layer = BaseGammaLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            alpha=[0.2, 0.9, 0.31],
-            beta=[1.9, 0.3, 0.71],
-        )
-        torch_layer = toTorch(base_layer)
+    tc.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
+    tc.assertTrue(np.allclose(tl_toNumpy(l.alpha), tl_toNumpy(l_marg.alpha)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l.beta), tl_toNumpy(l_marg.beta)))
 
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.alpha, torch_layer.alpha.detach().numpy()))
-        self.assertTrue(np.allclose(base_layer.beta, torch_layer.beta.detach().numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
-    """
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        gamma = GammaLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
-            alpha=[0.2, 0.9, 0.31],
-            beta=[1.9, 0.3, 0.71])
-        for backend in backends:
-            tl.set_backend(backend)
+def test_layer_dist(do_for_all_backends):
+
+    alpha_values = [0.73, 0.29, 0.5]
+    beta_values = [0.9, 1.34, 0.98]
+    l = GammaLayer(scope=Scope([1]), alpha=alpha_values, beta=beta_values, n_nodes=3)
+
+    # ----- full dist -----
+    dist = l.dist()
+
+    if tl.get_backend() == "numpy":
+        beta_list = [1/d.kwds.get("scale") for d in dist]
+        alpha_list = [d.kwds.get("a") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        beta_list = dist.rate
+        alpha_list = dist.concentration
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    for alpha_value, beta_value, alpha_dist, beta_dist in zip(
+        alpha_values, beta_values, alpha_list, beta_list
+    ):
+        tc.assertTrue(np.allclose(tl.tensor(alpha_value), tl_toNumpy(alpha_dist)))
+        tc.assertTrue(np.allclose(tl.tensor(beta_value), tl_toNumpy(beta_dist)))
+
+    # ----- partial dist -----
+    dist = l.dist([1, 2])
+
+    if tl.get_backend() == "numpy":
+        beta_list = [1/d.kwds.get("scale") for d in dist]
+        alpha_list = [d.kwds.get("a") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        beta_list = dist.rate
+        alpha_list = dist.concentration
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    for alpha_value, beta_value, alpha_dist, beta_dist in zip(
+        alpha_values[1:], beta_values[1:], alpha_list, beta_list
+    ):
+        tc.assertTrue(np.allclose(tl.tensor(alpha_value), tl_toNumpy(alpha_dist)))
+        tc.assertTrue(np.allclose(tl.tensor(beta_value), tl_toNumpy(beta_dist)))
+
+    dist = l.dist([1, 0])
+
+    if tl.get_backend() == "numpy":
+        beta_list = [1/d.kwds.get("scale") for d in dist]
+        alpha_list = [d.kwds.get("a") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        beta_list = dist.rate
+        alpha_list = dist.concentration
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    for alpha_value, beta_value, alpha_dist, beta_dist in zip(
+        reversed(alpha_values[:-1]),
+        reversed(beta_values[:-1]),
+        alpha_list,
+        beta_list,
+    ):
+        tc.assertTrue(np.allclose(tl.tensor(alpha_value), tl_toNumpy(alpha_dist)))
+        tc.assertTrue(np.allclose(tl.tensor(beta_value), tl_toNumpy(beta_dist)))
+
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    gamma = GammaLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+        alpha=[0.2, 0.9, 0.31],
+        beta=[1.9, 0.3, 0.71])
+    for backend in backends:
+        with tl.backend_context(backend):
             gamma_updated = updateBackend(gamma)
-            self.assertTrue(np.all(gamma.scopes_out == gamma_updated.scopes_out))
+            tc.assertTrue(np.all(gamma.scopes_out == gamma_updated.scopes_out))
             # check conversion from torch to python
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*gamma.get_params()[0]]),
                     np.array([*gamma_updated.get_params()[0]]),
                 )
             )
 
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*gamma.get_params()[1]]),
                     np.array([*gamma_updated.get_params()[1]]),

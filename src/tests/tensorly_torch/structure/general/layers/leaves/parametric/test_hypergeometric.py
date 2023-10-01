@@ -4,488 +4,466 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.structure.spn import HypergeometricLayer as BaseHypergeometricLayer
+from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import Hypergeometric as HypergeometricBase
+from spflow.base.structure.general.layers.leaves.parametric.hypergeometric import HypergeometricLayer as HypergeometricLayerBase
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Hypergeometric as HypergeometricTorch
-from spflow.torch.structure.spn import HypergeometricLayer as HypergeometricLayerTorch
+from spflow.torch.structure import marginalize
+from spflow.torch.structure.general.nodes.leaves.parametric.hypergeometric import Hypergeometric as HypergeometricTorch
+from spflow.torch.structure.general.layers.leaves.parametric.hypergeometric import HypergeometricLayer as HypergeometricLayerTorch
 from spflow.torch.structure.general.layers.leaves.parametric.hypergeometric import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_hypergeometric import HypergeometricLayer
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_hypergeometric import Hypergeometric
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_layer_initialization(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    # ----- check attributes after correct initialization -----
+    N_values = [10, 5, 7]
+    M_values = [8, 2, 6]
+    n_values = [3, 4, 5]
+    l = HypergeometricLayer(
+        scope=[Scope([1]), Scope([0]), Scope([2])],
+        N=N_values,
+        M=M_values,
+        n=n_values,
+    )
+    # make sure number of creates nodes is correct
+    tc.assertEqual(len(l.scopes_out), 3)
+    # make sure scopes are correct
+    tc.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([0]), Scope([2])]))
+    # make sure parameter properties works correctly
+    for (
+        N_layer_node,
+        M_layer_node,
+        n_layer_node,
+        N_value,
+        M_value,
+        n_value,
+    ) in zip(l.N, l.M, l.n, N_values, M_values, n_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(N_layer_node), N_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(M_layer_node), M_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(n_layer_node), n_value))
 
-    def test_layer_initialization(self):
+    # ----- float/int parameter values -----
+    N_value = 6
+    M_value = 4
+    n_value = 5
+    l = HypergeometricLayer(scope=Scope([1]), n_nodes=3, N=N_value, M=M_value, n=n_value)
 
-        # ----- check attributes after correct initialization -----
-        N_values = [10, 5, 7]
-        M_values = [8, 2, 6]
-        n_values = [3, 4, 5]
-        l = HypergeometricLayer(
-            scope=[Scope([1]), Scope([0]), Scope([2])],
-            N=N_values,
-            M=M_values,
-            n=n_values,
+    for N_layer_node, M_layer_node, n_layer_node in zip(l.N, l.M, l.n):
+        tc.assertTrue(np.allclose(tl_toNumpy(N_layer_node), N_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(M_layer_node), M_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(n_layer_node), n_value))
+
+    # ----- list parameter values -----
+    N_values = [10, 5, 7]
+    M_values = [8, 2, 6]
+    n_values = [3, 4, 5]
+    l = HypergeometricLayer(
+        scope=[Scope([0]), Scope([1]), Scope([2])],
+        N=N_values,
+        M=M_values,
+        n=n_values,
+    )
+
+    for (
+        N_layer_node,
+        M_layer_node,
+        n_layer_node,
+        N_value,
+        M_value,
+        n_value,
+    ) in zip(l.N, l.M, l.n, N_values, M_values, n_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(N_layer_node), N_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(M_layer_node), M_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(n_layer_node), n_value))
+
+    # wrong number of values
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        N_values[:-1],
+        M_values,
+        n_values,
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        N_values,
+        M_values[:-1],
+        n_values,
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        N_values,
+        M_values,
+        n_values[:-1],
+        n_nodes=3,
+    )
+    # wrong number of dimensions (nested list)
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        [N_values for _ in range(3)],
+        M_values,
+        n_values,
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        N_values,
+        [M_values for _ in range(3)],
+        n_values,
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        N_values,
+        M_values,
+        [n_values for _ in range(3)],
+        n_nodes=3,
+    )
+
+    # ----- numpy parameter values -----
+
+    l = HypergeometricLayer(
+        scope=[Scope([0]), Scope([1]), Scope([2])],
+        N=np.array(N_values),
+        M=np.array(M_values),
+        n=np.array(n_values),
+    )
+
+    for (
+        N_layer_node,
+        M_layer_node,
+        n_layer_node,
+        N_value,
+        M_value,
+        n_value,
+    ) in zip(l.N, l.M, l.n, N_values, M_values, n_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(N_layer_node), N_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(M_layer_node), M_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(n_layer_node), n_value))
+
+    # wrong number of values
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        np.array(N_values[:-1]),
+        np.array(M_values),
+        np.array(n_values),
+    )
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        np.array(N_values),
+        np.array(M_values[:-1]),
+        np.array(n_values),
+    )
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        np.array(N_values),
+        np.array(M_values),
+        np.array(n_values[:-1]),
+    )
+    # wrong number of dimensions (nested list)
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        np.array([N_values for _ in range(3)]),
+        np.array(M_values),
+        np.array(n_values),
+    )
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        np.array(N_values),
+        np.array([M_values for _ in range(3)]),
+        np.array(n_values),
+    )
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        [Scope([0]), Scope([1]), Scope([2])],
+        np.array(N_values),
+        np.array(M_values),
+        np.array([n_values for _ in range(3)]),
+    )
+
+    # ---- different scopes -----
+    l = HypergeometricLayer(scope=Scope([1]), n_nodes=3, N=5, M=3, n=2)
+    for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
+        tc.assertEqual(layer_scope, node_scope)
+
+    # ----- invalid number of nodes -----
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer,
+        Scope([0]),
+        n_nodes=0,
+        N=5,
+        M=3,
+        n=2,
+    )
+
+    # ----- invalid scope -----
+    tc.assertRaises(ValueError, HypergeometricLayer, Scope([]), n_nodes=3, N=5, M=3, n=2)
+    tc.assertRaises(ValueError, HypergeometricLayer, [], n_nodes=3, N=5, M=3, n=2)
+
+    # ----- individual scopes and parameters -----
+    scopes = [Scope([1]), Scope([0]), Scope([0])]
+    l = HypergeometricLayer(scope=[Scope([1]), Scope([0])], n_nodes=3, N=5, M=3, n=2)
+
+    for layer_scope, node_scope in zip(l.scopes_out, scopes):
+        tc.assertEqual(layer_scope, node_scope)
+
+def test_accept(do_for_all_backends):
+
+    # discrete meta type (should reject)
+    tc.assertFalse(
+        HypergeometricLayer.accepts(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                FeatureContext(Scope([1]), [FeatureTypes.Discrete]),
+            ]
         )
-        # make sure number of creates nodes is correct
-        self.assertEqual(len(l.scopes_out), 3)
-        # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([0]), Scope([2])]))
-        # make sure parameter properties works correctly
-        for (
-            N_layer_node,
-            M_layer_node,
-            n_layer_node,
-            N_value,
-            M_value,
-            n_value,
-        ) in zip(l.N, l.M, l.n, N_values, M_values, n_values):
-            self.assertTrue(torch.allclose(N_layer_node, torch.tensor(N_value)))
-            self.assertTrue(torch.allclose(M_layer_node, torch.tensor(M_value)))
-            self.assertTrue(torch.allclose(n_layer_node, torch.tensor(n_value)))
+    )
 
-        # ----- float/int parameter values -----
-        N_value = 6
-        M_value = 4
-        n_value = 5
-        l = HypergeometricLayer(scope=Scope([1]), n_nodes=3, N=N_value, M=M_value, n=n_value)
-
-        for N_layer_node, M_layer_node, n_layer_node in zip(l.N, l.M, l.n):
-            self.assertTrue(torch.all(N_layer_node == N_value))
-            self.assertTrue(torch.all(M_layer_node == M_value))
-            self.assertTrue(torch.all(n_layer_node == n_value))
-
-        # ----- list parameter values -----
-        N_values = [10, 5, 7]
-        M_values = [8, 2, 6]
-        n_values = [3, 4, 5]
-        l = HypergeometricLayer(
-            scope=[Scope([0]), Scope([1]), Scope([2])],
-            N=N_values,
-            M=M_values,
-            n=n_values,
-        )
-
-        for (
-            N_layer_node,
-            M_layer_node,
-            n_layer_node,
-            N_value,
-            M_value,
-            n_value,
-        ) in zip(l.N, l.M, l.n, N_values, M_values, n_values):
-            self.assertTrue(torch.allclose(N_layer_node, torch.tensor(N_value)))
-            self.assertTrue(torch.allclose(M_layer_node, torch.tensor(M_value)))
-            self.assertTrue(torch.allclose(n_layer_node, torch.tensor(n_value)))
-
-        # wrong number of values
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            N_values[:-1],
-            M_values,
-            n_values,
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            N_values,
-            M_values[:-1],
-            n_values,
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            N_values,
-            M_values,
-            n_values[:-1],
-            n_nodes=3,
-        )
-        # wrong number of dimensions (nested list)
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            [N_values for _ in range(3)],
-            M_values,
-            n_values,
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            N_values,
-            [M_values for _ in range(3)],
-            n_values,
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            N_values,
-            M_values,
-            [n_values for _ in range(3)],
-            n_nodes=3,
-        )
-
-        # ----- numpy parameter values -----
-
-        l = HypergeometricLayer(
-            scope=[Scope([0]), Scope([1]), Scope([2])],
-            N=np.array(N_values),
-            M=np.array(M_values),
-            n=np.array(n_values),
-        )
-
-        for (
-            N_layer_node,
-            M_layer_node,
-            n_layer_node,
-            N_value,
-            M_value,
-            n_value,
-        ) in zip(l.N, l.M, l.n, N_values, M_values, n_values):
-            self.assertTrue(torch.allclose(N_layer_node, torch.tensor(N_value, dtype=torch.int32)))
-            self.assertTrue(torch.allclose(M_layer_node, torch.tensor(M_value, dtype=torch.int32)))
-            self.assertTrue(torch.allclose(n_layer_node, torch.tensor(n_value, dtype=torch.int32)))
-
-        # wrong number of values
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            np.array(N_values[:-1]),
-            np.array(M_values),
-            np.array(n_values),
-        )
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            np.array(N_values),
-            np.array(M_values[:-1]),
-            np.array(n_values),
-        )
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            np.array(N_values),
-            np.array(M_values),
-            np.array(n_values[:-1]),
-        )
-        # wrong number of dimensions (nested list)
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            np.array([N_values for _ in range(3)]),
-            np.array(M_values),
-            np.array(n_values),
-        )
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            np.array(N_values),
-            np.array([M_values for _ in range(3)]),
-            np.array(n_values),
-        )
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            [Scope([0]), Scope([1]), Scope([2])],
-            np.array(N_values),
-            np.array(M_values),
-            np.array([n_values for _ in range(3)]),
-        )
-
-        # ---- different scopes -----
-        l = HypergeometricLayer(scope=Scope([1]), n_nodes=3, N=5, M=3, n=2)
-        for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
-            self.assertEqual(layer_scope, node_scope)
-
-        # ----- invalid number of nodes -----
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer,
-            Scope([0]),
-            n_nodes=0,
-            N=5,
-            M=3,
-            n=2,
-        )
-
-        # ----- invalid scope -----
-        self.assertRaises(ValueError, HypergeometricLayer, Scope([]), n_nodes=3, N=5, M=3, n=2)
-        self.assertRaises(ValueError, HypergeometricLayer, [], n_nodes=3, N=5, M=3, n=2)
-
-        # ----- individual scopes and parameters -----
-        scopes = [Scope([1]), Scope([0]), Scope([0])]
-        l = HypergeometricLayer(scope=[Scope([1]), Scope([0])], n_nodes=3, N=5, M=3, n=2)
-
-        for layer_scope, node_scope in zip(l.scopes_out, scopes):
-            self.assertEqual(layer_scope, node_scope)
-
-    def test_accept(self):
-
-        # discrete meta type (should reject)
-        self.assertFalse(
-            HypergeometricLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Discrete]),
-                ]
-            )
-        )
-
-        # feature type instance
-        self.assertTrue(
-            HypergeometricLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
-                ]
-            )
-        )
-
-        # invalid feature type
-        self.assertFalse(
-            HypergeometricLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
-                ]
-            )
-        )
-
-        # conditional scope
-        self.assertFalse(
-            HypergeometricLayer.accepts(
-                [
-                    FeatureContext(
-                        Scope([0], [1]),
-                        [FeatureTypes.Hypergeometric(N=4, M=2, n=3)],
-                    )
-                ]
-            )
-        )
-
-        # multivariate signature
-        self.assertFalse(
-            HypergeometricLayer.accepts(
-                [
-                    FeatureContext(
-                        Scope([0, 1]),
-                        [
-                            FeatureTypes.Hypergeometric(N=4, M=2, n=3),
-                            FeatureTypes.Hypergeometric(N=4, M=2, n=3),
-                        ],
-                    )
-                ]
-            )
-        )
-
-    def test_initialization_from_signatures(self):
-
-        hypergeometric = HypergeometricLayer.from_signatures(
+    # feature type instance
+    tc.assertTrue(
+        HypergeometricLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]),
                 FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
             ]
         )
-        self.assertTrue(torch.all(hypergeometric.N == torch.tensor([4, 6])))
-        self.assertTrue(torch.all(hypergeometric.M == torch.tensor([2, 5])))
-        self.assertTrue(torch.all(hypergeometric.n == torch.tensor([3, 4])))
-        self.assertTrue(hypergeometric.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        # ----- invalid arguments -----
-
-        # discrete meta type
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer.from_signatures,
-            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+    # invalid feature type
+    tc.assertFalse(
+        HypergeometricLayer.accepts(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+                FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
+            ]
         )
+    )
 
-        # invalid feature type
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer.from_signatures,
-            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+    # conditional scope
+    tc.assertFalse(
+        HypergeometricLayer.accepts(
+            [
+                FeatureContext(
+                    Scope([0], [1]),
+                    [FeatureTypes.Hypergeometric(N=4, M=2, n=3)],
+                )
+            ]
         )
+    )
 
-        # conditional scope
-        self.assertRaises(
-            ValueError,
-            HypergeometricLayer.from_signatures,
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
-        )
-
-        # multivariate signature
-        self.assertRaises(
-            ValueError,
-            Hypergeometric.from_signatures,
+    # multivariate signature
+    tc.assertFalse(
+        HypergeometricLayer.accepts(
             [
                 FeatureContext(
                     Scope([0, 1]),
-                    [FeatureTypes.Discrete, FeatureTypes.Discrete],
+                    [
+                        FeatureTypes.Hypergeometric(N=4, M=2, n=3),
+                        FeatureTypes.Hypergeometric(N=4, M=2, n=3),
+                    ],
                 )
-            ],
+            ]
         )
+    )
 
-    def test_autoleaf(self):
+def test_initialization_from_signatures(do_for_all_backends):
 
-        # make sure leaf is registered
-        self.assertTrue(AutoLeaf.is_registered(HypergeometricLayer))
+    hypergeometric = HypergeometricLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]),
+            FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
+        ]
+    )
+    tc.assertTrue(tl.all(hypergeometric.N == tl.tensor([4, 6])))
+    tc.assertTrue(tl.all(hypergeometric.M == tl.tensor([2, 5])))
+    tc.assertTrue(tl.all(hypergeometric.n == tl.tensor([3, 4])))
+    tc.assertTrue(hypergeometric.scopes_out == [Scope([0]), Scope([1])])
 
-        # make sure leaf is correctly inferred
-        self.assertEqual(
-            HypergeometricLayer,
-            AutoLeaf.infer(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
-                ]
-            ),
-        )
+    # ----- invalid arguments -----
 
-        # make sure AutoLeaf can return correctly instantiated object
-        hypergeometric = AutoLeaf(
+    # discrete meta type
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer.from_signatures,
+        [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+    )
+
+    # invalid feature type
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer.from_signatures,
+        [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+    )
+
+    # conditional scope
+    tc.assertRaises(
+        ValueError,
+        HypergeometricLayer.from_signatures,
+        [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
+    )
+
+    # multivariate signature
+    tc.assertRaises(
+        ValueError,
+        Hypergeometric.from_signatures,
+        [
+            FeatureContext(
+                Scope([0, 1]),
+                [FeatureTypes.Discrete, FeatureTypes.Discrete],
+            )
+        ],
+    )
+
+def test_autoleaf(do_for_all_backends):
+
+    if tl.get_backend() == "numpy":
+        HypergeometricInstLayer = HypergeometricLayerBase
+    elif tl.get_backend() == "pytorch":
+        HypergeometricInstLayer = HypergeometricLayerTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    # make sure leaf is registered
+    tc.assertTrue(AutoLeaf.is_registered(HypergeometricLayer))
+
+    # make sure leaf is correctly inferred
+    tc.assertEqual(
+        HypergeometricLayer,
+        AutoLeaf.infer(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]),
                 FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
             ]
-        )
-        self.assertTrue(isinstance(hypergeometric, HypergeometricLayerTorch))
-        self.assertTrue(torch.all(hypergeometric.N == torch.tensor([4, 6])))
-        self.assertTrue(torch.all(hypergeometric.M == torch.tensor([2, 5])))
-        self.assertTrue(torch.all(hypergeometric.n == torch.tensor([3, 4])))
-        self.assertTrue(hypergeometric.scopes_out == [Scope([0]), Scope([1])])
+        ),
+    )
 
-    def test_layer_structural_marginalization(self):
+    # make sure AutoLeaf can return correctly instantiated object
+    hypergeometric = AutoLeaf(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Hypergeometric(N=4, M=2, n=3)]),
+            FeatureContext(Scope([1]), [FeatureTypes.Hypergeometric(N=6, M=5, n=4)]),
+        ]
+    )
+    tc.assertTrue(isinstance(hypergeometric, HypergeometricInstLayer))
+    tc.assertTrue(tl.all(hypergeometric.N == tl.tensor([4, 6])))
+    tc.assertTrue(tl.all(hypergeometric.M == tl.tensor([2, 5])))
+    tc.assertTrue(tl.all(hypergeometric.n == tl.tensor([3, 4])))
+    tc.assertTrue(hypergeometric.scopes_out == [Scope([0]), Scope([1])])
 
-        # ---------- same scopes -----------
+def test_layer_structural_marginalization(do_for_all_backends):
 
-        l = HypergeometricLayer(scope=Scope([1]), n_nodes=2, N=5, M=3, n=4)
+    if tl.get_backend() == "numpy":
+        HypergeometricInst = HypergeometricBase
+        HypergeometricInstLayer = HypergeometricLayerBase
+    elif tl.get_backend() == "pytorch":
+        HypergeometricInst = HypergeometricTorch
+        HypergeometricInstLayer = HypergeometricLayerTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [1]) == None)
+    # ---------- same scopes -----------
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    l = HypergeometricLayer(scope=Scope([1]), n_nodes=2, N=5, M=3, n=4)
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
-        self.assertTrue(torch.allclose(l.N, l_marg.N))
-        self.assertTrue(torch.allclose(l.M, l_marg.M))
-        self.assertTrue(torch.allclose(l.n, l_marg.n))
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [1]) == None)
 
-        # ---------- different scopes -----------
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        l = HypergeometricLayer(scope=[Scope([1]), Scope([0])], N=[5, 7], M=[3, 6], n=[4, 3])
+    tc.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
+    tc.assertTrue(np.allclose(tl_toNumpy(l.N), tl_toNumpy(l_marg.N)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l.M), tl_toNumpy(l_marg.M)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l.n), tl_toNumpy(l_marg.n)))
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0, 1]) == None)
+    # ---------- different scopes -----------
 
-        # ----- partially marginalize -----
-        l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, HypergeometricTorch))
-        self.assertEqual(l_marg.scope, Scope([0]))
-        self.assertTrue(torch.allclose(l_marg.N, torch.tensor(7)))
-        self.assertTrue(torch.allclose(l_marg.M, torch.tensor(6)))
-        self.assertTrue(torch.allclose(l_marg.n, torch.tensor(3)))
+    l = HypergeometricLayer(scope=[Scope([1]), Scope([0])], N=[5, 7], M=[3, 6], n=[4, 3])
 
-        l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, HypergeometricLayerTorch))
-        self.assertEqual(len(l_marg.scopes_out), 1)
-        self.assertTrue(torch.allclose(l_marg.N, torch.tensor(7)))
-        self.assertTrue(torch.allclose(l_marg.M, torch.tensor(6)))
-        self.assertTrue(torch.allclose(l_marg.n, torch.tensor(3)))
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [0, 1]) == None)
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    # ----- partially marginalize -----
+    l_marg = marginalize(l, [1], prune=True)
+    tc.assertTrue(isinstance(l_marg, HypergeometricInst))
+    tc.assertEqual(l_marg.scope, Scope([0]))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.N), tl.tensor(7)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.M), tl.tensor(6)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.n), tl.tensor(3)))
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
-        self.assertTrue(torch.allclose(l.N, l_marg.N))
-        self.assertTrue(torch.allclose(l.M, l_marg.M))
-        self.assertTrue(torch.allclose(l.n, l_marg.n))
+    l_marg = marginalize(l, [1], prune=False)
+    tc.assertTrue(isinstance(l_marg, HypergeometricInstLayer))
+    tc.assertEqual(len(l_marg.scopes_out), 1)
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.N), tl.tensor(7)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.M), tl.tensor(6)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.n), tl.tensor(3)))
 
-    """
-    def test_layer_backend_conversion_1(self):
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        torch_layer = HypergeometricLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            N=[10, 5, 10],
-            M=[8, 2, 8],
-            n=[3, 4, 3],
-        )
-        base_layer = toBase(torch_layer)
+    tc.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
+    tc.assertTrue(np.allclose(tl_toNumpy(l.N), tl_toNumpy(l_marg.N)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l.M), tl_toNumpy(l_marg.M)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l.n), tl_toNumpy(l_marg.n)))
 
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.N, torch_layer.N.numpy()))
-        self.assertTrue(np.allclose(base_layer.M, torch_layer.M.numpy()))
-        self.assertTrue(np.allclose(base_layer.n, torch_layer.n.numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
 
-    def test_layer_backend_conversion_2(self):
-
-        base_layer = BaseHypergeometricLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            N=[10, 5, 10],
-            M=[8, 2, 8],
-            n=[3, 4, 3],
-        )
-        torch_layer = toTorch(base_layer)
-
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.N, torch_layer.N.numpy()))
-        self.assertTrue(np.allclose(base_layer.M, torch_layer.M.numpy()))
-        self.assertTrue(np.allclose(base_layer.n, torch_layer.n.numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
-    """
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        hypergeometric = HypergeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
-            N=[10, 5, 10],
-            M=[8, 2, 8],
-            n=[3, 4, 3])
-        for backend in backends:
-            tl.set_backend(backend)
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    hypergeometric = HypergeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+        N=[10, 5, 10],
+        M=[8, 2, 8],
+        n=[3, 4, 3])
+    for backend in backends:
+        with tl.backend_context(backend):
             hypergeometric_updated = updateBackend(hypergeometric)
-            self.assertTrue(np.all(hypergeometric.scopes_out == hypergeometric_updated.scopes_out))
+            tc.assertTrue(np.all(hypergeometric.scopes_out == hypergeometric_updated.scopes_out))
             # check conversion from torch to python
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*hypergeometric.get_params()[0]]),
                     np.array([*hypergeometric_updated.get_params()[0]]),
                 )
             )
 
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*hypergeometric.get_params()[1]]),
                     np.array([*hypergeometric_updated.get_params()[1]]),
                 )
             )
 
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*hypergeometric.get_params()[2]]),
                     np.array([*hypergeometric_updated.get_params()[2]]),

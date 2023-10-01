@@ -334,4 +334,4 @@ def updateBackend(leaf_node: NegativeBinomialLayer, dispatch_ctx: Optional[Dispa
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralNegativeBinomialLayer(scope=leaf_node.scopes_out,n=leaf_node.n.data.detach().numpy(), p=leaf_node.p.data.detach().numpy())
+    return GeneralNegativeBinomialLayer(scope=leaf_node.scopes_out,n=leaf_node.n, p=leaf_node.p)

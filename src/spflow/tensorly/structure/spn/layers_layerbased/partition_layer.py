@@ -113,7 +113,7 @@ class PartitionLayer(Module):
         if self.backend == "pytorch":
             self._n_out = int(tl.prod(tl.tensor(self.partition_sizes)).item()) # instead of item()
         else:
-            self._n_out = int(tl.prod(tl.tensor(self.partition_sizes))[0])
+            self._n_out = int(tl.prod(tl.tensor(self.partition_sizes)))
         self.scope = scope
 
     @property
@@ -179,7 +179,7 @@ def marginalize(
         marg_partitions = []
 
         children = list(layer.children)
-        partitions = tl_split(children, tl.cumsum(layer.modules_per_partition[:-1]))
+        partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
 
         for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
             partition_children = tl_tolist(partition_children)
@@ -226,8 +226,8 @@ def updateBackend(partition_layer: PartitionLayer, dispatch_ctx: Optional[Dispat
             Dispatch context.
     """
 
-    children = tl_tolist(partition_layer.children)
-    partitions = tl.split(children, tl.cumsum(partition_layer.modules_per_partition[:-1]))
+    children = partition_layer.children
+    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return PartitionLayer(

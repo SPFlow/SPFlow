@@ -333,5 +333,5 @@ def updateBackend(leaf_node: LogNormalLayer, dispatch_ctx: Optional[DispatchCont
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return GeneralLogNormalLayer(scope=leaf_node.scopes_out,
-        mean=leaf_node.mean.detach().numpy(),
-        std=leaf_node.std.detach().numpy())
+        mean=leaf_node.mean,
+        std=leaf_node.std)
