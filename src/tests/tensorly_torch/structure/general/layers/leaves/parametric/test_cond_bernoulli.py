@@ -352,23 +352,7 @@ def test_layer_dist(do_for_all_backends):
 
     for p_value, p_dist in zip(reversed(p_values[:-1]), p_list):
         tc.assertTrue(torch.allclose(p_value, p_dist))
-"""
-def test_layer_backend_conversion_1(self):
 
-    torch_layer = CondBernoulliLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
-    base_layer = toBase(torch_layer)
-
-    self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-    self.assertEqual(base_layer.n_out, torch_layer.n_out)
-
-def test_layer_backend_conversion_2(self):
-
-    base_layer = BaseCondBernoulliLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
-    torch_layer = toTorch(base_layer)
-
-    self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-    self.assertEqual(base_layer.n_out, torch_layer.n_out)
-"""
 def test_update_backend(do_for_all_backends):
     backends = ["numpy", "pytorch"]
     bernoulli = CondBernoulliLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])

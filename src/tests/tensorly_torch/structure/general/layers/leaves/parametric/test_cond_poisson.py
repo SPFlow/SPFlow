@@ -4,350 +4,367 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.structure.spn import CondPoissonLayer as BaseCondPoissonLayer
+from spflow.base.structure.general.nodes.leaves.parametric.cond_poisson import CondPoisson as CondPoissonBase
+from spflow.base.structure.general.layers.leaves.parametric.cond_poisson import CondPoissonLayer as CondPoissonLayerBase
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
 from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.structure.spn import CondPoisson as CondPoissonTorch
-from spflow.torch.structure.spn import CondPoissonLayer as CondPoissonLayerTorch
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_poisson import CondPoisson as CondPoissonTorch
+from spflow.torch.structure.general.layers.leaves.parametric.cond_poisson import CondPoissonLayer as CondPoissonLayerTorch
 from spflow.torch.structure.general.layers.leaves.parametric.cond_poisson import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_poisson import CondPoissonLayer
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+tc = unittest.TestCase()
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
 
-    def test_layer_initialization(self):
 
-        # ----- check attributes after correct initialization -----
-        l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3)
-        # make sure number of creates nodes is correct
-        self.assertEqual(len(l.scopes_out), 3)
-        # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]))
+def test_layer_initialization(do_for_all_backends):
 
-        # ---- different scopes -----
-        l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3)
-        for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
-            self.assertEqual(layer_scope, node_scope)
+    # ----- check attributes after correct initialization -----
+    l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3)
+    # make sure number of creates nodes is correct
+    tc.assertEqual(len(l.scopes_out), 3)
+    # make sure scopes are correct
+    tc.assertTrue(np.all(l.scopes_out == [Scope([1], [0]), Scope([1], [0]), Scope([1], [0])]))
 
-        # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, CondPoissonLayer, Scope([0], [1]), n_nodes=0)
+    # ---- different scopes -----
+    l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3)
+    for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
+        tc.assertEqual(layer_scope, node_scope)
 
-        # ----- invalid scope -----
-        self.assertRaises(ValueError, CondPoissonLayer, Scope([]), n_nodes=3)
-        self.assertRaises(ValueError, CondPoissonLayer, [], n_nodes=3)
+    # ----- invalid number of nodes -----
+    tc.assertRaises(ValueError, CondPoissonLayer, Scope([0], [1]), n_nodes=0)
 
-        # ----- individual scopes and parameters -----
-        scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
-        l = CondPoissonLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3)
+    # ----- invalid scope -----
+    tc.assertRaises(ValueError, CondPoissonLayer, Scope([]), n_nodes=3)
+    tc.assertRaises(ValueError, CondPoissonLayer, [], n_nodes=3)
 
-        for layer_scope, node_scope in zip(l.scopes_out, scopes):
-            self.assertEqual(layer_scope, node_scope)
+    # ----- individual scopes and parameters -----
+    scopes = [Scope([1], [2]), Scope([0], [2]), Scope([0], [2])]
+    l = CondPoissonLayer(scope=[Scope([1], [2]), Scope([0], [2])], n_nodes=3)
 
-        # -----number of cond_f functions -----
-        CondPoissonLayer(
-            Scope([0], [1]),
-            n_nodes=2,
-            cond_f=[lambda data: {"l": 1}, lambda data: {"l": 1}],
-        )
-        self.assertRaises(
-            ValueError,
-            CondPoissonLayer,
-            Scope([0], [1]),
-            n_nodes=2,
-            cond_f=[lambda data: {"l": 1}],
-        )
+    for layer_scope, node_scope in zip(l.scopes_out, scopes):
+        tc.assertEqual(layer_scope, node_scope)
 
-    def test_retrieve_params(self):
+    # -----number of cond_f functions -----
+    CondPoissonLayer(
+        Scope([0], [1]),
+        n_nodes=2,
+        cond_f=[lambda data: {"l": 1}, lambda data: {"l": 1}],
+    )
+    tc.assertRaises(
+        ValueError,
+        CondPoissonLayer,
+        Scope([0], [1]),
+        n_nodes=2,
+        cond_f=[lambda data: {"l": 1}],
+    )
 
-        # ----- float/int parameter values -----
-        l_value = 0.73
-        l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"l": l_value})
+def test_retrieve_params(do_for_all_backends):
 
-        for l_layer_node in l.retrieve_params(torch.tensor([[1]]), DispatchContext()):
-            self.assertTrue(torch.allclose(l_layer_node, torch.tensor(l_value)))
+    # ----- float/int parameter values -----
+    l_value = 0.73
+    l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"l": l_value})
 
-        # ----- list parameter values -----
-        l_values = [0.17, 0.8, 0.53]
-        l = CondPoissonLayer(
-            scope=Scope([1], [0]),
-            n_nodes=3,
-            cond_f=lambda data: {"l": l_values},
-        )
+    for l_layer_node in l.retrieve_params(tl.tensor([[1]]), DispatchContext()):
+        tc.assertTrue(np.allclose(l_layer_node, tl.tensor(l_value)))
 
-        for l_layer_node, l_value in zip(l.retrieve_params(torch.tensor([[1]]), DispatchContext()), l_values):
-            self.assertTrue(torch.allclose(l_layer_node, torch.tensor(l_value)))
+    # ----- list parameter values -----
+    l_values = [0.17, 0.8, 0.53]
+    l = CondPoissonLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        cond_f=lambda data: {"l": l_values},
+    )
 
-        # wrong number of values
-        l.set_cond_f(lambda data: {"l": l_values[:-1]})
-        self.assertRaises(
-            ValueError,
-            l.retrieve_params,
-            torch.tensor([[1]]),
-            DispatchContext(),
-        )
+    for l_layer_node, l_value in zip(l.retrieve_params(tl.tensor([[1]]), DispatchContext()), l_values):
+        tc.assertTrue(np.allclose(l_layer_node, l_value))
 
-        # wrong number of dimensions (nested list)
-        l.set_cond_f(lambda data: {"l": [l_values for _ in range(3)]})
-        self.assertRaises(
-            ValueError,
-            l.retrieve_params,
-            torch.tensor([[1]]),
-            DispatchContext(),
-        )
+    # wrong number of values
+    l.set_cond_f(lambda data: {"l": l_values[:-1]})
+    tc.assertRaises(
+        ValueError,
+        l.retrieve_params,
+        tl.tensor([[1]]),
+        DispatchContext(),
+    )
 
-        # ----- numpy parameter values -----
-        l.set_cond_f(lambda data: {"l": np.array(l_values)})
-        for l_node, l_actual in zip(
-            l.retrieve_params(torch.tensor([[1.0]]), DispatchContext()),
-            l_values,
-        ):
-            self.assertTrue(l_node == l_actual)
+    # wrong number of dimensions (nested list)
+    l.set_cond_f(lambda data: {"l": [l_values for _ in range(3)]})
+    tc.assertRaises(
+        ValueError,
+        l.retrieve_params,
+        tl.tensor([[1]]),
+        DispatchContext(),
+    )
 
-        # wrong number of values
-        l.set_cond_f(lambda data: {"l": np.array(l_values[:-1])})
-        self.assertRaises(
-            ValueError,
-            l.retrieve_params,
-            torch.tensor([[1]]),
-            DispatchContext(),
-        )
+    # ----- numpy parameter values -----
+    l.set_cond_f(lambda data: {"l": np.array(l_values)})
+    for l_node, l_actual in zip(
+        l.retrieve_params(tl.tensor([[1.0]]), DispatchContext()),
+        l_values,
+    ):
+        tc.assertTrue(l_node == l_actual)
 
-        # wrong number of dimensions (nested list)
-        l.set_cond_f(lambda data: {"l": np.array([l_values for _ in range(3)])})
-        self.assertRaises(
-            ValueError,
-            l.retrieve_params,
-            torch.tensor([[1]]),
-            DispatchContext(),
-        )
+    # wrong number of values
+    l.set_cond_f(lambda data: {"l": np.array(l_values[:-1])})
+    tc.assertRaises(
+        ValueError,
+        l.retrieve_params,
+        tl.tensor([[1]]),
+        DispatchContext(),
+    )
 
-    def test_accept(self):
+    # wrong number of dimensions (nested list)
+    l.set_cond_f(lambda data: {"l": np.array([l_values for _ in range(3)])})
+    tc.assertRaises(
+        ValueError,
+        l.retrieve_params,
+        tl.tensor([[1]]),
+        DispatchContext(),
+    )
 
-        # continuous meta type
-        self.assertTrue(
-            CondPoissonLayer.accepts(
-                [
-                    FeatureContext(Scope([0], [2]), [FeatureTypes.Discrete]),
-                    FeatureContext(Scope([1], [2]), [FeatureTypes.Discrete]),
-                ]
-            )
-        )
+def test_accept(do_for_all_backends):
 
-        # Poisson feature type class
-        self.assertTrue(
-            CondPoissonLayer.accepts(
-                [
-                    FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson]),
-                    FeatureContext(Scope([1], [2]), [FeatureTypes.Discrete]),
-                ]
-            )
-        )
-
-        # Poisson feature type instance
-        self.assertTrue(
-            CondPoissonLayer.accepts(
-                [
-                    FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson(1.0)]),
-                    FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(1.0)]),
-                ]
-            )
-        )
-
-        # invalid feature type
-        self.assertFalse(
-            CondPoissonLayer.accepts(
-                [
-                    FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
-                    FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(1.0)]),
-                ]
-            )
-        )
-
-        # non-conditional scope
-        self.assertFalse(CondPoissonLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
-
-        # multivariate signature
-        self.assertFalse(
-            CondPoissonLayer.accepts(
-                [
-                    FeatureContext(
-                        Scope([0, 1], [2]),
-                        [FeatureTypes.Discrete, FeatureTypes.Discrete],
-                    )
-                ]
-            )
-        )
-
-    def test_initialization_from_signatures(self):
-
-        poisson = CondPoissonLayer.from_signatures(
+    # continuous meta type
+    tc.assertTrue(
+        CondPoissonLayer.accepts(
             [
                 FeatureContext(Scope([0], [2]), [FeatureTypes.Discrete]),
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Discrete]),
             ]
         )
-        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+    )
 
-        poisson = CondPoissonLayer.from_signatures(
+    # Poisson feature type class
+    tc.assertTrue(
+        CondPoissonLayer.accepts(
+            [
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Discrete]),
+            ]
+        )
+    )
+
+    # Poisson feature type instance
+    tc.assertTrue(
+        CondPoissonLayer.accepts(
+            [
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson(1.0)]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(1.0)]),
+            ]
+        )
+    )
+
+    # invalid feature type
+    tc.assertFalse(
+        CondPoissonLayer.accepts(
+            [
+                FeatureContext(Scope([0], [2]), [FeatureTypes.Continuous]),
+                FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(1.0)]),
+            ]
+        )
+    )
+
+    # non-conditional scope
+    tc.assertFalse(CondPoissonLayer.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
+
+    # multivariate signature
+    tc.assertFalse(
+        CondPoissonLayer.accepts(
+            [
+                FeatureContext(
+                    Scope([0, 1], [2]),
+                    [FeatureTypes.Discrete, FeatureTypes.Discrete],
+                )
+            ]
+        )
+    )
+
+def test_initialization_from_signatures(do_for_all_backends):
+
+    poisson = CondPoissonLayer.from_signatures(
+        [
+            FeatureContext(Scope([0], [2]), [FeatureTypes.Discrete]),
+            FeatureContext(Scope([1], [2]), [FeatureTypes.Discrete]),
+        ]
+    )
+    tc.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+
+    poisson = CondPoissonLayer.from_signatures(
+        [
+            FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson]),
+            FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson]),
+        ]
+    )
+    tc.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+
+    poisson = CondPoissonLayer.from_signatures(
+        [
+            FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson(l=1.5)]),
+            FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(l=2.0)]),
+        ]
+    )
+    tc.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+
+    # ----- invalid arguments -----
+
+    # invalid feature type
+    tc.assertRaises(
+        ValueError,
+        CondPoissonLayer.from_signatures,
+        [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+    )
+
+    # non-conditional scope
+    tc.assertRaises(
+        ValueError,
+        CondPoissonLayer.from_signatures,
+        [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+    )
+
+    # multivariate signature
+    tc.assertRaises(
+        ValueError,
+        CondPoissonLayer.from_signatures,
+        [
+            FeatureContext(
+                Scope([0, 1], [2]),
+                [FeatureTypes.Continuous, FeatureTypes.Continuous],
+            )
+        ],
+    )
+
+def test_autoleaf(do_for_all_backends):
+
+    if tl.get_backend() == "numpy":
+        CondPoissonInstLayer = CondPoissonLayerBase
+    elif tl.get_backend() == "pytorch":
+        CondPoissonInstLayer = CondPoissonLayerTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    # make sure leaf is registered
+    tc.assertTrue(AutoLeaf.is_registered(CondPoissonLayer))
+
+    # make sure leaf is correctly inferred
+    tc.assertEqual(
+        CondPoissonLayer,
+        AutoLeaf.infer(
             [
                 FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson]),
                 FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson]),
             ]
-        )
-        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+        ),
+    )
 
-        poisson = CondPoissonLayer.from_signatures(
-            [
-                FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson(l=1.5)]),
-                FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(l=2.0)]),
-            ]
-        )
-        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+    # make sure AutoLeaf can return correctly instantiated object
+    poisson = AutoLeaf(
+        [
+            FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson(l=1.5)]),
+            FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(l=2.0)]),
+        ]
+    )
+    tc.assertTrue(isinstance(poisson, CondPoissonInstLayer))
+    tc.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
 
-        # ----- invalid arguments -----
+def test_layer_structural_marginalization(do_for_all_backends):
 
-        # invalid feature type
-        self.assertRaises(
-            ValueError,
-            CondPoissonLayer.from_signatures,
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
-        )
+    if tl.get_backend() == "numpy":
+        CondPoissonInst = CondPoissonBase
+        CondPoissonInstLayer = CondPoissonLayerBase
+    elif tl.get_backend() == "pytorch":
+        CondPoissonInst = CondPoissonTorch
+        CondPoissonInstLayer = CondPoissonLayerTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        # non-conditional scope
-        self.assertRaises(
-            ValueError,
-            CondPoissonLayer.from_signatures,
-            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
-        )
+    # ---------- same scopes -----------
 
-        # multivariate signature
-        self.assertRaises(
-            ValueError,
-            CondPoissonLayer.from_signatures,
-            [
-                FeatureContext(
-                    Scope([0, 1], [2]),
-                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
-                )
-            ],
-        )
+    l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=2)
 
-    def test_autoleaf(self):
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [1]) == None)
 
-        # make sure leaf is registered
-        self.assertTrue(AutoLeaf.is_registered(CondPoissonLayer))
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        # make sure leaf is correctly inferred
-        self.assertEqual(
-            CondPoissonLayer,
-            AutoLeaf.infer(
-                [
-                    FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson]),
-                    FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson]),
-                ]
-            ),
-        )
+    tc.assertTrue(l_marg.scopes_out == [Scope([1], [0]), Scope([1], [0])])
 
-        # make sure AutoLeaf can return correctly instantiated object
-        poisson = AutoLeaf(
-            [
-                FeatureContext(Scope([0], [2]), [FeatureTypes.Poisson(l=1.5)]),
-                FeatureContext(Scope([1], [2]), [FeatureTypes.Poisson(l=2.0)]),
-            ]
-        )
-        self.assertTrue(isinstance(poisson, CondPoissonLayerTorch))
-        self.assertTrue(poisson.scopes_out == [Scope([0], [2]), Scope([1], [2])])
+    # ---------- different scopes -----------
 
-    def test_layer_structural_marginalization(self):
+    l = CondPoissonLayer(scope=[Scope([1], [2]), Scope([0], [2])])
 
-        # ---------- same scopes -----------
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [0, 1]) == None)
 
-        l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=2)
+    # ----- partially marginalize -----
+    l_marg = marginalize(l, [1], prune=True)
+    tc.assertTrue(isinstance(l_marg, CondPoissonInst))
+    tc.assertEqual(l_marg.scope, Scope([0], [2]))
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [1]) == None)
+    l_marg = marginalize(l, [1], prune=False)
+    tc.assertTrue(isinstance(l_marg, CondPoissonInstLayer))
+    tc.assertEqual(len(l_marg.scopes_out), 1)
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1], [0]), Scope([1], [0])])
+    tc.assertTrue(l_marg.scopes_out == [Scope([1], [2]), Scope([0], [2])])
 
-        # ---------- different scopes -----------
+def test_layer_dist(do_for_all_backends):
 
-        l = CondPoissonLayer(scope=[Scope([1], [2]), Scope([0], [2])])
+    l_values = torch.tensor([0.73, 0.29, 0.5])
+    l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3)
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0, 1]) == None)
+    # ----- full dist -----
+    dist = l.dist(l_values)
 
-        # ----- partially marginalize -----
-        l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, CondPoissonTorch))
-        self.assertEqual(l_marg.scope, Scope([0], [2]))
+    if tl.get_backend() == "numpy":
+        mu_list = [d.kwds.get("mu") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        mu_list = dist.rate
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, CondPoissonLayerTorch))
-        self.assertEqual(len(l_marg.scopes_out), 1)
+    for l_value, l_dist in zip(l_values, mu_list):
+        tc.assertTrue(torch.allclose(l_value, l_dist))
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    # ----- partial dist -----
+    dist = l.dist(l_values, [1, 2])
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1], [2]), Scope([0], [2])])
+    if tl.get_backend() == "numpy":
+        mu_list = [d.kwds.get("mu") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        mu_list = dist.rate
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-    def test_layer_dist(self):
+    for l_value, l_dist in zip(l_values[1:], mu_list):
+        tc.assertTrue(torch.allclose(l_value, l_dist))
 
-        l_values = torch.tensor([0.73, 0.29, 0.5])
-        l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3)
+    dist = l.dist(l_values, [1, 0])
 
-        # ----- full dist -----
-        dist = l.dist(l_values)
+    if tl.get_backend() == "numpy":
+        mu_list = [d.kwds.get("mu") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        mu_list = dist.rate
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        for l_value, l_dist in zip(l_values, dist.rate):
-            self.assertTrue(torch.allclose(l_value, l_dist))
+    for l_value, l_dist in zip(reversed(l_values[:-1]), mu_list):
+        tc.assertTrue(torch.allclose(l_value, l_dist))
 
-        # ----- partial dist -----
-        dist = l.dist(l_values, [1, 2])
 
-        for l_value, l_dist in zip(l_values[1:], dist.rate):
-            self.assertTrue(torch.allclose(l_value, l_dist))
-
-        dist = l.dist(l_values, [1, 0])
-
-        for l_value, l_dist in zip(reversed(l_values[:-1]), dist.rate):
-            self.assertTrue(torch.allclose(l_value, l_dist))
-
-    """
-    def test_layer_backend_conversion_1(self):
-
-        torch_layer = CondPoissonLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
-        base_layer = toBase(torch_layer)
-
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
-
-    def test_layer_backend_conversion_2(self):
-
-        base_layer = BaseCondPoissonLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
-        torch_layer = toTorch(base_layer)
-
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
-    """
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        poisson = CondPoissonLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
-        for backend in backends:
-            tl.set_backend(backend)
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    poisson = CondPoissonLayer(scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])])
+    for backend in backends:
+        with tl.backend_context(backend):
             poisson_updated = updateBackend(poisson)
-            self.assertTrue(np.all(poisson.scopes_out == poisson_updated.scopes_out))
+            tc.assertTrue(np.all(poisson.scopes_out == poisson_updated.scopes_out))
             # check conversion from torch to python
 
 

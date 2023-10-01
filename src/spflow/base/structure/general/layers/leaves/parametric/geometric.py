@@ -293,4 +293,4 @@ def updateBackend(leaf_node: GeometricLayer, dispatch_ctx: Optional[DispatchCont
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralGeometricLayer(scope=leaf_node.scopes_out, p=leaf_node.p.data.detach().numpy())
+    return GeneralGeometricLayer(scope=leaf_node.scopes_out, p=leaf_node.p)

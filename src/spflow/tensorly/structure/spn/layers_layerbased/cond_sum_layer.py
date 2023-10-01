@@ -179,12 +179,12 @@ class CondSumLayer(Module):
         if weights is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                weights = tl.tensor([f(data)["weights"] for f in cond_f])
+                weights = tl.tensor([f(data)["weights"] for f in cond_f], dtype=tl.float64)
             else:
                 weights = cond_f(data)["weights"]
 
         if isinstance(weights, list) or isinstance(weights, np.ndarray):
-            weights = tl.tensor(weights, dtype=tl.float32)
+            weights = tl.tensor(weights, dtype=tl.float64)
         if weights.ndim != 1 and weights.ndim != 2:
             raise ValueError(
                 f"Torch tensor of weight values for 'CondSumLayer' is expected to be one- or two-dimensional, but is {weights.ndim}-dimensional."
@@ -201,7 +201,7 @@ class CondSumLayer(Module):
         # same weights for all sum nodes
         if weights.ndim == 1:
             # broadcast weights to all nodes
-            weights = torch.stack([weights for _ in range(self.n_out)])
+            weights = tl.stack([weights for _ in range(self.n_out)])
         if weights.ndim == 2:
             # same weights for all sum nodes
             if weights.shape[0] == 1:

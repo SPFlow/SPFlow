@@ -332,6 +332,6 @@ def updateBackend(leaf_node: GammaLayer, dispatch_ctx: Optional[DispatchContext]
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return GeneralGammaLayer(scope=leaf_node.scopes_out,
-        alpha=leaf_node.alpha.detach().numpy(),
-        beta=leaf_node.beta.detach().numpy()
+        alpha=leaf_node.alpha,
+        beta=leaf_node.beta
     )

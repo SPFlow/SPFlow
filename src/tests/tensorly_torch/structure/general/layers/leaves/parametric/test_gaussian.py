@@ -4,419 +4,428 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.structure.spn import GaussianLayer as BaseGaussianLayer
+from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian as GaussianBase
+from spflow.base.structure.general.layers.leaves.parametric.gaussian import GaussianLayer as GaussianLayerBase
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.structure.spn import Gaussian as GaussianTorch
-from spflow.torch.structure.spn import GaussianLayer as GaussianLayerTorch
+from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian as GaussianTorch
+from spflow.torch.structure.general.layers.leaves.parametric.gaussian import GaussianLayer as GaussianLayerTorch
 from spflow.torch.structure.general.layers.leaves.parametric.gaussian import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_gaussian import GaussianLayer
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_layer_initialization(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    # ----- check attributes after correct initialization -----
+    mean_values = [0.5, -2.3, 1.0]
+    std_values = [1.3, 1.0, 0.2]
+    l = GaussianLayer(scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values)
+    # make sure number of creates nodes is correct
+    tc.assertEqual(len(l.scopes_out), 3)
+    # make sure scopes are correct
+    tc.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
+    # make sure parameter properties works correctly
+    for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(mean_layer_node), mean_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(std_layer_node), std_value))
 
-    def test_layer_initialization(self):
+    # ----- float/int parameter values -----
+    mean_value = 0.73
+    std_value = 1.9
+    l = GaussianLayer(scope=Scope([1]), n_nodes=3, mean=mean_value, std=std_value)
 
-        # ----- check attributes after correct initialization -----
-        mean_values = [0.5, -2.3, 1.0]
-        std_values = [1.3, 1.0, 0.2]
-        l = GaussianLayer(scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values)
-        # make sure number of creates nodes is correct
-        self.assertEqual(len(l.scopes_out), 3)
-        # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
-        # make sure parameter properties works correctly
-        for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
-            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
-            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
+    for mean_layer_node, std_layer_node in zip(l.mean, l.std):
+        tc.assertTrue(np.allclose(tl_toNumpy(mean_layer_node), mean_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(std_layer_node), std_value))
 
-        # ----- float/int parameter values -----
-        mean_value = 0.73
-        std_value = 1.9
-        l = GaussianLayer(scope=Scope([1]), n_nodes=3, mean=mean_value, std=std_value)
+    # ----- list parameter values -----
+    mean_values = [0.17, -0.8, 0.53]
+    std_values = [0.9, 1.34, 0.98]
+    l = GaussianLayer(scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values)
 
-        for mean_layer_node, std_layer_node in zip(l.mean, l.std):
-            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
-            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
+    for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(mean_layer_node), mean_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(std_layer_node), std_value))
 
-        # ----- list parameter values -----
-        mean_values = [0.17, -0.8, 0.53]
-        std_values = [0.9, 1.34, 0.98]
-        l = GaussianLayer(scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values)
+    # wrong number of values
+    tc.assertRaises(
+        ValueError,
+        GaussianLayer,
+        Scope([0]),
+        mean_values,
+        std_values[:-1],
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        GaussianLayer,
+        Scope([0]),
+        mean_values[:-1],
+        std_values,
+        n_nodes=3,
+    )
+    # wrong number of dimensions (nested list)
+    tc.assertRaises(
+        ValueError,
+        GaussianLayer,
+        Scope([0]),
+        mean_values,
+        [std_values for _ in range(3)],
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        GaussianLayer,
+        Scope([0]),
+        [mean_values for _ in range(3)],
+        std_values,
+        n_nodes=3,
+    )
 
-        for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
-            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
-            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
+    # ----- numpy parameter values -----
 
-        # wrong number of values
-        self.assertRaises(
-            ValueError,
-            GaussianLayer,
-            Scope([0]),
-            mean_values,
-            std_values[:-1],
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            GaussianLayer,
-            Scope([0]),
-            mean_values[:-1],
-            std_values,
-            n_nodes=3,
-        )
-        # wrong number of dimensions (nested list)
-        self.assertRaises(
-            ValueError,
-            GaussianLayer,
-            Scope([0]),
-            mean_values,
-            [std_values for _ in range(3)],
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            GaussianLayer,
-            Scope([0]),
-            [mean_values for _ in range(3)],
-            std_values,
-            n_nodes=3,
-        )
+    l = GaussianLayer(
+        scope=Scope([1]),
+        n_nodes=3,
+        mean=np.array(mean_values),
+        std=np.array(std_values),
+    )
 
-        # ----- numpy parameter values -----
+    for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(mean_layer_node), mean_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(std_layer_node), std_value))
 
-        l = GaussianLayer(
-            scope=Scope([1]),
-            n_nodes=3,
-            mean=np.array(mean_values),
-            std=np.array(std_values),
-        )
+    # wrong number of values
+    tc.assertRaises(
+        ValueError,
+        GaussianLayer,
+        Scope([0]),
+        np.array(mean_values[:-1]),
+        np.array(std_values),
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        GaussianLayer,
+        Scope([0]),
+        np.array(mean_values),
+        np.array(std_values[:-1]),
+        n_nodes=3,
+    )
+    # wrong number of dimensions (nested list)
+    tc.assertRaises(
+        ValueError,
+        GaussianLayer,
+        Scope([0]),
+        np.array(mean_values),
+        np.array([std_values for _ in range(3)]),
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        GaussianLayer,
+        Scope([0]),
+        np.array([mean_values for _ in range(3)]),
+        np.array(std_values),
+        n_nodes=3,
+    )
 
-        for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
-            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
-            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
+    # ---- different scopes -----
+    l = GaussianLayer(scope=Scope([1]), n_nodes=3)
+    for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
+        tc.assertEqual(layer_scope, node_scope)
 
-        # wrong number of values
-        self.assertRaises(
-            ValueError,
-            GaussianLayer,
-            Scope([0]),
-            np.array(mean_values[:-1]),
-            np.array(std_values),
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            GaussianLayer,
-            Scope([0]),
-            np.array(mean_values),
-            np.array(std_values[:-1]),
-            n_nodes=3,
-        )
-        # wrong number of dimensions (nested list)
-        self.assertRaises(
-            ValueError,
-            GaussianLayer,
-            Scope([0]),
-            np.array(mean_values),
-            np.array([std_values for _ in range(3)]),
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            GaussianLayer,
-            Scope([0]),
-            np.array([mean_values for _ in range(3)]),
-            np.array(std_values),
-            n_nodes=3,
-        )
+    # ----- invalid number of nodes -----
+    tc.assertRaises(ValueError, GaussianLayer, Scope([0]), n_nodes=0)
 
-        # ---- different scopes -----
-        l = GaussianLayer(scope=Scope([1]), n_nodes=3)
-        for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
-            self.assertEqual(layer_scope, node_scope)
+    # ----- invalid scope -----
+    tc.assertRaises(ValueError, GaussianLayer, Scope([]), n_nodes=3)
+    tc.assertRaises(ValueError, GaussianLayer, [], n_nodes=3)
 
-        # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, GaussianLayer, Scope([0]), n_nodes=0)
+    # ----- individual scopes and parameters -----
+    scopes = [Scope([1]), Scope([0]), Scope([0])]
+    l = GaussianLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
 
-        # ----- invalid scope -----
-        self.assertRaises(ValueError, GaussianLayer, Scope([]), n_nodes=3)
-        self.assertRaises(ValueError, GaussianLayer, [], n_nodes=3)
+    for layer_scope, node_scope in zip(l.scopes_out, scopes):
+        tc.assertEqual(layer_scope, node_scope)
 
-        # ----- individual scopes and parameters -----
-        scopes = [Scope([1]), Scope([0]), Scope([0])]
-        l = GaussianLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
+def test_accept(do_for_all_backends):
 
-        for layer_scope, node_scope in zip(l.scopes_out, scopes):
-            self.assertEqual(layer_scope, node_scope)
-
-    def test_accept(self):
-
-        # continuous meta type
-        self.assertTrue(
-            GaussianLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # feature type class
-        self.assertTrue(
-            GaussianLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Gaussian]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # feature type instance
-        self.assertTrue(
-            GaussianLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Gaussian(0.0, 1.0)]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # invalid feature type
-        self.assertFalse(
-            GaussianLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # conditional scope
-        self.assertFalse(GaussianLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
-
-        # multivariate signature
-        self.assertFalse(
-            GaussianLayer.accepts(
-                [
-                    FeatureContext(
-                        Scope([0, 1]),
-                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
-                    )
-                ]
-            )
-        )
-
-    def test_initialization_from_signatures(self):
-
-        gaussian = GaussianLayer.from_signatures(
+    # continuous meta type
+    tc.assertTrue(
+        GaussianLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
                 FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
             ]
         )
-        self.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        gaussian = GaussianLayer.from_signatures(
+    # feature type class
+    tc.assertTrue(
+        GaussianLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.Gaussian]),
-                FeatureContext(Scope([1]), [FeatureTypes.Gaussian]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
             ]
         )
-        self.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        gaussian = GaussianLayer.from_signatures(
+    # feature type instance
+    tc.assertTrue(
+        GaussianLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.Gaussian(0.0, 1.0)]),
-                FeatureContext(Scope([1]), [FeatureTypes.Gaussian(0.0, 1.0)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
             ]
         )
-        self.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        # ----- invalid arguments -----
-
-        # invalid feature type
-        self.assertRaises(
-            ValueError,
-            GaussianLayer.from_signatures,
-            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+    # invalid feature type
+    tc.assertFalse(
+        GaussianLayer.accepts(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+            ]
         )
+    )
 
-        # conditional scope
-        self.assertRaises(
-            ValueError,
-            GaussianLayer.from_signatures,
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
-        )
+    # conditional scope
+    tc.assertFalse(GaussianLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
-        # multivariate signature
-        self.assertRaises(
-            ValueError,
-            GaussianLayer.from_signatures,
+    # multivariate signature
+    tc.assertFalse(
+        GaussianLayer.accepts(
             [
                 FeatureContext(
                     Scope([0, 1]),
                     [FeatureTypes.Continuous, FeatureTypes.Continuous],
                 )
-            ],
-        )
-
-    def test_autoleaf(self):
-
-        # make sure leaf is registered
-        self.assertTrue(AutoLeaf.is_registered(GaussianLayer))
-
-        # make sure leaf is correctly inferred
-        self.assertEqual(
-            GaussianLayer,
-            AutoLeaf.infer(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Gaussian]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Gaussian]),
-                ]
-            ),
-        )
-
-        # make sure AutoLeaf can return correctly instantiated object
-        gaussian = AutoLeaf(
-            [
-                FeatureContext(Scope([0]), [FeatureTypes.Gaussian(mean=-1.0, std=1.5)]),
-                FeatureContext(Scope([1]), [FeatureTypes.Gaussian(mean=1.0, std=0.5)]),
             ]
         )
-        self.assertTrue(isinstance(gaussian, GaussianLayerTorch))
-        self.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-    def test_layer_structural_marginalization(self):
+def test_initialization_from_signatures(do_for_all_backends):
 
-        # ---------- same scopes -----------
+    gaussian = GaussianLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+            FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+        ]
+    )
+    tc.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
 
-        l = GaussianLayer(scope=Scope([1]), mean=[0.73, -0.29], std=[0.41, 1.9], n_nodes=2)
+    gaussian = GaussianLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Gaussian]),
+            FeatureContext(Scope([1]), [FeatureTypes.Gaussian]),
+        ]
+    )
+    tc.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [1]) == None)
+    gaussian = GaussianLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Gaussian(0.0, 1.0)]),
+            FeatureContext(Scope([1]), [FeatureTypes.Gaussian(0.0, 1.0)]),
+        ]
+    )
+    tc.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    # ----- invalid arguments -----
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
-        self.assertTrue(torch.allclose(l.mean, l_marg.mean))
-        self.assertTrue(torch.allclose(l.std, l_marg.std))
+    # invalid feature type
+    tc.assertRaises(
+        ValueError,
+        GaussianLayer.from_signatures,
+        [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+    )
 
-        # ---------- different scopes -----------
+    # conditional scope
+    tc.assertRaises(
+        ValueError,
+        GaussianLayer.from_signatures,
+        [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+    )
 
-        l = GaussianLayer(scope=[Scope([1]), Scope([0])], mean=[0.73, -0.29], std=[0.41, 1.9])
+    # multivariate signature
+    tc.assertRaises(
+        ValueError,
+        GaussianLayer.from_signatures,
+        [
+            FeatureContext(
+                Scope([0, 1]),
+                [FeatureTypes.Continuous, FeatureTypes.Continuous],
+            )
+        ],
+    )
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0, 1]) == None)
+def test_autoleaf(do_for_all_backends):
 
-        # ----- partially marginalize -----
-        l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, GaussianTorch))
-        self.assertEqual(l_marg.scope, Scope([0]))
-        self.assertTrue(torch.allclose(l_marg.mean, torch.tensor(-0.29)))
-        self.assertTrue(torch.allclose(l_marg.std, torch.tensor(1.9)))
+    if tl.get_backend() == "numpy":
+        GaussianInstLayer = GaussianLayerBase
+    elif tl.get_backend() == "pytorch":
+        GaussianInstLayer = GaussianLayerTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, GaussianLayerTorch))
-        self.assertEqual(len(l_marg.scopes_out), 1)
-        self.assertTrue(torch.allclose(l_marg.mean, torch.tensor(-0.29)))
-        self.assertTrue(torch.allclose(l_marg.std, torch.tensor(1.9)))
+    # make sure leaf is registered
+    tc.assertTrue(AutoLeaf.is_registered(GaussianLayer))
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    # make sure leaf is correctly inferred
+    tc.assertEqual(
+        GaussianLayer,
+        AutoLeaf.infer(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Gaussian]),
+                FeatureContext(Scope([1]), [FeatureTypes.Gaussian]),
+            ]
+        ),
+    )
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
-        self.assertTrue(torch.allclose(l.mean, l_marg.mean))
-        self.assertTrue(torch.allclose(l.std, l_marg.std))
+    # make sure AutoLeaf can return correctly instantiated object
+    gaussian = AutoLeaf(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Gaussian(mean=-1.0, std=1.5)]),
+            FeatureContext(Scope([1]), [FeatureTypes.Gaussian(mean=1.0, std=0.5)]),
+        ]
+    )
+    tc.assertTrue(isinstance(gaussian, GaussianInstLayer))
+    tc.assertTrue(gaussian.scopes_out == [Scope([0]), Scope([1])])
 
-    def test_layer_dist(self):
+def test_layer_structural_marginalization(do_for_all_backends):
 
-        mean_values = [0.73, -0.29, 0.5]
-        std_values = [0.9, 1.34, 0.98]
-        l = GaussianLayer(scope=Scope([1]), mean=mean_values, std=std_values, n_nodes=3)
+    # ---------- same scopes -----------
 
-        # ----- full dist -----
-        dist = l.dist()
+    if tl.get_backend() == "numpy":
+        GaussianInst = GaussianBase
+        GaussianInstLayer = GaussianLayerBase
+    elif tl.get_backend() == "pytorch":
+        GaussianInst = GaussianTorch
+        GaussianInstLayer = GaussianLayerTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        for mean_value, std_value, mean_dist, std_dist in zip(mean_values, std_values, dist.loc, dist.scale):
-            self.assertTrue(torch.allclose(torch.tensor(mean_value), mean_dist))
-            self.assertTrue(torch.allclose(torch.tensor(std_value), std_dist))
+    l = GaussianLayer(scope=Scope([1]), mean=[0.73, -0.29], std=[0.41, 1.9], n_nodes=2)
 
-        # ----- partial dist -----
-        dist = l.dist([1, 2])
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [1]) == None)
 
-        for mean_value, std_value, mean_dist, std_dist in zip(mean_values[1:], std_values[1:], dist.loc, dist.scale):
-            self.assertTrue(torch.allclose(torch.tensor(mean_value), mean_dist))
-            self.assertTrue(torch.allclose(torch.tensor(std_value), std_dist))
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        dist = l.dist([1, 0])
+    tc.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
+    tc.assertTrue(np.allclose(tl_toNumpy(l.mean), tl_toNumpy(l_marg.mean)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l.std), tl_toNumpy(l_marg.std)))
 
-        for mean_value, std_value, mean_dist, std_dist in zip(
-            reversed(mean_values[:-1]),
-            reversed(std_values[:-1]),
-            dist.loc,
-            dist.scale,
-        ):
-            self.assertTrue(torch.allclose(torch.tensor(mean_value), mean_dist))
-            self.assertTrue(torch.allclose(torch.tensor(std_value), std_dist))
+    # ---------- different scopes -----------
 
-    """
-    def test_layer_backend_conversion_1(self):
+    l = GaussianLayer(scope=[Scope([1]), Scope([0])], mean=[0.73, -0.29], std=[0.41, 1.9])
 
-        torch_layer = GaussianLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            mean=[0.2, 0.9, 0.31],
-            std=[1.9, 0.3, 0.71],
-        )
-        base_layer = toBase(torch_layer)
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [0, 1]) == None)
 
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.mean, torch_layer.mean.detach().numpy()))
-        self.assertTrue(np.allclose(base_layer.std, torch_layer.std.detach().numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
+    # ----- partially marginalize -----np
+    l_marg = marginalize(l, [1], prune=True)
+    tc.assertTrue(isinstance(l_marg, GaussianInst))
+    tc.assertEqual(l_marg.scope, Scope([0]))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.mean), tl.tensor(-0.29)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.std), tl.tensor(1.9)))
 
-    def test_layer_backend_conversion_2(self):
+    l_marg = marginalize(l, [1], prune=False)
+    tc.assertTrue(isinstance(l_marg, GaussianInstLayer))
+    tc.assertEqual(len(l_marg.scopes_out), 1)
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.mean), tl.tensor(-0.29)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.std), tl.tensor(1.9)))
 
-        base_layer = BaseGaussianLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            mean=[0.2, 0.9, 0.31],
-            std=[1.9, 0.3, 0.71],
-        )
-        torch_layer = toTorch(base_layer)
-    
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.mean, torch_layer.mean.detach().numpy()))
-        self.assertTrue(np.allclose(base_layer.std, torch_layer.std.detach().numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
-    """
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        gaussian = GaussianLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
-            mean=[0.2, 0.9, 0.31],
-            std=[1.9, 0.3, 0.71])
-        for backend in backends:
-            tl.set_backend(backend)
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
+
+    tc.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
+    tc.assertTrue(np.allclose(tl_toNumpy(l.mean), tl_toNumpy(l_marg.mean)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l.std), tl_toNumpy(l_marg.std)))
+
+def test_layer_dist(do_for_all_backends):
+
+    mean_values = [0.73, -0.29, 0.5]
+    std_values = [0.9, 1.34, 0.98]
+    l = GaussianLayer(scope=Scope([1]), mean=mean_values, std=std_values, n_nodes=3)
+
+    # ----- full dist -----
+    dist = l.dist()
+
+    if tl.get_backend() == "numpy":
+        mean_list = [d.kwds.get("loc") for d in dist]
+        std_list = [d.kwds.get("scale") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        mean_list = dist.loc
+        std_list = dist.scale
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    for mean_value, std_value, mean_dist, std_dist in zip(mean_values, std_values, mean_list, std_list):
+        tc.assertTrue(np.allclose(mean_value, tl_toNumpy(mean_dist)))
+        tc.assertTrue(np.allclose(std_value, tl_toNumpy(std_dist)))
+
+    # ----- partial dist -----
+    dist = l.dist([1, 2])
+
+    if tl.get_backend() == "numpy":
+        mean_list = [d.kwds.get("loc") for d in dist]
+        std_list = [d.kwds.get("scale") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        mean_list = dist.loc
+        std_list = dist.scale
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    for mean_value, std_value, mean_dist, std_dist in zip(mean_values[1:], std_values[1:], mean_list, std_list):
+        tc.assertTrue(np.allclose(mean_value, tl_toNumpy(mean_dist)))
+        tc.assertTrue(np.allclose(std_value, tl_toNumpy(std_dist)))
+
+    dist = l.dist([1, 0])
+
+    if tl.get_backend() == "numpy":
+        mean_list = [d.kwds.get("loc") for d in dist]
+        std_list = [d.kwds.get("scale") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        mean_list = dist.loc
+        std_list = dist.scale
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    for mean_value, std_value, mean_dist, std_dist in zip(
+        reversed(mean_values[:-1]),
+        reversed(std_values[:-1]),
+        mean_list,
+        std_list,
+    ):
+        tc.assertTrue(np.allclose(mean_value, tl_toNumpy(mean_dist)))
+        tc.assertTrue(np.allclose(std_value, tl_toNumpy(std_dist)))
+
+
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    gaussian = GaussianLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+        mean=[0.2, 0.9, 0.31],
+        std=[1.9, 0.3, 0.71])
+    for backend in backends:
+        with tl.backend_context(backend):
             gaussian_updated = updateBackend(gaussian)
-            self.assertTrue(np.all(gaussian.scopes_out == gaussian_updated.scopes_out))
+            tc.assertTrue(np.all(gaussian.scopes_out == gaussian_updated.scopes_out))
             # check conversion from torch to python
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*gaussian.get_params()[0]]),
                     np.array([*gaussian_updated.get_params()[0]]),
                 )
             )
 
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*gaussian.get_params()[1]]),
                     np.array([*gaussian_updated.get_params()[1]]),

@@ -8,7 +8,7 @@ from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import 
 from spflow.base.structure.general.layers.leaves.parametric.cond_gaussian import CondGaussianLayer as CondGaussianLayerBase
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.structure import marginalize, toBase, toTorch
+from spflow.torch.structure import marginalize
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import CondGaussian as CondGaussianTorch
 from spflow.torch.structure.general.layers.leaves.parametric.cond_gaussian import CondGaussianLayer as CondGaussianLayerTorch
 from spflow.torch.structure.general.layers.leaves.parametric.cond_gaussian import updateBackend
