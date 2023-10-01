@@ -5,173 +5,165 @@ from typing import Callable
 import numpy as np
 import torch
 import tensorly as tl
-from spflow.base.structure.general.nodes.leaves.parametric.cond_geometric import (
-    CondGeometric as BaseGeometric,
-)
+from spflow.base.structure.general.nodes.leaves.parametric.cond_geometric import CondGeometric as CondGeometricBase
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_geometric import updateBackend
 from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.tensorly.structure.autoleaf import AutoLeaf
-from spflow.torch.structure.spn import CondGeometric as TorchCondGeometric
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_geometric import CondGeometric as CondGeometricTorch
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_geometric import CondGeometric
-from spflow.torch.structure.general.nodes.leaves.parametric.cond_geometric import (
-    #CondGeometric,
-    toBase,
-    toTorch,
-)
 from spflow.torch.structure.spn.nodes.sum_node import marginalize
+from spflow.tensorly.utils.helper_functions import tl_nextafter, tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestGeometric(unittest.TestCase):
-    def test_initialiation(self):
+def test_initialiation(do_for_all_backends):
 
-        geometric = CondGeometric(Scope([0], [1]))
-        self.assertTrue(geometric.cond_f is None)
-        geometric = CondGeometric(Scope([0], [1]), lambda x: {"p": 0.5})
-        self.assertTrue(isinstance(geometric.cond_f, Callable))
+    geometric = CondGeometric(Scope([0], [1]))
+    tc.assertTrue(geometric.cond_f is None)
+    geometric = CondGeometric(Scope([0], [1]), lambda x: {"p": 0.5})
+    tc.assertTrue(isinstance(geometric.cond_f, Callable))
 
-        # invalid scopes
-        self.assertRaises(Exception, CondGeometric, Scope([]))
-        self.assertRaises(Exception, CondGeometric, Scope([0, 1], [2]))
-        self.assertRaises(Exception, CondGeometric, Scope([0]))
+    # invalid scopes
+    tc.assertRaises(Exception, CondGeometric, Scope([]))
+    tc.assertRaises(Exception, CondGeometric, Scope([0, 1], [2]))
+    tc.assertRaises(Exception, CondGeometric, Scope([0]))
 
-    def test_retrieve_params(self):
+def test_retrieve_params(do_for_all_backends):
 
-        # Valid parameters for Geometric distribution: p in (0,1]
+    # Valid parameters for Geometric distribution: p in (0,1]
 
-        geometric = CondGeometric(Scope([0], [1]))
+    geometric = CondGeometric(Scope([0], [1]))
 
-        # p = 0
-        geometric.set_cond_f(lambda data: {"p": 0.0})
-        self.assertRaises(
-            Exception,
-            geometric.retrieve_params,
-            np.array([[1.0]]),
-            DispatchContext(),
-        )
+    # p = 0
+    geometric.set_cond_f(lambda data: {"p": 0.0})
+    tc.assertRaises(
+        Exception,
+        geometric.retrieve_params,
+        np.array([[1.0]]),
+        DispatchContext(),
+    )
 
-        # p = inf and p = nan
-        geometric.set_cond_f(lambda data: {"p": np.inf})
-        self.assertRaises(
-            Exception,
-            geometric.retrieve_params,
-            np.array([[1.0]]),
-            DispatchContext(),
-        )
-        geometric.set_cond_f(lambda data: {"p": np.nan})
-        self.assertRaises(
-            Exception,
-            geometric.retrieve_params,
-            np.array([[1.0]]),
-            DispatchContext(),
-        )
+    # p = inf and p = nan
+    geometric.set_cond_f(lambda data: {"p": np.inf})
+    tc.assertRaises(
+        Exception,
+        geometric.retrieve_params,
+        np.array([[1.0]]),
+        DispatchContext(),
+    )
+    geometric.set_cond_f(lambda data: {"p": np.nan})
+    tc.assertRaises(
+        Exception,
+        geometric.retrieve_params,
+        np.array([[1.0]]),
+        DispatchContext(),
+    )
 
-    def test_accept(self):
+def test_accept(do_for_all_backends):
 
-        # discrete meta type
-        self.assertTrue(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
+    # discrete meta type
+    tc.assertTrue(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
-        # Geometric feature type class
-        self.assertTrue(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]))
+    # Geometric feature type class
+    tc.assertTrue(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]))
 
-        # Geometric feature type instance
-        self.assertTrue(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric(0.5)])]))
+    # Geometric feature type instance
+    tc.assertTrue(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric(0.5)])]))
 
-        # invalid feature type
-        self.assertFalse(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
+    # invalid feature type
+    tc.assertFalse(CondGeometric.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
-        # non-conditional scope
-        self.assertFalse(CondGeometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
+    # non-conditional scope
+    tc.assertFalse(CondGeometric.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
-        # multivariate signature
-        self.assertFalse(
-            CondGeometric.accepts(
-                [
-                    FeatureContext(
-                        Scope([0, 1], [2]),
-                        [FeatureTypes.Discrete, FeatureTypes.Discrete],
-                    )
-                ]
-            )
-        )
-
-    def test_initialization_from_signatures(self):
-
-        CondGeometric.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])])
-        CondGeometric.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])])
-        CondGeometric.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric(p=0.75)])])
-
-        # ----- invalid arguments -----
-
-        # invalid feature type
-        self.assertRaises(
-            ValueError,
-            CondGeometric.from_signatures,
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
-        )
-
-        # non-conditional scope
-        self.assertRaises(
-            ValueError,
-            CondGeometric.from_signatures,
-            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
-        )
-
-        # multivariate signature
-        self.assertRaises(
-            ValueError,
-            CondGeometric.from_signatures,
+    # multivariate signature
+    tc.assertFalse(
+        CondGeometric.accepts(
             [
                 FeatureContext(
                     Scope([0, 1], [2]),
                     [FeatureTypes.Discrete, FeatureTypes.Discrete],
                 )
-            ],
+            ]
         )
+    )
 
-    def test_autoleaf(self):
+def test_initialization_from_signatures(do_for_all_backends):
 
-        # make sure leaf is registered
-        self.assertTrue(AutoLeaf.is_registered(CondGeometric))
+    CondGeometric.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])])
+    CondGeometric.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])])
+    CondGeometric.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric(p=0.75)])])
 
-        # make sure leaf is correctly inferred
-        self.assertEqual(
-            CondGeometric,
-            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]),
-        )
+    # ----- invalid arguments -----
 
-        # make sure AutoLeaf can return correctly instantiated object
-        geometric = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])])
-        self.assertTrue(isinstance(geometric, TorchCondGeometric))
+    # invalid feature type
+    tc.assertRaises(
+        ValueError,
+        CondGeometric.from_signatures,
+        [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+    )
 
-    def test_structural_marginalization(self):
+    # non-conditional scope
+    tc.assertRaises(
+        ValueError,
+        CondGeometric.from_signatures,
+        [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+    )
 
-        geometric = CondGeometric(Scope([0], [1]))
+    # multivariate signature
+    tc.assertRaises(
+        ValueError,
+        CondGeometric.from_signatures,
+        [
+            FeatureContext(
+                Scope([0, 1], [2]),
+                [FeatureTypes.Discrete, FeatureTypes.Discrete],
+            )
+        ],
+    )
 
-        self.assertTrue(marginalize(geometric, [1]) is not None)
-        self.assertTrue(marginalize(geometric, [0]) is None)
+def test_autoleaf(do_for_all_backends):
 
-    def test_base_backend_conversion(self):
+    if tl.get_backend() == "numpy":
+        CondGeometricInst = CondGeometricBase
+    elif tl.get_backend() == "pytorch":
+        CondGeometricInst = CondGeometricTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        torch_geometric = CondGeometric(Scope([0], [1]))
-        node_geometric = BaseGeometric(Scope([0], [1]))
+    # make sure leaf is registered
+    tc.assertTrue(AutoLeaf.is_registered(CondGeometric))
 
-        # check conversion from torch to python
-        self.assertTrue(np.all(torch_geometric.scopes_out == toBase(torch_geometric).scopes_out))
-        # check conversion from python to torch
-        self.assertTrue(np.all(node_geometric.scopes_out == toTorch(node_geometric).scopes_out))
+    # make sure leaf is correctly inferred
+    tc.assertEqual(
+        CondGeometric,
+        AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])]),
+    )
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        cond_geometric = CondGeometric(Scope([0], [1]))
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure AutoLeaf can return correctly instantiated object
+    geometric = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Geometric])])
+    tc.assertTrue(isinstance(geometric, CondGeometricInst))
+
+def test_structural_marginalization(do_for_all_backends):
+
+    geometric = CondGeometric(Scope([0], [1]))
+
+    tc.assertTrue(marginalize(geometric, [1]) is not None)
+    tc.assertTrue(marginalize(geometric, [0]) is None)
+
+
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    cond_geometric = CondGeometric(Scope([0], [1]))
+    for backend in backends:
+        with tl.backend_context(backend):
             cond_geometric_updated = updateBackend(cond_geometric)
 
             # check conversion from torch to python
-            self.assertTrue(np.all(cond_geometric.scopes_out == cond_geometric_updated.scopes_out))
+            tc.assertTrue(np.all(cond_geometric.scopes_out == cond_geometric_updated.scopes_out))
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float64)

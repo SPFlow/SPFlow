@@ -6,160 +6,143 @@ import torch
 import tensorly as tl
 
 from spflow.torch.structure.general.nodes.leaves.parametric.poisson import updateBackend
-from spflow.base.inference import log_likelihood
-from spflow.base.structure.spn import Poisson as BasePoisson
+from spflow.base.structure.general.nodes.leaves.parametric.poisson import Poisson as PoissonBase
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.inference import log_likelihood
 from spflow.tensorly.structure.autoleaf import AutoLeaf
-from spflow.torch.structure.spn import Poisson as TorchPoisson
+from spflow.torch.structure.general.nodes.leaves.parametric.poisson import Poisson as PoissonTorch
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_poisson import Poisson
 from spflow.torch.structure import marginalize, toBase, toTorch
-#from spflow.torch.structure.spn import Poisson
+from spflow.tensorly.utils.helper_functions import tl_nextafter, tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestPoisson(unittest.TestCase):
-    def test_initialization(self):
+def test_initialization(do_for_all_backends):
 
-        # Valid parameters for Poisson distribution: l in (0,inf) (note: 0 included in pytorch)
+    # Valid parameters for Poisson distribution: l in (0,inf) (note: 0 included in pytorch)
 
-        # l = 0
-        Poisson(Scope([0]), 0.0)
-        # l > 0
-        Poisson(Scope([0]), torch.nextafter(torch.tensor(0.0), torch.tensor(1.0)))
-        # l = -inf and l = inf
-        self.assertRaises(Exception, Poisson, Scope([0]), -np.inf)
-        self.assertRaises(Exception, Poisson, Scope([0]), np.inf)
-        # l = nan
-        self.assertRaises(Exception, Poisson, Scope([0]), np.nan)
+    # l = 0
+    Poisson(Scope([0]), 0.0)
+    # l > 0
+    Poisson(Scope([0]), np.nextafter(tl.tensor(0.0), tl.tensor(1.0)))
+    # l = -inf and l = inf
+    tc.assertRaises(Exception, Poisson, Scope([0]), -np.inf)
+    tc.assertRaises(Exception, Poisson, Scope([0]), np.inf)
+    # l = nan
+    tc.assertRaises(Exception, Poisson, Scope([0]), np.nan)
 
-        # invalid scopes
-        self.assertRaises(Exception, Poisson, Scope([]), 1)
-        self.assertRaises(Exception, Poisson, Scope([0, 1]), 1)
-        self.assertRaises(Exception, Poisson, Scope([0], [1]), 1)
+    # invalid scopes
+    tc.assertRaises(Exception, Poisson, Scope([]), 1)
+    tc.assertRaises(Exception, Poisson, Scope([0, 1]), 1)
+    tc.assertRaises(Exception, Poisson, Scope([0], [1]), 1)
 
-    def test_structural_marginalization(self):
+def test_structural_marginalization(do_for_all_backends):
 
-        poisson = Poisson(Scope([0]), 1.0)
+    poisson = Poisson(Scope([0]), 1.0)
 
-        self.assertTrue(marginalize(poisson, [1]) is not None)
-        self.assertTrue(marginalize(poisson, [0]) is None)
+    tc.assertTrue(marginalize(poisson, [1]) is not None)
+    tc.assertTrue(marginalize(poisson, [0]) is None)
 
-    def test_accept(self):
+def test_accept(do_for_all_backends):
 
-        # continuous meta type
-        self.assertTrue(Poisson.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
+    # continuous meta type
+    tc.assertTrue(Poisson.accepts([FeatureContext(Scope([0]), [FeatureTypes.Discrete])]))
 
-        # Poisson feature type class
-        self.assertTrue(Poisson.accepts([FeatureContext(Scope([0]), [FeatureTypes.Poisson])]))
+    # Poisson feature type class
+    tc.assertTrue(Poisson.accepts([FeatureContext(Scope([0]), [FeatureTypes.Poisson])]))
 
-        # Poisson feature type instance
-        self.assertTrue(Poisson.accepts([FeatureContext(Scope([0]), [FeatureTypes.Poisson(1.0)])]))
+    # Poisson feature type instance
+    tc.assertTrue(Poisson.accepts([FeatureContext(Scope([0]), [FeatureTypes.Poisson(1.0)])]))
 
-        # invalid feature type
-        self.assertFalse(Poisson.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
+    # invalid feature type
+    tc.assertFalse(Poisson.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
-        # conditional scope
-        self.assertFalse(Poisson.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
+    # conditional scope
+    tc.assertFalse(Poisson.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
-        # multivariate signature
-        self.assertFalse(
-            Poisson.accepts(
-                [
-                    FeatureContext(
-                        Scope([0, 1]),
-                        [FeatureTypes.Discrete, FeatureTypes.Discrete],
-                    )
-                ]
-            )
-        )
-
-    def test_initialization_from_signatures(self):
-
-        poisson = Poisson.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Discrete])])
-        self.assertTrue(torch.isclose(poisson.l, torch.tensor(1.0)))
-
-        poisson = Poisson.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Poisson])])
-        self.assertTrue(torch.isclose(poisson.l, torch.tensor(1.0)))
-
-        poisson = Poisson.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Poisson(l=1.5)])])
-        self.assertTrue(torch.isclose(poisson.l, torch.tensor(1.5)))
-
-        # ----- invalid arguments -----
-
-        # invalid feature type
-        self.assertRaises(
-            ValueError,
-            Poisson.from_signatures,
-            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
-        )
-
-        # conditional scope
-        self.assertRaises(
-            ValueError,
-            Poisson.from_signatures,
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
-        )
-
-        # multivariate signature
-        self.assertRaises(
-            ValueError,
-            Poisson.from_signatures,
+    # multivariate signature
+    tc.assertFalse(
+        Poisson.accepts(
             [
                 FeatureContext(
                     Scope([0, 1]),
-                    [FeatureTypes.Continuous, FeatureTypes.Continuous],
+                    [FeatureTypes.Discrete, FeatureTypes.Discrete],
                 )
-            ],
+            ]
         )
+    )
 
-    def test_autoleaf(self):
+def test_initialization_from_signatures(do_for_all_backends):
 
-        # make sure leaf is registered
-        self.assertTrue(AutoLeaf.is_registered(Poisson))
+    poisson = Poisson.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Discrete])])
+    tc.assertTrue(np.isclose(tl_toNumpy(poisson.l), tl.tensor(1.0)))
 
-        # make sure leaf is correctly inferred
-        self.assertEqual(
-            Poisson,
-            AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Poisson])]),
-        )
+    poisson = Poisson.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Poisson])])
+    tc.assertTrue(np.isclose(tl_toNumpy(poisson.l), tl.tensor(1.0)))
 
-        # make sure AutoLeaf can return correctly instantiated object
-        poisson = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Poisson(l=1.5)])])
-        self.assertTrue(isinstance(poisson, TorchPoisson))
-        self.assertTrue(torch.isclose(poisson.l, torch.tensor(1.5)))
+    poisson = Poisson.from_signatures([FeatureContext(Scope([0]), [FeatureTypes.Poisson(l=1.5)])])
+    tc.assertTrue(np.isclose(tl_toNumpy(poisson.l), tl.tensor(1.5)))
 
-    def test_base_backend_conversion(self):
+    # ----- invalid arguments -----
 
-        l = random.randint(1, 10)
+    # invalid feature type
+    tc.assertRaises(
+        ValueError,
+        Poisson.from_signatures,
+        [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+    )
 
-        torch_poisson = Poisson(Scope([0]), l)
-        node_poisson = BasePoisson(Scope([0]), l)
+    # conditional scope
+    tc.assertRaises(
+        ValueError,
+        Poisson.from_signatures,
+        [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+    )
 
-        # check conversion from torch to python
-        self.assertTrue(
-            np.allclose(
-                np.array([*torch_poisson.get_params()]),
-                np.array([*toBase(torch_poisson).get_params()]),
+    # multivariate signature
+    tc.assertRaises(
+        ValueError,
+        Poisson.from_signatures,
+        [
+            FeatureContext(
+                Scope([0, 1]),
+                [FeatureTypes.Continuous, FeatureTypes.Continuous],
             )
-        )
-        # check conversion from python to torch
-        self.assertTrue(
-            np.allclose(
-                np.array([*node_poisson.get_params()]),
-                np.array([*toTorch(node_poisson).get_params()]),
-            )
-        )
+        ],
+    )
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        l = random.random()
-        poisson = Poisson(Scope([0]), l)
-        for backend in backends:
-            tl.set_backend(backend)
+def test_autoleaf(do_for_all_backends):
+
+    if tl.get_backend() == "numpy":
+        PoissonInst = PoissonBase
+    elif tl.get_backend() == "pytorch":
+        PoissonInst = PoissonTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    # make sure leaf is registered
+    tc.assertTrue(AutoLeaf.is_registered(Poisson))
+
+    # make sure leaf is correctly inferred
+    tc.assertEqual(
+        Poisson,
+        AutoLeaf.infer([FeatureContext(Scope([0]), [FeatureTypes.Poisson])]),
+    )
+
+    # make sure AutoLeaf can return correctly instantiated object
+    poisson = AutoLeaf([FeatureContext(Scope([0]), [FeatureTypes.Poisson(l=1.5)])])
+    tc.assertTrue(isinstance(poisson, PoissonInst))
+    tc.assertTrue(np.isclose(tl_toNumpy(poisson.l), tl.tensor(1.5)))
+
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    l = random.random()
+    poisson = Poisson(Scope([0]), l)
+    for backend in backends:
+        with tl.backend_context(backend):
             poisson_updated = updateBackend(poisson)
 
             # check conversion from torch to python
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*poisson.get_params()]),
                     np.array([*poisson_updated.get_params()]),

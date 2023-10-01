@@ -4,417 +4,420 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.structure.spn import LogNormalLayer as BaseLogNormalLayer
+from spflow.base.structure.general.nodes.leaves.parametric.log_normal import LogNormal as LogNormalBase
+from spflow.base.structure.general.layers.leaves.parametric.log_normal import LogNormalLayer as LogNormalLayerBase
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
 from spflow.torch.structure import marginalize, toBase, toTorch
-from spflow.torch.structure.spn import LogNormal as LogNormalTorch
-from spflow.torch.structure.spn import LogNormalLayer as LogNormalLayerTorch
+from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import LogNormal as LogNormalTorch
+from spflow.torch.structure.general.layers.leaves.parametric.log_normal import LogNormalLayer as LogNormalLayerTorch
 from spflow.torch.structure.general.layers.leaves.parametric.log_normal import updateBackend
 
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_log_normal import LogNormalLayer
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
+
+tc = unittest.TestCase()
 
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_layer_initialization(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    # ----- check attributes after correct initialization -----
+    mean_values = [0.5, -2.3, 1.0]
+    std_values = [1.3, 1.0, 0.2]
+    l = LogNormalLayer(scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values)
+    # make sure number of creates nodes is correct
+    tc.assertEqual(len(l.scopes_out), 3)
+    # make sure scopes are correct
+    tc.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
+    # make sure parameter properties works correctly
+    for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(mean_layer_node), mean_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(std_layer_node), std_value))
 
-    def test_layer_initialization(self):
+    # ----- float/int parameter values -----
+    mean_value = 0.73
+    std_value = 1.9
+    l = LogNormalLayer(scope=Scope([1]), n_nodes=3, mean=mean_value, std=std_value)
 
-        # ----- check attributes after correct initialization -----
-        mean_values = [0.5, -2.3, 1.0]
-        std_values = [1.3, 1.0, 0.2]
-        l = LogNormalLayer(scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values)
-        # make sure number of creates nodes is correct
-        self.assertEqual(len(l.scopes_out), 3)
-        # make sure scopes are correct
-        self.assertTrue(np.all(l.scopes_out == [Scope([1]), Scope([1]), Scope([1])]))
-        # make sure parameter properties works correctly
-        for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
-            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
-            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
+    for mean_layer_node, std_layer_node in zip(l.mean, l.std):
+        tc.assertTrue(np.allclose(tl_toNumpy(mean_layer_node), mean_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(std_layer_node), std_value))
 
-        # ----- float/int parameter values -----
-        mean_value = 0.73
-        std_value = 1.9
-        l = LogNormalLayer(scope=Scope([1]), n_nodes=3, mean=mean_value, std=std_value)
+    # ----- list parameter values -----
+    mean_values = [0.17, -0.8, 0.53]
+    std_values = [0.9, 1.34, 0.98]
+    l = LogNormalLayer(scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values)
 
-        for mean_layer_node, std_layer_node in zip(l.mean, l.std):
-            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
-            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
+    for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(mean_layer_node), mean_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(std_layer_node), std_value))
 
-        # ----- list parameter values -----
-        mean_values = [0.17, -0.8, 0.53]
-        std_values = [0.9, 1.34, 0.98]
-        l = LogNormalLayer(scope=Scope([1]), n_nodes=3, mean=mean_values, std=std_values)
+    # wrong number of values
+    tc.assertRaises(
+        ValueError,
+        LogNormalLayer,
+        Scope([0]),
+        mean_values[:-1],
+        std_values,
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        LogNormalLayer,
+        Scope([0]),
+        mean_values,
+        std_values[:-1],
+        n_nodes=3,
+    )
+    # wrong number of dimensions (nested list)
+    tc.assertRaises(
+        ValueError,
+        LogNormalLayer,
+        Scope([0]),
+        [mean_values for _ in range(3)],
+        std_values,
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        LogNormalLayer,
+        Scope([0]),
+        mean_values,
+        [std_values for _ in range(3)],
+        n_nodes=3,
+    )
 
-        for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
-            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
-            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
+    # ----- numpy parameter values -----
 
-        # wrong number of values
-        self.assertRaises(
-            ValueError,
-            LogNormalLayer,
-            Scope([0]),
-            mean_values[:-1],
-            std_values,
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            LogNormalLayer,
-            Scope([0]),
-            mean_values,
-            std_values[:-1],
-            n_nodes=3,
-        )
-        # wrong number of dimensions (nested list)
-        self.assertRaises(
-            ValueError,
-            LogNormalLayer,
-            Scope([0]),
-            [mean_values for _ in range(3)],
-            std_values,
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            LogNormalLayer,
-            Scope([0]),
-            mean_values,
-            [std_values for _ in range(3)],
-            n_nodes=3,
-        )
+    l = LogNormalLayer(
+        scope=Scope([1]),
+        n_nodes=3,
+        mean=np.array(mean_values),
+        std=np.array(std_values),
+    )
 
-        # ----- numpy parameter values -----
+    for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
+        tc.assertTrue(np.allclose(tl_toNumpy(mean_layer_node), mean_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(std_layer_node), std_value))
 
-        l = LogNormalLayer(
-            scope=Scope([1]),
-            n_nodes=3,
-            mean=np.array(mean_values),
-            std=np.array(std_values),
-        )
+    # wrong number of values
+    tc.assertRaises(
+        ValueError,
+        LogNormalLayer,
+        Scope([0]),
+        np.array(mean_values[:-1]),
+        np.array(std_values),
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        LogNormalLayer,
+        Scope([0]),
+        np.array(mean_values),
+        np.array(std_values[:-1]),
+        n_nodes=3,
+    )
+    # wrong number of dimensions (nested list)
+    tc.assertRaises(
+        ValueError,
+        LogNormalLayer,
+        Scope([0]),
+        np.array(mean_values),
+        np.array([std_values for _ in range(3)]),
+        n_nodes=3,
+    )
+    tc.assertRaises(
+        ValueError,
+        LogNormalLayer,
+        Scope([0]),
+        np.array([mean_values for _ in range(3)]),
+        np.array(std_values),
+        n_nodes=3,
+    )
 
-        for mean_layer_node, std_layer_node, mean_value, std_value in zip(l.mean, l.std, mean_values, std_values):
-            self.assertTrue(torch.allclose(mean_layer_node, torch.tensor(mean_value)))
-            self.assertTrue(torch.allclose(std_layer_node, torch.tensor(std_value)))
+    # ---- different scopes -----
+    l = LogNormalLayer(scope=Scope([1]), n_nodes=3)
+    for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
+        tc.assertEqual(layer_scope, node_scope)
 
-        # wrong number of values
-        self.assertRaises(
-            ValueError,
-            LogNormalLayer,
-            Scope([0]),
-            np.array(mean_values[:-1]),
-            np.array(std_values),
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            LogNormalLayer,
-            Scope([0]),
-            np.array(mean_values),
-            np.array(std_values[:-1]),
-            n_nodes=3,
-        )
-        # wrong number of dimensions (nested list)
-        self.assertRaises(
-            ValueError,
-            LogNormalLayer,
-            Scope([0]),
-            np.array(mean_values),
-            np.array([std_values for _ in range(3)]),
-            n_nodes=3,
-        )
-        self.assertRaises(
-            ValueError,
-            LogNormalLayer,
-            Scope([0]),
-            np.array([mean_values for _ in range(3)]),
-            np.array(std_values),
-            n_nodes=3,
-        )
+    # ----- invalid number of nodes -----
+    tc.assertRaises(ValueError, LogNormalLayer, Scope([0]), n_nodes=0)
 
-        # ---- different scopes -----
-        l = LogNormalLayer(scope=Scope([1]), n_nodes=3)
-        for layer_scope, node_scope in zip(l.scopes_out, l.scopes_out):
-            self.assertEqual(layer_scope, node_scope)
+    # ----- invalid scope -----
+    tc.assertRaises(ValueError, LogNormalLayer, Scope([]), n_nodes=3)
+    tc.assertRaises(ValueError, LogNormalLayer, [], n_nodes=3)
 
-        # ----- invalid number of nodes -----
-        self.assertRaises(ValueError, LogNormalLayer, Scope([0]), n_nodes=0)
+    # ----- individual scopes and parameters -----
+    scopes = [Scope([1]), Scope([0]), Scope([0])]
+    l = LogNormalLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
 
-        # ----- invalid scope -----
-        self.assertRaises(ValueError, LogNormalLayer, Scope([]), n_nodes=3)
-        self.assertRaises(ValueError, LogNormalLayer, [], n_nodes=3)
+    for layer_scope, node_scope in zip(l.scopes_out, scopes):
+        tc.assertEqual(layer_scope, node_scope)
 
-        # ----- individual scopes and parameters -----
-        scopes = [Scope([1]), Scope([0]), Scope([0])]
-        l = LogNormalLayer(scope=[Scope([1]), Scope([0])], n_nodes=3)
+def test_accept(do_for_all_backends):
 
-        for layer_scope, node_scope in zip(l.scopes_out, scopes):
-            self.assertEqual(layer_scope, node_scope)
-
-    def test_accept(self):
-
-        # continuous meta type
-        self.assertTrue(
-            LogNormalLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # feature type class
-        self.assertTrue(
-            LogNormalLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.LogNormal]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # feature type instance
-        self.assertTrue(
-            LogNormalLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.LogNormal(0.0, 1.0)]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # invalid feature type
-        self.assertFalse(
-            LogNormalLayer.accepts(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
-                    FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
-                ]
-            )
-        )
-
-        # conditional scope
-        self.assertFalse(LogNormalLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
-
-        # multivariate signature
-        self.assertFalse(
-            LogNormalLayer.accepts(
-                [
-                    FeatureContext(
-                        Scope([0, 1]),
-                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
-                    )
-                ]
-            )
-        )
-
-    def test_initialization_from_signatures(self):
-
-        log_normal = LogNormalLayer.from_signatures(
+    # continuous meta type
+    tc.assertTrue(
+        LogNormalLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
                 FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
             ]
         )
-        self.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        log_normal = LogNormalLayer.from_signatures(
+    # feature type class
+    tc.assertTrue(
+        LogNormalLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.LogNormal]),
-                FeatureContext(Scope([1]), [FeatureTypes.LogNormal]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
             ]
         )
-        self.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-        log_normal = LogNormalLayer.from_signatures(
+    # feature type instance
+    tc.assertTrue(
+        LogNormalLayer.accepts(
             [
                 FeatureContext(Scope([0]), [FeatureTypes.LogNormal(0.0, 1.0)]),
-                FeatureContext(Scope([1]), [FeatureTypes.LogNormal(0.0, 1.0)]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
             ]
         )
-        self.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
-        # ----- invalid arguments -----
+    )
 
-        # invalid feature type
-        self.assertRaises(
-            ValueError,
-            LogNormalLayer.from_signatures,
-            [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+    # invalid feature type
+    tc.assertFalse(
+        LogNormalLayer.accepts(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.Discrete]),
+                FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+            ]
         )
+    )
 
-        # conditional scope
-        self.assertRaises(
-            ValueError,
-            LogNormalLayer.from_signatures,
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
-        )
+    # conditional scope
+    tc.assertFalse(LogNormalLayer.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
-        # multivariate signature
-        self.assertRaises(
-            ValueError,
-            LogNormalLayer.from_signatures,
+    # multivariate signature
+    tc.assertFalse(
+        LogNormalLayer.accepts(
             [
                 FeatureContext(
                     Scope([0, 1]),
                     [FeatureTypes.Continuous, FeatureTypes.Continuous],
                 )
-            ],
-        )
-
-    def test_autoleaf(self):
-
-        # make sure leaf is registered
-        self.assertTrue(AutoLeaf.is_registered(LogNormalLayer))
-
-        # make sure leaf is correctly inferred
-        self.assertEqual(
-            LogNormalLayer,
-            AutoLeaf.infer(
-                [
-                    FeatureContext(Scope([0]), [FeatureTypes.LogNormal]),
-                    FeatureContext(Scope([1]), [FeatureTypes.LogNormal]),
-                ]
-            ),
-        )
-
-        # make sure AutoLeaf can return correctly instantiated object
-        log_normal = AutoLeaf(
-            [
-                FeatureContext(Scope([0]), [FeatureTypes.LogNormal(mean=-1.0, std=1.5)]),
-                FeatureContext(Scope([1]), [FeatureTypes.LogNormal(mean=1.0, std=0.5)]),
             ]
         )
-        self.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
+    )
 
-    def test_layer_structural_marginalization(self):
+def test_initialization_from_signatures(do_for_all_backends):
 
-        # ---------- same scopes -----------
+    log_normal = LogNormalLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.Continuous]),
+            FeatureContext(Scope([1]), [FeatureTypes.Continuous]),
+        ]
+    )
+    tc.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
 
-        l = LogNormalLayer(scope=Scope([1]), mean=[0.73, -0.29], std=[0.41, 1.9], n_nodes=2)
+    log_normal = LogNormalLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.LogNormal]),
+            FeatureContext(Scope([1]), [FeatureTypes.LogNormal]),
+        ]
+    )
+    tc.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [1]) == None)
+    log_normal = LogNormalLayer.from_signatures(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.LogNormal(0.0, 1.0)]),
+            FeatureContext(Scope([1]), [FeatureTypes.LogNormal(0.0, 1.0)]),
+        ]
+    )
+    tc.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
+    # ----- invalid arguments -----
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+    # invalid feature type
+    tc.assertRaises(
+        ValueError,
+        LogNormalLayer.from_signatures,
+        [FeatureContext(Scope([0]), [FeatureTypes.Discrete])],
+    )
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
-        self.assertTrue(torch.allclose(l.mean, l_marg.mean))
-        self.assertTrue(torch.allclose(l.std, l_marg.std))
+    # conditional scope
+    tc.assertRaises(
+        ValueError,
+        LogNormalLayer.from_signatures,
+        [FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])],
+    )
 
-        # ---------- different scopes -----------
+    # multivariate signature
+    tc.assertRaises(
+        ValueError,
+        LogNormalLayer.from_signatures,
+        [
+            FeatureContext(
+                Scope([0, 1]),
+                [FeatureTypes.Continuous, FeatureTypes.Continuous],
+            )
+        ],
+    )
 
-        l = LogNormalLayer(scope=[Scope([1]), Scope([0])], mean=[0.73, -0.29], std=[0.41, 1.9])
+def test_autoleaf(do_for_all_backends):
 
-        # ----- marginalize over entire scope -----
-        self.assertTrue(marginalize(l, [0, 1]) == None)
+    # make sure leaf is registered
+    tc.assertTrue(AutoLeaf.is_registered(LogNormalLayer))
 
-        # ----- partially marginalize -----
-        l_marg = marginalize(l, [1], prune=True)
-        self.assertTrue(isinstance(l_marg, LogNormalTorch))
-        self.assertEqual(l_marg.scope, Scope([0]))
-        self.assertTrue(torch.allclose(l_marg.mean, torch.tensor(-0.29)))
-        self.assertTrue(torch.allclose(l_marg.std, torch.tensor(1.9)))
+    # make sure leaf is correctly inferred
+    tc.assertEqual(
+        LogNormalLayer,
+        AutoLeaf.infer(
+            [
+                FeatureContext(Scope([0]), [FeatureTypes.LogNormal]),
+                FeatureContext(Scope([1]), [FeatureTypes.LogNormal]),
+            ]
+        ),
+    )
 
-        l_marg = marginalize(l, [1], prune=False)
-        self.assertTrue(isinstance(l_marg, LogNormalLayerTorch))
-        self.assertEqual(len(l_marg.scopes_out), 1)
-        self.assertTrue(torch.allclose(l_marg.mean, torch.tensor(-0.29)))
-        self.assertTrue(torch.allclose(l_marg.std, torch.tensor(1.9)))
+    # make sure AutoLeaf can return correctly instantiated object
+    log_normal = AutoLeaf(
+        [
+            FeatureContext(Scope([0]), [FeatureTypes.LogNormal(mean=-1.0, std=1.5)]),
+            FeatureContext(Scope([1]), [FeatureTypes.LogNormal(mean=1.0, std=0.5)]),
+        ]
+    )
+    tc.assertTrue(log_normal.scopes_out == [Scope([0]), Scope([1])])
 
-        # ----- marginalize over non-scope rvs -----
-        l_marg = marginalize(l, [2])
+def test_layer_structural_marginalization(do_for_all_backends):
 
-        self.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
-        self.assertTrue(torch.allclose(l.mean, l_marg.mean))
-        self.assertTrue(torch.allclose(l.std, l_marg.std))
+    if tl.get_backend() == "numpy":
+        LogNormalInst = LogNormalBase
+        LogNormalInstLayer = LogNormalLayerBase
+    elif tl.get_backend() == "pytorch":
+        LogNormalInst = LogNormalTorch
+        LogNormalInstLayer = LogNormalLayerTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-    def test_layer_dist(self):
+    # ---------- same scopes -----------
 
-        mean_values = [0.73, -0.29, 0.5]
-        std_values = [0.9, 1.34, 0.98]
-        l = LogNormalLayer(scope=Scope([1]), mean=mean_values, std=std_values, n_nodes=3)
+    l = LogNormalLayer(scope=Scope([1]), mean=[0.73, -0.29], std=[0.41, 1.9], n_nodes=2)
 
-        # ----- full dist -----
-        dist = l.dist()
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [1]) == None)
 
-        for mean_value, std_value, mean_dist, std_dist in zip(mean_values, std_values, dist.loc, dist.scale):
-            self.assertTrue(torch.allclose(torch.tensor(mean_value), mean_dist))
-            self.assertTrue(torch.allclose(torch.tensor(std_value), std_dist))
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-        # ----- partial dist -----
-        dist = l.dist([1, 2])
+    tc.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([1])])
+    tc.assertTrue(np.allclose(tl_toNumpy(l.mean), tl_toNumpy(l_marg.mean)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l.std), tl_toNumpy(l_marg.std)))
 
-        for mean_value, std_value, mean_dist, std_dist in zip(mean_values[1:], std_values[1:], dist.loc, dist.scale):
-            self.assertTrue(torch.allclose(torch.tensor(mean_value), mean_dist))
-            self.assertTrue(torch.allclose(torch.tensor(std_value), std_dist))
+    # ---------- different scopes -----------
 
-        dist = l.dist([1, 0])
+    l = LogNormalLayer(scope=[Scope([1]), Scope([0])], mean=[0.73, -0.29], std=[0.41, 1.9])
 
-        for mean_value, std_value, mean_dist, std_dist in zip(
-            reversed(mean_values[:-1]),
-            reversed(std_values[:-1]),
-            dist.loc,
-            dist.scale,
-        ):
-            self.assertTrue(torch.allclose(torch.tensor(mean_value), mean_dist))
-            self.assertTrue(torch.allclose(torch.tensor(std_value), std_dist))
+    # ----- marginalize over entire scope -----
+    tc.assertTrue(marginalize(l, [0, 1]) == None)
 
-    """
-    def test_layer_backend_conversion_1(self):
+    # ----- partially marginalize -----
+    l_marg = marginalize(l, [1], prune=True)
+    tc.assertTrue(isinstance(l_marg, LogNormalInst))
+    tc.assertEqual(l_marg.scope, Scope([0]))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.mean), tl.tensor(-0.29)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.std), tl.tensor(1.9)))
 
-        torch_layer = LogNormalLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            mean=[0.2, 0.9, 0.31],
-            std=[1.9, 0.3, 0.71],
-        )
-        base_layer = toBase(torch_layer)
+    l_marg = marginalize(l, [1], prune=False)
+    tc.assertTrue(isinstance(l_marg, LogNormalInstLayer))
+    tc.assertEqual(len(l_marg.scopes_out), 1)
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.mean), tl.tensor(-0.29)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l_marg.std), tl.tensor(1.9)))
 
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.mean, torch_layer.mean.detach().numpy()))
-        self.assertTrue(np.allclose(base_layer.std, torch_layer.std.detach().numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
+    # ----- marginalize over non-scope rvs -----
+    l_marg = marginalize(l, [2])
 
-    def test_layer_backend_conversion_2(self):
+    tc.assertTrue(l_marg.scopes_out == [Scope([1]), Scope([0])])
+    tc.assertTrue(np.allclose(tl_toNumpy(l.mean), tl_toNumpy(l_marg.mean)))
+    tc.assertTrue(np.allclose(tl_toNumpy(l.std), tl_toNumpy(l_marg.std)))
 
-        base_layer = BaseLogNormalLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            mean=[0.2, 0.9, 0.31],
-            std=[1.9, 0.3, 0.71],
-        )
-        torch_layer = toTorch(base_layer)
+def test_layer_dist(do_for_all_backends):
 
-        self.assertTrue(np.all(base_layer.scopes_out == torch_layer.scopes_out))
-        self.assertTrue(np.allclose(base_layer.mean, torch_layer.mean.detach().numpy()))
-        self.assertTrue(np.allclose(base_layer.std, torch_layer.std.detach().numpy()))
-        self.assertEqual(base_layer.n_out, torch_layer.n_out)
-    """
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        logNormal = LogNormalLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
-            mean=[0.2, 0.9, 0.31],
-            std=[1.9, 0.3, 0.71])
-        for backend in backends:
-            tl.set_backend(backend)
+    mean_values = [0.73, -0.29, 0.5]
+    std_values = [0.9, 1.34, 0.98]
+    l = LogNormalLayer(scope=Scope([1]), mean=mean_values, std=std_values, n_nodes=3)
+
+    # ----- full dist -----
+    dist = l.dist()
+
+    if tl.get_backend() == "numpy":
+        loc_list = [np.log(d.kwds.get("scale")) for d in dist]
+        scale_list = [d.kwds.get("s") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        loc_list = dist.loc
+        scale_list = dist.scale
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    for mean_value, std_value, mean_dist, std_dist in zip(mean_values, std_values, loc_list, scale_list):
+        tc.assertTrue(np.allclose(mean_value, tl_toNumpy(mean_dist)))
+        tc.assertTrue(np.allclose(std_value, tl_toNumpy(std_dist)))
+
+    # ----- partial dist -----
+    dist = l.dist([1, 2])
+
+    if tl.get_backend() == "numpy":
+        loc_list = [np.log(d.kwds.get("scale")) for d in dist]
+        scale_list = [d.kwds.get("s") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        loc_list = dist.loc
+        scale_list = dist.scale
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    for mean_value, std_value, mean_dist, std_dist in zip(mean_values[1:], std_values[1:], loc_list, scale_list):
+        tc.assertTrue(np.allclose(mean_value, tl_toNumpy(mean_dist)))
+        tc.assertTrue(np.allclose(std_value, tl_toNumpy(std_dist)))
+
+    dist = l.dist([1, 0])
+
+    if tl.get_backend() == "numpy":
+        loc_list = [np.log(d.kwds.get("scale")) for d in dist]
+        scale_list = [d.kwds.get("s") for d in dist]
+    elif tl.get_backend() == "pytorch":
+        loc_list = dist.loc
+        scale_list = dist.scale
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
+
+    for mean_value, std_value, mean_dist, std_dist in zip(
+        reversed(mean_values[:-1]),
+        reversed(std_values[:-1]),
+        loc_list,
+        scale_list,
+    ):
+        tc.assertTrue(np.allclose(mean_value, tl_toNumpy(mean_dist)))
+        tc.assertTrue(np.allclose(std_value, tl_toNumpy(std_dist)))
+
+
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    logNormal = LogNormalLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+        mean=[0.2, 0.9, 0.31],
+        std=[1.9, 0.3, 0.71])
+    for backend in backends:
+        with tl.backend_context(backend):
             logNormal_updated = updateBackend(logNormal)
-            self.assertTrue(np.all(logNormal.scopes_out == logNormal_updated.scopes_out))
+            tc.assertTrue(np.all(logNormal.scopes_out == logNormal_updated.scopes_out))
             # check conversion from torch to python
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*logNormal.get_params()[0]]),
                     np.array([*logNormal_updated.get_params()[0]]),
                 )
             )
 
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     np.array([*logNormal.get_params()[1]]),
                     np.array([*logNormal_updated.get_params()[1]]),

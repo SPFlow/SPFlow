@@ -291,4 +291,4 @@ def updateBackend(leaf_node: PoissonLayer, dispatch_ctx: Optional[DispatchContex
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralPoissonLayer(scope=leaf_node.scopes_out, l=leaf_node.l.detach().numpy())
+    return GeneralPoissonLayer(scope=leaf_node.scopes_out, l=leaf_node.l)

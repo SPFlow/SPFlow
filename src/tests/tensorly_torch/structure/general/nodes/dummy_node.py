@@ -2,14 +2,16 @@ from copy import deepcopy
 from typing import Iterable, Optional, Union
 
 import torch
-
+import tensorly as tl
+import scipy.spatial.distance as np_dist
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import (
     DispatchContext,
     dispatch,
     init_default_dispatch_context,
 )
-from spflow.torch.structure import LeafNode
+from spflow.tensorly.structure import LeafNode
+from spflow.tensorly.utils.helper_functions import T
 
 
 class DummyNode(LeafNode):
@@ -20,7 +22,7 @@ class DummyNode(LeafNode):
         if scope is None:
             scope = Scope([0])
 
-        self.loc = torch.tensor(loc)
+        self.loc = tl.tensor(loc)
 
         super().__init__(scope=scope)
 
@@ -62,7 +64,7 @@ class DummyLeaf(LeafNode):
         if scope is None:
             scope = Scope([0])
 
-        self.loc = torch.tensor(loc)
+        self.loc = tl.tensor(loc)
 
         super().__init__(scope=scope)
 
@@ -70,14 +72,19 @@ class DummyLeaf(LeafNode):
 @dispatch(memoize=True)
 def log_likelihood(
     node: DummyLeaf,
-    data: torch.Tensor,
+    data: T,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> torch.Tensor:
+) -> T:
 
     scope_data = data[:, node.scope.query]
 
-    dist = torch.cdist(scope_data, node.loc.reshape(1, 1), p=2)
+    if tl.get_backend() == "numpy":
+        dist = np_dist.cdist(scope_data, node.loc.reshape(1, 1), p=2)
+    elif tl.get_backend() == "pytorch":
+        dist = torch.cdist(scope_data, node.loc.reshape(1, 1), p=2)
+    else:
+        raise NotImplementedError("log_likelihood in dummy_node is not implemented for this backend")
 
     dist[dist <= 1.0] = 1.0
     dist[dist > 1.0] = 0.0

@@ -86,7 +86,7 @@ class SumLayer(Module):
         # parse weights
         if weights is None:
             weights = tl.random.random_tensor((self.n_out, self.n_in)) + 1e-08  # avoid zeros
-            weights /= weights.sum(dim=-1, keepdims=True)
+            weights /= tl.sum(weights, axis=-1, keepdims=True)
 
         # register auxiliary parameters for weights as torch parameters
         if self.backend == "pytorch":
@@ -153,7 +153,7 @@ class SumLayer(Module):
             )
         if not tl.all(values > 0):
             raise ValueError("Weights for 'SumLayer' must be all positive.")
-        if not tl_allclose(values.sum(dim=-1, dtype=float), tl.tensor(1.0, dtype=float)):
+        if not tl_allclose(tl.tensor(tl.sum(values,axis=-1),dtype=float), tl.tensor(1.0, dtype=float)):
             raise ValueError("Weights for 'SumLayer' must sum up to one in last dimension.")
         if not (values.shape[-1] == self.n_in):
             raise ValueError(
@@ -178,14 +178,14 @@ class SumLayer(Module):
                     )
         elif self.backend == "numpy":
             if values.ndim == 1:
-                self._weights = proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
+                self._weights = proj_convex_to_real(values.reshape(1,-1).repeat((self.n_out),0).copy())
             if values.ndim == 2:
                 # same weights for all sum nodes
                 if values.shape[0] == 1:
-                    self._weights = proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
+                    self._weights = proj_convex_to_real(values.repeat((self.n_out),0).copy())
                 # different weights for all sum nodes
                 elif values.shape[0] == self.n_out:
-                    self._weights = proj_convex_to_real(values.clone())
+                    self._weights = proj_convex_to_real(values.copy())
                 # incorrect number of specified weights
                 else:
                     raise ValueError(

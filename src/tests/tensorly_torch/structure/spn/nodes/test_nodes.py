@@ -4,11 +4,7 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.structure.spn import Gaussian as BaseGaussian
-from spflow.base.structure.spn import ProductNode as BaseProductNode
-from spflow.base.structure.spn import SumNode as BaseSumNode
 from spflow.meta.data import Scope
-#from spflow.torch.structure import marginalize, toBase, toTorch
 from spflow.tensorly.structure.spn import ProductNode, SumNode
 from spflow.tensorly.structure import marginalize
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
@@ -17,287 +13,161 @@ from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 from ...general.nodes.dummy_node import DummyNode
 
+tc = unittest.TestCase()
 
-class TestTorchNode(unittest.TestCase):
-    def test_sum_node_initialization(self):
+def test_sum_node_initialization(do_for_all_backends):
 
-        # empty children
-        self.assertRaises(ValueError, SumNode, [], [])
-        # non-Module children
-        self.assertRaises(ValueError, SumNode, [DummyNode(Scope([0])), 0], [0.5, 0.5])
-        # children with different scopes
-        self.assertRaises(
-            ValueError,
-            SumNode,
-            [DummyNode(Scope([0])), DummyNode(Scope([1]))],
-            [0.5, 0.5],
-        )
-        # number of child outputs not matching number of weights
-        self.assertRaises(
-            ValueError,
-            SumNode,
-            [DummyNode(Scope([0])), DummyNode(Scope([0]))],
-            [1.0],
-        )
-        # non-positive weights
-        self.assertRaises(ValueError, SumNode, [DummyNode(Scope([0]))], [0.0])
-        # weights not summing up to one
-        self.assertRaises(
-            ValueError,
-            SumNode,
-            [DummyNode(Scope([0])), DummyNode(Scope([0]))],
-            [0.3, 0.5],
-        )
-        # weights of invalid shape
-        self.assertRaises(ValueError, SumNode, [DummyNode(Scope([0]))], [[1.0]])
+    # empty children
+    tc.assertRaises(ValueError, SumNode, [], [])
+    # non-Module children
+    tc.assertRaises(ValueError, SumNode, [DummyNode(Scope([0])), 0], [0.5, 0.5])
+    # children with different scopes
+    tc.assertRaises(
+        ValueError,
+        SumNode,
+        [DummyNode(Scope([0])), DummyNode(Scope([1]))],
+        [0.5, 0.5],
+    )
+    # number of child outputs not matching number of weights
+    tc.assertRaises(
+        ValueError,
+        SumNode,
+        [DummyNode(Scope([0])), DummyNode(Scope([0]))],
+        [1.0],
+    )
+    # non-positive weights
+    tc.assertRaises(ValueError, SumNode, [DummyNode(Scope([0]))], [0.0])
+    # weights not summing up to one
+    tc.assertRaises(
+        ValueError,
+        SumNode,
+        [DummyNode(Scope([0])), DummyNode(Scope([0]))],
+        [0.3, 0.5],
+    )
+    # weights of invalid shape
+    tc.assertRaises(ValueError, SumNode, [DummyNode(Scope([0]))], [[1.0]])
 
-        # weights as list of floats
-        SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], tl.tensor([0.5, 0.5]))
-        # weights as numpy array
-        SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], tl.tensor(np.array([0.5, 0.5])))
-        # weights as torch tensor
-        SumNode(
-            [DummyNode(Scope([0])), DummyNode(Scope([0]))],
-            tl.tensor(torch.tensor([0.5, 0.5])),
-        )
-        # no weights
-        SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
+    # weights as list of floats
+    SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], tl.tensor([0.5, 0.5]))
+    # weights as numpy array
+    SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))], tl.tensor(np.array([0.5, 0.5])))
+    # weights as torch tensor
+    SumNode(
+        [DummyNode(Scope([0])), DummyNode(Scope([0]))],
+        tl.tensor(tl.tensor([0.5, 0.5])),
+    )
+    # no weights
+    SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
 
-    def test_sum_node_marginalization_1(self):
+def test_sum_node_marginalization_1(do_for_all_backends):
 
-        s = SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
+    s = SumNode([DummyNode(Scope([0])), DummyNode(Scope([0]))])
 
-        s_marg = marginalize(s, [1])
-        self.assertEqual(s_marg.scopes_out, s.scopes_out)
+    s_marg = marginalize(s, [1])
+    tc.assertEqual(s_marg.scopes_out, s.scopes_out)
 
-        s_marg = marginalize(s, [0])
-        self.assertEqual(s_marg, None)
+    s_marg = marginalize(s, [0])
+    tc.assertEqual(s_marg, None)
 
-    def test_sum_node_marginalization_2(self):
+def test_sum_node_marginalization_2(do_for_all_backends):
 
-        s = SumNode(
-            [
-                ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
-                ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
-            ]
-        )
+    s = SumNode(
+        [
+            ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
+            ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
+        ]
+    )
 
-        s_marg = marginalize(s, [0])
-        self.assertEqual(s_marg.scopes_out, [Scope([1])])
+    s_marg = marginalize(s, [0])
+    tc.assertEqual(s_marg.scopes_out, [Scope([1])])
 
-        s_marg = marginalize(s, [1])
-        self.assertEqual(s_marg.scopes_out, [Scope([0])])
+    s_marg = marginalize(s, [1])
+    tc.assertEqual(s_marg.scopes_out, [Scope([0])])
 
-        s_marg = marginalize(s, [0, 1])
-        self.assertEqual(s_marg, None)
+    s_marg = marginalize(s, [0, 1])
+    tc.assertEqual(s_marg, None)
 
-    def test_product_node_initialization(self):
+def test_product_node_initialization(do_for_all_backends):
 
-        # empty children
-        self.assertRaises(ValueError, ProductNode, [])
-        # non-Module children
-        self.assertRaises(ValueError, ProductNode, [DummyNode(Scope([0])), 0])
-        # children with non-disjoint scopes
-        self.assertRaises(
-            ValueError,
-            ProductNode,
-            [DummyNode(Scope([0])), DummyNode(Scope([0]))],
-        )
+    # empty children
+    tc.assertRaises(ValueError, ProductNode, [])
+    # non-Module children
+    tc.assertRaises(ValueError, ProductNode, [DummyNode(Scope([0])), 0])
+    # children with non-disjoint scopes
+    tc.assertRaises(
+        ValueError,
+        ProductNode,
+        [DummyNode(Scope([0])), DummyNode(Scope([0]))],
+    )
 
-        ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))])
+    ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))])
 
-    def test_product_node_marginalization_1(self):
+def test_product_node_marginalization_1(do_for_all_backends):
 
-        p = ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))])
+    p = ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))])
 
-        p_marg = marginalize(p, [2])
-        self.assertEqual(p_marg.scopes_out, p.scopes_out)
+    p_marg = marginalize(p, [2])
+    tc.assertEqual(p_marg.scopes_out, p.scopes_out)
 
-        p_marg = marginalize(p, [1], prune=False)
-        self.assertEqual(p_marg.scopes_out, [Scope([0])])
+    p_marg = marginalize(p, [1], prune=False)
+    tc.assertEqual(p_marg.scopes_out, [Scope([0])])
 
-        p_marg = marginalize(p, [1], prune=True)
-        # pruning should return single child directly
-        self.assertTrue(isinstance(p_marg, DummyNode))
+    p_marg = marginalize(p, [1], prune=True)
+    # pruning should return single child directly
+    tc.assertTrue(isinstance(p_marg, DummyNode))
 
-    def test_product_node_marginalization_2(self):
+def test_product_node_marginalization_2(do_for_all_backends):
 
-        p = ProductNode(
-            [
-                ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
-                ProductNode([DummyNode(Scope([2])), DummyNode(Scope([3]))]),
-            ]
-        )
+    p = ProductNode(
+        [
+            ProductNode([DummyNode(Scope([0])), DummyNode(Scope([1]))]),
+            ProductNode([DummyNode(Scope([2])), DummyNode(Scope([3]))]),
+        ]
+    )
 
-        p_marg = marginalize(p, [2])
-        self.assertEqual(p_marg.scopes_out, [Scope([0, 1, 3])])
+    p_marg = marginalize(p, [2])
+    tc.assertEqual(p_marg.scopes_out, [Scope([0, 1, 3])])
 
-    """
-    def test_backend_conversion(self):
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    weights_1: np.array = np.random.rand(2)
+    weights_1 /= weights_1.sum()
 
-        # generate random weights for a sum nodes
-        weights_1: np.array = np.random.rand(2)
-        weights_1 /= weights_1.sum()
+    weights_2: np.array = np.random.rand(1)
+    weights_2 /= weights_2.sum()
 
-        weights_2: np.array = np.random.rand(1)
-        weights_2 /= weights_2.sum()
-
-        # INode graph
-        graph = BaseProductNode(
-            [
-                BaseSumNode(
-                    [BaseGaussian(Scope([0])), BaseGaussian(Scope([0]))],
-                    weights=weights_1,
-                ),
-                BaseSumNode([BaseGaussian(Scope([1]))], weights=weights_2),
-            ]
-        )
-
-        # conversion to PyTorch graph
-        graph_torch = toTorch(graph)
-
-        # check first sum node
-        self.assertTrue(
-            np.allclose(
-                list(graph_torch.children())[0].weights.detach().numpy(),
-                graph.children[0].weights,
-            )
-        )
-        # check first gaussian
-        self.assertTrue(
-            np.allclose(
-                list(list(graph_torch.children())[0].children())[0].mean.detach().numpy(),
-                graph.children[0].children[0].mean,
-            )
-        )
-        self.assertTrue(
-            np.allclose(
-                list(list(graph_torch.children())[0].children())[0].std.detach().numpy(),
-                graph.children[0].children[0].std,
-            )
-        )
-        # check second gaussian
-        self.assertTrue(
-            np.allclose(
-                list(list(graph_torch.children())[0].children())[0].mean.detach().numpy(),
-                graph.children[0].children[0].mean,
-            )
-        )
-        self.assertTrue(
-            np.allclose(
-                list(list(graph_torch.children())[0].children())[1].std.detach().numpy(),
-                graph.children[0].children[1].std,
-            )
-        )
-        # check second sum node
-        self.assertTrue(
-            np.allclose(
-                list(graph_torch.children())[1].weights.detach().numpy(),
-                graph.children[1].weights,
-            )
-        )
-        # check third gaussian
-        self.assertTrue(
-            np.allclose(
-                list(list(graph_torch.children())[1].children())[0].mean.detach().numpy(),
-                graph.children[1].children[0].mean,
-            )
-        )
-        self.assertTrue(
-            np.allclose(
-                list(list(graph_torch.children())[1].children())[0].std.detach().numpy(),
-                graph.children[1].children[0].std,
-            )
-        )
-
-        # conversion back to INode representation
-        graph_nodes = toBase(graph_torch)
-
-        # check first sum node
-        self.assertTrue(np.allclose(graph_nodes.children[0].weights, graph.children[0].weights))
-        # check first gaussian
-        self.assertTrue(
-            np.allclose(
-                graph_nodes.children[0].children[0].mean,
-                graph.children[0].children[0].mean,
-            )
-        )
-        self.assertTrue(
-            np.allclose(
-                graph_nodes.children[0].children[0].std,
-                graph.children[0].children[0].std,
-            )
-        )
-        # check second gaussian
-        self.assertTrue(
-            np.allclose(
-                graph_nodes.children[0].children[0].mean,
-                graph.children[0].children[0].mean,
-            )
-        )
-        self.assertTrue(
-            np.allclose(
-                graph_nodes.children[0].children[1].std,
-                graph.children[0].children[1].std,
-            )
-        )
-        # check second sum node
-        self.assertTrue(np.allclose(graph_nodes.children[1].weights, graph.children[1].weights))
-        # check third gaussian
-        self.assertTrue(
-            np.allclose(
-                graph_nodes.children[1].children[0].mean,
-                graph.children[1].children[0].mean,
-            )
-        )
-        self.assertTrue(
-            np.allclose(
-                graph_nodes.children[1].children[0].std,
-                graph.children[1].children[0].std,
-            )
-        )
-    """
-
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        weights_1: np.array = np.random.rand(2)
-        weights_1 /= weights_1.sum()
-
-        weights_2: np.array = np.random.rand(1)
-        weights_2 /= weights_2.sum()
-
-        # INode graph
-        graph = ProductNode(
-            [
-                SumNode(
-                    [Gaussian(Scope([0])), Gaussian(Scope([0]))],
-                    weights=tl.tensor(weights_1),
-                ),
-                SumNode([Gaussian(Scope([1]))], weights=tl.tensor(weights_2)),
-            ]
-        )
-        p_out = graph.scopes_out
-        s1_out = graph.children[0].scopes_out
-        s2_out = graph.children[1].scopes_out
-        for backend in backends:
-            tl.set_backend(backend)
+    # INode graph
+    graph = ProductNode(
+        [
+            SumNode(
+                [Gaussian(Scope([0])), Gaussian(Scope([0]))],
+                weights=tl.tensor(weights_1),
+            ),
+            SumNode([Gaussian(Scope([1]))], weights=tl.tensor(weights_2)),
+        ]
+    )
+    p_out = graph.scopes_out
+    s1_out = graph.children[0].scopes_out
+    s2_out = graph.children[1].scopes_out
+    for backend in backends:
+        with tl.backend_context(backend):
             graph_updated = updateBackend(graph)
             p_out_updated = graph_updated.scopes_out
             s1_out_updated = graph_updated.children[0].scopes_out
             s2_out_updated = graph_updated.children[1].scopes_out
-            self.assertTrue(p_out == p_out_updated)
-            self.assertTrue(s1_out == s1_out_updated)
-            self.assertTrue(s2_out == s2_out_updated)
+            tc.assertTrue(p_out == p_out_updated)
+            tc.assertTrue(s1_out == s1_out_updated)
+            tc.assertTrue(s2_out == s2_out_updated)
             # check conversion from torch to python
             weights_1_up = graph.children[0].weights
             weights_2_up = graph.children[1].weights
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     weights_1,
                     tl_toNumpy(weights_1_up)
                 )
             )
-            self.assertTrue(
+            tc.assertTrue(
                 np.allclose(
                     weights_2,
                     tl_toNumpy(weights_2_up)

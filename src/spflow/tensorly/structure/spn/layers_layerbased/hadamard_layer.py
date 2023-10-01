@@ -184,7 +184,7 @@ def marginalize(
         marg_partitions = []
 
         children = list(layer.children)
-        partitions = tl.split(children, tl.cumsum(layer.modules_per_partition[:-1]))
+        partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
 
         for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
             partition_children = partition_children.tolist()
@@ -231,8 +231,8 @@ def updateBackend(hadamard_layer: HadamardLayer, dispatch_ctx: Optional[Dispatch
             Dispatch context.
     """
 
-    children = tl_tolist(hadamard_layer.children)
-    partitions = tl.split(children, tl.cumsum(hadamard_layer.modules_per_partition[:-1]))
+    children = hadamard_layer.children
+    partitions = np.split(children, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return HadamardLayer(

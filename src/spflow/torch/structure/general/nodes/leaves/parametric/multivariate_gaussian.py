@@ -309,7 +309,8 @@ class MultivariateGaussian(LeafNode):
         """
 
         #return self.mean.data.cpu().detach().tolist(), self.cov.data.cpu().detach().tolist()  # type: ignore
-        return [self.mean, self.tril_diag_aux, self.tril_nondiag]  # type: ignore
+        #return [self.mean, self.tril_diag_aux, self.tril_nondiag]  # type: ignore
+        return [self.mean, self.cov]
 
     def get_params(self) -> Tuple[List[float], List[List[float]]]:
         """Returns the parameters of the represented distribution.
