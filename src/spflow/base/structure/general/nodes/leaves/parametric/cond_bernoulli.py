@@ -260,10 +260,12 @@ def updateBackend(leaf_node: CondBernoulli, dispatch_ctx: Optional[DispatchConte
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     data = tl.tensor([])
-    params = leaf_node.cond_f(data)
+    cond_f = None
+    if leaf_node.cond_f!=None:
+        params = leaf_node.cond_f(data)
 
-    for key in leaf_node.cond_f(params):
-        # Update the value for each key
-        params[key] = tl.tensor(params[key])
-    cond_f = lambda data: params
+        for key in leaf_node.cond_f(params):
+            # Update the value for each key
+            params[key] = tl.tensor(params[key])
+        cond_f = lambda data: params
     return GeneralCondBernoulli(scope=leaf_node.scope, cond_f=cond_f)

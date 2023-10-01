@@ -505,5 +505,7 @@ def tl_toNumpy(input):
         return np.array(input)
     elif isinstance(input, np.int32):
         return np.array(input)
+    elif isinstance(input, int):
+        return np.array(input)
     else:
         raise NotImplementedError("tl_toNumpy is not implemented for this type")

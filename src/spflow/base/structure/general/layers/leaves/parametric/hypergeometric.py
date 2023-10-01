@@ -379,6 +379,6 @@ def updateBackend(leaf_node: HypergeometricLayer, dispatch_ctx: Optional[Dispatc
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return GeneralHypergeometricLayer( scope=leaf_node.scopes_out,
-        N=leaf_node.N.detach().numpy(),
-        M=leaf_node.M.detach().numpy(),
-        n=leaf_node.n.detach().numpy())
+        N=leaf_node.N,
+        M=leaf_node.M,
+        n=leaf_node.n)

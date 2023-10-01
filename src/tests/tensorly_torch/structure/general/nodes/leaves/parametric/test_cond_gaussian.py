@@ -5,236 +5,225 @@ from typing import Callable
 import numpy as np
 import torch
 import tensorly as tl
-from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import (
-    CondGaussian as BaseCondGaussian,
-)
+from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import CondGaussian as CondGaussianBase
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import updateBackend
 from spflow.meta.data import Scope
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.tensorly.structure.autoleaf import AutoLeaf
-from spflow.torch.structure.spn import CondGaussian as TorchCondGaussian
+from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import CondGaussian as CondGaussianTorch
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gaussian import CondGaussian
-from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import (
-    #CondGaussian,
-    toBase,
-    toTorch,
-)
 from spflow.torch.structure.spn.nodes.sum_node import marginalize
+from spflow.tensorly.utils.helper_functions import tl_nextafter, tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestGaussian(unittest.TestCase):
-    def test_initialization(self):
+def test_initialization(do_for_all_backends):
 
-        gaussian = CondGaussian(Scope([0], [1]))
-        self.assertTrue(gaussian.cond_f is None)
-        gaussian = CondGaussian(Scope([0], [1]), lambda x: {"mean": 0.0, "std": 1.0})
-        self.assertTrue(isinstance(gaussian.cond_f, Callable))
+    gaussian = CondGaussian(Scope([0], [1]))
+    tc.assertTrue(gaussian.cond_f is None)
+    gaussian = CondGaussian(Scope([0], [1]), lambda x: {"mean": 0.0, "std": 1.0})
+    tc.assertTrue(isinstance(gaussian.cond_f, Callable))
 
-        # invalid scopes
-        self.assertRaises(Exception, CondGaussian, Scope([]))
-        self.assertRaises(Exception, CondGaussian, Scope([0, 1], [2]))
-        self.assertRaises(Exception, CondGaussian, Scope([0]))
+    # invalid scopes
+    tc.assertRaises(Exception, CondGaussian, Scope([]))
+    tc.assertRaises(Exception, CondGaussian, Scope([0, 1], [2]))
+    tc.assertRaises(Exception, CondGaussian, Scope([0]))
 
-    def test_retrieve_params(self):
+def test_retrieve_params(do_for_all_backends):
 
-        # Valid parameters for Gaussian distribution: mean in R, std > 0
+    # Valid parameters for Gaussian distribution: mean in R, std > 0
 
-        gaussian = CondGaussian(Scope([0], [1]))
+    gaussian = CondGaussian(Scope([0], [1]))
 
-        # mean = inf and mean = nan
-        gaussian.set_cond_f(
-            lambda data: {
-                "mean": torch.tensor(float("inf")),
-                "std": torch.tensor(1.0),
-            }
-        )
-        self.assertRaises(
-            Exception,
-            gaussian.retrieve_params,
-            np.array([[1.0]]),
-            DispatchContext(),
-        )
-        gaussian.set_cond_f(
-            lambda data: {
-                "mean": -torch.tensor(float("inf")),
-                "std": torch.tensor(1.0),
-            }
-        )
-        self.assertRaises(
-            Exception,
-            gaussian.retrieve_params,
-            np.array([[1.0]]),
-            DispatchContext(),
-        )
-        gaussian.set_cond_f(
-            lambda data: {
-                "mean": torch.tensor(float("nan")),
-                "std": torch.tensor(1.0),
-            }
-        )
-        self.assertRaises(
-            Exception,
-            gaussian.retrieve_params,
-            np.array([[1.0]]),
-            DispatchContext(),
-        )
+    # mean = inf and mean = nan
+    gaussian.set_cond_f(
+        lambda data: {
+            "mean": tl.tensor(float("inf")),
+            "std": tl.tensor(1.0),
+        }
+    )
+    tc.assertRaises(
+        Exception,
+        gaussian.retrieve_params,
+        np.array([[1.0]]),
+        DispatchContext(),
+    )
+    gaussian.set_cond_f(
+        lambda data: {
+            "mean": -tl.tensor(float("inf")),
+            "std": tl.tensor(1.0),
+        }
+    )
+    tc.assertRaises(
+        Exception,
+        gaussian.retrieve_params,
+        np.array([[1.0]]),
+        DispatchContext(),
+    )
+    gaussian.set_cond_f(
+        lambda data: {
+            "mean": tl.tensor(float("nan")),
+            "std": tl.tensor(1.0),
+        }
+    )
+    tc.assertRaises(
+        Exception,
+        gaussian.retrieve_params,
+        np.array([[1.0]]),
+        DispatchContext(),
+    )
 
-        # std = 0 and std < 0
-        gaussian.set_cond_f(lambda data: {"mean": torch.tensor(0.0), "std": torch.tensor(0.0)})
-        self.assertRaises(
-            Exception,
-            gaussian.retrieve_params,
-            np.array([[1.0]]),
-            DispatchContext(),
-        )
-        gaussian.set_cond_f(
-            lambda data: {
-                "mean": torch.tensor(0.0),
-                "std": torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0)),
-            }
-        )
-        self.assertRaises(
-            Exception,
-            gaussian.retrieve_params,
-            np.array([[1.0]]),
-            DispatchContext(),
-        )
+    # std = 0 and std < 0
+    gaussian.set_cond_f(lambda data: {"mean": tl.tensor(0.0), "std": tl.tensor(0.0)})
+    tc.assertRaises(
+        Exception,
+        gaussian.retrieve_params,
+        np.array([[1.0]]),
+        DispatchContext(),
+    )
+    gaussian.set_cond_f(
+        lambda data: {
+            "mean": tl.tensor(0.0),
+            "std": tl_nextafter(tl.tensor(0.0), tl.tensor(-1.0)),
+        }
+    )
+    tc.assertRaises(
+        Exception,
+        gaussian.retrieve_params,
+        np.array([[1.0]]),
+        DispatchContext(),
+    )
 
-        # std = inf and std = nan
-        gaussian.set_cond_f(
-            lambda data: {
-                "mean": torch.tensor(0.0),
-                "std": -torch.tensor(float("inf")),
-            }
-        )
-        self.assertRaises(
-            Exception,
-            gaussian.retrieve_params,
-            np.array([[1.0]]),
-            DispatchContext(),
-        )
-        gaussian.set_cond_f(
-            lambda data: {
-                "mean": torch.tensor(0.0),
-                "std": torch.tensor(float("nan")),
-            }
-        )
-        self.assertRaises(
-            Exception,
-            gaussian.retrieve_params,
-            np.array([[1.0]]),
-            DispatchContext(),
-        )
+    # std = inf and std = nan
+    gaussian.set_cond_f(
+        lambda data: {
+            "mean": tl.tensor(0.0),
+            "std": -tl.tensor(float("inf")),
+        }
+    )
+    tc.assertRaises(
+        Exception,
+        gaussian.retrieve_params,
+        np.array([[1.0]]),
+        DispatchContext(),
+    )
+    gaussian.set_cond_f(
+        lambda data: {
+            "mean": tl.tensor(0.0),
+            "std": tl.tensor(float("nan")),
+        }
+    )
+    tc.assertRaises(
+        Exception,
+        gaussian.retrieve_params,
+        np.array([[1.0]]),
+        DispatchContext(),
+    )
 
-    def test_accept(self):
+def test_accept(do_for_all_backends):
 
-        # continuous meta type
-        self.assertTrue(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
+    # continuous meta type
+    tc.assertTrue(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])]))
 
-        # Gaussian feature type class
-        self.assertTrue(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])]))
+    # Gaussian feature type class
+    tc.assertTrue(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])]))
 
-        # Gaussian feature type instance
-        self.assertTrue(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian(0.0, 1.0)])]))
+    # Gaussian feature type instance
+    tc.assertTrue(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian(0.0, 1.0)])]))
 
-        # invalid feature type
-        self.assertFalse(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
+    # invalid feature type
+    tc.assertFalse(CondGaussian.accepts([FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])]))
 
-        # non-conditional scope
-        self.assertFalse(CondGaussian.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
+    # non-conditional scope
+    tc.assertFalse(CondGaussian.accepts([FeatureContext(Scope([0]), [FeatureTypes.Continuous])]))
 
-        # multivariate signature
-        self.assertFalse(
-            CondGaussian.accepts(
-                [
-                    FeatureContext(
-                        Scope([0, 1], [2]),
-                        [FeatureTypes.Continuous, FeatureTypes.Continuous],
-                    )
-                ]
-            )
-        )
-
-    def test_initialization_from_signatures(self):
-
-        CondGaussian.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])])
-        CondGaussian.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])])
-        CondGaussian.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian(-1.0, 1.5)])])
-
-        # ----- invalid arguments -----
-
-        # invalid feature type
-        self.assertRaises(
-            ValueError,
-            CondGaussian.from_signatures,
-            [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
-        )
-
-        # non-conditional scope
-        self.assertRaises(
-            ValueError,
-            CondGaussian.from_signatures,
-            [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
-        )
-
-        # multivariate signature
-        self.assertRaises(
-            ValueError,
-            CondGaussian.from_signatures,
+    # multivariate signature
+    tc.assertFalse(
+        CondGaussian.accepts(
             [
                 FeatureContext(
                     Scope([0, 1], [2]),
                     [FeatureTypes.Continuous, FeatureTypes.Continuous],
                 )
-            ],
+            ]
         )
+    )
 
-    def test_autoleaf(self):
+def test_initialization_from_signatures(do_for_all_backends):
 
-        # make sure leaf is registered
-        self.assertTrue(AutoLeaf.is_registered(CondGaussian))
+    CondGaussian.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Continuous])])
+    CondGaussian.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])])
+    CondGaussian.from_signatures([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian(-1.0, 1.5)])])
 
-        # make sure leaf is correctly inferred
-        self.assertEqual(
-            CondGaussian,
-            AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])]),
-        )
+    # ----- invalid arguments -----
 
-        # make sure AutoLeaf can return correctly instantiated object
-        gaussian = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])])
-        self.assertTrue(isinstance(gaussian, TorchCondGaussian))
+    # invalid feature type
+    tc.assertRaises(
+        ValueError,
+        CondGaussian.from_signatures,
+        [FeatureContext(Scope([0], [1]), [FeatureTypes.Discrete])],
+    )
 
-    def test_structural_marginalization(self):
+    # non-conditional scope
+    tc.assertRaises(
+        ValueError,
+        CondGaussian.from_signatures,
+        [FeatureContext(Scope([0]), [FeatureTypes.Continuous])],
+    )
 
-        gaussian = CondGaussian(Scope([0], [1]))
+    # multivariate signature
+    tc.assertRaises(
+        ValueError,
+        CondGaussian.from_signatures,
+        [
+            FeatureContext(
+                Scope([0, 1], [2]),
+                [FeatureTypes.Continuous, FeatureTypes.Continuous],
+            )
+        ],
+    )
 
-        self.assertTrue(marginalize(gaussian, [1]) is not None)
-        self.assertTrue(marginalize(gaussian, [0]) is None)
+def test_autoleaf(do_for_all_backends):
 
-    def test_base_backend_conversion(self):
+    if tl.get_backend() == "numpy":
+        CondGaussianInst = CondGaussianBase
+    elif tl.get_backend() == "pytorch":
+        CondGaussianInst = CondGaussianTorch
+    else:
+        raise NotImplementedError("This test is not implemented for this backend")
 
-        mean = random.random()
-        std = random.random() + 1e-7  # offset by small number to avoid zero
+    # make sure leaf is registered
+    tc.assertTrue(AutoLeaf.is_registered(CondGaussian))
 
-        torch_gaussian = CondGaussian(Scope([0], [1]))
-        node_gaussian = BaseCondGaussian(Scope([0], [1]))
+    # make sure leaf is correctly inferred
+    tc.assertEqual(
+        CondGaussian,
+        AutoLeaf.infer([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])]),
+    )
 
-        # check conversion from torch to python
-        self.assertTrue(np.all(torch_gaussian.scopes_out == toBase(torch_gaussian).scopes_out))
-        # check conversion from python to torch
-        self.assertTrue(np.all(node_gaussian.scopes_out == toTorch(node_gaussian).scopes_out))
+    # make sure AutoLeaf can return correctly instantiated object
+    gaussian = AutoLeaf([FeatureContext(Scope([0], [1]), [FeatureTypes.Gaussian])])
+    tc.assertTrue(isinstance(gaussian, CondGaussianInst))
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        cond_gaussian = CondGaussian(Scope([0], [1]))
-        for backend in backends:
-            tl.set_backend(backend)
+def test_structural_marginalization(do_for_all_backends):
+
+    gaussian = CondGaussian(Scope([0], [1]))
+
+    tc.assertTrue(marginalize(gaussian, [1]) is not None)
+    tc.assertTrue(marginalize(gaussian, [0]) is None)
+
+
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    cond_gaussian = CondGaussian(Scope([0], [1]))
+    for backend in backends:
+        with tl.backend_context(backend):
             cond_gaussian_updated = updateBackend(cond_gaussian)
 
             # check conversion from torch to python
-            self.assertTrue(np.all(cond_gaussian.scopes_out == cond_gaussian_updated.scopes_out))
+            tc.assertTrue(np.all(cond_gaussian.scopes_out == cond_gaussian_updated.scopes_out))
 
 
 if __name__ == "__main__":

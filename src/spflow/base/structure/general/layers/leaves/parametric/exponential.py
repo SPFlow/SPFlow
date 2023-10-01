@@ -295,4 +295,4 @@ def updateBackend(leaf_node: ExponentialLayer, dispatch_ctx: Optional[DispatchCo
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return GeneralExponentialLayer(scope=leaf_node.scopes_out, l=leaf_node.l.detach().numpy())
+    return GeneralExponentialLayer(scope=leaf_node.scopes_out, l=leaf_node.l)

@@ -393,5 +393,5 @@ def updateBackend(leaf_node: MultivariateGaussianLayer, dispatch_ctx: Optional[D
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return GeneralMultivariateGaussianLayer(scope=leaf_node.scopes_out,
-        mean=[m.detach().numpy() for m in leaf_node.mean],
-        cov=[c.detach().numpy() for c in leaf_node.cov])
+        mean=leaf_node.mean,
+        cov=leaf_node.cov)
