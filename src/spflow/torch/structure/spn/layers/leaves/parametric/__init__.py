@@ -5,12 +5,14 @@ from spflow.torch.structure.general.layers.leaves.parametric.bernoulli import (
 from spflow.torch.structure.general.layers.leaves.parametric.binomial import (
     BinomialLayer,
 )
+from spflow.torch.structure.general.layers.leaves.parametric.categorical import CategoricalLayer
 from spflow.torch.structure.general.layers.leaves.parametric.cond_bernoulli import (
     CondBernoulliLayer,
 )
 from spflow.torch.structure.general.layers.leaves.parametric.cond_binomial import (
     CondBinomialLayer,
 )
+from spflow.torch.structure.general.layers.leaves.parametric.cond_categorical import CondCategoricalLayer
 from spflow.torch.structure.general.layers.leaves.parametric.cond_exponential import (
     CondExponentialLayer,
 )

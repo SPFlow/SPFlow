@@ -1,12 +1,14 @@
 # ----- specific imports -----
 from spflow.base.structure.general.nodes.leaves.parametric.bernoulli import Bernoulli
 from spflow.base.structure.general.nodes.leaves.parametric.binomial import Binomial
+from spflow.base.structure.general.nodes.leaves.parametric.categorical import Categorical
 from spflow.base.structure.general.nodes.leaves.parametric.cond_bernoulli import (
     CondBernoulli,
 )
 from spflow.base.structure.general.nodes.leaves.parametric.cond_binomial import (
     CondBinomial,
 )
+from spflow.base.structure.general.nodes.leaves.parametric.cond_categorical import CondCategorical
 from spflow.base.structure.general.nodes.leaves.parametric.cond_exponential import (
     CondExponential,
 )

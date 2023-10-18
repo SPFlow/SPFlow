@@ -1,8 +1,10 @@
 # ----- specific imports -----
 from .bernoulli import Bernoulli
 from .binomial import Binomial
+from .categorical import Categorical
 from .cond_bernoulli import CondBernoulli
 from .cond_binomial import CondBinomial
+from .cond_categorical import CondCategorical
 from .cond_exponential import CondExponential
 from .cond_gamma import CondGamma
 from .cond_gaussian import CondGaussian

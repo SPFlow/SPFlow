@@ -3,8 +3,10 @@
 # import all definitions of 'sample'
 from .general.layers.leaves.parametric.bernoulli import sample
 from .general.layers.leaves.parametric.binomial import sample
+from .general.layers.leaves.parametric.categorical import sample
 from .general.layers.leaves.parametric.cond_bernoulli import sample
 from .general.layers.leaves.parametric.cond_binomial import sample
+from .general.layers.leaves.parametric.cond_categorical import sample
 from .general.layers.leaves.parametric.cond_exponential import sample
 from .general.layers.leaves.parametric.cond_gamma import sample
 from .general.layers.leaves.parametric.cond_gaussian import sample
@@ -25,8 +27,10 @@ from .general.layers.leaves.parametric.poisson import sample
 from .general.layers.leaves.parametric.uniform import sample
 from .general.nodes.leaves.parametric.bernoulli import sample
 from .general.nodes.leaves.parametric.binomial import sample
+from .general.nodes.leaves.parametric.categorical import sample
 from .general.nodes.leaves.parametric.cond_bernoulli import sample
 from .general.nodes.leaves.parametric.cond_binomial import sample
+from .general.nodes.leaves.parametric.cond_categorical import sample
 from .general.nodes.leaves.parametric.cond_exponential import sample
 from .general.nodes.leaves.parametric.cond_gamma import sample
 from .general.nodes.leaves.parametric.cond_gaussian import sample

@@ -1,8 +1,10 @@
 # ----- specific imports -----
 from .bernoulli import BernoulliLayer
 from .binomial import BinomialLayer
+from .categorical import CategoricalLayer
 from .cond_bernoulli import CondBernoulliLayer
 from .cond_binomial import CondBinomialLayer
+from .cond_categorical import CondCategoricalLayer
 from .cond_exponential import CondExponentialLayer
 from .cond_gamma import CondGammaLayer
 from .cond_gaussian import CondGaussianLayer

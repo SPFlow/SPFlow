@@ -8,6 +8,7 @@ from .general.layers.leaves.parametric.bernoulli import (
     maximum_likelihood_estimation,
 )
 from .general.layers.leaves.parametric.binomial import em, maximum_likelihood_estimation
+from .general.layers.leaves.parametric.categorical import em, maximum_likelihood_estimation
 from .general.layers.leaves.parametric.exponential import (
     em,
     maximum_likelihood_estimation,
@@ -40,6 +41,7 @@ from .general.layers.leaves.parametric.uniform import em, maximum_likelihood_est
 # import all definitions of 'maximum_likelihood_estimation' and 'em'
 from .general.nodes.leaves.parametric.bernoulli import em, maximum_likelihood_estimation
 from .general.nodes.leaves.parametric.binomial import em, maximum_likelihood_estimation
+from .general.nodes.leaves.parametric.categorical import em, maximum_likelihood_estimation
 from .general.nodes.leaves.parametric.exponential import (
     em,
     maximum_likelihood_estimation,

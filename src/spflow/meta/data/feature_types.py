@@ -2,7 +2,9 @@
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import ClassVar, Tuple, Type, Union
+from typing import ClassVar, List, Optional, Tuple, Type, Union
+
+import numpy as np
 
 from spflow.meta.data.meta_type import MetaType
 
@@ -137,6 +139,23 @@ class BinomialType(FeatureType):
 
 
 @dataclass
+class CategoricalType(FeatureType):
+    """Feature type for Categorical-distributed features.
+
+    Attributes:
+        k: 
+            Number of categories.
+            Defaults to 2.
+        p: 
+            List of probabilities, each associated with the category set by its index.
+            Defaults to [0.5, 0.5].
+    """
+    meta_type: ClassVar[MetaType] = MetaType.Discrete
+    k: int = 2
+    p: Optional[Union[List[float], np.ndarray]] = None
+
+
+@dataclass
 class GeometricType(FeatureType):
     r"""Feature type for Geometric-distributed features.
 
@@ -198,6 +217,8 @@ class PoissonType(FeatureType):
     l: float = 1.0
 
 
+
+
 class FeatureTypes(ABC):
     r"""Abstract class keeping track of all registered feature types.
 
@@ -220,6 +241,9 @@ class FeatureTypes(ABC):
             Alias for ``BinomialType``, indicating Binomial-distributed data.
             Required parameter ``n`` greater than or equal to 0, representing the number of i.i.d. Bernoulli trials.
             Optional parameter ``p`` in :math:`[0,1]`, representing the success probability.
+        Categorical:
+            Alias for ``CategoricalType``, indicating Categorical-distributed data.
+            Required parameter ``p``, List of k values in :math:`[0,1]`, representing selection probability of each of the k categories.
         Exponential:
             Alias for ``ExponentialType``, indicating Exponential-distributed data.
             Optional parameter ``l``, representing the rate parameter, greater than 0.0.
@@ -267,6 +291,7 @@ class FeatureTypes(ABC):
     # ----- discrete feature types -----
     Bernoulli = BernoulliType
     Binomial = BinomialType
+    Categorical = CategoricalType
     Geometric = GeometricType
     Hypergeometric = HypergeometricType
     NegativeBinomial = NegativeBinomialType
