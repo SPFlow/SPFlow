@@ -4,12 +4,14 @@ from . import spn, general  # isort: skip
 from .autoleaf import AutoLeaf
 from .general.layers.leaves.parametric.bernoulli import marginalize, toBase, toTorch
 from .general.layers.leaves.parametric.binomial import marginalize, toBase, toTorch
+from .general.layers.leaves.parametric.categorical import marginalize, toBase, toTorch
 from .general.layers.leaves.parametric.cond_bernoulli import (
     marginalize,
     toBase,
     toTorch,
 )
 from .general.layers.leaves.parametric.cond_binomial import marginalize, toBase, toTorch
+from .general.layers.leaves.parametric.cond_categorical import marginalize, toBase, toTorch
 from .general.layers.leaves.parametric.cond_exponential import (
     marginalize,
     toBase,

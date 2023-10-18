@@ -3,8 +3,10 @@ from . import general, spn
 from .autoleaf import AutoLeaf
 from .general.layers.leaves.parametric.bernoulli import marginalize
 from .general.layers.leaves.parametric.binomial import marginalize
+from .general.layers.leaves.parametric.categorical import marginalize
 from .general.layers.leaves.parametric.cond_bernoulli import marginalize
 from .general.layers.leaves.parametric.cond_binomial import marginalize
+from .general.layers.leaves.parametric.cond_categorical import marginalize
 from .general.layers.leaves.parametric.cond_exponential import marginalize
 from .general.layers.leaves.parametric.cond_gamma import marginalize
 from .general.layers.leaves.parametric.cond_gaussian import marginalize

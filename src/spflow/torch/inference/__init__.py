@@ -3,8 +3,10 @@
 # import all definitions of 'log_likelihood' and 'likelihood'
 from .general.layers.leaves.parametric.bernoulli import log_likelihood
 from .general.layers.leaves.parametric.binomial import log_likelihood
+from .general.layers.leaves.parametric.categorical import log_likelihood
 from .general.layers.leaves.parametric.cond_bernoulli import log_likelihood
 from .general.layers.leaves.parametric.cond_binomial import log_likelihood
+from .general.layers.leaves.parametric.cond_categorical import log_likelihood
 from .general.layers.leaves.parametric.cond_exponential import log_likelihood
 from .general.layers.leaves.parametric.cond_gamma import log_likelihood
 from .general.layers.leaves.parametric.cond_gaussian import log_likelihood
@@ -25,8 +27,10 @@ from .general.layers.leaves.parametric.poisson import log_likelihood
 from .general.layers.leaves.parametric.uniform import log_likelihood
 from .general.nodes.leaves.parametric.bernoulli import log_likelihood
 from .general.nodes.leaves.parametric.binomial import log_likelihood
+from .general.nodes.leaves.parametric.categorical import log_likelihood
 from .general.nodes.leaves.parametric.cond_bernoulli import log_likelihood
 from .general.nodes.leaves.parametric.cond_binomial import log_likelihood
+from .general.nodes.leaves.parametric.cond_categorical import log_likelihood
 from .general.nodes.leaves.parametric.cond_exponential import log_likelihood
 from .general.nodes.leaves.parametric.cond_gamma import log_likelihood
 from .general.nodes.leaves.parametric.cond_gaussian import log_likelihood

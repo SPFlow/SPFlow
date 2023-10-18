@@ -5,12 +5,14 @@ from spflow.base.structure.general.layers.leaves.parametric.bernoulli import (
 from spflow.base.structure.general.layers.leaves.parametric.binomial import (
     BinomialLayer,
 )
+from spflow.base.structure.general.layers.leaves.parametric.categorical import CategoricalLayer
 from spflow.base.structure.general.layers.leaves.parametric.cond_bernoulli import (
     CondBernoulliLayer,
 )
 from spflow.base.structure.general.layers.leaves.parametric.cond_binomial import (
     CondBinomialLayer,
 )
+from spflow.base.structure.general.layers.leaves.parametric.cond_categorical import CondCategoricalLayer
 from spflow.base.structure.general.layers.leaves.parametric.cond_exponential import (
     CondExponentialLayer,
 )

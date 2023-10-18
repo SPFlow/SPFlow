@@ -2,6 +2,7 @@
 from . import spn
 from .general.layers.leaves.parametric.bernoulli import maximum_likelihood_estimation
 from .general.layers.leaves.parametric.binomial import maximum_likelihood_estimation
+from .general.layers.leaves.parametric.categorical import maximum_likelihood_estimation
 from .general.layers.leaves.parametric.exponential import maximum_likelihood_estimation
 from .general.layers.leaves.parametric.gamma import maximum_likelihood_estimation
 from .general.layers.leaves.parametric.gaussian import maximum_likelihood_estimation
@@ -22,6 +23,7 @@ from .general.layers.leaves.parametric.uniform import maximum_likelihood_estimat
 # import all definitions of 'maximum_likelihood_estimation'
 from .general.nodes.leaves.parametric.bernoulli import maximum_likelihood_estimation
 from .general.nodes.leaves.parametric.binomial import maximum_likelihood_estimation
+from .general.nodes.leaves.parametric.categorical import maximum_likelihood_estimation
 from .general.nodes.leaves.parametric.exponential import maximum_likelihood_estimation
 from .general.nodes.leaves.parametric.gamma import maximum_likelihood_estimation
 from .general.nodes.leaves.parametric.gaussian import maximum_likelihood_estimation
