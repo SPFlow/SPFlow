@@ -89,7 +89,7 @@ class FeatureContext:
         if isinstance(feature_ids, int):
             feature_ids = [feature_ids]
 
-        scope = Scope(feature_ids, self.scope.evidence)
+        scope = Scope([int(f) for f in feature_ids], self.scope.evidence)
         domains = {feature_id: self.domain_map[feature_id] for feature_id in feature_ids}
 
         return FeatureContext(scope, domains)

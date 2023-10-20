@@ -115,7 +115,7 @@ class MultivariateGaussian(LeafNode):
         # create zero matrix of appropriate dimension
         L_nondiag = torch.zeros(self.d, self.d)
         # fill non-diagonal values of lower triangular matrix
-        L_nondiag[self.tril_nondiag_indices[0], self.tril_nondiag_indices[1]] = self.tril_nondiag  # type: ignore
+        L_nondiag[self.tril_nondiag_indices[0], self.tril_nondiag_indices[1]] = self.tril_nondiag.double()  # type: ignore
         # add (projected) diagonal values
         L = L_nondiag + proj_real_to_bounded(self.tril_diag_aux, lb=0.0) * torch.eye(self.d)  # type: ignore
         # return lower triangular matrix

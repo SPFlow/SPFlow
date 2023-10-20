@@ -249,7 +249,7 @@ class CondMultivariateGaussian(LeafNode):
             raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' may not contain NaN values.")
 
         # test covariance matrix for symmetry
-        if not np.all(cov == cov.T):
+        if not np.allclose(cov, cov.T):
             raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' must be symmetric.")
 
         # test covariance matrix for positive semi-definiteness

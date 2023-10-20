@@ -7,91 +7,85 @@ import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
-from spflow.torch.sampling import sample
 from spflow.tensorly.sampling import sample
-#from spflow.torch.structure.spn import NegativeBinomial
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_negative_binomial import NegativeBinomial
 from spflow.torch.structure.general.nodes.leaves.parametric.negative_binomial import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy, tl_isnan
 
+tc = unittest.TestCase()
 
-class TestNegativeBinomial(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_sampling_1(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+    torch.set_default_dtype(torch.float64)
 
-    def test_sampling_1(self):
+    # ----- n = 1, p = 1.0 -----
 
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    negative_binomial = NegativeBinomial(Scope([0]), 1, 1.0)
+    data = tl.tensor([[float("nan")], [float("nan")], [float("nan")]], dtype=tl.float64)
 
-        # ----- n = 1, p = 1.0 -----
+    samples = sample(negative_binomial, data, sampling_ctx=SamplingContext([0, 2]))
 
-        negative_binomial = NegativeBinomial(Scope([0]), 1, 1.0)
-        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
+    tc.assertTrue(all(tl_isnan(samples) == tl.tensor([[False], [True], [False]])))
+    tc.assertTrue(all(samples[~tl_isnan(samples)] == 0.0))
 
-        samples = sample(negative_binomial, data, sampling_ctx=SamplingContext([0, 2]))
+def test_sampling_2(do_for_all_backends):
 
-        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
-        self.assertTrue(all(samples[~samples.isnan()] == 0.0))
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+    torch.set_default_dtype(torch.float64)
 
-    def test_sampling_2(self):
+    # ----- n = 10, p = 0.3 -----
 
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    negative_binomial = NegativeBinomial(Scope([0]), 10, 0.3)
 
-        # ----- n = 10, p = 0.3 -----
+    samples = sample(negative_binomial, 1000)
+    tc.assertTrue(np.isclose(samples.mean(), tl.tensor(10 * (1 - 0.3) / 0.3), rtol=0.1))
 
-        negative_binomial = NegativeBinomial(Scope([0]), 10, 0.3)
+def test_sampling_3(do_for_all_backends):
 
-        samples = sample(negative_binomial, 1000)
-        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(10 * (1 - 0.3) / 0.3), rtol=0.1))
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+    torch.set_default_dtype(torch.float64)
 
-    def test_sampling_3(self):
+    # ----- n = 5, p = 0.8 -----
 
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    negative_binomial = NegativeBinomial(Scope([0]), 5, 0.8)
 
-        # ----- n = 5, p = 0.8 -----
+    samples = sample(negative_binomial, 1000)
+    tc.assertTrue(np.isclose(samples.mean(), tl.tensor(5 * (1 - 0.8) / 0.8), rtol=0.1))
 
-        negative_binomial = NegativeBinomial(Scope([0]), 5, 0.8)
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+    torch.set_default_dtype(torch.float64)
 
-        samples = sample(negative_binomial, 1000)
-        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(5 * (1 - 0.8) / 0.8), rtol=0.1))
+    # ----- n = 1, p = 1.0 -----
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    negative_binomial = NegativeBinomial(Scope([0]), 1, 1.0)
+    data = tl.tensor([[float("nan")], [float("nan")], [float("nan")]], dtype=tl.float64)
 
-        # ----- n = 1, p = 1.0 -----
+    samples = sample(negative_binomial, data, sampling_ctx=SamplingContext([0, 2]))
+    notNans = samples[~tl_isnan(samples)]
 
-        negative_binomial = NegativeBinomial(Scope([0]), 1, 1.0)
-        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
-
-        samples = sample(negative_binomial, data, sampling_ctx=SamplingContext([0, 2]))
-        notNans = samples[~tl_isnan(samples)]
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             negative_binomial_updated = updateBackend(negative_binomial)
             samples_updated = sample(negative_binomial_updated, tl.tensor(data, dtype=tl.float64), sampling_ctx=SamplingContext([0, 2]))
             # check conversion from torch to python
-            self.assertTrue(all(tl_isnan(samples) == tl_isnan(samples_updated)))
-            self.assertTrue(all(tl_toNumpy(notNans) == tl_toNumpy(samples_updated[~tl_isnan(samples_updated)])))
+            tc.assertTrue(all(tl_isnan(samples) == tl_isnan(samples_updated)))
+            tc.assertTrue(all(tl_toNumpy(notNans) == tl_toNumpy(samples_updated[~tl_isnan(samples_updated)])))
 
 
 if __name__ == "__main__":

@@ -72,4 +72,4 @@ def log_likelihood(
     ]
 
     # multiply element-wise (sum element-wise in log-space)
-    return tl.stack(partition_lls).sum(dim=0)
+    return tl.sum(tl.stack(partition_lls), axis=0)

@@ -124,14 +124,6 @@ class RatSPN(Module):
             # leaf region
             else:
                 # split leaf scope into univariate ones and combine them element-wise
-                #backend = tl.get_backend()
-                #if backend=="numpy":
-                #    AutoLeaf = TlAutoLeaf
-                #elif backend=="pytorch":
-                #    pass #AutoLeaf = TorchAutoLeaf
-                #else:
-                #    raise NotImplementedError("AutoLeaf is not implemented for this backend")
-
                 if len(region.scope.query) > 1:
                     partition_signatures = [[feature_ctx.select([rv])] * self.n_leaf_nodes for rv in region.scope.query]
                     child_partitions = [[AutoLeaf(signatures)] for signatures in partition_signatures]
