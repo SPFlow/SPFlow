@@ -3,6 +3,7 @@
 from typing import Optional
 
 import torch
+import numpy as np
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import T, tl_array_split, tl_cartesian_product
 
@@ -62,9 +63,9 @@ def log_likelihood(
     # compute all combinations of input indices
     partition_indices = tl_array_split(
         tl.arange(0, partition_layer.n_in),
-        tl.cumsum(tl.tensor(partition_layer.partition_sizes, dtype=int), dim=0)[:-1],
+        np.cumsum(tl.tensor(partition_layer.partition_sizes, dtype=int), axis=0)[:-1],
     )
     indices = tl.tensor(tl_cartesian_product(*partition_indices),dtype=int)
 
     # multiply children (sum in log-space)
-    return child_lls[:, indices].sum(dim=-1)
+    return tl.sum(child_lls[:, indices], axis=-1)

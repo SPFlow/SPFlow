@@ -64,6 +64,6 @@ def sample(
 
     sampling_ids = marg_ids & instance_ids_mask.bool().to(l.device)
 
-    data[sampling_ids, leaf.scope.query] = leaf.dist(l=l).sample((sampling_ids.sum(),)).to(l.device)
+    data[sampling_ids, leaf.scope.query] = leaf.dist(l=l).sample((sampling_ids.sum(),)).double().to(l.device)
 
     return data

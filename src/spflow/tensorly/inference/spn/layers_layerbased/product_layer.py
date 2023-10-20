@@ -3,7 +3,7 @@
 from typing import Optional
 
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import T
+from spflow.tensorly.utils.helper_functions import T, tl_tile
 
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -59,4 +59,4 @@ def log_likelihood(
     )
 
     # multiply childen (sum in log-space)
-    return child_lls.sum(dim=1, keepdims=True).repeat((1, product_layer.n_out))
+    return tl_tile(tl.sum(child_lls, axis=1, keepdims=True), repeats=product_layer.n_out)

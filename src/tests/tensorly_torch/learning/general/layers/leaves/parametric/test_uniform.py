@@ -8,164 +8,172 @@ import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.inference import log_likelihood
+from spflow.tensorly.inference import log_likelihood
 from spflow.torch.learning import (
     em,
     expectation_maximization,
     maximum_likelihood_estimation,
 )
-from spflow.torch.structure.spn import UniformLayer #ProductNode, SumNode,
+from spflow.tensorly.structure.spn import UniformLayer
 from spflow.tensorly.structure.spn import ProductNode, SumNode
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 from spflow.torch.structure.general.layers.leaves.parametric.uniform import updateBackend
 
+tc = unittest.TestCase()
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_mle(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
 
-    def test_mle(self):
+    # simulate data
+    data = tl.tensor([[0.5, -3.0]])
 
-        layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
+    # perform MLE (should not raise an exception)
+    maximum_likelihood_estimation(layer, data, bias_correction=True)
 
-        # simulate data
-        data = torch.tensor([[0.5, -3.0]])
+    tc.assertTrue(tl.all(layer.start == tl.tensor([0.0, -5.0])))
+    tc.assertTrue(tl.all(layer.end == tl.tensor([1.0, -2.0])))
 
-        # perform MLE (should not raise an exception)
-        maximum_likelihood_estimation(layer, data, bias_correction=True)
+def test_mle_invalid_support(do_for_all_backends):
 
-        self.assertTrue(torch.all(layer.start == torch.tensor([0.0, -5.0])))
-        self.assertTrue(torch.all(layer.end == torch.tensor([1.0, -2.0])))
+    layer = UniformLayer(Scope([0]), start=1.0, end=3.0, support_outside=False)
 
-    def test_mle_invalid_support(self):
+    # perform MLE (should raise exceptions)
+    tc.assertRaises(
+        ValueError,
+        maximum_likelihood_estimation,
+        layer,
+        tl.tensor([[float("inf")]]),
+        bias_correction=True,
+    )
+    tc.assertRaises(
+        ValueError,
+        maximum_likelihood_estimation,
+        layer,
+        tl.tensor([[0.0]]),
+        bias_correction=True,
+    )
 
-        layer = UniformLayer(Scope([0]), start=1.0, end=3.0, support_outside=False)
+def test_em_step(do_for_all_backends):
 
-        # perform MLE (should raise exceptions)
-        self.assertRaises(
-            ValueError,
-            maximum_likelihood_estimation,
-            layer,
-            torch.tensor([[float("inf")]]),
-            bias_correction=True,
+    # em is only implemented for pytorch backend
+    if do_for_all_backends == "numpy":
+        return
+
+    # set seed
+    torch.manual_seed(0)
+
+    leaf = UniformLayer([Scope([0]), Scope([1])], start=[-1.0, 2.0], end=[3.0, 5.0])
+    data = tl.tensor(
+        np.hstack(
+            [
+                np.random.rand(15000, 1) * 4.0 - 1.0,
+                np.random.rand(15000, 1) * 3.0 + 2.0,
+            ]
         )
-        self.assertRaises(
-            ValueError,
-            maximum_likelihood_estimation,
-            layer,
-            torch.tensor([[0.0]]),
-            bias_correction=True,
+    )
+    dispatch_ctx = DispatchContext()
+
+    # compute gradients of log-likelihoods w.r.t. module log-likelihoods
+    ll = log_likelihood(leaf, data, dispatch_ctx=dispatch_ctx)
+    ll.requires_grad = True
+    ll.retain_grad()
+    ll.sum().backward()
+
+    # perform an em step
+    em(leaf, data, dispatch_ctx=dispatch_ctx)
+
+    tc.assertTrue(tl.all(leaf.start == tl.tensor([-1.0, 2.0])))
+    tc.assertTrue(tl.all(leaf.end == tl.tensor([3.0, 5.0])))
+
+def test_em_product_of_uniforms(do_for_all_backends):
+
+    # em is only implemented for pytorch backend
+    if do_for_all_backends == "numpy":
+        return
+
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = UniformLayer([Scope([0]), Scope([1])], start=[-1.0, 2.0], end=[3.0, 5.0])
+    prod_node = ProductNode([layer])
+
+    data = tl.tensor(
+        np.hstack(
+            [
+                np.random.rand(15000, 1) * 4.0 - 1.0,
+                np.random.rand(15000, 1) * 3.0 + 2.0,
+            ]
         )
+    )
 
-    def test_em_step(self):
+    expectation_maximization(prod_node, data, max_steps=10)
 
-        # set seed
-        torch.manual_seed(0)
+    tc.assertTrue(tl.all(layer.start == tl.tensor([-1.0, 2.0])))
+    tc.assertTrue(tl.all(layer.end == tl.tensor([3.0, 5.0])))
 
-        leaf = UniformLayer([Scope([0]), Scope([1])], start=[-1.0, 2.0], end=[3.0, 5.0])
-        data = torch.tensor(
-            np.hstack(
-                [
-                    np.random.rand(15000, 1) * 4.0 - 1.0,
-                    np.random.rand(15000, 1) * 3.0 + 2.0,
-                ]
-            )
-        )
-        dispatch_ctx = DispatchContext()
+def test_em_sum_of_uniforms(do_for_all_backends):
 
-        # compute gradients of log-likelihoods w.r.t. module log-likelihoods
-        ll = log_likelihood(leaf, data, dispatch_ctx=dispatch_ctx)
-        ll.requires_grad = True
-        ll.retain_grad()
-        ll.sum().backward()
+    # em is only implemented for pytorch backend
+    if do_for_all_backends == "numpy":
+        return
 
-        # perform an em step
-        em(leaf, data, dispatch_ctx=dispatch_ctx)
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
 
-        self.assertTrue(torch.all(leaf.start == torch.tensor([-1.0, 2.0])))
-        self.assertTrue(torch.all(leaf.end == torch.tensor([3.0, 5.0])))
+    layer = UniformLayer(Scope([0]), n_nodes=2, start=-1.0, end=3.0)
+    sum_node = SumNode([layer], weights=[0.5, 0.5])
 
-    def test_em_product_of_uniforms(self):
+    data = tl.tensor(np.random.rand(15000, 1) * 3.0 + 2.0)
 
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    expectation_maximization(sum_node, data, max_steps=10)
 
-        layer = UniformLayer([Scope([0]), Scope([1])], start=[-1.0, 2.0], end=[3.0, 5.0])
-        prod_node = ProductNode([layer])
+    tc.assertTrue(tl.all(layer.start == tl.tensor([-1.0, -1.0])))
+    tc.assertTrue(tl.all(layer.end == tl.tensor([3.0, 3.0])))
 
-        data = torch.tensor(
-            np.hstack(
-                [
-                    np.random.rand(15000, 1) * 4.0 - 1.0,
-                    np.random.rand(15000, 1) * 3.0 + 2.0,
-                ]
-            )
-        )
+def test_update_backend(do_for_all_backends):
 
-        expectation_maximization(prod_node, data, max_steps=10)
+    # em is only implemented for pytorch backend
+    if do_for_all_backends == "numpy":
+        return
+    backends = ["numpy", "pytorch"]
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
 
-        self.assertTrue(torch.all(layer.start == torch.tensor([-1.0, 2.0])))
-        self.assertTrue(torch.all(layer.end == torch.tensor([3.0, 5.0])))
+    layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
 
-    def test_em_sum_of_uniforms(self):
+    # simulate data
+    data = tl.tensor([[0.5, -3.0]])
 
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data))
 
-        layer = UniformLayer(Scope([0]), n_nodes=2, start=-1.0, end=3.0)
-        sum_node = SumNode([layer], weights=[0.5, 0.5])
+    start = tl_toNumpy(layer.start)
+    end = tl_toNumpy(layer.end)
 
-        data = torch.tensor(np.random.rand(15000, 1) * 3.0 + 2.0)
+    layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
+    prod_node = ProductNode([layer])
+    expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+    start_em = tl_toNumpy(layer.start)
+    end_em = tl_toNumpy(layer.end)
 
-        expectation_maximization(sum_node, data, max_steps=10)
-
-        self.assertTrue(torch.all(layer.start == torch.tensor([-1.0, -1.0])))
-        self.assertTrue(torch.all(layer.end == torch.tensor([3.0, 3.0])))
-
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
-
-        layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
-
-        # simulate data
-        data = tl.tensor([[0.5, -3.0]])
-
-        # perform MLE
-        maximum_likelihood_estimation(layer, tl.tensor(data))
-
-        start = tl_toNumpy(layer.start)
-        end = tl_toNumpy(layer.end)
-
-        layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
-        prod_node = ProductNode([layer])
-        expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
-        start_em = tl_toNumpy(layer.start)
-        end_em = tl_toNumpy(layer.end)
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
             layer_updated = updateBackend(layer)
             maximum_likelihood_estimation(layer_updated, tl.tensor(data))
             # check conversion from torch to python
             start_updated = tl_toNumpy(layer_updated.start)
             end_updated = tl_toNumpy(layer_updated.end)
-            self.assertTrue(np.allclose(start, start_updated, atol=1e-2, rtol=1e-1))
-            self.assertTrue(np.allclose(end, end_updated, atol=1e-2, rtol=1e-1))
+            tc.assertTrue(np.allclose(start, start_updated, atol=1e-2, rtol=1e-1))
+            tc.assertTrue(np.allclose(end, end_updated, atol=1e-2, rtol=1e-1))
 
             layer = UniformLayer(scope=[Scope([0]), Scope([1])], start=[0.0, -5.0], end=[1.0, -2.0])
             layer_updated = updateBackend(layer)
@@ -177,9 +185,10 @@ class TestNode(unittest.TestCase):
                 expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
                 start_em_updated = tl_toNumpy(layer_updated.start)
                 end_em_updated = tl_toNumpy(layer_updated.end)
-                self.assertTrue(np.allclose(start_em, start_em_updated, atol=1e-2, rtol=1e-1))
-                self.assertTrue(np.allclose(end_em, end_em_updated, atol=1e-2, rtol=1e-1))
+                tc.assertTrue(np.allclose(start_em, start_em_updated, atol=1e-2, rtol=1e-1))
+                tc.assertTrue(np.allclose(end_em, end_em_updated, atol=1e-2, rtol=1e-1))
 
 
 if __name__ == "__main__":
+    torch.set_default_tensor_type(torch.DoubleTensor)
     unittest.main()

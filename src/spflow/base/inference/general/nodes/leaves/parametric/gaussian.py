@@ -60,7 +60,7 @@ def log_likelihood(
     probs = np.zeros((data.shape[0], 1))
 
     # select relevant data based on node's scope
-    data = data[:, node.scope.query]
+    data = data[:,node.scope.query]
 
     # create mask based on marginalized instances (NaNs)
     # keeps default value of 1 (0 in log-space)
