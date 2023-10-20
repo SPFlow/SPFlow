@@ -60,6 +60,6 @@ def sample(
     sampling_ids = marg_ids & instance_ids_mask.bool().to(leaf.p_aux.device)
 
     # data needs to be offset by +1 due to the different definitions between SciPy and PyTorch
-    data[sampling_ids, leaf.scope.query] = leaf.dist.sample((sampling_ids.sum(),)).to(leaf.p_aux.device) + 1
+    data[sampling_ids, leaf.scope.query] = leaf.dist.sample((sampling_ids.sum(),)).double().to(leaf.p_aux.device) + 1
 
     return data

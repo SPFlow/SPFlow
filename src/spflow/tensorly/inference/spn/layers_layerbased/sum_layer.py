@@ -47,7 +47,7 @@ def log_likelihood(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # compute child log-likelihoods
-    child_lls = torch.concatenate(
+    child_lls = tl.concatenate(
         [
             log_likelihood(
                 child,
@@ -57,7 +57,7 @@ def log_likelihood(
             )
             for child in sum_layer.children
         ],
-        dim=1,
+        axis=1,
     )
 
     weighted_lls = tl_unsqueeze(child_lls,1) + tl.log(sum_layer.weights)

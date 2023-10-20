@@ -1,7 +1,7 @@
 import numpy as np
 import tensorly as tl
 import torch
-from typing import Union
+from typing import Union, Optional
 from scipy.special import logsumexp, softmax
 
 T = Union[np.ndarray, torch.Tensor]
@@ -211,8 +211,10 @@ def tl_isfinite(tensor):
 #def tl_full(shape, fill_value, dtype=float):
 #    return tl.ones(shape,dtype=dtype) * fill_value
 
-def tl_full(shape, fill_value, dtype=float):
+def tl_full(shape, fill_value, dtype=None):
     backend = tl.get_backend()
+    if dtype == None:
+        dtype = tl.float64
     if backend == "numpy":
         return tl.tensor(np.full(shape, fill_value), dtype=dtype)
     elif backend == "pytorch":
@@ -287,13 +289,13 @@ def tl_ix_(*args):
 
    return tuple(out)
 """
-def tl_ix_(*args): # TODO: test in detail if correct
+def tl_ix_(*args, indexing: Optional): # TODO: test in detail if correct
     backend = tl.get_backend()
     if backend == "numpy":
         arr = np.ix_(*args)
         return tuple([tl.tensor(arr[i]) for i in range(len(arr))])
     elif backend == "pytorch":
-        arr = torch.meshgrid(*args)
+        arr = torch.meshgrid(*args, indexing=indexing)
         return tuple([tl.tensor(arr[i]) for i in range(len(arr))])
     else:
         raise NotImplementedError("tl_ix_ is not implemented for this backend")
@@ -350,7 +352,7 @@ def tl_cov(tensor: tl.tensor, aweights=None, ddof=None):
     else:
         raise NotImplementedError("tl_cov is not implemented for this backend")
 
-def tl_repeat(tensor: tl.tensor, repeats, axis=None):
+def tl_repeat(tensor, repeats, axis=None):
     backend = tl.get_backend()
     if backend == "numpy":
         return tl.tensor(np.repeat(tensor,repeats=repeats,axis=axis))
@@ -360,6 +362,17 @@ def tl_repeat(tensor: tl.tensor, repeats, axis=None):
         return tl.tensor(torch.repeat_interleave(tensor, repeats=repeats, dim=axis))
     else:
         raise NotImplementedError("tl_cov is not implemented for this backend")
+
+def tl_tile(tensor, repeats):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return np.tile(tensor,reps=repeats)
+    elif backend == "pytorch":
+        if not(torch.is_tensor(tensor)):
+            tensor = torch.tensor(tensor)
+        return tensor.repeat((1, repeats))
+    else:
+        raise NotImplementedError("tl_tile is not implemented for this backend")
 
 def tl_spacing(tensor: tl.tensor):
     backend = tl.get_backend()
@@ -407,10 +420,11 @@ def tl_array_split(tensor: tl.tensor, indices_or_sections, axis=0):
     else:
         raise NotImplementedError("tl_cov is not implemented for this backend")
 
-def tl_pad_edge(tensor: tl.tensor, pad_width):
+def tl_pad_edge(tensor, pad_width):
     backend = tl.get_backend()
     if backend == "numpy":
-        return tl.tensor(np.pad(tensor,pad_width=pad_width,mode="edge"))
+        # pad along axis=1
+        return tl.tensor(np.pad(tensor,pad_width=((0,0),pad_width),mode="edge"))
     elif backend == "pytorch":
         if not(torch.is_tensor(tensor)):
             tensor = torch.tensor(tensor)
@@ -440,10 +454,10 @@ def tl_nextafter(input, other):
     else:
         raise NotImplementedError("tl_nextafter is not implemented for this backend")
 
-def tl_logsumexp(tensor, axis=None, keepdims=None):
+def tl_logsumexp(tensor, axis=None, keepdims=False):
     backend = tl.get_backend()
     if backend == "numpy":
-        return tl.tensor(logsumexp(tensor,axis=axis,keepdims=keepdims))
+        return logsumexp(tensor,axis=axis,keepdims=keepdims)
     elif backend == "pytorch":
         if not(torch.is_tensor(tensor)):
             tensor = torch.tensor(tensor)
@@ -479,11 +493,20 @@ def tl_cartesian_product(*input):
 def tl_multinomial(input, num_samples):
     backend = tl.get_backend()
     if backend == "numpy":
-        return np.random.multinomial(num_samples, input)
+        return np.array([np.random.choice(len(i),num_samples, p=i) for i in input])
     elif backend == "pytorch":
         return torch.multinomial(input, num_samples)
     else:
         raise NotImplementedError("tl_multinomial is not implemented for this backend")
+
+def tl_multivariate_normal(loc, cov_matrix, size):
+    backend = tl.get_backend()
+    if backend == "numpy":
+        return np.random.multivariate_normal(loc, cov_matrix, size)
+    elif backend == "pytorch":
+        return torch.distributions.MultivariateNormal(loc, cov_matrix).sample(size)
+    else:
+        raise NotImplementedError("tl_multivariate_normal is not implemented for this backend")
 
 def tl_hstack(input):
     backend = tl.get_backend()

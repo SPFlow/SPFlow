@@ -89,7 +89,7 @@ def sample(
     for node_id, instances in sampling_ctx.group_output_ids(sum_layer.n_out):
 
         # sample branches
-        input_ids = tl_multinomial(weights[node_id] * partition_ll[instances].exp(), num_samples=1).flatten()
+        input_ids = tl_multinomial(weights[node_id] * tl.exp(partition_ll[instances]), num_samples=1).flatten()
 
         # get correct child id and corresponding output id
         child_ids, output_ids = sum_layer.input_to_output_ids(input_ids)
