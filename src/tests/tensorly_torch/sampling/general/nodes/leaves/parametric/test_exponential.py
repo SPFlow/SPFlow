@@ -7,93 +7,83 @@ import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext
-from spflow.torch.sampling import sample
 from spflow.tensorly.sampling import sample
-#from spflow.torch.structure.spn import Exponential
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_exponential import Exponential
 from spflow.torch.structure.general.nodes.leaves.parametric.exponential import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy, tl_isnan
 
+tc = unittest.TestCase()
 
-class TestExponential(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_sampling_1(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
 
-    def test_sampling_1(self):
+    # ----- l = 0 -----
 
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    exponential = Exponential(Scope([0]), 1.0)
 
-        # ----- l = 0 -----
+    data = tl.tensor([[float("nan")], [float("nan")], [float("nan")]], dtype=tl.float64)
 
-        exponential = Exponential(Scope([0]), 1.0)
+    samples = sample(exponential, data, sampling_ctx=SamplingContext([0, 2]))
 
-        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
+    tc.assertTrue(all(tl_isnan(samples) == tl.tensor([[False], [True], [False]])))
 
-        samples = sample(exponential, data, sampling_ctx=SamplingContext([0, 2]))
+    samples = sample(exponential, 1000)
+    tc.assertTrue(np.isclose(tl.mean(samples), tl.tensor(1.0), rtol=0.1))
 
-        self.assertTrue(all(samples.isnan() == torch.tensor([[False], [True], [False]])))
+def test_sampling_2(do_for_all_backends):
 
-        samples = sample(exponential, 1000)
-        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0), rtol=0.1))
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
 
-    def test_sampling_2(self):
+    # ----- l = 0.5 -----
 
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    exponential = Exponential(Scope([0]), 0.5)
+    samples = sample(exponential, 1000)
+    tc.assertTrue(np.isclose(tl.mean(samples), tl.tensor(1.0 / 0.5), rtol=0.1))
 
-        # ----- l = 0.5 -----
+def test_sampling_3(do_for_all_backends):
 
-        exponential = Exponential(Scope([0]), 0.5)
-        samples = sample(exponential, 1000)
-        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0 / 0.5), rtol=0.1))
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
 
-    def test_sampling_3(self):
+    # ----- l = 2.5 -----
 
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    exponential = Exponential(Scope([0]), 2.5)
+    samples = sample(exponential, 1000)
+    tc.assertTrue(np.isclose(tl.mean(samples), tl.tensor(1.0 / 2.5), rtol=0.1))
 
-        # ----- l = 2.5 -----
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
 
-        exponential = Exponential(Scope([0]), 2.5)
-        samples = sample(exponential, 1000)
-        self.assertTrue(torch.isclose(samples.mean(), torch.tensor(1.0 / 2.5), rtol=0.1))
+    # ----- l = 0 -----
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    exponential = Exponential(Scope([0]), 1.0)
 
-        # ----- l = 0 -----
+    data = tl.tensor([[float("nan")], [float("nan")], [float("nan")]], dtype=tl.float64)
 
-        exponential = Exponential(Scope([0]), 1.0)
+    samples = sample(exponential, data, sampling_ctx=SamplingContext([0, 2]))
+    notNans = samples[~tl_isnan(samples)]
 
-        data = torch.tensor([[float("nan")], [float("nan")], [float("nan")]])
-
-        samples = sample(exponential, data, sampling_ctx=SamplingContext([0, 2]))
-        notNans = samples[~tl_isnan(samples)]
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             exponential_updated = updateBackend(exponential)
             samples_updated = sample(exponential_updated, tl.tensor(data, dtype=tl.float64), sampling_ctx=SamplingContext([0, 2]))
             # check conversion from torch to python
-            self.assertTrue(all(tl_isnan(samples) == tl_isnan(samples_updated)))
-            self.assertTrue(all(tl_toNumpy(notNans) == tl_toNumpy(samples_updated[~tl_isnan(samples_updated)])))
+            tc.assertTrue(all(tl_isnan(samples) == tl_isnan(samples_updated)))
+            tc.assertTrue(all(tl_toNumpy(notNans) == tl_toNumpy(samples_updated[~tl_isnan(samples_updated)])))
 
 
 

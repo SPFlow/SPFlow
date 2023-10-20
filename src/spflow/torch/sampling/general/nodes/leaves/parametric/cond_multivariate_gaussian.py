@@ -119,7 +119,7 @@ def sample(
 
             data[torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")] = joint_samples[:, nan_mask] + (
                 (data[torch.meshgrid(sampling_ids, cond_rvs, indexing="ij")] - joint_samples[:, ~nan_mask])
-                @ (marg_cov_inv @ cond_cov)
+                @ ((marg_cov_inv @ cond_cov)).double()
             )
 
     return data

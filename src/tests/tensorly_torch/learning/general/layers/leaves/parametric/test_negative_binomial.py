@@ -8,304 +8,307 @@ import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.inference import log_likelihood
+from spflow.tensorly.inference import log_likelihood
 from spflow.torch.learning import (
     em,
     expectation_maximization,
     maximum_likelihood_estimation,
 )
-from spflow.torch.structure.spn import NegativeBinomialLayer#, ProductNode, SumNode
+from spflow.tensorly.structure.spn import NegativeBinomialLayer#, ProductNode, SumNode
 from spflow.tensorly.structure.spn import ProductNode, SumNode
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 from spflow.torch.structure.general.layers.leaves.parametric.negative_binomial import updateBackend
 
+tc = unittest.TestCase()
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_mle(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
 
-    def test_mle(self):
+    layer = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
 
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    # simulate data
+    data = np.hstack(
+        [
+            np.random.negative_binomial(n=3, p=0.3, size=(10000, 1)),
+            np.random.negative_binomial(n=10, p=0.7, size=(10000, 1)),
+        ]
+    )
 
-        layer = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data))
+    tc.assertTrue(np.allclose(tl_toNumpy(layer.p), tl.tensor([0.3, 0.7]), atol=1e-2, rtol=1e-3))
 
-        # simulate data
-        data = np.hstack(
+def test_mle_edge_0(do_for_all_backends):
+
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = NegativeBinomialLayer(Scope([0]), n=3)
+
+    # simulate data
+    data = np.random.negative_binomial(n=3, p=0.0, size=(100, 1))
+    data[data < 0] = np.iinfo(data.dtype).max  # p=zero leads to integer overflow due to infinite number of trials
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data))
+
+    tc.assertTrue(np.all(tl_toNumpy(layer.p) > 0.0))
+
+def test_mle_edge_1(do_for_all_backends):
+
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = NegativeBinomialLayer(Scope([0]), n=5)
+
+    # simulate data
+    data = np.random.negative_binomial(n=5, p=1.0, size=(100, 1))
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data))
+    tc.assertTrue(np.all(tl_toNumpy(layer.p) <= 1.0))
+
+def test_mle_only_nans(do_for_all_backends):
+
+    layer = NegativeBinomialLayer(Scope([0]), n=3)
+
+    # simulate data
+    data = tl.tensor([[float("nan"), float("nan")], [float("nan"), 2.0]])
+
+    # check if exception is raised
+    tc.assertRaises(
+        ValueError,
+        maximum_likelihood_estimation,
+        layer,
+        data,
+        nan_strategy="ignore",
+    )
+
+def test_mle_invalid_support(do_for_all_backends):
+
+    layer = NegativeBinomialLayer(Scope([0]), n=3)
+
+    # perform MLE (should raise exceptions)
+    tc.assertRaises(
+        ValueError,
+        maximum_likelihood_estimation,
+        layer,
+        tl.tensor([[float("inf")]]),
+        bias_correction=True,
+    )
+    tc.assertRaises(
+        ValueError,
+        maximum_likelihood_estimation,
+        layer,
+        tl.tensor([[-0.1]]),
+        bias_correction=True,
+    )
+
+def test_mle_nan_strategy_none(do_for_all_backends):
+
+    layer = NegativeBinomialLayer(Scope([0]), n=2)
+    tc.assertRaises(
+        ValueError,
+        maximum_likelihood_estimation,
+        layer,
+        tl.tensor([[float("nan")], [1], [2], [1]]),
+        nan_strategy=None,
+    )
+
+def test_mle_nan_strategy_ignore(do_for_all_backends):
+
+    layer = NegativeBinomialLayer(Scope([0]), n=2)
+    maximum_likelihood_estimation(
+        layer,
+        tl.tensor([[float("nan")], [1], [2], [1]]),
+        nan_strategy="ignore",
+    )
+    tc.assertTrue(np.isclose(tl_toNumpy(layer.p), tl.tensor((2 * 3) / (1 + 2 + 2 + 2 + 1 + 2))))
+
+def test_mle_nan_strategy_callable(do_for_all_backends):
+
+    layer = NegativeBinomialLayer(Scope([0]), n=2)
+    # should not raise an issue
+    maximum_likelihood_estimation(layer, tl.tensor([[1], [0], [1]]), nan_strategy=lambda x: x)
+
+def test_mle_nan_strategy_invalid(do_for_all_backends):
+
+    layer = NegativeBinomialLayer(Scope([0]), n=2)
+    tc.assertRaises(
+        ValueError,
+        maximum_likelihood_estimation,
+        layer,
+        tl.tensor([[float("nan")], [1], [0], [1]]),
+        nan_strategy="invalid_string",
+    )
+    tc.assertRaises(
+        ValueError,
+        maximum_likelihood_estimation,
+        layer,
+        tl.tensor([[float("nan")], [1], [0], [1]]),
+        nan_strategy=1,
+    )
+
+def test_weighted_mle(do_for_all_backends):
+
+    leaf = NegativeBinomialLayer([Scope([0]), Scope([1])], n=[3, 5])
+
+    data = tl.tensor(
+        np.hstack(
             [
-                np.random.negative_binomial(n=3, p=0.3, size=(10000, 1)),
-                np.random.negative_binomial(n=10, p=0.7, size=(10000, 1)),
+                np.vstack(
+                    [
+                        np.random.negative_binomial(n=3, p=0.8, size=(10000, 1)),
+                        np.random.negative_binomial(n=3, p=0.2, size=(10000, 1)),
+                    ]
+                ),
+                np.vstack(
+                    [
+                        np.random.negative_binomial(n=5, p=0.3, size=(10000, 1)),
+                        np.random.negative_binomial(n=5, p=0.7, size=(10000, 1)),
+                    ]
+                ),
             ]
         )
+    )
 
-        # perform MLE
-        maximum_likelihood_estimation(layer, torch.tensor(data))
-        self.assertTrue(torch.allclose(layer.p, torch.tensor([0.3, 0.7]), atol=1e-2, rtol=1e-3))
+    weights = tl.concatenate([tl.zeros(10000), tl.ones(10000)])
 
-    def test_mle_edge_0(self):
+    maximum_likelihood_estimation(leaf, data, weights)
 
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
+    tc.assertTrue(tl.all(leaf.n == tl.tensor([3, 5])))
+    tc.assertTrue(np.allclose(tl_toNumpy(leaf.p), tl.tensor([0.2, 0.7]), atol=1e-3, rtol=1e-2))
 
-        layer = NegativeBinomialLayer(Scope([0]), n=3)
+def test_em_step(do_for_all_backends):
+    # em is only implemented for pytorch backend
+    if do_for_all_backends == "numpy":
+        return
 
-        # simulate data
-        data = np.random.negative_binomial(n=3, p=0.0, size=(100, 1))
-        data[data < 0] = np.iinfo(data.dtype).max  # p=zero leads to integer overflow due to infinite number of trials
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
 
-        # perform MLE
-        maximum_likelihood_estimation(layer, torch.tensor(data))
-
-        self.assertTrue(torch.all(layer.p > 0.0))
-
-    def test_mle_edge_1(self):
-
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
-
-        layer = NegativeBinomialLayer(Scope([0]), n=5)
-
-        # simulate data
-        data = np.random.negative_binomial(n=5, p=1.0, size=(100, 1))
-
-        # perform MLE
-        maximum_likelihood_estimation(layer, torch.tensor(data))
-        self.assertTrue(torch.all(layer.p < 1.0))
-
-    def test_mle_only_nans(self):
-
-        layer = NegativeBinomialLayer(Scope([0]), n=3)
-
-        # simulate data
-        data = torch.tensor([[float("nan"), float("nan")], [float("nan"), 2.0]])
-
-        # check if exception is raised
-        self.assertRaises(
-            ValueError,
-            maximum_likelihood_estimation,
-            layer,
-            data,
-            nan_strategy="ignore",
-        )
-
-    def test_mle_invalid_support(self):
-
-        layer = NegativeBinomialLayer(Scope([0]), n=3)
-
-        # perform MLE (should raise exceptions)
-        self.assertRaises(
-            ValueError,
-            maximum_likelihood_estimation,
-            layer,
-            torch.tensor([[float("inf")]]),
-            bias_correction=True,
-        )
-        self.assertRaises(
-            ValueError,
-            maximum_likelihood_estimation,
-            layer,
-            torch.tensor([[-0.1]]),
-            bias_correction=True,
-        )
-
-    def test_mle_nan_strategy_none(self):
-
-        layer = NegativeBinomialLayer(Scope([0]), n=2)
-        self.assertRaises(
-            ValueError,
-            maximum_likelihood_estimation,
-            layer,
-            torch.tensor([[float("nan")], [1], [2], [1]]),
-            nan_strategy=None,
-        )
-
-    def test_mle_nan_strategy_ignore(self):
-
-        layer = NegativeBinomialLayer(Scope([0]), n=2)
-        maximum_likelihood_estimation(
-            layer,
-            torch.tensor([[float("nan")], [1], [2], [1]]),
-            nan_strategy="ignore",
-        )
-        self.assertTrue(torch.isclose(layer.p, torch.tensor((2 * 3) / (1 + 2 + 2 + 2 + 1 + 2))))
-
-    def test_mle_nan_strategy_callable(self):
-
-        layer = NegativeBinomialLayer(Scope([0]), n=2)
-        # should not raise an issue
-        maximum_likelihood_estimation(layer, torch.tensor([[1], [0], [1]]), nan_strategy=lambda x: x)
-
-    def test_mle_nan_strategy_invalid(self):
-
-        layer = NegativeBinomialLayer(Scope([0]), n=2)
-        self.assertRaises(
-            ValueError,
-            maximum_likelihood_estimation,
-            layer,
-            torch.tensor([[float("nan")], [1], [0], [1]]),
-            nan_strategy="invalid_string",
-        )
-        self.assertRaises(
-            ValueError,
-            maximum_likelihood_estimation,
-            layer,
-            torch.tensor([[float("nan")], [1], [0], [1]]),
-            nan_strategy=1,
-        )
-
-    def test_weighted_mle(self):
-
-        leaf = NegativeBinomialLayer([Scope([0]), Scope([1])], n=[3, 5])
-
-        data = torch.tensor(
-            np.hstack(
-                [
-                    np.vstack(
-                        [
-                            np.random.negative_binomial(n=3, p=0.8, size=(10000, 1)),
-                            np.random.negative_binomial(n=3, p=0.2, size=(10000, 1)),
-                        ]
-                    ),
-                    np.vstack(
-                        [
-                            np.random.negative_binomial(n=5, p=0.3, size=(10000, 1)),
-                            np.random.negative_binomial(n=5, p=0.7, size=(10000, 1)),
-                        ]
-                    ),
-                ]
-            )
-        )
-
-        weights = torch.concat([torch.zeros(10000), torch.ones(10000)])
-
-        maximum_likelihood_estimation(leaf, data, weights)
-
-        self.assertTrue(torch.all(leaf.n == torch.tensor([3, 5])))
-        self.assertTrue(torch.allclose(leaf.p, torch.tensor([0.2, 0.7]), atol=1e-3, rtol=1e-2))
-
-    def test_em_step(self):
-
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
-
-        layer = NegativeBinomialLayer([Scope([0]), Scope([1])], n=[3, 5])
-        data = torch.tensor(
-            np.hstack(
-                [
-                    np.random.negative_binomial(n=3, p=0.3, size=(10000, 1)),
-                    np.random.negative_binomial(n=5, p=0.7, size=(10000, 1)),
-                ]
-            )
-        )
-        dispatch_ctx = DispatchContext()
-
-        # compute gradients of log-likelihoods w.r.t. module log-likelihoods
-        ll = log_likelihood(layer, data, dispatch_ctx=dispatch_ctx)
-        ll.retain_grad()
-        ll.sum().backward()
-
-        # perform an em step
-        em(layer, data, dispatch_ctx=dispatch_ctx)
-
-        self.assertTrue(torch.all(layer.n == torch.tensor([3, 5])))
-        self.assertTrue(torch.allclose(layer.p, torch.tensor([0.3, 0.7]), atol=1e-2, rtol=1e-3))
-
-    def test_em_product_of_binomials(self):
-
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
-
-        layer = NegativeBinomialLayer([Scope([0]), Scope([1])], n=[3, 5])
-        prod_node = ProductNode([layer])
-
-        data = torch.tensor(
-            np.hstack(
-                [
-                    np.random.negative_binomial(n=3, p=0.8, size=(10000, 1)),
-                    np.random.negative_binomial(n=5, p=0.2, size=(10000, 1)),
-                ]
-            )
-        )
-
-        expectation_maximization(prod_node, data, max_steps=10)
-
-        self.assertTrue(torch.allclose(layer.p, torch.tensor([0.8, 0.2]), atol=1e-3, rtol=1e-2))
-
-    def test_em_sum_of_binomials(self):
-
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
-
-        layer = NegativeBinomialLayer([Scope([0]), Scope([0])], n=3, p=[0.4, 0.6])
-        sum_node = SumNode([layer], weights=[0.5, 0.5])
-
-        data = torch.tensor(
-            np.vstack(
-                [
-                    np.random.negative_binomial(n=3, p=0.8, size=(10000, 1)),
-                    np.random.negative_binomial(n=3, p=0.3, size=(10000, 1)),
-                ]
-            )
-        )
-
-        expectation_maximization(sum_node, data, max_steps=10)
-
-        self.assertTrue(torch.allclose(layer.p, torch.tensor([0.3, 0.8]), atol=1e-2, rtol=1e-2))
-
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        # set seed
-        torch.manual_seed(0)
-        np.random.seed(0)
-        random.seed(0)
-
-        layer = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
-
-        # simulate data
-        data = np.hstack(
+    layer = NegativeBinomialLayer([Scope([0]), Scope([1])], n=[3, 5])
+    data = tl.tensor(
+        np.hstack(
             [
                 np.random.negative_binomial(n=3, p=0.3, size=(10000, 1)),
-                np.random.negative_binomial(n=10, p=0.7, size=(10000, 1)),
+                np.random.negative_binomial(n=5, p=0.7, size=(10000, 1)),
             ]
         )
+    )
+    dispatch_ctx = DispatchContext()
 
-        # perform MLE
-        maximum_likelihood_estimation(layer, tl.tensor(data))
+    # compute gradients of log-likelihoods w.r.t. module log-likelihoods
+    ll = log_likelihood(layer, data, dispatch_ctx=dispatch_ctx)
+    ll.retain_grad()
+    ll.sum().backward()
 
-        params = tl_toNumpy(layer.p)
+    # perform an em step
+    em(layer, data, dispatch_ctx=dispatch_ctx)
 
-        layer = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
-        prod_node = ProductNode([layer])
-        expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
-        params_em = tl_toNumpy(layer.p)
+    tc.assertTrue(tl.all(layer.n == tl.tensor([3, 5])))
+    tc.assertTrue(np.allclose(tl_toNumpy(layer.p), tl.tensor([0.3, 0.7]), atol=1e-2, rtol=1e-3))
+
+def test_em_product_of_binomials(do_for_all_backends):
+    # em is only implemented for pytorch backend
+    if do_for_all_backends == "numpy":
+        return
+
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = NegativeBinomialLayer([Scope([0]), Scope([1])], n=[3, 5])
+    prod_node = ProductNode([layer])
+
+    data = tl.tensor(
+        np.hstack(
+            [
+                np.random.negative_binomial(n=3, p=0.8, size=(10000, 1)),
+                np.random.negative_binomial(n=5, p=0.2, size=(10000, 1)),
+            ]
+        )
+    )
+
+    expectation_maximization(prod_node, data, max_steps=10)
+
+    tc.assertTrue(np.allclose(tl_toNumpy(layer.p), tl.tensor([0.8, 0.2]), atol=1e-3, rtol=1e-2))
+
+def test_em_sum_of_binomials(do_for_all_backends):
+    # em is only implemented for pytorch backend
+    if do_for_all_backends == "numpy":
+        return
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = NegativeBinomialLayer([Scope([0]), Scope([0])], n=3, p=[0.4, 0.6])
+    sum_node = SumNode([layer], weights=[0.5, 0.5])
+
+    data = tl.tensor(
+        np.vstack(
+            [
+                np.random.negative_binomial(n=3, p=0.8, size=(10000, 1)),
+                np.random.negative_binomial(n=3, p=0.3, size=(10000, 1)),
+            ]
+        )
+    )
+
+    expectation_maximization(sum_node, data, max_steps=10)
+
+    tc.assertTrue(np.allclose(tl_toNumpy(layer.p), tl.tensor([0.3, 0.8]), atol=1e-2, rtol=1e-2))
+
+def test_update_backend(do_for_all_backends):
+    # em is only implemented for pytorch backend
+    if do_for_all_backends == "numpy":
+        return
+    backends = ["numpy", "pytorch"]
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
+
+    # simulate data
+    data = np.hstack(
+        [
+            np.random.negative_binomial(n=3, p=0.3, size=(10000, 1)),
+            np.random.negative_binomial(n=10, p=0.7, size=(10000, 1)),
+        ]
+    )
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data))
+
+    params = tl_toNumpy(layer.p)
+
+    layer = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
+    prod_node = ProductNode([layer])
+    expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
+    params_em = tl_toNumpy(layer.p)
 
 
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             layer = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
             layer_updated = updateBackend(layer)
             maximum_likelihood_estimation(layer_updated, tl.tensor(data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(layer_updated.p), params, atol=1e-2, rtol=1e-3))
+            tc.assertTrue(np.allclose(tl_toNumpy(layer_updated.p), params, atol=1e-2, rtol=1e-3))
 
             layer = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
             layer_updated = updateBackend(layer)
@@ -315,8 +318,9 @@ class TestNode(unittest.TestCase):
                     expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
             else:
                 expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
-                self.assertTrue(np.allclose(tl_toNumpy(layer_updated.p), params_em, atol=1e-3, rtol=1e-2))
+                tc.assertTrue(np.allclose(tl_toNumpy(layer_updated.p), params_em, atol=1e-3, rtol=1e-2))
 
 
 if __name__ == "__main__":
+    torch.set_default_tensor_type(torch.DoubleTensor)
     unittest.main()
