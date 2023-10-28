@@ -5,160 +5,153 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.inference import log_likelihood
-from spflow.base.structure.spn import CondGaussian as BaseCondGaussian
+from spflow.tensorly.structure.spn import CondGaussian
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.inference import likelihood, log_likelihood
-#from spflow.torch.structure.spn import CondGaussian
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gaussian import CondGaussian
+from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import CondGaussian as BaseCondGaussian
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestGaussian(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_likelihood_module_cond_f(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
-    def test_likelihood_module_cond_f(self):
+    gaussian = CondGaussian(Scope([0], [1]), cond_f=cond_f)
 
-        cond_f = lambda data: {"mean": 0.0, "std": 1.0}
+    # create test inputs/outputs
+    data = tl.tensor([[0.0], [1.0], [1.0]])
+    targets = tl.tensor([[0.398942], [0.241971], [0.241971]])
 
-        gaussian = CondGaussian(Scope([0], [1]), cond_f=cond_f)
+    probs = likelihood(gaussian, data)
+    log_probs = log_likelihood(gaussian, data)
 
-        # create test inputs/outputs
-        data = torch.tensor([[0.0], [1.0], [1.0]])
-        targets = torch.tensor([[0.398942], [0.241971], [0.241971]])
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        probs = likelihood(gaussian, data)
-        log_probs = log_likelihood(gaussian, data)
+def test_likelihood_args_p(do_for_all_backends):
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    gaussian = CondGaussian(Scope([0], [1]))
 
-    def test_likelihood_args_p(self):
+    dispatch_ctx = DispatchContext()
+    dispatch_ctx.args[gaussian] = {"mean": 0.0, "std": 1.0}
 
-        gaussian = CondGaussian(Scope([0], [1]))
+    # create test inputs/outputs
+    data = tl.tensor([[0.0], [1.0], [1.0]])
+    targets = tl.tensor([[0.398942], [0.241971], [0.241971]])
 
-        dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[gaussian] = {"mean": 0.0, "std": 1.0}
+    probs = likelihood(gaussian, data, dispatch_ctx=dispatch_ctx)
+    log_probs = log_likelihood(gaussian, data, dispatch_ctx=dispatch_ctx)
 
-        # create test inputs/outputs
-        data = torch.tensor([[0.0], [1.0], [1.0]])
-        targets = torch.tensor([[0.398942], [0.241971], [0.241971]])
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        probs = likelihood(gaussian, data, dispatch_ctx=dispatch_ctx)
-        log_probs = log_likelihood(gaussian, data, dispatch_ctx=dispatch_ctx)
+def test_likelihood_args_cond_f(do_for_all_backends):
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    gaussian = CondGaussian(Scope([0], [1]))
 
-    def test_likelihood_args_cond_f(self):
+    cond_f = lambda data: {"mean": 0.0, "std": 1.0}
 
-        gaussian = CondGaussian(Scope([0], [1]))
+    dispatch_ctx = DispatchContext()
+    dispatch_ctx.args[gaussian] = {"cond_f": cond_f}
 
-        cond_f = lambda data: {"mean": 0.0, "std": 1.0}
+    # create test inputs/outputs
+    data = tl.tensor([[0.0], [1.0], [1.0]])
+    targets = tl.tensor([[0.398942], [0.241971], [0.241971]])
 
-        dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[gaussian] = {"cond_f": cond_f}
+    probs = likelihood(gaussian, data, dispatch_ctx=dispatch_ctx)
+    log_probs = log_likelihood(gaussian, data, dispatch_ctx=dispatch_ctx)
 
-        # create test inputs/outputs
-        data = torch.tensor([[0.0], [1.0], [1.0]])
-        targets = torch.tensor([[0.398942], [0.241971], [0.241971]])
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        probs = likelihood(gaussian, data, dispatch_ctx=dispatch_ctx)
-        log_probs = log_likelihood(gaussian, data, dispatch_ctx=dispatch_ctx)
+def test_inference(do_for_all_backends):
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    mean = random.random()
+    std = random.random() + 1e-7  # offset by small number to avoid zero
 
-    def test_inference(self):
+    torch_gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
+    node_gaussian = BaseCondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
 
-        mean = random.random()
-        std = random.random() + 1e-7  # offset by small number to avoid zero
+    # create dummy input data (batch size x random variables)
+    data = np.random.randn(3, 1)
 
-        torch_gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
-        node_gaussian = BaseCondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
+    log_probs = log_likelihood(node_gaussian, data)
+    log_probs_torch = log_likelihood(torch_gaussian, tl.tensor(data))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randn(3, 1)
+    # make sure that probabilities match python backend probabilities
+    tc.assertTrue(np.allclose(log_probs, tl_toNumpy(log_probs_torch)))
 
-        log_probs = log_likelihood(node_gaussian, data)
-        log_probs_torch = log_likelihood(torch_gaussian, torch.tensor(data))
+def test_gradient_computation(do_for_all_backends):
 
-        # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+    if do_for_all_backends == "numpy":
+        return
 
-    def test_gradient_computation(self):
+    mean = tl.tensor(random.random(), requires_grad=True)
+    std = tl.tensor(random.random() + 1e-7, requires_grad=True)  # offset by small number to avoid zero
 
-        mean = torch.tensor(random.random(), requires_grad=True)
-        std = torch.tensor(random.random() + 1e-7, requires_grad=True)  # offset by small number to avoid zero
+    torch_gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
 
-        torch_gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
+    # create dummy input data (batch size x random variables)
+    data = np.random.randn(3, 1)
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randn(3, 1)
+    log_probs_torch = log_likelihood(torch_gaussian, tl.tensor(data))
 
-        log_probs_torch = log_likelihood(torch_gaussian, torch.tensor(data))
+    # create dummy targets
+    targets_torch = torch.ones(3, 1)
 
-        # create dummy targets
-        targets_torch = torch.ones(3, 1)
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
 
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
+    tc.assertTrue(mean.grad is not None)
+    tc.assertTrue(std.grad is not None)
 
-        self.assertTrue(mean.grad is not None)
-        self.assertTrue(std.grad is not None)
+def test_likelihood_marginalization(do_for_all_backends):
 
-    def test_likelihood_marginalization(self):
+    gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0})
+    data = tl.tensor([[float("nan")]])
 
-        gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0})
-        data = torch.tensor([[float("nan")]])
+    # should not raise and error and should return 1
+    probs = likelihood(gaussian, data)
 
-        # should not raise and error and should return 1
-        probs = likelihood(gaussian, data)
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor(1.0)))
 
-        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+def test_support(do_for_all_backends):
 
-    def test_support(self):
+    # Support for Gaussian distribution: floats (-inf, inf)
 
-        # Support for Gaussian distribution: floats (-inf, inf)
+    gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0})
 
-        gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": 0.0, "std": 1.0})
+    # check infinite values
+    tc.assertRaises(ValueError, log_likelihood, gaussian, tl.tensor([[float("inf")]]))
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        gaussian,
+        tl.tensor([[-float("inf")]]),
+    )
 
-        # check infinite values
-        self.assertRaises(ValueError, log_likelihood, gaussian, torch.tensor([[float("inf")]]))
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            gaussian,
-            torch.tensor([[-float("inf")]]),
-        )
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    mean = random.random()
+    std = random.random() + 1e-7  # offset by small number to avoid zero
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        mean = random.random()
-        std = random.random() + 1e-7  # offset by small number to avoid zero
+    gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
 
-        gaussian = CondGaussian(Scope([0], [1]), cond_f=lambda data: {"mean": mean, "std": std})
+    # create dummy input data (batch size x random variables)
+    data = np.random.randn(3, 1)
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randn(3, 1)
+    log_probs = log_likelihood(gaussian, tl.tensor(data))
 
-        log_probs = log_likelihood(gaussian, tl.tensor(data))
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             gaussian_updated = updateBackend(gaussian)
             log_probs_updated = log_likelihood(gaussian_updated, tl.tensor(data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

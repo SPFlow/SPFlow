@@ -6,9 +6,6 @@ from pytest import fixture
 
 CONFIG_VALUE = "pytorch"
 
-def pytest_configure():
-    tl.set_backend(CONFIG_VALUE)
-    print("Backend: "+ tl.get_backend())
 
 
 @fixture(

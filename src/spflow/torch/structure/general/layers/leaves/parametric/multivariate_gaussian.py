@@ -335,13 +335,15 @@ class MultivariateGaussianLayer(Module):
         for node_mean, node_cov, node in zip(mean, cov, self.nodes):
             node.set_params(node_mean, node_cov)
 
-    def get_trainable_params(self) -> List[List[torch.Tensor]]:
+    def get_trainable_params(self) -> List:
         """Returns the parameters of the represented distribution.
 
         Returns:
             Tuple of a list of one-dimensional PyTorch tensor and a list of a two-dimensional PyTorch tensor representing the means and covariances, respectively.
         """
-        return [self.mean, self.cov]
+        tril_diag_aux = [n.tril_diag_aux for n in self.nodes]
+        tril_nondiag = [n.tril_nondiag for n in self.nodes]
+        return [item for sublist in [self.mean, tril_diag_aux, tril_nondiag] for item in sublist]
 
     def get_params(self) -> List[List[torch.Tensor]]:
         """Returns the parameters of the represented distribution.
@@ -436,7 +438,7 @@ def marginalize(
 
         if marg_node is not None:
             marg_scopes.append(marg_node.scope)
-            marg_params.append(marg_node.get_trainable_params())
+            marg_params.append(marg_node.get_params())
             marg_nodes.append(marg_node)
 
     if len(marg_scopes) == 0:

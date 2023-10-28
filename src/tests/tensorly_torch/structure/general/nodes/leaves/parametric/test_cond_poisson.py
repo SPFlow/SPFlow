@@ -34,6 +34,7 @@ def test_initialization(do_for_all_backends):
 def test_retrieve_params(do_for_all_backends):
 
     # Valid parameters for Poisson distribution: l in (0,inf) (note: 0 included in pytorch)
+    torch.set_default_dtype(torch.float64)
 
     poisson = CondPoisson(Scope([0], [1]))
 
@@ -41,13 +42,13 @@ def test_retrieve_params(do_for_all_backends):
     poisson.set_cond_f(lambda data: {"l": tl.tensor(0.0)})
     tc.assertTrue(poisson.retrieve_params(np.array([[1.0]]), DispatchContext()) == tl.tensor(0.0))
     # l > 0
-    poisson.set_cond_f(lambda data: {"l": tl_nextafter(torch.tensor(0.0), tl.tensor(1.0))})
+    poisson.set_cond_f(lambda data: {"l": tl_nextafter(tl.tensor(0.0), tl.tensor(1.0))})
     tc.assertTrue(
         poisson.retrieve_params(np.array([[1.0]]), DispatchContext())
         == tl_nextafter(tl.tensor(0.0), tl.tensor(1.0))
     )
     # l = -inf and l = inf
-    poisson.set_cond_f(lambda data: {"l": torch.tensor(float("inf"))})
+    poisson.set_cond_f(lambda data: {"l": tl.tensor(float("inf"))})
     tc.assertRaises(
         Exception,
         poisson.retrieve_params,
