@@ -7,189 +7,184 @@ import numpy as np
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.inference import likelihood, log_likelihood
+from spflow.tensorly.inference import likelihood, log_likelihood
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_gamma import CondGammaLayer
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_gamma import CondGamma
 from spflow.torch.structure.general.layers.leaves.parametric.cond_gamma import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_likelihood_no_alpha(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    gamma = CondGammaLayer(Scope([0], [1]), cond_f=lambda data: {"beta": [1.0, 1.0]}, n_nodes=2)
+    tc.assertRaises(KeyError, log_likelihood, gamma, tl.tensor([[0], [1]]))
 
-    def test_likelihood_no_alpha(self):
+def test_likelihood_no_beta(do_for_all_backends):
 
-        gamma = CondGammaLayer(Scope([0], [1]), cond_f=lambda data: {"beta": [1.0, 1.0]}, n_nodes=2)
-        self.assertRaises(KeyError, log_likelihood, gamma, torch.tensor([[0], [1]]))
+    gamma = CondGammaLayer(
+        Scope([0], [1]),
+        cond_f=lambda data: {"alpha": [1.0, 1.0]},
+        n_nodes=2,
+    )
+    tc.assertRaises(KeyError, log_likelihood, gamma, tl.tensor([[0], [1]]))
 
-    def test_likelihood_no_beta(self):
+def test_likelihood_no_alpha_beta(do_for_all_backends):
 
-        gamma = CondGammaLayer(
-            Scope([0], [1]),
-            cond_f=lambda data: {"alpha": [1.0, 1.0]},
-            n_nodes=2,
-        )
-        self.assertRaises(KeyError, log_likelihood, gamma, torch.tensor([[0], [1]]))
+    gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
+    tc.assertRaises(ValueError, log_likelihood, gamma, tl.tensor([[0], [1]]))
 
-    def test_likelihood_no_alpha_beta(self):
+def test_likelihood_module_cond_f(do_for_all_backends):
 
-        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
-        self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[0], [1]]))
+    cond_f = lambda data: {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
 
-    def test_likelihood_module_cond_f(self):
+    gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
-        cond_f = lambda data: {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
+    # create test inputs/outputs
+    data = tl.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
+    targets = tl.tensor([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
 
-        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
+    probs = likelihood(gamma, data)
+    log_probs = log_likelihood(gamma, data)
 
-        # create test inputs/outputs
-        data = torch.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
-        targets = torch.tensor([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        probs = likelihood(gamma, data)
-        log_probs = log_likelihood(gamma, data)
+def test_likelihood_args(do_for_all_backends):
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
 
-    def test_likelihood_args(self):
+    dispatch_ctx = DispatchContext()
+    dispatch_ctx.args[gamma] = {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
 
-        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
+    # create test inputs/outputs
+    data = tl.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
+    targets = tl.tensor([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
 
-        dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[gamma] = {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
+    probs = likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
+    log_probs = log_likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
 
-        # create test inputs/outputs
-        data = torch.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
-        targets = torch.tensor([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        probs = likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
-        log_probs = log_likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
+def test_likelihood_args_cond_f(do_for_all_backends):
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
 
-    def test_likelihood_args_cond_f(self):
+    cond_f = lambda data: {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
 
-        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2)
+    dispatch_ctx = DispatchContext()
+    dispatch_ctx.args[gamma] = {"cond_f": cond_f}
 
-        cond_f = lambda data: {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
+    # create test inputs/outputs
+    data = tl.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
+    targets = tl.tensor([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
 
-        dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[gamma] = {"cond_f": cond_f}
+    probs = likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
+    log_probs = log_likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
 
-        # create test inputs/outputs
-        data = torch.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
-        targets = torch.tensor([[0.904837, 0.904837], [0.367879, 0.367879], [0.0497871, 0.0497871]])
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        probs = likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
-        log_probs = log_likelihood(gamma, data, dispatch_ctx=dispatch_ctx)
+def test_layer_likelihood(do_for_all_backends):
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    layer = CondGammaLayer(
+        scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
+        cond_f=lambda data: {
+            "alpha": [0.2, 1.0, 2.3],
+            "beta": [1.0, 0.3, 0.97],
+        },
+    )
 
-    def test_layer_likelihood(self):
+    nodes = [
+        CondGamma(Scope([0], [2]), cond_f=lambda data: {"alpha": 0.2, "beta": 1.0}),
+        CondGamma(Scope([1], [2]), cond_f=lambda data: {"alpha": 1.0, "beta": 0.3}),
+        CondGamma(
+            Scope([0], [2]),
+            cond_f=lambda data: {"alpha": 2.3, "beta": 0.97},
+        ),
+    ]
 
-        layer = CondGammaLayer(
-            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
-            cond_f=lambda data: {
-                "alpha": [0.2, 1.0, 2.3],
-                "beta": [1.0, 0.3, 0.97],
-            },
-        )
+    dummy_data = tl.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
 
-        nodes = [
-            CondGamma(Scope([0], [2]), cond_f=lambda data: {"alpha": 0.2, "beta": 1.0}),
-            CondGamma(Scope([1], [2]), cond_f=lambda data: {"alpha": 1.0, "beta": 0.3}),
-            CondGamma(
-                Scope([0], [2]),
-                cond_f=lambda data: {"alpha": 2.3, "beta": 0.97},
-            ),
-        ]
+    layer_ll = log_likelihood(layer, dummy_data)
+    nodes_ll = tl.concatenate([log_likelihood(node, dummy_data) for node in nodes], axis=1)
 
-        dummy_data = torch.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
+    tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(nodes_ll)))
 
-        layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
+def test_gradient_computation(do_for_all_backends):
 
-        self.assertTrue(torch.allclose(layer_ll, nodes_ll))
+    if do_for_all_backends == "numpy":
+        return
 
-    def test_gradient_computation(self):
+    alpha = tl.tensor(
+        [random.randint(1, 5), random.randint(1, 3)],
+        dtype=torch.get_default_dtype(),
+        requires_grad=True,
+    )
+    beta = tl.tensor(
+        [random.randint(1, 5), random.randint(2, 4)],
+        dtype=torch.get_default_dtype(),
+        requires_grad=True,
+    )
 
-        alpha = torch.tensor(
-            [random.randint(1, 5), random.randint(1, 3)],
-            dtype=torch.get_default_dtype(),
-            requires_grad=True,
-        )
-        beta = torch.tensor(
-            [random.randint(1, 5), random.randint(2, 4)],
-            dtype=torch.get_default_dtype(),
-            requires_grad=True,
-        )
+    torch_gamma = CondGammaLayer(
+        scope=[Scope([0], [2]), Scope([1], [2])],
+        cond_f=lambda data: {"alpha": alpha, "beta": beta},
+    )
 
-        torch_gamma = CondGammaLayer(
-            scope=[Scope([0], [2]), Scope([1], [2])],
-            cond_f=lambda data: {"alpha": alpha, "beta": beta},
-        )
+    # create dummy input data (batch size x random variables)
+    data = torch.rand(3, 2)
 
-        # create dummy input data (batch size x random variables)
-        data = torch.rand(3, 2)
+    log_probs_torch = log_likelihood(torch_gamma, data)
 
-        log_probs_torch = log_likelihood(torch_gamma, data)
+    # create dummy targets
+    targets_torch = torch.ones(3, 2)
 
-        # create dummy targets
-        targets_torch = torch.ones(3, 2)
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
 
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
+    tc.assertTrue(alpha.grad is not None)
+    tc.assertTrue(beta.grad is not None)
 
-        self.assertTrue(alpha.grad is not None)
-        self.assertTrue(beta.grad is not None)
+def test_likelihood_marginalization(do_for_all_backends):
 
-    def test_likelihood_marginalization(self):
+    gamma = CondGammaLayer(
+        scope=[Scope([0], [2]), Scope([1], [2])],
+        cond_f=lambda data: {
+            "alpha": random.random() + 1e-7,
+            "beta": random.random() + 1e-7,
+        },
+    )
+    data = tl.tensor([[float("nan"), float("nan")]])
 
-        gamma = CondGammaLayer(
-            scope=[Scope([0], [2]), Scope([1], [2])],
-            cond_f=lambda data: {
-                "alpha": random.random() + 1e-7,
-                "beta": random.random() + 1e-7,
-            },
-        )
-        data = torch.tensor([[float("nan"), float("nan")]])
+    # should not raise and error and should return 1
+    probs = tl.exp(log_likelihood(gamma, data))
 
-        # should not raise and error and should return 1
-        probs = log_likelihood(gamma, data).exp()
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor([1.0, 1.0])))
 
-        self.assertTrue(torch.allclose(probs, torch.tensor([1.0, 1.0])))
+def test_support(do_for_all_backends):
+    # TODO
+    pass
 
-    def test_support(self):
-        # TODO
-        pass
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    cond_f = lambda data: {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        cond_f = lambda data: {"alpha": [1.0, 1.0], "beta": [1.0, 1.0]}
+    gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
-        gamma = CondGammaLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
+    # create test inputs/outputs
+    data = tl.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
 
-        # create test inputs/outputs
-        data = torch.tensor([[0.1, 0.1], [1.0, 1.0], [3.0, 3.0]])
+    log_probs = log_likelihood(gamma, data)
 
-        log_probs = log_likelihood(gamma, data)
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             layer_updated = updateBackend(gamma)
             log_probs_updated = log_likelihood(layer_updated, tl.tensor(data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

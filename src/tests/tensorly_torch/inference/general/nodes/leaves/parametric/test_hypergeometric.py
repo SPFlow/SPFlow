@@ -4,227 +4,221 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import Hypergeometric as BaseHypergeometric
+from spflow.tensorly.structure.spn import Hypergeometric
 from spflow.meta.data import Scope
-from spflow.torch.inference import likelihood, log_likelihood
-#from spflow.torch.structure.spn import Hypergeometric
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_hypergeometric import Hypergeometric
+from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.base.structure.general.nodes.leaves.parametric.hypergeometric import Hypergeometric as BaseHypergeometric
 from spflow.torch.structure.general.nodes.leaves.parametric.hypergeometric import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestHypergeometric(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_inference(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    N = 15
+    M = 10
+    n = 10
 
-    def test_inference(self):
+    torch_hypergeometric = Hypergeometric(Scope([0]), N, M, n)
+    node_hypergeometric = BaseHypergeometric(Scope([0]), N, M, n)
 
-        N = 15
-        M = 10
-        n = 10
+    # create dummy input data (batch size x random variables)
+    data = np.array([[5], [10]])
 
-        torch_hypergeometric = Hypergeometric(Scope([0]), N, M, n)
-        node_hypergeometric = BaseHypergeometric(Scope([0]), N, M, n)
+    log_probs = log_likelihood(node_hypergeometric, data)
+    log_probs_torch = log_likelihood(torch_hypergeometric, tl.tensor(data))
 
-        # create dummy input data (batch size x random variables)
-        data = np.array([[5], [10]])
+    # TODO: support is handled differently (in log space): -inf for torch and np.finfo().min for numpy (decide how to handle)
+    log_probs[log_probs == np.finfo(log_probs.dtype).min] = -np.inf
 
-        log_probs = log_likelihood(node_hypergeometric, data)
-        log_probs_torch = log_likelihood(torch_hypergeometric, torch.tensor(data))
+    # make sure that probabilities match python backend probabilities
+    tc.assertTrue(np.allclose(log_probs, tl_toNumpy(log_probs_torch)))
 
-        # TODO: support is handled differently (in log space): -inf for torch and np.finfo().min for numpy (decide how to handle)
-        log_probs[log_probs == np.finfo(log_probs.dtype).min] = -np.inf
+def test_gradient_computation(do_for_all_backends):
 
-        # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+    if do_for_all_backends == "numpy":
+        return
 
-    def test_gradient_computation(self):
+    N = 15
+    M = 10
+    n = 10
 
-        N = 15
-        M = 10
-        n = 10
+    torch_hypergeometric = Hypergeometric(Scope([0]), N, M, n)
 
-        torch_hypergeometric = Hypergeometric(Scope([0]), N, M, n)
+    # create dummy input data (batch size x random variables)
+    data = np.array([[5], [10]])
 
-        # create dummy input data (batch size x random variables)
-        data = np.array([[5], [10]])
+    log_probs_torch = log_likelihood(torch_hypergeometric, tl.tensor(data))
 
-        log_probs_torch = log_likelihood(torch_hypergeometric, torch.tensor(data))
+    # create dummy targets
+    targets_torch = torch.ones(2, 1)
+    targets_torch.requires_grad = True
 
-        # create dummy targets
-        targets_torch = torch.ones(2, 1)
-        targets_torch.requires_grad = True
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
 
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
+    tc.assertTrue(torch_hypergeometric.N.grad is None)
+    tc.assertTrue(torch_hypergeometric.M.grad is None)
+    tc.assertTrue(torch_hypergeometric.n.grad is None)
 
-        self.assertTrue(torch_hypergeometric.N.grad is None)
-        self.assertTrue(torch_hypergeometric.M.grad is None)
-        self.assertTrue(torch_hypergeometric.n.grad is None)
+    # make sure distribution has no (learnable) parameters
+    #tc.assertFalse(list(torch_hypergeometric.parameters()))
 
-        # make sure distribution has no (learnable) parameters
-        #self.assertFalse(list(torch_hypergeometric.parameters()))
+def test_likelihood_marginalization(do_for_all_backends):
 
-    def test_likelihood_marginalization(self):
+    hypergeometric = Hypergeometric(Scope([0]), 15, 10, 10)
+    data = tl.tensor([[float("nan")]])
 
-        hypergeometric = Hypergeometric(Scope([0]), 15, 10, 10)
-        data = torch.tensor([[float("nan")]])
+    # should not raise and error and should return 1
+    probs = likelihood(hypergeometric, data)
 
-        # should not raise and error and should return 1
-        probs = likelihood(hypergeometric, data)
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor(1.0)))
 
-        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+def test_support(do_for_all_backends):
 
-    def test_support(self):
+    # Support for Hypergeometric distribution: integers {max(0,n+M-N),...,min(n,M)}
 
-        # Support for Hypergeometric distribution: integers {max(0,n+M-N),...,min(n,M)}
+    # case n+M-N > 0
+    N = 15
+    M = 10
+    n = 10
 
-        # case n+M-N > 0
-        N = 15
-        M = 10
-        n = 10
+    hypergeometric = Hypergeometric(Scope([0]), N, M, n)
 
-        hypergeometric = Hypergeometric(Scope([0]), N, M, n)
+    # check infinite values
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        hypergeometric,
+        tl.tensor([[-float("inf")]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        hypergeometric,
+        tl.tensor([[float("inf")]]),
+    )
 
-        # check infinite values
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            hypergeometric,
-            torch.tensor([[-float("inf")]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            hypergeometric,
-            torch.tensor([[float("inf")]]),
-        )
+    # check valid integers inside valid range
+    data = tl.tensor([[max(0, n + M - N)], [min(n, M)]])
 
-        # check valid integers inside valid range
-        data = torch.tensor([[max(0, n + M - N)], [min(n, M)]])
+    probs = likelihood(hypergeometric, data)
+    log_probs = log_likelihood(hypergeometric, data)
 
-        probs = likelihood(hypergeometric, data)
-        log_probs = log_likelihood(hypergeometric, data)
+    tc.assertTrue(all(probs != 0))
+    tc.assertTrue(np.allclose(probs, tl.exp(log_probs)))
 
-        self.assertTrue(all(probs != 0))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+    # check valid integers, but outside of valid range
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        hypergeometric,
+        tl.tensor([[max(0, n + M - N) - 1]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        hypergeometric,
+        tl.tensor([[min(n, M) + 1]]),
+    )
 
-        # check valid integers, but outside of valid range
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            hypergeometric,
-            torch.tensor([[max(0, n + M - N) - 1]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            hypergeometric,
-            torch.tensor([[min(n, M) + 1]]),
-        )
-
-        # check invalid float values
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            hypergeometric,
-            torch.tensor(
+    # check invalid float values
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        hypergeometric,
+        tl.tensor(
+            [
                 [
-                    [
-                        torch.nextafter(
-                            torch.tensor(float(max(0, n + M - N))),
-                            torch.tensor(100),
-                        )
-                    ]
+                    np.nextafter(
+                        tl.tensor(float(max(0, n + M - N))),
+                        tl.tensor(100),
+                    )
                 ]
-            ),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            hypergeometric,
-            torch.tensor([[torch.nextafter(torch.tensor(float(max(n, M))), torch.tensor(-1.0))]]),
-        )
-        self.assertRaises(ValueError, log_likelihood, hypergeometric, torch.tensor([[5.5]]))
+            ]
+        ),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        hypergeometric,
+        tl.tensor([[np.nextafter(tl.tensor(float(max(n, M))), tl.tensor(-1.0))]]),
+    )
+    tc.assertRaises(ValueError, log_likelihood, hypergeometric, tl.tensor([[5.5]]))
 
-        # case n+M-N
-        N = 25
+    # case n+M-N
+    N = 25
 
-        hypergeometric = Hypergeometric(Scope([0]), N, M, n)
+    hypergeometric = Hypergeometric(Scope([0]), N, M, n)
 
-        # check valid integers within valid range
-        data = torch.tensor([[max(0, n + M - N)], [min(n, M)]])
+    # check valid integers within valid range
+    data = tl.tensor([[max(0, n + M - N)], [min(n, M)]])
 
-        probs = likelihood(hypergeometric, data)
-        log_probs = log_likelihood(hypergeometric, data)
+    probs = likelihood(hypergeometric, data)
+    log_probs = log_likelihood(hypergeometric, data)
 
-        self.assertTrue(all(probs != 0))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
+    tc.assertTrue(all(probs != 0))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
 
-        # check valid integers, but outside of valid range
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            hypergeometric,
-            torch.tensor([[max(0, n + M - N) - 1]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            hypergeometric,
-            torch.tensor([[min(n, M) + 1]]),
-        )
+    # check valid integers, but outside of valid range
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        hypergeometric,
+        tl.tensor([[max(0, n + M - N) - 1]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        hypergeometric,
+        tl.tensor([[min(n, M) + 1]]),
+    )
 
-        # check invalid float values
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            hypergeometric,
-            torch.tensor(
+    # check invalid float values
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        hypergeometric,
+        tl.tensor(
+            [
                 [
-                    [
-                        torch.nextafter(
-                            torch.tensor(float(max(0, n + M - N))),
-                            torch.tensor(100),
-                        )
-                    ]
+                    np.nextafter(
+                        tl.tensor(float(max(0, n + M - N))),
+                        tl.tensor(100),
+                    )
                 ]
-            ),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            hypergeometric,
-            torch.tensor([[torch.nextafter(torch.tensor(float(max(n, M))), torch.tensor(-1.0))]]),
-        )
-        self.assertRaises(ValueError, log_likelihood, hypergeometric, torch.tensor([[5.5]]))
+            ]
+        ),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        hypergeometric,
+        tl.tensor([[np.nextafter(tl.tensor(float(max(n, M))), tl.tensor(-1.0))]]),
+    )
+    tc.assertRaises(ValueError, log_likelihood, hypergeometric, tl.tensor([[5.5]]))
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        N = 15
-        M = 10
-        n = 10
+def test_update_backend(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
+    backends = ["numpy", "pytorch"]
+    N = 15
+    M = 10
+    n = 10
 
-        hypergeometric = Hypergeometric(Scope([0]), N, M, n)
+    hypergeometric = Hypergeometric(Scope([0]), N, M, n)
 
-        # create dummy input data (batch size x random variables)
-        data = np.array([[5], [10]])
+    # create dummy input data (batch size x random variables)
+    data = np.array([[5], [10]])
 
-        log_probs = log_likelihood(hypergeometric, tl.tensor(data))
+    log_probs = log_likelihood(hypergeometric, tl.tensor(data))
 
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             hypergeometric_updated = updateBackend(hypergeometric)
             log_probs_updated = log_likelihood(hypergeometric_updated, tl.tensor(data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

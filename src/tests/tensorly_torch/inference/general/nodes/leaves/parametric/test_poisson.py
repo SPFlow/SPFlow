@@ -5,161 +5,158 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import Poisson as BasePoisson
+from spflow.tensorly.structure.spn import Poisson
 from spflow.meta.data import Scope
-from spflow.torch.inference import likelihood, log_likelihood
-from spflow.torch.structure.spn import Poisson
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_poisson import Poisson
+from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.base.structure.general.nodes.leaves.parametric.poisson import Poisson as BasePoisson
 from spflow.torch.structure.general.nodes.leaves.parametric.poisson import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestPoisson(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_inference(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    l = random.randint(1, 10)
 
-    def test_inference(self):
+    torch_poisson = Poisson(Scope([0]), l)
+    node_poisson = BasePoisson(Scope([0]), l)
 
-        l = random.randint(1, 10)
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(0, 10, (3, 1))
 
-        torch_poisson = Poisson(Scope([0]), l)
-        node_poisson = BasePoisson(Scope([0]), l)
+    log_probs = log_likelihood(node_poisson, data)
+    log_probs_torch = log_likelihood(torch_poisson, tl.tensor(data))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(0, 10, (3, 1))
+    # make sure that probabilities match python backend probabilities
+    tc.assertTrue(np.allclose(log_probs, tl_toNumpy(log_probs_torch)))
 
-        log_probs = log_likelihood(node_poisson, data)
-        log_probs_torch = log_likelihood(torch_poisson, torch.tensor(data))
+def test_gradient_computation(do_for_all_backends):
 
-        # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+    if do_for_all_backends == "numpy":
+        return
 
-    def test_gradient_computation(self):
+    l = random.randint(1, 10)
 
-        l = random.randint(1, 10)
+    torch_poisson = Poisson(Scope([0]), l)
 
-        torch_poisson = Poisson(Scope([0]), l)
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(0, 10, (3, 1))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(0, 10, (3, 1))
+    log_probs_torch = log_likelihood(torch_poisson, tl.tensor(data))
 
-        log_probs_torch = log_likelihood(torch_poisson, torch.tensor(data))
+    # create dummy targets
+    targets_torch = torch.ones(3, 1)
 
-        # create dummy targets
-        targets_torch = torch.ones(3, 1)
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
 
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
+    tc.assertTrue(torch_poisson.l_aux.grad is not None)
 
-        self.assertTrue(torch_poisson.l_aux.grad is not None)
+    l_aux_orig = torch_poisson.l_aux.detach().clone()
 
-        l_aux_orig = torch_poisson.l_aux.detach().clone()
+    optimizer = torch.optim.SGD(torch_poisson.parameters(), lr=1)
+    optimizer.step()
 
-        optimizer = torch.optim.SGD(torch_poisson.parameters(), lr=1)
+    # make sure that parameters are correctly updated
+    tc.assertTrue(torch.allclose(l_aux_orig - torch_poisson.l_aux.grad, torch_poisson.l_aux))
+
+    # verify that distribution parameters match parameters
+    tc.assertTrue(torch.allclose(torch_poisson.l, torch_poisson.dist.rate))
+
+def test_gradient_optimization(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
+
+    if do_for_all_backends == "numpy":
+        return
+
+    # initialize distribution
+    torch_poisson = Poisson(Scope([0]), l=1.0)
+
+    torch.manual_seed(0)
+
+    # create dummy data
+    data = torch.distributions.Poisson(rate=4.0).sample((100000, 1))
+
+    # initialize gradient optimizer
+    optimizer = torch.optim.SGD(torch_poisson.parameters(), lr=0.1)
+
+    # perform optimization (possibly overfitting)
+    for i in range(40):
+
+        # clear gradients
+        optimizer.zero_grad()
+
+        # compute negative log-likelihood
+        nll = -log_likelihood(torch_poisson, data).mean()
+        nll.backward()
+
+        # update parameters
         optimizer.step()
 
-        # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(l_aux_orig - torch_poisson.l_aux.grad, torch_poisson.l_aux))
+    tc.assertTrue(torch.allclose(torch_poisson.l, tl.tensor(4.0, dtype=tl.float64), atol=1e-3, rtol=0.3))
 
-        # verify that distribution parameters match parameters
-        self.assertTrue(torch.allclose(torch_poisson.l, torch_poisson.dist.rate))
+def test_likelihood_marginalization(do_for_all_backends):
 
-    def test_gradient_optimization(self):
+    poisson = Poisson(Scope([0]), 1.0)
+    data = tl.tensor([[float("nan")]])
 
-        # initialize distribution
-        torch_poisson = Poisson(Scope([0]), l=1.0)
+    # should not raise and error and should return 1
+    probs = likelihood(poisson, data)
 
-        torch.manual_seed(0)
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor(1.0)))
 
-        # create dummy data
-        data = torch.distributions.Poisson(rate=4.0).sample((100000, 1))
+def test_support(do_for_all_backends):
 
-        # initialize gradient optimizer
-        optimizer = torch.optim.SGD(torch_poisson.parameters(), lr=0.1)
+    # Support for Poisson distribution: integers N U {0}
 
-        # perform optimization (possibly overfitting)
-        for i in range(40):
+    l = random.random()
 
-            # clear gradients
-            optimizer.zero_grad()
+    poisson = Poisson(Scope([0]), l)
 
-            # compute negative log-likelihood
-            nll = -log_likelihood(torch_poisson, data).mean()
-            nll.backward()
+    # check infinite values
+    tc.assertRaises(ValueError, log_likelihood, poisson, tl.tensor([[-float("inf")]]))
+    tc.assertRaises(ValueError, log_likelihood, poisson, tl.tensor([[float("inf")]]))
 
-            # update parameters
-            optimizer.step()
+    # check valid integers, but outside of valid range
+    tc.assertRaises(ValueError, log_likelihood, poisson, tl.tensor([[-1]]))
 
-        self.assertTrue(torch.allclose(torch_poisson.l, torch.tensor(4.0), atol=1e-3, rtol=0.3))
+    # check valid integers within valid range
+    log_likelihood(poisson, tl.tensor([[0]]))
+    log_likelihood(poisson, tl.tensor([[100]]))
 
-    def test_likelihood_marginalization(self):
+    # check invalid float values
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        poisson,
+        tl.tensor([[np.nextafter(tl.tensor(0.0), tl.tensor(-1.0))]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        poisson,
+        tl.tensor([[np.nextafter(tl.tensor(0.0), tl.tensor(1.0))]]),
+    )
+    tc.assertRaises(ValueError, log_likelihood, poisson, tl.tensor([[10.1]]))
 
-        poisson = Poisson(Scope([0]), 1.0)
-        data = torch.tensor([[float("nan")]])
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    l = random.randint(1, 10)
 
-        # should not raise and error and should return 1
-        probs = likelihood(poisson, data)
+    poisson = Poisson(Scope([0]), l)
 
-        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(0, 10, (3, 1))
 
-    def test_support(self):
+    log_probs = log_likelihood(poisson, tl.tensor(data))
 
-        # Support for Poisson distribution: integers N U {0}
-
-        l = random.random()
-
-        poisson = Poisson(Scope([0]), l)
-
-        # check infinite values
-        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[-float("inf")]]))
-        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[float("inf")]]))
-
-        # check valid integers, but outside of valid range
-        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[-1]]))
-
-        # check valid integers within valid range
-        log_likelihood(poisson, torch.tensor([[0]]))
-        log_likelihood(poisson, torch.tensor([[100]]))
-
-        # check invalid float values
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            poisson,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            poisson,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
-        )
-        self.assertRaises(ValueError, log_likelihood, poisson, torch.tensor([[10.1]]))
-
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        l = random.randint(1, 10)
-
-        poisson = Poisson(Scope([0]), l)
-
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(0, 10, (3, 1))
-
-        log_probs = log_likelihood(poisson, tl.tensor(data))
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             poisson_updated = updateBackend(poisson)
             log_probs_updated = log_likelihood(poisson_updated, tl.tensor(data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

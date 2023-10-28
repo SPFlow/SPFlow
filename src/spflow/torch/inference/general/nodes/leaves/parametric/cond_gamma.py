@@ -83,7 +83,7 @@ def log_likelihood(
 
     # compute probabilities for values inside distribution support
     log_prob[~marg_ids] = leaf.dist(alpha=alpha, beta=beta).log_prob(
-        scope_data[~marg_ids].type(torch.get_default_dtype())
-    )
+        scope_data[~marg_ids]
+    ).type(torch.float64)
 
     return log_prob

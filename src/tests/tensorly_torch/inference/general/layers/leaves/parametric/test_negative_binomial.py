@@ -6,143 +6,142 @@ import tensorly as tl
 import numpy as np
 
 from spflow.meta.data import Scope
-from spflow.torch.inference import log_likelihood
+from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_negative_binomial import NegativeBinomialLayer
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_negative_binomial import NegativeBinomial
 from spflow.torch.structure.general.layers.leaves.parametric.negative_binomial import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+tc = unittest.TestCase()
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+def test_layer_likelihood(do_for_all_backends):
 
-    def test_layer_likelihood(self):
+    layer = NegativeBinomialLayer(
+        scope=[Scope([0]), Scope([1]), Scope([0])],
+        n=[3, 2, 3],
+        p=[0.2, 0.5, 0.9],
+    )
 
-        layer = NegativeBinomialLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            n=[3, 2, 3],
-            p=[0.2, 0.5, 0.9],
+    nodes = [
+        NegativeBinomial(Scope([0]), n=3, p=0.2),
+        NegativeBinomial(Scope([1]), n=2, p=0.5),
+        NegativeBinomial(Scope([0]), n=3, p=0.9),
+    ]
+
+    dummy_data = tl.tensor([[3, 1], [1, 2], [0, 0]])
+
+    layer_ll = log_likelihood(layer, dummy_data)
+    nodes_ll = tl.concatenate([log_likelihood(node, dummy_data) for node in nodes], axis=1)
+
+    tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(nodes_ll)))
+
+def test_gradient_computation(do_for_all_backends):
+    if do_for_all_backends == "numpy":
+        return
+
+    n = [random.randint(2, 10), random.randint(2, 10)]
+    p = [random.random(), random.random()]
+
+    torch_negative_binomial = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=n, p=p)
+
+    # create dummy input data (batch size x random variables)
+    data = torch.cat(
+        [torch.randint(1, n[0], (3, 1)), torch.randint(1, n[1], (3, 1))],
+        dim=1,
+    )
+
+    log_probs_torch = log_likelihood(torch_negative_binomial, data)
+
+    # create dummy targets
+    targets_torch = torch.ones(3, 2)
+
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
+
+    tc.assertTrue(torch_negative_binomial.n.grad is None)
+    tc.assertTrue(torch_negative_binomial.p_aux.grad is not None)
+
+    n_orig = torch_negative_binomial.n.detach().clone()
+    p_aux_orig = torch_negative_binomial.p_aux.detach().clone()
+
+    optimizer = torch.optim.SGD(torch_negative_binomial.parameters(), lr=1)
+    optimizer.step()
+
+    # make sure that parameters are correctly updated
+    tc.assertTrue(torch.allclose(n_orig, torch_negative_binomial.n))
+    tc.assertTrue(
+        torch.allclose(
+            p_aux_orig - torch_negative_binomial.p_aux.grad,
+            torch_negative_binomial.p_aux,
         )
+    )
 
-        nodes = [
-            NegativeBinomial(Scope([0]), n=3, p=0.2),
-            NegativeBinomial(Scope([1]), n=2, p=0.5),
-            NegativeBinomial(Scope([0]), n=3, p=0.9),
-        ]
+def test_gradient_optimization(do_for_all_backends):
 
-        dummy_data = torch.tensor([[3, 1], [1, 2], [0, 0]])
+    if do_for_all_backends == "numpy":
+        return
 
-        layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
+    torch.manual_seed(0)
 
-        self.assertTrue(torch.allclose(layer_ll, nodes_ll))
+    # initialize distribution
+    torch_negative_binomial = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=5, p=0.3)
 
-    def test_gradient_computation(self):
+    # create dummy data
+    p_target = tl.tensor([0.8, 0.8], dtype=tl.float64)
+    data = torch.distributions.NegativeBinomial(5, 1 - p_target).sample((100000,))
 
-        n = [random.randint(2, 10), random.randint(2, 10)]
-        p = [random.random(), random.random()]
+    # initialize gradient optimizer
+    optimizer = torch.optim.SGD(torch_negative_binomial.parameters(), lr=0.5)
 
-        torch_negative_binomial = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=n, p=p)
+    # perform optimization (possibly overfitting)
+    for i in range(40):
 
-        # create dummy input data (batch size x random variables)
-        data = torch.cat(
-            [torch.randint(1, n[0], (3, 1)), torch.randint(1, n[1], (3, 1))],
-            dim=1,
-        )
+        # clear gradients
+        optimizer.zero_grad()
 
-        log_probs_torch = log_likelihood(torch_negative_binomial, data)
+        # compute negative log-likelihood
+        nll = -log_likelihood(torch_negative_binomial, data).mean()
+        nll.backward()
 
-        # create dummy targets
-        targets_torch = torch.ones(3, 2)
-
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
-
-        self.assertTrue(torch_negative_binomial.n.grad is None)
-        self.assertTrue(torch_negative_binomial.p_aux.grad is not None)
-
-        n_orig = torch_negative_binomial.n.detach().clone()
-        p_aux_orig = torch_negative_binomial.p_aux.detach().clone()
-
-        optimizer = torch.optim.SGD(torch_negative_binomial.parameters(), lr=1)
+        # update parameters
         optimizer.step()
 
-        # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(n_orig, torch_negative_binomial.n))
-        self.assertTrue(
-            torch.allclose(
-                p_aux_orig - torch_negative_binomial.p_aux.grad,
-                torch_negative_binomial.p_aux,
-            )
-        )
+    tc.assertTrue(torch.allclose(torch_negative_binomial.p, p_target, atol=1e-3, rtol=1e-3))
 
-    def test_gradient_optimization(self):
+def test_likelihood_marginalization(do_for_all_backends):
 
-        torch.manual_seed(0)
+    negative_binomial = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=5, p=random.random())
+    data = tl.tensor([[float("nan"), float("nan")]])
 
-        # initialize distribution
-        torch_negative_binomial = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=5, p=0.3)
+    # should not raise and error and should return 1
+    probs = tl.exp(log_likelihood(negative_binomial, data))
 
-        # create dummy data
-        p_target = torch.tensor([0.8, 0.8])
-        data = torch.distributions.NegativeBinomial(5, 1 - p_target).sample((100000,))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor([1.0, 1.0])))
 
-        # initialize gradient optimizer
-        optimizer = torch.optim.SGD(torch_negative_binomial.parameters(), lr=0.5)
+def test_support(do_for_all_backends):
+    # TODO
+    pass
 
-        # perform optimization (possibly overfitting)
-        for i in range(40):
+def test_update_backend(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
+    backends = ["numpy", "pytorch"]
+    layer = NegativeBinomialLayer(
+        scope=[Scope([0]), Scope([1]), Scope([0])],
+        n=[3, 2, 3],
+        p=[0.2, 0.5, 0.9],
+    )
 
-            # clear gradients
-            optimizer.zero_grad()
+    dummy_data = tl.tensor([[3, 1], [1, 2], [0, 0]])
 
-            # compute negative log-likelihood
-            nll = -log_likelihood(torch_negative_binomial, data).mean()
-            nll.backward()
+    layer_ll = log_likelihood(layer, dummy_data)
 
-            # update parameters
-            optimizer.step()
-
-        self.assertTrue(torch.allclose(torch_negative_binomial.p, p_target, atol=1e-3, rtol=1e-3))
-
-    def test_likelihood_marginalization(self):
-
-        negative_binomial = NegativeBinomialLayer(scope=[Scope([0]), Scope([1])], n=5, p=random.random())
-        data = torch.tensor([[float("nan"), float("nan")]])
-
-        # should not raise and error and should return 1
-        probs = log_likelihood(negative_binomial, data).exp()
-
-        self.assertTrue(torch.allclose(probs, torch.tensor([1.0, 1.0])))
-
-    def test_support(self):
-        # TODO
-        pass
-
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        layer = NegativeBinomialLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            n=[3, 2, 3],
-            p=[0.2, 0.5, 0.9],
-        )
-
-        dummy_data = torch.tensor([[3, 1], [1, 2], [0, 0]])
-
-        layer_ll = log_likelihood(layer, dummy_data)
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             layer_updated = updateBackend(layer)
             log_probs_updated = log_likelihood(layer_updated, tl.tensor(dummy_data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ tc = unittest.TestCase()
 
 
 def test_layer_initialization(do_for_all_backends):
-
+    torch.set_default_dtype(torch.float64)
     # ----- check attributes after correct initialization -----
     l = CondPoissonLayer(scope=Scope([1], [0]), n_nodes=3)
     # make sure number of creates nodes is correct

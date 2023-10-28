@@ -5,175 +5,172 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import Geometric as BaseGeometric
+from spflow.tensorly.structure.spn import Geometric
 from spflow.meta.data import Scope
-from spflow.torch.inference import likelihood, log_likelihood
-#from spflow.torch.structure.spn import Geometric
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_geometric import Geometric
+from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.base.structure.general.nodes.leaves.parametric.geometric import Geometric as BaseGeometric
 from spflow.torch.structure.general.nodes.leaves.parametric.geometric import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestGeometric(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_inference(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    p = random.random()
 
-    def test_inference(self):
+    torch_geometric = Geometric(Scope([0]), p)
+    node_geometric = BaseGeometric(Scope([0]), p)
 
-        p = random.random()
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(1, 10, (3, 1))
 
-        torch_geometric = Geometric(Scope([0]), p)
-        node_geometric = BaseGeometric(Scope([0]), p)
+    log_probs = log_likelihood(node_geometric, data)
+    log_probs_torch = log_likelihood(torch_geometric, tl.tensor(data))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(1, 10, (3, 1))
+    # make sure that probabilities match python backend probabilities
+    tc.assertTrue(np.allclose(log_probs, tl_toNumpy(log_probs_torch)))
 
-        log_probs = log_likelihood(node_geometric, data)
-        log_probs_torch = log_likelihood(torch_geometric, torch.tensor(data))
+def test_gradient_computation(do_for_all_backends):
 
-        # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+    if do_for_all_backends == "numpy":
+        return
 
-    def test_gradient_computation(self):
+    p = random.random()
 
-        p = random.random()
+    torch_geometric = Geometric(Scope([0]), p)
 
-        torch_geometric = Geometric(Scope([0]), p)
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(1, 10, (3, 1))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(1, 10, (3, 1))
+    log_probs_torch = log_likelihood(torch_geometric, tl.tensor(data))
 
-        log_probs_torch = log_likelihood(torch_geometric, torch.tensor(data))
+    # create dummy targets
+    targets_torch = torch.ones(3, 1)
 
-        # create dummy targets
-        targets_torch = torch.ones(3, 1)
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
 
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
+    tc.assertTrue(torch_geometric.p_aux.grad is not None)
 
-        self.assertTrue(torch_geometric.p_aux.grad is not None)
+    p_aux_orig = torch_geometric.p_aux.detach().clone()
 
-        p_aux_orig = torch_geometric.p_aux.detach().clone()
+    optimizer = torch.optim.SGD(torch_geometric.parameters(), lr=1)
+    optimizer.step()
 
-        optimizer = torch.optim.SGD(torch_geometric.parameters(), lr=1)
+    # make sure that parameters are correctly updated
+    tc.assertTrue(torch.allclose(p_aux_orig - torch_geometric.p_aux.grad, torch_geometric.p_aux))
+
+    # verify that distribution parameters match parameters
+    tc.assertTrue(torch.allclose(torch_geometric.p, torch_geometric.dist.probs))
+
+def test_gradient_optimization(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
+
+    if do_for_all_backends == "numpy":
+        return
+
+    torch.manual_seed(0)
+
+    # initialize distribution
+    torch_geometric = Geometric(Scope([0]), 0.3)
+
+    # create dummy data
+    p_target = 0.8
+    data = torch.distributions.Geometric(p_target).sample((100000, 1)) + 1
+
+    # initialize gradient optimizer
+    optimizer = torch.optim.SGD(torch_geometric.parameters(), lr=0.9, momentum=0.6)
+
+    # perform optimization (possibly overfitting)
+    for i in range(40):
+
+        # clear gradients
+        optimizer.zero_grad()
+
+        # compute negative log-likelihood
+        nll = -log_likelihood(torch_geometric, data).mean()
+        nll.backward()
+
+        # update parameters
         optimizer.step()
 
-        # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(p_aux_orig - torch_geometric.p_aux.grad, torch_geometric.p_aux))
+    tc.assertTrue(torch.allclose(torch_geometric.p, tl.tensor(p_target, dtype=tl.float64), atol=1e-3, rtol=1e-3))
 
-        # verify that distribution parameters match parameters
-        self.assertTrue(torch.allclose(torch_geometric.p, torch_geometric.dist.probs))
+def test_likelihood_marginalization(do_for_all_backends):
 
-    def test_gradient_optimization(self):
+    geometric = Geometric(Scope([0]), 0.5)
+    data = tl.tensor([[float("nan")]])
 
-        torch.manual_seed(0)
+    # should not raise and error and should return 1
+    probs = likelihood(geometric, data)
 
-        # initialize distribution
-        torch_geometric = Geometric(Scope([0]), 0.3)
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor(1.0)))
 
-        # create dummy data
-        p_target = 0.8
-        data = torch.distributions.Geometric(p_target).sample((100000, 1)) + 1
+def test_support(do_for_all_backends):
 
-        # initialize gradient optimizer
-        optimizer = torch.optim.SGD(torch_geometric.parameters(), lr=0.9, momentum=0.6)
+    # Support for Geometric distribution: integers N\{0}
 
-        # perform optimization (possibly overfitting)
-        for i in range(40):
+    geometric = Geometric(Scope([0]), 0.5)
 
-            # clear gradients
-            optimizer.zero_grad()
+    # check infinite values
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        geometric,
+        tl.tensor([[float("inf")]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        geometric,
+        tl.tensor([[-float("inf")]]),
+    )
 
-            # compute negative log-likelihood
-            nll = -log_likelihood(torch_geometric, data).mean()
-            nll.backward()
+    # valid integers, but outside valid range
+    tc.assertRaises(ValueError, log_likelihood, geometric, tl.tensor([[0.0]]))
 
-            # update parameters
-            optimizer.step()
+    # valid integers within valid range
+    data = tl.tensor([[1], [10]])
 
-        self.assertTrue(torch.allclose(torch_geometric.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
+    probs = likelihood(geometric, data)
+    log_probs = log_likelihood(geometric, data)
 
-    def test_likelihood_marginalization(self):
+    tc.assertTrue(all(probs != 0.0))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl_toNumpy(tl.exp(log_probs))))
 
-        geometric = Geometric(Scope([0]), 0.5)
-        data = torch.tensor([[float("nan")]])
+    # invalid floats
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        geometric,
+        tl.tensor([[np.nextafter(tl.tensor(1.0), tl.tensor(0.0))]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        geometric,
+        tl.tensor([[np.nextafter(tl.tensor(1.0), tl.tensor(2.0))]]),
+    )
+    tc.assertRaises(ValueError, log_likelihood, geometric, tl.tensor([[1.5]]))
 
-        # should not raise and error and should return 1
-        probs = likelihood(geometric, data)
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    p = random.random()
 
-        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+    geometric = Geometric(Scope([0]), p)
 
-    def test_support(self):
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(1, 10, (3, 1))
 
-        # Support for Geometric distribution: integers N\{0}
+    log_probs = log_likelihood(geometric, tl.tensor(data))
 
-        geometric = Geometric(Scope([0]), 0.5)
-
-        # check infinite values
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            geometric,
-            torch.tensor([[float("inf")]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            geometric,
-            torch.tensor([[-float("inf")]]),
-        )
-
-        # valid integers, but outside valid range
-        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[0.0]]))
-
-        # valid integers within valid range
-        data = torch.tensor([[1], [10]])
-
-        probs = likelihood(geometric, data)
-        log_probs = log_likelihood(geometric, data)
-
-        self.assertTrue(all(probs != 0.0))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-
-        # invalid floats
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            geometric,
-            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            geometric,
-            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]),
-        )
-        self.assertRaises(ValueError, log_likelihood, geometric, torch.tensor([[1.5]]))
-
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        p = random.random()
-
-        geometric = Geometric(Scope([0]), p)
-
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(1, 10, (3, 1))
-
-        log_probs = log_likelihood(geometric, tl.tensor(data))
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             geometric_updated = updateBackend(geometric)
             log_probs_updated = log_likelihood(geometric_updated, tl.tensor(data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

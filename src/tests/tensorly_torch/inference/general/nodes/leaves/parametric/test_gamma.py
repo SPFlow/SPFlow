@@ -6,186 +6,183 @@ import torch
 from packaging import version
 import tensorly as tl
 
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import Gamma as BaseGamma
+from spflow.tensorly.structure.spn import Gamma
 from spflow.meta.data import Scope
-from spflow.torch.inference import likelihood, log_likelihood
-#from spflow.torch.structure.spn import Gamma
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gamma import Gamma
+from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.base.structure.general.nodes.leaves.parametric.gamma import Gamma as BaseGamma
 from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestGamma(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_inference(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    alpha = random.randint(1, 5)
+    beta = random.randint(1, 5)
 
-    def test_inference(self):
+    torch_gamma = Gamma(Scope([0]), alpha, beta)
+    node_gamma = BaseGamma(Scope([0]), alpha, beta)
 
-        alpha = random.randint(1, 5)
-        beta = random.randint(1, 5)
+    # create dummy input data (batch size x random variables)
+    data = np.random.rand(3, 1)
 
-        torch_gamma = Gamma(Scope([0]), alpha, beta)
-        node_gamma = BaseGamma(Scope([0]), alpha, beta)
+    log_probs = log_likelihood(node_gamma, data)
+    log_probs_torch = log_likelihood(torch_gamma, tl.tensor(data))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.rand(3, 1)
+    # make sure that probabilities match python backend probabilities
+    tc.assertTrue(np.allclose(log_probs, tl_toNumpy(log_probs_torch)))
 
-        log_probs = log_likelihood(node_gamma, data)
-        log_probs_torch = log_likelihood(torch_gamma, torch.tensor(data))
+def test_gradient_computation(do_for_all_backends):
 
-        # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+    if do_for_all_backends == "numpy":
+        return
 
-    def test_gradient_computation(self):
+    alpha = random.randint(1, 5)
+    beta = random.randint(1, 5)
 
-        alpha = random.randint(1, 5)
-        beta = random.randint(1, 5)
+    torch_gamma = Gamma(Scope([0]), alpha, beta)
 
-        torch_gamma = Gamma(Scope([0]), alpha, beta)
+    # create dummy input data (batch size x random variables)
+    data = np.random.rand(3, 1)
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.rand(3, 1)
+    log_probs_torch = log_likelihood(torch_gamma, tl.tensor(data))
 
-        log_probs_torch = log_likelihood(torch_gamma, torch.tensor(data))
+    # create dummy targets
+    targets_torch = torch.ones(3, 1)
 
-        # create dummy targets
-        targets_torch = torch.ones(3, 1)
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
 
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
+    tc.assertTrue(torch_gamma.alpha_aux.grad is not None)
+    tc.assertTrue(torch_gamma.beta_aux.grad is not None)
 
-        self.assertTrue(torch_gamma.alpha_aux.grad is not None)
-        self.assertTrue(torch_gamma.beta_aux.grad is not None)
+    alpha_aux_orig = torch_gamma.alpha_aux.detach().clone()
+    beta_aux_orig = torch_gamma.beta_aux.detach().clone()
 
-        alpha_aux_orig = torch_gamma.alpha_aux.detach().clone()
-        beta_aux_orig = torch_gamma.beta_aux.detach().clone()
+    optimizer = torch.optim.SGD(torch_gamma.parameters(), lr=1)
+    optimizer.step()
 
-        optimizer = torch.optim.SGD(torch_gamma.parameters(), lr=1)
+    # make sure that parameters are correctly updated
+    tc.assertTrue(
+        torch.allclose(
+            alpha_aux_orig - torch_gamma.alpha_aux.grad,
+            torch_gamma.alpha_aux,
+        )
+    )
+    tc.assertTrue(torch.allclose(beta_aux_orig - torch_gamma.beta_aux.grad, torch_gamma.beta_aux))
+
+    # verify that distribution parameters match parameters
+    tc.assertTrue(torch.allclose(torch_gamma.alpha, torch_gamma.dist.concentration))
+    tc.assertTrue(torch.allclose(torch_gamma.beta, torch_gamma.dist.rate))
+
+def test_gradient_optimization(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
+
+    if do_for_all_backends == "numpy":
+        return
+
+    # initialize distribution
+    torch_gamma = Gamma(Scope([0]), alpha=1.0, beta=2.0)
+
+    torch.manual_seed(0)
+
+    # create dummy data
+    data = torch.distributions.Gamma(concentration=2.0, rate=1.0).sample((100000, 1))
+
+    # initialize gradient optimizer
+    optimizer = torch.optim.SGD(torch_gamma.parameters(), lr=0.5, momentum=0.5)
+
+    # perform optimization (possibly overfitting)
+    for i in range(20):
+
+        # clear gradients
+        optimizer.zero_grad()
+
+        # compute negative log-likelihood
+        nll = -log_likelihood(torch_gamma, data).mean()
+        nll.backward()
+
+        # update parameters
         optimizer.step()
 
-        # make sure that parameters are correctly updated
-        self.assertTrue(
-            torch.allclose(
-                alpha_aux_orig - torch_gamma.alpha_aux.grad,
-                torch_gamma.alpha_aux,
-            )
-        )
-        self.assertTrue(torch.allclose(beta_aux_orig - torch_gamma.beta_aux.grad, torch_gamma.beta_aux))
+    tc.assertTrue(torch.allclose(torch_gamma.alpha, tl.tensor(2.0, dtype=tl.float64), atol=1e-3, rtol=0.3))
+    tc.assertTrue(torch.allclose(torch_gamma.beta, tl.tensor(1.0, dtype=tl.float64), atol=1e-3, rtol=0.3))
 
-        # verify that distribution parameters match parameters
-        self.assertTrue(torch.allclose(torch_gamma.alpha, torch_gamma.dist.concentration))
-        self.assertTrue(torch.allclose(torch_gamma.beta, torch_gamma.dist.rate))
+def test_marginalization(do_for_all_backends):
 
-    def test_gradient_optimization(self):
+    gamma = Gamma(Scope([0]), 1.0, 1.0)
+    data = tl.tensor([[float("nan")]])
 
-        # initialize distribution
-        torch_gamma = Gamma(Scope([0]), alpha=1.0, beta=2.0)
+    # should not raise and error and should return 1
+    probs = likelihood(gamma, data)
 
-        torch.manual_seed(0)
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor(1.0)))
 
-        # create dummy data
-        data = torch.distributions.Gamma(concentration=2.0, rate=1.0).sample((100000, 1))
+def test_support(do_for_all_backends):
 
-        # initialize gradient optimizer
-        optimizer = torch.optim.SGD(torch_gamma.parameters(), lr=0.5, momentum=0.5)
+    # Support for Gamma distribution: floats (0,inf)
 
-        # perform optimization (possibly overfitting)
-        for i in range(20):
+    # TODO:
+    #   likelihood:     x=0 -> POS_EPS (?)
+    #   log-likelihood: x=0 -> POS_EPS (?)
 
-            # clear gradients
-            optimizer.zero_grad()
+    gamma = Gamma(Scope([0]), 1.0, 1.0)
 
-            # compute negative log-likelihood
-            nll = -log_likelihood(torch_gamma, data).mean()
-            nll.backward()
+    # TODO: 0
 
-            # update parameters
-            optimizer.step()
+    # check infinite values
+    tc.assertRaises(ValueError, log_likelihood, gamma, tl.tensor([[-float("inf")]]))
+    tc.assertRaises(ValueError, log_likelihood, gamma, tl.tensor([[float("inf")]]))
 
-        self.assertTrue(torch.allclose(torch_gamma.alpha, torch.tensor(2.0), atol=1e-3, rtol=0.3))
-        self.assertTrue(torch.allclose(torch_gamma.beta, torch.tensor(1.0), atol=1e-3, rtol=0.3))
+    # check finite values > 0
+    log_likelihood(
+        gamma,
+        tl.tensor([[np.nextafter(tl.tensor(0.0), tl.tensor(1.0))]]),
+    )
+    log_likelihood(gamma, tl.tensor([[10.5]]))
 
-    def test_marginalization(self):
+    data = tl.tensor([[np.nextafter(tl.tensor(0.0), tl.tensor(1.0))]])
 
-        gamma = Gamma(Scope([0]), 1.0, 1.0)
-        data = torch.tensor([[float("nan")]])
+    probs = likelihood(gamma, data)
+    log_probs = log_likelihood(gamma, data)
 
-        # should not raise and error and should return 1
-        probs = likelihood(gamma, data)
+    tc.assertTrue(all(data != 0.0))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl_toNumpy(tl.exp(log_probs))))
 
-        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+    # check invalid float values (outside range)
+    if version.parse(torch.__version__) < version.parse("1.12.0") or do_for_all_backends == "numpy":
+        # edge case 0
+        tc.assertRaises(ValueError, log_likelihood, gamma, tl.tensor([[0.0]]))
+    else:
+        # edge case 0
+        log_likelihood(gamma, tl.tensor([[0.0]]))
 
-    def test_support(self):
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        gamma,
+        tl.tensor([[np.nextafter(tl.tensor(0.0), tl.tensor(-1.0))]]),
+    )
 
-        # Support for Gamma distribution: floats (0,inf)
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    alpha = random.randint(1, 5)
+    beta = random.randint(1, 5)
 
-        # TODO:
-        #   likelihood:     x=0 -> POS_EPS (?)
-        #   log-likelihood: x=0 -> POS_EPS (?)
+    gamma = Gamma(Scope([0]), alpha, beta)
 
-        gamma = Gamma(Scope([0]), 1.0, 1.0)
+    # create dummy input data (batch size x random variables)
+    data = np.random.rand(3, 1)
 
-        # TODO: 0
+    log_probs = log_likelihood(gamma, tl.tensor(data))
 
-        # check infinite values
-        self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[-float("inf")]]))
-        self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[float("inf")]]))
-
-        # check finite values > 0
-        log_likelihood(
-            gamma,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
-        )
-        log_likelihood(gamma, torch.tensor([[10.5]]))
-
-        data = torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]])
-
-        probs = likelihood(gamma, data)
-        log_probs = log_likelihood(gamma, data)
-
-        self.assertTrue(all(data != 0.0))
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-
-        # check invalid float values (outside range)
-        if version.parse(torch.__version__) < version.parse("1.12.0"):
-            # edge case 0
-            self.assertRaises(ValueError, log_likelihood, gamma, torch.tensor([[0.0]]))
-        else:
-            # edge case 0
-            log_likelihood(gamma, torch.tensor([[0.0]]))
-
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            gamma,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
-        )
-
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        alpha = random.randint(1, 5)
-        beta = random.randint(1, 5)
-
-        gamma = Gamma(Scope([0]), alpha, beta)
-
-        # create dummy input data (batch size x random variables)
-        data = np.random.rand(3, 1)
-
-        log_probs = log_likelihood(gamma, tl.tensor(data))
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             gamma_updated = updateBackend(gamma)
             log_probs_updated = log_likelihood(gamma_updated, tl.tensor(data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

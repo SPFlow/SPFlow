@@ -476,7 +476,7 @@ def tl_softmax(input, axis):
             input = torch.tensor(input)
         return torch.nn.functional.softmax(input=input, dim=axis)
     else:
-        raise NotImplementedError("tl_squeeze is not implemented for this backend")
+        raise NotImplementedError("tl_softmax is not implemented for this backend")
 
 def tl_cartesian_product(*input):
     backend = tl.get_backend()

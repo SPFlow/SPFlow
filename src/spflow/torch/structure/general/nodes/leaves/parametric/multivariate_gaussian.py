@@ -301,7 +301,7 @@ class MultivariateGaussian(LeafNode):
         self.tril_diag_aux.data = proj_bounded_to_real(torch.diag(L), lb=0.0)
         self.tril_nondiag.data = L[self.tril_nondiag_indices[0], self.tril_nondiag_indices[1]]
 
-    def get_trainable_params(self) -> Tuple[List[float], List[List[float]]]:
+    def get_trainable_params(self) -> List:
         """Returns the parameters of the represented distribution.
 
         Returns:
@@ -310,7 +310,8 @@ class MultivariateGaussian(LeafNode):
 
         #return self.mean.data.cpu().detach().tolist(), self.cov.data.cpu().detach().tolist()  # type: ignore
         #return [self.mean, self.tril_diag_aux, self.tril_nondiag]  # type: ignore
-        return [self.mean, self.cov]
+        #return [self.mean, self.cov]
+        return [self.mean, self.tril_diag_aux, self.tril_nondiag]
 
     def get_params(self) -> Tuple[List[float], List[List[float]]]:
         """Returns the parameters of the represented distribution.
