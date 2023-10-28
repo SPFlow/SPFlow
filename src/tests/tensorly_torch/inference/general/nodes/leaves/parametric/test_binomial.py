@@ -5,241 +5,238 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import Binomial as BaseBinomial
+from spflow.tensorly.structure.spn import Binomial
 from spflow.meta.data import Scope
-from spflow.torch.inference import likelihood, log_likelihood
-#from spflow.torch.structure.spn import Binomial
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_binomial import Binomial
+from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.base.structure.general.nodes.leaves.parametric.binomial import Binomial as BaseBinomial
 from spflow.torch.structure.general.nodes.leaves.parametric.binomial import updateBackend
-from spflow.tensorly.utils.helper_functions import tl_toNumpy
+from spflow.tensorly.utils.helper_functions import tl_toNumpy, tl_unsqueeze
 
+tc = unittest.TestCase()
 
-class TestBinomial(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_inference(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    n = random.randint(2, 10)
+    p = random.random()
 
-    def test_inference(self):
+    binomial = Binomial(Scope([0]), n, p)
+    node_binomial = BaseBinomial(Scope([0]), n, p)
 
-        n = random.randint(2, 10)
-        p = random.random()
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(1, n, (3, 1))
 
-        torch_binomial = Binomial(Scope([0]), n, p)
-        node_binomial = BaseBinomial(Scope([0]), n, p)
+    log_probs = log_likelihood(node_binomial, data)
+    log_probs_torch = log_likelihood(binomial, tl.tensor(data))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(1, n, (3, 1))
+    # make sure that probabilities match python backend probabilities
+    tc.assertTrue(np.allclose(log_probs, tl_toNumpy(log_probs_torch)))
 
-        log_probs = log_likelihood(node_binomial, data)
-        log_probs_torch = log_likelihood(torch_binomial, torch.tensor(data))
+def test_gradient_computation(do_for_all_backends):
 
-        # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+    if do_for_all_backends == "numpy":
+        return
 
-    def test_gradient_computation(self):
+    n = random.randint(2, 10)
+    p = random.random()
 
-        n = random.randint(2, 10)
-        p = random.random()
+    binomial = Binomial(Scope([0]), n, p)
 
-        torch_binomial = Binomial(Scope([0]), n, p)
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(1, n, (3, 1))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(1, n, (3, 1))
+    log_probs_torch = log_likelihood(binomial, tl.tensor(data))
 
-        log_probs_torch = log_likelihood(torch_binomial, torch.tensor(data))
+    # create dummy targets
+    targets_torch = torch.ones(3, 1)
 
-        # create dummy targets
-        targets_torch = torch.ones(3, 1)
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
 
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
+    tc.assertTrue(binomial.n.grad is None)
+    tc.assertTrue(binomial.p_aux.grad is not None)
 
-        self.assertTrue(torch_binomial.n.grad is None)
-        self.assertTrue(torch_binomial.p_aux.grad is not None)
+    n_orig = binomial.n.detach().clone()
+    p_aux_orig = binomial.p_aux.detach().clone()
 
-        n_orig = torch_binomial.n.detach().clone()
-        p_aux_orig = torch_binomial.p_aux.detach().clone()
+    optimizer = torch.optim.SGD(binomial.parameters(), lr=1)
+    optimizer.step()
 
-        optimizer = torch.optim.SGD(torch_binomial.parameters(), lr=1)
+    # make sure that parameters are correctly updated
+    tc.assertTrue(torch.allclose(n_orig, binomial.n))
+    tc.assertTrue(torch.allclose(p_aux_orig - binomial.p_aux.grad, binomial.p_aux))
+
+    # verify that distribution parameters match parameters
+    tc.assertTrue(torch.equal(binomial.n, binomial.dist.total_count.long()))
+    tc.assertTrue(torch.allclose(binomial.p, binomial.dist.probs))
+
+def test_gradient_optimization(do_for_all_backends):
+
+    if do_for_all_backends == "numpy":
+        return
+
+    torch.manual_seed(0)
+
+    # initialize distribution
+    binomial = Binomial(Scope([0]), 5, 0.3)
+
+    # create dummy data
+    p_target = 0.8
+    data = torch.distributions.Binomial(5, p_target).sample((100000, 1))
+
+    # initialize gradient optimizer
+    optimizer = torch.optim.SGD(binomial.parameters(), lr=0.5)
+
+    # perform optimization (possibly overfitting)
+    for i in range(40):
+
+        # clear gradients
+        optimizer.zero_grad()
+
+        # compute negative log-likelihood
+        nll = -log_likelihood(binomial, data).mean()
+        nll.backward()
+
+        # update parameters
         optimizer.step()
 
-        # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(n_orig, torch_binomial.n))
-        self.assertTrue(torch.allclose(p_aux_orig - torch_binomial.p_aux.grad, torch_binomial.p_aux))
+    tc.assertTrue(torch.allclose(binomial.p, tl.tensor(p_target, dtype=tl.float64), atol=1e-3, rtol=1e-3))
 
-        # verify that distribution parameters match parameters
-        self.assertTrue(torch.equal(torch_binomial.n, torch_binomial.dist.total_count.long()))
-        self.assertTrue(torch.allclose(torch_binomial.p, torch_binomial.dist.probs))
+def test_likelihood_p_0(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
-    def test_gradient_optimization(self):
+    # p = 0
+    binomial = Binomial(Scope([0]), 1, 0.0)
 
-        torch.manual_seed(0)
+    data = tl.tensor([[0.0], [1.0]])
+    targets = tl.tensor([[1.0], [0.0]])
 
-        # initialize distribution
-        torch_binomial = Binomial(Scope([0]), 5, 0.3)
+    probs = likelihood(binomial, data)
+    log_probs = log_likelihood(binomial, data)
 
-        # create dummy data
-        p_target = 0.8
-        data = torch.distributions.Binomial(5, p_target).sample((100000, 1))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl_toNumpy(tl.exp(log_probs))))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        # initialize gradient optimizer
-        optimizer = torch.optim.SGD(torch_binomial.parameters(), lr=0.5)
+def test_likelihood_p_1(do_for_all_backends):
 
-        # perform optimization (possibly overfitting)
-        for i in range(40):
+    # p = 1
+    binomial = Binomial(Scope([0]), 1, 1.0)
 
-            # clear gradients
-            optimizer.zero_grad()
+    data = tl.tensor([[0.0], [1.0]])
+    targets = tl.tensor([[0.0], [1.0]])
 
-            # compute negative log-likelihood
-            nll = -log_likelihood(torch_binomial, data).mean()
-            nll.backward()
+    probs = likelihood(binomial, data)
+    log_probs = log_likelihood(binomial, data)
 
-            # update parameters
-            optimizer.step()
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl_toNumpy(tl.exp(log_probs))))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        self.assertTrue(torch.allclose(torch_binomial.p, torch.tensor(p_target), atol=1e-3, rtol=1e-3))
+def test_likelihood_n_0(do_for_all_backends):
 
-    def test_likelihood_p_0(self):
+    # n = 0
+    binomial = Binomial(Scope([0]), 0, 0.5)
 
-        # p = 0
-        binomial = Binomial(Scope([0]), 1, 0.0)
+    data = tl.tensor([[0.0]])
+    targets = tl.tensor([[1.0]])
 
-        data = torch.tensor([[0.0], [1.0]])
-        targets = torch.tensor([[1.0], [0.0]])
+    probs = likelihood(binomial, data)
+    log_probs = log_likelihood(binomial, data)
 
-        probs = likelihood(binomial, data)
-        log_probs = log_likelihood(binomial, data)
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl_toNumpy(tl.exp(log_probs))))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+def test_likelihood_marginalization(do_for_all_backends):
 
-    def test_likelihood_p_1(self):
+    binomial = Binomial(Scope([0]), 5, 0.5)
+    data = tl.tensor([[float("nan")]])
 
-        # p = 1
-        binomial = Binomial(Scope([0]), 1, 1.0)
+    # should not raise and error and should return 1 (0 in log-space)
+    probs = likelihood(binomial, data)
 
-        data = torch.tensor([[0.0], [1.0]])
-        targets = torch.tensor([[0.0], [1.0]])
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor(1.0)))
 
-        probs = likelihood(binomial, data)
-        log_probs = log_likelihood(binomial, data)
+def test_support(do_for_all_backends):
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    # Support for Binomial distribution: integers {0,...,n}
 
-    def test_likelihood_n_0(self):
+    binomial = Binomial(Scope([0]), 2, 0.5)
 
-        # n = 0
-        binomial = Binomial(Scope([0]), 0, 0.5)
+    # check infinite values
+    tc.assertRaises(ValueError, log_likelihood, binomial, tl.tensor([[-np.inf]]))
+    tc.assertRaises(ValueError, log_likelihood, binomial, tl.tensor([[np.inf]]))
 
-        data = torch.tensor([[0.0]])
-        targets = torch.tensor([[1.0]])
+    # check valid integers inside valid range
+    log_likelihood(
+        binomial,
+        tl_unsqueeze(tl.tensor(list(range(binomial.n + 1))), 1),
+    )
 
-        probs = likelihood(binomial, data)
-        log_probs = log_likelihood(binomial, data)
+    # check valid integers, but outside of valid range
+    tc.assertRaises(ValueError, log_likelihood, binomial, tl.tensor([[-1]]))
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        binomial,
+        tl.tensor([[float(binomial.n + 1)]]),
+    )
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
-
-    def test_likelihood_marginalization(self):
-
-        binomial = Binomial(Scope([0]), 5, 0.5)
-        data = torch.tensor([[float("nan")]])
-
-        # should not raise and error and should return 1 (0 in log-space)
-        probs = likelihood(binomial, data)
-
-        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
-
-    def test_support(self):
-
-        # Support for Binomial distribution: integers {0,...,n}
-
-        binomial = Binomial(Scope([0]), 2, 0.5)
-
-        # check infinite values
-        self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[-np.inf]]))
-        self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[np.inf]]))
-
-        # check valid integers inside valid range
-        log_likelihood(
-            binomial,
-            torch.unsqueeze(torch.FloatTensor(list(range(binomial.n + 1))), 1),
-        )
-
-        # check valid integers, but outside of valid range
-        self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[-1]]))
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            binomial,
-            torch.tensor([[float(binomial.n + 1)]]),
-        )
-
-        # check invalid float values
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            binomial,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            binomial,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            binomial,
-            torch.tensor(
+    # check invalid float values
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        binomial,
+        tl.tensor([[np.nextafter(tl.tensor(0.0), tl.tensor(-1.0))]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        binomial,
+        tl.tensor([[np.nextafter(tl.tensor(0.0), tl.tensor(1.0))]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        binomial,
+        tl.tensor(
+            [
                 [
-                    [
-                        torch.nextafter(
-                            torch.tensor(float(binomial.n)),
-                            torch.tensor(float(binomial.n + 1)),
-                        )
-                    ]
+                    np.nextafter(
+                        tl.tensor(float(binomial.n)),
+                        tl.tensor(float(binomial.n + 1)),
+                    )
                 ]
-            ),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            binomial,
-            torch.tensor([[torch.nextafter(torch.tensor(float(binomial.n)), torch.tensor(0.0))]]),
-        )
-        self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[0.5]]))
-        self.assertRaises(ValueError, log_likelihood, binomial, torch.tensor([[3.5]]))
+            ]
+        ),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        binomial,
+        tl.tensor([[np.nextafter(tl.tensor(float(binomial.n)), tl.tensor(0.0))]]),
+    )
+    tc.assertRaises(ValueError, log_likelihood, binomial, tl.tensor([[0.5]]))
+    tc.assertRaises(ValueError, log_likelihood, binomial, tl.tensor([[3.5]]))
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        p = random.random()
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    p = random.random()
 
-        n = random.randint(2, 10)
-        p = random.random()
+    n = random.randint(2, 10)
+    p = random.random()
 
-        binomial = Binomial(Scope([0]), n, p)
+    binomial = Binomial(Scope([0]), n, p)
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(0, 2, (3, 1))
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(0, 2, (3, 1))
 
-        log_probs = log_likelihood(binomial, tl.tensor(data))
+    log_probs = log_likelihood(binomial, tl.tensor(data))
 
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             binomial_updated = updateBackend(binomial)
             log_probs_updated = log_likelihood(binomial_updated, tl.tensor(data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

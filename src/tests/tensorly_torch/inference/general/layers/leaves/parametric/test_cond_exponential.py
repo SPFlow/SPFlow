@@ -7,156 +7,157 @@ import tensorly as tl
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.inference import likelihood, log_likelihood
+from spflow.tensorly.inference import likelihood, log_likelihood
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_cond_exponential import CondExponentialLayer
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_exponential import CondExponential
 from spflow.torch.structure.general.layers.leaves.parametric.cond_exponential import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
+def test_likelihood_no_l(do_for_all_backends):
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+    exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2)
+    tc.assertRaises(ValueError, log_likelihood, exponential, tl.tensor([[0], [1]]))
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+def test_likelihood_module_cond_f(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
-    def test_likelihood_no_l(self):
+    cond_f = lambda data: {"l": [0.5, 1.0]}
 
-        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2)
-        self.assertRaises(ValueError, log_likelihood, exponential, torch.tensor([[0], [1]]))
+    exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
-    def test_likelihood_module_cond_f(self):
+    # create test inputs/outputs
+    data = tl.tensor([[2], [5]])
+    targets = tl.tensor([[0.18394, 0.135335], [0.0410425, 0.00673795]])
 
-        cond_f = lambda data: {"l": [0.5, 1.0]}
+    probs = likelihood(exponential, data)
+    log_probs = log_likelihood(exponential, data)
 
-        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        # create test inputs/outputs
-        data = torch.tensor([[2], [5]])
-        targets = torch.tensor([[0.18394, 0.135335], [0.0410425, 0.00673795]])
+def test_likelihood_args_l(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
-        probs = likelihood(exponential, data)
-        log_probs = log_likelihood(exponential, data)
+    exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2)
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    dispatch_ctx = DispatchContext()
+    dispatch_ctx.args[exponential] = {"l": [0.5, 1.0]}
 
-    def test_likelihood_args_l(self):
+    # create test inputs/outputs
+    data = tl.tensor([[2], [5]])
+    targets = tl.tensor([[0.18394, 0.135335], [0.0410425, 0.00673795]])
 
-        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2)
+    probs = likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
+    log_probs = log_likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
 
-        dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[exponential] = {"l": [0.5, 1.0]}
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        # create test inputs/outputs
-        data = torch.tensor([[2], [5]])
-        targets = torch.tensor([[0.18394, 0.135335], [0.0410425, 0.00673795]])
+def test_likelihood_args_cond_f(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
-        probs = likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
-        log_probs = log_likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
+    exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2)
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    cond_f = lambda data: {"l": tl.tensor([0.5, 1.0])}
 
-    def test_likelihood_args_cond_f(self):
+    dispatch_ctx = DispatchContext()
+    dispatch_ctx.args[exponential] = {"cond_f": cond_f}
 
-        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2)
+    # create test inputs/outputs
+    data = tl.tensor([[2], [5]])
+    targets = tl.tensor([[0.18394, 0.135335], [0.0410425, 0.00673795]])
 
-        cond_f = lambda data: {"l": torch.tensor([0.5, 1.0])}
+    probs = likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
+    log_probs = log_likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
 
-        dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[exponential] = {"cond_f": cond_f}
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        # create test inputs/outputs
-        data = torch.tensor([[2], [5]])
-        targets = torch.tensor([[0.18394, 0.135335], [0.0410425, 0.00673795]])
+def test_layer_likelihood(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
-        probs = likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
-        log_probs = log_likelihood(exponential, data, dispatch_ctx=dispatch_ctx)
+    layer = CondExponentialLayer(
+        scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
+        cond_f=lambda data: {"l": [0.2, 1.0, 2.3]},
+    )
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    nodes = [
+        CondExponential(Scope([0], [2]), cond_f=lambda data: {"l": 0.2}),
+        CondExponential(Scope([1], [2]), cond_f=lambda data: {"l": 1.0}),
+        CondExponential(Scope([0], [2]), cond_f=lambda data: {"l": 2.3}),
+    ]
 
-    def test_layer_likelihood(self):
+    dummy_data = tl.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
 
-        layer = CondExponentialLayer(
-            scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
-            cond_f=lambda data: {"l": [0.2, 1.0, 2.3]},
-        )
+    layer_ll = log_likelihood(layer, dummy_data)
+    nodes_ll = tl.concatenate([log_likelihood(node, dummy_data) for node in nodes], axis=1)
 
-        nodes = [
-            CondExponential(Scope([0], [2]), cond_f=lambda data: {"l": 0.2}),
-            CondExponential(Scope([1], [2]), cond_f=lambda data: {"l": 1.0}),
-            CondExponential(Scope([0], [2]), cond_f=lambda data: {"l": 2.3}),
-        ]
+    tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(nodes_ll)))
 
-        dummy_data = torch.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
+def test_gradient_computation(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
-        layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
+    if do_for_all_backends == "numpy":
+        return
 
-        self.assertTrue(torch.allclose(layer_ll, nodes_ll))
+    l = tl.tensor([random.random(), random.random()], requires_grad=True)
 
-    def test_gradient_computation(self):
+    torch_exponential = CondExponentialLayer(
+        scope=[Scope([0], [2]), Scope([1], [2])],
+        cond_f=lambda data: {"l": l},
+    )
 
-        l = torch.tensor([random.random(), random.random()], requires_grad=True)
+    # create dummy input data (batch size x random variables)
+    data = tl.random.random_tensor((3, 2))
 
-        torch_exponential = CondExponentialLayer(
-            scope=[Scope([0], [2]), Scope([1], [2])],
-            cond_f=lambda data: {"l": l},
-        )
+    log_probs_torch = log_likelihood(torch_exponential, data)
 
-        # create dummy input data (batch size x random variables)
-        data = torch.rand(3, 2)
+    # create dummy targets
+    targets_torch = tl.ones((3, 2))
 
-        log_probs_torch = log_likelihood(torch_exponential, data)
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
 
-        # create dummy targets
-        targets_torch = torch.ones(3, 2)
+    tc.assertTrue(l.grad is not None)
 
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
+def test_likelihood_marginalization(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
-        self.assertTrue(l.grad is not None)
+    exponential = CondExponentialLayer(
+        scope=[Scope([0], [2]), Scope([1], [2])],
+        cond_f=lambda data: {"l": random.random() + 1e-7},
+    )
+    data = tl.tensor([[float("nan"), float("nan")]])
 
-    def test_likelihood_marginalization(self):
+    # should not raise and error and should return 1
+    probs = tl.exp(log_likelihood(exponential, data))
 
-        exponential = CondExponentialLayer(
-            scope=[Scope([0], [2]), Scope([1], [2])],
-            cond_f=lambda data: {"l": random.random() + 1e-7},
-        )
-        data = torch.tensor([[float("nan"), float("nan")]])
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor([1.0, 1.0])))
 
-        # should not raise and error and should return 1
-        probs = log_likelihood(exponential, data).exp()
+def test_support(do_for_all_backends):
+    # TODO
+    pass
 
-        self.assertTrue(torch.allclose(probs, torch.tensor([1.0, 1.0])))
+def test_update_backend(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
+    backends = ["numpy", "pytorch"]
+    cond_f = lambda data: {"l": [0.5, 1.0]}
 
-    def test_support(self):
-        # TODO
-        pass
+    exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        cond_f = lambda data: {"l": [0.5, 1.0]}
+    # create test inputs/outputs
+    data = tl.tensor([[2], [5]])
+    log_probs = log_likelihood(exponential, data)
 
-        exponential = CondExponentialLayer(Scope([0], [1]), n_nodes=2, cond_f=cond_f)
-
-        # create test inputs/outputs
-        data = torch.tensor([[2], [5]])
-        log_probs = log_likelihood(exponential, data)
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             layer_updated = updateBackend(exponential)
             log_probs_updated = log_likelihood(layer_updated, tl.tensor(data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

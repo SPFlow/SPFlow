@@ -6,165 +6,165 @@ import numpy as np
 import tensorly as tl
 
 from spflow.meta.data import Scope
-from spflow.torch.inference import log_likelihood
+from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.structure.general.layers.leaves.parametric.general_log_normal import LogNormalLayer
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_log_normal import LogNormal
 from spflow.torch.structure.general.layers.leaves.parametric.log_normal import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_layer_likelihood(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    layer = LogNormalLayer(
+        scope=[Scope([0]), Scope([1]), Scope([0])],
+        mean=[0.2, 1.0, 2.3],
+        std=[1.0, 0.3, 0.97],
+    )
 
-    def test_layer_likelihood(self):
+    nodes = [
+        LogNormal(Scope([0]), mean=0.2, std=1.0),
+        LogNormal(Scope([1]), mean=1.0, std=0.3),
+        LogNormal(Scope([0]), mean=2.3, std=0.97),
+    ]
 
-        layer = LogNormalLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            mean=[0.2, 1.0, 2.3],
-            std=[1.0, 0.3, 0.97],
+    dummy_data = tl.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
+
+    layer_ll = log_likelihood(layer, dummy_data)
+    nodes_ll = tl.concatenate([log_likelihood(node, dummy_data) for node in nodes], axis=1)
+
+    tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(nodes_ll)))
+
+def test_gradient_computation(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
+
+    if do_for_all_backends == "numpy":
+        return
+
+    mean = [random.random(), random.random()]
+    std = [
+        random.random() + 1e-8,
+        random.random() + 1e-8,
+    ]  # offset by small number to avoid zero
+
+    torch_log_normal = LogNormalLayer(scope=[Scope([0]), Scope([1])], mean=mean, std=std)
+
+    # create dummy input data (batch size x random variables)
+    data = torch.rand(3, 2)
+
+    log_probs_torch = log_likelihood(torch_log_normal, data)
+
+    # create dummy targets
+    targets_torch = torch.ones(3, 2)
+
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
+
+    tc.assertTrue(torch_log_normal.mean.grad is not None)
+    tc.assertTrue(torch_log_normal.std_aux.grad is not None)
+
+    mean_orig = torch_log_normal.mean.detach().clone()
+    std_aux_orig = torch_log_normal.std_aux.detach().clone()
+
+    optimizer = torch.optim.SGD(torch_log_normal.parameters(), lr=1)
+    optimizer.step()
+
+    # make sure that parameters are correctly updated
+    tc.assertTrue(torch.allclose(mean_orig - torch_log_normal.mean.grad, torch_log_normal.mean))
+    tc.assertTrue(
+        torch.allclose(
+            std_aux_orig - torch_log_normal.std_aux.grad,
+            torch_log_normal.std_aux,
         )
+    )
 
-        nodes = [
-            LogNormal(Scope([0]), mean=0.2, std=1.0),
-            LogNormal(Scope([1]), mean=1.0, std=0.3),
-            LogNormal(Scope([0]), mean=2.3, std=0.97),
-        ]
+    # verify that distribution parameters match parameters
+    tc.assertTrue(torch.allclose(torch_log_normal.mean, torch_log_normal.dist().loc))
+    tc.assertTrue(torch.allclose(torch_log_normal.std, torch_log_normal.dist().scale))
 
-        dummy_data = torch.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
+def test_gradient_optimization(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
+    if do_for_all_backends == "numpy":
+        return
 
-        layer_ll = log_likelihood(layer, dummy_data)
-        nodes_ll = torch.concat([log_likelihood(node, dummy_data) for node in nodes], dim=1)
+    # initialize distribution
+    torch_log_normal = LogNormalLayer(scope=[Scope([0]), Scope([1])], mean=[1.1, 0.8], std=[2.0, 1.5])
 
-        self.assertTrue(torch.allclose(layer_ll, nodes_ll))
+    torch.manual_seed(10)
 
-    def test_gradient_computation(self):
+    # create dummy data
+    data = torch.distributions.LogNormal(0.0, 1.0).sample((100000, 2))
 
-        mean = [random.random(), random.random()]
-        std = [
-            random.random() + 1e-8,
-            random.random() + 1e-8,
-        ]  # offset by small number to avoid zero
+    # initialize gradient optimizer
+    optimizer = torch.optim.SGD(torch_log_normal.parameters(), lr=0.5, momentum=0.5)
 
-        torch_log_normal = LogNormalLayer(scope=[Scope([0]), Scope([1])], mean=mean, std=std)
+    # perform optimization (possibly overfitting)
+    for i in range(20):
 
-        # create dummy input data (batch size x random variables)
-        data = torch.rand(3, 2)
+        # clear gradients
+        optimizer.zero_grad()
 
-        log_probs_torch = log_likelihood(torch_log_normal, data)
+        # compute negative log-likelihood
+        nll = -log_likelihood(torch_log_normal, data).mean()
+        nll.backward()
 
-        # create dummy targets
-        targets_torch = torch.ones(3, 2)
-
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
-
-        self.assertTrue(torch_log_normal.mean.grad is not None)
-        self.assertTrue(torch_log_normal.std_aux.grad is not None)
-
-        mean_orig = torch_log_normal.mean.detach().clone()
-        std_aux_orig = torch_log_normal.std_aux.detach().clone()
-
-        optimizer = torch.optim.SGD(torch_log_normal.parameters(), lr=1)
+        # update parameters
         optimizer.step()
 
-        # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(mean_orig - torch_log_normal.mean.grad, torch_log_normal.mean))
-        self.assertTrue(
-            torch.allclose(
-                std_aux_orig - torch_log_normal.std_aux.grad,
-                torch_log_normal.std_aux,
-            )
+    tc.assertTrue(
+        torch.allclose(
+            torch_log_normal.mean,
+            tl.tensor([0.0, 0.0], dtype=tl.float64),
+            atol=1e-2,
+            rtol=0.2,
         )
-
-        # verify that distribution parameters match parameters
-        self.assertTrue(torch.allclose(torch_log_normal.mean, torch_log_normal.dist().loc))
-        self.assertTrue(torch.allclose(torch_log_normal.std, torch_log_normal.dist().scale))
-
-    def test_gradient_optimization(self):
-
-        # initialize distribution
-        torch_log_normal = LogNormalLayer(scope=[Scope([0]), Scope([1])], mean=[1.1, 0.8], std=[2.0, 1.5])
-
-        torch.manual_seed(10)
-
-        # create dummy data
-        data = torch.distributions.LogNormal(0.0, 1.0).sample((100000, 2))
-
-        # initialize gradient optimizer
-        optimizer = torch.optim.SGD(torch_log_normal.parameters(), lr=0.5, momentum=0.5)
-
-        # perform optimization (possibly overfitting)
-        for i in range(20):
-
-            # clear gradients
-            optimizer.zero_grad()
-
-            # compute negative log-likelihood
-            nll = -log_likelihood(torch_log_normal, data).mean()
-            nll.backward()
-
-            # update parameters
-            optimizer.step()
-
-        self.assertTrue(
-            torch.allclose(
-                torch_log_normal.mean,
-                torch.tensor([0.0, 0.0]),
-                atol=1e-2,
-                rtol=0.2,
-            )
+    )
+    tc.assertTrue(
+        torch.allclose(
+            torch_log_normal.std,
+            tl.tensor([1.0, 1.0], dtype=tl.float64),
+            atol=1e-2,
+            rtol=0.2,
         )
-        self.assertTrue(
-            torch.allclose(
-                torch_log_normal.std,
-                torch.tensor([1.0, 1.0]),
-                atol=1e-2,
-                rtol=0.2,
-            )
-        )
+    )
 
-    def test_likelihood_marginalization(self):
+def test_likelihood_marginalization(do_for_all_backends):
 
-        log_normal = LogNormalLayer(
-            scope=[Scope([0]), Scope([1])],
-            mean=random.random(),
-            std=random.random() + 1e-7,
-        )
-        data = torch.tensor([[float("nan"), float("nan")]])
+    log_normal = LogNormalLayer(
+        scope=[Scope([0]), Scope([1])],
+        mean=random.random(),
+        std=random.random() + 1e-7,
+    )
+    data = tl.tensor([[float("nan"), float("nan")]])
 
-        # should not raise and error and should return 1
-        probs = log_likelihood(log_normal, data).exp()
+    # should not raise and error and should return 1
+    probs = tl.exp(log_likelihood(log_normal, data))
 
-        self.assertTrue(torch.allclose(probs, torch.tensor([1.0, 1.0])))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor([1.0, 1.0])))
 
-    def test_support(self):
-        # TODO
-        pass
+def test_support(do_for_all_backends):
+    # TODO
+    pass
 
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        layer = LogNormalLayer(
-            scope=[Scope([0]), Scope([1]), Scope([0])],
-            mean=[0.2, 1.0, 2.3],
-            std=[1.0, 0.3, 0.97],
-        )
-        dummy_data = torch.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
+def test_update_backend(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
+    backends = ["numpy", "pytorch"]
+    layer = LogNormalLayer(
+        scope=[Scope([0]), Scope([1]), Scope([0])],
+        mean=[0.2, 1.0, 2.3],
+        std=[1.0, 0.3, 0.97],
+    )
+    dummy_data = tl.tensor([[0.5, 1.3], [3.9, 0.71], [1.0, 1.0]])
 
-        layer_ll = log_likelihood(layer, dummy_data)
+    layer_ll = log_likelihood(layer, dummy_data)
 
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             layer_updated = updateBackend(layer)
             log_probs_updated = log_likelihood(layer_updated, tl.tensor(dummy_data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

@@ -5,226 +5,221 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.inference import log_likelihood
-from spflow.base.structure.spn import CondBernoulli as BaseCondBernoulli
+from spflow.tensorly.structure.spn import CondBernoulli
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import DispatchContext
-from spflow.torch.inference import likelihood, log_likelihood
-#from spflow.torch.structure.spn import CondBernoulli
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_bernoulli import CondBernoulli
+from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.base.structure.general.nodes.leaves.parametric.cond_bernoulli import CondBernoulli as BaseCondBernoulli
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_bernoulli import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestBernoulli(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_likelihood_module_cond_f(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    p = random.random()
+    cond_f = lambda data: {"p": p}
 
-    def test_likelihood_module_cond_f(self):
+    bernoulli = CondBernoulli(Scope([0], [1]), cond_f=cond_f)
 
-        p = random.random()
-        cond_f = lambda data: {"p": p}
+    # create test inputs/outputs
+    data = tl.tensor([[0], [1]])
+    targets = tl.tensor([[1.0 - p], [p]])
 
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=cond_f)
+    probs = likelihood(bernoulli, data)
+    log_probs = log_likelihood(bernoulli, data)
 
-        # create test inputs/outputs
-        data = torch.tensor([[0], [1]])
-        targets = torch.tensor([[1.0 - p], [p]])
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        probs = likelihood(bernoulli, data)
-        log_probs = log_likelihood(bernoulli, data)
+def test_likelihood_args_p(do_for_all_backends):
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    bernoulli = CondBernoulli(Scope([0], [1]))
 
-    def test_likelihood_args_p(self):
+    p = random.random()
+    dispatch_ctx = DispatchContext()
+    dispatch_ctx.args[bernoulli] = {"p": p}
 
-        bernoulli = CondBernoulli(Scope([0], [1]))
+    # create test inputs/outputs
+    data = tl.tensor([[0], [1]])
+    targets = tl.tensor([[1.0 - p], [p]])
 
-        p = random.random()
-        dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[bernoulli] = {"p": p}
+    probs = likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
+    log_probs = log_likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
 
-        # create test inputs/outputs
-        data = torch.tensor([[0], [1]])
-        targets = torch.tensor([[1.0 - p], [p]])
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        probs = likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
-        log_probs = log_likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
+def test_likelihood_args_cond_f(do_for_all_backends):
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    bernoulli = CondBernoulli(Scope([0], [1]))
 
-    def test_likelihood_args_cond_f(self):
+    p = random.random()
+    cond_f = lambda data: {"p": p}
 
-        bernoulli = CondBernoulli(Scope([0], [1]))
+    dispatch_ctx = DispatchContext()
+    dispatch_ctx.args[bernoulli] = {"cond_f": cond_f}
 
-        p = random.random()
-        cond_f = lambda data: {"p": p}
+    # create test inputs/outputs
+    data = tl.tensor([[0], [1]])
+    targets = tl.tensor([[1.0 - p], [p]])
 
-        dispatch_ctx = DispatchContext()
-        dispatch_ctx.args[bernoulli] = {"cond_f": cond_f}
+    probs = likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
+    log_probs = log_likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
 
-        # create test inputs/outputs
-        data = torch.tensor([[0], [1]])
-        targets = torch.tensor([[1.0 - p], [p]])
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        probs = likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
-        log_probs = log_likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
+def test_inference(do_for_all_backends):
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+    p = np.array(0.5)
 
-    def test_inference(self):
+    torch_bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": tl.tensor(p)})
+    node_bernoulli = BaseCondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": p})
 
-        p = np.array(0.5)
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(0, 2, (3, 1))
 
-        torch_bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": torch.tensor(p)})
-        node_bernoulli = BaseCondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": p})
+    log_probs = log_likelihood(node_bernoulli, data)
+    log_probs_torch = log_likelihood(torch_bernoulli, tl.tensor(data))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(0, 2, (3, 1))
+    # make sure that probabilities match python backend probabilities
+    tc.assertTrue(np.allclose(log_probs, tl_toNumpy(log_probs_torch)))
 
-        log_probs = log_likelihood(node_bernoulli, data)
-        log_probs_torch = log_likelihood(torch_bernoulli, torch.tensor(data))
+def test_gradient_computation(do_for_all_backends):
 
-        # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+    if do_for_all_backends == "numpy":
+        return
 
-    def test_gradient_computation(self):
+    p = tl.tensor(0.5, requires_grad=True)
 
-        p = torch.tensor(0.5, requires_grad=True)
+    torch_bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": p})
 
-        torch_bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": p})
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(0, 2, (3, 1))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(0, 2, (3, 1))
+    log_probs_torch = log_likelihood(torch_bernoulli, tl.tensor(data))
 
-        log_probs_torch = log_likelihood(torch_bernoulli, torch.tensor(data))
+    # create dummy targets
+    targets_torch = torch.ones(3, 1)
 
-        # create dummy targets
-        targets_torch = torch.ones(3, 1)
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
 
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
+    tc.assertTrue(p.grad is not None)
 
-        self.assertTrue(p.grad is not None)
+def test_likelihood_p_0(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
-    def test_likelihood_p_0(self):
+    # p = 0
+    bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.0})
 
-        # p = 0
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 0.0})
+    data = tl.tensor([[0.0], [1.0]])
+    targets = tl.tensor([[1.0], [0.0]])
 
-        data = torch.tensor([[0.0], [1.0]])
-        targets = torch.tensor([[1.0], [0.0]])
+    probs = likelihood(bernoulli, data)
+    log_probs = log_likelihood(bernoulli, data)
 
-        probs = likelihood(bernoulli, data)
-        log_probs = log_likelihood(bernoulli, data)
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+def test_likelihood_p_1(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
-    def test_likelihood_p_1(self):
+    # p = 1
+    bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 1.0})
 
-        # p = 1
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": 1.0})
+    data = tl.tensor([[0.0], [1.0]])
+    targets = tl.tensor([[0.0], [1.0]])
 
-        data = torch.tensor([[0.0], [1.0]])
-        targets = torch.tensor([[0.0], [1.0]])
+    probs = likelihood(bernoulli, data)
+    log_probs = log_likelihood(bernoulli, data)
 
-        probs = likelihood(bernoulli, data)
-        log_probs = log_likelihood(bernoulli, data)
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
-        self.assertTrue(torch.allclose(probs, torch.exp(log_probs)))
-        self.assertTrue(torch.allclose(probs, targets))
+def test_likelihood_marginalization(do_for_all_backends):
 
-    def test_likelihood_marginalization(self):
+    bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": random.random()})
+    data = tl.tensor([[float("nan")]])
 
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": random.random()})
-        data = torch.tensor([[float("nan")]])
+    # should not raise and error and should return 1
+    probs = likelihood(bernoulli, data)
 
-        # should not raise and error and should return 1
-        probs = likelihood(bernoulli, data)
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor(1.0)))
 
-        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
+def test_support(do_for_all_backends):
 
-    def test_support(self):
+    # Support for Bernoulli distribution: integers {0,1}
 
-        # Support for Bernoulli distribution: integers {0,1}
+    p = random.random()
+    bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": p})
 
-        p = random.random()
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": p})
+    # check infinite values
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        bernoulli,
+        tl.tensor([[-float("inf")]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        bernoulli,
+        tl.tensor([[float("inf")]]),
+    )
 
-        # check infinite values
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            bernoulli,
-            torch.tensor([[-float("inf")]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            bernoulli,
-            torch.tensor([[float("inf")]]),
-        )
+    # check valid integers inside valid range
+    log_likelihood(bernoulli, tl.tensor([[0.0], [1.0]]))
 
-        # check valid integers inside valid range
-        log_likelihood(bernoulli, torch.tensor([[0.0], [1.0]]))
+    # check valid integers, but outside of valid range
+    tc.assertRaises(ValueError, log_likelihood, bernoulli, tl.tensor([[-1]]))
+    tc.assertRaises(ValueError, log_likelihood, bernoulli, tl.tensor([[2]]))
 
-        # check valid integers, but outside of valid range
-        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[-1]]))
-        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[2]]))
+    # check invalid float values
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        bernoulli,
+        tl.tensor([[np.nextafter(tl.tensor(0.0), tl.tensor(-1.0))]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        bernoulli,
+        tl.tensor([[np.nextafter(tl.tensor(0.0), tl.tensor(1.0))]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        bernoulli,
+        tl.tensor([[np.nextafter(tl.tensor(1.0), tl.tensor(2.0))]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        bernoulli,
+        tl.tensor([[np.nextafter(tl.tensor(1.0), tl.tensor(0.0))]]),
+    )
+    tc.assertRaises(ValueError, log_likelihood, bernoulli, tl.tensor([[0.5]]))
 
-        # check invalid float values
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            bernoulli,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(-1.0))]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            bernoulli,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            bernoulli,
-            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(2.0))]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            bernoulli,
-            torch.tensor([[torch.nextafter(torch.tensor(1.0), torch.tensor(0.0))]]),
-        )
-        self.assertRaises(ValueError, log_likelihood, bernoulli, torch.tensor([[0.5]]))
+def test_update_backend_1(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    p = np.array(0.5)
 
-    def test_update_backend_1(self):
-        backends = ["numpy", "pytorch"]
-        p = np.array(0.5)
+    bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": tl.tensor(p)})
 
-        bernoulli = CondBernoulli(Scope([0], [1]), cond_f=lambda data: {"p": torch.tensor(p)})
+    # create dummy input data (batch size x random variables)
+    data = np.random.randint(0, 2, (3, 1))
+    log_probs = log_likelihood(bernoulli, tl.tensor(data))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.randint(0, 2, (3, 1))
-        log_probs = log_likelihood(bernoulli, tl.tensor(data))
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             binomial_updated = updateBackend(bernoulli)
             log_probs_updated = log_likelihood(binomial_updated, tl.tensor(data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 

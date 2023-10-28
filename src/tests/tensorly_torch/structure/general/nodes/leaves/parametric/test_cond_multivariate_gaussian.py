@@ -19,7 +19,6 @@ from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import 
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
     marginalize,
 )
-from spflow.tensorly.utils.helper_functions import tl_nextafter, tl_toNumpy
 
 tc = unittest.TestCase()
 
@@ -38,6 +37,7 @@ def test_initialization(do_for_all_backends):
     tc.assertRaises(Exception, CondMultivariateGaussian, Scope([0, 1]))
 
 def test_retrieve_params(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
     # Valid parameters for Multivariate Gaussian distribution: mean vector in R^k, covariance matrix in R^(k x k) symmetric positive semi-definite
 
