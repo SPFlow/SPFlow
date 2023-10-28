@@ -8,7 +8,7 @@ from spflow.base.structure.general.nodes.leaves.parametric.multivariate_gaussian
 from spflow.base.structure.general.layers.leaves.parametric.multivariate_gaussian import MultivariateGaussianLayer as MultivariateGaussianLayerBase
 from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian as GaussianBase
 from spflow.meta.data import FeatureContext, FeatureTypes, Scope
-from spflow.torch.structure import marginalize
+from spflow.tensorly.structure import marginalize
 from spflow.torch.structure.general.nodes.leaves.parametric.multivariate_gaussian import MultivariateGaussian as MultivariateGaussianTorch
 from spflow.torch.structure.general.layers.leaves.parametric.multivariate_gaussian import MultivariateGaussianLayer as MultivariateGaussianLayerTorch
 from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian as GaussianTorch
@@ -22,6 +22,7 @@ tc = unittest.TestCase()
 
 
 def test_layer_initialization(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
     # ----- check attributes after correct initialization -----
 
@@ -43,8 +44,8 @@ def test_layer_initialization(do_for_all_backends):
     l = MultivariateGaussianLayer(scope=Scope([1, 0, 2]), n_nodes=3, mean=mean_value, cov=cov_value)
 
     for node in l.nodes:
-        tc.assertTrue(tl.all(node.mean == tl.tensor(mean_value)))
-        tc.assertTrue(tl.all(node.cov == tl.tensor(cov_value)))
+        tc.assertTrue(tl.all(node.mean == tl.tensor(mean_value, dtype=tl.float64)))
+        tc.assertTrue(tl.all(node.cov == tl.tensor(cov_value, dtype=tl.float64)))
 
     # ----- multiple mean/cov list parameter values -----
     mean_values = [[0.0, -1.0, 2.3], [1.0, 5.0, -3.0], [-7.1, 3.2, -0.9]]
@@ -56,8 +57,8 @@ def test_layer_initialization(do_for_all_backends):
     l = MultivariateGaussianLayer(scope=Scope([0, 1, 2]), n_nodes=3, mean=mean_values, cov=cov_values)
 
     for node, node_mean, node_cov in zip(l.nodes, mean_values, cov_values):
-        tc.assertTrue(tl.all(node.mean == tl.tensor(node_mean)))
-        tc.assertTrue(np.allclose(tl_toNumpy(node.cov), tl.tensor(node_cov)))
+        tc.assertTrue(tl.all(node.mean == tl.tensor(node_mean, dtype=tl.float64)))
+        tc.assertTrue(np.allclose(tl_toNumpy(node.cov), tl.tensor(node_cov, dtype=tl.float64)))
 
     # wrong number of values
     tc.assertRaises(
@@ -104,8 +105,8 @@ def test_layer_initialization(do_for_all_backends):
     )
 
     for node, node_mean, node_cov in zip(l.nodes, mean_values, cov_values):
-        tc.assertTrue(tl.all(node.mean == tl.tensor(node_mean)))
-        tc.assertTrue(np.allclose(tl_toNumpy(node.cov), tl.tensor(node_cov)))
+        tc.assertTrue(tl.all(node.mean == tl.tensor(node_mean, dtype=tl.float64)))
+        tc.assertTrue(np.allclose(tl_toNumpy(node.cov), tl.tensor(node_cov, dtype=tl.float64)))
 
     # wrong number of values
     tc.assertRaises(
@@ -369,6 +370,7 @@ def test_autoleaf(do_for_all_backends):
     tc.assertTrue(multivariate_gaussian.scopes_out == [Scope([0, 1]), Scope([1, 2])])
 
 def test_layer_structural_marginalization(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
     if tl.get_backend() == "numpy":
         MultivariateGaussianInst = MultivariateGaussianBase

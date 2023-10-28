@@ -5,170 +5,168 @@ import numpy as np
 import torch
 import tensorly as tl
 
-from spflow.base.inference import likelihood, log_likelihood
-from spflow.base.structure.spn import LogNormal as BaseLogNormal
+from spflow.tensorly.structure.spn import LogNormal
 from spflow.meta.data import Scope
-from spflow.torch.inference import likelihood, log_likelihood
-#from spflow.torch.structure.spn import LogNormal
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_log_normal import LogNormal
+from spflow.tensorly.inference import likelihood, log_likelihood
+from spflow.base.structure.general.nodes.leaves.parametric.log_normal import LogNormal as BaseLogNormal
 from spflow.torch.structure.general.nodes.leaves.parametric.log_normal import updateBackend
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
+tc = unittest.TestCase()
 
-class TestLogNormal(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_inference(do_for_all_backends):
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    mean = random.random()
+    std = random.random() + 1e-7  # offset by small number to avoid zero
 
-    def test_inference(self):
+    torch_log_normal = LogNormal(Scope([0]), mean, std)
+    node_log_normal = BaseLogNormal(Scope([0]), mean, std)
 
-        mean = random.random()
-        std = random.random() + 1e-7  # offset by small number to avoid zero
+    # create dummy input data (batch size x random variables)
+    data = np.random.rand(3, 1)
 
-        torch_log_normal = LogNormal(Scope([0]), mean, std)
-        node_log_normal = BaseLogNormal(Scope([0]), mean, std)
+    log_probs = log_likelihood(node_log_normal, data)
+    log_probs_torch = log_likelihood(torch_log_normal, tl.tensor(data))
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.rand(3, 1)
+    # make sure that probabilities match python backend probabilities
+    tc.assertTrue(np.allclose(log_probs, tl_toNumpy(log_probs_torch)))
 
-        log_probs = log_likelihood(node_log_normal, data)
-        log_probs_torch = log_likelihood(torch_log_normal, torch.tensor(data))
+def test_gradient_computation(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
 
-        # make sure that probabilities match python backend probabilities
-        self.assertTrue(np.allclose(log_probs, log_probs_torch.detach().cpu().numpy()))
+    if do_for_all_backends == "numpy":
+        return
 
-    def test_gradient_computation(self):
+    mean = random.random()
+    std = random.random() + 1e-7  # offset by small number to avoid zero
 
-        mean = random.random()
-        std = random.random() + 1e-7  # offset by small number to avoid zero
+    torch_log_normal = LogNormal(Scope([0]), mean, std)
 
-        torch_log_normal = LogNormal(Scope([0]), mean, std)
+    # create dummy input data (batch size x random variables)
+    data = np.random.rand(3, 1)
 
-        # create dummy input data (batch size x random variables)
-        data = np.random.rand(3, 1)
+    log_probs_torch = log_likelihood(torch_log_normal, tl.tensor(data))
 
-        log_probs_torch = log_likelihood(torch_log_normal, torch.tensor(data))
+    # create dummy targets
+    targets_torch = torch.ones(3, 1)
 
-        # create dummy targets
-        targets_torch = torch.ones(3, 1)
+    loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
+    loss.backward()
 
-        loss = torch.nn.MSELoss()(log_probs_torch, targets_torch)
-        loss.backward()
+    tc.assertTrue(torch_log_normal.mean.grad is not None)
+    tc.assertTrue(torch_log_normal.std_aux.grad is not None)
 
-        self.assertTrue(torch_log_normal.mean.grad is not None)
-        self.assertTrue(torch_log_normal.std_aux.grad is not None)
+    mean_orig = torch_log_normal.mean.detach().clone()
+    std_aux_orig = torch_log_normal.std_aux.detach().clone()
 
-        mean_orig = torch_log_normal.mean.detach().clone()
-        std_aux_orig = torch_log_normal.std_aux.detach().clone()
+    optimizer = torch.optim.SGD(torch_log_normal.parameters(), lr=1)
+    optimizer.step()
 
-        optimizer = torch.optim.SGD(torch_log_normal.parameters(), lr=1)
+    # make sure that parameters are correctly updated
+    tc.assertTrue(torch.allclose(mean_orig - torch_log_normal.mean.grad, torch_log_normal.mean))
+    tc.assertTrue(
+        torch.allclose(
+            std_aux_orig - torch_log_normal.std_aux.grad,
+            torch_log_normal.std_aux,
+        )
+    )
+
+    # verify that distribution parameters match parameters
+    tc.assertTrue(torch.allclose(torch_log_normal.mean, torch_log_normal.dist.loc))
+    tc.assertTrue(torch.allclose(torch_log_normal.std, torch_log_normal.dist.scale))
+
+def test_gradient_optimization(do_for_all_backends):
+    torch.set_default_dtype(torch.float64)
+
+    if do_for_all_backends == "numpy":
+        return
+
+    # initialize distribution
+    torch_log_normal = LogNormal(Scope([0]), mean=1.0, std=2.0)
+
+    torch.manual_seed(0)
+
+    # create dummy data
+    data = torch.distributions.LogNormal(0.0, 1.0).sample((100000, 1))
+
+    # initialize gradient optimizer
+    optimizer = torch.optim.SGD(torch_log_normal.parameters(), lr=0.5, momentum=0.5)
+
+    # perform optimization (possibly overfitting)
+    for i in range(20):
+
+        # clear gradients
+        optimizer.zero_grad()
+
+        # compute negative log-likelihood
+        nll = -log_likelihood(torch_log_normal, data).mean()
+        nll.backward()
+
+        # update parameters
         optimizer.step()
 
-        # make sure that parameters are correctly updated
-        self.assertTrue(torch.allclose(mean_orig - torch_log_normal.mean.grad, torch_log_normal.mean))
-        self.assertTrue(
-            torch.allclose(
-                std_aux_orig - torch_log_normal.std_aux.grad,
-                torch_log_normal.std_aux,
-            )
-        )
+    tc.assertTrue(torch.allclose(torch_log_normal.mean, tl.tensor(0.0, dtype=tl.float64), atol=1e-3, rtol=0.3))
+    tc.assertTrue(torch.allclose(torch_log_normal.std, tl.tensor(1.0, dtype=tl.float64), atol=1e-3, rtol=0.3))
 
-        # verify that distribution parameters match parameters
-        self.assertTrue(torch.allclose(torch_log_normal.mean, torch_log_normal.dist.loc))
-        self.assertTrue(torch.allclose(torch_log_normal.std, torch_log_normal.dist.scale))
+def test_likelihood_marginalization(do_for_all_backends):
 
-    def test_gradient_optimization(self):
+    log_normal = LogNormal(Scope([0]), 0.0, 1.0)
+    data = tl.tensor([[float("nan")]])
 
-        # initialize distribution
-        torch_log_normal = LogNormal(Scope([0]), mean=1.0, std=2.0)
+    # should not raise and error and should return 1
+    probs = likelihood(log_normal, data)
 
-        torch.manual_seed(0)
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor(1.0)))
 
-        # create dummy data
-        data = torch.distributions.LogNormal(0.0, 1.0).sample((100000, 1))
+def test_support(do_for_all_backends):
 
-        # initialize gradient optimizer
-        optimizer = torch.optim.SGD(torch_log_normal.parameters(), lr=0.5, momentum=0.5)
+    # Support for Log-Normal distribution: floats (0,inf)
 
-        # perform optimization (possibly overfitting)
-        for i in range(20):
+    log_normal = LogNormal(Scope([0]), 0.0, 1.0)
 
-            # clear gradients
-            optimizer.zero_grad()
+    # check infinite values
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        log_normal,
+        tl.tensor([[float("inf")]]),
+    )
+    tc.assertRaises(
+        ValueError,
+        log_likelihood,
+        log_normal,
+        tl.tensor([[-float("inf")]]),
+    )
 
-            # compute negative log-likelihood
-            nll = -log_likelihood(torch_log_normal, data).mean()
-            nll.backward()
+    # invalid float values
+    tc.assertRaises(ValueError, log_likelihood, log_normal, tl.tensor([[0]]))
 
-            # update parameters
-            optimizer.step()
+    # valid float values
+    log_likelihood(
+        log_normal,
+        tl.tensor([[np.nextafter(tl.tensor(0.0), tl.tensor(1.0))]]),
+    )
+    log_likelihood(log_normal, tl.tensor([[4.3]]))
 
-        self.assertTrue(torch.allclose(torch_log_normal.mean, torch.tensor(0.0), atol=1e-3, rtol=0.3))
-        self.assertTrue(torch.allclose(torch_log_normal.std, torch.tensor(1.0), atol=1e-3, rtol=0.3))
+def test_update_backend(do_for_all_backends):
+    backends = ["numpy", "pytorch"]
+    mean = random.random()
+    std = random.random() + 1e-7  # offset by small number to avoid zero
 
-    def test_likelihood_marginalization(self):
+    log_normal = LogNormal(Scope([0]), mean, std)
 
-        log_normal = LogNormal(Scope([0]), 0.0, 1.0)
-        data = torch.tensor([[float("nan")]])
+    # create dummy input data (batch size x random variables)
+    data = np.random.rand(3, 1)
 
-        # should not raise and error and should return 1
-        probs = likelihood(log_normal, data)
+    log_probs = log_likelihood(log_normal, tl.tensor(data))
 
-        self.assertTrue(torch.allclose(probs, torch.tensor(1.0)))
-
-    def test_support(self):
-
-        # Support for Log-Normal distribution: floats (0,inf)
-
-        log_normal = LogNormal(Scope([0]), 0.0, 1.0)
-
-        # check infinite values
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            log_normal,
-            torch.tensor([[float("inf")]]),
-        )
-        self.assertRaises(
-            ValueError,
-            log_likelihood,
-            log_normal,
-            torch.tensor([[-float("inf")]]),
-        )
-
-        # invalid float values
-        self.assertRaises(ValueError, log_likelihood, log_normal, torch.tensor([[0]]))
-
-        # valid float values
-        log_likelihood(
-            log_normal,
-            torch.tensor([[torch.nextafter(torch.tensor(0.0), torch.tensor(1.0))]]),
-        )
-        log_likelihood(log_normal, torch.tensor([[4.3]]))
-
-    def test_update_backend(self):
-        backends = ["numpy", "pytorch"]
-        mean = random.random()
-        std = random.random() + 1e-7  # offset by small number to avoid zero
-
-        log_normal = LogNormal(Scope([0]), mean, std)
-
-        # create dummy input data (batch size x random variables)
-        data = np.random.rand(3, 1)
-
-        log_probs = log_likelihood(log_normal, tl.tensor(data))
-
-        # make sure that probabilities match python backend probabilities
-        for backend in backends:
-            tl.set_backend(backend)
+    # make sure that probabilities match python backend probabilities
+    for backend in backends:
+        with tl.backend_context(backend):
             log_normal_updated = updateBackend(log_normal)
             log_probs_updated = log_likelihood(log_normal_updated, tl.tensor(data))
             # check conversion from torch to python
-            self.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
 if __name__ == "__main__":

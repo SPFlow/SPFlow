@@ -99,7 +99,6 @@ class Module(MetaModule, ABC):
         return modules
 
     def parameters(self):
-        print("leafnode")
         return self.get_trainable_params()
 
 
