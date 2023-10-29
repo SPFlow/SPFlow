@@ -7,63 +7,63 @@ from scipy.stats import rankdata as scipy_rankdata
 
 from spflow.torch.utils import rankdata
 
+tc = unittest.TestCase()
 
-class TestNode(unittest.TestCase):
-    @classmethod
-    def setup_class(cls):
-        torch.set_default_dtype(torch.float64)
+def test_rankdata_min(do_for_all_backends):
+    if do_for_all_backends == "numpy":
+        return
 
-    @classmethod
-    def teardown_class(cls):
-        torch.set_default_dtype(torch.float32)
+    np.random.seed(0)
+    torch.manual_seed(0)
+    random.seed(0)
 
-    def test_rankdata_min(self):
+    # generate data
+    data = np.random.randn(100, 5)
+    # make sure that some elements are identical (to check tie-breaking)
+    data[:10] = data[-10:]
 
-        np.random.seed(0)
-        torch.manual_seed(0)
-        random.seed(0)
+    ranks_scipy = scipy_rankdata(data, axis=0, method="min")
+    ranks_torch = rankdata(torch.tensor(data), method="min")
 
-        # generate data
-        data = np.random.randn(100, 5)
-        # make sure that some elements are identical (to check tie-breaking)
-        data[:10] = data[-10:]
+    tc.assertTrue(np.all(ranks_scipy == ranks_torch.numpy()))
 
-        ranks_scipy = scipy_rankdata(data, axis=0, method="min")
-        ranks_torch = rankdata(torch.tensor(data), method="min")
+def test_rankdata_max(do_for_all_backends):
 
-        self.assertTrue(np.all(ranks_scipy == ranks_torch.numpy()))
+    if do_for_all_backends == "numpy":
+        return
 
-    def test_rankdata_max(self):
+    np.random.seed(0)
+    torch.manual_seed(0)
+    random.seed(0)
 
-        np.random.seed(0)
-        torch.manual_seed(0)
-        random.seed(0)
+    # generate data
+    data = np.random.randn(100, 5)
+    # make sure that some elements are identical (to check tie-breaking)
+    data[:10] = data[-10:]
 
-        # generate data
-        data = np.random.randn(100, 5)
-        # make sure that some elements are identical (to check tie-breaking)
-        data[:10] = data[-10:]
+    ranks_scipy = scipy_rankdata(data, axis=0, method="max")
+    ranks_torch = rankdata(torch.tensor(data), method="max")
 
-        ranks_scipy = scipy_rankdata(data, axis=0, method="max")
-        ranks_torch = rankdata(torch.tensor(data), method="max")
+    tc.assertTrue(np.all(ranks_scipy == ranks_torch.numpy()))
 
-        self.assertTrue(np.all(ranks_scipy == ranks_torch.numpy()))
+def test_rankdata_average(do_for_all_backends):
 
-    def test_rankdata_average(self):
+    if do_for_all_backends == "numpy":
+        return
 
-        np.random.seed(0)
-        torch.manual_seed(0)
-        random.seed(0)
+    np.random.seed(0)
+    torch.manual_seed(0)
+    random.seed(0)
 
-        # generate data
-        data = np.random.randn(100, 5)
-        # make sure that some elements are identical (to check tie-breaking)
-        data[:10] = data[-10:]
+    # generate data
+    data = np.random.randn(100, 5)
+    # make sure that some elements are identical (to check tie-breaking)
+    data[:10] = data[-10:]
 
-        ranks_scipy = scipy_rankdata(data, axis=0, method="average")
-        ranks_torch = rankdata(torch.tensor(data), method="average")
+    ranks_scipy = scipy_rankdata(data, axis=0, method="average")
+    ranks_torch = rankdata(torch.tensor(data), method="average")
 
-        self.assertTrue(np.all(ranks_scipy == ranks_torch.numpy()))
+    tc.assertTrue(np.all(ranks_scipy == ranks_torch.numpy()))
 
 
 if __name__ == "__main__":
