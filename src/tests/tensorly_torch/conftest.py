@@ -9,9 +9,9 @@ CONFIG_VALUE = "pytorch"
 
 
 @fixture(
-    scope="session",
+    scope="function", # function?
     autouse=True,
-    params=["numpy", "pytorch"],
+    params=["numpy", "pytorch"], # test only numpy
 )
 def do_for_all_backends(request) -> Callable:
     backend_name = request.param

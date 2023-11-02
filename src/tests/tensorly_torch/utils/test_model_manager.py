@@ -81,5 +81,7 @@ def test_load_model(do_for_all_backends):
     if os.path.exists(filename):
         os.remove(filename)
 
+# test inference
+
 if __name__ == "__main__":
     unittest.main()
