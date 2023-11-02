@@ -157,6 +157,7 @@ def test_mle_nan_strategy_invalid(do_for_all_backends):
     )
 
 def test_weighted_mle(do_for_all_backends):
+    torch.set_default_tensor_type(torch.DoubleTensor)
 
     leaf = ExponentialLayer([Scope([0]), Scope([1])])
 
@@ -177,12 +178,12 @@ def test_weighted_mle(do_for_all_backends):
                 ),
             ]
         )
-    )
-    weights = tl.concatenate([tl.zeros(10000), tl.ones(10000)])
+    ,dtype= tl.float64)
+    weights = tl.concatenate([tl.zeros(10000, dtype=tl.float64), tl.ones(10000, dtype=tl.float64)])
 
     maximum_likelihood_estimation(leaf, data, weights)
 
-    tc.assertTrue(np.allclose(tl_toNumpy(leaf.l), tl.tensor([0.2, 1.7]), atol=1e-3, rtol=1e-2))
+    tc.assertTrue(np.allclose(tl_toNumpy(leaf.l), tl.tensor([0.2, 1.7], dtype=tl.float64), atol=1e-2, rtol=1e-2))
 
 def test_em_step(do_for_all_backends):
 

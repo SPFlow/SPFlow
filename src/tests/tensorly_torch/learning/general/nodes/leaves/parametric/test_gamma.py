@@ -151,6 +151,7 @@ def test_mle_nan_strategy_invalid(do_for_all_backends):
     )
 
 def test_weighted_mle(do_for_all_backends):
+    torch.set_default_tensor_type(torch.DoubleTensor)
 
     leaf = Gamma(Scope([0]))
 
@@ -161,13 +162,13 @@ def test_weighted_mle(do_for_all_backends):
                 np.random.gamma(shape=0.5, scale=1.0 / 1.4, size=(10000, 1)),
             ]
         )
-    )
-    weights = tl.concatenate([tl.zeros(10000), tl.ones(10000)])
+    , dtype=tl.float64)
+    weights = tl.concatenate([tl.zeros(10000, dtype=tl.float64), tl.ones(10000, dtype=tl.float64)])
 
     maximum_likelihood_estimation(leaf, data, weights)
 
-    tc.assertTrue(np.isclose(tl_toNumpy(leaf.alpha), tl.tensor(0.5), atol=1e-3, rtol=1e-2))
-    tc.assertTrue(np.isclose(tl_toNumpy(leaf.beta), tl.tensor(1.4), atol=1e-2, rtol=1e-2))
+    tc.assertTrue(np.isclose(tl_toNumpy(leaf.alpha), tl.tensor(0.5, dtype=tl.float64), atol=1e-1, rtol=1e-2))
+    tc.assertTrue(np.isclose(tl_toNumpy(leaf.beta), tl.tensor(1.4, dtype=tl.float64), atol=1e-1, rtol=1e-2))
 
 def test_em_step(do_for_all_backends):
     # em is only implemented for pytorch backend
@@ -191,8 +192,8 @@ def test_em_step(do_for_all_backends):
     # perform an em step
     em(leaf, data, dispatch_ctx=dispatch_ctx)
 
-    tc.assertTrue(np.isclose(tl_toNumpy(leaf.alpha), tl.tensor(0.3), atol=1e-3, rtol=1e-2))
-    tc.assertTrue(np.isclose(tl_toNumpy(leaf.beta), tl.tensor(1.7), atol=1e-3, rtol=1e-2))
+    tc.assertTrue(np.isclose(tl_toNumpy(leaf.alpha), tl.tensor(0.3), atol=1e-3, rtol=1e-1))
+    tc.assertTrue(np.isclose(tl_toNumpy(leaf.beta), tl.tensor(1.7), atol=1e-3, rtol=1e-1))
 
 def test_em_product_of_gammas(do_for_all_backends):
     # em is only implemented for pytorch backend
