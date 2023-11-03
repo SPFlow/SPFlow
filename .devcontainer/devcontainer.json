@@ -1,0 +1,18 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/alpine
+{
+	"name": "SPFlow Development",
+
+	"image": "pytorch/pytorch:latest",  // the Docker image to use
+	"postCreateCommand": "apt-get update -qq && apt-get install git -yqq && pip install -e .[dev]",
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"tamasfe.even-better-toml",
+				"ms-python.python",
+				"charliermarsh.ruff"
+			]
+		}
+	}
+}
