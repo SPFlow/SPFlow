@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.12
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: '3.11'
           cache: 'pip' # caching pip dependencies
           cache-dependency-path: |
             **/pyproject.toml
@@ -31,10 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.12
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: '3.11'
           cache: 'pip' # caching pip dependencies
           cache-dependency-path: |
             **/pyproject.toml
@@ -51,7 +51,7 @@ jobs:
     strategy:
       fail-fast: false  # Don't fail fast to explore which configurations fail
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11']  # 3.12 is not yet supported by torch
         pytorch-version: ['1.11.0', '1.12.1', '1.13.1', '2.0.1', '2.1.0']
     steps:
       - uses: actions/checkout@v4
