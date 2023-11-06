@@ -26,7 +26,8 @@ jobs:
       - name: Lint with flake8
         run: ruff check src
 
-  "Check Format":
+  "Check_Format":
+    name: "Check Format"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
