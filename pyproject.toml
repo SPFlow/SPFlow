@@ -34,7 +34,7 @@ dependencies = [
     "plum-dispatch>=1.7.4",
     "numpy>=1.17.4",
     "scipy>=1.5.0",
-    "torch>=1.10.2",
+    "torch>=1.11.0",
     "scikit-learn>=1.0",
     "tensorly>=0.8.0",
 ]
@@ -59,7 +59,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--color=yes --doctest-modules --cov=spflow"
+addopts = " --color=yes --doctest-modules --cov=spflow"
 testpaths = [
     # for the doctests:
     "src/spflow",
