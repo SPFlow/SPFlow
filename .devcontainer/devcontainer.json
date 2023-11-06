@@ -1,9 +1,8 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/alpine
+// For format details, see https://aka.ms/devcontainer.json.
 {
 	"name": "SPFlow Development",
 
-	"image": "pytorch/pytorch:latest",  // the Docker image to use
+	"image": "pytorch/pytorch:latest",
 	"postCreateCommand": "apt-get update -qq && apt-get install git -yqq && pip install -e .[dev]",
 
 	"customizations": {
