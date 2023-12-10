@@ -156,6 +156,120 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(np.allclose(samples_mean, samples_mean_updated, atol=0.1, rtol=0.1))
 
 
+def test_change_dtype(do_for_all_backends):
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+    torch.set_default_dtype(torch.float32)
+
+    layer = SumNode(
+        children=[
+            SumNode(
+                children=[
+                    ProductNode(
+                        children=[
+                            Gaussian(Scope([0]), -7.0, 1.0),
+                            Gaussian(Scope([1]), 7.0, 1.0),
+                        ],
+                    ),
+                    ProductNode(
+                        children=[
+                            Gaussian(Scope([0]), -5.0, 1.0),
+                            Gaussian(Scope([1]), 5.0, 1.0),
+                        ],
+                    ),
+                ],
+                weights=[0.2, 0.8],
+            ),
+            SumNode(
+                children=[
+                    ProductNode(
+                        children=[
+                            Gaussian(Scope([0]), -3.0, 1.0),
+                            Gaussian(Scope([1]), 3.0, 1.0),
+                        ],
+                    ),
+                    ProductNode(
+                        children=[
+                            Gaussian(Scope([0]), -1.0, 1.0),
+                            Gaussian(Scope([1]), 1.0, 1.0),
+                        ],
+                    ),
+                ],
+                weights=[0.6, 0.4],
+            ),
+        ],
+        weights=[0.7, 0.3],
+    )
+
+    samples = sample(layer, 1000)
+    tc.assertTrue(samples.dtype == tl.float32)
+    layer.to_dtype(tl.float64)
+
+    samples = sample(layer, 10000)
+    tc.assertTrue(samples.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = SumNode(
+        children=[
+            SumNode(
+                children=[
+                    ProductNode(
+                        children=[
+                            Gaussian(Scope([0]), -7.0, 1.0),
+                            Gaussian(Scope([1]), 7.0, 1.0),
+                        ],
+                    ),
+                    ProductNode(
+                        children=[
+                            Gaussian(Scope([0]), -5.0, 1.0),
+                            Gaussian(Scope([1]), 5.0, 1.0),
+                        ],
+                    ),
+                ],
+                weights=[0.2, 0.8],
+            ),
+            SumNode(
+                children=[
+                    ProductNode(
+                        children=[
+                            Gaussian(Scope([0]), -3.0, 1.0),
+                            Gaussian(Scope([1]), 3.0, 1.0),
+                        ],
+                    ),
+                    ProductNode(
+                        children=[
+                            Gaussian(Scope([0]), -1.0, 1.0),
+                            Gaussian(Scope([1]), 1.0, 1.0),
+                        ],
+                    ),
+                ],
+                weights=[0.6, 0.4],
+            ),
+        ],
+        weights=[0.7, 0.3],
+    )
+
+    samples = sample(layer, 1000)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer.to_device, cuda)
+        return
+
+    tc.assertTrue(samples.device.type == "cpu")
+    layer.to_device(cuda)
+
+    samples = sample(layer, 10000)
+    tc.assertTrue(samples.device.type == "cuda")
+
+
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

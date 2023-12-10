@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import Callable, Iterable, List, Optional, Union
 
 import tensorly as tl
-from ....utils.helper_functions import tl_isclose,tl_isinstance
+from ....utils.helper_functions import tl_isclose,tl_isinstance, tl_to
 from spflow.meta.structure import MetaModule
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.spn.nodes.product_node import Node
@@ -132,7 +132,7 @@ class CondSumNode(Node):
 
         # check if value for 'weights' is valid
         if isinstance(weights, list) or not(tl_isinstance(weights)):
-            weights = tl.tensor(weights)
+            weights = tl.tensor(weights, dtype=self.dtype, device=self.device)
         if tl.ndim(weights) != 1:
             raise ValueError(
                 f"Numpy array of weight values for 'CondSumNode' is expected to be one-dimensional, but is {tl.ndim(weights)}-dimensional."
@@ -144,7 +144,7 @@ class CondSumNode(Node):
         if not (len(weights) == self.n_in):
             raise ValueError("Number of weights for 'CondCondSumNode' does not match total number of child outputs.")
 
-        return weights
+        return tl_to(weights, self.dtype, self.device)#tl.tensor(weights, **tl.context(weights))
 
 
 @dispatch(memoize=True)  # type: ignore

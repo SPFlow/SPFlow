@@ -21,14 +21,14 @@ def test_likelihood_no_p(do_for_all_backends):
     tc.assertRaises(ValueError, log_likelihood, binomial, tl.tensor([[0], [1]]))
 
 def test_likelihood_module_cond_f(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     cond_f = lambda data: {"p": [0.8, 0.5]}
 
     binomial = CondBinomialLayer(Scope([0], [1]), n=1, n_nodes=2, cond_f=cond_f)
 
     # create test inputs/outputs
-    data = tl.tensor([[0], [1]], dtype=tl.float64)
+    data = tl.tensor([[0], [1]], dtype=tl.float32)
     targets = tl.tensor([[0.2, 0.5], [0.8, 0.5]], dtype=tl.float64)
 
     probs = likelihood(binomial, data)
@@ -38,7 +38,7 @@ def test_likelihood_module_cond_f(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
 def test_likelihood_args_p(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     binomial = CondBinomialLayer(Scope([0], [1]), n=1, n_nodes=2)
 
@@ -46,7 +46,7 @@ def test_likelihood_args_p(do_for_all_backends):
     dispatch_ctx.args[binomial] = {"p": [0.8, 0.5]}
 
     # create test inputs/outputs
-    data = tl.tensor([[0], [1]], dtype=tl.float64)
+    data = tl.tensor([[0], [1]], dtype=tl.float32)
     targets = tl.tensor([[0.2, 0.5], [0.8, 0.5]], dtype=tl.float64)
 
     probs = likelihood(binomial, data, dispatch_ctx=dispatch_ctx)
@@ -56,7 +56,7 @@ def test_likelihood_args_p(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
 def test_likelihood_args_cond_f(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     bernoulli = CondBinomialLayer(Scope([0], [1]), n=1, n_nodes=2)
 
@@ -66,7 +66,7 @@ def test_likelihood_args_cond_f(do_for_all_backends):
     dispatch_ctx.args[bernoulli] = {"cond_f": cond_f}
 
     # create test inputs/outputs
-    data = tl.tensor([[0], [1]], dtype=tl.float64)
+    data = tl.tensor([[0], [1]], dtype=tl.float32)
     targets = tl.tensor([[0.2, 0.5], [0.8, 0.5]], dtype=tl.float64)
 
     probs = likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
@@ -76,7 +76,7 @@ def test_likelihood_args_cond_f(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
 def test_layer_likelihood(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     layer = CondBinomialLayer(
         scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
@@ -98,7 +98,7 @@ def test_layer_likelihood(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(nodes_ll)))
 
 def test_gradient_computation(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     if do_for_all_backends == "numpy":
         return
@@ -127,7 +127,7 @@ def test_gradient_computation(do_for_all_backends):
     tc.assertTrue(p.grad is not None)
 
 def test_likelihood_marginalization(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     binomial = CondBinomialLayer(
         scope=[Scope([0], [2]), Scope([1], [2])],
@@ -146,7 +146,7 @@ def test_support(do_for_all_backends):
     pass
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     cond_f = lambda data: {"p": [0.8, 0.5]}
 
@@ -166,6 +166,36 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
+def test_change_dtype(do_for_all_backends):
+    cond_f = lambda data: {"p": [0.8, 0.5]}
+
+    layer = CondBinomialLayer(Scope([0], [1]), n=1, n_nodes=2, cond_f=cond_f)
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]], dtype=tl.float32)
+    layer_ll = log_likelihood(layer, dummy_data)
+    tc.assertTrue(layer_ll.dtype == tl.float32)
+    layer.to_dtype(tl.float64)
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]], dtype=tl.float64)
+    layer_ll_up = log_likelihood(layer, dummy_data)
+    tc.assertTrue(layer_ll_up.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    cond_f = lambda data: {"p": [0.8, 0.5]}
+
+    layer = CondBinomialLayer(Scope([0], [1]), n=1, n_nodes=2, cond_f=cond_f)
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]])
+    layer_ll = log_likelihood(layer, dummy_data)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer.to_device, cuda)
+        return
+    tc.assertTrue(layer_ll.device.type == "cpu")
+    layer.to_device(cuda)
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]], device=cuda)
+    layer_ll = log_likelihood(layer, dummy_data)
+    tc.assertTrue(layer_ll.device.type == "cuda")
+
+
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

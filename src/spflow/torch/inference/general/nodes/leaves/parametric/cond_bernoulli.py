@@ -63,7 +63,7 @@ def log_likelihood(
     p = leaf.retrieve_params(data, dispatch_ctx)
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, 1).to(p.device)
+    log_prob: torch.Tensor = torch.empty(batch_size, 1).type(leaf.dtype).to(leaf.device)
 
     # ----- marginalization -----
 
@@ -82,6 +82,6 @@ def log_likelihood(
             raise ValueError(f"Encountered data instances that are not in the support of the Bernoulli distribution.")
 
     # compute probabilities for values inside distribution support
-    log_prob[~marg_ids] = leaf.dist(p=p).log_prob(scope_data[~marg_ids].type(torch.get_default_dtype()))
+    log_prob[~marg_ids] = leaf.dist(p=p).log_prob(scope_data[~marg_ids])
 
     return log_prob

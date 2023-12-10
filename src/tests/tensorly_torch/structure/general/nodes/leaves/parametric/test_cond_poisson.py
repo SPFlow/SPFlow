@@ -39,13 +39,13 @@ def test_retrieve_params(do_for_all_backends):
     poisson = CondPoisson(Scope([0], [1]))
 
     # l = 0
-    poisson.set_cond_f(lambda data: {"l": tl.tensor(0.0)})
+    poisson.set_cond_f(lambda data: {"l": tl.tensor(0.0, dtype=tl.float32)})
     tc.assertTrue(poisson.retrieve_params(np.array([[1.0]]), DispatchContext()) == tl.tensor(0.0))
     # l > 0
-    poisson.set_cond_f(lambda data: {"l": tl_nextafter(tl.tensor(0.0), tl.tensor(1.0))})
+    poisson.set_cond_f(lambda data: {"l": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32))})
     tc.assertTrue(
         poisson.retrieve_params(np.array([[1.0]]), DispatchContext())
-        == tl_nextafter(tl.tensor(0.0), tl.tensor(1.0))
+        == tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32))
     )
     # l = -inf and l = inf
     poisson.set_cond_f(lambda data: {"l": tl.tensor(float("inf"))})
@@ -175,6 +175,66 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(np.all(cond_poisson.scopes_out == cond_poisson_updated.scopes_out))
 
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    model_default = CondPoisson(Scope([0], [1]), cond_f=lambda x: {"l": 1.0})
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+
+    tc.assertTrue(model_default.dtype == tl.float32)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(param, float))
+    else:
+        tc.assertTrue(param.dtype == tl.float32)
+
+    # change to float64 model
+    model_updated = CondPoisson(Scope([0], [1]), cond_f=lambda x: {"l": 1.0})
+    model_updated.to_dtype(tl.float64)
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    tc.assertTrue(model_updated.dtype == tl.float64)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(param_up, float))
+    else:
+        tc.assertTrue(param_up.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([param]),
+            np.array([param_up]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    p = random.random()
+    torch.set_default_dtype(torch.float32)
+    model_default = CondPoisson(Scope([0], [1]), cond_f=lambda x: {"l": 1.0})
+    model_updated = CondPoisson(Scope([0], [1]), cond_f=lambda x: {"l": 1.0})
+    # put model on gpu
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, model_updated.to_device, cuda)
+        return
+
+    model_updated.to_device(cuda)
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+
+
+
+    tc.assertTrue(model_default.device.type == "cpu")
+    tc.assertTrue(model_updated.device.type == "cuda")
+
+    tc.assertTrue(param.device.type == "cpu")
+    tc.assertTrue(param_up.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([param]),
+            np.array([param_up.cpu()]),
+        )
+    )
+
+
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

@@ -6,7 +6,7 @@ from typing import Callable, Iterable, List, Optional, Union
 import numpy as np
 import torch
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import tl_stack, tl_allclose, tl_isinstance, T
+from spflow.tensorly.utils.helper_functions import tl_stack, tl_allclose, tl_isinstance, T, tl_to
 
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
@@ -179,19 +179,19 @@ class CondSumLayer(Module):
         if weights is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                weights = tl.tensor([f(data)["weights"] for f in cond_f], dtype=tl.float64)
+                weights = tl.tensor([f(data)["weights"] for f in cond_f], dtype=self.dtype, device=self.device)
             else:
                 weights = cond_f(data)["weights"]
 
         if isinstance(weights, list) or isinstance(weights, np.ndarray):
-            weights = tl.tensor(weights, dtype=tl.float64)
+            weights = tl.tensor(weights, dtype=self.dtype, device=self.device)
         if weights.ndim != 1 and weights.ndim != 2:
             raise ValueError(
                 f"Torch tensor of weight values for 'CondSumLayer' is expected to be one- or two-dimensional, but is {weights.ndim}-dimensional."
             )
         if not tl.all(weights > 0):
             raise ValueError("Weights for 'SumLayer' must be all positive.")
-        if not tl_allclose(tl.sum(weights, axis=-1), tl.tensor(1.0)):
+        if not tl_allclose(tl.tensor(tl.sum(weights, axis=-1), dtype=self.dtype, device=self.device), tl.tensor(1.0, dtype=self.dtype, device=self.device)):
             raise ValueError("Weights for 'CondSumLayer' must sum up to one in last dimension.")
         if not (tl.shape(weights)[-1] == self.n_in):
             raise ValueError(
@@ -217,7 +217,7 @@ class CondSumLayer(Module):
                     f"Incorrect number of weights for 'CondSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {weights.shape[0]}."
                 )
 
-        return weights
+        return tl_to(weights, self.dtype, self.device)#tl.tensor(weights, **tl.context(weights))
 
 
 @dispatch(memoize=True)  # type: ignore

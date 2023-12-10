@@ -80,6 +80,7 @@ class BernoulliLayer(Module):
         super().__init__(children=[], **kwargs)
 
         # create leaf nodes
+        self.backend = "numpy"
         self.nodes = [Bernoulli(s) for s in scope]
 
         # compute scope
@@ -164,9 +165,9 @@ class BernoulliLayer(Module):
                 Defaults to 0.5.
         """
         if isinstance(p, int) or isinstance(p, float):
-            p = np.array([p for _ in range(self.n_out)])
+            p = np.array([p for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(p, list):
-            p = np.array(p)
+            p = np.array(p, dtype=self.dtype)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'BernoulliLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -176,6 +177,7 @@ class BernoulliLayer(Module):
                 f"Length of numpy array of 'p' values for 'BernoulliLayer' must match number of output nodes {self.n_out}, but is {p.shape[0]}"
             )
         for node_p, node in zip(p, self.nodes):
+            node.dtype = self.dtype
             node.set_params(node_p)
 
     def get_params(self) -> Tuple[np.ndarray]:
@@ -230,6 +232,12 @@ class BernoulliLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.p.astype(dtype))
+
+
 
 
 @dispatch(memoize=True)  # type: ignore

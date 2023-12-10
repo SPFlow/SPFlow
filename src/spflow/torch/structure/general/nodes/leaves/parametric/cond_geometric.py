@@ -192,13 +192,13 @@ class CondGeometric(LeafNode):
             p = cond_f(data)["p"]
 
         if isinstance(p, float):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=self.dtype, device=self.device)
 
         # check if value for 'p' is valid
         if p <= 0.0 or p > 1.0 or not torch.isfinite(p):
             raise ValueError(f"Value of 'p' for 'CondGeometric' must to be between 0.0 and 1.0, but was: {p}")
 
-        return p
+        return p.type(self.dtype).to(self.device)
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -237,7 +237,7 @@ class CondGeometric(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
         # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch
         valid[~nan_mask] = self.dist(torch.tensor(0.5)).support.check(scope_data[~nan_mask] - 1).squeeze(-1)  # type: ignore
 

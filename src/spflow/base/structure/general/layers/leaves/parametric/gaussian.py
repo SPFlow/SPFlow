@@ -86,6 +86,8 @@ class GaussianLayer(Module):
 
         super().__init__(children=[], **kwargs)
 
+        self.backend = "numpy"
+
         # create leaf nodes
         self.nodes = [Gaussian(s, 0.0, 1.0) for s in scope]
 
@@ -103,12 +105,12 @@ class GaussianLayer(Module):
     @property
     def mean(self) -> np.ndarray:
         """Returns the means of the represented distributions."""
-        return np.array([node.mean for node in self.nodes])
+        return np.array([node.mean for node in self.nodes], dtype=self.dtype)
 
     @property
     def std(self) -> np.ndarray:
         """Returns the standard deviations of the represented distributions."""
-        return np.array([node.std for node in self.nodes])
+        return np.array([node.std for node in self.nodes], dtype=self.dtype)
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -189,9 +191,9 @@ class GaussianLayer(Module):
                 Defaults to 1.0.
         """
         if isinstance(mean, int) or isinstance(mean, float):
-            mean = np.array([mean for _ in range(self.n_out)])
+            mean = np.array([mean for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(mean, list):
-            mean = np.array(mean)
+            mean = np.array(mean, dtype=self.dtype)
         if mean.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'mean' values for 'GaussianLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional."
@@ -202,9 +204,9 @@ class GaussianLayer(Module):
             )
 
         if isinstance(std, int) or isinstance(std, float):
-            std = np.array([float(std) for _ in range(self.n_out)])
+            std = np.array([float(std) for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(std, list):
-            std = np.array(std)
+            std = np.array(std, dtype=self.dtype)
         if std.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'std' values for 'GaussianLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional."
@@ -215,6 +217,7 @@ class GaussianLayer(Module):
             )
 
         for node_mean, node_std, node in zip(mean, std, self.nodes):
+            node.dtype = self.dtype
             node.set_params(node_mean, node_std)
 
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -269,6 +272,10 @@ class GaussianLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.mean.astype(dtype), self.std.astype(dtype))
 
 
 @dispatch(memoize=True)  # type: ignore

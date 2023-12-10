@@ -98,10 +98,10 @@ class UniformLayer(Module):
         #self.register_buffer("end", torch.empty(size=[]))
         #self.register_buffer("end_next", torch.empty(size=[]))
         #self.register_buffer("support_outside", torch.empty(size=[]))
-        self.start = torch.empty(size=[])
-        self.end = torch.empty(size=[])
-        self.end_next = torch.empty(size=[])
-        self.support_outside = torch.empty(size=[])
+        self.start = torch.empty(size=[], dtype=self.dtype, device=self.device)
+        self.end = torch.empty(size=[], dtype=self.dtype, device=self.device)
+        self.end_next = torch.empty(size=[], dtype=self.dtype, device=self.device)
+        self.support_outside = torch.empty(size=[], dtype=self.dtype, device=self.device)
 
         # compute scope
         self.scopes_out = scope
@@ -194,9 +194,9 @@ class UniformLayer(Module):
     ) -> None:
 
         if isinstance(start, int) or isinstance(start, float):
-            start = torch.tensor([start for _ in range(self.n_out)])
+            start = torch.tensor([start for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(start, list) or isinstance(start, np.ndarray):
-            start = torch.tensor(start)
+            start = torch.tensor(start, dtype=self.dtype, device=self.device)
         if start.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'start' values for 'UniformLayer' is expected to be one-dimensional, but is {start.ndim}-dimensional."
@@ -210,9 +210,9 @@ class UniformLayer(Module):
             raise ValueError(f"Values of 'start' for 'UniformLayer' must be finite, but was: {start}")
 
         if isinstance(end, int) or isinstance(end, float):
-            end = torch.tensor([end for _ in range(self.n_out)])
+            end = torch.tensor([end for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(end, list) or isinstance(end, np.ndarray):
-            end = torch.tensor(end)
+            end = torch.tensor(end, dtype=self.dtype, device=self.device)
         if end.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'end' values for 'UniformLayer' is expected to be one-dimensional, but is {end.ndim}-dimensional."
@@ -231,9 +231,9 @@ class UniformLayer(Module):
             )
 
         if isinstance(support_outside, bool):
-            support_outside = torch.tensor([support_outside for _ in range(self.n_out)])
+            support_outside = torch.tensor([support_outside for _ in range(self.n_out)], device=self.device)
         elif isinstance(support_outside, list) or isinstance(support_outside, np.ndarray):
-            support_outside = torch.tensor(support_outside)
+            support_outside = torch.tensor(support_outside, device=self.device)
         if support_outside.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'support_outside' values for 'UniformLayer' is expected to be one-dimensional, but is {support_outside.ndim}-dimensional."
@@ -270,7 +270,7 @@ class UniformLayer(Module):
         Returns:
             Tuple of three one-dimensional PyTorch tensor representing the starts and ends of the intervals and the booleans indicating whether or not values outside of the intervals are part of the supports.
         """
-        return (self.start.detach().numpy(), self.end.detach().numpy(), self.support_outside.detach().numpy())
+        return (self.start.cpu().detach().numpy(), self.end.cpu().detach().numpy(), self.support_outside.cpu().detach().numpy())
 
     def check_support(
         self,
@@ -323,7 +323,7 @@ class UniformLayer(Module):
         # torch distribution support is an interval, despite representing a distribution over a half-open interval
         # end is adjusted to the next largest number to make sure that desired end is part of the distribution interval
         # may cause issues with the support check; easier to do a manual check instead
-        valid = torch.ones(scope_data.shape, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape, dtype=torch.bool, device=self.device)
 
         # check if values are within valid range
         valid &= (scope_data >= self.start[torch.tensor(node_ids)]) & (scope_data < self.end[torch.tensor(node_ids)])
@@ -337,6 +337,19 @@ class UniformLayer(Module):
         valid[~nan_mask & valid] &= ~(scope_data[~nan_mask & valid].isinf())
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.start.data = self.start.data.type(dtype)
+        self.end.data = self.end.data.type(dtype)
+        #self.support_outside.data = self.support_outside.data.type(dtype)
+
+    def to_device(self, device):
+        self.device = device
+        self.start.data = self.start.data.to(device)
+        self.end.data = self.end.data.to(device)
+        self.end_next.data = self.end_next.data.to(device)
+        self.support_outside.data = self.support_outside.data.to(device)
 
 
 @dispatch(memoize=True)  # type: ignore

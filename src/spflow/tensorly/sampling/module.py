@@ -89,7 +89,7 @@ def sample(
     """
     combined_module_scope = reduce(lambda s1, s2: s1.join(s2), module.scopes_out)
 
-    data = tl.tensor(tl_full((n, int(max(combined_module_scope.query) + 1)), tl.nan), dtype=tl.float64)
+    data = tl.tensor(tl_full((n, int(max(combined_module_scope.query) + 1)), tl.nan), dtype=module.dtype, device=module.device)
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, tl.shape(data)[0])

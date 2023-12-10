@@ -158,7 +158,69 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    mean = random.random()
+    std = random.random() + 1e-7  # offset by small number to avoid zero
+    model_default = Gaussian(Scope([0]), mean, std)
+    tc.assertTrue(model_default.dtype == tl.float32)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(model_default.mean, float))
+        tc.assertTrue(isinstance(model_default.std, float))
+    else:
+        tc.assertTrue(model_default.mean.dtype == tl.float32)
+        tc.assertTrue(model_default.std.dtype == tl.float32)
+
+    # change to float64 model
+    model_updated = Gaussian(Scope([0]), mean, std)
+    model_updated.to_dtype(tl.float64)
+    tc.assertTrue(model_updated.dtype == tl.float64)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(model_updated.mean, float))
+        tc.assertTrue(isinstance(model_updated.std, float))
+    else:
+        tc.assertTrue(model_updated.mean.dtype == tl.float64)
+        tc.assertTrue(model_updated.std.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*model_default.get_params()]),
+            np.array([*model_updated.get_params()]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    mean = random.random()
+    std = random.random() + 1e-7  # offset by small number to avoid zero
+    torch.set_default_dtype(torch.float32)
+    model_default = Gaussian(Scope([0]), mean, std)
+    model_updated = Gaussian(Scope([0]), mean, std)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, model_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    model_updated.to_device(cuda)
+
+    tc.assertTrue(model_default.device.type == "cpu")
+    tc.assertTrue(model_updated.device.type == "cuda")
+
+    tc.assertTrue(model_default.mean.device.type == "cpu")
+    tc.assertTrue(model_updated.mean.device.type == "cuda")
+
+    tc.assertTrue(model_default.std.device.type == "cpu")
+    tc.assertTrue(model_updated.std.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*model_default.get_params()]),
+            np.array([*model_updated.get_params()]),
+        )
+    )
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

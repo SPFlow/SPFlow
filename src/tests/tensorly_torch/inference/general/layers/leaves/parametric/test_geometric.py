@@ -94,7 +94,7 @@ def test_gradient_optimization(do_for_all_backends):
         # update parameters
         optimizer.step()
 
-    tc.assertTrue(torch.allclose(torch_geometric.p, tl.tensor(p_target, dtype=tl.float64), atol=1e-3, rtol=1e-3))
+    tc.assertTrue(torch.allclose(torch_geometric.p, tl.tensor(p_target, dtype=tl.float32), atol=1e-3, rtol=1e-3))
 
 def test_likelihood_marginalization(do_for_all_backends):
 
@@ -111,7 +111,7 @@ def test_support(do_for_all_backends):
     pass
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     layer = GeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 1.0, 0.3])
 
@@ -129,5 +129,5 @@ def test_update_backend(do_for_all_backends):
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

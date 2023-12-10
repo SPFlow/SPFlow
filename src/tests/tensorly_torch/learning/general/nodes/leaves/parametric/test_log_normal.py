@@ -341,7 +341,79 @@ def test_update_backend(do_for_all_backends):
                 tc.assertTrue(np.isclose(leaf_updated.get_params()[0], params_em, atol=1e-3, rtol=1e-2))
                 tc.assertTrue(np.isclose(leaf_updated.get_params()[1], params_em2, atol=1e-3, rtol=1e-2))
 
+def test_change_dtype(do_for_all_backends):
+    np.random.seed(0)
+    random.seed(0)
+
+    node = LogNormal(Scope([0]))
+    prod_node = ProductNode([node])
+
+    # simulate data
+    data = np.random.lognormal(mean=-1.7, sigma=0.2, size=(10000, 1))
+
+    # perform MLE
+    maximum_likelihood_estimation(node, tl.tensor(data, dtype=tl.float32))
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(node.mean, float))
+        tc.assertTrue(isinstance(node.std, float))
+    else:
+        tc.assertTrue(node.mean.dtype == tl.float32)
+        tc.assertTrue(node.std.dtype == tl.float32)
+
+    node.to_dtype(tl.float64)
+
+    dummy_data = tl.tensor(data, dtype=tl.float64)
+    maximum_likelihood_estimation(node, dummy_data)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(node.mean, float))
+        tc.assertTrue(isinstance(node.std, float))
+    else:
+        tc.assertTrue(node.mean.dtype == tl.float64)
+        tc.assertTrue(node.std.dtype == tl.float64)
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(NotImplementedError, expectation_maximization, prod_node, tl.tensor(data, dtype=tl.float64),
+                        max_steps=10)
+    else:
+        # test if em runs without error after dype change
+        expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    np.random.seed(0)
+    random.seed(0)
+
+    node = LogNormal(Scope([0]))
+    prod_node = ProductNode([node])
+
+    # simulate data
+    data = np.random.lognormal(mean=-1.7, sigma=0.2, size=(10000, 1))
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, node.to_device, cuda)
+        return
+
+    # perform MLE
+    maximum_likelihood_estimation(node, tl.tensor(data, dtype=tl.float32))
+
+    tc.assertTrue(node.mean.device.type == "cpu")
+    tc.assertTrue(node.std.device.type == "cpu")
+
+    node.to_device(cuda)
+
+    dummy_data = tl.tensor(data, dtype=tl.float32, device=cuda)
+
+    # perform MLE
+    maximum_likelihood_estimation(node, dummy_data)
+    tc.assertTrue(node.mean.device.type == "cuda")
+    tc.assertTrue(node.std.device.type == "cuda")
+
+    # test if em runs without error after device change
+    expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float32, device=cuda), max_steps=10)
+
 
 if __name__ == "__main__":
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

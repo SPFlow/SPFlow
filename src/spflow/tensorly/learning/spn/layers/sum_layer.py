@@ -38,7 +38,7 @@ def em(
 
     with torch.no_grad():
         # ----- expectation step -----
-        child_lls = torch.hstack([dispatch_ctx.cache["log_likelihood"][child] for child in layer.children()])
+        child_lls = torch.hstack([dispatch_ctx.cache["log_likelihood"][child] for child in layer.children])
 
         # TODO: output shape ?
         # get cached log-likelihood gradients w.r.t. module log-likelihoods
@@ -54,5 +54,5 @@ def em(
         # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
 
     # recursively call EM on children
-    for child in layer.children():
+    for child in layer.children:
         em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)

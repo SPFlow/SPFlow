@@ -89,6 +89,8 @@ class CondPoissonLayer(Module):
 
         super().__init__(children=[], **kwargs)
 
+        self.backend = "numpy"
+
         # create leaf nodes
         self.nodes = [CondPoisson(s) for s in scope]
 
@@ -223,14 +225,14 @@ class CondPoissonLayer(Module):
         if l is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                l = np.array([f(data)["l"] for f in cond_f])
+                l = np.array([f(data)["l"] for f in cond_f], dtype=self.dtype)
             else:
                 l = cond_f(data)["l"]
 
         if isinstance(l, int) or isinstance(l, float):
-            l = np.array([float(l) for _ in range(self.n_out)])
+            l = np.array([float(l) for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(l, list):
-            l = np.array(l)
+            l = np.array(l, dtype=self.dtype)
         if l.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'l' values for 'CondPoissonLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional."
@@ -288,6 +290,11 @@ class CondPoissonLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype=dtype
+        for node in self.nodes:
+            node.dtype = self.dtype
 
 
 @dispatch(memoize=True)  # type: ignore

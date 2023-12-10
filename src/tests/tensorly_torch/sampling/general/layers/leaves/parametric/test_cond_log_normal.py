@@ -84,6 +84,7 @@ def test_layer_sampling(do_for_all_backends):
     )
 
 def test_update_backend(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     # set seed
     torch.manual_seed(0)
@@ -136,7 +137,86 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+    torch.set_default_dtype(torch.float32)
+
+    layer = CondLogNormalLayer(
+        scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
+        cond_f=lambda data: {
+            "mean": [0.2, 1.8, 0.2],
+            "std": [0.01, 0.05, 0.01],
+        },
+    )
+
+    # get samples
+    samples = sample(
+        layer,
+        10000,
+        sampling_ctx=SamplingContext(
+            list(range(10000)),
+            [[0, 1] for _ in range(5000)] + [[2, 1] for _ in range(5000, 10000)],
+        ),
+    )
+
+    tc.assertTrue(samples.dtype == tl.float32)
+    layer.to_dtype(tl.float64)
+    samples = sample(
+        layer,
+        10000,
+        sampling_ctx=SamplingContext(
+            list(range(10000)),
+            [[0, 1] for _ in range(5000)] + [[2, 1] for _ in range(5000, 10000)],
+        ),
+    )
+    tc.assertTrue(samples.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = CondLogNormalLayer(
+        scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
+        cond_f=lambda data: {
+            "mean": [0.2, 1.8, 0.2],
+            "std": [0.01, 0.05, 0.01],
+        },
+    )
+
+    # get samples
+    samples = sample(
+        layer,
+        10000,
+        sampling_ctx=SamplingContext(
+            list(range(10000)),
+            [[0, 1] for _ in range(5000)] + [[2, 1] for _ in range(5000, 10000)],
+        ),
+    )
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer.to_device, cuda)
+        return
+
+    tc.assertTrue(samples.device.type == "cpu")
+    layer.to_device(cuda)
+    samples = sample(
+        layer,
+        10000,
+        sampling_ctx=SamplingContext(
+            list(range(10000)),
+            [[0, 1] for _ in range(5000)] + [[2, 1] for _ in range(5000, 10000)],
+        ),
+    )
+    tc.assertTrue(samples.device.type == "cuda")
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

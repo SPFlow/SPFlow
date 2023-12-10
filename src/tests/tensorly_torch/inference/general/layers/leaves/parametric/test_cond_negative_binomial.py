@@ -26,24 +26,24 @@ def test_likelihood_no_p(do_for_all_backends):
     )
 
 def test_likelihood_module_cond_f(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     cond_f = lambda data: {"p": [1.0, 1.0]}
 
     negative_binomial = CondNegativeBinomialLayer(Scope([0], [1]), n=2, n_nodes=2, cond_f=cond_f)
 
     # create test inputs/outputs
-    data = tl.tensor([[0.0], [1.0]], dtype=tl.float64)
-    targets = tl.tensor([[1.0, 1.0], [0.0, 0.0]], dtype=tl.float64)
+    data = tl.tensor([[0.0], [1.0]], dtype=tl.float32)
+    targets = tl.tensor([[1.0, 1.0], [0.0, 0.0]], dtype=tl.float32)
 
     probs = likelihood(negative_binomial, data)
     log_probs = log_likelihood(negative_binomial, data)
 
     tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
-    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets, atol=0.001, rtol=0.001))
 
 def test_likelihood_args_p(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     negative_binomial = CondNegativeBinomialLayer(Scope([0], [1]), n=2, n_nodes=2)
 
@@ -58,10 +58,10 @@ def test_likelihood_args_p(do_for_all_backends):
     log_probs = log_likelihood(negative_binomial, data, dispatch_ctx=dispatch_ctx)
 
     tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
-    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets, atol=0.001, rtol=0.001))
 
 def test_likelihood_args_cond_f(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     bernoulli = CondNegativeBinomialLayer(Scope([0], [1]), n=2, n_nodes=2)
 
@@ -78,10 +78,10 @@ def test_likelihood_args_cond_f(do_for_all_backends):
     log_probs = log_likelihood(bernoulli, data, dispatch_ctx=dispatch_ctx)
 
     tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
-    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets, atol=0.001, rtol=0.001))
 
 def test_layer_likelihood(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     layer = CondNegativeBinomialLayer(
         scope=[Scope([0], [2]), Scope([1], [2]), Scope([0], [2])],
@@ -103,7 +103,7 @@ def test_layer_likelihood(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(nodes_ll)))
 
 def test_gradient_computation(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     if do_for_all_backends == "numpy":
         return
@@ -135,7 +135,7 @@ def test_gradient_computation(do_for_all_backends):
     tc.assertTrue(p.grad is not None)
 
 def test_likelihood_marginalization(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     negative_binomial = CondNegativeBinomialLayer(
         scope=[Scope([0], [2]), Scope([1], [2])],
@@ -154,14 +154,14 @@ def test_support(do_for_all_backends):
     pass
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     cond_f = lambda data: {"p": [1.0, 1.0]}
 
     negative_binomial = CondNegativeBinomialLayer(Scope([0], [1]), n=2, n_nodes=2, cond_f=cond_f)
 
     # create test inputs/outputs
-    data = tl.tensor([[0.0], [1.0]], dtype=tl.float64)
+    data = tl.tensor([[0.0], [1.0]], dtype=tl.float32)
 
     probs = likelihood(negative_binomial, data)
 
@@ -171,9 +171,9 @@ def test_update_backend(do_for_all_backends):
             layer_updated = updateBackend(negative_binomial)
             probs_updated = likelihood(layer_updated, tl.tensor(data))
             # check conversion from torch to python
-            tc.assertTrue(np.allclose(tl_toNumpy(probs), tl_toNumpy(probs_updated)))
+            tc.assertTrue(np.allclose(tl_toNumpy(probs), tl_toNumpy(probs_updated), atol=0.001, rtol=0.001))
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

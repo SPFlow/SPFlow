@@ -77,7 +77,7 @@ def maximum_likelihood_estimation(
     scope_data = torch.hstack([data[:, scope.query] for scope in layer.scopes_out])
 
     if weights is None:
-        weights = torch.ones(data.shape[0], layer.n_out)
+        weights = torch.ones(data.shape[0], layer.n_out).type(layer.dtype).to(layer.device)
 
     if (
         (weights.ndim == 1 and weights.shape[0] != data.shape[0])
@@ -137,10 +137,10 @@ def maximum_likelihood_estimation(
         weights /= weights.sum(dim=0) / scope_data.shape[0]
 
         # total (weighted) number of instances times number of trials per instance
-        n_total = (weights.sum(dim=0) * layer.n).type(dtype=torch.get_default_dtype())
+        n_total = (weights.sum(dim=0) * layer.n).type(dtype=layer.dtype)
 
         # count (weighted) number of total successes
-        n_success = (weights * scope_data).sum(dim=0, dtype=torch.get_default_dtype())
+        n_success = (weights * scope_data).sum(dim=0, dtype=layer.dtype)
 
         # estimate (weighted) success probability
         p_est = n_success / n_total
@@ -150,8 +150,8 @@ def maximum_likelihood_estimation(
         )
 
     # edge case: if prob. 1 (or 0), set to smaller (or larger) value
-    p_est[torch.allclose(p_est, torch.tensor(0.0))] = 1e-8
-    p_est[torch.allclose(p_est, torch.tensor(1.0))] = 1 - 1e-8
+    p_est[torch.allclose(p_est, torch.tensor(0.0, dtype=layer.dtype))] = 1e-8
+    p_est[torch.allclose(p_est, torch.tensor(1.0, dtype=layer.dtype))] = 1 - 1e-8
 
     # set parameters of leaf node
     layer.set_params(n=layer.n, p=p_est)

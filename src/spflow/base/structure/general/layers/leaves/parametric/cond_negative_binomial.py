@@ -97,6 +97,8 @@ class CondNegativeBinomialLayer(Module):
 
         super().__init__(children=[], **kwargs)
 
+        self.backend = "numpy"
+
         # create leaf nodes
         self.nodes = [CondNegativeBinomial(s, 1) for s in scope]
 
@@ -239,14 +241,14 @@ class CondNegativeBinomialLayer(Module):
         if p is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                p = np.array([f(data)["p"] for f in cond_f])
+                p = np.array([f(data)["p"] for f in cond_f], dtype=self.dtype)
             else:
                 p = cond_f(data)["p"]
 
         if isinstance(p, int) or isinstance(p, float):
-            p = np.array([float(p) for _ in range(self.n_out)])
+            p = np.array([float(p) for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(p, list):
-            p = np.array(p)
+            p = np.array(p, dtype=self.dtype)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'CondNegativeBinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -267,9 +269,9 @@ class CondNegativeBinomialLayer(Module):
                 If a single integer value is given it is broadcast to all nodes.
         """
         if isinstance(n, int):
-            n = np.array([n for _ in range(self.n_out)])
+            n = np.array([n for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(n, list):
-            n = np.array(n)
+            n = np.array(n, dtype=self.dtype)
         if n.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'n' values for 'CondNegativeBinomialLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional."
@@ -346,6 +348,12 @@ class CondNegativeBinomialLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        for node in self.nodes:
+            node.dtype = self.dtype
+        self.set_params(self.n.astype(dtype))
 
 
 @dispatch(memoize=True)  # type: ignore

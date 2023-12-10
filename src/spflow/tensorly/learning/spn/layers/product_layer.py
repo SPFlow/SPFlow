@@ -37,5 +37,5 @@ def em(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # recursively call EM on children
-    for child in layer.children():
+    for child in layer.children:
         em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)

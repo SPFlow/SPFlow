@@ -187,7 +187,7 @@ class CondBinomial(LeafNode):
             p = cond_f(data)["p"]
 
         if isinstance(p, float):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=self.dtype, device=self.device)
 
         # check if value for 'p' is valid
         if p < 0.0 or p > 1.0 or not torch.isfinite(p):
@@ -280,7 +280,7 @@ class CondBinomial(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
         valid[~nan_mask] = self.dist(p=torch.tensor(0.0)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values

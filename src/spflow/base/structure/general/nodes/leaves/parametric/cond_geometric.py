@@ -182,6 +182,10 @@ class CondGeometric(LeafNode):
                 f"Value of p for conditional Geometric distribution must to be between 0.0 and 1.0, but was: {p}"
             )
 
+        # adapt dtype
+        if isinstance(p, np.ndarray):
+            p = p.astype(self.dtype)
+
         return p
 
     def dist(self, p: float) -> rv_frozen:

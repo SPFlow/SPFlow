@@ -217,9 +217,9 @@ class Hypergeometric(LeafNode):
         if not (torch.remainder(torch.tensor(n), 1.0) == torch.tensor(0.0)):
             raise ValueError(f"Value of 'n' for 'Hypergeometric' must be (equal to) an integer value, but was: {n}")
 
-        self.M.data = torch.tensor(int(M))
-        self.N.data = torch.tensor(int(N))
-        self.n.data = torch.tensor(int(n))
+        self.M.data = torch.tensor(int(M), device=self.device)
+        self.N.data = torch.tensor(int(N), device=self.device)
+        self.n.data = torch.tensor(int(n), device=self.device)
 
     def get_trainable_params(self) -> Tuple[int, int, int]:
         """Returns the parameters of the represented distribution.
@@ -279,7 +279,7 @@ class Hypergeometric(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
 
         # check for infinite values
         valid[~nan_mask] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
@@ -295,6 +295,14 @@ class Hypergeometric(LeafNode):
         )
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.N.data, self.M.data,self.n.data)
+
+    def to_device(self, device):
+        self.device = device
+        self.set_params(self.N.data, self.M.data,self.n.data)
 
 
 @dispatch(memoize=True)  # type: ignore

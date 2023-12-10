@@ -89,13 +89,13 @@ def test_retrieve_params(do_for_all_backends):
     )
 
     for node_weights in l.retrieve_params(tl.tensor([[1]]), DispatchContext()):
-        tc.assertTrue(tl.all(node_weights == weights))
+        tc.assertTrue(np.allclose(node_weights, weights))
 
     # one dimensional weight array
     l.set_cond_f(lambda data: {"weights": weights.squeeze(0)})
 
     for node_weights in l.retrieve_params(tl.tensor([[1]]), DispatchContext()):
-        tc.assertTrue(tl.all(node_weights == weights))
+        tc.assertTrue(np.allclose(node_weights, weights))
 
     # ----- different weights for all nodes -----
     weights = tl.tensor([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3], [0.1, 0.7, 0.2]])
@@ -103,7 +103,7 @@ def test_retrieve_params(do_for_all_backends):
     l.set_cond_f(lambda data: {"weights": weights})
 
     for weights_actual, node_weights in zip(weights, l.retrieve_params(tl.tensor([[1]]), DispatchContext())):
-        tc.assertTrue(tl.all(node_weights == weights_actual))
+        tc.assertTrue(np.allclose(node_weights, weights_actual))
 
     # ----- two dimensional weight array of wrong shape -----
     weights = tl.tensor([[0.3, 0.3, 0.4], [0.5, 0.2, 0.3]])
@@ -234,5 +234,92 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(n_out == sum_layer_updated.n_out)
 
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+
+    input_nodes = [
+        Gaussian(Scope([0])),
+        Gaussian(Scope([0])),
+        Gaussian(Scope([0])),
+    ]
+    weights = tl.tensor([[0.3, 0.3, 0.4]])
+
+    # two dimensional weight array
+    model_default = CondSumLayer(
+        n_nodes=3,
+        children=input_nodes,
+        cond_f=lambda data: {"weights": weights},
+    )
+    for m in model_default.modules():
+        tc.assertTrue(m.dtype == tl.float32)
+
+    weights = model_default.retrieve_params(tl.tensor([[1]]), DispatchContext())
+
+    tc.assertTrue(weights.dtype == tl.float32)
+
+    # change to float64 model
+
+    model_updated = CondSumLayer(
+        n_nodes=3,
+        children=input_nodes,
+        cond_f=lambda data: {"weights": weights},
+    )
+    model_updated.to_dtype(tl.float64)
+    for m in model_updated.modules():
+        tc.assertTrue(m.dtype == tl.float64)
+
+    weights_up = model_updated.retrieve_params(tl.tensor([[1]]), DispatchContext())
+
+    tc.assertTrue(weights_up.dtype == tl.float64)
+
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    input_nodes = [
+        Gaussian(Scope([0])),
+        Gaussian(Scope([0])),
+        Gaussian(Scope([0])),
+    ]
+    weights = tl.tensor([[0.3, 0.3, 0.4]])
+
+    # two dimensional weight array
+    model_default = CondSumLayer(
+        n_nodes=3,
+        children=input_nodes,
+        cond_f=lambda data: {"weights": weights},
+    )
+    input_nodes = [
+        Gaussian(Scope([0])),
+        Gaussian(Scope([0])),
+        Gaussian(Scope([0])),
+    ]
+    weights = tl.tensor([[0.3, 0.3, 0.4]])
+    model_updated = CondSumLayer(
+        n_nodes=3,
+        children=input_nodes,
+        cond_f=lambda data: {"weights": weights},
+    )
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, model_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    model_updated.to_device(cuda)
+
+    weights = model_default.retrieve_params(tl.tensor([[1]]), DispatchContext())
+    weights_up = model_updated.retrieve_params(tl.tensor([[1]]), DispatchContext())
+    tc.assertTrue(weights.device.type == "cpu")
+    tc.assertTrue(weights_up.device.type == "cuda")
+
+    for m in model_default.modules():
+        tc.assertTrue(m.device.type == "cpu")
+    for m in model_updated.modules():
+        tc.assertTrue(m.device.type == "cuda")
+
+
 if __name__ == "__main__":
+    torch.set_default_dtype(torch.float32)
     unittest.main()

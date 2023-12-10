@@ -94,10 +94,12 @@ class MultivariateGaussianLayer(Module):
 
         super().__init__(children=[], **kwargs)
 
+        self.backend = "numpy"
+
         if mean is None:
-            mean = [np.zeros(len(s.query)) for s in scope]
+            mean = [np.zeros(len(s.query), dtype=self.dtype) for s in scope]
         if cov is None:
-            cov = [np.eye(len(s.query)) for s in scope]
+            cov = [np.eye(len(s.query), dtype=self.dtype) for s in scope]
 
         # create leaf nodes
         self.nodes = [MultivariateGaussian(s) for s in scope]
@@ -214,10 +216,10 @@ class MultivariateGaussianLayer(Module):
         if isinstance(mean, list):
             # can be a list of values specifying a single mean (broadcast to all nodes)
             if all([isinstance(m, float) or isinstance(m, int) for m in mean]):
-                mean = [np.array(mean) for _ in range(self.n_out)]
+                mean = [np.array(mean, dtype=self.dtype) for _ in range(self.n_out)]
             # can also be a list of different means
             else:
-                mean = [m if isinstance(m, np.ndarray) else np.array(m) for m in mean]
+                mean = [m if isinstance(m, np.ndarray) else np.array(m, dtype=self.dtype) for m in mean]
         elif isinstance(mean, np.ndarray):
             # can be a one-dimensional numpy array specifying single mean (broadcast to all nodes)
             if mean.ndim == 1:
@@ -231,10 +233,10 @@ class MultivariateGaussianLayer(Module):
         if isinstance(cov, list):
             # can be a list of lists of values specifying a single cov (broadcast to all nodes)
             if all([all([isinstance(c, float) or isinstance(c, int) for c in l]) for l in cov]):
-                cov = [np.array(cov) for _ in range(self.n_out)]
+                cov = [np.array(cov, dtype=self.dtype) for _ in range(self.n_out)]
             # can also be a list of different covs
             else:
-                cov = [c if isinstance(c, np.ndarray) else np.array(c) for c in cov]
+                cov = [c if isinstance(c, np.ndarray) else np.array(c, dtype=self.dtype) for c in cov]
         elif isinstance(cov, np.ndarray):
             # can be a two-dimensional numpy array specifying single cov (broadcast to all nodes)
             if cov.ndim == 2:
@@ -274,7 +276,8 @@ class MultivariateGaussianLayer(Module):
                 )
 
         for node_mean, node_cov, node in zip(mean, cov, self.nodes):
-            node.set_params(node_mean, node_cov)
+            node.dtype = self.dtype
+            node.set_params(node_mean.astype(self.dtype), node_cov.astype(self.dtype))
 
     def get_params(self) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """Returns the parameters of the represented distribution.
@@ -328,6 +331,10 @@ class MultivariateGaussianLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params([m.astype(dtype) for m in self.mean], [c.astype(dtype) for c in self.cov])
 
 
 @dispatch(memoize=True)  # type: ignore

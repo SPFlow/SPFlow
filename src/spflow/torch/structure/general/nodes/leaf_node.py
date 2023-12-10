@@ -30,3 +30,4 @@ class LeafNode(Node, ABC):
         super().__init__(children=[], **kwargs)
 
         self.scope = scope
+        self.backend = "numpy"

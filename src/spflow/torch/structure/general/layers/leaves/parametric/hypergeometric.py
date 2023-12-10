@@ -103,9 +103,9 @@ class HypergeometricLayer(Module):
         #self.register_buffer("N", torch.empty(size=[]))
         #self.register_buffer("M", torch.empty(size=[]))
         #self.register_buffer("n", torch.empty(size=[]))
-        self.N = torch.empty(size=[])
-        self.M = torch.empty(size=[])
-        self.n = torch.empty(size=[])
+        self.N = torch.empty(size=[], device=self.device)
+        self.M = torch.empty(size=[], device=self.device)
+        self.n = torch.empty(size=[], device=self.device)
 
         # compute scope
         self.scopes_out = scope
@@ -197,9 +197,9 @@ class HypergeometricLayer(Module):
                 If a single value is given it is broadcast to all nodes.
         """
         if isinstance(N, int) or isinstance(N, float):
-            N = torch.tensor([N for _ in range(self.n_out)])
+            N = torch.tensor([N for _ in range(self.n_out)], device=self.device)
         elif isinstance(N, list) or isinstance(N, np.ndarray):
-            N = torch.tensor(N)
+            N = torch.tensor(N, device=self.device)
         if N.ndim != 1:
             raise ValueError(
                 f"Torch tensor of 'N' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {N.ndim}-dimensional."
@@ -210,9 +210,9 @@ class HypergeometricLayer(Module):
             )
 
         if isinstance(M, int) or isinstance(M, float):
-            M = torch.tensor([M for _ in range(self.n_out)])
+            M = torch.tensor([M for _ in range(self.n_out)], device=self.device)
         elif isinstance(n, list) or isinstance(M, np.ndarray):
-            M = torch.tensor(M)
+            M = torch.tensor(M, device=self.device)
         if M.ndim != 1:
             raise ValueError(
                 f"Torch tensor of 'M' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {M.ndim}-dimensional."
@@ -223,9 +223,9 @@ class HypergeometricLayer(Module):
             )
 
         if isinstance(n, int) or isinstance(n, float):
-            n = torch.tensor([n for _ in range(self.n_out)])
+            n = torch.tensor([n for _ in range(self.n_out)], device=self.device)
         elif isinstance(n, list) or isinstance(n, np.ndarray):
-            n = torch.tensor(n)
+            n = torch.tensor(n, device=self.device)
         if n.ndim != 1:
             raise ValueError(
                 f"Torch tensor of 'n' values for 'HypergeometricLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional."
@@ -276,9 +276,9 @@ class HypergeometricLayer(Module):
             if not torch.all(n_values == n_values[0]):
                 raise ValueError("All values of 'n' for 'HypergeometricLayer' over the same scope must be identical.")
 
-        self.N.data = N
-        self.M.data = M
-        self.n.data = n
+        self.N.data = N.to(self.device)
+        self.M.data = M.to(self.device)
+        self.n.data = n.to(self.device)
 
     def get_trainable_params(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Returns the parameters of the represented distribution.
@@ -294,7 +294,7 @@ class HypergeometricLayer(Module):
         Returns:
             Thee one-dimensional PyTorch tensors representing the total numbers of entities, the numbers of entities of interest and the numbers of draws.
         """
-        return self.N.detach().numpy(), self.M.detach().numpy(), self.n.detach().numpy()
+        return self.N.cpu().detach().numpy(), self.M.cpu().detach().numpy(), self.n.cpu().detach().numpy()
 
     def check_support(
         self,
@@ -344,7 +344,7 @@ class HypergeometricLayer(Module):
             # all query scopes are univariate
             scope_data = data[:, [self.scopes_out[node_id].query[0] for node_id in node_ids]]
 
-        valid = torch.ones(scope_data.shape, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape, dtype=torch.bool, device=self.device)
 
         # check for infinite values
         valid &= ~torch.isinf(scope_data)
@@ -364,7 +364,7 @@ class HypergeometricLayer(Module):
         valid[~nan_mask & valid] &= (
             (
                 scope_data
-                >= torch.max(torch.vstack([torch.zeros(scope_data.shape[1]), n_nodes + M_nodes - N_nodes,]), dim=0,)[
+                >= torch.max(torch.vstack([torch.zeros(scope_data.shape[1], dtype=self.dtype, device=self.device), n_nodes + M_nodes - N_nodes,]), dim=0,)[
                     0
                 ].unsqueeze(0)
             )
@@ -414,7 +414,7 @@ class HypergeometricLayer(Module):
         # ---- alternatively (more precise according to SciPy) -----
         # betaln(good+1, 1) + betaln(bad+1,1) + betaln(total-draws+1, draws+1) - betaln(k+1, good-k+1) - betaln(draws-k+1, bad-draws+k+1) - betaln(total+1, 1)
 
-        lgamma_1 = torch.lgamma(torch.ones(len(node_ids)))
+        lgamma_1 = torch.lgamma(torch.ones(len(node_ids), dtype=self.dtype, device=self.device))
         lgamma_M_p_2 = torch.lgamma(M + 2)
         lgamma_N_p_2 = torch.lgamma(N + 2)
         lgamma_N_m_M_p_2 = torch.lgamma(N_minus_M + 2)
@@ -441,6 +441,14 @@ class HypergeometricLayer(Module):
         )
 
         return result
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+
+    def to_device(self, device):
+        self.device = device
+        self.set_params(self.N.data, self.M.data, self.n.data)
+
 
 
 @dispatch(memoize=True)  # type: ignore

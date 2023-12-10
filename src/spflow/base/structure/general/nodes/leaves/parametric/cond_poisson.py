@@ -179,6 +179,10 @@ class CondPoisson(LeafNode):
         if l < 0:
             raise ValueError(f"Value of 'l' for 'CondPoisson' must be non-negative, but was: {l}")
 
+        # adapt dtype
+        if isinstance(l, np.ndarray):
+            l = l.astype(self.dtype)
+
         return l
 
     def dist(self, l: float) -> rv_frozen:

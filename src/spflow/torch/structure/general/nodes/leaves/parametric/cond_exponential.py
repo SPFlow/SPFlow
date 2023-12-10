@@ -181,7 +181,7 @@ class CondExponential(LeafNode):
             l = cond_f(data)["l"]
 
         if isinstance(l, float):
-            l = torch.tensor(l)
+            l = torch.tensor(l, dtype=self.dtype, device=self.device)
 
         # check if value for 'l' is valid
         if l <= 0.0 or not torch.isfinite(l):
@@ -189,7 +189,7 @@ class CondExponential(LeafNode):
                 f"Value of 'l' for conditional Exponential distribution must be greater than 0, but was: {l}"
             )
 
-        return l
+        return l.type(self.dtype).to(self.device)
 
     def dist(self, l: torch.Tensor) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
@@ -240,7 +240,7 @@ class CondExponential(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
         valid[~nan_mask] = self.dist(l=torch.tensor(0.5)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values

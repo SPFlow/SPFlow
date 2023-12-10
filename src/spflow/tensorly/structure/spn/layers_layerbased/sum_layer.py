@@ -85,7 +85,7 @@ class SumLayer(Module):
 
         # parse weights
         if weights is None:
-            weights = tl.random.random_tensor((self.n_out, self.n_in)) + 1e-08  # avoid zeros
+            weights = tl.random.random_tensor((self.n_out, self.n_in), dtype=self.dtype, device=self.device) + 1e-08  # avoid zeros
             weights /= tl.sum(weights, axis=-1, keepdims=True)
 
         # register auxiliary parameters for weights as torch parameters
@@ -146,14 +146,14 @@ class SumLayer(Module):
             ValueError: Invalid values.
         """
         if isinstance(values, list) or isinstance(values, np.ndarray):
-            values = tl.tensor(values, dtype=float)
+            values = tl.tensor(values, dtype=self.dtype, device=self.device)
         if values.ndim != 1 and values.ndim != 2:
             raise ValueError(
                 f"Torch tensor of weight values for 'SumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional."
             )
         if not tl.all(values > 0):
             raise ValueError("Weights for 'SumLayer' must be all positive.")
-        if not tl_allclose(tl.tensor(tl.sum(values,axis=-1),dtype=float), tl.tensor(1.0, dtype=float)):
+        if not tl_allclose(tl.tensor(tl.sum(values,axis=-1), dtype=self.dtype, device=self.device), tl.tensor(1.0, dtype=self.dtype, device=self.device)):
             raise ValueError("Weights for 'SumLayer' must sum up to one in last dimension.")
         if not (values.shape[-1] == self.n_in):
             raise ValueError(
@@ -163,14 +163,14 @@ class SumLayer(Module):
         # same weights for all sum nodes
         if self.backend == "pytorch":
             if values.ndim == 1:
-                self._weights.data = proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
+                self._weights.data = proj_convex_to_real(values.repeat((self.n_out, 1)).clone()).type(self.dtype).to(self.device)
             if values.ndim == 2:
                 # same weights for all sum nodes
                 if values.shape[0] == 1:
-                    self._weights.data = proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
+                    self._weights.data = proj_convex_to_real(values.repeat((self.n_out, 1)).clone()).type(self.dtype).to(self.device)
                 # different weights for all sum nodes
                 elif values.shape[0] == self.n_out:
-                    self._weights.data = proj_convex_to_real(values.clone())
+                    self._weights.data = proj_convex_to_real(values.clone()).type(self.dtype).to(self.device)
                 # incorrect number of specified weights
                 else:
                     raise ValueError(
@@ -178,20 +178,34 @@ class SumLayer(Module):
                     )
         elif self.backend == "numpy":
             if values.ndim == 1:
-                self._weights = proj_convex_to_real(values.reshape(1,-1).repeat((self.n_out),0).copy())
+                self._weights = proj_convex_to_real(values.reshape(1,-1).repeat((self.n_out),0).copy()).astype(self.dtype)
             if values.ndim == 2:
                 # same weights for all sum nodes
                 if values.shape[0] == 1:
-                    self._weights = proj_convex_to_real(values.repeat((self.n_out),0).copy())
+                    self._weights = proj_convex_to_real(values.repeat((self.n_out),0).copy()).astype(self.dtype)
                 # different weights for all sum nodes
                 elif values.shape[0] == self.n_out:
-                    self._weights = proj_convex_to_real(values.copy())
+                    self._weights = proj_convex_to_real(values.copy()).astype(self.dtype)
                 # incorrect number of specified weights
                 else:
                     raise ValueError(
                         f"Incorrect number of weights for 'SumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
 
                     )
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.weights = self.weights
+        for child in self.children:
+            child.to_dtype(dtype)
+
+    def to_device(self, device):
+        if self.backend == "numpy":
+            raise ValueError("it is not possible to change the device of models that have a numpy backend")
+        self.device = device
+        self.weights = self.weights
+        for child in self.children:
+            child.to_device(device)
 
     def parameters(self):
         params = []
@@ -257,7 +271,7 @@ def marginalize(
         return deepcopy(layer)
 
 
-@dispatch(memoize=True)  # type: ignore # ToDo: überprüfen ob sum_layer.weights ein parameter ist
+@dispatch(memoize=True)  # type: ignore
 def updateBackend(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = None) -> SumLayer:
     """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
 

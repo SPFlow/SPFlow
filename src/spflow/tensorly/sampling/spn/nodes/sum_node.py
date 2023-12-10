@@ -74,13 +74,13 @@ def sample(
     # sample branch for each instance id
     # this solution is based on a trick described here: https://stackoverflow.com/questions/34187130/fast-random-weighted-selection-across-all-rows-of-a-stochastic-matrix/34190035#34190035
     cum_sampling_weights = tl.cumsum(sampling_weights,axis=1)
-    random_choices = tl_unsqueeze(tl.random.random_tensor(tl.shape(sampling_weights)[0], 1), axis=1)
+    random_choices = tl_unsqueeze(tl.random.random_tensor(tl.shape(sampling_weights)[0], 1, device=node.device), axis=1)
     branches = tl.sum((cum_sampling_weights < random_choices),axis=1)
 
     # group sampled branches
-    for branch in tl.tensor(tl_unique(branches), dtype=int):
+    for branch in tl.tensor(tl_unique(branches), dtype=int, device=node.device):
         # group instances by sampled branch
-        branch_instance_ids = tl.tensor(sampling_ctx.instance_ids, dtype=int)[branches == branch].tolist()
+        branch_instance_ids = tl.tensor(sampling_ctx.instance_ids, dtype=int, device=node.device)[branches == branch].tolist()
         # get corresponding child and output id for sampled branch
         child_ids, output_ids = node.input_to_output_ids([branch])
 

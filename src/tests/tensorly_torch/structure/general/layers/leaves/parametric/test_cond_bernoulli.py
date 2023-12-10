@@ -68,7 +68,7 @@ def test_retrieve_param(do_for_all_backends):
     l = CondBernoulliLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value})
 
     for p in l.retrieve_params(np.array([[1.0]]), DispatchContext()):
-        tc.assertTrue(np.all(tl_toNumpy(p) == p_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(p), p_value))
 
     # ----- list parameter values -----
     p_values = [0.17, 0.8, 0.53]
@@ -82,7 +82,7 @@ def test_retrieve_param(do_for_all_backends):
         l.retrieve_params(np.array([[1.0]]), DispatchContext()),
         p_values,
     ):
-        tc.assertTrue(np.all(tl_toNumpy(p_layer_node) == p_actual))
+        tc.assertTrue(np.allclose(tl_toNumpy(p_layer_node), p_actual))
 
     # wrong number of values
     l.set_cond_f(lambda data: {"p": p_values[:-1]})
@@ -360,9 +360,61 @@ def test_update_backend(do_for_all_backends):
         with tl.backend_context(backend):
             bernoulli_updated = updateBackend(bernoulli)
             tc.assertTrue(np.all(bernoulli.scopes_out == bernoulli_updated.scopes_out))
+
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    p_value = 0.13
+    bernoulli_default = CondBernoulliLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value})
+    tc.assertTrue(bernoulli_default.dtype == tl.float32)
+    p = bernoulli_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    tc.assertTrue(p.dtype == tl.float32)
+
+    # change to float64 model
+    bernoulli_updated = CondBernoulliLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value})
+    bernoulli_updated.to_dtype(tl.float64)
+    p_up = bernoulli_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    tc.assertTrue(bernoulli_updated.dtype == tl.float64)
+    tc.assertTrue(p_up.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array(p),
+            np.array(p_up),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    p_value = 0.13
+    torch.set_default_dtype(torch.float32)
+    bernoulli_default = CondBernoulliLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value})
+    bernoulli_updated = CondBernoulliLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value})
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, bernoulli_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    bernoulli_updated.to_device(cuda)
+
+    tc.assertTrue(bernoulli_default.device.type == "cpu")
+    tc.assertTrue(bernoulli_updated.device.type == "cuda")
+
+    p = bernoulli_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    p_up = bernoulli_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+
+    tc.assertTrue(p.device.type == "cpu")
+    tc.assertTrue(p_up.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array(p),
+            np.array(p_up.cpu()),
+        )
+    )
             
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

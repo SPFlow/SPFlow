@@ -60,11 +60,11 @@ def log_likelihood(
     batch_size: int = data.shape[0]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).to(layer.start.device)
+    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).type(layer.dtype).to(layer.device)
 
     for node_id in range(layer.n_out):
 
-        node_ids_tensor = torch.tensor([node_id])
+        node_ids_tensor = torch.tensor([node_id], device=layer.device)
         node_scope = layer.scopes_out[node_id]
         scope_data = data[:, node_scope.query]
 
@@ -88,7 +88,7 @@ def log_likelihood(
                 )
 
         if layer.support_outside[node_id]:
-            torch_valid_mask = torch.zeros(len(marg_mask), dtype=torch.bool)
+            torch_valid_mask = torch.zeros(len(marg_mask), dtype=torch.bool, device=layer.device)
             torch_valid_mask[~marg_mask] |= (
                 layer.dist(node_ids=[node_id]).support.check(scope_data[~marg_mask]).squeeze(1)
             )
@@ -106,7 +106,7 @@ def log_likelihood(
         else:
             # compute probabilities for values inside distribution support
             log_prob[~marg_mask] = layer.dist(node_ids=[node_id]).log_prob(
-                scope_data[~marg_mask].type(torch.get_default_dtype())
+                scope_data[~marg_mask]
             )
 
     return log_prob

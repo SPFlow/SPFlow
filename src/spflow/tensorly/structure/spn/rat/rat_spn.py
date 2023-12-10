@@ -2,8 +2,6 @@
 """
 from typing import Iterable, List, Optional, Union
 
-import tensorly as tl
-
 from spflow.tensorly.structure.autoleaf import AutoLeaf
 #from spflow.torch.structure.autoleaf import AutoLeaf as TorchAutoLeaf
 from spflow.tensorly.structure.module import Module
@@ -84,7 +82,6 @@ class RatSPN(Module):
 
         # create RAT-SPN from region graph
         self.from_region_graph(region_graph, feature_ctx)
-        test = 5
 
     def from_region_graph(
         self,
@@ -162,6 +159,17 @@ class RatSPN(Module):
     def scopes_out(self) -> List[Scope]:
         """Returns the output scopes of the RAT-SPN."""
         return self.root_node.scopes_out
+
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.root_node.to_dtype(dtype)
+
+    def to_device(self, device):
+        if self.backend == "numpy":
+            raise ValueError("it is not possible to change the device of models that have a numpy backend")
+        self.device = device
+        self.root_node.to_device(device)
 
 
 @dispatch(memoize=True)  # type: ignore

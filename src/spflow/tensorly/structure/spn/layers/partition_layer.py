@@ -112,13 +112,11 @@ class PartitionLayer(NestedModule):
         self.nodes = []
 
         # create placeholders and nodes
-        #for input_ids in itertools.product(*np.split(list(range(self.n_in)), tl.cumsum(tl.tensor(partition_sizes[:-1]), axis=-1, dtype=int))):
         for input_ids in itertools.product(*np.split(list(range(self.n_in)), np.cumsum(partition_sizes[:-1]))):
             ph = self.create_placeholder(input_ids)
             self.nodes.append(ProductNode(children=[ph]))
 
         self._n_out = len(self.nodes)
-        #self.scope = scope
         self.scope = Scope([int(x) for x in scope.query], scope.evidence)
 
     @property
@@ -136,6 +134,22 @@ class PartitionLayer(NestedModule):
         for child in self.children:
             params.extend(list(child.parameters()))
         return params
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        for node in self.nodes:
+            node.dtype = dtype
+        for child in self.children:
+            child.to_dtype(dtype)
+
+    def to_device(self, device):
+        if self.backend == "numpy":
+            raise ValueError("it is not possible to change the device of models that have a numpy backend")
+        self.device = device
+        for node in self.nodes:
+            node.device = device
+        for child in self.children:
+            child.to_device(device)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -184,7 +198,6 @@ def marginalize(
         marg_partitions = []
 
         children = layer.children
-        #partitions = tl_split(children, tl.cumsum(tl.tensor(layer.modules_per_partition[:-1]), axis=-1, dtype=int))
         partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
 
         for partition_scope, partition_children in zip(layer.partition_scopes, partitions):

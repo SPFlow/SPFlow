@@ -151,6 +151,22 @@ class HadamardLayer(NestedModule):
             params.extend(list(child.parameters()))
         return params
 
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        for node in self.nodes:
+            node.dtype = dtype
+        for child in self.children:
+            child.to_dtype(dtype)
+
+    def to_device(self, device):
+        if self.backend == "numpy":
+            raise ValueError("it is not possible to change the device of models that have a numpy backend")
+        self.device = device
+        for node in self.nodes:
+            node.device = device
+        for child in self.children:
+            child.to_device(device)
+
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(

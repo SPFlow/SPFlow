@@ -76,6 +76,8 @@ class PoissonLayer(Module):
 
         super().__init__(children=[], **kwargs)
 
+        self.backend = "numpy"
+
         # create leaf nodes
         self.nodes = [Poisson(s) for s in scope]
 
@@ -93,7 +95,7 @@ class PoissonLayer(Module):
     @property
     def l(self) -> np.ndarray:
         """Returns the rate parameters of the represented distributions."""
-        return np.array([node.l for node in self.nodes])
+        return np.array([node.l for node in self.nodes], dtype=self.dtype)
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -161,9 +163,9 @@ class PoissonLayer(Module):
                 Defaults to 1.0.
         """
         if isinstance(l, int) or isinstance(l, float):
-            l = np.array([float(l) for _ in range(self.n_out)])
+            l = np.array([float(l) for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(l, list):
-            l = np.array(l)
+            l = np.array(l, dtype=self.dtype)
         if l.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'l' values for 'PoissonLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional."
@@ -174,6 +176,7 @@ class PoissonLayer(Module):
             )
 
         for node_l, node in zip(l, self.nodes):
+            node.dtype = self.dtype
             node.set_params(node_l)
 
     def get_params(self) -> Tuple[np.ndarray]:
@@ -228,6 +231,10 @@ class PoissonLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.l.astype(dtype))
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -27,7 +27,7 @@ def test_mle(do_for_all_backends):
     torch.manual_seed(0)
     np.random.seed(0)
     random.seed(0)
-    torch.set_default_tensor_type(torch.DoubleTensor)
+
 
     layer = BernoulliLayer(scope=[Scope([0]), Scope([1])])
 
@@ -50,7 +50,7 @@ def test_mle_edge_0(do_for_all_backends):
     torch.manual_seed(0)
     np.random.seed(0)
     random.seed(0)
-    torch.set_default_tensor_type(torch.DoubleTensor)
+
 
     layer = BernoulliLayer(Scope([0]), n_nodes=1)
 
@@ -68,7 +68,7 @@ def test_mle_edge_1(do_for_all_backends):
     torch.manual_seed(0)
     np.random.seed(0)
     random.seed(0)
-    torch.set_default_tensor_type(torch.DoubleTensor)
+
 
     layer = BernoulliLayer(Scope([0]), n_nodes=1)
 
@@ -81,7 +81,7 @@ def test_mle_edge_1(do_for_all_backends):
     tc.assertTrue(tl.all(layer.p <= 1.0))
 
 def test_mle_only_nans(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
+
 
     layer = BernoulliLayer(scope=[Scope([0]), Scope([1])], n_nodes=1)
 
@@ -99,7 +99,7 @@ def test_mle_only_nans(do_for_all_backends):
     )
 
 def test_mle_invalid_support(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
+
 
     # set seed
     torch.manual_seed(0)
@@ -132,7 +132,7 @@ def test_mle_invalid_support(do_for_all_backends):
     )
 
 def test_mle_nan_strategy_none(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
+
 
     layer = BernoulliLayer(Scope([0]))
     tc.assertRaises(
@@ -144,7 +144,7 @@ def test_mle_nan_strategy_none(do_for_all_backends):
     )
 
 def test_mle_nan_strategy_ignore(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
+
 
     layer = BernoulliLayer(Scope([0]))
     maximum_likelihood_estimation(
@@ -155,14 +155,14 @@ def test_mle_nan_strategy_ignore(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(layer.p), tl.tensor(2.0 / 3.0)))
 
 def test_mle_nan_strategy_callable(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
+
 
     layer = BernoulliLayer(Scope([0]))
     # should not raise an issue
     maximum_likelihood_estimation(layer, tl.tensor([[1], [0], [1]]), nan_strategy=lambda x: x)
 
 def test_mle_nan_strategy_invalid(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
+
 
     layer = BernoulliLayer(Scope([0]))
     tc.assertRaises(
@@ -181,7 +181,6 @@ def test_mle_nan_strategy_invalid(do_for_all_backends):
     )
 
 def test_weighted_mle(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
 
     leaf = BernoulliLayer([Scope([0]), Scope([1])], n_nodes=3)
 
@@ -211,8 +210,6 @@ def test_weighted_mle(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(leaf.p), tl.tensor([0.2, 0.7]), atol=1e-2, rtol=1e-2))
 
 def test_em_step(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
-
     # em is only implemented for pytorch backend
     if do_for_all_backends == "numpy":
         return
@@ -221,7 +218,7 @@ def test_em_step(do_for_all_backends):
     torch.manual_seed(0)
     np.random.seed(0)
     random.seed(0)
-    torch.set_default_tensor_type(torch.DoubleTensor)
+
 
     layer = BernoulliLayer([Scope([0]), Scope([1])])
     data = tl.tensor(
@@ -245,7 +242,6 @@ def test_em_step(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(layer.p), tl.tensor([0.2, 0.7]), atol=1e-2, rtol=1e-3))
 
 def test_em_product_of_bernoullis(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
     # em is only implemented for pytorch backend
     if do_for_all_backends == "numpy":
         return
@@ -272,7 +268,6 @@ def test_em_product_of_bernoullis(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(layer.p), tl.tensor([0.8, 0.2]), atol=1e-3, rtol=1e-2))
 
 def test_em_sum_of_bernoullis(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
     # em is only implemented for pytorch backend
     if do_for_all_backends == "numpy":
         return
@@ -304,7 +299,6 @@ def test_em_sum_of_bernoullis(do_for_all_backends):
     tc.assertTrue(np.allclose(p_opt, tl_toNumpy(p_em)))
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
 
     if do_for_all_backends == "numpy":
         return
@@ -355,6 +349,76 @@ def test_update_backend(do_for_all_backends):
                 tc.assertTrue(np.allclose(tl_toNumpy(layer_updated.p), params_em, atol=1e-3, rtol=1e-2))
 
 
+def test_change_dtype(do_for_all_backends):
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = BernoulliLayer(scope=[Scope([0]), Scope([1])])
+    prod_node = ProductNode([layer])
+
+    # simulate data
+    data = np.hstack(
+        [
+            np.random.binomial(n=1, p=0.3, size=(10000, 1)),
+            np.random.binomial(n=1, p=0.7, size=(10000, 1)),
+        ]
+    )
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data, dtype=tl.float32))
+    tc.assertTrue(layer.p.dtype == tl.float32)
+
+    layer.to_dtype(tl.float64)
+
+    dummy_data = tl.tensor(data, dtype=tl.float64)
+    maximum_likelihood_estimation(layer, dummy_data)
+    tc.assertTrue(layer.p.dtype == tl.float64)
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(NotImplementedError, expectation_maximization, prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+    else:
+        # test if em runs without error after dype change
+        expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = BernoulliLayer(scope=[Scope([0]), Scope([1])])
+    prod_node = ProductNode([layer])
+
+    # simulate data
+    data = np.hstack(
+        [
+            np.random.binomial(n=1, p=0.3, size=(10000, 1)),
+            np.random.binomial(n=1, p=0.7, size=(10000, 1)),
+        ]
+    )
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer.to_device, cuda)
+        return
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data, dtype=tl.float32))
+
+    tc.assertTrue(layer.p.device.type == "cpu")
+
+    layer.to_device(cuda)
+
+    dummy_data = tl.tensor(data, dtype=tl.float32, device=cuda)
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, dummy_data)
+    tc.assertTrue(layer.p.device.type == "cuda")
+
+    # test if em runs without error after device change
+    expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float32, device=cuda), max_steps=10)
+
+
 if __name__ == "__main__":
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
     unittest.main()
