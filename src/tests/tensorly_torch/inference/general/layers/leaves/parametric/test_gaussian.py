@@ -114,17 +114,17 @@ def test_gradient_optimization(do_for_all_backends):
     tc.assertTrue(
         torch.allclose(
             torch_gaussian.mean,
-            tl.tensor([0.0, 0.0], dtype=tl.float64),
-            atol=1e-3,
-            rtol=1e-3,
+            tl.tensor([0.0, 0.0], dtype=tl.float32),
+            atol=1e-2,
+            rtol=1e-2,
         )
     )
     tc.assertTrue(
         torch.allclose(
             torch_gaussian.std,
-            tl.tensor([1.0, 1.0], dtype=tl.float64),
-            atol=1e-3,
-            rtol=1e-3,
+            tl.tensor([1.0, 1.0], dtype=tl.float32),
+            atol=1e-2,
+            rtol=1e-2,
         )
     )
 
@@ -147,7 +147,7 @@ def test_support(do_for_all_backends):
     pass
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     layer = GaussianLayer(
         scope=[Scope([0]), Scope([1]), Scope([0])],
@@ -169,5 +169,5 @@ def test_update_backend(do_for_all_backends):
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

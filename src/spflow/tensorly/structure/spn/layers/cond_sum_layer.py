@@ -4,7 +4,7 @@ from copy import deepcopy
 from typing import Callable, Iterable, List, Optional, Union
 
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import tl_stack, tl_allclose, tl_isinstance
+from spflow.tensorly.utils.helper_functions import tl_stack, tl_allclose, tl_isinstance, T, tl_to
 from spflow.meta.structure import MetaModule
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.nested_module import NestedModule
@@ -125,7 +125,7 @@ class CondSumLayer(NestedModule):
 
         self.cond_f = cond_f
 
-    def retrieve_params(self, data: tl.tensor, dispatch_ctx: DispatchContext) -> tl.tensor:
+    def retrieve_params(self, data: T, dispatch_ctx: DispatchContext) -> T:
         r"""Retrieves the conditional parameters of the leaf node.
 
         First, checks if conditional parameter (``weights``) is passed as an additional argument in the dispatch context.
@@ -171,12 +171,12 @@ class CondSumLayer(NestedModule):
         if weights is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                weights = tl.tensor([f(data)["weights"] for f in cond_f])
+                weights = tl.tensor([f(data)["weights"] for f in cond_f], dtype=self.dtype, device=self.device)
             else:
                 weights = cond_f(data)["weights"]
 
         if isinstance(weights, list) or not (tl_isinstance(weights)):
-            weights = tl.tensor(weights)
+            weights = tl.tensor(weights, dtype=self.dtype, device=self.device)
         if tl.ndim(weights) != 1 and tl.ndim(weights) != 2:
             raise ValueError(
                 f"Numpy array of weight values for 'CondSumLayer' is expected to be one- or two-dimensional, but is {weights.ndim}-dimensional."
@@ -193,7 +193,7 @@ class CondSumLayer(NestedModule):
         # same weights for all sum nodes
         if tl.ndim(weights) == 1:
             # broadcast weights to all nodes
-            weights = tl_stack([weights for _ in range(self.n_out)])
+            weights = tl.stack([weights for _ in range(self.n_out)])
         if tl.ndim(weights) == 2:
             # same weights for all sum nodes
             if tl.shape(weights)[0] == 1:
@@ -209,7 +209,24 @@ class CondSumLayer(NestedModule):
                     f"Incorrect number of weights for 'CondSumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {tl.shape(weights)[0]}."
                 )
 
-        return weights
+        return tl_to(weights, self.dtype, self.device)#tl.tensor(weights, dtype=self.dtype, device=self.device, requires_grad=weights.requires_grad)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        for node in self.nodes:
+            node.dtype = dtype
+        for child in self.children:
+            child.to_dtype(dtype)
+
+
+    def to_device(self, device):
+        if self.backend == "numpy":
+            raise ValueError("it is not possible to change the device of models that have a numpy backend")
+        self.device = device
+        for node in self.nodes:
+            node.device = device
+        for child in self.children:
+            child.to_device(device)
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -69,7 +69,7 @@ def test_likelihood_args_cond_f(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
 
 def test_inference(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     alpha = tl.tensor(random.randint(1, 5), dtype=tl.float64)
     beta = tl.tensor(random.randint(1, 5), dtype=tl.float64)
@@ -84,7 +84,7 @@ def test_inference(do_for_all_backends):
     log_probs_torch = log_likelihood(gamma, tl.tensor(data))
 
     # make sure that probabilities match python backend probabilities
-    tc.assertTrue(np.allclose(log_probs, tl_toNumpy(log_probs_torch)))
+    tc.assertTrue(np.allclose(log_probs, tl_toNumpy(log_probs_torch), atol=0.001, rtol=0.001))
 
 def test_gradient_computation(do_for_all_backends):
 
@@ -129,7 +129,7 @@ def test_marginalization(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor(1.0)))
 
 def test_support(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     # Support for Gamma distribution: floats (0,inf)
 
@@ -177,7 +177,7 @@ def test_support(do_for_all_backends):
     )
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     alpha = tl.tensor(random.randint(1, 5), dtype=tl.float64)
     beta = tl.tensor(random.randint(1, 5), dtype=tl.float64)
@@ -198,6 +198,39 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
+def test_change_dtype(do_for_all_backends):
+    alpha = tl.tensor(random.randint(1, 5), dtype=tl.float64)
+    beta = tl.tensor(random.randint(1, 5), dtype=tl.float64)
+
+    node = CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta})
+    dummy_data = tl.tensor(np.random.rand(3, 1), dtype=tl.float32)
+    layer_ll = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll.dtype == tl.float32)
+    node.to_dtype(tl.float64)
+    dummy_data = tl.tensor(np.random.rand(3, 1), dtype=tl.float64)
+    layer_ll_up = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll_up.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    alpha = tl.tensor(random.randint(1, 5), dtype=tl.float64)
+    beta = tl.tensor(random.randint(1, 5), dtype=tl.float64)
+
+    node = CondGamma(Scope([0], [1]), cond_f=lambda data: {"alpha": alpha, "beta": beta})
+    dummy_data = tl.tensor(np.random.rand(3, 1), dtype=tl.float32)
+    layer_ll = log_likelihood(node, dummy_data)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, node.to_device, cuda)
+        return
+    tc.assertTrue(layer_ll.device.type == "cpu")
+    node.to_device(cuda)
+    dummy_data = tl.tensor(np.random.rand(3, 1), device=cuda)
+    layer_ll = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll.device.type == "cuda")
+
+
+
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

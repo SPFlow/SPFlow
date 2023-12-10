@@ -219,9 +219,9 @@ class GaussianLayer(Module):
                 Defaults to 1.0.
         """
         if isinstance(mean, int) or isinstance(mean, float):
-            mean = torch.tensor([mean for _ in range(self.n_out)])
+            mean = torch.tensor([mean for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(mean, list) or isinstance(mean, np.ndarray):
-            mean = torch.tensor(mean)
+            mean = torch.tensor(mean, dtype=self.dtype, device=self.device)
         if mean.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'mean' values for 'GaussianLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional."
@@ -235,9 +235,9 @@ class GaussianLayer(Module):
             raise ValueError(f"Values of 'mean' for 'GaussianLayer' must be finite, but was: {mean}")
 
         if isinstance(std, int) or isinstance(std, float):
-            std = torch.tensor([std for _ in range(self.n_out)])
+            std = torch.tensor([std for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(std, list) or isinstance(std, np.ndarray):
-            std = torch.tensor(std)
+            std = torch.tensor(std, dtype=self.dtype, device=self.device)
         if std.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'std' values for 'GaussianLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional."
@@ -267,7 +267,7 @@ class GaussianLayer(Module):
         Returns:
             Tuple of one-dimensional PyTorch tensors representing the means and standard deviations.
         """
-        return [self.mean.detach().numpy(), self.std.detach().numpy()]
+        return [self.mean.cpu().detach().numpy(), self.std.cpu().detach().numpy()]
 
     def check_support(
         self,
@@ -325,6 +325,16 @@ class GaussianLayer(Module):
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf()
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.std_aux.data = self.std_aux.data.type(dtype)
+        self.mean.data = self.mean.data.type(dtype)
+
+    def to_device(self, device):
+        self.device = device
+        self.std_aux.data = self.std_aux.data.to(device)
+        self.mean.data = self.mean.data.to(device)
 
 
 @dispatch(memoize=True)  # type: ignore

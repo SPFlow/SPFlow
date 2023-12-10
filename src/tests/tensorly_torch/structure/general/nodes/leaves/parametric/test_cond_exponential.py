@@ -38,10 +38,10 @@ def test_retrieve_params(do_for_all_backends):
     exponential = CondExponential(Scope([0], [1]))
 
     # l > t
-    exponential.set_cond_f(lambda data: {"l": tl_nextafter(tl.tensor(0.0), tl.tensor(1.0))})
+    exponential.set_cond_f(lambda data: {"l": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32))})
     tc.assertTrue(
         exponential.retrieve_params(np.array([[1.0]]), DispatchContext())
-        == tl_nextafter(tl.tensor(0.0), tl.tensor(1.0))
+        == tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32))
     )
 
     # l = 0 and l < 0
@@ -179,6 +179,77 @@ def test_update_backend(do_for_all_backends):
             # check conversion from torch to python
             tc.assertTrue(np.all(cond_exponential.scopes_out == cond_exponential_updated.scopes_out))
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    model_default = CondExponential(Scope([0], [1]))
+    model_default.set_cond_f(lambda data: {"l": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32))})
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+
+    tc.assertTrue(model_default.dtype == tl.float32)
+    if do_for_all_backends == "numpy":
+        if (isinstance(param, np.ndarray)):
+                tc.assertTrue(param.dtype==tl.float32)
+        else:
+            tc.assertTrue(isinstance(param, float))
+    else:
+        tc.assertTrue(param.dtype == tl.float32)
+
+    # change to float64 model
+    model_updated = CondExponential(Scope([0], [1]))
+    model_updated.set_cond_f(lambda data: {"l": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32))})
+    model_updated.to_dtype(tl.float64)
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    tc.assertTrue(model_updated.dtype == tl.float64)
+    if do_for_all_backends == "numpy":
+        if (isinstance(param_up, np.ndarray)):
+            tc.assertTrue(param_up.dtype == tl.float64)
+        else:
+            tc.assertTrue(isinstance(param_up, float))
+    else:
+        tc.assertTrue(param_up.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([param]),
+            np.array([param_up]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    p = random.random()
+    n = random.randint(2, 10)
+    torch.set_default_dtype(torch.float32)
+    model_default = CondExponential(Scope([0], [1]))
+    model_default.set_cond_f(
+        lambda data: {"l": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32))})
+    model_updated = CondExponential(Scope([0], [1]))
+    model_updated.set_cond_f(lambda data: {"l": tl_nextafter(tl.tensor(0.0), tl.tensor(1.0))})
+    # put model on gpu
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, model_updated.to_device, cuda)
+        return
+
+    model_updated.to_device(cuda)
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+
+
+
+    tc.assertTrue(model_default.device.type == "cpu")
+    tc.assertTrue(model_updated.device.type == "cuda")
+
+    tc.assertTrue(param.device.type == "cpu")
+    tc.assertTrue(param_up.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([param]),
+            np.array([param_up.cpu()]),
+        )
+    )
+
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

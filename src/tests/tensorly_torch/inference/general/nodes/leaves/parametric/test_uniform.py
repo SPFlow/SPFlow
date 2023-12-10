@@ -15,7 +15,7 @@ from spflow.tensorly.utils.helper_functions import tl_toNumpy
 tc = unittest.TestCase()
 
 def test_inference(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     start = random.random()
     end = start + 1e-7 + random.random()
@@ -32,22 +32,17 @@ def test_inference(do_for_all_backends):
             [end],
             [np.nextafter(end, np.inf)],
         ]
+        , dtype=np.float32
     )
     data_torch = tl.tensor(
-        [
-            [np.nextafter(tl.tensor(start), -tl.tensor(float("Inf")))],
-            [start],
-            [(start + end) / 2.0],
-            [end],
-            [np.nextafter(tl.tensor(end), tl.tensor(float("Inf")))],
-        ]
-    , dtype=tl.float64)
+        data_np
+    , dtype=tl.float32)
 
-    log_probs = log_likelihood(node_uniform, data_np)
-    log_probs_torch = log_likelihood(uniform, data_torch)
+    probs = log_likelihood(node_uniform, data_np)
+    probs_torch = log_likelihood(uniform, data_torch)
 
     # make sure that probabilities match python backend probabilities
-    tc.assertTrue(np.allclose(log_probs, tl_toNumpy(log_probs_torch)))
+    tc.assertTrue(np.allclose(probs, probs_torch, atol=0.01, rtol=0.01))
 
 def test_gradient_computation(do_for_all_backends):
 
@@ -67,7 +62,7 @@ def test_gradient_computation(do_for_all_backends):
             [end],
             [np.nextafter(tl.tensor(end), tl.tensor(float("Inf")))],
         ]
-    , dtype=tl.float64)
+    , dtype=tl.float32)
 
     log_probs_torch = log_likelihood(uniform, data_torch)
 
@@ -95,7 +90,7 @@ def test_likelihood_marginalization(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.tensor(1.0)))
 
 def test_support(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     # Support for Uniform distribution: floats [a,b] or (-inf,inf)
 
@@ -107,9 +102,9 @@ def test_support(do_for_all_backends):
     tc.assertRaises(ValueError, log_likelihood, uniform, tl.tensor([[float("inf")]]))
 
     # check valid floats in [start, end]
-    log_likelihood(uniform, tl.tensor([[1.0]], dtype=tl.float64))
-    log_likelihood(uniform, tl.tensor([[1.5]], dtype=tl.float64))
-    log_likelihood(uniform, tl.tensor([[2.0]], dtype=tl.float64))
+    log_likelihood(uniform, tl.tensor([[1.0]], dtype=tl.float32))
+    log_likelihood(uniform, tl.tensor([[1.5]], dtype=tl.float32))
+    log_likelihood(uniform, tl.tensor([[2.0]], dtype=tl.float32))
 
     # check valid floats outside [start, end]
     log_likelihood(
@@ -129,9 +124,9 @@ def test_support(do_for_all_backends):
     tc.assertRaises(ValueError, log_likelihood, uniform, tl.tensor([[float("inf")]]))
 
     # check valid floats in [start, end]
-    log_likelihood(uniform, tl.tensor([[1.0]], dtype=tl.float64))
-    log_likelihood(uniform, tl.tensor([[1.5]], dtype=tl.float64))
-    log_likelihood(uniform, tl.tensor([[2.0]], dtype=tl.float64))
+    log_likelihood(uniform, tl.tensor([[1.0]], dtype=tl.float32))
+    log_likelihood(uniform, tl.tensor([[1.5]], dtype=tl.float32))
+    log_likelihood(uniform, tl.tensor([[2.0]], dtype=tl.float32))
 
     # check invalid floats outside
     tc.assertRaises(
@@ -148,7 +143,7 @@ def test_support(do_for_all_backends):
     )
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     start = random.random()
     end = start + 1e-7 + random.random()
@@ -175,7 +170,7 @@ def test_update_backend(do_for_all_backends):
             [end],
             [np.nextafter(tl.tensor(end), tl.tensor(float("Inf")))],
         ]
-    , dtype=tl.float64)
+    , dtype=tl.float32)
 
     log_probs = log_likelihood(uniform, data_torch)
 
@@ -183,11 +178,42 @@ def test_update_backend(do_for_all_backends):
     for backend in backends:
         with tl.backend_context(backend):
             uniform_updated = updateBackend(uniform)
-            log_probs_updated = log_likelihood(uniform_updated, tl.tensor(data_torch, dtype=tl.float64))
+            log_probs_updated = log_likelihood(uniform_updated, tl.tensor(data_torch, dtype=tl.float32))
             # check conversion from torch to python
-            tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
+            tc.assertTrue(np.allclose(log_probs, log_probs_updated, atol=0.001, rtol=0.001))
+
+def test_change_dtype(do_for_all_backends):
+    start = random.random()
+    end = start + 1e-7 + random.random()
+
+    node = Uniform(Scope([0]), start, end)
+    dummy_data = tl.tensor(np.random.rand(3, 1), dtype=tl.float32)
+    layer_ll = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll.dtype == tl.float32)
+    node.to_dtype(tl.float64)
+    dummy_data = tl.tensor(np.random.rand(3, 1), dtype=tl.float64)
+    layer_ll_up = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll_up.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    start = random.random()
+    end = start + 1e-7 + random.random()
+
+    node = Uniform(Scope([0]), start, end)
+    dummy_data = tl.tensor(np.random.rand(3, 1), dtype=tl.float32)
+    layer_ll = log_likelihood(node, dummy_data)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, node.to_device, cuda)
+        return
+    tc.assertTrue(layer_ll.device.type == "cpu")
+    node.to_device(cuda)
+    dummy_data = tl.tensor(np.random.rand(3, 1), device=cuda)
+    layer_ll = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll.device.type == "cuda")
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

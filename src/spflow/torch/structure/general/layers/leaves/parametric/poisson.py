@@ -199,9 +199,9 @@ class PoissonLayer(Module):
                 Defaults to True.
         """
         if isinstance(l, int) or isinstance(l, float):
-            l = torch.tensor([l for _ in range(self.n_out)])
+            l = torch.tensor([l for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(l, list) or isinstance(l, np.ndarray):
-            l = torch.tensor(l)
+            l = torch.tensor(l, dtype=self.dtype, device=self.device)
         if l.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'l' values for 'PoissonLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional."
@@ -230,7 +230,7 @@ class PoissonLayer(Module):
         Returns:
             One-dimensional PyTorch tensor representing the rate parameters.
         """
-        return [self.l.detach().numpy()]
+        return [self.l.cpu().detach().numpy()]
 
     def check_support(
         self,
@@ -288,6 +288,14 @@ class PoissonLayer(Module):
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf()
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.l_aux.data = self.l_aux.data.type(dtype)
+
+    def to_device(self, device):
+        self.device = device
+        self.l_aux.data = self.l_aux.data.to(device)
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -222,9 +222,9 @@ class GammaLayer(Module):
                 Floating point, list of floats or one-dimensional NumPy array or PyTorch tensor representing the rate parameters (:math:`\beta`), greater than 0.
         """
         if isinstance(alpha, int) or isinstance(alpha, float):
-            alpha = torch.tensor([alpha for _ in range(self.n_out)])
+            alpha = torch.tensor([alpha for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(alpha, list) or isinstance(alpha, np.ndarray):
-            alpha = torch.tensor(alpha)
+            alpha = torch.tensor(alpha, dtype=self.dtype, device=self.device)
         if alpha.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'alpha' values for 'GammaLayer' is expected to be one-dimensional, but is {alpha.ndim}-dimensional."
@@ -238,9 +238,9 @@ class GammaLayer(Module):
             raise ValueError(f"Values of 'alpha' for 'GammaLayer' must be greater than 0, but was: {alpha}")
 
         if isinstance(beta, int) or isinstance(beta, float):
-            beta = torch.tensor([beta for _ in range(self.n_out)])
+            beta = torch.tensor([beta for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(beta, list) or isinstance(beta, np.ndarray):
-            beta = torch.tensor(beta)
+            beta = torch.tensor(beta, dtype=self.dtype, device=self.device)
         if beta.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'beta' values for 'GammaLayer' is expected to be one-dimensional, but is {beta.ndim}-dimensional."
@@ -270,7 +270,7 @@ class GammaLayer(Module):
         Returns:
             Tuple of two one-dimensional PyTorch tensors representing the shape and rate parameters, respectively.
         """
-        return [self.alpha.detach().numpy(), self.beta.detach().numpy()]
+        return [self.alpha.cpu().detach().numpy(), self.beta.cpu().detach().numpy()]
 
     def check_support(
         self,
@@ -328,6 +328,16 @@ class GammaLayer(Module):
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf()
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.alpha_aux.data = self.alpha_aux.data.type(dtype)
+        self.beta_aux.data = self.beta_aux.data.type(dtype)
+
+    def to_device(self, device):
+        self.device = device
+        self.alpha_aux.data = self.alpha_aux.data.to(device)
+        self.beta_aux.data = self.beta_aux.data.to(device)
 
 
 @dispatch(memoize=True)  # type: ignore

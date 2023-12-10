@@ -179,7 +179,7 @@ class CondPoisson(LeafNode):
             l = cond_f(data)["l"]
 
         if isinstance(l, int) or isinstance(l, float):
-            l = torch.tensor(l)
+            l = torch.tensor(l, dtype=self.dtype, device=self.device)
 
         # check if value for 'l' is valid
         if not torch.isfinite(l):
@@ -188,7 +188,7 @@ class CondPoisson(LeafNode):
         if l < 0:
             raise ValueError(f"Value of 'l' for 'CondPoisson' must be non-negative, but was: {l}")
 
-        return l
+        return l.type(self.dtype).to(self.device)
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -227,7 +227,7 @@ class CondPoisson(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
         valid[~nan_mask] = self.dist(torch.tensor(1.0)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check if all values are valid integers

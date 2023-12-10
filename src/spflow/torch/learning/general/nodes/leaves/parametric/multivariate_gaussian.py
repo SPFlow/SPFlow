@@ -81,7 +81,7 @@ def maximum_likelihood_estimation(
     scope_data = data[:, leaf.scope.query]
 
     if weights is None:
-        weights = torch.ones(data.shape[0])
+        weights = torch.ones(data.shape[0]).type(leaf.dtype).to(leaf.device)
 
     if weights.ndim != 1 or weights.shape[0] != data.shape[0]:
         raise ValueError(
@@ -148,7 +148,7 @@ def maximum_likelihood_estimation(
 
     # edge case (if all values are the same, not enough samples or very close to each other)
     for i in range(scope_data.shape[1]):
-        if torch.isclose(cov_est[i][i], torch.tensor(0.0)):
+        if torch.isclose(cov_est[i][i], torch.tensor(0.0, dtype=leaf.dtype, device=leaf.device)):
             cov_est[i][i] = 1e-8
 
     # sometimes numpy returns a matrix with non-positive eigenvalues (i.e., not a valid positive definite matrix)

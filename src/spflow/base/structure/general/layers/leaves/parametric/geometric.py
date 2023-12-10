@@ -78,6 +78,8 @@ class GeometricLayer(Module):
 
         super().__init__(children=[], **kwargs)
 
+        self.backend = "numpy"
+
         # create leaf nodes
         self.nodes = [Geometric(s) for s in scope]
 
@@ -95,7 +97,7 @@ class GeometricLayer(Module):
     @property
     def p(self) -> np.ndarray:
         """Returns the success probabilities of the represented distributions."""
-        return np.array([node.p for node in self.nodes])
+        return np.array([node.p for node in self.nodes], dtype=self.dtype)
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -163,9 +165,9 @@ class GeometricLayer(Module):
                 Defaults to 0.5.
         """
         if isinstance(p, int) or isinstance(p, float):
-            p = np.array([p for _ in range(self.n_out)])
+            p = np.array([p for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(p, list):
-            p = np.array(p)
+            p = np.array(p, dtype=self.dtype)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'GeometricLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -176,6 +178,7 @@ class GeometricLayer(Module):
             )
 
         for node_p, node in zip(p, self.nodes):
+            node.dtype = self.dtype
             node.set_params(node_p)
 
     def get_params(self) -> Tuple[np.ndarray]:
@@ -230,6 +233,10 @@ class GeometricLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.p.astype(dtype))
 
 
 @dispatch(memoize=True)  # type: ignore

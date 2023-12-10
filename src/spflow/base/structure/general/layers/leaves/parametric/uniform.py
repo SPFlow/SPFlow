@@ -80,6 +80,8 @@ class UniformLayer(Module):
 
         super().__init__(children=[], **kwargs)
 
+        self.backend = "numpy"
+
         # create leaf nodes
         self.nodes = [Uniform(s, 0.0, 1.0) for s in scope]
 
@@ -183,9 +185,9 @@ class UniformLayer(Module):
                 Defaults to True.
         """
         if isinstance(start, int) or isinstance(start, float):
-            start = np.array([float(start) for _ in range(self.n_out)])
+            start = np.array([float(start) for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(start, list):
-            start = np.array(start)
+            start = np.array(start, dtype=self.dtype)
         if start.ndim != 1:
             raise ValueError(
                 f"Numpy array of start values for 'UniformLayer' is expected to be one-dimensional, but is {start.ndim}-dimensional."
@@ -196,9 +198,9 @@ class UniformLayer(Module):
             )
 
         if isinstance(end, int) or isinstance(end, float):
-            end = np.array([float(end) for _ in range(self.n_out)])
+            end = np.array([float(end) for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(end, list):
-            end = np.array(end)
+            end = np.array(end, dtype=self.dtype)
         if end.ndim != 1:
             raise ValueError(
                 f"Numpy array of end values for 'UniformLayer' is expected to be one-dimensional, but is {end.ndim}-dimensional."
@@ -222,6 +224,7 @@ class UniformLayer(Module):
             )
 
         for node_start, node_end, node_support_outside, node in zip(start, end, support_outside, self.nodes):
+            node.dtype = self.dtype
             node.set_params(node_start, node_end, node_support_outside)
 
     def get_params(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -281,6 +284,10 @@ class UniformLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.start.astype(dtype), self.end.astype(dtype), self.support_outside)
 
 
 @dispatch(memoize=True)  # type: ignore

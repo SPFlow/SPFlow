@@ -141,9 +141,9 @@ def test_update_backend(do_for_all_backends):
         [
             SumNode(
                 [Gaussian(Scope([0])), Gaussian(Scope([0]))],
-                weights=tl.tensor(weights_1),
+                weights=tl.tensor(weights_1, dtype=tl.float32),
             ),
-            SumNode([Gaussian(Scope([1]))], weights=tl.tensor(weights_2)),
+            SumNode([Gaussian(Scope([1]))], weights=tl.tensor(weights_2, dtype=tl.float32)),
         ]
     )
     p_out = graph.scopes_out
@@ -174,5 +174,69 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    model_default = SumNode(
+        children=[
+            Gaussian(Scope([0])),
+            Gaussian(Scope([0])),
+            Gaussian(Scope([0])),
+        ],
+    )
+    for m in model_default.modules():
+        tc.assertTrue(m.dtype == tl.float32)
+
+    tc.assertTrue(model_default.weights.dtype == tl.float32)
+
+    # change to float64 model
+    model_updated = SumNode(
+        children=[
+            Gaussian(Scope([0])),
+            Gaussian(Scope([0])),
+            Gaussian(Scope([0])),
+        ],
+    )
+    model_updated.to_dtype(tl.float64)
+    for m in model_updated.modules():
+        tc.assertTrue(m.dtype == tl.float64)
+
+    tc.assertTrue(model_updated.weights.dtype == tl.float64)
+
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    model_default = SumNode(
+        children=[
+            Gaussian(Scope([0])),
+            Gaussian(Scope([0])),
+            Gaussian(Scope([0])),
+        ],
+    )
+    model_updated = SumNode(
+        children=[
+            Gaussian(Scope([0])),
+            Gaussian(Scope([0])),
+            Gaussian(Scope([0])),
+        ],
+    )
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, model_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    model_updated.to_device(cuda)
+
+    tc.assertTrue(model_default.weights.device.type == "cpu")
+    tc.assertTrue(model_updated.weights.device.type == "cuda")
+
+    for m in model_default.modules():
+        tc.assertTrue(m.device.type == "cpu")
+    for m in model_updated.modules():
+        tc.assertTrue(m.device.type == "cuda")
+
 if __name__ == "__main__":
+    torch.set_default_dtype(torch.float32)
     unittest.main()

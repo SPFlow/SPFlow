@@ -58,7 +58,6 @@ class ProductLayer(NestedModule):
         # create prodcut nodes
         self.nodes = [ProductNode(children=[ph]) for _ in range(n_nodes)]
 
-        #self.scope = self.nodes[0].scope
         self.scope = Scope([int(x) for x in self.nodes[0].scope.query], self.nodes[0].scope.evidence)
 
     @property
@@ -76,6 +75,22 @@ class ProductLayer(NestedModule):
         for child in self.children:
             params.extend(list(child.parameters()))
         return params
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        for node in self.nodes:
+            node.dtype = dtype
+        for child in self.children:
+            child.to_dtype(dtype)
+
+    def to_device(self, device):
+        if self.backend == "numpy":
+            raise ValueError("it is not possible to change the device of models that have a numpy backend")
+        self.device = device
+        for node in self.nodes:
+            node.device = device
+        for child in self.children:
+            child.to_device(device)
 
 
 @dispatch(memoize=True)  # type: ignore

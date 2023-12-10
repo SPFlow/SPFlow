@@ -36,7 +36,7 @@ def test_layer_likelihood(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(nodes_ll)))
 
 def test_gradient_computation(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     if do_for_all_backends == "numpy":
         return
@@ -83,7 +83,7 @@ def test_gradient_computation(do_for_all_backends):
     tc.assertTrue(torch.allclose(torch_log_normal.std, torch_log_normal.dist().scale))
 
 def test_gradient_optimization(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     if do_for_all_backends == "numpy":
         return
 
@@ -114,7 +114,7 @@ def test_gradient_optimization(do_for_all_backends):
     tc.assertTrue(
         torch.allclose(
             torch_log_normal.mean,
-            tl.tensor([0.0, 0.0], dtype=tl.float64),
+            tl.tensor([0.0, 0.0], dtype=tl.float32),
             atol=1e-2,
             rtol=0.2,
         )
@@ -122,7 +122,7 @@ def test_gradient_optimization(do_for_all_backends):
     tc.assertTrue(
         torch.allclose(
             torch_log_normal.std,
-            tl.tensor([1.0, 1.0], dtype=tl.float64),
+            tl.tensor([1.0, 1.0], dtype=tl.float32),
             atol=1e-2,
             rtol=0.2,
         )
@@ -147,7 +147,7 @@ def test_support(do_for_all_backends):
     pass
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     layer = LogNormalLayer(
         scope=[Scope([0]), Scope([1]), Scope([0])],
@@ -168,5 +168,5 @@ def test_update_backend(do_for_all_backends):
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

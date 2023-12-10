@@ -161,6 +161,59 @@ def test_update_backend(do_for_all_backends):
             )
         # check conversion from python to torch
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    p = random.random()
+    model_default = Bernoulli(Scope([0]), p)
+    tc.assertTrue(model_default.dtype == tl.float32)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(model_default.p, float))
+    else:
+        tc.assertTrue(model_default.p.dtype == tl.float32)
+
+    # change to float64 model
+    model_updated = Bernoulli(Scope([0]), p)
+    model_updated.to_dtype(tl.float64)
+    tc.assertTrue(model_updated.dtype == tl.float64)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(model_updated.p, float))
+    else:
+        tc.assertTrue(model_updated.p.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*model_default.get_params()]),
+            np.array([*model_updated.get_params()]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    p = random.random()
+    torch.set_default_dtype(torch.float32)
+    model_default = Bernoulli(Scope([0]), p)
+    model_updated = Bernoulli(Scope([0]), p)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, model_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    model_updated.to_device(cuda)
+
+    tc.assertTrue(model_default.device.type == "cpu")
+    tc.assertTrue(model_updated.device.type == "cuda")
+
+    tc.assertTrue(model_default.p.device.type == "cpu")
+    tc.assertTrue(model_updated.p.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*model_default.get_params()]),
+            np.array([*model_updated.get_params()]),
+        )
+    )
+
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

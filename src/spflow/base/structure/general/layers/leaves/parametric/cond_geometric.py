@@ -92,6 +92,8 @@ class CondGeometricLayer(Module):
         # create leaf nodes
         self.nodes = [CondGeometric(s) for s in scope]
 
+        self.backend = "numpy"
+
         # compute scope
         self.scopes_out = scope
 
@@ -224,14 +226,14 @@ class CondGeometricLayer(Module):
         if p is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                p = np.array([f(data)["p"] for f in cond_f])
+                p = np.array([f(data)["p"] for f in cond_f], dtype=self.dtype)
             else:
                 p = cond_f(data)["p"]
 
         if isinstance(p, int) or isinstance(p, float):
-            p = np.array([p for _ in range(self.n_out)])
+            p = np.array([p for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(p, list):
-            p = np.array(p)
+            p = np.array(p, dtype=self.dtype)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'CondGeometricLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -289,6 +291,11 @@ class CondGeometricLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype=dtype
+        for node in self.nodes:
+            node.dtype = self.dtype
 
 
 @dispatch(memoize=True)  # type: ignore

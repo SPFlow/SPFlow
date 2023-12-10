@@ -469,8 +469,74 @@ def test_update_backend(do_for_all_backends):
                     np.array([*hypergeometric_updated.get_params()[2]]),
                 )
             )
+"""
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    hypergeometric_default = HypergeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                                         N=[10, 5, 10],
+                                         M=[8, 2, 8],
+                                         n=[3, 4, 3])
+    tc.assertTrue(hypergeometric_default.dtype == tl.float32)
+    tc.assertTrue(hypergeometric_default.N.dtype == tl.float32)
+    tc.assertTrue(hypergeometric_default.M.dtype == tl.float32)
+    tc.assertTrue(hypergeometric_default.n.dtype == tl.float32)
+
+    # change to float64 model
+    hypergeometric_updated = HypergeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                                         N=[10, 5, 10],
+                                         M=[8, 2, 8],
+                                         n=[3, 4, 3])
+    hypergeometric_updated.to_dtype(tl.float64)
+    tc.assertTrue(hypergeometric_updated.dtype == tl.float64)
+    tc.assertTrue(hypergeometric_updated.N.dtype == tl.float64)
+    tc.assertTrue(hypergeometric_updated.M.dtype == tl.float64)
+    tc.assertTrue(hypergeometric_updated.n.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*hypergeometric_default.get_params()]),
+            np.array([*hypergeometric_updated.get_params()]),
+        )
+    )
+"""
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    hypergeometric_default = HypergeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                                         N=[10, 5, 10],
+                                         M=[8, 2, 8],
+                                         n=[3, 4, 3])
+    hypergeometric_updated = HypergeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                                         N=[10, 5, 10],
+                                         M=[8, 2, 8],
+                                         n=[3, 4, 3])
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, hypergeometric_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    hypergeometric_updated.to_device(cuda)
+
+    tc.assertTrue(hypergeometric_default.device.type == "cpu")
+    tc.assertTrue(hypergeometric_updated.device.type == "cuda")
+
+    tc.assertTrue(hypergeometric_default.N.device.type == "cpu")
+    tc.assertTrue(hypergeometric_updated.N.device.type == "cuda")
+    tc.assertTrue(hypergeometric_default.M.device.type == "cpu")
+    tc.assertTrue(hypergeometric_updated.M.device.type == "cuda")
+    tc.assertTrue(hypergeometric_default.n.device.type == "cpu")
+    tc.assertTrue(hypergeometric_updated.n.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*hypergeometric_default.get_params()]),
+            np.array([*hypergeometric_updated.get_params()]),
+        )
+    )
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

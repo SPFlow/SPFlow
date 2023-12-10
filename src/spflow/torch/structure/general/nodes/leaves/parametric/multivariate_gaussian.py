@@ -113,11 +113,11 @@ class MultivariateGaussian(LeafNode):
     def covariance_tril(self) -> torch.Tensor:
         """Returns the lower triangular matrix of the Cholesky-decomposed covariance matrix."""
         # create zero matrix of appropriate dimension
-        L_nondiag = torch.zeros(self.d, self.d)
+        L_nondiag = torch.zeros((self.d, self.d), dtype=self.dtype, device=self.device)
         # fill non-diagonal values of lower triangular matrix
-        L_nondiag[self.tril_nondiag_indices[0], self.tril_nondiag_indices[1]] = self.tril_nondiag.double()  # type: ignore
+        L_nondiag[self.tril_nondiag_indices[0], self.tril_nondiag_indices[1]] = self.tril_nondiag  # type: ignore
         # add (projected) diagonal values
-        L = L_nondiag + proj_real_to_bounded(self.tril_diag_aux, lb=0.0) * torch.eye(self.d)  # type: ignore
+        L = L_nondiag + proj_real_to_bounded(self.tril_diag_aux, lb=0.0) * torch.eye(self.d, dtype=self.dtype, device=self.device)  # type: ignore
         # return lower triangular matrix
         return L
 
@@ -229,17 +229,17 @@ class MultivariateGaussian(LeafNode):
         """
         if isinstance(mean, list):
             # convert float list to torch tensor
-            mean = torch.tensor([float(v) for v in mean])
+            mean = torch.tensor([float(v) for v in mean], dtype=self.dtype, device=self.device)
         elif isinstance(mean, np.ndarray):
             # convert numpy array to torch tensor
-            mean = torch.from_numpy(mean).type(torch.get_default_dtype())
+            mean = torch.from_numpy(mean).type(self.dtype).to(self.device)
 
         if isinstance(cov, list):
             # convert numpy array to torch tensor
-            cov = torch.tensor([[float(v) for v in row] for row in cov])
+            cov = torch.tensor([[float(v) for v in row] for row in cov], dtype=self.dtype, device=self.device)
         elif isinstance(cov, np.ndarray):
             # convert numpy array to torch tensor
-            cov = torch.from_numpy(cov).type(torch.get_default_dtype())
+            cov = torch.from_numpy(cov).type(self.dtype).to(self.device)
 
         # check mean vector for nan or inf values
         if torch.any(torch.isinf(mean)):
@@ -269,7 +269,7 @@ class MultivariateGaussian(LeafNode):
             )
 
         # set mean vector
-        self.mean.data = mean
+        self.mean.data = mean.type(self.dtype).to(self.device)
 
         # check covariance matrix for nan or inf values
         if torch.any(torch.isinf(cov)):
@@ -295,7 +295,7 @@ class MultivariateGaussian(LeafNode):
             cov = nearest_sym_pd(cov)
 
         # compute lower triangular matrix
-        L = torch.linalg.cholesky(cov)  # type: ignore
+        L = torch.linalg.cholesky(cov).type(self.dtype).to(self.device)  # type: ignore
 
         # set diagonal and non-diagonal values of lower triangular matrix
         self.tril_diag_aux.data = proj_bounded_to_real(torch.diag(L), lb=0.0)
@@ -356,12 +356,24 @@ class MultivariateGaussian(LeafNode):
             )
 
         # different to univariate distributions, cannot simply check via torch distribution's support due to possible incomplete data in multivariate case; therefore do it ourselves (not difficult here since support is R)
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
 
         # check for infinite values (may return NaNs despite support)
         valid &= ~scope_data.isinf().sum(dim=1, keepdim=True).bool()
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.tril_nondiag.data = self.tril_nondiag.data.type(self.dtype)
+        self.tril_diag_aux.data = self.tril_diag_aux.data.type(self.dtype)
+        self.set_params(self.mean.data, self.cov.data)
+
+    def to_device(self, device):
+        self.device = device
+        self.tril_nondiag.data = self.tril_nondiag.data.to(self.device)
+        self.tril_diag_aux.data = self.tril_diag_aux.data.to(self.device)
+        self.set_params(self.mean.data, self.cov.data)
 
 
 @dispatch(memoize=True)  # type: ignore

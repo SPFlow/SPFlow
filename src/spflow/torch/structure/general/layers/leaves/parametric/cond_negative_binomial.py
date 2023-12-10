@@ -215,7 +215,7 @@ class CondNegativeBinomialLayer(Module):
 
         return D.NegativeBinomial(
             total_count=self.n[node_ids],
-            probs=torch.ones(len(node_ids)) - p[node_ids],
+            probs=torch.ones(len(node_ids), device=self.device) - p[node_ids],
         )
 
     def retrieve_params(self, data: np.ndarray, dispatch_ctx: DispatchContext) -> torch.Tensor:
@@ -264,14 +264,14 @@ class CondNegativeBinomialLayer(Module):
         if p is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                p = torch.tensor([f(data)["p"] for f in cond_f])
+                p = torch.tensor([f(data)["p"] for f in cond_f], dtype=self.dtype, device=self.device)
             else:
                 p = cond_f(data)["p"]
 
         if isinstance(p, float) or isinstance(p, int):
-            p = torch.tensor([p for _ in range(self.n_out)])
+            p = torch.tensor([p for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(p, list) or isinstance(p, np.ndarray):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=self.dtype, device=self.device)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'CondNegativeBinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -298,9 +298,9 @@ class CondNegativeBinomialLayer(Module):
                 If a single integer value is given it is broadcast to all nodes.
         """
         if isinstance(n, int) or isinstance(n, float):
-            n = torch.tensor([n for _ in range(self.n_out)])
+            n = torch.tensor([n for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(n, list) or isinstance(n, np.ndarray):
-            n = torch.tensor(n)
+            n = torch.tensor(n, dtype=self.dtype, device=self.device)
         if n.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'n' values for 'NegativeBinomialLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional."
@@ -318,7 +318,7 @@ class CondNegativeBinomialLayer(Module):
                 f"Values for 'n' of 'NegativeBinomialLayer' must be (equal to) an integer value, but was: {n}"
             )
 
-        node_scopes = torch.tensor([s.query[0] for s in self.scopes_out])
+        node_scopes = torch.tensor([s.query[0] for s in self.scopes_out], dtype=self.dtype, device=self.device)
 
         for node_scope in torch.unique(node_scopes):
             # at least one such element exists
@@ -391,6 +391,14 @@ class CondNegativeBinomialLayer(Module):
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf()
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.n.data = self.n.data.type(dtype)
+
+    def to_device(self, device):
+        self.device = device
+        self.n.data = self.n.data.to(device)
 
 
 @dispatch(memoize=True)  # type: ignore

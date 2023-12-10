@@ -82,7 +82,7 @@ def maximum_likelihood_estimation(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     if weights is None:
-        weights = np.ones((data.shape[0], layer.n_out))
+        weights = np.ones((data.shape[0], layer.n_out), dtype=layer.dtype)
 
     if (
         (weights.ndim == 1 and weights.shape[0] != data.shape[0])

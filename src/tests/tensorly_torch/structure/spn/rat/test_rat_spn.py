@@ -1,6 +1,7 @@
 import unittest
 
 import tensorly as tl
+import torch
 
 from spflow.tensorly.structure.spn.rat.region_graph import random_region_graph
 from spflow.meta.data import Scope
@@ -417,5 +418,72 @@ def test_update_backend(do_for_all_backends):
             tc.assertEqual(n_product_nodes,n_product_nodes_up)
             tc.assertEqual(n_leaf_nodes, n_leaf_nodes_up)
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    random_variables = list(range(7))
+    scope = Scope(random_variables)
+    region_graph = random_region_graph(scope, depth=3, replicas=1)
+    feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
+
+    rat_spn = RatSPN(
+        region_graph,
+        feature_ctx,
+        n_root_nodes=1,
+        n_region_nodes=1,
+        n_leaf_nodes=1,
+    )
+    tc.assertTrue(rat_spn.dtype == tl.float32)
+    for m in rat_spn.root_node.modules():
+        tc.assertTrue(m.dtype == tl.float32)
+        if isinstance(m, SumNode) or isinstance(m, SumLayer):
+            tc.assertTrue(m.weights.dtype == tl.float32)
+
+
+    rat_spn.to_dtype(tl.float64)
+    tc.assertTrue(rat_spn.dtype == tl.float64)
+    for m in rat_spn.root_node.modules():
+        tc.assertTrue(m.dtype == tl.float64)
+        if isinstance(m, SumNode) or isinstance(m, SumLayer):
+            tc.assertTrue(m.weights.dtype == tl.float64)
+
+
+
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    torch.set_default_dtype(torch.float32)
+    # create model on cpu
+    random_variables = list(range(7))
+    scope = Scope(random_variables)
+    region_graph = random_region_graph(scope, depth=3, replicas=1)
+    feature_ctx = FeatureContext(scope, {rv: FeatureTypes.Gaussian for rv in scope.query})
+
+    rat_spn = RatSPN(
+        region_graph,
+        feature_ctx,
+        n_root_nodes=1,
+        n_region_nodes=1,
+        n_leaf_nodes=1,
+    )
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, rat_spn.to_device, cuda)
+        return
+
+    tc.assertTrue(rat_spn.device.type == "cpu")
+    for m in rat_spn.root_node.modules():
+        tc.assertTrue(m.device.type == "cpu")
+        if isinstance(m, SumNode) or isinstance(m, SumLayer):
+            tc.assertTrue(m.weights.device.type == "cpu")
+
+    rat_spn.to_device(cuda)
+    tc.assertTrue(rat_spn.device.type == "cuda")
+    for m in rat_spn.root_node.modules():
+        tc.assertTrue(m.device.type == "cuda")
+        if isinstance(m, SumNode) or isinstance(m, SumLayer):
+            tc.assertTrue(m.weights.device.type == "cuda")
+
 if __name__ == "__main__":
+    torch.set_default_dtype(torch.float32)
     unittest.main()

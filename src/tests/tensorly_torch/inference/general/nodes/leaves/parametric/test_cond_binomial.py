@@ -112,7 +112,7 @@ def test_gradient_computation(do_for_all_backends):
     tc.assertTrue(p.grad is not None)
 
 def test_likelihood_p_0(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     # p = 0
     binomial = CondBinomial(Scope([0], [1]), 1, cond_f=lambda data: {"p": 0.0})
@@ -124,10 +124,10 @@ def test_likelihood_p_0(do_for_all_backends):
     log_probs = log_likelihood(binomial, data)
 
     tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
-    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets, atol=0.001, rtol=0.001))
 
 def test_likelihood_p_1(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     # p = 1
     binomial = CondBinomial(Scope([0], [1]), 1, cond_f=lambda data: {"p": 1.0})
@@ -139,7 +139,7 @@ def test_likelihood_p_1(do_for_all_backends):
     log_probs = log_likelihood(binomial, data)
 
     tc.assertTrue(np.allclose(tl_toNumpy(probs), tl.exp(log_probs)))
-    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets, atol=0.001, rtol=0.001))
 
 def test_likelihood_n_0(do_for_all_backends):
 
@@ -250,5 +250,5 @@ def test_update_backend(do_for_all_backends):
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

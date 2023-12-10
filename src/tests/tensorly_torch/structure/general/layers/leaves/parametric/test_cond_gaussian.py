@@ -459,8 +459,110 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(np.all(gaussian.scopes_out == gaussian_updated.scopes_out))
             # check conversion from torch to python
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    mean_value = 0.73
+    std_value = 1.9
+    cond_gaussian_default = CondGaussianLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        cond_f=lambda data: {"mean": mean_value, "std": std_value},
+    )
+
+    cond_gaussian_updated = CondGaussianLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        cond_f=lambda data: {"mean": mean_value, "std": std_value},
+    )
+    tc.assertTrue(cond_gaussian_default.dtype == tl.float32)
+    params = cond_gaussian_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    mean = params[0]
+    std = params[1]
+    tc.assertTrue(mean.dtype == tl.float32)
+    tc.assertTrue(std.dtype == tl.float32)
+
+    # change to float64 model
+    cond_gaussian_updated.to_dtype(tl.float64)
+    params_up = cond_gaussian_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    mean_up = params_up[0]
+    std_up = params_up[1]
+
+    tc.assertTrue(cond_gaussian_updated.dtype == tl.float64)
+    tc.assertTrue(mean_up.dtype == tl.float64)
+    tc.assertTrue(std_up.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array(mean),
+            np.array(mean_up),
+        )
+    )
+
+    tc.assertTrue(
+        np.allclose(
+            np.array(std),
+            np.array(std_up),
+        )
+    )
+
+
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    mean_value = 0.73
+    std_value = 1.9
+    cond_gaussian_default = CondGaussianLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        cond_f=lambda data: {"mean": mean_value, "std": std_value},
+    )
+
+    cond_gaussian_updated = CondGaussianLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        cond_f=lambda data: {"mean": mean_value, "std": std_value},
+    )
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, cond_gaussian_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    cond_gaussian_updated.to_device(cuda)
+
+    tc.assertTrue(cond_gaussian_default.device.type == "cpu")
+    tc.assertTrue(cond_gaussian_updated.device.type == "cuda")
+
+    params = cond_gaussian_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    mean = params[0]
+    std = params[1]
+    params_up = cond_gaussian_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    mean_up = params_up[0]
+    std_up = params_up[1]
+
+
+    tc.assertTrue(mean.device.type == "cpu")
+    tc.assertTrue(mean_up.device.type == "cuda")
+    tc.assertTrue(std.device.type == "cpu")
+    tc.assertTrue(std_up.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array(mean),
+            np.array(mean_up.cpu()),
+        )
+    )
+
+    tc.assertTrue(
+        np.allclose(
+            np.array(std),
+            np.array(std_up.cpu()),
+        )
+    )
+
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

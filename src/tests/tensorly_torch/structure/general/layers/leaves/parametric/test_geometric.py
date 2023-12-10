@@ -333,9 +333,54 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    geometric_default = GeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
+    tc.assertTrue(geometric_default.dtype == tl.float32)
+    tc.assertTrue(geometric_default.p.dtype == tl.float32)
+
+    # change to float64 model
+    geometric_updated = GeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
+    geometric_updated.to_dtype(tl.float64)
+    tc.assertTrue(geometric_updated.dtype == tl.float64)
+    tc.assertTrue(geometric_updated.p.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*geometric_default.get_params()]),
+            np.array([*geometric_updated.get_params()]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    geometric_default = GeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
+    geometric_updated = GeometricLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, geometric_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    geometric_updated.to_device(cuda)
+
+    tc.assertTrue(geometric_default.device.type == "cpu")
+    tc.assertTrue(geometric_updated.device.type == "cuda")
+
+    tc.assertTrue(geometric_default.p.device.type == "cpu")
+    tc.assertTrue(geometric_updated.p.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*geometric_default.get_params()]),
+            np.array([*geometric_updated.get_params()]),
+        )
+    )
+
 
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

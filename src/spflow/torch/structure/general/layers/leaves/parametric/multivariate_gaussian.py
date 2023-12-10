@@ -107,9 +107,9 @@ class MultivariateGaussianLayer(Module):
         super().__init__(children=[], **kwargs)
 
         if mean is None:
-            mean = [torch.zeros(len(s.query)) for s in scope]
+            mean = [torch.zeros(len(s.query), dtype=self.dtype, device=self.device) for s in scope]
         if cov is None:
-            cov = [torch.eye(len(s.query)) for s in scope]
+            cov = [torch.eye(len(s.query), dtype=self.dtype, device=self.device) for s in scope]
 
         # create leaf nodes
         #self.nodes = torch.nn.ModuleList([MultivariateGaussian(s) for s in scope])
@@ -333,6 +333,8 @@ class MultivariateGaussianLayer(Module):
                 )
 
         for node_mean, node_cov, node in zip(mean, cov, self.nodes):
+            node.dtype = self.dtype
+            node.device = self.device
             node.set_params(node_mean, node_cov)
 
     def get_trainable_params(self) -> List:
@@ -396,6 +398,20 @@ class MultivariateGaussianLayer(Module):
             node_ids = list(range(self.n_out))
 
         return torch.concat([self.nodes[i].check_support(data) for i in node_ids], dim=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        #for m in self.mean:
+        #    m.data = m.data.to(dtype)
+
+        #self.cov= [c.type(dtype) for c in self.cov]
+        #self.set_params(self.mean,[c.type(dtype) for c in self.cov])
+        self.set_params(self.mean, self.cov)
+
+
+    def to_device(self, device):
+        self.device = device
+        self.set_params(self.mean, self.cov)
 
 
 @dispatch(memoize=True)  # type: ignore

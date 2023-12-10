@@ -73,7 +73,7 @@ def maximum_likelihood_estimation(
     scope_data = data[:, leaf.scope.query]
 
     if weights is None:
-        weights = torch.ones(data.shape[0])
+        weights = torch.ones(data.shape[0]).type(leaf.dtype).to(leaf.device)
 
     if weights.ndim != 1 or weights.shape[0] != data.shape[0]:
         raise ValueError(

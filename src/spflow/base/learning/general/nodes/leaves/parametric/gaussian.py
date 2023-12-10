@@ -78,7 +78,7 @@ def maximum_likelihood_estimation(
     scope_data = data[:, leaf.scope.query]
 
     if weights is None:
-        weights = np.ones(data.shape[0])
+        weights = np.ones(data.shape[0], dtype=leaf.dtype)
 
     if weights.ndim != 1 or weights.shape[0] != data.shape[0]:
         raise ValueError(
@@ -138,4 +138,4 @@ def maximum_likelihood_estimation(
         std_est = 1e-8
 
     # set parameters of leaf node
-    leaf.set_params(mean=mean_est, std=std_est)
+    leaf.set_params(mean=float(mean_est), std=float(std_est))
